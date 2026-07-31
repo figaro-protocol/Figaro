@@ -13,18 +13,22 @@
  * fall back to data-key presence. Consumers that need strictness gate on
  * their cache being warm before projecting.
  *
- * Four `block` hints are HASH-LOAD-BEARING and therefore projection
+ * Five `block` hints are HASH-LOAD-BEARING and therefore projection
  * vocabulary, not presentation: `design.article: "mandatory"` (which clauses
  * auto-fold into every template agreement → compositionHash),
  * `design.article: "attestations"` (process-log clauses stay empty anchors at
- * commit → agreementHash), `design.fills` (the fields whose values the
+ * commit → agreementHash), `design.scope: "assembly"` (composed once for the
+ * whole design, folded into EVERY agreement at checkout → compositionHash +
+ * agreementHash), `design.fills` (the fields whose values the
  * DESIGNER composes into the template — the tailoring; every other clause's
  * template values are `{}` and the fields fill at checkout →
  * compositionHash), and the `checkout` fills (`catalogueFills` /
  * `profileFills` — which sections the catalogue and member-profile folds
  * write → agreementHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
- * SDK never reads.
+ * SDK never reads. (A field's `default` is the sixth thing that reaches a
+ * hash without living in `block`: `withSpecDefaults` fills omitted fields
+ * from the spec, so the default lands in the signed section → agreementHash.)
  */
 
 import {

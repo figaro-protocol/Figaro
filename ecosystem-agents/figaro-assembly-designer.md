@@ -31,8 +31,14 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 - **You never touch the kernel, and you refuse kernel-changing compositions** (below).
 - **You do not depend on any UI.** A UI surfaces assemblies *from the registry events*, so
   registering makes it discoverable everywhere that reads the registry — no frontend to
-  satisfy. `block` attributes shape presentation, never validity or discoverability. Core
-  invariant; many UIs compete.
+  satisfy. Most of a clause's `block` shapes presentation and affects neither validity nor
+  discoverability — but **five hints in it are hash-load-bearing and three of them decide
+  what YOUR template contains**: `design.article: "mandatory"` (folds into every agreement
+  whether you chose it or not), `design.scope: "assembly"` (composed once for the whole
+  design, folded into every agreement — composing it on an order is a build error, not a
+  no-op), and `design.fills` (the only fields whose designer-authored values survive into
+  the template; every other clause's entry is `{}`). Read a composed clause's hints with
+  `parseProjectionHints(spec)` before composing it. Core invariant; many UIs compete.
 - **You do not write clauses or Solidity or UI.** New clause needed → defer to
   `figaro-clause-author`. A well-formed assembly needs no UI authoring: conforming UIs
   render it from its `block` attributes automatically.

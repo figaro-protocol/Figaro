@@ -22,10 +22,12 @@ export default function Assemblies() {
                         any kitchen in any town can serve dinner through it without drawing
                         it again. An assembly is that drawing &mdash; a composition template
                         that wires clauses into a multi-order process. Each one registers on{" "}
-                        <code>AssemblyRegistry</code> with a permanent slug, a content hash,
-                        and an IPFS pointer to its document. Sellers bind to assemblies in
-                        their profile; checkout reads those bindings to surface the
-                        buyer-facing choice.
+                        <code>AssemblyRegistry</code> under its <strong>composition hash</strong>
+                        {" "}&mdash; the hash IS the identity &mdash; with an IPFS pointer to its
+                        document. The readable slug you see in a URL is <em>derived</em> from
+                        that hash off-chain; the registry stores no slug and no name. Sellers
+                        bind to assemblies in their profile; checkout reads those bindings to
+                        surface the buyer-facing choice.
                     </>
                 }
             />
@@ -52,19 +54,100 @@ export default function Assemblies() {
 
             <MarketingSection title="Document-anchored, not catalogue-listed.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The registry stores the slug, the author, the content hash, and an
-                    IPFS URI pointing at the off-chain assembly template. The template
-                    carries the topology &mdash; the orders and their parent-child links
-                    &mdash; plus the per-order agreements (which clauses attach, and the
-                    field values that compose into each agreement hash). Anything a seller
-                    offers at checkout composes through assemblies.
+                    The registry keys every binding by <code>compositionHash</code>, and stores
+                    exactly four things under it &mdash; call{" "}
+                    <code>bindings(compositionHash)</code> yourself and you get back{" "}
+                    <code>(address author, uint64 registeredAt, bool depositWithdrawn, string
+                    contentURI)</code>. That is the whole on-chain record. <strong>There is no
+                    slug on chain, and no name.</strong> The <code>contentURI</code> points at
+                    the off-chain assembly template, which carries the topology &mdash; the
+                    orders and their parent-child links &mdash; plus the per-order agreements
+                    (which clauses attach, and the field values that compose into each
+                    agreement hash). Anything a seller offers at checkout composes through
+                    assemblies.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The slug is <em>derived</em>, not stored: it is a pure function of the
+                    composition hash, <code>deriveAssemblySlug(compositionHash)</code> from{" "}
+                    <code>@figaro/sdk</code>, and every reader computes it from the registry
+                    event&apos;s own hash. Identical compositions produce an identical slug;
+                    distinct compositions, distinct slugs. Nothing is squattable, because no
+                    caller-chosen name exists to squat.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Registration is permissionless. The slug binding is first-write-wins
-                    and immutable: the tuple{" "}
-                    <code>(author, compositionHash, contentURI)</code> is permanent. To
-                    change an assembly, register a new one under a new slug.
+                    Registration is permissionless. The <strong>composition</strong> binding is
+                    first-write-wins and permanent &mdash; identical compositions collapse to
+                    one binding, and withdrawing the deposit de-surfaces the assembly without
+                    clearing it. To change an assembly, register the changed composition: it
+                    hashes differently, so it is a different assembly with a different derived
+                    slug, and the original author&apos;s binding is untouched.
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="What the composition hash covers.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    An assembly&apos;s identity is computed over a <em>subset</em> of the document
+                    you pin, and knowing which subset is what lets you rename an assembly without
+                    forking it &mdash; or accidentally fork it by touching one field. This is the
+                    assembly half of the same question the clause registry answers on{" "}
+                    <Link href="/clauses" className="underline">Clauses</Link>:
+                </p>
+                <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">What you write</th>
+                                <th scope="col" className="py-2 pr-4">In <code>compositionHash</code>?</th>
+                                <th scope="col" className="py-2">Why</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            <tr>
+                                <td className="py-2 pr-4"><code>agreements[]</code> &mdash; every composed clause and every designer-authored value in it</td>
+                                <td className="py-2 pr-4 font-semibold">Yes</td>
+                                <td className="py-2">This is the composition. A different clause set, or one different design fill, is a different assembly.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">the topology, carried as a clause (<code>parentOrderHashes</code>)</td>
+                                <td className="py-2 pr-4 font-semibold">Yes</td>
+                                <td className="py-2">Topology is a clause like any other, so it rides in with the agreements. Re-wire the chain, get a new assembly.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4"><code>assemblyClauses</code> &mdash; the assembly-scoped terms composed once for the whole design</td>
+                                <td className="py-2 pr-4 font-semibold">Yes</td>
+                                <td className="py-2">A differently-termed assembly is a different assembly. (Omitted from the hash entirely when none are composed, so pre-existing hashes are unchanged.)</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">clause <code>version</code> pins</td>
+                                <td className="py-2 pr-4 font-semibold">Yes</td>
+                                <td className="py-2">A clause&apos;s identity is (name, version); the template records which one it composed. Sparse &mdash; version 1 is never serialized.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">editorial prose &mdash; <code>name</code>, <code>summary</code>, <code>description</code></td>
+                                <td className="py-2 pr-4 font-semibold">No</td>
+                                <td className="py-2">Your own words, pinned in the document but excluded from identity &mdash; so renaming never forks the assembly or its slug. The flip side: prose is not identity, so it does not protect a composition from being anchored by someone else first.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">the exact bytes you pin</td>
+                                <td className="py-2 pr-4 font-semibold">No</td>
+                                <td className="py-2"><strong>The opposite of a clause.</strong> A clause&apos;s <code>contentHash</code> covers its whole pinned document, so its bytes must be canonical. An assembly&apos;s hash is recomputed over the composition subset, so pin readable JSON &mdash; just never hand-roll the hash over raw bytes.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p className="text-sm text-ink-body leading-relaxed mt-5">
+                    Both halves are pure functions you can call without a chain &mdash;{" "}
+                    <code>templateCompositionHash(template)</code> and{" "}
+                    <code>deriveAssemblySlug(hash)</code>, from <code>@figaro/sdk</code>:
+                </p>
+                <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { templateCompositionHash,
+         deriveAssemblySlug } from "@figaro/sdk";
+
+const h = templateCompositionHash(template);   // the registry key
+deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
+
+// Prove prose is excluded: same hash, different words.
+templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</code></pre>
             </MarketingSection>
 
             <MarketingSection title="Registered assemblies.">

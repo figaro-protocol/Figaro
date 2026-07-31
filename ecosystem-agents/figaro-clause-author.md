@@ -32,9 +32,12 @@ author time; consumers load the clause from `ClauseRegistry → IPFS` at runtime
   If a request needs a kernel change, it is not a clause — refuse and explain.
 - **You do not depend on any UI.** Registration is the whole act: a UI surfaces clauses
   *from the registry events*, so registering makes the clause discoverable everywhere that
-  reads the registry — no frontend to satisfy. `block` attributes shape how a UI *presents*
-  it (grouping, labels), never its validity or discoverability. Core invariant; many UIs
-  compete.
+  reads the registry — no frontend to satisfy. Most of `block` shapes how a UI *presents*
+  the clause (labels, nesting, runtime chrome) and affects neither validity nor
+  discoverability. **But `block` is not inert — five hints inside it are HASH-LOAD-BEARING**
+  (Step 3a). Never tell a user "block is just presentation" without that qualification: it
+  is the one sentence that lets them ship a clause that silently commits the wrong thing,
+  permanently.
 - **You do not commit or push.** You produce the artifact and register it (or hand the
   user the transaction to sign). The user owns the result.
 
@@ -65,15 +68,57 @@ A closed JSON-Schema-subset per `parseClauseSpec` (`@figaro/sdk/clauses` — the
 published Layer-A source of truth): field
 types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint`, `boolean`, `enum`, `array`, `object`; per-stage overrides via
-`spec.stages[stage]`. The `block` attributes (e.g. `block.article`) shape how a UI
-*presents* the clause — set them thoughtfully; their absence affects only presentation,
-never validity or discoverability. Write the spec as the **user's** document (their workspace).
+`spec.stages[stage]`. `block` is sectioned by phase — `block.design` / `block.checkout` /
+`block.runtime` (there is no top-level `block.article`; the group is
+**`block.design.article`**). Set them thoughtfully, then read Step 3a before you write any
+of them. Write the spec as the **user's** document (their workspace).
+
+## Step 3a — The five hash-load-bearing `block` hints (and the reserved-article trap)
+
+**Say this out loud to the user; it is the highest-cost thing on this page.** The
+registered `contentHash` covers the WHOLE canonical document, `block` included — so every
+character of `block` moves the clause's anchor. And five hints inside it change what a
+designer's *template* and a party's *signed agreement* actually contain. Verify what your
+spec declares with `parseProjectionHints(spec)` from `@figaro/sdk` — it returns exactly
+these five and nothing else:
+
+| Hint | Reaches | Effect |
+|---|---|---|
+| `block.design.article: "mandatory"` | `compositionHash` + `agreementHash` | auto-folds the clause into EVERY template agreement, chosen or not |
+| `block.design.article: "attestations"` | `agreementHash` | the section is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
+| `block.design.scope: "assembly"` | `compositionHash` + `agreementHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
+| `block.design.fills` | `compositionHash` | names the fields whose DESIGNER-authored values survive into the template; name nothing and the template carries `{}` |
+| `block.checkout.catalogueFills` / `profileFills` | `agreementHash` | names which fields the seller's catalogue / profile folds write onto the leaf at checkout |
+
+**The reserved-article trap — picking one by accident is silent.** The group name is free
+text, but `"mandatory"` and `"attestations"` mean the two things above to the SDK. Both are
+read straight off the spec: nothing warns, nothing throws, and the clause simply behaves
+differently than the user meant. The trap is that the reserved words are the *natural*
+ones — an attestation clause grouped, reasonably, under `"attestations"` silently commits
+empty. **Registration is permanent and first-write-wins**, so if that is not what the user
+wants, group it under any other word BEFORE registering. There is no fix afterwards, only
+a new `version`.
+
+**And one field attribute is mis-typed as UI metadata: `default`.** A field's `default`
+is documented as composition metadata, but it is NOT inert — when the composing input
+omits the field, the spec's own `default` fills it, and that value lands in the signed
+section, changing the merkle leaf and the `agreementHash` both parties sign. Declare a
+default only where the user would be content for a stranger to sign it having never seen
+it. Show them: `buildOrderAgreement(buyer, seller, { [clauseId]: {} }, specs)` and inspect
+`agreement.sections[0].data`.
+
+Public statement of all of this, for the user: `/clauses` § "What the hash covers".
 
 ## Step 4 — Validate off-chain
 
 Run the Layer-A validator (`parseClauseSpec`) and the content encoder round-trip from
-`@figaro/sdk/clauses`. Well-formedness is the only gate — there is no on-chain content
-check. A malformed spec is caught here, at author time.
+`@figaro/sdk/clauses`. Off-chain well-formedness is the gate that runs at author time and
+before every signature; get it green here. It is not the only content check that exists —
+the batched, proof-based settlement path re-validates the clause IN-PROOF against the
+spec anchored at `ClauseRegistry.contentHashOf`, so a spec that is wrong is wrong on both
+paths. (The direct attestation path merkle-binds and validates no content shape.) Either
+way, a malformed spec is caught here, at author time, and never on chain by a per-clause
+validator — there is none, by design.
 
 ## Step 5 — Pin + register (the user's wallet)
 
@@ -106,8 +151,12 @@ check. A malformed spec is caught here, at author time.
 - contentURI:   ipfs://…
 - on-chain id:  keccak256(abi.encode("<clauseId>", <version>))
 - tx:           0x…  (registrar = <user wallet>)
-- Discoverable now in any UI that reads the registry; `block` attributes shape presentation.
+- block hints declared: <parseProjectionHints output — the five, or "none">
+- Discoverable now in any UI that reads the registry.
 ```
+
+State the `block` hints line even when it is empty: it is the user's record that no
+reserved article, no assembly scope, and no fills were declared by accident.
 
 ## Refuse, and teach, on these (closed-world tells)
 

@@ -58,9 +58,9 @@ export default function Integrate() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Seven event types is the whole event surface.">
+            <MarketingSection title="Seven event types are the direct path&rsquo;s whole event surface.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Every kernel state change emits an event. Replayed into a state machine, they produce the complete ledger position the contract itself holds.
+                    Every kernel state change emits an event. Replayed into a state machine, they produce the complete ledger position <code>FigaroCore</code> itself holds. The batched settlement path is a <em>separate</em> contract with its own two events and its own state &mdash; it emits none of these; read the section below before you gate anything on kernel state.
                 </p>
                 <ul className="space-y-3">
                     <LabelledListRow label="OrderCommitted" labelWidth="wide">
@@ -86,7 +86,7 @@ export default function Integrate() {
                     </LabelledListRow>
                 </ul>
                 <p className="mt-6 text-sm text-ink-muted leading-relaxed">
-                    Any client that can read the chain reconstructs any state.
+                    Any client that can read the chain reconstructs any state on this path.
                 </p>
                 <p className="mt-6 text-sm text-ink-body leading-relaxed">
                     <strong>Reading attestations.</strong> <code>fetchCoreEvents</code> covers the three FigaroCore events (<code>orderCommitted</code>, <code>orderResolved</code>, <code>processResolved</code>). <code>Attestation</code> is emitted by the <em>AttestationCoordinator</em> &mdash; a separate contract &mdash; so you read it directly against that address with <code>EV_ATTESTATION</code> and <code>parseAttestationLogs</code>:
@@ -107,6 +107,77 @@ const attestations = parseAttestationLogs(logs);
 // each: { orderHash, processId, attester, clauseId,
 //         stage, contentRef, blockNumber, transactionHash }`}</code>
                 </pre>
+            </MarketingSection>
+
+            <MarketingSection title="&ldquo;Is it settled?&rdquo; &mdash; ask the right contract.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    <strong>There are two settlement paths and they are disjoint state universes.</strong> <code>FigaroCore</code> (direct) and <code>FigaroBatchVerifier</code> (batched, proof-based) share no state and never call each other. The batch path replaces the whole <code>commit</code>-plus-<code>resolveProcess</code> lifecycle inside the proof, so <strong>a batch-settled process never acquires kernel status and emits no kernel event</strong> &mdash; <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds: a kernel-settled process is never inside a batch. Nothing migrates between them.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    So the two things above &mdash; <code>reconstruct()</code> over <code>fetchCoreEvents</code>, and any gate you write on <code>orderStatus</code> &mdash; see the <em>direct path only</em>. Not &ldquo;late&rdquo;: not at all. <code>orderStatus == 0</code> means <em>&ldquo;not on this path&rdquo;</em>, never <em>&ldquo;not settled&rdquo;</em>, and concluding the latter is the one mistake this section exists to prevent. On the batch path there is <strong>no per-order settled flag on chain</strong>: the order&apos;s state lives under the verifier&apos;s <code>stateRoot()</code>, and the public facts are the batch that carried it, the attestations it re-emitted, and the ERC-20 transfers it executed. Both ABIs ship in the SDK &mdash; <code>CORE_ABI</code> and <code>BATCH_VERIFIER_ABI</code>:
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`import { CORE_ABI, BATCH_VERIFIER_ABI, USAGE_COUNTER_ABI } from "@figaro/sdk";
+
+// DIRECT path — the kernel answers for itself.
+const status = await client.readContract({
+  address: CORE_ADDRESS,        // record: figaroCore
+  abi: CORE_ABI,
+  functionName: "orderStatus",
+  args: [orderHash],
+});                             // 0 UNKNOWN · 1 ACTIVE · 2 RESOLVED
+// 0 does NOT mean "not settled" — it means "not on this path".
+
+// BATCH path — no per-order flag exists. Read the verifier's own state.
+const root = await client.readContract({
+  address: BATCH_VERIFIER,      // record: batchVerifier
+  abi: BATCH_VERIFIER_ABI,
+  functionName: "stateRoot",
+});
+const batches = await client.getLogs({
+  address: BATCH_VERIFIER,
+  event: BATCH_VERIFIER_ABI.find((e) => e.name === "BatchSettled"),
+  fromBlock: DEPLOY_BLOCK, toBlock: "latest",
+});
+// BatchSettled(uint64 batchId, bytes32 prevStateRoot,
+//              bytes32 newStateRoot, uint256 positionCount)
+
+// Per-order evidence on the batch path: the verifier RE-EMITS Attestation.
+// It shares the coordinator's topic hash (0x754607f1…) — filter by
+// contract ADDRESS, never by topic, or you will merge the two universes.
+const attestations = await client.getLogs({
+  address: BATCH_VERIFIER,
+  event: BATCH_VERIFIER_ABI.find((e) => e.name === "Attestation"),
+  fromBlock: DEPLOY_BLOCK, toBlock: "latest",
+});`}</code>
+                </pre>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    <strong>Exactly one thing crosses the seam: the RPGF usage accrual</strong>, carried by <code>settleBatch</code> into <code>UsageCounter.applyBatchAccrual</code> as proved numbers &mdash; never as kernel state. So the same rule governs adoption reads, and the SDK already ships it: <strong>fold BOTH streams</strong>. <code>UsageRecorded</code> is the direct path and is a per-process <em>increment</em>; <code>BatchUsageRecorded</code> is the batch path and is <em>cumulative</em> &mdash; a later record <strong>REPLACES</strong> an earlier one rather than adding to it. <code>fetchUsageRecords</code> alone silently under-reports every artifact whose trade moved to batches; pair it with <code>fetchBatchUsageRecords</code> and pass both to <code>computeUsageAccruals</code>. On chain the merge is already done for you: read <code>scoreOf(artifact, period)</code>, which sums BOTH paths&apos; scores &mdash; never <code>accrualOf</code> alone. Scores are summed; the <code>c</code>/<code>d</code> components never are (the same seller may trade on both sides and the chain holds no seller SETS to union, so adding breadth would pay for breadth nobody had).
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`// On chain: scoreOf already merges the two paths.
+const score = await client.readContract({
+  address: USAGE_COUNTER,       // record: usageCounter
+  abi: USAGE_COUNTER_ABI,
+  functionName: "scoreOf",
+  args: [artifact, period],
+});
+
+// Off chain, if you are mirroring: fold both event streams.
+import { fetchUsageRecords, fetchBatchUsageRecords,
+         computeUsageAccruals } from "@figaro/sdk";
+const direct = await fetchUsageRecords(client, USAGE_COUNTER, toBlock);
+const batch  = await fetchBatchUsageRecords(client, USAGE_COUNTER, toBlock);`}</code>
+                </pre>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                    Contract-by-contract statement of the seam, with the which-function-answers-what table: <Link href="/spec" className="underline">/spec</Link>. Composition targets that read order state: <Link href="/builders/composability" className="underline">Composability</Link>.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Install, fetch, reconstruct.">

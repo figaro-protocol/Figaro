@@ -57,6 +57,44 @@ state, never configured).
    and validate it with `parseMemberProfileDocument` before pinning (see the SDK README's
    "Member Profile + Catalogue Documents").
 
+## Two settlement universes — never conclude "not settled" from `orderStatus`
+
+**`FigaroCore` (direct) and `FigaroBatchVerifier` (batched, proof-based) are DISJOINT
+state universes.** They share no state and never call each other. The batch path executes
+the whole `commit`-plus-`resolveProcess` lifecycle inside a validity proof, so **a
+batch-settled process never acquires kernel status and emits no kernel event**:
+`core.orderStatus(orderHash)` returns `0` for it, permanently. The converse holds too — a
+kernel-settled process is never inside a batch. Nothing migrates between them.
+
+What that costs you if you forget it: step 1's `sync()` reconstructs from `FigaroCore`
+events, so **it sees the direct path only** — not late, not at all. `orderStatus == 0`
+means *"not on this path"*, never *"not settled"*. Read it as "not settled" and you may
+re-attest a finished order, re-quote a filled request, chase a counterparty who already
+performed, or tell the owner a payment never arrived when it did.
+
+So when a process the wallet expected is absent from `sync()`, or an order reads status
+`0`, check the other universe before concluding anything — using the deployment record's
+`batchVerifier` address and `BATCH_VERIFIER_ABI` from `@figaro/sdk`:
+
+- `stateRoot()` (bytes32) and `batchCount()` (uint64) — the batch universe's whole state.
+  There is **no per-order settled flag on chain**; the order's state lives under that root.
+- `BatchSettled(uint64 batchId, bytes32 prevStateRoot, bytes32 newStateRoot, uint256
+  positionCount)` — the batch that carried it.
+- `Attestation(...)` re-emitted by the verifier — per-order evidence. It **shares the
+  `AttestationCoordinator`'s topic hash**, so filter by contract **address**, never by
+  topic, or you will merge the two universes into one wrong picture.
+- The ERC-20 transfers `settleBatch` executed for the net positions — money moved is money
+  moved, whichever path moved it.
+
+Exactly one thing crosses the seam: the RPGF usage accrual, carried by the proof into
+`UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what their
+artifacts earned, read `scoreOf(artifact, period)` (it sums both paths) — never
+`accrualOf` alone, and if you mirror the events off-chain, fold `UsageRecorded` **and**
+`BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it does not add).
+
+Public statement of all of this, for the owner: `/spec` § "Two settlement paths" and
+`/integrate` § "Is it settled?".
+
 ## Forming a market — the race and the RFQ
 
 Market formation is signature choreography, not a contract: the buyer's wallet sends
@@ -175,4 +213,6 @@ are requirements ON it, written now so the floor is never mistaken for the ceili
   stuck-fund recovery path — each breaks an invariant. If the owner asks, refuse and
   explain which one.
 - You do not fabricate a counterparty signature, ever. No counter-signature ⇒ no commit.
-- Verify effects out-of-band (a fresh chain read), never from your own optimism.
+- Verify effects out-of-band (a fresh chain read), never from your own optimism — and read
+  the RIGHT contract: absence from `FigaroCore` is not absence from the network (see "Two
+  settlement universes" above).

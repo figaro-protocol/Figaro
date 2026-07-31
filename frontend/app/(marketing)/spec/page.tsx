@@ -40,7 +40,7 @@ export default function Specifications() {
                         title="FigaroCore.sol"
                         href={`${GH}/FigaroCore.sol`}
                         meta="2 fns · 3 mappings · no owner"
-                        desc="Protocol kernel. commit (unified dual-signed) and resolveProcess. EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution."
+                        desc="Protocol kernel. commit (unified dual-signed) and resolveProcess. EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution. Settlement state is the public mapping orderStatus(bytes32 orderHash) → uint8: 0 UNKNOWN, 1 ACTIVE, 2 RESOLVED. It answers for the DIRECT path only — a process settled through FigaroBatchVerifier (below) is never written here and reads 0 forever, so 0 means 'not on this path', never 'not settled'. See 'Two settlement paths' below."
                     />
                     <ContractEntry
                         id="CommitmentTypes"
@@ -72,7 +72,7 @@ export default function Specifications() {
                         title="FigaroBatchVerifier.sol"
                         href={`${GH}/FigaroBatchVerifier.sol`}
                         meta="SP1 proof · open-world content check"
-                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. No owner, no fee, no upgrade. Devnet wires MockSP1Verifier; mainnet wires Succinct's SP1 gateway + program vkey from env."
+                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. Devnet wires MockSP1Verifier; mainnet wires Succinct's SP1 gateway + program vkey from env."
                     />
                 </ul>
             </MarketingSection>
@@ -80,6 +80,58 @@ export default function Specifications() {
             <MarketingSection title="Clause validation">
                 <p className="text-base text-ink-body leading-relaxed">
                     Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK) before signing, and re-validated <strong>on-chain</strong> on the batched, proof-based settlement path &mdash; a generic SP1 engine checks each clause against its registry-anchored spec, so a never-seen clause settles with zero per-clause on-chain code. The direct attestation path merkle-binds but validates no content shape. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Two settlement paths, two disjoint state universes.">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other. The batch path replaces the entire direct lifecycle &mdash; <code>commit</code> and <code>resolveProcess</code> both execute inside the proof &mdash; so <strong>a batch-settled process never acquires kernel status</strong>: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds too: a kernel-settled process is never inside a batch. There is no migration between the two, and none is planned; the split is the design, not a gap in it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-settled process satisfies neither, forever &mdash; which is exactly why the batch proof carries the RPGF usage accrual across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process record, no attestation state.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    So &ldquo;is this settled?&rdquo; is answered by a different contract on each path. Ask the right one:
+                </p>
+                <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Question</th>
+                                <th scope="col" className="py-2 pr-4">Direct path &mdash; <code>FigaroCore</code></th>
+                                <th scope="col" className="py-2">Batch path &mdash; <code>FigaroBatchVerifier</code></th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            <tr>
+                                <td className="py-2 pr-4">Is this order settled?</td>
+                                <td className="py-2 pr-4 font-mono text-xs">orderStatus(bytes32) == 2</td>
+                                <td className="py-2 text-ink-body">No per-order flag exists on chain. The order&apos;s state lives under <code className="font-mono text-xs">stateRoot()</code>; the public facts are the batch that carried it and the transfers it executed.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">What event says so?</td>
+                                <td className="py-2 pr-4 font-mono text-xs">OrderResolved · ProcessResolved</td>
+                                <td className="py-2 font-mono text-xs">BatchSettled(uint64 batchId, bytes32 prevStateRoot, bytes32 newStateRoot, uint256 positionCount)</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">Per-order evidence?</td>
+                                <td className="py-2 pr-4"><code className="font-mono text-xs">Attestation</code> from <code>AttestationCoordinator</code></td>
+                                <td className="py-2"><code className="font-mono text-xs">Attestation</code> re-emitted by the verifier &mdash; <strong>same topic hash</strong> (<code className="font-mono text-xs">0x754607f1…</code>), so filter by contract ADDRESS, not by topic &mdash; plus the ERC-20 transfers <code>settleBatch</code> executed for the net positions.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">Did it count for RPGF?</td>
+                                <td className="py-2 pr-4 font-mono text-xs">UsageCounter.accrualOf · UsageRecorded</td>
+                                <td className="py-2 font-mono text-xs">UsageCounter.batchAccrualOf · BatchUsageRecorded</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">Total usage score?</td>
+                                <td className="py-2 pr-4" colSpan={2}><code className="font-mono text-xs">UsageCounter.scoreOf(artifact, period)</code> &mdash; sums BOTH paths&apos; scores. Read this, never <code className="font-mono text-xs">accrualOf</code> alone.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p className="text-sm text-ink-body leading-relaxed mt-4">
+                    Read-path guidance for integrators, with the fold rule for the two usage streams, is on <Link href="/integrate" className="underline">Integrate</Link>; composition targets that read order state are on <Link href="/builders/composability" className="underline">Composability</Link>.
                 </p>
             </MarketingSection>
 
@@ -152,7 +204,7 @@ export default function Specifications() {
                         title="UsageCounter.sol"
                         href={`${GH}/protocol/usage/UsageCounter.sol`}
                         meta="permissionless · no owner"
-                        desc="Verified artifact usage, counted when it happens. recordClauseUsage proves from state the chain already holds that the order is RESOLVED (FigaroCore.orderStatus) and that the artifact was merkle-committed in the signed agreementHash — the AttestationCoordinator leaf, byte for byte, with the status gate inverted. Anyone may call; the proof is what is trusted, never the caller. Usage counts only for a LIVE-STAKED seller of record (MembersRegistry.registered gates every record, direct and batch), and a process counts once ever per artifact. Accrual buckets into nine annual periods and a period's counts are final once it ends, so a consumer reads a number that can no longer move. Score = icbrt(c·d²·1e18) — UNIFORM, no tag/category/weight multiplier; d is the distinct live-staked sellers who carried the artifact in that period (sellerSeen), weighted above volume; value is not a term. Below the minimum-support floor — minSellers distinct staked sellers, an immutable, 3 at the reference deployment — the score is zero: counting continues, and the full score springs when the third seller lands. Exists because the chain cannot look backwards: the kernel is frozen, never calls the registries, and no contract can read an event — so reconstructing usage afterwards is what forced the posting/bond/challenge/forum apparatus this replaces (record key: usageCounter)."
+                        desc="Verified artifact usage, counted when it happens. recordClauseUsage proves from state the chain already holds that the order is RESOLVED (FigaroCore.orderStatus) and that the artifact was merkle-committed in the signed agreementHash — the AttestationCoordinator leaf, byte for byte, with the status gate inverted. Anyone may call; the proof is what is trusted, never the caller. That status gate is DIRECT-PATH ONLY (see 'Two settlement paths' above), which is why the batch proof carries its own accrual into applyBatchAccrual, kept in a separate slot (batchAccrualOf) — read scoreOf(artifact, period), which sums BOTH paths' scores; accrualOf alone under-reports every artifact whose trade moved to batches. Scores merge, components never do: the same seller may trade on both sides and the chain holds no seller SETS to union. Usage counts only for a LIVE-STAKED seller of record (MembersRegistry.registered gates every record, direct and batch), and a process counts once ever per artifact. Accrual buckets into nine annual periods and a period's counts are final once it ends, so a consumer reads a number that can no longer move. Score = icbrt(c·d²·1e18) — UNIFORM, no tag/category/weight multiplier; d is the distinct live-staked sellers who carried the artifact in that period (sellerSeen), weighted above volume; value is not a term. Below the minimum-support floor — minSellers distinct staked sellers, an immutable, 3 at the reference deployment — the score is zero: counting continues, and the full score springs when the third seller lands. Exists because the chain cannot look backwards: the kernel is frozen, never calls the registries, and no contract can read an event — so reconstructing usage afterwards is what forced the posting/bond/challenge/forum apparatus this replaces (record key: usageCounter)."
                     />
                     <ContractEntry
                         id="RpgfMinter"

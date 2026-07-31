@@ -36,6 +36,12 @@ export default function Composability() {
                     <li><strong>Never reverses a resolution.</strong> Once <code>resolveProcess</code> has discharged a process, no external contract can claw back, refund, or retroactively re-open it. Settlement is terminal.</li>
                     <li><strong>Never controls a bond.</strong> Bonds are owned by <code>FigaroCore</code> until resolution; no external contract can seize, redirect, or substitute them. The collateral that makes defection irrational stays under kernel custody.</li>
                 </ol>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Those three conditions govern what a composition <em>writes</em>. There is a fourth thing to get right, and it governs what it <strong>reads</strong>: <strong>settlement happens on two disjoint paths, and a composition that gates on <code>orderStatus</code> is blind to one of them.</strong> <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other &mdash; the batched, proof-based path executes <code>commit</code> and <code>resolveProcess</code> inside the proof, so a batch-settled process never acquires kernel status: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. Read that as &ldquo;not settled&rdquo; and your coordinator will refuse to act on real, finished trade &mdash; silently, and more often the more the network scales.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    This is not hypothetical: it is why the protocol&apos;s own usage counter needed a bridge. <code>UsageCounter.recordClauseUsage</code> requires <code>orderStatus == 2</code>, so it could never see batched trade; the batch proof now carries the usage accrual across the seam as proved numbers. Both contracts were individually correct &mdash; no test could find it. If your composition reads order state, read <strong>both</strong>: the kernel&apos;s <code>orderStatus</code> / <code>OrderResolved</code> for the direct path, and the verifier&apos;s <code>BatchSettled</code>, <code>stateRoot()</code>, and re-emitted <code>Attestation</code> logs (filtered by contract <em>address</em> &mdash; the topic hash is shared with the coordinator&apos;s) for the batched one. The read-path recipe, runnable, is on <Link href="/integrate" className="underline">Integrate</Link>; the per-function table is on <Link href="/spec" className="underline">/spec</Link>.
+                </p>
                 <p className="text-sm text-ink-muted">
                     Full doctrine:{" "}
                     <a
@@ -99,6 +105,7 @@ export default function Composability() {
                             <li>Custom clause content &mdash; the off-chain validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
                             <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
                             <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
+                            <li>Reading both settlement paths &mdash; nothing warns a composition that gates on <code>orderStatus</code> that batch-settled trade is invisible to it. Fold the verifier&apos;s events too.</li>
                         </ul>
                     </div>
                 </div>

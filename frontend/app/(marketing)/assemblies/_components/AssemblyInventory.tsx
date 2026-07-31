@@ -43,8 +43,10 @@ export function AssemblyInventory() {
                 {data.length === 1 ? "assembly is" : "assemblies are"} registered on{" "}
                 <code>AssemblyRegistry</code>, read live from{" "}
                 <code>AssemblyRegistered</code> events &mdash; the on-chain set, sorted
-                most-recent first. Each slug is permanent and first-write-wins;
-                assembly-template content fetches lazily from IPFS.
+                most-recent first. Each binding is keyed by its composition hash &mdash;
+                permanent and first-write-wins &mdash; and the slug below each is derived
+                from that hash, never stored on chain; assembly-template content fetches
+                lazily from IPFS.
             </p>
             <ul className="space-y-5">
                 {data.map((choice) => (
