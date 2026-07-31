@@ -442,8 +442,10 @@ single call that cleared the guard and paid out at once, which made one deposit
 recyclable through identity after identity: register → transact → withdraw →
 re-register from a fresh address. The capital cost of sustaining N fabricated
 identities was therefore `deposit`, not `N · deposit` — O(1) no matter how much
-breadth was manufactured. Since the RPGF reward counts distinct (buyer, seller) pairs
-and **no scoring shape can distinguish a fabricated pair from a genuine one**, the
+breadth was manufactured. Since the RPGF reward counts distinct LIVE-STAKED SELLERS
+(ruled 2026-07-31 — the pair statistic it replaced could not be priced at all, the buyer
+side holding no stake) and **no scoring shape can distinguish a fabricated counterparty
+from a genuine one**, the
 identity stake is the only place Sybil resistance can live — and an instantly
 recyclable stake is not a stake. With the cooldown, sustaining N identities across a
 reward period `P` costs `deposit · N · T / P`.

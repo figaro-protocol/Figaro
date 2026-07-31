@@ -416,8 +416,9 @@ supporters), and 300M (30%) to the DAO — all minted at genesis, no vesting —
 and 600M (60%) reserved for retroactive public-goods funding to
 clause authors and assembly designers of record. That 600M has a wired minter,
 registered at florin genesis: usage is counted on chain as trade happens, and
-each of three declining tranches is claimed pro rata from a closed accrual
-period (mechanism in `CONTRACTS.md`, rationale in `PUBLIC_GRAPH_MODEL.md`).
+each closed annual accrual period's budget is claimed pro rata — nine of them, grouped
+into three RISING tranches so the largest budgets pay on the most-measured evidence
+(mechanism in `CONTRACTS.md`, rationale in `PUBLIC_GRAPH_MODEL.md`).
 The florin contracts are immutable: no owner, no upgrade path, no parameter changes. If one is wrong, a
 new one is deployed and the community migrates.
 
