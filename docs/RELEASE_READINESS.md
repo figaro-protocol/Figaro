@@ -102,9 +102,10 @@ ratified posture ("aligns the honest majority, does not deter a determined Sybil
 dilution, never theft) is unchanged. The state machine under all of it is Halmos-proved
 (cooldown unskippable, no deposit recycling, counter admits usage iff the stake is live).
 
-**Remaining before broadcast:** operator ratification of the two judgment anchors (the
-0.05 ETH honest-ceiling and the 28-day cooldown), and re-measuring `g` on the target
-chain to place the deployment on the γ curve in the release record.
+**Anchors RATIFIED by the operator 2026-07-31** (the 0.05 ETH honest-ceiling and the
+28-day cooldown) — the landed values are final deploy config. Remaining before
+broadcast: re-measure `g` on the target chain and record the deployment's point on the
+γ curve in the release record.
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
