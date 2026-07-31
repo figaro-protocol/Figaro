@@ -11,6 +11,10 @@ import {
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
+import {
+    verifyOrderCommitSignatures,
+    type OrderSignatureVerdicts,
+} from "@/lib/audit/signatureVerdicts";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
@@ -27,6 +31,53 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
  * No clause is named here and no field is assumed — a clause the protocol
  * has never seen surfaces from its own spec, with zero per-clause code.
  */
+/** The per-party verdict rows beside an order's hash row. Signature bytes are
+ *  re-verified from the commit transaction's calldata against the EXACT struct
+ *  it carried (`lib/audit/signatureVerdicts`) — presentation only; the kernel
+ *  verified the same signatures at commit time. */
+function OrderSignatureRows({
+    orderHash,
+    verdicts,
+}: {
+    orderHash: string;
+    verdicts: OrderSignatureVerdicts | undefined;
+}) {
+    if (!verdicts) return null;
+    const rows = [
+        { label: "Buyer signature", party: "buyer", verdict: verdicts.buyer },
+        { label: "Seller signature", party: "seller", verdict: verdicts.seller },
+    ] as const;
+    return (
+        <dl
+            className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
+            data-testid={`audit-signatures-${orderHash}`}
+        >
+            {rows.map(({ label, party, verdict }) => (
+                <div key={party} className="contents">
+                    <dt className="text-ink-muted">{label}</dt>
+                    <dd data-testid={`audit-sig-${party}-${orderHash}`}>
+                        {verdict === "valid" && (
+                            <span className="text-green-700 font-semibold">
+                                &#10003; Valid &mdash; recovers to the committed {party}
+                            </span>
+                        )}
+                        {verdict === "invalid" && (
+                            <span className="text-red-700 font-semibold">
+                                &#10007; Invalid &mdash; does not recover to the committed {party}
+                            </span>
+                        )}
+                        {verdict === "unavailable" && (
+                            <span className="text-ink-muted">
+                                Unavailable &mdash; no readable commit calldata for this order
+                            </span>
+                        )}
+                    </dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
+
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
     const orders = useProcessOrders(processId);
     const publicClient = usePublicClient();
@@ -66,6 +117,31 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                 }
             }));
             if (!cancelled) setAttestationsByOrder(next);
+        })();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ordersKey, chainId, publicClient]);
+
+    // Per-order signature verdicts: the commit transaction's calldata is the
+    // only on-chain home of the signature bytes, so the reader re-verifies them
+    // there (same per-order fetch shape as the attestations above).
+    const [signaturesByOrder, setSignaturesByOrder] = useState<Map<string, OrderSignatureVerdicts>>(new Map());
+    useEffect(() => {
+        if (!publicClient || !chainId || orders.length === 0) {
+            setSignaturesByOrder(new Map());
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            const next = new Map<string, OrderSignatureVerdicts>();
+            await Promise.all(orders.map(async (order) => {
+                try {
+                    next.set(order.orderHash, await verifyOrderCommitSignatures(publicClient, chainId, order.orderHash));
+                } catch {
+                    // Leave the order without a verdict — rows simply don't render.
+                }
+            }));
+            if (!cancelled) setSignaturesByOrder(next);
         })();
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,6 +191,10 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                     {perOrder.map(({ order, clauseData, processLogs }) => (
                         <div key={order.orderHash} className="space-y-5 border border-default rounded-section p-5">
                             <p className="text-xs font-mono text-ink-muted break-all">order {order.orderHash}</p>
+                            <OrderSignatureRows
+                                orderHash={order.orderHash}
+                                verdicts={signaturesByOrder.get(order.orderHash)}
+                            />
 
                             {clauseData && clauseData.clauses.length > 0 && (
                                 <div className="space-y-4">

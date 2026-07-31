@@ -15,6 +15,9 @@
  *              (hash search resolves the REAL committed agreementHash to its
  *              OrderCommitted anchor, and a junk hash reports no-hits — not
  *              a false match)
+ *   sigs     → /audit/view per-order SIGNATURE VERDICTS: the reader re-verifies
+ *              the buyer and seller EIP-712 signatures from the commit
+ *              transaction's calldata (the signatures' only on-chain home)
  *
  * The producing flow is the minimal seed-assembly trade (buyer anvil[0] ↔
  * the wizard seller, registered by the devnet-authoring gate); the rungs
@@ -207,5 +210,23 @@ test.describe('VERIFICATION COVERAGE — kernel-revert path, evidence reader, ve
         await page.getByTestId('verify-search-input').fill('0x' + 'ab'.repeat(32));
         await expect(page.getByTestId('verify-search-no-hits'), 'a junk hash reports no-hits — no false match')
             .toBeVisible({ timeout: 10000 });
+
+        // ── RUNG 4 — PER-ORDER SIGNATURE VERDICTS on /audit/view: the reader
+        //    re-verifies both parties' EIP-712 signatures from the commit
+        //    transaction's calldata (their only on-chain home) against the
+        //    exact struct it carried — the "did X really sign hash H?" answer
+        //    the audit surface could not give before.
+        const orderHash = event.args.orderHash! as Hex;
+        await gotoAsWallet(page, BUYER, `/audit/view?process=${processId}&e2e=devnet`);
+        await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId(`audit-sig-buyer-${orderHash}`),
+            'the buyer signature re-verifies as valid from commit calldata',
+        ).toContainText('✓ Valid', { timeout: 30000 });
+        await expect(
+            page.getByTestId(`audit-sig-seller-${orderHash}`),
+            'the seller signature re-verifies as valid from commit calldata',
+        ).toContainText('✓ Valid', { timeout: 30000 });
     });
 });
