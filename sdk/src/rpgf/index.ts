@@ -3,8 +3,8 @@
  * `sdk/src/rpgf/formula.json`.
  *
  * There is NOTHING TO POST here. `UsageCounter` counts verified artifact usage
- * on chain at the moment it happens, and `RpgfMinter` pays a tranche from those
- * already-final numbers. This module MIRRORS that arithmetic so a reader can
+ * on chain at the moment it happens, and `RpgfMinter` pays each closed period from
+ * those already-final numbers. This module MIRRORS that arithmetic so a reader can
  * display it, predict a claim, or verify that a recorded accrual is exactly what
  * the counting rules produce — never so that an answer can be asserted to the
  * chain. Deterministic integer arithmetic (no floats anywhere); `icbrt` matches
@@ -35,8 +35,15 @@ import formula from "./formula.json" with { type: "json" };
 export const RPGF_FORMULA = formula;
 /** The fixed-point scale inside the cube root (10^18). */
 export const RPGF_SCORE_SCALE = BigInt(formula.parameters.scoreScale);
-/** `RpgfMinter.TRANCHE_COUNT` — tranche `i` pays for accrual period `i`. */
-export const RPGF_TRANCHE_COUNT: number = formula.parameters.trancheCount;
+/** The reference schedule's period count — nine annual accrual periods,
+ *  budgets grouped 15/30/55 into three rising tranches (ruled 2026-07-31).
+ *  The live count is `UsageCounter.periodCount()`; read the chain when it
+ *  matters, this constant is the reference shape. */
+export const RPGF_PERIOD_COUNT: number = formula.parameters.periodCount;
+/** `UsageCounter.minSellers` — the minimum-support floor (ruled 2026-07-31):
+ *  an artifact scores zero in a period until this many DISTINCT STAKED
+ *  SELLERS carried it there. Reference value; the live one is on chain. */
+export const RPGF_MIN_SELLERS = BigInt(formula.parameters.minSellers);
 
 // ── Integer math ─────────────────────────────────────────────────────
 
@@ -61,11 +68,15 @@ export function icbrt(n: bigint): bigint {
     return lo;
 }
 
-/** `icbrt(c * d^2 * 10^18)` — `UsageCounter._score`. Breadth (distinct
- *  counterparty pairs) weighs twice as heavily as volume. UNIFORM: no weight
- *  multiplier — every artifact's score is its real usage alone. */
-export function usageScore(c: bigint, d: bigint): bigint {
-    if (c === 0n || d === 0n) return 0n;
+/** `icbrt(c * d^2 * 10^18)` above the minimum-support floor, else 0 —
+ *  `UsageCounter._score`. Breadth (distinct STAKED SELLERS) weighs twice as
+ *  heavily as volume; below `minSellers` distinct sellers nothing scores
+ *  (counting still accrues — the score springs whole at the floor). UNIFORM:
+ *  no weight multiplier — every artifact's score is its real usage alone.
+ *  `minSellers` defaults to the formula reference; pass the chain's
+ *  `UsageCounter.minSellers()` to mirror a specific deployment. */
+export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_SELLERS): bigint {
+    if (c === 0n || d < minSellers || d === 0n) return 0n;
     return icbrt(c * d * d * RPGF_SCORE_SCALE);
 }
 
@@ -81,8 +92,8 @@ export interface UsageRecord {
     artifact: Hex;
     period: number;
     processId: Hex;
-    /** keccak256(buyer, seller) of the recorded order. */
-    pairKey: Hex;
+    /** The recorded order's seller of record (live-staked at record time). */
+    seller: Address;
     c: bigint;
     d: bigint;
     score: bigint;
@@ -114,10 +125,11 @@ export interface BatchUsageRecord {
  *
  *  The two are kept apart on purpose. A batch-settled process never acquires
  *  kernel status and a kernel-settled one is never in a batch, so no PROCESS
- *  is ever counted twice — but the same (buyer, seller) pair may trade on both
- *  sides, and neither the chain nor this mirror holds the pair SETS needed to
- *  union them. Adding `d` to `d` would therefore pay for breadth nobody had.
- *  Scores are summed; components never are. */
+ *  is ever counted twice — but the same SELLER may trade on both sides, and
+ *  neither the chain nor this mirror holds the seller SETS needed to union
+ *  them. Adding `d` to `d` would therefore pay for breadth nobody had.
+ *  Scores are summed; components never are — and the minimum-support floor
+ *  applies per path, for the same reason. */
 export interface ArtifactAccrual {
     direct: UsageAccrual;
     batch: UsageAccrual;
@@ -139,15 +151,17 @@ function emptyAccrual(): UsageAccrual {
 
 /** Replay the counter's counting rules over a record stream: idempotence per
  *  (artifact, process) — GLOBAL, so a process counts once ever and a later
- *  period is never paid for an earlier period's trade — then the distinct-pair
- *  count PER PERIOD and the uniform score. (A per-pair cap of 5 was deleted
- *  2026-07-30: it never bound for an attacker optimising score per unit cost,
- *  who always trades once per fabricated pair, and the `c^(1/3)` exponent
- *  already discounts repeat trade far more steeply.) Records are replayed in
- *  (blockNumber, logIndex) order, the order the chain applied them in. */
+ *  period is never paid for an earlier period's trade — then the
+ *  distinct-STAKED-SELLER count PER PERIOD (ruled 2026-07-31: breadth counts
+ *  only what a stake has priced; pairs were free to mint on the buyer side)
+ *  and the uniform floored score. Records are replayed in (blockNumber,
+ *  logIndex) order, the order the chain applied them in. `minSellers`
+ *  defaults to the formula reference; pass the chain's value to mirror a
+ *  specific deployment. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
     batchRecords: readonly BatchUsageRecord[] = [],
+    minSellers: bigint = RPGF_MIN_SELLERS,
 ): Map<number, UsagePeriodAccrual> {
     const sorted = [...records].sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
@@ -155,7 +169,7 @@ export function computeUsageAccruals(
 
     const periods = new Map<number, UsagePeriodAccrual>();
     const countedProcesses = new Map<Hex, Set<string>>(); // artifact → processIds (GLOBAL)
-    const pairsSeen = new Map<string, Set<string>>(); // artifact|period → pairKeys
+    const sellersSeen = new Map<string, Set<string>>(); // artifact|period → sellers
 
     for (const record of sorted) {
         const artifact = record.artifact.toLowerCase() as Hex;
@@ -163,21 +177,21 @@ export function computeUsageAccruals(
 
         const seenProcesses = countedProcesses.get(artifact) ?? new Set<string>();
         if (seenProcesses.has(record.processId.toLowerCase())) continue; // AlreadyCounted
-        const pairs = pairsSeen.get(scopeKey) ?? new Set<string>();
-        const pairKey = record.pairKey.toLowerCase();
-        const firstFromPair = !pairs.has(pairKey);
+        const sellers = sellersSeen.get(scopeKey) ?? new Set<string>();
+        const seller = record.seller.toLowerCase();
+        const firstSeller = !sellers.has(seller);
 
         seenProcesses.add(record.processId.toLowerCase());
         countedProcesses.set(artifact, seenProcesses);
-        pairs.add(pairKey);
-        pairsSeen.set(scopeKey, pairs);
+        sellers.add(seller);
+        sellersSeen.set(scopeKey, sellers);
 
         const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, ArtifactAccrual>(), totalScore: 0n };
         const entry = period.byArtifact.get(artifact) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
         const accrual = entry.direct;
         accrual.c += 1n;
-        if (firstFromPair) accrual.d += 1n;
-        const updated = usageScore(accrual.c, accrual.d);
+        if (firstSeller) accrual.d += 1n;
+        const updated = usageScore(accrual.c, accrual.d, minSellers);
         period.totalScore = period.totalScore + updated - accrual.score;
         accrual.score = updated;
         entry.score = accrual.score + entry.batch.score;
@@ -195,7 +209,7 @@ export function computeUsageAccruals(
         const artifact = record.artifact.toLowerCase() as Hex;
         const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, ArtifactAccrual>(), totalScore: 0n };
         const entry = period.byArtifact.get(artifact) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
-        const updated = usageScore(record.c, record.d);
+        const updated = usageScore(record.c, record.d, minSellers);
         period.totalScore = period.totalScore + updated - entry.batch.score;
         entry.batch = { c: record.c, d: record.d, score: updated };
         entry.score = entry.direct.score + entry.batch.score;
@@ -207,7 +221,7 @@ export function computeUsageAccruals(
 
 // ── Payout (RpgfMinter.claim, mirrored) ──────────────────────────────
 
-/** What one wallet can claim from a tranche — mirrors the `Claimed` event. */
+/** What one wallet can claim from a period — mirrors the `Claimed` event. */
 export interface RpgfAllocation {
     account: Address;
     amount: bigint;
@@ -216,8 +230,8 @@ export interface RpgfAllocation {
 }
 
 /** The payout: a period's accrual plus each artifact's author of record gives
- *  every wallet's tranche entitlement — UNIFORM pro rata,
- *  `floor(trancheAmount * score / total)`, with no cap.
+ *  every wallet's period entitlement — UNIFORM pro rata,
+ *  `floor(periodAmount * score / total)`, with no cap.
  *
  *  `authorOf` maps artifact key → author of record (clause registrar or
  *  assembly author); an artifact with no author is unclaimable and its score
@@ -227,7 +241,7 @@ export interface RpgfAllocation {
 export function computeRpgfAllocations(
     period: UsagePeriodAccrual,
     authorOf: ReadonlyMap<Hex, Address>,
-    trancheAmount: bigint,
+    periodAmount: bigint,
 ): RpgfAllocation[] {
     if (period.totalScore === 0n) return [];
 
@@ -243,12 +257,12 @@ export function computeRpgfAllocations(
     // artifacts (`byArtifact` is keyed by artifact), so `score <= totalScore`
     // holds structurally. The chain dropped its equivalent clamp on 2026-07-30 —
     // there it was reachable via a duplicate-stuffed artifact list, and clamping
-    // silently rounded such a claim UP to the entire tranche instead of
+    // silently rounded such a claim UP to the entire period budget instead of
     // rejecting it. Mirror the contract: nothing to clamp, and a violation
     // should surface, not be smoothed over.
     const allocations: RpgfAllocation[] = [];
     for (const [account, score] of walletScores) {
-        const amount = (trancheAmount * score) / period.totalScore;
+        const amount = (periodAmount * score) / period.totalScore;
         if (amount === 0n) continue;
         allocations.push({ account, amount, score });
     }
@@ -277,7 +291,7 @@ export async function fetchUsageRecords(
                 artifact: a.artifact as Hex,
                 period: Number(a.period),
                 processId: a.processId as Hex,
-                pairKey: a.pairKey as Hex,
+                seller: a.seller as Address,
                 c: a.c as bigint,
                 d: a.d as bigint,
                 score: a.score as bigint,

@@ -5,7 +5,7 @@
  * panel and not an application form: usage is COUNTED ON CHAIN as it happens
  * (a settled order, the artifact proven present in the agreement both parties
  * signed), a period's counts stop moving the moment it ends, and the wallet
- * then claims its artifacts' UNIFORM pro-rata share of that period's tranche —
+ * then claims its artifacts' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
  * marketing telling lives at /artifact-rewards; this page is the doing surface.
  */
@@ -17,12 +17,12 @@ import { FLORIN_TOKEN_ABI } from "@figaro/sdk";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { useMounted } from "@/hooks/useMounted";
-import { useRpgfRewards, type RpgfTrancheState } from "@/lib/composition/useRpgfRewards";
+import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
-/** The tranche's phase, DERIVED from chain state — never stored. */
-function trancheStatus(t: RpgfTrancheState): string {
+/** The period's phase, DERIVED from chain state — never stored. */
+function periodStatus(t: RpgfPeriodState): string {
     if (t.claimed) return "claimed";
     if (!t.periodClosed) return "accruing";
     return "claimable";
@@ -54,7 +54,7 @@ export function RewardsView() {
         return () => {
             cancelled = true;
         };
-    }, [publicClient, account, rewards.tranches]);
+    }, [publicClient, account, rewards.periods]);
 
     if (!mounted) return null;
 
@@ -78,7 +78,7 @@ export function RewardsView() {
                 Usage is counted on chain as it happens — a settled process, the artifact proven
                 present in the agreement both parties signed — and buckets into fixed periods.
                 Once a period ends its counts are final, and each author claims their artifacts&apos;
-                share of that period&apos;s tranche: their score over the period&apos;s total, uniform
+                share of that period&apos;s budget: their score over the period&apos;s total, uniform
                 pro rata with no cap. Eligibility is a live ETH stake — you earn only while your
                 artifact&apos;s stake stays live. Nothing is
                 posted, bonded, or disputed; there is no committee and no application.
@@ -90,7 +90,7 @@ export function RewardsView() {
                 </p>
             )}
 
-            <WalletGate hint="Connect a wallet to read your accrual and claim a closed tranche.">
+            <WalletGate hint="Connect a wallet to read your accrual and claim a closed period.">
                 {account && florinBalance !== null && (
                     <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
                         Your florin balance: <span className="font-mono">{formatUnits(florinBalance, 18)}</span>
@@ -98,29 +98,29 @@ export function RewardsView() {
                 )}
 
                 <div className="space-y-6">
-                    {rewards.tranches.map((t) => {
-                        const status = trancheStatus(t);
+                    {rewards.periods.map((t) => {
+                        const status = periodStatus(t);
                         return (
                             <div
-                                key={t.trancheId}
+                                key={t.periodId}
                                 className="border border-edge-muted rounded-lg p-5"
-                                data-testid={`tranche-card-${t.trancheId}`}
+                                data-testid={`period-card-${t.periodId}`}
                             >
                                 <div className="flex items-baseline justify-between mb-2">
                                     <h2 className="text-base font-semibold text-ink-heading">
-                                        Tranche {t.trancheId + 1} — {formatUnits(t.amount, 18)} FLORIN
+                                        Period {t.periodId + 1} — {formatUnits(t.amount, 18)} FLORIN
                                     </h2>
-                                    <span className="text-sm text-ink-muted" data-testid={`tranche-status-${t.trancheId}`}>
+                                    <span className="text-sm text-ink-muted" data-testid={`period-status-${t.periodId}`}>
                                         {status}
                                     </span>
                                 </div>
-                                <p className="text-sm text-ink-muted mb-1" data-testid={`tranche-total-score-${t.trancheId}`}>
+                                <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
                                     period score across all artifacts:{" "}
                                     <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
                                     {formatUnits(t.minted, 18)} FLORIN
                                 </p>
                                 {t.accruals.length > 0 && (
-                                    <div className="mt-3 mb-3" data-testid={`tranche-accruals-${t.trancheId}`}>
+                                    <div className="mt-3 mb-3" data-testid={`period-accruals-${t.periodId}`}>
                                         <p className="text-sm text-ink-body mb-1">
                                             Your artifacts in this period (score{" "}
                                             <span className="font-mono">{t.myScore.toString()}</span>):
@@ -139,33 +139,33 @@ export function RewardsView() {
                                     </div>
                                 )}
                                 {account && t.accruals.length === 0 && (
-                                    <p className="text-sm text-ink-muted mb-3" data-testid={`tranche-no-accrual-${t.trancheId}`}>
+                                    <p className="text-sm text-ink-muted mb-3" data-testid={`period-no-accrual-${t.periodId}`}>
                                         Nothing you authored has carried trade in this period yet.
                                     </p>
                                 )}
                                 {t.periodClosed && !t.claimed && t.claimable > 0n && (
-                                    <p className="text-sm text-ink-body mb-3" data-testid={`tranche-claimable-${t.trancheId}`}>
+                                    <p className="text-sm text-ink-body mb-3" data-testid={`period-claimable-${t.periodId}`}>
                                         Claimable: <span className="font-mono">{formatUnits(t.claimable, 18)}</span> FLORIN
                                     </p>
                                 )}
                                 <div className="flex flex-wrap gap-3">
                                     {!t.periodClosed && (
-                                        <p className="text-sm text-ink-muted" data-testid={`tranche-accruing-${t.trancheId}`}>
-                                            Still accruing — this tranche opens for claims when its period ends.
+                                        <p className="text-sm text-ink-muted" data-testid={`period-accruing-${t.periodId}`}>
+                                            Still accruing — this period opens for claims when it ends.
                                         </p>
                                     )}
                                     {t.periodClosed && !t.claimed && (
                                         <Button
-                                            data-testid={`claim-${t.trancheId}`}
+                                            data-testid={`claim-${t.periodId}`}
                                             disabled={busy !== null || t.claimable === 0n}
-                                            onClick={() => act("claim", () => rewards.claim(t.trancheId))}
+                                            onClick={() => act("claim", () => rewards.claim(t.periodId))}
                                         >
                                             {busy === "claim" ? "Claiming…" : "Claim my share"}
                                         </Button>
                                     )}
                                     {t.claimed && (
-                                        <p className="text-sm text-ink-muted" data-testid={`tranche-claimed-${t.trancheId}`}>
-                                            Claimed — one claim per wallet per tranche.
+                                        <p className="text-sm text-ink-muted" data-testid={`period-claimed-${t.periodId}`}>
+                                            Claimed — one claim per wallet per period.
                                         </p>
                                     )}
                                 </div>

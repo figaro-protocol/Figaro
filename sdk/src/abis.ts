@@ -302,15 +302,17 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function scoreOf(bytes32 artifact, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
     "function processCounted(bytes32 artifact, bytes32 processId) view returns (bool)",
-    "function pairSeen(bytes32 artifact, uint8 period, bytes32 pairKey) view returns (bool)",
+    "function sellerSeen(bytes32 artifact, uint8 period, address seller) view returns (bool)",
+    "function minSellers() view returns (uint64)",
     "function icbrt(uint256 n) pure returns (uint256)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
     "event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
 
     // ── Errors ──────────────────────────────────────────────────────
     "error ZeroAddress()",
+    "error ZeroMinSellers()",
     "error EmptyPeriods()",
     "error PeriodsNotAscending()",
     "error AccrualClosed()",
@@ -335,36 +337,41 @@ export const EV_BATCH_USAGE_RECORDED = parseAbiItem(
 );
 
 export const EV_USAGE_RECORDED = parseAbiItem(
-    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
 );
 
 // ── RpgfMinter ABI ────────────────────────────────────────────────────────
 //
-// The 600M retroactive distribution: three declining tranches, tranche `i`
-// paying for UsageCounter period `i`. There is nothing to post, nothing to
-// bond and nothing to dispute — a claim is UNIFORM pro rata over a closed
-// period's final counts (no cap), to authors of record with a LIVE stake.
+// The 600M retroactive distribution: one claim per accrual period, from a
+// per-period budget validated against the counter's schedule at deploy (the
+// reference schedule: nine annual periods, budgets grouped 15/30/55 into
+// three rising tranches — deploy-script data, not contract state). There is
+// nothing to post, nothing to bond and nothing to dispute — a claim is
+// UNIFORM pro rata over a closed period's final counts (no cap), to authors
+// of record with a LIVE stake.
 
 export const RPGF_MINTER_ABI = parseAbi([
-    "function claim(uint8 trancheId, bytes32[] artifacts) external",
-    "function claimable(uint8 trancheId, address account, bytes32[] artifacts) view returns (uint256)",
-    "function trancheAmount(uint256) view returns (uint256)",
-    "function minted(uint8 trancheId) view returns (uint256)",
-    "function claimed(uint8 trancheId, address account) view returns (bool)",
-    "function TRANCHE_COUNT() view returns (uint8)",
+    "function claim(uint8 periodId, bytes32[] artifacts) external",
+    "function claimable(uint8 periodId, address account, bytes32[] artifacts) view returns (uint256)",
+    "function periodAmount(uint256) view returns (uint256)",
+    "function periodCount() view returns (uint256)",
+    "function minted(uint8 periodId) view returns (uint256)",
+    "function claimed(uint8 periodId, address account) view returns (bool)",
     "function florin() view returns (address)",
     "function counter() view returns (address)",
     "function clauses() view returns (address)",
     "function assemblies() view returns (address)",
-    "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score)",
+    "event Claimed(uint8 indexed periodId, address indexed account, uint256 amount, uint256 score)",
     "error ZeroAddress()",
-    "error UnknownTranche(uint8 trancheId)",
-    "error TrancheStillAccruing(uint8 trancheId)",
-    "error AlreadyClaimed(uint8 trancheId, address account)",
+    "error UnknownPeriod(uint8 periodId)",
+    "error AmountsPeriodsMismatch(uint256 amounts, uint256 periods)",
+    "error PeriodStillAccruing(uint8 periodId)",
+    "error AlreadyClaimed(uint8 periodId, address account)",
     "error NoArtifacts()",
+    "error DuplicateArtifact(bytes32 artifact)",
     "error NotAuthorOfRecord(bytes32 artifact, address caller)",
     "error NothingToClaim()",
-    "error TrancheBudgetExceeded(uint8 trancheId)",
+    "error PeriodBudgetExceeded(uint8 periodId)",
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────

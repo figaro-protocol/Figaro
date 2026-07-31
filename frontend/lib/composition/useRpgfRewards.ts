@@ -7,7 +7,7 @@
  *
  * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` records
  * verified usage as it happens — a settled order plus merkle inclusion of the
- * artifact in the agreement both parties signed — so a tranche is arithmetic
+ * artifact in the agreement both parties signed — so a period's payout is arithmetic
  * over numbers that are already final. A period's counts stop moving the
  * moment it ends; the minter pays a wallet its artifacts' score over the
  * period's total, UNIFORM pro rata (no cap), to live-staked authors of record.
@@ -48,14 +48,14 @@ export interface RpgfArtifactAccrual {
     score: bigint;
 }
 
-export interface RpgfTrancheState {
-    trancheId: number;
-    /** The tranche's florin budget. */
+export interface RpgfPeriodState {
+    periodId: number;
+    /** The period's florin budget. */
     amount: bigint;
     /** Florins already minted from it. */
     minted: bigint;
     /** True once the matching accrual period has ended: counts are final and
-     *  the tranche is claimable. */
+     *  the period is claimable. */
     periodClosed: boolean;
     /** Every artifact's score in this period — the payout denominator. */
     totalScore: bigint;
@@ -66,7 +66,7 @@ export interface RpgfTrancheState {
     /** What the minter says the wallet can take right now (0 once claimed,
      *  or while the period is still accruing). */
     claimable: bigint;
-    /** True once the wallet has claimed this tranche. */
+    /** True once the wallet has claimed this period. */
     claimed: boolean;
 }
 
@@ -77,7 +77,7 @@ export function useRpgfRewards() {
     const { address: account } = useAccount();
     const { writeContractAsync } = useWriteContract();
 
-    const [tranches, setTranches] = useState<RpgfTrancheState[]>([]);
+    const [periods, setPeriods] = useState<RpgfPeriodState[]>([]);
     const [refreshNonce, setRefreshNonce] = useState(0);
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
@@ -131,26 +131,26 @@ export function useRpgfRewards() {
         (async () => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
-            const [trancheCount, mine] = await Promise.all([
-                publicClient.readContract({ ...minterBase, functionName: "TRANCHE_COUNT" }),
+            const [periodCount, mine] = await Promise.all([
+                publicClient.readContract({ ...minterBase, functionName: "periodCount" }),
                 discoverArtifacts(),
             ]);
             const artifacts = mine.map((m) => m.artifact);
-            const ids = Array.from({ length: Number(trancheCount) }, (_, i) => i);
+            const ids = Array.from({ length: Number(periodCount) }, (_, i) => i);
             const rows = await Promise.all(
-                ids.map(async (trancheId) => {
-                    const period = trancheId;
+                ids.map(async (periodId) => {
+                    const period = periodId;
                     const [amount, minted, periodClosed, totalScore, claimed, claimable, accrualRows] =
                         await Promise.all([
                             publicClient.readContract({
                                 ...minterBase,
-                                functionName: "trancheAmount",
-                                args: [BigInt(trancheId)],
+                                functionName: "periodAmount",
+                                args: [BigInt(periodId)],
                             }),
                             publicClient.readContract({
                                 ...minterBase,
                                 functionName: "minted",
-                                args: [trancheId],
+                                args: [periodId],
                             }),
                             publicClient.readContract({
                                 ...counterBase,
@@ -166,14 +166,14 @@ export function useRpgfRewards() {
                                 ? publicClient.readContract({
                                       ...minterBase,
                                       functionName: "claimed",
-                                      args: [trancheId, account],
+                                      args: [periodId, account],
                                   })
                                 : Promise.resolve(false),
                             account && artifacts.length > 0
                                 ? publicClient.readContract({
                                       ...minterBase,
                                       functionName: "claimable",
-                                      args: [trancheId, account, artifacts],
+                                      args: [periodId, account, artifacts],
                                   })
                                 : Promise.resolve(0n),
                             Promise.all(
@@ -206,7 +206,7 @@ export function useRpgfRewards() {
                         ]);
                     const accruals = accrualRows.filter((a) => a.score > 0n);
                     return {
-                        trancheId,
+                        periodId,
                         amount,
                         minted,
                         periodClosed,
@@ -215,11 +215,11 @@ export function useRpgfRewards() {
                         myScore: accruals.reduce((sum, a) => sum + a.score, 0n),
                         claimable,
                         claimed,
-                    } satisfies RpgfTrancheState;
+                    } satisfies RpgfPeriodState;
                 }),
             );
             if (cancelled) return;
-            setTranches(rows);
+            setPeriods(rows);
         })().catch(() => {
             /* resolved-empty: the page renders the unavailable state */
         });
@@ -228,22 +228,22 @@ export function useRpgfRewards() {
         };
     }, [minter, counter, publicClient, account, discoverArtifacts, refreshNonce]);
 
-    /** Claim a closed tranche: one call per wallet per tranche, carrying every
+    /** Claim a closed period: one call per wallet per period, carrying every
      *  artifact the wallet authored. simulate → write → receipt → refresh, per
      *  the publish-flow pattern — any minter revert (still accruing, already
      *  claimed, not author of record) surfaces BEFORE the wallet prompt. */
     const claim = useCallback(
-        async (trancheId: number) => {
+        async (periodId: number) => {
             if (!minter) throw new Error("RPGF minter unconfigured.");
             if (!account) throw new Error("Connect a wallet to claim.");
-            const tranche = tranches.find((t) => t.trancheId === trancheId);
-            const artifacts = tranche?.accruals.map((a) => a.artifact) ?? [];
+            const row = periods.find((t) => t.periodId === periodId);
+            const artifacts = row?.accruals.map((a) => a.artifact) ?? [];
             if (artifacts.length === 0) throw new Error("This wallet authored nothing that accrued in this period.");
             const call = {
                 address: minter,
                 abi: RPGF_MINTER_ABI,
                 functionName: "claim" as const,
-                args: [trancheId, artifacts] as const,
+                args: [periodId, artifacts] as const,
             };
             if (publicClient) await publicClient.simulateContract({ ...call, account });
             const hash = await writeContractAsync(call);
@@ -251,13 +251,13 @@ export function useRpgfRewards() {
             refresh();
             return hash;
         },
-        [minter, account, tranches, publicClient, writeContractAsync, refresh],
+        [minter, account, periods, publicClient, writeContractAsync, refresh],
     );
 
     return {
         available: !!minter && !!counter,
         account,
-        tranches,
+        periods,
         claim,
         refresh,
     };

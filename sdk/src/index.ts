@@ -302,7 +302,8 @@ export {
     icbrt,
     RPGF_FORMULA,
     RPGF_SCORE_SCALE,
-    RPGF_TRANCHE_COUNT,
+    RPGF_PERIOD_COUNT,
+    RPGF_MIN_SELLERS,
 } from "./rpgf/index.js";
 export type {
     RpgfAllocation,
