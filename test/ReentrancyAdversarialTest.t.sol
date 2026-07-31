@@ -161,6 +161,7 @@ contract ReentrancyAdversarialTest is Test {
             vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1),
             keccak256("prov"),
             new bytes32[](0),
+            1,
             periods
         );
         FigaroBatchVerifier verifier =

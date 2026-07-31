@@ -64,9 +64,10 @@ contract UsageCounter {
     /// @notice MembersRegistry — the seller-side eligibility gate. A settled
     ///         process's usage counts toward the reward only while its
     ///         seller-of-record holds a LIVE ETH stake here (registered and
-    ///         un-withdrawn), which prices the seller IDENTITY. It does not price
-    ///         breadth on its own: `d` counts (buyer, seller) pairs and buyers are
-    ///         ungated by design. The reward itself is UNIFORM — no tag, no
+    ///         un-withdrawn), which prices the seller IDENTITY — and with it
+    ///         breadth itself, since `d` counts distinct staked sellers (ruled
+    ///         2026-07-31): every unit of the score's dominant term costs one
+    ///         live stake. The reward itself is UNIFORM — no tag, no
     ///         category, no weight: every artifact's score is its real usage
     ///         alone (`icbrt(c·d²·1e18)`), and the network's own growth, not a
     ///         privileged class, is what the 600M pays for.
@@ -123,6 +124,24 @@ contract UsageCounter {
     ///         simply never be declared.
     mapping(bytes32 => bool) public excludedArtifact;
 
+    /// @notice The minimum-support floor (ruled 2026-07-31): an artifact scores
+    ///         ZERO in a period until at least this many DISTINCT LIVE-STAKED
+    ///         sellers have carried it there. Counting is unaffected — `c` and
+    ///         `d` accrue below the floor and the score springs to its full
+    ///         value when the floor is crossed; nothing is lost, only deferred.
+    /// @dev    Why: below the floor sit exactly the artifacts whose usage one
+    ///         actor can fabricate alone — self-farms, fragmentation shards,
+    ///         squatted names, trivial riders. A floor of k makes the minimum
+    ///         viable farm k live stakes plus k cooldowns, with no curation and
+    ///         no judgment. Applied per settlement path inside `_score` — the
+    ///         paths cannot union their seller sets, and flooring each side
+    ///         separately can only ever UNDER-pay a boundary case, never let
+    ///         one seller straddle the universes to double toward the floor.
+    ///         Mainnet value 3, the smallest k at which solo or pair collusion
+    ///         cannot reach the scoreboard; a deploy-time constant like every
+    ///         other reward parameter.
+    uint64 public immutable minSellers;
+
     /// @notice Period boundaries (unix seconds, strictly ascending). Usage lands
     ///         in the first period whose end is still in the future; after the
     ///         last one, accrual is closed forever.
@@ -133,7 +152,7 @@ contract UsageCounter {
     struct Accrual {
         /// @dev Distinct settled processes that used this artifact.
         uint64 c;
-        /// @dev Distinct (buyer, seller) pairs across those processes.
+        /// @dev Distinct live-staked sellers of record across those processes.
         uint64 d;
         /// @dev `icbrt(c * d^2 * 1e18)` — cached so `totalScore` can be
         ///      maintained in O(1) as a delta on every record.
@@ -149,10 +168,10 @@ contract UsageCounter {
     /// @notice The same accrual for trade settled through `FigaroBatchVerifier`
     ///         — kept in a SEPARATE slot, never merged into `accrualOf`.
     /// @dev    THE TWO ARE SUMMED AS SCORES, never as components (`scoreOf`).
-    ///         Summing `c` and `d` would over-count breadth for any (buyer,
-    ///         seller) pair active on BOTH paths: the chain holds counts, not
-    ///         the pair sets, so it cannot union them — and an attacker who
-    ///         split one relationship across the two universes would be paid
+    ///         Summing `c` and `d` would over-count breadth for any SELLER
+    ///         active on BOTH paths: the chain holds counts, not the seller
+    ///         sets, so it cannot union them — and an attacker who split one
+    ///         seller's trade across the two universes would be paid
     ///         twice for the same breadth. Summing scores can never over-count,
     ///         and because the score is homogeneous of degree 1 the shortfall
     ///         is EXACTLY ZERO when the split is proportional, small otherwise.
@@ -185,38 +204,40 @@ contract UsageCounter {
     ///         300M/200M/100M schedule already assumes.
     mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
 
-    /// @notice artifact → period → pairKey → has this pair already contributed to
-    ///         `d` in this period. Its only job is the distinct-pair count.
-    /// @dev    This was a counter enforcing a per-pair cap of 5 processes, deleted
-    ///         2026-07-30. The cap was introduced as a farming defense and does not
-    ///         work as one: an attacker maximising score per unit cost always
-    ///         chooses ONE trade per fabricated pair (score per cost falls as
-    ///         `t^(-2/3)` in trades-per-pair `t`), so the cap sat at 5 and never
-    ///         bound. What it did bind was honest repeat trade. The `c^(1/3)`
-    ///         exponent already discounts repetition smoothly and far more
-    ///         steeply than the cliff did — a million trades between one pair
-    ///         score the same as a hundred distinct pairs trading once, at ten
-    ///         thousand times the cost — so the cap was redundant where it was
-    ///         real and ineffective where it was claimed. Sybil resistance comes
-    ///         from the cost of an identity (the registries' stakes), never from
+    /// @notice artifact → period → seller → has this seller already contributed
+    ///         to `d` in this period. Its only job is the distinct-staked-seller
+    ///         count.
+    /// @dev    Breadth counted (buyer, seller) PAIRS until 2026-07-31. Pairs are
+    ///         the wrong statistic because they cannot be priced: the buyer side
+    ///         has no stake, so one staked seller plus N free buyer wallets was
+    ///         N units of `d` — the score's dominant term, manufacturable at gas
+    ///         cost — and even staking BOTH sides prices pairs sublinearly (k
+    ///         staked buyers × m staked sellers mint k·m pairs from k+m
+    ///         deposits). Distinct staked sellers is the leverage-free
+    ///         statistic: n units of breadth cost n live stakes, exactly linear,
+    ///         which is what the Sybil bound's rent-dissipation argument needs.
+    ///         Sybil resistance comes from the cost of an identity (the
+    ///         registries' stakes — deposit and withdrawal cooldown), never from
     ///         the shape of the score: no scoring function can separate a
-    ///         fabricated pair from a genuine one.
-    mapping(bytes32 => mapping(uint8 => mapping(bytes32 => bool))) public pairSeen;
+    ///         fabricated counterparty from a genuine one, so the score weights
+    ///         only what the stake has priced.
+    mapping(bytes32 => mapping(uint8 => mapping(address => bool))) public sellerSeen;
 
     // ── Events ──────────────────────────────────────────────────────
 
     /// @param artifact  Clause idHash or assembly compositionHash.
     /// @param period    The accrual period the usage landed in.
     /// @param processId The settled process that used it.
-    /// @param pairKey   keccak256(buyer, seller) of the recorded order.
+    /// @param seller    The recorded order's seller of record (live-staked).
     /// @param c         The artifact's distinct-process count after this record.
-    /// @param d         The artifact's distinct-pair count after this record.
+    /// @param d         The artifact's distinct-staked-seller count after this
+    ///                  record.
     /// @param score     The artifact's score after this record.
     event UsageRecorded(
         bytes32 indexed artifact,
         uint8 indexed period,
         bytes32 indexed processId,
-        bytes32 pairKey,
+        address seller,
         uint64 c,
         uint64 d,
         uint256 score
@@ -224,21 +245,23 @@ contract UsageCounter {
 
     /// @notice One artifact's batch-path accrual after a settled batch.
     /// @dev    Deliberately NOT `UsageRecorded`: there is no processId and no
-    ///         pairKey to report, because the batch path proves per-process
-    ///         facts off-chain and writes only the totals. An indexer summing
-    ///         `UsageRecorded` alone sees the direct path only — it must fold
-    ///         both events, and this one REPLACES rather than adds (the values
-    ///         are cumulative, not deltas).
+    ///         per-record seller to report, because the batch path proves
+    ///         per-process facts off-chain and writes only the totals. An
+    ///         indexer summing `UsageRecorded` alone sees the direct path only
+    ///         — it must fold both events, and this one REPLACES rather than
+    ///         adds (the values are cumulative, not deltas).
     /// @param artifact Clause idHash or assembly compositionHash.
     /// @param period   The accrual period.
     /// @param c        Cumulative distinct settled processes, batch path.
-    /// @param d        Cumulative distinct pairs in this period, batch path.
+    /// @param d        Cumulative distinct staked sellers in this period, batch
+    ///                 path.
     /// @param score    The batch-path score after this write.
     event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score);
 
     // ── Errors ──────────────────────────────────────────────────────
 
     error ZeroAddress();
+    error ZeroMinSellers();
     error EmptyPeriods();
     error PeriodsNotAscending();
     error AccrualClosed();
@@ -267,6 +290,9 @@ contract UsageCounter {
     ///                    assertion, never silently tolerated.
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
     /// @param _excluded    Artifacts that earn nothing — the mandatory clauses.
+    /// @param _minSellers  The minimum-support floor: distinct staked sellers an
+    ///                     artifact needs in a period before it scores. ≥ 1
+    ///                     (1 disables the floor; mainnet uses 3).
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
     constructor(
         address _core,
@@ -274,11 +300,13 @@ contract UsageCounter {
         address _batchVerifier,
         bytes32 _provenanceClause,
         bytes32[] memory _excluded,
+        uint64 _minSellers,
         uint64[] memory _periodEnd
     ) {
         if (_core == address(0) || _members == address(0) || _batchVerifier == address(0)) {
             revert ZeroAddress();
         }
+        if (_minSellers == 0) revert ZeroMinSellers();
         if (_periodEnd.length == 0) revert EmptyPeriods();
         for (uint256 i = 1; i < _periodEnd.length; ++i) {
             if (_periodEnd[i] <= _periodEnd[i - 1]) revert PeriodsNotAscending();
@@ -287,6 +315,7 @@ contract UsageCounter {
         members = IMemberStake(_members);
         batchVerifier = _batchVerifier;
         provenanceClause = _provenanceClause;
+        minSellers = _minSellers;
         for (uint256 i = 0; i < _excluded.length; ++i) {
             excludedArtifact[_excluded[i]] = true;
         }
@@ -362,7 +391,7 @@ contract UsageCounter {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
-        _accrue(artifact, period, processId, order.buyer, order.seller);
+        _accrue(artifact, period, processId, order.seller);
     }
 
     /// @notice Record one settled process's use of an ASSEMBLY. Same guarantees
@@ -400,7 +429,7 @@ contract UsageCounter {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
-        _accrue(compositionHash, period, processId, order.buyer, order.seller);
+        _accrue(compositionHash, period, processId, order.seller);
     }
 
     // ── Recording (batch path, proof-gated) ─────────────────────────
@@ -511,8 +540,9 @@ contract UsageCounter {
 
     /// @dev The counting itself, shared by both routes. Idempotent per (artifact,
     ///      process) — once ever, whatever the period. Every admitted process
-    ///      feeds `c`; the first from each pair in the period also feeds `d`.
-    function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address buyer, address seller) internal {
+    ///      feeds `c`; the first from each staked seller in the period also
+    ///      feeds `d`.
+    function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address seller) internal {
         // An excluded artifact — a mandatory clause on every order, or the
         // provenance clause on every assembly-composed process — is protocol
         // floor; counting it would pay for the floor rather than for adoption.
@@ -521,29 +551,27 @@ contract UsageCounter {
         // holds a LIVE MembersRegistry stake. Requesting withdrawal de-surfaces
         // the seller AND stops its future trades conferring reward — at request
         // time, not at claim time, so the gate closes the moment the member asks
-        // to leave. Scope it honestly: this prices the SELLER identity, not
-        // breadth itself — `d` counts (buyer, seller) pairs and the buyer side is
-        // ungated by design, so a pair can still be fabricated for gas. Identity
-        // cost is the only place Sybil resistance can live (no scoring shape can
-        // separate a fabricated pair from a genuine one), which is why it is the
-        // registries' stake terms — deposit AND withdrawal cooldown — that carry
-        // it.
+        // to leave. Because `d` counts distinct STAKED sellers, this one gate
+        // prices breadth itself: n units of the score's dominant term cost n
+        // live stakes. Identity cost is the only place Sybil resistance can
+        // live (no scoring shape can separate a fabricated counterparty from a
+        // genuine one), which is why it is the registries' stake terms —
+        // deposit AND withdrawal cooldown — that carry it.
         if (!members.registered(seller)) revert SellerNotStaked(seller);
         // Once ever, not once per period — see `processCounted`.
         if (processCounted[artifact][processId]) revert AlreadyCounted();
 
-        // Breadth is counted PER PERIOD: a pair that trades again in a later
-        // period is new breadth for that period's tally.
-        bytes32 pairKey = keccak256(abi.encodePacked(buyer, seller));
-        bool firstFromPair = !pairSeen[artifact][period][pairKey];
+        // Breadth is counted PER PERIOD: a seller who carries the artifact
+        // again in a later period is new breadth for that period's tally.
+        bool firstSeller = !sellerSeen[artifact][period][seller];
 
         processCounted[artifact][processId] = true;
-        if (firstFromPair) pairSeen[artifact][period][pairKey] = true;
+        if (firstSeller) sellerSeen[artifact][period][seller] = true;
 
         Accrual storage a = accrualOf[artifact][period];
         unchecked {
             a.c += 1;
-            if (firstFromPair) a.d += 1;
+            if (firstSeller) a.d += 1;
         }
 
         uint256 previous = a.score;
@@ -552,23 +580,27 @@ contract UsageCounter {
         // O(1) maintenance — the running total moves by the delta, never a sum.
         totalScoreIn[period] = totalScoreIn[period] + updated - previous;
 
-        emit UsageRecorded(artifact, period, processId, pairKey, a.c, a.d, updated);
+        emit UsageRecorded(artifact, period, processId, seller, a.c, a.d, updated);
     }
 
     // ── Scoring ─────────────────────────────────────────────────────
 
-    /// @notice `icbrt(c * d^2 * 1e18)` — breadth (distinct counterparty pairs)
+    /// @notice `icbrt(c * d^2 * 1e18)` — breadth (distinct staked sellers)
     ///         weighted twice as heavily as volume, since the score is
-    ///         proportional to `c^(1/3) * d^(2/3)`. UNIFORM across artifacts: no
-    ///         tag, category, or weight multiplier — every artifact's score is
-    ///         its real usage alone.
+    ///         proportional to `c^(1/3) * d^(2/3)`; ZERO below the
+    ///         minimum-support floor (`d < minSellers`). UNIFORM across
+    ///         artifacts: no tag, category, or weight multiplier — every
+    ///         artifact's score is its real usage alone.
     /// @dev    Value is deliberately not a term: the protocol's cost to move one
     ///         unit equals its cost to move a trillion, and the adoption signal
-    ///         is the same per counterparty pair regardless of quanta. Weighting
+    ///         is the same per staked seller regardless of quanta. Weighting
     ///         by value would import a "TVL matters" metric that belongs to a
-    ///         different kind of system.
-    function _score(uint64 c, uint64 d) internal pure returns (uint256) {
-        if (c == 0 || d == 0) return 0;
+    ///         different kind of system. The floor sits HERE, not in `_accrue`,
+    ///         so both settlement paths inherit it identically and counting
+    ///         below the floor is never refused — only unscored until support
+    ///         arrives.
+    function _score(uint64 c, uint64 d) internal view returns (uint256) {
+        if (c == 0 || d < minSellers) return 0;
         return icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
     }
 

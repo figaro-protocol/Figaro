@@ -212,6 +212,7 @@ contract DeployMainnet is Script {
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
+            3, // minimum-support floor (ruled 2026-07-31): d' >= 3 distinct staked sellers before an artifact scores
             periods
         );
         _usageCounter = address(usageCounter);

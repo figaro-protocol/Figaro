@@ -12,8 +12,10 @@ import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 /// @notice UsageCounter — the accrual that replaces reconstructing usage after
 ///         the fact. Every test here is a property of "count it when it
 ///         happens": nothing is trusted but the proof, a settled process counts
-///         exactly once, breadth is capped so repeat trade cannot farm an
-///         artifact, and a period's numbers stop moving when it ends.
+///         exactly once, breadth counts distinct LIVE-STAKED SELLERS (so every
+///         unit of it costs a stake), an artifact scores nothing until the
+///         minimum-support floor is met, and a period's numbers stop moving
+///         when it ends.
 contract UsageCounterTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -25,12 +27,14 @@ contract UsageCounterTest is Test {
     uint256 constant BUYER_KEY = 0xB0;
     uint256 constant SELLER1_KEY = 0x51;
     uint256 constant SELLER2_KEY = 0x52;
+    uint256 constant SELLER3_KEY = 0x53;
     uint256 constant BUYER2_KEY = 0xB1;
 
     address buyer;
     address buyer2;
     address seller1;
     address seller2;
+    address seller3;
 
     bytes32 constant GEO_KEY = keccak256(abi.encode("figaro-geolocation", uint64(1)));
     bytes32 constant CARGO_KEY = keccak256(abi.encode("figaro-cargo", uint64(1)));
@@ -54,6 +58,7 @@ contract UsageCounterTest is Test {
         buyer2 = vm.addr(BUYER2_KEY);
         seller1 = vm.addr(SELLER1_KEY);
         seller2 = vm.addr(SELLER2_KEY);
+        seller3 = vm.addr(SELLER3_KEY);
 
         core = new FigaroCore();
         token = new MockERC20("Test", "TST");
@@ -65,13 +70,19 @@ contract UsageCounterTest is Test {
         members.register("ipfs://seller1");
         vm.prank(seller2);
         members.register("ipfs://seller2");
+        vm.prank(seller3);
+        members.register("ipfs://seller3");
 
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), periods);
+        // minSellers = 1 here: the floor is a deploy parameter, disabled in the
+        // main fixture so each test isolates its own property. The floor's own
+        // properties are proved in the "Minimum-support floor" section below on
+        // a counter deployed at the mainnet value of 3.
+        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, periods);
 
-        address[4] memory ppl = [buyer, buyer2, seller1, seller2];
+        address[5] memory ppl = [buyer, buyer2, seller1, seller2, seller3];
         for (uint256 i = 0; i < ppl.length; i++) {
             token.mint(ppl[i], 1_000_000 ether);
             vm.prank(ppl[i]);
@@ -221,8 +232,8 @@ contract UsageCounterTest is Test {
 
     function test_revertsWhenSellerNotStaked() public {
         // Usage counts only if the seller-of-record holds a LIVE MembersRegistry
-        // stake — the breadth Sybil defense. An unregistered seller's settled
-        // trade cannot accrue, so fabricating pairs costs a stake per seller.
+        // stake — and since d counts distinct STAKED sellers, this gate is what
+        // makes every unit of breadth cost a live stake.
         uint256 strangerKey = 0x5757;
         address stranger = vm.addr(strangerKey);
         token.mint(stranger, 1_000_000 ether);
@@ -260,10 +271,12 @@ contract UsageCounterTest is Test {
         _record(c, CARGO_KEY);
     }
 
-    function test_distinctPairsRaiseDiversity() public {
+    function test_distinctStakedSellersRaiseBreadth() public {
+        // One buyer adopting through TWO staked sellers is two units of
+        // breadth: d follows the priced identity, and both stakes are live.
         CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(a, CARGO_KEY);
-        CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller2, SELLER2_KEY, 2);
+        CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2);
         _record(b, CARGO_KEY);
 
         (uint64 cCount, uint64 d,) = counter.accrualOf(CARGO_KEY, 0);
@@ -271,9 +284,24 @@ contract UsageCounterTest is Test {
         assertEq(d, 2);
     }
 
-    function test_repeatPairRaisesVolumeNotDiversity() public {
-        // Breadth is the signal: a second process between the SAME two wallets
-        // moves c but not d.
+    function test_manyBuyersOneSellerIsVolumeNotBreadth() public {
+        // THE ruled property (2026-07-31): breadth counts distinct STAKED
+        // SELLERS, so a single seller reached by many buyers — the exact shape
+        // a farmer fabricates for free, since buyer wallets cost nothing —
+        // moves c only. Before the ruling this was two units of d for one
+        // stake; it is now one, however many buyers arrive.
+        CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(a, CARGO_KEY);
+        CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller1, SELLER1_KEY, 2);
+        _record(b, CARGO_KEY);
+
+        (uint64 cCount, uint64 d,) = counter.accrualOf(CARGO_KEY, 0);
+        assertEq(cCount, 2, "every settled process counts");
+        assertEq(d, 1, "breadth costs a stake: n buyers through one seller are one unit");
+    }
+
+    function test_repeatSellerRaisesVolumeNotBreadth() public {
+        // A second process through the SAME seller moves c but not d.
         CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(a, CARGO_KEY);
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
@@ -286,9 +314,9 @@ contract UsageCounterTest is Test {
 
     /// Repeat trade is bounded by the SCORE, not by a cliff. The per-pair cap of
     /// 5 was deleted 2026-07-30 — it never bound for an attacker optimising score
-    /// per unit cost (optimum: one trade per fabricated pair) and only ever bound
-    /// honest repeat trade. What does the work is `c^(1/3)`: a pair trading many
-    /// times adds volume that is discounted far more steeply than the cap's cliff.
+    /// per unit cost and only ever bound honest repeat trade. What does the work
+    /// is `c^(1/3)`: one seller carrying many trades adds volume that is
+    /// discounted far more steeply than any cliff would be.
     function test_repeatTradeIsDiscountedNotRefused() public {
         for (uint256 i = 0; i < 8; i++) {
             CommitmentTypes.Commitment memory c =
@@ -297,11 +325,11 @@ contract UsageCounterTest is Test {
         }
         (uint64 cCount, uint64 d, uint256 repeatScore) = counter.accrualOf(CARGO_KEY, 0);
         assertEq(cCount, 8, "every settled process counts");
-        assertEq(d, 1, "one pair is one unit of breadth, however often it trades");
+        assertEq(d, 1, "one seller is one unit of breadth, however often it trades");
 
-        // Eight trades between ONE pair must score below eight DISTINCT pairs
-        // trading once each — breadth outweighs volume, which is the whole point
-        // of the exponent split.
+        // Eight trades through ONE seller must score below eight DISTINCT
+        // staked sellers carrying one each — breadth outweighs volume, which is
+        // the whole point of the exponent split.
         assertLt(repeatScore, _score(8, 8), "repeat trade must not rival real breadth");
         assertEq(repeatScore, _score(8, 1));
     }
@@ -421,7 +449,7 @@ contract UsageCounterTest is Test {
 
         (uint64 c1, uint64 d1,) = counter.accrualOf(CARGO_KEY, 1);
         assertEq(c1, 1, "only the new trade");
-        assertEq(d1, 1, "and only its pair");
+        assertEq(d1, 1, "and only its seller");
     }
 
     // ── Scoring maths ───────────────────────────────────────────────
@@ -523,22 +551,105 @@ contract UsageCounterTest is Test {
         assertEq(counter.totalScoreIn(0), geoScore + cargoScore);
     }
 
+    // ── Minimum-support floor (ruled 2026-07-31) ────────────────────
+    //
+    // Below the floor sit exactly the artifacts one actor can fabricate alone —
+    // self-farms, fragmentation shards, squatted names, trivial riders. These
+    // tests run a counter at the mainnet value (3): the minimum viable farm is
+    // three live stakes, and honest thin adoption is deferred, never lost.
+
+    function _flooredCounter() internal returns (UsageCounter floored) {
+        uint64[] memory periods = new uint64[](2);
+        periods[0] = P0_END;
+        periods[1] = P1_END;
+        floored =
+            new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 3, periods);
+    }
+
+    function _recordOn(UsageCounter target, CommitmentTypes.Commitment memory c, bytes32 artifact) internal {
+        target.recordClauseUsage(c, artifact, keccak256(SECTION), new bytes32[](0));
+    }
+
+    function test_floor_belowFloorAccruesButScoresZero() public {
+        UsageCounter floored = _flooredCounter();
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1), CARGO_KEY);
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
+
+        (uint64 c, uint64 d, uint256 score) = floored.accrualOf(CARGO_KEY, 0);
+        assertEq(c, 2, "counting is never refused below the floor");
+        assertEq(d, 2, "breadth accrues below the floor");
+        assertEq(score, 0, "but nothing scores until the floor is met");
+        assertEq(floored.totalScoreIn(0), 0, "and the period total holds nothing");
+    }
+
+    function test_floor_crossingSpringsTheFullScore() public {
+        UsageCounter floored = _flooredCounter();
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1), CARGO_KEY);
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller3, SELLER3_KEY, 3), CARGO_KEY);
+
+        (uint64 c, uint64 d, uint256 score) = floored.accrualOf(CARGO_KEY, 0);
+        assertEq(c, 3);
+        assertEq(d, 3);
+        assertEq(score, _score(3, 3), "the third staked seller springs the FULL score");
+        assertEq(floored.totalScoreIn(0), score, "the period total moves by the full delta");
+    }
+
+    function test_floor_batchPathHonorsIt() public {
+        UsageCounter floored = _flooredCounter();
+        vm.startPrank(batchVerifier);
+        floored.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
+        (,, uint256 below) = floored.batchAccrualOf(CARGO_KEY, 0);
+        assertEq(below, 0, "the floor is _score's, so the batch path inherits it");
+        assertEq(floored.totalScoreIn(0), 0);
+
+        floored.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 6, 3), _sellers(seller1));
+        vm.stopPrank();
+        (,, uint256 above) = floored.batchAccrualOf(CARGO_KEY, 0);
+        assertEq(above, _score(6, 3));
+        assertEq(floored.totalScoreIn(0), above);
+    }
+
+    /// The floor is applied PER SETTLEMENT PATH, deliberately: the chain holds
+    /// counts, not the seller sets, so it cannot know whether the paths' d
+    /// values share sellers. Summing toward the floor would let ONE seller
+    /// straddle the universes and count twice; flooring each side separately
+    /// can only ever UNDER-pay a boundary case — conservative, like the score
+    /// merge itself.
+    function test_floor_isPerPathNeverSummedAcrossUniverses() public {
+        UsageCounter floored = _flooredCounter();
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1), CARGO_KEY);
+        _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
+        vm.prank(batchVerifier);
+        floored.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 2, 2), _sellers(seller1));
+
+        // 2 direct + 2 batch is four units of d in total, but neither path
+        // reached 3 on its own — so nothing scores.
+        assertEq(floored.scoreOf(CARGO_KEY, 0), 0);
+        assertEq(floored.totalScoreIn(0), 0);
+    }
+
+    function test_floor_isADeployConstant() public {
+        assertEq(counter.minSellers(), 1, "main fixture disables the floor");
+        assertEq(_flooredCounter().minSellers(), 3, "mainnet value");
+    }
+
     // ── Constructor guards ──────────────────────────────────────────
 
     function test_constructor_rejectsZeroAddresses() public {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(members), batchVerifier, PROV_KEY, _excluded(), p);
+        new UsageCounter(address(0), address(members), batchVerifier, PROV_KEY, _excluded(), 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), batchVerifier, PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(0), batchVerifier, PROV_KEY, _excluded(), 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(0), PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(members), address(0), PROV_KEY, _excluded(), 1, p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), new uint64[](0));
+        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -546,7 +657,16 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, p);
+    }
+
+    function test_constructor_rejectsZeroMinSellers() public {
+        // 0 would read as "no floor" but so does 1, and 1 says it honestly —
+        // every scored artifact needs at least one staked seller by definition.
+        uint64[] memory p = new uint64[](1);
+        p[0] = P0_END;
+        vm.expectRevert(UsageCounter.ZeroMinSellers.selector);
+        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 0, p);
     }
 
     // ── The batch bridge: proof-gated accrual ───────────────────────
@@ -596,9 +716,9 @@ contract UsageCounterTest is Test {
     }
 
     /// THE MERGE RULE — `scoreOf` sums the two paths' SCORES, never their
-    /// components. The chain holds counts, not the pair SETS, so it cannot
+    /// components. The chain holds counts, not the seller SETS, so it cannot
     /// union them; adding `d` to `d` would pay for breadth an attacker never
-    /// had, simply for splitting one relationship across the two universes.
+    /// had, simply for splitting one seller's trade across the two universes.
     function test_theTwoPathsSumAsScoresNeverAsComponents() public {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(c, CARGO_KEY); // direct: c=1, d=1

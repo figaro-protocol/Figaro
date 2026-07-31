@@ -346,6 +346,7 @@ contract Deploy is Script {
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,
+            3, // minimum-support floor (ruled 2026-07-31): mainnet value, rehearsed on devnet
             periods
         );
         _usageCounter = address(counter);

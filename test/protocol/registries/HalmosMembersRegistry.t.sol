@@ -249,7 +249,7 @@ contract HalmosMembersRegistry is Test {
         uint64[] memory periods = new uint64[](1);
         periods[0] = type(uint64).max;
         UsageCounter counter = new UsageCounter(
-            address(0xC0FFEE), address(members), verifier, keccak256("prov"), new bytes32[](0), periods
+            address(0xC0FFEE), address(members), verifier, keccak256("prov"), new bytes32[](0), 1, periods
         );
 
         if (leaves) {

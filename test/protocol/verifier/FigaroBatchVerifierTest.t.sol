@@ -61,7 +61,7 @@ contract FigaroBatchVerifierTest is Test {
         bytes32[] memory excluded = new bytes32[](1);
         excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
-        counter = new UsageCounter(address(core), address(members), predicted, PROV_KEY, excluded, periods);
+        counter = new UsageCounter(address(core), address(members), predicted, PROV_KEY, excluded, 1, periods);
         verifier =
             new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
         assertEq(address(verifier), predicted, "verifier address prediction");

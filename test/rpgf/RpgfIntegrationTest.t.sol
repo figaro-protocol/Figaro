@@ -74,7 +74,7 @@ contract RpgfIntegrationTest is Test {
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
-        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, periods);
 
         minter = new RpgfMinter(
             address(florin),
