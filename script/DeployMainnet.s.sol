@@ -42,8 +42,9 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///   600M  (60%)  RPGF       — RpgfMinter registered at genesis (registerMinter
 ///                           precedes renounce, so the minter MUST exist here);
 ///                           paid pro rata from UsageCounter accrual to clause
-///                           authors + assembly designers of record, capped at
-///                           15% per wallet.
+///                           authors + assembly designers of record — uniform,
+///                           no per-wallet cap; one claim per closed annual
+///                           period.
 ///
 /// @dev There is NO on-chain clause-content validation and NO batch settlement
 ///      proof path. The chain binds an attestation to its signed agreement

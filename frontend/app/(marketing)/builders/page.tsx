@@ -50,7 +50,7 @@ export default function BuildersPage() {
                 <div>
                     <dt className="font-semibold text-ink-heading">Clause authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live. Sixty percent of the florin supply (600 million) is reserved for clause authors AND assembly designers together, distributed by a fixed formula that measures real adoption across distinct counterparty pairs &mdash; the same formula, on the same terms, for both.
+                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live. Sixty percent of the florin supply (600 million) is reserved for clause authors AND assembly designers together, distributed by a fixed formula that measures real adoption &mdash; how many deals settled under the artifact, and how many different sellers, each holding a live deposit of their own, carried it. Breadth weighs heavier than repeat volume, and there is a floor: three different depositing sellers must have used it in settled trade before it scores at all, and a year that ends short of three pays nothing for that year. Your own registration deposit has to stay live to claim. Same formula, same terms, for clauses and assemblies alike.
                     </dd>
                 </div>
                 <div>
@@ -73,7 +73,7 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock on a schedule fixed at deployment &mdash; the reference plan is years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward pays out once a year for nine years, on a schedule fixed at deployment, and the yearly budgets rise: fifteen percent of the reserve across the first two years, thirty percent across years three to five, fifty-five percent across years six to nine, split evenly inside each stretch. The largest budgets sit where the evidence is deepest &mdash; the early network is the thinnest and the easiest to game, so the early years are deliberately the leanest. It is built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
             </p>
             <h2 className="text-base font-semibold text-ink-heading mb-4">
                 Where to start

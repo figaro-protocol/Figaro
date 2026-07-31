@@ -530,9 +530,12 @@ penalising honest early adopters.
 **Is correct because (ruled 2026-07-31):** below `minSellers` (mainnet 3) distinct
 live-staked sellers sit exactly the artifacts one actor can fabricate alone — self-farms,
 fragmentation shards, squatted names, trivial riders — and a floor of 3 makes the minimum
-viable farm three deposits and three cooldowns, with no curation and no judgment. Nothing
-is lost: counting is never refused, `c` and `d` accrue below the floor, and the FULL score
-springs the moment the third distinct staked seller lands in the period. The floor lives in
+viable farm three deposits and three cooldowns, with no curation and no judgment. Within an
+open period nothing is lost: counting is never refused, `c` and `d` accrue below the floor,
+and the FULL score springs the moment the third distinct staked seller lands. State the
+edge honestly (the public page does): a period that CLOSES below the floor scores zero
+permanently — processes count once ever and cannot re-record into a later period, so
+sub-floor accrual defers within a period and expires at its boundary. The floor lives in
 `_score`, so both settlement paths inherit it identically and PER PATH — the chain holds
 counts, not seller sets, so summing the paths toward the floor would let one seller
 straddle the two universes and count twice; flooring each side separately can only ever
@@ -580,5 +583,5 @@ lever is lengthening the withdrawal cooldown — which moves no money at all.
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
 | 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one deposit is recycled across identities, so the stake priced nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
 | 16 | `applyBatchAccrual` has one privileged caller | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
-| 17 | Recorded usage can score zero (`minSellers` floor) | Real settled trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; counting accrues and the full score springs at the floor — deferred, never lost; per-path because the paths' seller sets cannot be unioned |
+| 17 | Recorded usage can score zero (`minSellers` floor) | Real settled trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
 | 18 | No per-record fee or burn | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed fee inserts an institution + usage-coupled revenue into an identity-free mechanism |

@@ -490,15 +490,20 @@ contract UsageCounterTest is Test {
     ///         derive per-block/per-process CEILINGS and has no consumer for this
     ///         figure; an unused export there would be dead code.
     /// @dev    TWO figures exist and they are not interchangeable — say which:
-    ///         ~168,678 ALL-IN (`forge --gas-report` median, includes calldata)
-    ///         and ~162,642 in-test EXECUTION (what `gasleft()` sees; calldata is
-    ///         charged at the tx level, outside the call). This anchor is the
+    ///         the ALL-IN figure (`forge --gas-report` median, includes calldata)
+    ///         and the in-test EXECUTION figure (what `gasleft()` sees; calldata
+    ///         is charged at the tx level, outside the call). This anchor is the
     ///         all-in ceiling. ANY analysis quoting the cost of manufacturing
-    ///         usage (the RPGF soundness bound's `γ`) must cite the all-in figure
+    ///         usage (the RPGF Sybil bound's `g` term — the paper's §7 cites it
+    ///         as a measured deployment constant) must cite the all-in figure
     ///         plus the 21,000 tx base cost, never a re-derivation. If the band
     ///         below breaks, the accrual path changed: re-measure, update this
     ///         anchor, and revisit the bound — γ is what prices Sybil resistance.
-    uint256 internal constant RECORD_USAGE_GAS = 169_000;
+    ///         REPRICED 2026-07-31 with the seller-statistic ruling: the seller
+    ///         write replaced the pairKey derivation, measuring 169,241 all-in
+    ///         under legacy codegen (less under --via-ir, which is why the
+    ///         via-ir suite runs never tripped the old 169,000 ceiling).
+    uint256 internal constant RECORD_USAGE_GAS = 171_000;
 
     function test_Gas_recordUsageStaysAtItsAnchor() public {
         CommitmentTypes.Commitment memory c =
