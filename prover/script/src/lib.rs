@@ -212,7 +212,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
             order_status: vec![],
             order_process_id: vec![],
             usage_counted: vec![],
-            usage_pair_seen: vec![],
+            usage_seller_seen: vec![],
             usage_accrual: vec![],
         },
         // RPGF: credit the clause for the process this batch just settled.

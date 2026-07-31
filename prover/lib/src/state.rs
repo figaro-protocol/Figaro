@@ -1,5 +1,5 @@
 use crate::types::{KernelStateSnapshot, ProcessState};
-use alloy_primitives::{B256, U256, keccak256};
+use alloy_primitives::{Address, B256, U256, keccak256};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Working kernel state with indexed mappings — the FigaroCore mappings
@@ -18,8 +18,10 @@ pub struct KernelState {
     /// Under the root because idempotence is guest-owned — see
     /// `KernelStateSnapshot`.
     pub usage_counted: BTreeSet<(B256, B256)>,
-    /// (artifact, period, pairKey) — breadth counted per period.
-    pub usage_pair_seen: BTreeSet<(B256, u8, B256)>,
+    /// (artifact, period, seller) — breadth counts distinct staked
+    /// sellers per period (ruled 2026-07-31; the stake itself is checked
+    /// on-chain against the declared seller list).
+    pub usage_seller_seen: BTreeSet<(B256, u8, Address)>,
     /// (artifact, period) → (c, d), the running batch-path accrual.
     pub usage_accrual: BTreeMap<(B256, u8), (u64, u64)>,
 }
@@ -31,7 +33,7 @@ impl KernelState {
             order_status: BTreeMap::new(),
             order_process_id: BTreeMap::new(),
             usage_counted: BTreeSet::new(),
-            usage_pair_seen: BTreeSet::new(),
+            usage_seller_seen: BTreeSet::new(),
             usage_accrual: BTreeMap::new(),
         }
     }
@@ -43,7 +45,7 @@ impl KernelState {
             order_status: self.order_status.iter().map(|(k, v)| (*k, *v)).collect(),
             order_process_id: self.order_process_id.iter().map(|(k, v)| (*k, *v)).collect(),
             usage_counted: self.usage_counted.iter().copied().collect(),
-            usage_pair_seen: self.usage_pair_seen.iter().copied().collect(),
+            usage_seller_seen: self.usage_seller_seen.iter().copied().collect(),
             usage_accrual: self.usage_accrual.iter().map(|(k, v)| (*k, *v)).collect(),
         }
     }
@@ -55,7 +57,7 @@ impl KernelState {
             order_status: snap.order_status.iter().cloned().collect(),
             order_process_id: snap.order_process_id.iter().cloned().collect(),
             usage_counted: snap.usage_counted.iter().copied().collect(),
-            usage_pair_seen: snap.usage_pair_seen.iter().copied().collect(),
+            usage_seller_seen: snap.usage_seller_seen.iter().copied().collect(),
             usage_accrual: snap.usage_accrual.iter().copied().collect(),
         }
     }
@@ -66,7 +68,7 @@ impl KernelState {
     ///                   || usage_hash)`
     ///
     /// The usage leg is what makes batch-path idempotence provable: the
-    /// counted set, the per-period pair set, and the running accrual are
+    /// counted set, the per-period seller set, and the running accrual are
     /// all bound by the root, so a replayed claim cannot produce a valid
     /// transition from the current root.
     pub fn compute_root(&self) -> B256 {
@@ -85,7 +87,7 @@ impl KernelState {
 
     /// Hash the three usage maps into one word. Each section is
     /// length-prefixed so the concatenation cannot be re-split — the
-    /// records are 64, 65 and 49 bytes wide, which without the prefixes
+    /// records are 64, 53 and 49 bytes wide, which without the prefixes
     /// would admit collisions between different splits.
     fn hash_usage(&self) -> B256 {
         let mut data = Vec::new();
@@ -96,11 +98,11 @@ impl KernelState {
             data.extend_from_slice(process_id.as_slice());
         }
 
-        data.extend_from_slice(&(self.usage_pair_seen.len() as u64).to_be_bytes());
-        for (artifact, period, pair_key) in &self.usage_pair_seen {
+        data.extend_from_slice(&(self.usage_seller_seen.len() as u64).to_be_bytes());
+        for (artifact, period, seller) in &self.usage_seller_seen {
             data.extend_from_slice(artifact.as_slice());
             data.push(*period);
-            data.extend_from_slice(pair_key.as_slice());
+            data.extend_from_slice(seller.as_slice());
         }
 
         data.extend_from_slice(&(self.usage_accrual.len() as u64).to_be_bytes());

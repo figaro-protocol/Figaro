@@ -58,7 +58,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_status: vec![],
         order_process_id: vec![],
         usage_counted: vec![],
-        usage_pair_seen: vec![],
+        usage_seller_seen: vec![],
         usage_accrual: vec![],
     }
 }

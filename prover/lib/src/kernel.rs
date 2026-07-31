@@ -710,22 +710,21 @@ fn apply_usage_claims(
             });
         }
 
-        // 4. Accrue. Every admitted claim feeds `c`; the first from each
-        //    pair in this period also feeds `d`.
-        let mut pair_preimage = [0u8; 40];
-        pair_preimage[..20].copy_from_slice(claim.order.buyer.as_slice());
-        pair_preimage[20..].copy_from_slice(claim.order.seller.as_slice());
-        let pair_key = keccak256(pair_preimage);
-        let first_from_pair = state
-            .usage_pair_seen
-            .insert((claim.artifact, period, pair_key));
+        // 4. Accrue. Every admitted claim feeds `c`; the first claim from
+        //    each seller in this period also feeds `d` — breadth counts
+        //    distinct STAKED sellers (ruled 2026-07-31). The stake check
+        //    itself is on-chain: the counter gates the declared seller
+        //    list, so the guest counts and the chain prices.
+        let first_seller = state
+            .usage_seller_seen
+            .insert((claim.artifact, period, claim.order.seller));
 
         let entry = state
             .usage_accrual
             .entry((claim.artifact, period))
             .or_insert((0, 0));
         entry.0 = entry.0.checked_add(1).ok_or(KernelError::Overflow)?;
-        if first_from_pair {
+        if first_seller {
             entry.1 = entry.1.checked_add(1).ok_or(KernelError::Overflow)?;
         }
 

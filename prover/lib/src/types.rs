@@ -207,7 +207,7 @@ pub struct UsageAccrual {
     pub artifact: B256,
     /// Distinct settled processes that used this artifact (batch path).
     pub c: u64,
-    /// Distinct (buyer, seller) pairs in this period (batch path).
+    /// Distinct staked sellers in this period (batch path).
     pub d: u64,
 }
 
@@ -239,9 +239,9 @@ pub struct KernelStateSnapshot {
     /// (artifact, processId) already counted — global, not per period,
     /// mirroring `UsageCounter.processCounted`.
     pub usage_counted: Vec<(B256, B256)>,
-    /// (artifact, period, pairKey) — breadth is counted PER PERIOD,
-    /// mirroring `UsageCounter.pairSeen`.
-    pub usage_pair_seen: Vec<(B256, u8, B256)>,
+    /// (artifact, period, seller) — breadth counts distinct staked
+    /// sellers PER PERIOD, mirroring `UsageCounter.sellerSeen`.
+    pub usage_seller_seen: Vec<(B256, u8, Address)>,
     /// (artifact, period) → (c, d) — the running batch-path accrual the
     /// verifier writes out.
     pub usage_accrual: Vec<((B256, u8), (u64, u64))>,

@@ -20,6 +20,7 @@ use figaro_kernel::types::*;
 const BUYER_KEY: u64 = 0xB0B;
 const BUYER2_KEY: u64 = 0xB0C;
 const SELLER1_KEY: u64 = 0x5E11;
+const SELLER2_KEY: u64 = 0x5E22;
 
 const SELLER1: Address = address!("Ad29D7a8aD3639F97798c768202F27C1dE81DC55");
 const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
@@ -57,7 +58,7 @@ fn empty_snapshot() -> KernelStateSnapshot {
         order_status: vec![],
         order_process_id: vec![],
         usage_counted: vec![],
-        usage_pair_seen: vec![],
+        usage_seller_seen: vec![],
         usage_accrual: vec![],
     }
 }
@@ -174,7 +175,7 @@ fn credits_a_process_the_same_batch_settled() {
     assert_eq!(events.usage_accruals.len(), 1);
     assert_eq!(events.usage_accruals[0].artifact, artifact);
     assert_eq!(events.usage_accruals[0].c, 1, "one distinct settled process");
-    assert_eq!(events.usage_accruals[0].d, 1, "one distinct pair");
+    assert_eq!(events.usage_accruals[0].d, 1, "one distinct staked seller");
     assert_eq!(events.usage_sellers, vec![SELLER1], "the seller to stake-check");
     assert_eq!(events.usage_period, PERIOD);
     assert_eq!(
@@ -286,11 +287,12 @@ fn a_second_artifact_from_the_same_process_still_counts() {
 
 // ── Breadth ───────────────────────────────────────────────────────
 
-/// `d` counts DISTINCT (buyer, seller) pairs. Two processes from the same
-/// pair add depth, not breadth — the `c^(1/3)` term discounts repetition and
-/// the pair set is what prices it.
+/// `d` counts DISTINCT STAKED SELLERS (ruled 2026-07-31). Many buyers
+/// through ONE seller add depth, not breadth — buyer wallets are free, so
+/// breadth follows the priced identity; the `c^(1/3)` term discounts the
+/// repetition.
 #[test]
-fn repeat_trade_from_one_pair_adds_depth_but_not_breadth() {
+fn many_buyers_through_one_seller_add_depth_not_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
     let buyer2 = make_signing_key(BUYER2_KEY);
     let seller = make_signing_key(SELLER1_KEY);
@@ -313,7 +315,36 @@ fn repeat_trade_from_one_pair_adds_depth_but_not_breadth() {
 
     assert_eq!(events.usage_accruals.len(), 1);
     assert_eq!(events.usage_accruals[0].c, 3, "three distinct settled processes");
-    assert_eq!(events.usage_accruals[0].d, 2, "but only two distinct pairs");
+    assert_eq!(events.usage_accruals[0].d, 1, "one seller is one unit of breadth");
+    assert_eq!(events.usage_sellers.len(), 1, "one seller to stake-check");
+}
+
+/// The counterpart: the SAME buyer through two sellers is two units of
+/// breadth — each unit backed by a stake the counter checks on-chain.
+#[test]
+fn distinct_sellers_raise_breadth() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller1 = make_signing_key(SELLER1_KEY);
+    let seller2 = make_signing_key(SELLER2_KEY);
+    let artifact = clause_id_hash("figaro-modalities", 1);
+    let section = keccak256(b"section-bytes");
+
+    let (order_a, ops_a) = settled_order(&buyer, &seller1, &artifact, &section, 1);
+    let (order_b, ops_b) = settled_order(&buyer, &seller2, &artifact, &section, 2);
+
+    let ops: Vec<KernelOp> = ops_a.into_iter().chain(ops_b).collect();
+    let claims = vec![
+        clause_claim(&order_a, artifact, section),
+        clause_claim(&order_b, artifact, section),
+    ];
+
+    let (_, _, events, _) =
+        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+
+    assert_eq!(events.usage_accruals.len(), 1);
+    assert_eq!(events.usage_accruals[0].c, 2, "two distinct settled processes");
+    assert_eq!(events.usage_accruals[0].d, 2, "two staked sellers are two units of breadth");
+    assert_eq!(events.usage_sellers.len(), 2, "both sellers to stake-check");
 }
 
 // ── The assembly leg ──────────────────────────────────────────────
