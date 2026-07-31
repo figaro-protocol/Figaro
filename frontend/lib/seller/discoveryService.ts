@@ -42,6 +42,7 @@ function profileToCatalogue(
         defaultTokenAddress: profile.defaultTokenAddress,
         profileClauseValues: profile.profileClauseValues,
         agentServices: profile.services,
+        disclosurePolicy: profile.disclosurePolicy,
         unitSystem: catalogue?.unitSystem,
     };
 }

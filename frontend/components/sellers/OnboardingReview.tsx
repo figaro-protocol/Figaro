@@ -69,6 +69,11 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         defaultTokenAddress: state.profile.defaultTokenAddress,
         profileClauseValues: state.profile.profileClauseValues,
         assemblyBindings: state.assemblies,
+        // Absence is the paper-contract default — an empty policy pins
+        // NO field, never `[]`.
+        disclosurePolicy: state.disclosurePolicy && state.disclosurePolicy.length > 0
+            ? state.disclosurePolicy
+            : undefined,
         services: state.services,
     };
 
@@ -341,6 +346,31 @@ export function OnboardingReview() {
                     </ul>
                 ) : (
                     <p className="text-sm text-ink-faint">Unbound — seller stays registered but won&apos;t surface to assembly-scoped discovery.</p>
+                )}
+            </Card>
+
+            {/* Data disclosure */}
+            <Card className="p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Data disclosure</h2>
+                    <Link
+                        href="/sellers/assemblies"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit disclosure →
+                    </Link>
+                </div>
+                {(profile?.disclosurePolicy?.length ?? 0) > 0 ? (
+                    <p className="text-sm text-ink-body" data-testid="review-disclosure-policy">
+                        {profile!.disclosurePolicy!.filter((e) => e.offered).length} record
+                        class{profile!.disclosurePolicy!.filter((e) => e.offered).length === 1 ? "" : "es"} offered
+                        for sale or disclosure.
+                    </p>
+                ) : (
+                    <p className="text-sm text-ink-faint">
+                        None declared — the default applies: each party holds its
+                        own copy of co-produced records; nothing is offered.
+                    </p>
                 )}
             </Card>
 

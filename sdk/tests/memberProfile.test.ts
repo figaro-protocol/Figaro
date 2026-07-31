@@ -99,6 +99,102 @@ describe("member profile metadata parser", () => {
         });
     });
 
+    describe("disclosurePolicy (voluntary data market)", () => {
+        const HASH = `0x${"ab".repeat(32)}`;
+        const POLICY_DOC = {
+            name: "Bob Pizza",
+            disclosurePolicy: [
+                {
+                    compositionHash: HASH,
+                    clauseId: "figaro-commerce",
+                    posture: "seller",
+                    offered: true,
+                    whitelist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
+                    calendar: { embargoDaysAfterSettlement: 30 },
+                },
+                {
+                    // The buyer half is first-class (ruling 7): the same
+                    // structure covers records co-produced AS A BUYER.
+                    compositionHash: HASH,
+                    clauseId: "figaro-commerce",
+                    posture: "buyer",
+                    offered: false,
+                },
+            ],
+        };
+
+        it("parses a policy with both postures, whitelist, and calendar", () => {
+            const result = parseMemberProfileDocument(POLICY_DOC);
+
+            expect(result.disclosurePolicy).toHaveLength(2);
+            const [seller, buyer] = result.disclosurePolicy!;
+            expect(seller.compositionHash).toBe(HASH);
+            expect(seller.clauseId).toBe("figaro-commerce");
+            expect(seller.posture).toBe("seller");
+            expect(seller.offered).toBe(true);
+            expect(seller.whitelist).toEqual(["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]);
+            expect(seller.calendar?.embargoDaysAfterSettlement).toBe(30);
+            expect(buyer.posture).toBe("buyer");
+            expect(buyer.offered).toBe(false);
+            expect(buyer.whitelist).toBeUndefined();
+            expect(buyer.calendar).toBeUndefined();
+        });
+
+        it("round-trips a policy-carrying profile through the parser", () => {
+            const first = parseMemberProfileDocument(POLICY_DOC);
+            const second = parseMemberProfileDocument(first);
+            expect(second).toEqual(first);
+        });
+
+        it("absent policy stays absent — the paper-contract default, and nothing breaks", () => {
+            const result = parseMemberProfileDocument({ name: "No Policy" });
+            expect(result.disclosurePolicy).toBeUndefined();
+            // Round-trip unchanged: absence is not rewritten into openness.
+            expect(parseMemberProfileDocument(result).disclosurePolicy).toBeUndefined();
+        });
+
+        it("throws when posture is outside buyer|seller", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                disclosurePolicy: [{ compositionHash: HASH, clauseId: "figaro-commerce", posture: "broker", offered: true }],
+            })).toThrow(/disclosurePolicy\[0\]\.posture/);
+        });
+
+        it("throws when compositionHash is not a 32-byte hex hash", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                disclosurePolicy: [{ compositionHash: "0x1234", clauseId: "figaro-commerce", posture: "seller", offered: true }],
+            })).toThrow(/disclosurePolicy\[0\]\.compositionHash must be a 32-byte hex hash/);
+        });
+
+        it("throws when offered is not a boolean", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                disclosurePolicy: [{ compositionHash: HASH, clauseId: "figaro-commerce", posture: "seller", offered: "yes" }],
+            })).toThrow(/disclosurePolicy\[0\]\.offered/);
+        });
+
+        it("throws when the whitelist carries a malformed address", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                disclosurePolicy: [{
+                    compositionHash: HASH,
+                    clauseId: "figaro-commerce",
+                    posture: "seller",
+                    offered: true,
+                    whitelist: ["not-an-address"],
+                }],
+            })).toThrow(/disclosurePolicy\[0\]\.whitelist\[0\] must be a 20-byte hex address/);
+        });
+
+        it("lenient parse returns null on a malformed policy (does not throw)", () => {
+            expect(tryParseMemberProfileDocument({
+                name: "Bob",
+                disclosurePolicy: "not-an-array",
+            })).toBeNull();
+        });
+    });
+
     describe("tryParseMemberProfileDocument (lenient)", () => {
         it("returns null on a missing name", () => {
             expect(tryParseMemberProfileDocument({})).toBeNull();

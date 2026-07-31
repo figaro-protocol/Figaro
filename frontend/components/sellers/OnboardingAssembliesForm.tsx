@@ -11,13 +11,18 @@ import { hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/seller/memberProfileMetadata";
+import type {
+    AssemblyBindingRecord,
+    CounterpartyBinding,
+    DisclosurePolicyEntry,
+} from "@/lib/seller/memberProfileMetadata";
 import {
     type AssemblyChoice,
     requiredCounterpartyClauses,
     useAssemblyChoices,
 } from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
+import { DisclosurePolicyEditor } from "@/components/sellers/DisclosurePolicyEditor";
 
 /**
  * Step 5 of the onboarding wizard. Seller picks which published
@@ -65,12 +70,33 @@ function buildBindings(
         .map((c) => buildBinding(wallet, c, counterpartiesBySlug.get(c.slug) ?? []));
 }
 
+/** Restrict the disclosure policy to leaf classes of the assemblies
+ *  currently selected — un-binding an assembly drops its rows from the
+ *  saved policy (the local editor state keeps them, so re-checking the
+ *  assembly within the session restores the configuration). */
+function activePolicy(
+    entries: DisclosurePolicyEntry[],
+    selected: Set<string>,
+    choices: AssemblyChoice[],
+): DisclosurePolicyEntry[] {
+    const selectedHashes = new Set(
+        choices.filter((c) => selected.has(c.slug)).map((c) => c.compositionHash),
+    );
+    return entries.filter((e) => selectedHashes.has(e.compositionHash));
+}
+
 export interface OnboardingAssembliesFormProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
-     * `onSave(bindings)` instead of routing to the next wizard step.
+     * `onSave(bindings, disclosurePolicy)` instead of routing to the
+     * next wizard step. The policy travels with the bindings it
+     * derives from so an edit-mode save can't strand one without the
+     * other.
      */
-    onSave?: (bindings: AssemblyBindingRecord[]) => Promise<void>;
+    onSave?: (
+        bindings: AssemblyBindingRecord[],
+        disclosurePolicy: DisclosurePolicyEntry[],
+    ) => Promise<void>;
     submitLabel?: string;
     backHref?: string;
     backLabel?: string;
@@ -98,6 +124,7 @@ export function OnboardingAssembliesForm({
     const [counterpartiesBySlug, setCounterpartiesBySlug] = useState<
         Map<string, CounterpartyBinding[]>
     >(new Map());
+    const [policyEntries, setPolicyEntries] = useState<DisclosurePolicyEntry[]>([]);
     const [hydrated, setHydrated] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -112,13 +139,17 @@ export function OnboardingAssembliesForm({
             }
         }
         setCounterpartiesBySlug(cps);
+        setPolicyEntries(state.disclosurePolicy ?? []);
         setHydrated(true);
-    }, [hydrated, loaded, state.assemblies]);
+    }, [hydrated, loaded, state.assemblies, state.disclosurePolicy]);
 
     useEffect(() => {
         if (!hydrated || !isConnected || !address) return;
-        update({ assemblies: buildBindings(address, selected, choices, counterpartiesBySlug) });
-    }, [selected, counterpartiesBySlug, hydrated, isConnected, address, choices, update]);
+        update({
+            assemblies: buildBindings(address, selected, choices, counterpartiesBySlug),
+            disclosurePolicy: activePolicy(policyEntries, selected, choices),
+        });
+    }, [selected, counterpartiesBySlug, policyEntries, hydrated, isConnected, address, choices, update]);
 
     function toggle(slug: string) {
         setSelected((prev) => {
@@ -157,7 +188,10 @@ export function OnboardingAssembliesForm({
         setSubmitError(null);
         if (onSave) {
             if (!address) return;
-            onSave(buildBindings(address, selected, choices, counterpartiesBySlug)).catch(() => {
+            onSave(
+                buildBindings(address, selected, choices, counterpartiesBySlug),
+                activePolicy(policyEntries, selected, choices),
+            ).catch(() => {
                 // Caller surfaces the error via `externalError`.
             });
             return;
@@ -276,6 +310,14 @@ export function OnboardingAssembliesForm({
                     );
                 })}
             </div>
+
+            {/* Data-disclosure policy — leaf classes derive from the
+                assemblies selected above; nothing here is required. */}
+            <DisclosurePolicyEditor
+                choices={choices.filter((c) => selected.has(c.slug))}
+                entries={policyEntries}
+                onChange={setPolicyEntries}
+            />
 
             {(submitError ?? externalError) && (
                 <p className="text-sm text-red-600" role="alert">{submitError ?? externalError}</p>

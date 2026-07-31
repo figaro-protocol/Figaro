@@ -184,6 +184,19 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                         Priced in: <span className="font-semibold text-neutral-700">{tokenSymbol}</span>
                                     </span>
                                 )}
+                                {(() => {
+                                    // Data-disclosure declaration — same grammar as the
+                                    // accepted-token chip. Absent policy renders nothing:
+                                    // the default (each party holds its own copy) is not a
+                                    // declaration to display.
+                                    const offered = sellerCatalogue.disclosurePolicy?.filter((e) => e.offered) ?? [];
+                                    if (offered.length === 0) return null;
+                                    return (
+                                        <span data-testid="seller-disclosure-policy">
+                                            Data disclosure: {offered.length} record class{offered.length === 1 ? "" : "es"} offered
+                                        </span>
+                                    );
+                                })()}
                             </div>
                             {/* Agent identity — the seller's published did:web / service
                                 endpoints, with the did:web verified against this wallet. */}

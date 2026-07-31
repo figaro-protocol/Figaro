@@ -753,7 +753,8 @@ registration at all.
   `MembersRegistry.metadataURI`. `name` is the ONLY required field; everything
   else is optional (`description`, `specialty`, `location`, `branding`, `assets`,
   `acceptedTokens`, `defaultTokenAddress`, `profileClauseValues`, `assemblyBindings`,
-  `services`, and `catalogueURI` — the pointer to the catalogue). Token
+  `disclosurePolicy`, `services`, and `catalogueURI` — the pointer to the
+  catalogue). Token
   acceptance is an identity declaration, not a market position. Carries no
   role / archetype / category taxonomy — what a seller does is inferred from the
   catalogue.
@@ -767,6 +768,21 @@ registration at all.
     surfaces the list). Without this field the cart has nowhere to read a
     sub-order counterparty's wallet from. The seller's ROLE in the assembly is
     event-derived, never declared here.
+  - `disclosurePolicy` is an array of `DisclosurePolicyEntry` — the member's
+    self-declared terms for the records they co-produce inside bonded processes
+    (the voluntary data market), each
+    `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`. The
+    leaf class is DERIVED, never a stored taxonomy: `compositionHash` (the
+    `AssemblyRegistry` key of an assembly the member binds) × `clauseId` (the
+    record's leaf section) name clauses the member already composes.
+    `posture: "buyer" | "seller"` says which side the member co-produced the
+    record on — members hold both, on the same terms structure. `offered` is the
+    toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
+    (absent = any counterparty, once offered); `calendar` says when
+    (`{ embargoDaysAfterSettlement?, notBefore?, notAfter? }`). Prices never
+    appear here — data products are priced in the catalogue (fixed | rate) or
+    via RFQ. Field absent = the paper-contract default: each party holds its own
+    copy; absence of a policy is NOT a policy of openness.
 - **Catalogue** (`SellerCatalogueMetadata`) — the volatile item list pinned at
   `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version`.
   Each item requires `id`, `name`, `price`, `available`; optional are

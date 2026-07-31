@@ -25,7 +25,11 @@ import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
 import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
-import type { AssemblyBindingRecord, MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import type {
+    AssemblyBindingRecord,
+    DisclosurePolicyEntry,
+    MemberProfileMetadata,
+} from "@/lib/seller/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/sellers/OnboardingAssembliesForm";
 
 export function SellerEditAssemblies() {
@@ -83,7 +87,10 @@ export function SellerEditAssemblies() {
         if (seeded) return;
         if (!loaded) return;
         if (!existingProfile) return;
-        update({ assemblies: existingProfile.assemblyBindings ?? [] });
+        update({
+            assemblies: existingProfile.assemblyBindings ?? [],
+            disclosurePolicy: existingProfile.disclosurePolicy ?? [],
+        });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
 
@@ -121,13 +128,25 @@ export function SellerEditAssemblies() {
         return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
     }
 
-    async function handleSave(bindings: AssemblyBindingRecord[]): Promise<void> {
+    async function handleSave(
+        bindings: AssemblyBindingRecord[],
+        disclosurePolicy: DisclosurePolicyEntry[],
+    ): Promise<void> {
         // Saving with an empty array is allowed — un-checking every
         // assembly clears the bindings array on the profile (the
         // seller stays registered, just with no assembly-scoped
         // discovery). The hook's merge keeps the field present-but-
-        // empty rather than stripping it.
-        await updater.save({ assemblyBindings: bindings });
+        // empty rather than stripping it. The disclosure policy rides
+        // along (its leaf classes derive from the bindings) — but an
+        // EMPTY policy clears the field instead of pinning `[]`: the
+        // no-policy state is the field's ABSENCE (the paper-contract
+        // default), and a member who never declared one must
+        // round-trip unchanged.
+        if (disclosurePolicy.length > 0) {
+            await updater.save({ assemblyBindings: bindings, disclosurePolicy });
+        } else {
+            await updater.save({ assemblyBindings: bindings }, { clear: ["disclosurePolicy"] });
+        }
     }
 
     return (

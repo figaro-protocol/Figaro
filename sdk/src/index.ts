@@ -275,6 +275,8 @@ export type {
     MemberAssetReferences,
     CounterpartyBinding,
     AssemblyBindingRecord,
+    DisclosureCalendar,
+    DisclosurePolicyEntry,
     AgentServiceInfo,
 } from "./memberProfile.js";
 

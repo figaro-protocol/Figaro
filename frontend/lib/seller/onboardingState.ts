@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
     AssemblyBindingRecord,
+    DisclosurePolicyEntry,
     MemberAgentServices,
     MemberAssetReferences,
 } from "@/lib/seller/memberProfileMetadata";
@@ -70,6 +71,10 @@ interface OnboardingState {
     catalogue?: OnboardingCatalogueDraft;
     /** Per-assembly bindings declared on screen 5. */
     assemblies?: AssemblyBindingRecord[];
+    /** Data-disclosure policy declared alongside the assembly bindings —
+     *  leaf classes (compositionHash × clauseId × posture) derive from
+     *  the bound assemblies, so the editor lives on the same step. */
+    disclosurePolicy?: DisclosurePolicyEntry[];
     /** Agent endpoints declared on screen 6 (advanced; optional). */
     services?: MemberAgentServices;
     /** IPFS URI of the published profile, set on screen 4 success. */

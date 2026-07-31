@@ -1,6 +1,6 @@
 import type { CatalogueItemMetadata, UnitSystem } from "@/lib/seller/sellerCatalogueMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import type { MemberAgentServices } from "@/lib/seller/memberProfileMetadata";
+import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/seller/memberProfileMetadata";
 
 /**
  * Buyer-side projection of a seller's profile + catalogue.
@@ -43,6 +43,11 @@ export interface SellerCatalogue {
     profileClauseValues?: Readonly<Record<string, Record<string, unknown>>>;
     /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
     agentServices?: MemberAgentServices;
+    /** The member's data-disclosure policy (voluntary data market) —
+     *  which co-produced record classes are offered, to whom, when.
+     *  Absent = the paper-contract default: each party holds its own
+     *  copy; nothing is offered. */
+    disclosurePolicy?: DisclosurePolicyEntry[];
     /** Seller's preferred display unit system for mass / volume. Storage
      *  is always metric; this field only governs UI formatting. */
     unitSystem?: UnitSystem;
