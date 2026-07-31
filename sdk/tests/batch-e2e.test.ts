@@ -434,7 +434,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         const usageCounterHash = await deployerWallet.deployContract({
             abi: parseAbi([
-                "constructor(address _core, address _members, address _batchVerifier, bytes32 _provenanceClause, bytes32[] _excluded, uint64[] _periodEnd)",
+                "constructor(address _core, address _members, address _batchVerifier, bytes32 _provenanceClause, bytes32[] _excluded, uint64 _minSellers, uint64[] _periodEnd)",
             ]),
             bytecode: loadBytecode("UsageCounter.sol/UsageCounter.json"),
             args: [
@@ -446,6 +446,11 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                     ["figaro-assembly-provenance", 1n],
                 )),
                 [],
+                // minSellers = 1: this fixture drives ONE seller end to end and
+                // proves the bridge's plumbing; the floor's own behavior is
+                // proven in UsageCounterTest's floor section and driven at the
+                // mainnet value by rpgf-rewards.devnet.spec.ts.
+                1n,
                 [BigInt(Math.floor(Date.now() / 1000) + 3600)],
             ],
         });
