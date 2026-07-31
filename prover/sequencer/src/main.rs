@@ -70,10 +70,20 @@ async fn main() {
     let max_ops: usize = env_or("MAX_BATCH_OPS", "100")
         .parse()
         .expect("invalid MAX_BATCH_OPS");
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, "Starting Figaro sequencer");
+    // Public-endpoint bounds: queue caps + per-request body cap.
+    let mempool_max_ops: usize = env_or("MEMPOOL_MAX_OPS", "10000")
+        .parse()
+        .expect("invalid MEMPOOL_MAX_OPS");
+    let mempool_max_usage: usize = env_or("MEMPOOL_MAX_USAGE_CLAIMS", "10000")
+        .parse()
+        .expect("invalid MEMPOOL_MAX_USAGE_CLAIMS");
+    let max_body_bytes: usize = env_or("MAX_BODY_BYTES", "1048576")
+        .parse()
+        .expect("invalid MAX_BODY_BYTES");
+    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
-    let mempool = Mempool::new(chain_id, verifying_contract);
+    let mempool = Mempool::with_caps(chain_id, verifying_contract, mempool_max_ops, mempool_max_usage);
     let state_mirror = StateMirror::genesis();
     let batch_count = Arc::new(RwLock::new(0u64));
 
@@ -135,7 +145,7 @@ async fn main() {
         batch_count,
     };
 
-    let app = api::router(app_state);
+    let app = api::router(app_state, api::ApiConfig { max_body_bytes });
 
     let listener = tokio::net::TcpListener::bind(&listen_addr)
         .await

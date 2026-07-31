@@ -19,9 +19,9 @@ use figaro_prove_test::{
     build_canonical_batch_input, load_spec_json, make_signing_key, sign_digest, BUYER_KEY,
     CHAIN_ID, CORE, SELLER1_KEY,
 };
-use figaro_sequencer::api::{self, AppState};
+use figaro_sequencer::api::{self, ApiConfig, AppState};
 use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
-use figaro_sequencer::mempool::{Mempool, PendingOp};
+use figaro_sequencer::mempool::{Mempool, PendingOp, SubmitError};
 use figaro_sequencer::state::StateMirror;
 
 fn mempool() -> Mempool {
@@ -58,7 +58,7 @@ async fn mempool_rejects_bad_buyer_sig() {
     if let KernelOp::Commit { buyer_sig, .. } = &mut ops[0] {
         buyer_sig.r = B256::repeat_byte(0x99);
     }
-    let err = mempool().submit(ops[0].clone()).await.unwrap_err();
+    let err = mempool().submit(ops[0].clone()).await.unwrap_err().to_string();
     assert!(err.contains("buyer"), "{err}");
 }
 
@@ -68,7 +68,7 @@ async fn mempool_rejects_bad_seller_sig() {
     if let KernelOp::Commit { seller_sig, .. } = &mut ops[0] {
         seller_sig.s = B256::repeat_byte(0x77);
     }
-    let err = mempool().submit(ops[0].clone()).await.unwrap_err();
+    let err = mempool().submit(ops[0].clone()).await.unwrap_err().to_string();
     assert!(err.contains("seller"), "{err}");
 }
 
@@ -104,7 +104,7 @@ async fn mempool_sequential_ids() {
     let ops = canonical_ops();
     let a = mp.submit(ops[0].clone()).await.unwrap();
     let b = mp.submit(ops[3].clone()).await.unwrap();
-    assert_eq!(b, a + 1);
+    assert_eq!(b.id, a.id + 1);
 }
 
 #[tokio::test]
@@ -134,7 +134,7 @@ async fn mempool_rejects_substituted_witness_spec() {
     if let KernelOp::AttestAsSeller { proof, .. } = &mut ops[1] {
         proof.spec_json = load_spec_json("figaro-handoff");
     }
-    let err = mempool().submit(ops[1].clone()).await.unwrap_err();
+    let err = mempool().submit(ops[1].clone()).await.unwrap_err().to_string();
     assert!(err.contains("SpecIdentityMismatch"), "{err}");
 }
 
@@ -167,7 +167,8 @@ async fn mempool_rejects_content_hash_mismatch() {
             proof,
         })
         .await
-        .unwrap_err();
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("ContentHashMismatch"), "{err}");
 }
 
@@ -179,7 +180,7 @@ async fn mempool_rejects_corrupt_section_data() {
     if let KernelOp::AttestAsSeller { proof, .. } = &mut ops[1] {
         proof.section_data = r#"{"modality":"pickup"}"#.to_string();
     }
-    let err = mempool().submit(ops[1].clone()).await.unwrap_err();
+    let err = mempool().submit(ops[1].clone()).await.unwrap_err().to_string();
     assert!(err.contains("InvalidInclusionProof"), "{err}");
 }
 
@@ -213,7 +214,8 @@ async fn mempool_rejects_attest_signed_by_stranger() {
             proof,
         })
         .await
-        .unwrap_err();
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("role.seller"), "{err}");
 }
 
@@ -270,7 +272,7 @@ fn assembler_config_defaults() {
 fn pend(ops: Vec<KernelOp>) -> Vec<PendingOp> {
     ops.into_iter()
         .enumerate()
-        .map(|(i, op)| PendingOp { id: i as u64 + 1, op })
+        .map(|(i, op)| PendingOp { id: i as u64 + 1, key: B256::with_last_byte(i as u8 + 1), op })
         .collect()
 }
 
@@ -337,7 +339,7 @@ fn test_app_state() -> AppState {
 
 #[tokio::test]
 async fn api_status_returns_json() {
-    let app = api::router(test_app_state());
+    let app = api::router(test_app_state(), ApiConfig::default());
     let req = Request::builder().uri("/status").body(Body::empty()).unwrap();
     let response = app.oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
@@ -351,7 +353,7 @@ async fn api_status_returns_json() {
 #[tokio::test]
 async fn api_submit_valid_op_and_status_reflects_it() {
     let state = test_app_state();
-    let app = api::router(state.clone());
+    let app = api::router(state.clone(), ApiConfig::default());
 
     let op = &canonical_ops()[0];
     let body = serde_json::json!({ "operation": op });
@@ -373,7 +375,7 @@ async fn api_submit_valid_op_and_status_reflects_it() {
 
 #[tokio::test]
 async fn api_submit_invalid_sig_returns_400() {
-    let app = api::router(test_app_state());
+    let app = api::router(test_app_state(), ApiConfig::default());
     let mut ops = canonical_ops();
     if let KernelOp::Commit { buyer_sig, .. } = &mut ops[0] {
         buyer_sig.r = B256::ZERO;
@@ -485,7 +487,7 @@ async fn mempool_rejects_a_claim_with_no_artifact() {
     let input = build_canonical_batch_input();
     let mut claim = input.usage_claims[0].clone();
     claim.artifact = B256::ZERO;
-    let err = mempool().submit_usage_claim(claim).await.unwrap_err();
+    let err = mempool().submit_usage_claim(claim).await.unwrap_err().to_string();
     assert!(err.contains("artifact"), "{err}");
 }
 
@@ -533,4 +535,208 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
         pv.prev_state_root, pv.new_state_root,
         "and the root advances, because usage state is under it"
     );
+}
+
+// ── Public-endpoint bounds: idempotency, caps, body limit ─────────
+
+#[tokio::test]
+async fn mempool_duplicate_commit_is_idempotent() {
+    // Same commitment re-submitted → the ORIGINAL acknowledgment, and the
+    // queue holds one copy.
+    let mp = mempool();
+    let ops = canonical_ops();
+    let first = mp.submit(ops[0].clone()).await.unwrap();
+    assert!(!first.duplicate);
+    let second = mp.submit(ops[0].clone()).await.unwrap();
+    assert_eq!(second.id, first.id, "same acknowledgment");
+    assert!(second.duplicate);
+    assert_eq!(mp.len().await, 1, "no duplicate enqueued");
+}
+
+#[tokio::test]
+async fn mempool_duplicate_usage_claim_is_idempotent() {
+    let input = build_canonical_batch_input();
+    let mp = mempool();
+    let claim = input.usage_claims[0].clone();
+    assert_eq!(mp.submit_usage_claim(claim.clone()).await.unwrap(), 1);
+    assert_eq!(mp.submit_usage_claim(claim).await.unwrap(), 1, "still one pending");
+    assert_eq!(mp.usage_len().await, 1);
+}
+
+#[tokio::test]
+async fn mempool_at_cap_evicts_the_newcomer() {
+    // Deterministic eviction policy: at capacity the ARRIVING op is
+    // refused; acknowledged ops are never silently dropped.
+    let mp = Mempool::with_caps(CHAIN_ID, CORE, 1, 1);
+    let ops = canonical_ops();
+    assert!(mp.submit(ops[0].clone()).await.is_ok());
+    let err = mp.submit(ops[3].clone()).await.unwrap_err();
+    assert_eq!(err, SubmitError::Full);
+    assert_eq!(mp.len().await, 1, "the acknowledged op is untouched");
+
+    let input = build_canonical_batch_input();
+    let mut other = input.usage_claims[0].clone();
+    assert!(mp.submit_usage_claim(input.usage_claims[0].clone()).await.is_ok());
+    other.artifact = B256::repeat_byte(0x42);
+    let err = mp.submit_usage_claim(other).await.unwrap_err();
+    assert_eq!(err, SubmitError::Full);
+}
+
+#[tokio::test]
+async fn mempool_requeue_is_cap_exempt_and_restores_dedup() {
+    // Acknowledged ops re-queued after a transient settlement failure must
+    // come back even at cap — and stay deduplicated against resubmission.
+    let mp = Mempool::with_caps(CHAIN_ID, CORE, 1, 1);
+    let ops = canonical_ops();
+    let first = mp.submit(ops[0].clone()).await.unwrap();
+    let drained = mp.drain().await;
+    mp.requeue(drained).await;
+    assert_eq!(mp.len().await, 1);
+    let again = mp.submit(ops[0].clone()).await.unwrap();
+    assert_eq!(again.id, first.id, "requeue restores the dedup index");
+    assert!(again.duplicate);
+}
+
+#[tokio::test]
+async fn api_submit_full_mempool_returns_503_structured() {
+    let state = AppState {
+        mempool: Mempool::with_caps(CHAIN_ID, CORE, 1, 1),
+        state_mirror: StateMirror::genesis(),
+        batch_count: std::sync::Arc::new(tokio::sync::RwLock::new(0)),
+    };
+    let app = api::router(state.clone(), ApiConfig::default());
+    let ops = canonical_ops();
+    state.mempool.submit(ops[0].clone()).await.unwrap();
+
+    let body = serde_json::json!({ "operation": ops[3] });
+    let req = Request::builder()
+        .method("POST")
+        .uri("/submit")
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_vec(&body).unwrap()))
+        .unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["error"].as_str().unwrap().contains("mempool full"), "{json}");
+}
+
+#[tokio::test]
+async fn api_submit_oversized_body_returns_413_structured() {
+    let app = api::router(test_app_state(), ApiConfig { max_body_bytes: 256 });
+    let body = serde_json::json!({ "operation": &canonical_ops()[0] });
+    let bytes = serde_json::to_vec(&body).unwrap();
+    assert!(bytes.len() > 256, "fixture must exceed the test limit");
+    let req = Request::builder()
+        .method("POST")
+        .uri("/submit")
+        .header("content-type", "application/json")
+        .body(Body::from(bytes))
+        .unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["error"].is_string(), "structured error body: {json}");
+}
+
+#[tokio::test]
+async fn api_submit_malformed_json_returns_400_structured() {
+    let app = api::router(test_app_state(), ApiConfig::default());
+    let req = Request::builder()
+        .method("POST")
+        .uri("/submit")
+        .header("content-type", "application/json")
+        .body(Body::from("{ not json"))
+        .unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["error"].is_string(), "structured error body: {json}");
+}
+
+#[tokio::test]
+async fn api_submit_duplicate_returns_same_id() {
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    let op = &canonical_ops()[0];
+    let body = serde_json::to_vec(&serde_json::json!({ "operation": op })).unwrap();
+
+    let mut ids = Vec::new();
+    for _ in 0..2 {
+        let req = Request::builder()
+            .method("POST")
+            .uri("/submit")
+            .header("content-type", "application/json")
+            .body(Body::from(body.clone()))
+            .unwrap();
+        let response = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        ids.push(json["id"].as_u64().unwrap());
+    }
+    assert_eq!(ids[0], ids[1], "same acknowledgment for a re-submission");
+    assert_eq!(state.mempool.len().await, 1);
+}
+
+#[tokio::test]
+async fn api_health_returns_liveness_and_counts() {
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    state.mempool.submit(canonical_ops()[0].clone()).await.unwrap();
+
+    let req = Request::builder().uri("/health").body(Body::empty()).unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["status"], "ok");
+    assert_eq!(json["pending_ops"], 1);
+    assert_eq!(json["pending_usage_claims"], 0);
+    assert_eq!(json["batches_settled"], 0);
+}
+
+// ── Integration: HTTP submission → formed batch ───────────────────
+
+/// A commitment POSTed to the public endpoint flows into a formed batch:
+/// HTTP admission → mempool → stateful filter → assembled batch → the
+/// kernel applies it and the committed order exists in the post-state.
+#[tokio::test]
+async fn e2e_http_submission_flows_into_formed_batch() {
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+
+    let op = &canonical_ops()[0];
+    let body = serde_json::json!({ "operation": op });
+    let req = Request::builder()
+        .method("POST")
+        .uri("/submit")
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_vec(&body).unwrap()))
+        .unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // The batch loop's exact pipeline: drain → filter → assemble → apply.
+    let pending = state.mempool.drain().await;
+    assert_eq!(pending.len(), 1);
+    let prev = state.state_mirror.snapshot().await;
+    let (valid, poison) =
+        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
+    assert!(poison.is_empty(), "{poison:?}");
+
+    let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
+    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev, UsageContext::default());
+    assert_eq!(batch.operations.len(), 1, "the submitted commit rides the batch");
+
+    let (pv, _, _, post) = apply_batch_with_state(&batch).unwrap();
+    assert_ne!(pv.prev_state_root, pv.new_state_root);
+    let snap = post.to_snapshot();
+    assert_eq!(snap.order_status.len(), 1, "the committed order exists in post-state");
+
+    state.state_mirror.advance(post).await;
+    assert_eq!(state.state_mirror.state_root().await, pv.new_state_root);
 }
