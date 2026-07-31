@@ -302,10 +302,25 @@ key is fixed at deploy, which stops a caller substituting some other clause. Wit
 clause in the agreement, no process can credit its designer.
 
 Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
-(buyer, seller) pairs), and `score = icbrt(c·d²·1e18)` — **UNIFORM**, breadth weighted
-twice as heavily as volume, value deliberately not a term. There is **no tag, category, or
-weight multiplier**: every artifact's score is its real usage alone (ratified 2026-07-29 —
-the substrate-broadening weight and `boostedTag`/`rpgfTagOf` read are deleted).
+LIVE-STAKED SELLERS of record — ruled 2026-07-31), and `score = icbrt(c·d²·1e18)` when
+`d ≥ minSellers`, else **zero** — **UNIFORM**, breadth weighted twice as heavily as
+volume, value deliberately not a term. There is **no tag, category, or weight
+multiplier**: every artifact's score is its real usage alone (ratified 2026-07-29 — the
+substrate-broadening weight and `boostedTag`/`rpgfTagOf` read are deleted). **Why sellers,
+not (buyer, seller) pairs (the pre-2026-07-31 statistic):** pairs cannot be priced — the
+buyer side holds no stake, so one staked seller plus N free buyer wallets was N units of
+the score's dominant term at gas cost, and even staking both sides prices pairs
+sublinearly (k staked buyers × m staked sellers mint k·m pairs from k+m deposits).
+Distinct staked sellers is the leverage-free statistic: n units of breadth cost n live
+stakes, exactly linear, which is what the Sybil bound's rent-dissipation argument needs.
+**The minimum-support floor** (`minSellers`, constructor-immutable; mainnet 3, devnet
+rehearses 3): an artifact scores nothing in a period until 3 distinct staked sellers have
+carried it there — below the floor sit exactly the artifacts one actor can fabricate
+alone (self-farms, fragmentation shards, squatted names, trivial riders). Counting is
+never refused below the floor; the score springs whole when it is crossed. The floor
+lives in `_score`, so both settlement paths inherit it identically and PER PATH — the
+chain cannot union the paths' seller sets, and per-path flooring only ever under-pays a
+boundary case, never lets one seller straddle the universes.
 
 **Reading the exponent.** `score = d·(c/d)^(1/3)` — distinct relationships, times average
 repeat depth raised to α. So **α is the elasticity of reward to repeat depth** (8× the depth
@@ -313,11 +328,12 @@ earns 2× the score), and when every pair trades once (`c = d`) the score is the
 for any α at all. `α < 1/2` is justified because a new relationship informs more than another
 observation of a known one; **α = 1/3 exactly is a JUDGMENT, not a derivation** — uniform
 across artifacts, so it is not curation. It is **not** a Sybil defense and must not be
-described as one (2026-07-30): no scoring shape can separate a fabricated pair from a genuine
-one. **Seller-side live-stake gate:** a record counts only if
+described as one (2026-07-30): no scoring shape can separate a fabricated counterparty from a
+genuine one. **Seller-side live-stake gate:** a record counts only if
 the process's seller-of-record holds a live `MembersRegistry` stake
-(`members.registered(order.seller)`, else `SellerNotStaked`) — fabricating `d` distinct
-pairs costs one base-currency (ETH) stake per fake seller. The gate closes at
+(`members.registered(order.seller)`, else `SellerNotStaked`) — and since `d` counts distinct
+staked sellers, this one gate prices breadth itself: fabricating `d` units costs one
+base-currency (ETH) stake per fake seller, linearly. The gate closes at
 `requestWithdrawal()`, not at `withdraw()`: eligibility ends when the member asks to
 leave, while the ETH is still locked. Scope it honestly — this prices the SELLER
 identity, not breadth itself (the buyer side is ungated by design), and the price is
@@ -379,20 +395,22 @@ public in the commit event, so a per-period key let the same trade be re-present
 period: rational play became "re-record everything each period," which pays for *recording
 gas* rather than adoption (an author who records once and moves on collects nothing later,
 while one who knows to re-record collects three times on the same trades) and let a
-fabricated period-0 farm be milked across all three tranches. Each period now counts only
-usage NEW to it — what the declining 300M/200M/100M schedule already assumes.
+fabricated period-0 farm be milked across every later period. Each period now counts only
+usage NEW to it — what a fixed per-period budget schedule assumes.
 
-**The per-pair cap of 5 was DELETED 2026-07-30.** It was introduced as a farming defense and
-did not work as one: an attacker maximising score per unit cost always chooses ONE trade per
-fabricated pair (score per cost falls as `t^(-2/3)` in trades-per-pair), so the cap sat at 5
-and never bound — while it did bind honest repeat trade. The `c^(1/3)` exponent already
-discounts repetition far more steeply than the cliff did: a million trades between one pair
-score the same as a hundred distinct pairs trading once, at ten thousand times the cost.
-`pairCount` is now a boolean `pairSeen`, whose only job is the distinct-pair count.
-**The general rule this instance teaches: Sybil resistance cannot live in the shape of the
-score.** No scoring function can separate a fabricated pair from a genuine one — any
-concavity that dampens fake breadth dampens real breadth identically — so it can only live in
-the cost of an identity, which is the registries' stake terms.
+**The per-pair cap of 5 was DELETED 2026-07-30, and pairs themselves on 2026-07-31.** The
+cap was introduced as a farming defense and did not work as one: an attacker maximising
+score per unit cost always chooses ONE trade per fabricated counterparty (score per cost
+falls as `t^(-2/3)` in trades-per-counterparty), so the cap sat at 5 and never bound —
+while it did bind honest repeat trade. The `c^(1/3)` exponent already discounts repetition
+far more steeply than the cliff did. The pair statistic followed it out for the deeper form
+of the same disease (unpriceable breadth — see above); breadth is now `sellerSeen`, a
+boolean per (artifact, period, seller). **The general rule both instances teach: Sybil
+resistance cannot live in the shape of the score.** No scoring function can separate a
+fabricated counterparty from a genuine one — any concavity that dampens fake breadth
+dampens real breadth identically — so it can only live in the cost of an identity, which is
+the registries' stake terms; the 07-31 ruling made the score's dominant statistic count
+ONLY what those terms have priced.
 
 **Gas anchor — `recordClauseUsage` costs ~168,678 all-in** (`forge --gas-report` median; ~162,642
 in-test execution, which excludes calldata charged at the tx level). The anchor and its
@@ -429,25 +447,34 @@ wallets, then renounces — the minter must exist at genesis because `registerMi
 
 ## RPGF (`src/rpgf/`)
 
-The **600M retroactive distribution** — three declining tranches (300M / 200M / 100M) paid to clause authors and assembly designers of record, in proportion to the trade their artifacts actually carried. No donors, no pool. No buyer or seller touches it.
+The **600M retroactive distribution** — one claim per ANNUAL accrual period, budgets
+grouped into three RISING tranches (ruled 2026-07-31): 15% of the reserve over years 1–2,
+30% over years 3–5, 55% over years 6–9, each tranche split equally across its years
+(45M/45M · 60M×3 · 82.5M×4). Rising, because the largest share should pay on the
+most-measured evidence — the early network is the thinnest, most manipulable denominator,
+and early evidence-poor funding is the 300M DAO treasury's job. Annual, because authors
+cannot price a multi-year lag in an unpriced token, and shorter periods shrink the deposit
+recycling window. Paid to clause authors and assembly designers of record, in proportion
+to the trade their artifacts actually carried. No donors, no pool. No buyer or seller
+touches it.
 
-**`src/rpgf/RpgfMinter.sol`** — `claim(trancheId, artifacts)` mints `trancheAmount · callerScore / totalScoreInPeriod`, once per wallet per tranche (a wallet passes every artifact it authored in that one call).
+**`src/rpgf/RpgfMinter.sol`** — `claim(periodId, artifacts)` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period (a wallet passes every artifact it authored in that one call). The tranche grouping is deploy-script data; the minter knows only periods and their budgets, and validates its budget array against `UsageCounter.periodCount()` at deploy so the two schedules cannot drift (`AmountsPeriodsMismatch`).
 
-**There is nothing to post, nothing to bond, and nothing to dispute.** `UsageCounter` (above) records verified usage as it happens, so a tranche is arithmetic over numbers that are already final. Tranche `i` pays for accrual period `i` — the counter's periods and these tranches are ONE schedule, configured consistently at deploy — and `claim` requires `counter.periodClosed(trancheId)`, which is why no snapshot, checkpoint array, or history walk is needed.
+**There is nothing to post, nothing to bond, and nothing to dispute.** `UsageCounter` (above) records verified usage as it happens, so a period's payout is arithmetic over numbers that are already final. `claim` requires `counter.periodClosed(periodId)`, which is why no snapshot, checkpoint array, or history walk is needed.
 
 **The caller's list must be duplicate-free** — a repeat reverts `DuplicateArtifact`. Until
 2026-07-30 duplicates were summed and the sum then CLAMPED to the period total, so an author
 of record for ANY artifact with a non-zero score could repeat it until the sum reached the
-denominator and mint the entire tranche, leaving every other author to revert on
-`TrancheBudgetExceeded`; the clamp was what made it maximal, silently rounding a malformed
+denominator and mint the entire period budget, leaving every other author to revert on
+the budget backstop; the clamp was what made it maximal, silently rounding a malformed
 claim up to the whole pool rather than letting the budget backstop reject it. Both are gone —
 with distinct artifacts `score ≤ total` holds structurally, so there is nothing to clamp.
 (The test that was supposed to cover this passed a SOLE artifact, where taking 100% is the
 correct answer either way — a case that cannot distinguish inflation from correctness.)
 
-Each artifact in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registrar == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (author == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your artifact's stake stays live. Payout is **UNIFORM pro rata with no cap** — `trancheAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
+Each artifact in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registrar == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (author == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your artifact's stake stays live. Payout is **UNIFORM pro rata with no cap** — `periodAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
 
-No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per tranche here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` + `test/rpgf/RpgfIntegrationTest.t.sol` (no stubs — real process → real counter → real mint).
+No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per period here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` + `test/rpgf/RpgfIntegrationTest.t.sol` (no stubs — real process → real counter → real mint).
 
 `sdk/src/rpgf/` mirrors the scoring off-chain for display and verification (and `sdk/src/rpgf/formula.json` states the mechanism normatively). It **recomputes what the chain already holds** — nothing is anchored, so there is no `formulaHash` and no posted answer for the mirror to assert.
 

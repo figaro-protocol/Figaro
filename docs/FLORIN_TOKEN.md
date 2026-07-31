@@ -89,10 +89,10 @@ the initial of Figaro — the visual protocol↔unit bridge.
 | **Founders** | **7%** | **70,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **Supporters** | **3%** | **30,000,000** | Genesis mint to supporters wallet (friends & family / early supporters) — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
-| **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — three declining tranches summing to 600M (300M/200M/100M) claimed pro rata by clause authors + assembly designers of record |
+| **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — nine annual accrual periods, budgets grouped into three RISING tranches (15/30/55% at years 2/5/9, equal slices within each; ruled 2026-07-31), claimed pro rata per period by clause authors + assembly designers of record |
 | **Total** | **100%** | **1,000,000,000** | |
 
-> **Note on the two 300Ms.** The DAO's 300M genesis allocation and RPGF tranche 1's 300M are *unrelated* numbers that happen to coincide: the first is a one-time treasury grant held by the DAO Safe; the second is the largest of three declining RPGF tranches (summing to 600M) minted lazily by usage claims. Different object, different tier, different mechanism — do not conflate them.
+> **Note on the DAO 300M vs the RPGF 600M.** The DAO's 300M genesis allocation is a one-time treasury grant held by the DAO Safe — the human-judgment layer; the RPGF 600M is minted lazily by per-period usage claims over nine years. Different object, different tier, different mechanism — do not conflate them. (Until the 2026-07-31 schedule reversal, RPGF tranche 1 was ALSO 300M, a coincidence that invited exactly this conflation; the reversed 15/30/55 schedule has no 300M anywhere.)
 
 Founders, supporters, and DAO receive tokens directly to their wallets at deploy time. The
 600M mints only through the `RpgfMinter`'s per-tranche claims — the minter
@@ -146,14 +146,18 @@ of contribution.
 `RpgfMinter` in `docs/CONTRACTS.md`. `UsageCounter.recordClauseUsage` is permissionless
 and proves, from data the chain already holds, that an order is RESOLVED and that
 the artifact was merkle-committed in the agreement both parties signed. Accrual
-buckets into fixed **periods**; a period's counts are final once it ends. Tranche
-`i` then pays for period `i`: `claim(trancheId, artifacts)` mints
-`trancheAmount · yourScore / totalScoreInPeriod` — **uniform pro rata, no
+buckets into fixed ANNUAL **periods**; a period's counts are final once it ends,
+and each period's budget pays for that period alone: `claim(periodId, artifacts)`
+mints `periodAmount · yourScore / totalScoreInPeriod` — **uniform pro rata, no
 per-wallet cap** — with authorship verified against `ClauseRegistry` /
 `AssemblyRegistry`. The 600M pool is fixed: a farmer only ever dilutes it, never
 inflates it. Claims never expire — a closed period's arithmetic is stable forever.
-Three tranches (300M/200M/100M); devnet and testnet compress the years-2/5/9
-schedule (time compresses when time is involved; ruled 2026-07-15).
+Nine annual periods, budgets grouped into three RISING tranches — 15% over years
+1–2, 30% over 3–5, 55% over 6–9, equal slices within each (ruled 2026-07-31: the
+largest share pays on the most-measured evidence; the cold-start years carry the
+smallest budgets, and early evidence-poor funding is the DAO treasury's job).
+Devnet and testnet compress the schedule (time compresses when time is involved;
+ruled 2026-07-15).
 
 **Nothing is posted, bonded, challenged, or adjudicated.** The predecessor
 reconstructed usage after the fact, which forced someone to POST the answer, a BOND
@@ -235,9 +239,10 @@ genesis allocation, then seals minting. `FOUNDER_ALLOC = 70M`,
 
 ```
 1. Deploy FlorinToken (deployer becomes the constructor deployer).
-2. Deploy UsageCounter (accrual period ends + the boosted tag via environment:
-   `RPGF_PERIOD_END_1/2/3`, `RPGF_BOOSTED_TAG`), then RpgfMinter over it
-   (florin + counter + ClauseRegistry + AssemblyRegistry; tranches 300M/200M/100M).
+2. Deploy UsageCounter (nine annual period ends derived from `RPGF_GENESIS`;
+   minimum-support floor `minSellers = 3`), then RpgfMinter over it
+   (florin + counter + ClauseRegistry + AssemblyRegistry; per-period budgets
+   45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping).
 3. fig.registerMinter(rpgfMinter, 600M) — MUST precede renounce (irreversible).
 4. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + SUPPORTERS_ALLOC + DAO_ALLOC).
 5. fig.mint(FOUNDER_WALLET, 70M)     — founder genesis mint.
@@ -250,7 +255,7 @@ After renounce:
 
 - Deployer minter: `cap = 400M, minted = 400M`. Exhausted. Cannot mint more.
 - `totalRegisteredCap = 1B` — the full cap is spoken for: 400M exhausted at
-  genesis, 600M mintable only through the RpgfMinter's per-tranche claims.
+  genesis, 600M mintable only through the RpgfMinter's per-period claims.
 - Deployer mint renounced. **No further minter registration is possible.**
 
 ### Devnet — `script/Deploy.s.sol`

@@ -521,6 +521,45 @@ holds counts, not the pair sets needed to union them.
 
 ---
 
+## 17. `UsageCounter` scores nothing below the minimum-support floor — real usage, zero score
+
+**Looks wrong because:** an artifact with genuinely settled, genuinely recorded trade shows
+`c > 0`, `d > 0` and `score = 0` — which reads like lost accrual, or like the counter
+penalising honest early adopters.
+
+**Is correct because (ruled 2026-07-31):** below `minSellers` (mainnet 3) distinct
+live-staked sellers sit exactly the artifacts one actor can fabricate alone — self-farms,
+fragmentation shards, squatted names, trivial riders — and a floor of 3 makes the minimum
+viable farm three deposits and three cooldowns, with no curation and no judgment. Nothing
+is lost: counting is never refused, `c` and `d` accrue below the floor, and the FULL score
+springs the moment the third distinct staked seller lands in the period. The floor lives in
+`_score`, so both settlement paths inherit it identically and PER PATH — the chain holds
+counts, not seller sets, so summing the paths toward the floor would let one seller
+straddle the two universes and count twice; flooring each side separately can only ever
+under-pay a boundary case. Conservative by construction, like the score merge itself.
+
+## 18. Recording has no protocol fee and no burn — and none should be added
+
+**Looks wrong because:** `recordClauseUsage` costs only gas, so fabricating `c` looks
+underpriced — an auditor's natural fix is a flat per-record base-currency burn, or a
+per-record fee routed to the DAO treasury.
+
+**Is correct because (ruled 2026-07-31, both variants declined):** under the
+staked-seller breadth statistic the burn's protective job is gone — a pure-`c` attack
+grows score as `c^(1/3)` (octuple the records to double the score) against linear gas,
+the same cube-root futility that killed the per-pair cap, while the dominant term `d` is
+priced by deposits. An app-layer ETH burn destroys real value to deter an attack the
+exponent already crushes (the EIP-1559 base fee of every record is already burned at the
+protocol level). Routing the fee to the DAO instead is WORSE, not better: it inserts an
+institution into the identity-free mechanical path (the mechanism must survive the
+no-institutions stress tests, and the DAO is not yet instantiated), gives the treasury
+usage-coupled revenue (exactly the value-accrual coupling the pure-Schelling-point florin
+design refuses, and a fresh Howey fact), and turns permissionless recording into a fee
+paid TO an entity. If the Sybil bound's algebra ever exposes a gap here, the reserve
+lever is lengthening the withdrawal cooldown — which moves no money at all.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -541,3 +580,5 @@ holds counts, not the pair sets needed to union them.
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
 | 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one deposit is recycled across identities, so the stake priced nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
 | 16 | `applyBatchAccrual` has one privileged caller | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
+| 17 | Recorded usage can score zero (`minSellers` floor) | Real settled trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; counting accrues and the full score springs at the floor — deferred, never lost; per-path because the paths' seller sets cannot be unioned |
+| 18 | No per-record fee or burn | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed fee inserts an institution + usage-coupled revenue into an identity-free mechanism |

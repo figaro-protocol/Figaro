@@ -190,19 +190,22 @@ mechanism — the stake — rather than being traded off against a non-flat weig
 **What the stake does and does not do — state it this way, never stronger.** The stake
 ALIGNS the honest majority; it does not DETER a determined Sybil, and the mechanism is
 not "non-farmable". Appreciation accrues to anyone who stakes, a free-rider included.
-What actually bounds farming is: live-stake-to-earn on both sides, the automatic
-EIP-1559 per-trade base-fee burn (the one non-recoverable per-trade cost, in base
-currency, that scales with fabricated volume — and it accrues to every base-currency
-holder, so farming pressure feeds the alignment asset), and the 600M being a FIXED pool
-a farmer DILUTES rather than inflates. Formally: farming is unprofitable exactly when the
-cost of replicating the honest score exceeds the tranche's market value; below that the
-damage is bounded and sub-linear, never a money pump, and honest authors always retain a
-positive share. Sizing the stake against that threshold is DELIBERATELY not attempted —
-the florin has no protocol-set price and base-currency appreciation is a forecast, so a
-precise optimum would be false precision. A sane spam floor is the stated posture, and
-the break-even is checkable at each tranche when both terms are observable.
-[[project_reward_mechanism_ratified_2026_07]] owns the ruling; the derivation and the
-closed forms live in the 2026-07-30 soundness proof.
+What actually bounds farming (rulings 2026-07-31): the score's dominant term counts
+DISTINCT LIVE-STAKED SELLERS, so n units of breadth cost n deposits held live — linear,
+with no wallet-splitting leverage (the retired pair statistic was manufacturable on the
+unstaked buyer side); the minimum-support floor (`minSellers = 3`) keeps everything one
+actor can fabricate alone off the scoreboard; the withdrawal cooldown makes each deposit
+serve at most P/T identities per period; the automatic EIP-1559 per-trade base-fee burn
+is the one non-recoverable per-trade cost, scaling with fabricated volume and accruing
+to every base-currency holder; and the 600M is a FIXED pool a farmer DILUTES rather
+than inflates, in RISING tranches so the largest budgets pay on the most-measured
+periods. Formally: capturing a fraction φ of a period requires attacker score
+φ/(1−φ) times the honest score, at a capital cost LINEAR in that score — the
+rent-dissipation bound whose closed form (and with it the derived deposit and cooldown)
+is the open derivation the punch-list tracks; it is checkable at each period when both
+terms are observable. The florin has no protocol-set price, so the bound is stated as
+dilution per unit of attacker capital, never as a profit threshold.
+[[project_reward_mechanism_ratified_2026_07]] owns the rulings.
 
 **The objective is a public, verifiable god's-eye view.** Aggregated over time,
 these attestations form a heat-map of physical/virtual flows — demand clusters,
