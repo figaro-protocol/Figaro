@@ -16,6 +16,7 @@ use tokio::time;
 use tracing::{info, warn, error};
 
 use figaro_sequencer::api::{self, AppState};
+use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig};
 use figaro_sequencer::mempool::Mempool;
 use figaro_sequencer::prover;
@@ -80,12 +81,26 @@ async fn main() {
     let max_body_bytes: usize = env_or("MAX_BODY_BYTES", "1048576")
         .parse()
         .expect("invalid MAX_BODY_BYTES");
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, "Starting Figaro sequencer");
+    // Publication bounds. `ARCHIVE_PATH=` (empty) makes the archive
+    // in-memory only — it then answers for this process's lifetime and
+    // forgets on restart.
+    let archive_path = env_or("ARCHIVE_PATH", "sequencer-archive.jsonl");
+    let archive_max_batches: usize = env_or("ARCHIVE_MAX_BATCHES", "10000")
+        .parse()
+        .expect("invalid ARCHIVE_MAX_BATCHES");
+    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
     let mempool = Mempool::with_caps(chain_id, verifying_contract, mempool_max_ops, mempool_max_usage);
     let state_mirror = StateMirror::genesis();
-    let batch_count = Arc::new(RwLock::new(0u64));
+    let archive = Archive::open(ArchiveConfig {
+        path: (!archive_path.is_empty()).then(|| archive_path.clone().into()),
+        max_batches: archive_max_batches,
+    })
+    .await;
+    // Resume this relay's batch numbering where the archive left off, so a
+    // restart continues the published sequence instead of colliding with it.
+    let batch_count = Arc::new(RwLock::new(archive.last_batch().await.unwrap_or(0)));
 
     // Sync initial state root from chain (if verifier is deployed)
     if verifier_addr != Address::ZERO {
@@ -124,11 +139,13 @@ async fn main() {
     let loop_mempool = mempool.clone();
     let loop_state = state_mirror.clone();
     let loop_batch_count = batch_count.clone();
+    let loop_archive = archive.clone();
 
     tokio::spawn(async move {
         batch_loop(
             loop_mempool,
             loop_state,
+            loop_archive,
             loop_batch_count,
             assembler_config,
             submitter_config,
@@ -142,6 +159,7 @@ async fn main() {
     let app_state = AppState {
         mempool,
         state_mirror,
+        archive,
         batch_count,
     };
 
@@ -160,6 +178,7 @@ async fn main() {
 async fn batch_loop(
     mempool: Mempool,
     state_mirror: StateMirror,
+    archive: Archive,
     batch_count: Arc<RwLock<u64>>,
     config: AssemblerConfig,
     submitter_config: SubmitterConfig,
@@ -282,8 +301,12 @@ async fn batch_loop(
                         ops = op_count,
                         "Batch settled on-chain, state mirror advanced"
                     );
-                    let mut count = batch_count.write().await;
-                    *count += 1;
+                    let number = {
+                        let mut count = batch_count.write().await;
+                        *count += 1;
+                        *count
+                    };
+                    publish(&archive, number, &batch, &result, Some(tx_hash)).await;
                 }
                 Err(e) => {
                     // Submission failure is transient (RPC) — the ops are
@@ -299,8 +322,47 @@ async fn batch_loop(
                 ops = op_count,
                 "Batch proved (no verifier configured — dry run), state mirror advanced"
             );
-            let mut count = batch_count.write().await;
-            *count += 1;
+            let number = {
+                let mut count = batch_count.write().await;
+                *count += 1;
+                *count
+            };
+            publish(&archive, number, &batch, &result, None).await;
         }
     }
+}
+
+/// Publish what the batch settled — the per-order commitments and their
+/// signatures, and the per-process resolution facts. This is the batch
+/// universe's mirror of the events `FigaroCore` emits on the direct path;
+/// without it, a batch-settled order exists only under a proven state root
+/// and no reader can see it at all.
+///
+/// Publication follows settlement and never gates it: a failure here is
+/// logged inside the archive and the batch stays settled.
+async fn publish(
+    archive: &Archive,
+    number: u64,
+    batch: &figaro_kernel::types::BatchInput,
+    result: &prover::ProveResult,
+    settlement_tx: Option<alloy_primitives::B256>,
+) {
+    let (commits, resolutions) = archive::publication_from_ops(
+        batch.chain_id,
+        batch.verifying_contract,
+        &batch.operations,
+    );
+    archive
+        .record(BatchRecord {
+            batch: number,
+            chain_id: batch.chain_id,
+            verifying_contract: batch.verifying_contract,
+            prev_state_root: result.public_values.prev_state_root,
+            new_state_root: result.public_values.new_state_root,
+            settlement_tx,
+            block_timestamp: batch.block_timestamp,
+            commits,
+            resolutions,
+        })
+        .await;
 }

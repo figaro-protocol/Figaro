@@ -263,15 +263,7 @@ fn apply_resolve(
             return Err(KernelError::OrderNotCommitted(order_hash));
         }
 
-        // Seller payout = expectedCumulativeValue × 2 + payment.
-        let seller_payout = c
-            .expected_cumulative_value
-            .checked_mul(U256::from(2))
-            .ok_or(KernelError::Overflow)?
-            .checked_add(c.payment)
-            .ok_or(KernelError::Overflow)?;
-        // Buyer payout = payment.
-        let buyer_payout = c.payment;
+        let (seller_payout, buyer_payout) = resolution_payouts(c)?;
 
         tracker.payout(currency, c.seller, seller_payout);
         tracker.payout(currency, buyer, buyer_payout);
@@ -284,6 +276,26 @@ fn apply_resolve(
     ps.active_order_count = 0;
 
     Ok(())
+}
+
+/// The two payout legs one order releases at resolution — the batch-path
+/// equivalent of `FigaroCore.OrderResolved(sellerPayout, buyerPayout)`.
+///
+/// Seller payout = `expectedCumulativeValue × 2 + payment` (the seller's
+/// own 2× bond back, plus what the buyer pays). Buyer payout = `payment`
+/// (the remainder of the buyer's 2× bond).
+///
+/// Public so a relay can PUBLISH the same per-order facts the kernel emits
+/// without re-deriving the arithmetic: `apply_resolve` is the only other
+/// caller, so the published figure and the settled figure cannot drift.
+pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
+    let seller_payout = c
+        .expected_cumulative_value
+        .checked_mul(U256::from(2))
+        .ok_or(KernelError::Overflow)?
+        .checked_add(c.payment)
+        .ok_or(KernelError::Overflow)?;
+    Ok((seller_payout, c.payment))
 }
 
 // ── Attestation helpers ───────────────────────────────────────────

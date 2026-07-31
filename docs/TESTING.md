@@ -121,7 +121,12 @@ PublicValues must equal host `apply_batch` field-for-field; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
 and `figaro-sequencer` (mempool runs the kernel's own witness gates at the
 door; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
-property; HTTP API; mempool→assemble→kernel→advance pipeline).
+property; HTTP API; mempool→assemble→kernel→advance pipeline; and the
+publication archive — retention survives the drain that clears the mempool,
+the window is bounded and evicts cleanly, the journal survives a restart and
+rotates instead of growing, and every read route republishes what the kernel
+would have emitted, asserted VERIFIABLE: the published struct re-derives its
+own order hash and both signatures recover to the parties named inside it).
 
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 the witness payload, the Rust sequencer binary proves + submits, the Solidity

@@ -284,15 +284,20 @@ batch path's gas advantage entirely.
 ### Batch Sequencer
 
 The off-chain service that collects signed operations, assembles batches,
-runs the SP1 prover, and submits proofs to the verifier contract.
-Implemented as a Rust crate (`prover/sequencer/`) with 6 modules and
-22 tests.
+runs the SP1 prover, submits proofs to the verifier contract, and
+**publishes what it settled** (`archive.rs` — the batch universe's mirror
+of the kernel's `OrderCommitted` / `OrderResolved` / `ProcessResolved`
+publication, which `FigaroBatchVerifier` does not emit). Implemented as a
+Rust crate (`prover/sequencer/`); route contract, retention bounds, and
+the publication trust story → `prover/sequencer/README.md`.
 
 Key trust property: the sequencer is a **coordination convenience**,
 not a trust assumption. It cannot fabricate operations (all operations
 require valid EIP-712 signatures). It cannot violate kernel invariants
-(the proof enforces them). Participants can always bypass the sequencer
-by submitting directly to `FigaroCore` on-chain.
+(the proof enforces them). Publication inherits the same posture — every
+field a relay publishes is verifiable by the reader against the chain, so
+a relay can omit or delay, never forge. Participants can always bypass the
+sequencer by submitting directly to `FigaroCore` on-chain.
 
 ### Architecture Summary
 
@@ -815,7 +820,7 @@ won't match the on-chain `stateRoot`) and re-sync before the next batch.
 
 ### Phase 1: Devnet Sequencer (prototyped, then removed in the teardown)
 
-The prototype was a Rust crate in `prover/sequencer/` — 6 modules, 22 tests.
+A Rust crate in `prover/sequencer/` — 7 modules, 53 tests.
 
 - **Mempool** (`mempool.rs`): Thread-safe operation queue with full EIP-712
   pre-check validation for all 11 `KernelOp` variants. Rejects malformed or
@@ -831,9 +836,17 @@ The prototype was a Rust crate in `prover/sequencer/` — 6 modules, 22 tests.
 - **Submitter** (`submitter.rs`): On-chain transaction submission via
   alloy. Converts kernel types to Solidity types, calls
   `FigaroBatchVerifier.settleBatch()`, reads on-chain state root.
-- **API** (`api.rs`): axum HTTP routes — `POST /submit` (accepts
-  `KernelOp` JSON, returns operation ID or validation error),
-  `GET /status` (state root, pending ops, batches settled).
+- **Archive** (`archive.rs`): the publication mirror. Retains what each
+  batch settled — the per-order commitment structs with both signatures,
+  and the per-process resolution facts — bounded in memory and journalled
+  to an append-only, rotated JSONL file so it survives a restart. Without
+  it a batch-settled order is publicly invisible: the verifier's public
+  values carry no order hashes and `BatchSettled` names no order.
+- **API** (`api.rs`): axum HTTP routes — `POST /submit`, `POST
+  /submit-usage`, `GET /health`, `GET /status` (state root, pending ops,
+  batches settled, publication window), and the publication reads
+  `GET /orders/{orderHash}`, `GET /processes/{processId}`,
+  `GET /batches?from&limit`. Full contract → `prover/sequencer/README.md`.
 - **Main** (`main.rs`): Env config, component bootstrap, time-triggered
   batch loop (drain → assemble → prove → submit → advance state).
   State mirror advances only after successful on-chain submission.

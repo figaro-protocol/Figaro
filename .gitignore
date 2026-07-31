@@ -103,6 +103,9 @@ tlc_output.txt
 
 # Rust / Prover
 prover/target/
+# The relay's publication journal (ARCHIVE_PATH) — local runtime state, not source.
+*sequencer-archive.jsonl
+*sequencer-archive.jsonl.tmp
 
 # Local tool state
 .solcx-lock-*
