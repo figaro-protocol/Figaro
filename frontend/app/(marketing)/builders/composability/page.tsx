@@ -42,6 +42,9 @@ export default function Composability() {
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     This is not hypothetical: it is why the protocol&apos;s own usage counter needed a bridge. <code>UsageCounter.recordClauseUsage</code> requires <code>orderStatus == 2</code>, so it could never see batched trade; the batch proof now carries the usage accrual across the seam as proved numbers. Both contracts were individually correct &mdash; no test could find it. If your composition reads order state, read <strong>both</strong>: the kernel&apos;s <code>orderStatus</code> / <code>OrderResolved</code> for the direct path, and the verifier&apos;s <code>BatchSettled</code>, <code>stateRoot()</code>, and re-emitted <code>Attestation</code> logs (filtered by contract <em>address</em> &mdash; the topic hash is shared with the coordinator&apos;s) for the batched one. The read-path recipe, runnable, is on <Link href="/integrate" className="underline">Integrate</Link>; the per-function table is on <Link href="/spec" className="underline">/spec</Link>.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>Getting trade onto that second path is itself a composition, and a permissionless one.</strong> <code>FigaroBatchVerifier.settleBatch</code> has no caller gate, no owner and no fee, so a <em>sequencer</em> &mdash; the off-chain relay that pools signed operations, proves the batch, and settles it &mdash; is a relay, never an authority: it holds no keys, its admission checks call the same kernel functions the proof runs (so it can reject earlier, never accept more), and its honest powers are censor and delay. Anyone may run one, and a composition that needs batched throughput either submits to one or becomes one. That is why the coordinator conditions still bind here and are not weakened by it: a relay writes no kernel state, reverses no resolution, and controls no bond &mdash; it only carries signed artifacts to a contract that would have accepted them from anyone.
+                </p>
                 <p className="text-sm text-ink-muted">
                     Full doctrine:{" "}
                     <a
@@ -105,6 +108,7 @@ export default function Composability() {
                             <li>Custom clause content &mdash; the off-chain validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
                             <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
                             <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
+                            <li>Presentation at the signing moment &mdash; settlement is UI-independent (the kernel binds the agreement by merkle root and verifies both signatures itself), but what your surface <em>displays</em> beside the wallet prompt is not. A composed surface owes its users an off-origin way to recompute the root before they sign; the recipe is on <Link href="/integrate" className="underline">Integrate</Link>.</li>
                             <li>Reading both settlement paths &mdash; nothing warns a composition that gates on <code>orderStatus</code> that batch-settled trade is invisible to it. Fold the verifier&apos;s events too.</li>
                         </ul>
                     </div>

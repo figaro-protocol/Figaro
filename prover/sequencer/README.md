@@ -65,7 +65,10 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   original id and enqueues nothing. `400` on signature or witness-gate
   rejection, `413` over `MAX_BODY_BYTES`, `503` when the mempool is full.
 - `POST /submit-usage` — body `{ "claim": <UsageClaim> }`.
-  `200 {"pending": n}`; same error mapping, idempotent by claim bytes.
+  `200 {"pending": n}`; same error mapping. Idempotent by claim BYTES — a
+  weaker guarantee than `/submit`'s on-chain-identity dedup: a semantically
+  identical claim serialized differently enqueues twice. Harmless (the guest
+  re-proves and the counter gates), but do not rely on it as identity dedup.
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
 - `GET /status` — the above plus the sequencer's local `state_root` mirror.

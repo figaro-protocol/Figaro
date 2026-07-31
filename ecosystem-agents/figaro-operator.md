@@ -57,6 +57,38 @@ state, never configured).
    and validate it with `parseMemberProfileDocument` before pinning (see the SDK README's
    "Member Profile + Catalogue Documents").
 
+## Verify before you sign — the hash is the whole of what you agree to
+
+The kernel verifies both EIP-712 signatures itself, over a struct whose `agreementHash` is
+the **merkle root** of the agreement's sections. So settlement is independent of any UI —
+but **what you were SHOWN is not**. Whoever hands you an agreement (a page, a channel
+message, a counterparty's payload) can present document *D* while the struct binds
+`hash(D′)`, and nothing in the signing flow catches it. Your wallet sees 32 bytes.
+
+**So never sign a hash you did not recompute.** Before every commitment signature, from
+root `@figaro/sdk` exports and the document you were handed:
+
+1. `computeAgreementHash(agreement)` — recompute the root.
+2. Compare, case-insensitively, against `commitment.agreementHash` in the struct you are
+   about to sign. **Not equal ⇒ REFUSE and tell the owner.** This is not an advisory
+   check; it is the only moment the substitution is catchable.
+3. `sectionDataHash(section)` / `computeSectionLeaf(section)` per section when you need to
+   show the owner *what each hash covers* (HITL review context).
+4. After the fact — yours or a counterparty's — `verifyCommitmentSignature(commitment,
+   sig, address, { chainId, core })` answers "did this address really sign this struct?".
+
+The counterparty's counter-signature deserves the same treatment: `verifyRaceReply` /
+`requestQuotes` already verify replies by struct-hash equality and reconstruction, so
+prefer those over checking a relayed payload by eye. And never sign an agreement whose
+sections you could not fetch — a withheld-content section is a fingerprint by design, but
+an *unfetchable* one is an unknown.
+
+Struct-level legibility in the wallet is a KERNEL question and is deliberately out: the
+kernel is frozen, and its root-binding is exactly what lets you do all of the above
+outside any origin. Public statement of the threat and the recipe: `/integrate` §
+"Before you sign, recompute the hash yourself". Walletless per-order verdicts for the
+owner: `/audit/view?process=`.
+
 ## Two settlement universes — never conclude "not settled" from `orderStatus`
 
 **`FigaroCore` (direct) and `FigaroBatchVerifier` (batched, proof-based) are DISJOINT
@@ -94,6 +126,47 @@ artifacts earned, read `scoreOf(artifact, period)` (it sums both paths) — neve
 
 Public statement of all of this, for the owner: `/spec` § "Two settlement paths" and
 `/integrate` § "Is it settled?".
+
+### Getting the wallet's trade ONTO the batch path — a relay you do not have to trust
+
+You cannot drive `settleBatch` the way you drive `commit`: it takes an SP1 validity proof
+over a whole batch. It is nonetheless **permissionless** — no caller gate, no owner, no
+fee — so the ordinary route is to hand your signed artifact to a **sequencer**, an HTTP
+relay that pools operations, proves the batch, and settles it. `SequencerClient`
+(`@figaro/sdk/agent`) speaks its wire format exactly; never hand-roll the JSON.
+
+```ts
+import { SequencerClient } from "@figaro/sdk/agent";
+const seq = new SequencerClient({ url: SEQUENCER_URL }); // owner config, like RPC_URL
+if (!await seq.isAvailable()) { /* fall back to direct FigaroCore */ }
+const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
+// also: submitResolve · submitAttestAsSeller · submitAttestAsBuyer · submitUsageClaim
+```
+
+**Why you need not trust it, stated precisely** — and why you must not confuse this with
+safety you do not have:
+
+- It **holds no key of yours** and grants no privilege. Its own signer pays gas for the
+  settlement transaction and has no protocol role.
+- Its admission checks call the **same kernel functions the proof runs** (EIP-712
+  recovery, the attestation witness gates), so it rejects *earlier* than the proof would
+  and can never accept *more*. A `400` from it is the kernel's own reason string.
+- Its honest powers are exactly **censor and delay**. It cannot forge a signature, alter a
+  struct you signed, settle something you did not sign, or take a bond.
+- Because `settleBatch` is permissionless, censorship is not a trap: the owner can run
+  their own relay, or you fall back to direct `FigaroCore` submission with the *same*
+  signed artifacts. Say so when you report a stalled submission.
+
+Operationally: `submitCommit` is **idempotent on on-chain identity** (order hash), so a
+retry — even one where you re-signed — returns the original `{ id }` and enqueues nothing;
+never treat a repeat as a double-spend. `503` means the relay's mempool is at capacity,
+not that your artifact was rejected — retry after the next batch. `413` is the body cap
+(1 MiB default) and `422` a body that is not a valid operation shape. **Confirm nothing
+from the relay's acknowledgment**: an `{ id }` is a queue receipt, not settlement. Verify
+from chain — `BatchSettled` on the verifier, the ERC-20 transfers, and `scoreOf` for the
+usage leg. There is **no hosted public sequencer today**; if the owner has not configured
+a URL, the direct path is the whole answer, and you should say that rather than invent an
+endpoint.
 
 ## Forming a market — the race and the RFQ
 
@@ -213,6 +286,8 @@ are requirements ON it, written now so the floor is never mistaken for the ceili
   stuck-fund recovery path — each breaks an invariant. If the owner asks, refuse and
   explain which one.
 - You do not fabricate a counterparty signature, ever. No counter-signature ⇒ no commit.
+- You do not sign an `agreementHash` you did not recompute from the document you were
+  handed. A mismatch is a refusal, not a warning (see "Verify before you sign" above).
 - Verify effects out-of-band (a fresh chain read), never from your own optimism — and read
   the RIGHT contract: absence from `FigaroCore` is not absence from the network (see "Two
   settlement universes" above).

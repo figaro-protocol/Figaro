@@ -180,6 +180,129 @@ const batch  = await fetchBatchUsageRecords(client, USAGE_COUNTER, toBlock);`}</
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Before you sign, recompute the hash yourself.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    <strong>Settlement does not trust any website; presentation at the signing moment does.</strong> The kernel verifies two EIP-712 signatures over a struct whose <code>agreementHash</code> is the merkle root of the agreement&apos;s sections &mdash; so once a commitment is on chain, what was agreed is fixed by arithmetic, and no origin, ours included, can restate it. But the wallet prompt shows you 32 bytes; the readable document sits beside it, on a page. <strong>A compromised origin can display document <em>D</em> and ask your wallet to bind <code>hash(D&prime;)</code></strong>, and nothing in the signing flow catches that. The answer is not to trust the page harder &mdash; it is to recompute the root off-origin, on your own machine, from the SDK, and compare.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-3">
+                    Four public primitives are all it takes. <code>sectionDataHash</code> and <code>computeSectionLeaf</code> show you <em>what each hash covers</em>, section by section; <code>computeAgreementHash</code> recomputes the root; <code>verifyCommitmentSignature</code> answers, after the fact, whether an address really signed the struct. All four are root <code>@figaro/sdk</code> exports &mdash; the same primitives the kernel mirrors:
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`import { computeAgreementHash, computeSectionLeaf,
+         sectionDataHash, verifyCommitmentSignature } from "@figaro/sdk";
+
+// \`shown\`     — the agreement JSON the page displayed.
+// \`typedData\` — the EIP-712 payload the WALLET displayed (domain + message),
+//               copied out of the signing prompt, not out of the page.
+for (const section of shown.sections) {
+  console.log(section.clause, sectionDataHash(section),
+                              computeSectionLeaf(section));
+}
+
+const recomputed = computeAgreementHash(shown);
+if (recomputed.toLowerCase() !==
+    typedData.message.agreementHash.toLowerCase()) {
+  throw new Error("MISMATCH — the page showed one document and asked the " +
+                  "wallet to bind another. Do not sign.");
+}
+
+// After the fact: did each party really sign this struct?
+const commitment = { ...typedData.message,
+  payment: BigInt(typedData.message.payment),
+  expectedCumulativeValue: BigInt(typedData.message.expectedCumulativeValue),
+  salt: BigInt(typedData.message.salt),
+  deadline: BigInt(typedData.message.deadline) };
+const ctx = { chainId: Number(typedData.domain.chainId),
+              core: typedData.domain.verifyingContract };
+await verifyCommitmentSignature(commitment, buyerSig, commitment.buyer, ctx);
+await verifyCommitmentSignature(commitment, sellerSig, commitment.seller, ctx);`}</code>
+                </pre>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    A ready-made runner is in the repo if you would rather not write the glue: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/verify-signed-agreement.mjs" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/verify-signed-agreement.mjs</code></a> takes the two files, prints every section leaf and the recomputed root, reports MATCH or MISMATCH against the hash in the typed data, adds per-party VALID/INVALID when you pass <code>--buyer-sig</code>/<code>--seller-sig</code>, and exits <code>0</code> only if every check passed. It reads files and calls the exports above &mdash; nothing cryptographic is implemented in it.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    <strong>After the fact, and without a wallet:</strong> <code>/audit/view?process=</code> renders per-order buyer and seller signature verdicts to anyone. Note where the bytes come from, because it is not where you would look first &mdash; <code>OrderCommitted</code> carries every <code>Commitment</code> field but <em>no signatures</em>. The signature bytes live on chain only inside the commit transaction&apos;s <strong>calldata</strong> (<code>commit(c, buyerSig, sellerSig)</code>), which also carries the signed struct verbatim; the reader decodes it, re-binds it to the order by recomputing the order hash, and re-verifies. A commit it cannot parse reads &ldquo;unavailable&rdquo;, never a false verdict.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed">
+                    <strong>What this deliberately does not do</strong> is make the wallet&apos;s own prompt legible field by field. That is a <em>kernel</em> question: <code>Commitment</code> binds the agreement by root, so a wallet renders a hash. Changing it means changing <code>CommitmentTypes</code>, and the kernel is frozen &mdash; and that same root-binding is precisely what lets both checks above run outside any origin. The boundary is the design, not a gap in it.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Getting onto the batch path: submit to a relay, or run one.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The direct path you drive end to end yourself: collect both signatures, approve the bonds, broadcast <code>commit</code>, later <code>resolveProcess</code>. The batch path has a different shape, because <code>settleBatch</code> takes an SP1 validity proof over a <em>whole batch</em>. It is nonetheless <strong>permissionless</strong> &mdash; <code>FigaroBatchVerifier.settleBatch</code> is <code>external</code> with no caller gate, no owner, no fee and no upgrade path, so anyone who can produce the proof can settle. The ordinary route is simply not to produce it: hand your signed artifact to a <strong>sequencer</strong> &mdash; an HTTP relay that pools operations, assembles a batch, proves it, and settles it.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-3">
+                    <strong>Do not hand-roll the wire format &mdash; it is already the SDK&apos;s.</strong> <code>SequencerClient</code> (<code>@figaro/sdk/agent</code>) emits exactly the JSON the endpoint accepts, and the same <code>Commitment</code> + signature hex you would have broadcast directly:
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`import { SequencerClient } from "@figaro/sdk/agent";
+
+const seq = new SequencerClient({ url: SEQUENCER_URL }); // deployment config
+if (!await seq.isAvailable()) { /* fall back to direct FigaroCore */ }
+
+const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
+// { id: 1 } — resubmitting the SAME order returns the SAME id.
+
+await seq.submitResolve(processId, commitments, buyerSig);
+await seq.submitAttestAsSeller({ role, target, clauseId, stage,
+                                 contentRef, sellerSig, proof });
+await seq.status();   // { state_root, pending_ops,
+                      //   pending_usage_claims, batches_settled }`}</code>
+                </pre>
+                <p className="text-sm text-ink-body leading-relaxed mb-3">
+                    Four endpoints, and that is the whole surface &mdash; settled state is read from the chain, never from a relay. Every error body is <code>{`{ "error": "…" }`}</code>.
+                </p>
+                <div className="overflow-x-auto -mx-6 px-6 mb-4">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Endpoint</th>
+                                <th scope="col" className="py-2 pr-4">Body</th>
+                                <th scope="col" className="py-2">Success</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">POST /submit</td>
+                                <td className="py-2 pr-4 font-mono text-xs">{`{"operation": {"Commit"|"Resolve"|"AttestAsSeller"|"AttestAsBuyer": {…}}}`}</td>
+                                <td className="py-2 font-mono text-xs">{`200 {"id": n}`}</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">POST /submit-usage</td>
+                                <td className="py-2 pr-4"><code className="font-mono text-xs">{`{"claim": …}`}</code> &mdash; the RPGF leg; build these with <code className="font-mono text-xs">buildUsageClaims</code>, never by hand.</td>
+                                <td className="py-2 font-mono text-xs">{`200 {"pending": n}`}</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">GET /health</td>
+                                <td className="py-2 pr-4 text-ink-body">Liveness + bounded counts.</td>
+                                <td className="py-2 font-mono text-xs">{`{status, pending_ops, pending_usage_claims, batches_settled}`}</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">GET /status</td>
+                                <td className="py-2 pr-4 text-ink-body">The same, plus the relay&apos;s local <code className="font-mono text-xs">state_root</code> mirror. <code className="font-mono text-xs">SequencerClient.status()</code> reads this one.</td>
+                                <td className="py-2 font-mono text-xs">{`{state_root, …}`}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    <strong>Admission is idempotent, and on <em>on-chain identity</em> rather than bytes</strong> &mdash; a <code>Commit</code> is keyed by its order hash, a <code>Resolve</code> by its process id, an attestation by (order hash, clauseId, stage, contentRef). ECDSA signatures are not unique per digest, so a <em>re-signed</em> duplicate deduplicates too; you get the original id back and nothing is enqueued twice. (Usage claims dedupe on the claim&apos;s own bytes &mdash; a claim carries no signature, so byte identity is the right notion of &ldquo;same claim&rdquo; there.) The failure codes: <code>400</code> for a signature or witness-gate rejection, carrying the kernel&apos;s own reason string (<code>&ldquo;buyer sig mismatch: recovered 0x15d3…, expected 0x9965…&rdquo;</code>), and for malformed JSON; <code>422</code> for a body that is valid JSON but not a <code>KernelOp</code>; <code>413</code> over the body cap (1 MiB by default); <code>503</code> when the mempool is at capacity &mdash; retry after the next batch drains it. <code>503</code> is capacity, never rejection: at the cap it is the <em>arriving</em> submission that is refused, so an acknowledged id is never silently dropped.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    <strong>A relay, not an authority &mdash; and this is the point, not a disclaimer.</strong> Because <code>settleBatch</code> is permissionless, a sequencer is one relay among any number. It holds no keys of yours and grants no privilege; its own signer pays gas for the settlement transaction and has no protocol role. Its admission checks call the <em>same</em> kernel functions the proof runs &mdash; the same EIP-712 recovery, the same attestation witness gates &mdash; so it can reject <em>earlier</em> than the proof would, and can never accept more than the proof would. Its honest powers are therefore exactly two: <strong>censor and delay</strong>. It cannot forge, cannot alter a struct you signed, cannot settle anything you did not sign, and cannot take a bond. If it censors you, run your own, or fall back to the direct path &mdash; the artifacts are the same signed structs either way.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed">
+                    <strong>Honest scope: there is no hosted public sequencer to point you at today.</strong> No deployment-record key carries one, because the endpoint address is deployment configuration, not a protocol constant &mdash; treat <code>SEQUENCER_URL</code> the way you treat an RPC URL. The first-class option is to run your own: the relay is a Rust binary in the repo (<code>prover/sequencer</code>), started explicitly with <code>cargo run -p figaro-sequencer --bin sequencer</code> against the deployed addresses (<code>RPC_URL</code>, <code>CHAIN_ID</code>, <code>FIGARO_CORE_ADDRESS</code>, <code>BATCH_VERIFIER_ADDRESS</code>, <code>USAGE_COUNTER_ADDRESS</code>; <code>LISTEN_ADDR</code> defaults to <code>0.0.0.0:3001</code>). Its <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline">README</a> carries the full environment table and the queue-bound flags.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Install, fetch, reconstruct.">
                 <pre
                     tabIndex={0}
@@ -300,6 +423,9 @@ for (const [processId, process] of processes) {
                     </LabelledListRow>
                     <LabelledListRow label="/orders/view?process=" labelWidth="wide">
                         A process&apos;s live status and record, keyed by <code>processId</code> &mdash; readable by anyone, no wallet.
+                    </LabelledListRow>
+                    <LabelledListRow label="/audit/view?process=" labelWidth="wide">
+                        The same process as an <em>evidence</em> surface: hashes, clause evidence, and per-order buyer/seller signature verdicts re-verified from the commit transaction&apos;s calldata. Also walletless. (<code>/audit</code> with no <code>process</code> is the standalone hash-verifier: paste content or a hash from an audit bundle.)
                     </LabelledListRow>
                     <LabelledListRow label="/builders/designer/view?slug=" labelWidth="wide">
                         Read-only inspect of an assembly, keyed by its derived slug.

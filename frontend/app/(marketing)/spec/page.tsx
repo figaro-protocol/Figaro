@@ -104,6 +104,16 @@ export default function Specifications() {
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
                             <tr>
+                                <td className="py-2 pr-4">How do I get <em>onto</em> this path?</td>
+                                <td className="py-2 pr-4 text-ink-body">Broadcast <code className="font-mono text-xs">commit(c, buyerSig, sellerSig)</code> yourself, then <code className="font-mono text-xs">resolveProcess</code>.</td>
+                                <td className="py-2 text-ink-body"><code className="font-mono text-xs">settleBatch</code> is <strong>permissionless</strong> &mdash; anyone who can produce the SP1 proof may settle. In practice you <code className="font-mono text-xs">POST /submit</code> the same signed structs to a <strong>sequencer relay</strong> (below), which batches, proves and settles them.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">Did both parties really sign it?</td>
+                                <td className="py-2 pr-4 text-ink-body">The signature bytes live in the commit transaction&apos;s <strong>calldata</strong> &mdash; <code className="font-mono text-xs">OrderCommitted</code> carries the struct but no signatures. Decode, re-bind by order hash, re-verify.</td>
+                                <td className="py-2 text-ink-body">The <strong>proof</strong> is the on-chain evidence that both recovered: <code className="font-mono text-xs">settleBatch</code>&apos;s calldata carries net positions, events and accruals &mdash; <em>no signature bytes</em>. Keep your own copy of the signed artifact.</td>
+                            </tr>
+                            <tr>
                                 <td className="py-2 pr-4">Is this order settled?</td>
                                 <td className="py-2 pr-4 font-mono text-xs">orderStatus(bytes32) == 2</td>
                                 <td className="py-2 text-ink-body">No per-order flag exists on chain. The order&apos;s state lives under <code className="font-mono text-xs">stateRoot()</code>; the public facts are the batch that carried it and the transfers it executed.</td>
@@ -132,6 +142,21 @@ export default function Specifications() {
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-4">
                     Read-path guidance for integrators, with the fold rule for the two usage streams, is on <Link href="/integrate" className="underline">Integrate</Link>; composition targets that read order state are on <Link href="/builders/composability" className="underline">Composability</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="The sequencer: the batch path&rsquo;s entry point, and the only off-chain piece.">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Everything else on this page is a contract. This one is not: a <strong>sequencer</strong> is an off-chain HTTP relay that pools signed operations, assembles a batch, proves it with SP1, and calls <code>settleBatch</code>. It is the ordinary way onto the batch path &mdash; not because the path is gated, but because producing a batch proof is the work it does for you.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>A relay, not an authority.</strong> <code>FigaroBatchVerifier.settleBatch</code> is <code>external</code> with no caller gate, no owner, no fee and no upgrade path &mdash; so a sequencer is one relay among any number, and running your own needs nobody&apos;s permission. It holds no keys of yours and confers no privilege: its own signer pays gas and has no protocol role. Its admission checks call the <em>same</em> kernel functions the proof runs (EIP-712 recovery; the attestation witness gates), so it can reject earlier than the proof and can never accept more. Its honest powers are exactly <strong>censor and delay</strong> &mdash; never forge, never alter a signed struct, never settle what you did not sign, never touch a bond. The fallback is always direct <code>FigaroCore</code> submission with the same artifacts.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Four endpoints and no other read surface, because settled state is read from the chain: <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro/sdk/agent</code>) emits &mdash; the request/response and error tables, with the run-your-own recipe, are on <Link href="/integrate" className="underline">Integrate</Link>.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                    No public sequencer endpoint is published yet; the address is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
                 </p>
             </MarketingSection>
 

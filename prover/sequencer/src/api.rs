@@ -98,7 +98,8 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
 // ── Handlers ─────────────────────────────────────────────────────
 
 /// Map a body/JSON extraction failure to a structured error with the
-/// rejection's own status (400 malformed, 413 oversize, 415 wrong type).
+/// rejection's own status: 400 malformed JSON, 422 valid JSON that is not a
+/// `KernelOp`, 413 oversize, 415 wrong content type.
 fn payload_error(route: &'static str, rej: JsonRejection) -> Response {
     let status = rej.status();
     let error = rej.body_text();

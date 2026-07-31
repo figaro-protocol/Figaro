@@ -139,6 +139,46 @@ orders stay locked in the kernel until the buyer resolves the process. (The
 helper was `calculateSubOrderSellerApproval` before; it is now
 `calculateSubOrderApproval` and returns both legs.)
 
+## Verifying what you are about to sign
+
+**Settlement is UI-independent; presentation at the signing moment is not.** The
+kernel verifies both EIP-712 signatures itself over a struct whose
+`agreementHash` is the merkle ROOT of the agreement's sections — so what was
+agreed is fixed by arithmetic once committed, and no origin can restate it. But
+the wallet prompt shows 32 bytes, and the readable document sits beside it on
+some page: a compromised origin can display document `D` while the struct binds
+`hash(D′)`. Nothing in the signing flow catches that. Recompute the root
+yourself, off-origin, before signing:
+
+```ts
+import { computeAgreementHash, computeSectionLeaf,
+         sectionDataHash, verifyCommitmentSignature } from "@figaro/sdk";
+
+// `shown` — the agreement JSON you were displayed.
+// `typedData` — the EIP-712 payload the WALLET displayed (domain + message).
+for (const section of shown.sections) {
+  console.log(section.clause, sectionDataHash(section),   // what this hash covers
+                              computeSectionLeaf(section));
+}
+if (computeAgreementHash(shown).toLowerCase() !==
+    typedData.message.agreementHash.toLowerCase()) {
+  throw new Error("MISMATCH — the page showed one document and asked the " +
+                  "wallet to bind another. Do not sign.");
+}
+
+// After the fact: did an address really sign this struct? (uint256 fields
+// arrive from a wallet as strings — pass bigints.)
+await verifyCommitmentSignature(commitment, sig, commitment.buyer,
+                                { chainId, core });
+```
+
+`scripts/verify-signed-agreement.mjs` in the repo is a ready-made runner for the
+above (agreement file + typed-data file, optional `--buyer-sig`/`--seller-sig`,
+exit 0 only if every check passed). Struct-level legibility inside the wallet is
+a KERNEL question and is deliberately out of scope: `Commitment` binds the
+agreement by root, the kernel is frozen, and that root-binding is exactly what
+makes this off-origin check possible.
+
 ## Recovering an in-flight process
 
 A half-committed process — the root landed but a sub-order's counter-signature
@@ -324,6 +364,36 @@ const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core 
 // channel payloads): `JSON.parse(body, strippingReviver)`.
 import { strippingReviver } from "@figaro/sdk";
 import { deserializeCommitmentPayload } from "@figaro/sdk/agent";
+
+// Submitting to the BATCH path — SequencerClient. `FigaroBatchVerifier.
+// settleBatch` is PERMISSIONLESS (no caller gate, no owner, no fee), but it
+// takes an SP1 proof over a whole batch, so the ordinary route is to hand the
+// signed artifact to a sequencer: an HTTP relay that pools operations, proves
+// the batch, and settles it. This client emits EXACTLY the wire format the
+// endpoint accepts — never hand-roll the JSON.
+//
+// A RELAY, NOT AN AUTHORITY: it holds no key of yours, its admission checks
+// call the same kernel functions the proof runs (so it rejects earlier than
+// the proof, never accepts more), and its honest powers are censor and delay —
+// never forge. Fall back to direct FigaroCore submission with the SAME
+// artifacts. There is no hosted public endpoint today; the URL is deployment
+// config, like an RPC URL. Surface + run-your-own recipe: prover/sequencer.
+import { SequencerClient } from "@figaro/sdk/agent";
+const seq = new SequencerClient({ url: SEQUENCER_URL });
+if (!(await seq.isAvailable())) { /* direct path instead */ }
+const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
+// Admission is IDEMPOTENT on ON-CHAIN IDENTITY (order hash / process id /
+// attestation identity) — a retry, even a RE-SIGNED one, returns the original
+// id and enqueues nothing. `{ id }` is a queue receipt, NOT settlement:
+// confirm from chain (BatchSettled, the ERC-20 transfers, scoreOf).
+await seq.submitResolve(processId, commitments, buyerSig);
+await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sellerSig, proof });
+await seq.submitUsageClaim(claim);  // the RPGF leg — build with buildUsageClaims
+await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled }
+// Errors are SequencerError with .statusCode: 400 signature/witness-gate
+// rejection (carrying the kernel's own reason string) or malformed JSON, 422
+// not a valid operation shape, 413 over the 1 MiB body cap, 503 mempool at
+// capacity — capacity, never rejection; retry after the next batch.
 
 // did:web: an agent resolves a counterparty's DID Document, verifies the on-chain
 // address it binds, and reads the coordination endpoint to route an offer to
