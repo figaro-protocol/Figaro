@@ -60,6 +60,32 @@ batched attestation as an `Attestation` event, so that family needs no relay
 mirror — read it from the chain. The archive covers exactly the families the
 kernel publishes that the batch path does not.
 
+## Getting the binary
+
+"Run your own" is the point — `settleBatch` is permissionless — so there are two
+ways to get one, and the second is the one that proves anything.
+
+**Prebuilt.** Each `v*` tag publishes
+`figaro-sequencer-<tag>-<target>.tar.gz` for Linux x86_64 and macOS arm64 to the
+repo's GitHub Releases, built by `.github/workflows/sequencer-release.yml`.
+Download it, check the companion `.sha256`, extract, run. This removes a
+toolchain install; it grants nothing and implies no hosted service.
+
+**From source.** Needs the host Rust toolchain plus SP1 — `cargo prove`
+cross-compiles the guest program that the sequencer embeds:
+
+```sh
+curl -L https://sp1up.succinct.xyz | bash && sp1up
+cd prover && cargo build --release --locked -p figaro-sequencer --bin sequencer
+```
+
+Each release body records the commit, both toolchain versions, the exact build
+invocation, and the guest program's verification key (the value
+`FigaroBatchVerifier` pins as `programVKey`), so a prebuilt binary can be
+**rebuilt and compared** rather than trusted. The trust model above is unchanged
+either way: the relay is transport, not authority, and what you verify is the
+proof and the chain — never the provenance of a download.
+
 ## Running locally against devnet
 
 The sequencer is started explicitly — `devup` does not launch it.

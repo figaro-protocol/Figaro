@@ -375,7 +375,7 @@ test.describe('DATA MARKET — dual-posture money legs over the anchored data as
                 'figaro-schedule': { windowStart: '2026-08-15T09:00:00Z', windowEnd: '2026-08-15T13:00:00Z' },
                 'figaro-geolocation': { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
                 [CREDENTIAL]: {
-                    credentialRegisterUri: 'https://uav-register.example/operators{/id}',
+                    credentialRegisterUri: 'https://uav-register.example/registrations{/id}',
                     credentialTitle: 'Remote pilot certificate',
                     credentialId: 'RPC-107-0042',
                 },

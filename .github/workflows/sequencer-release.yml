@@ -1,0 +1,325 @@
+name: Sequencer Release
+
+# Publishes a prebuilt `figaro-sequencer` relay binary as a GitHub Release
+# artifact. "Run your own" is the batch path's entry story — settleBatch is
+# permissionless — but today running one means cloning the repo and installing
+# a Rust toolchain AND the SP1 toolchain. That is an adoption tax unrelated to
+# decentralization; a release artifact removes it without implying anything
+# else. It is deliberately NOT a container image, NOT crates.io, and NOT a
+# hosted endpoint: those imply registries, namespaces, semver expectations, or
+# uptime obligations. A release artifact is a build output attached to a
+# commit — no account beyond the repo, no bill, no relationship with any user.
+#
+# This workflow only builds and publishes. It duplicates no existing CI job:
+# the guard battery (guards-ci) and the language-scoped suites still own
+# correctness, and nothing here gates a merge.
+#
+# Reproducibility is the point, not convenience. The sequencer embeds the SP1
+# guest ELF at compile time (`sp1_sdk::include_elf!("figaro-prover")` in
+# prover/sequencer/src/prover.rs), and that ELF's hash IS the verification key
+# `FigaroBatchVerifier` pins as its `programVKey` immutable. So the host Rust
+# version and the SP1 version are not cosmetic build trivia — they determine
+# whether a binary's proofs are accepted at all. Both are pinned below and
+# printed into the release body, alongside the computed vkey, so anyone can
+# rebuild and compare.
+
+on:
+    push:
+        tags:
+            # The repo carries no tags yet, so this establishes the convention.
+            - "v*"
+
+# Least privilege: the build jobs only read. The single job that needs to
+# create a Release overrides this with `contents: write` and nothing else.
+permissions:
+    contents: read
+
+env:
+    # Host toolchain that compiles the sequencer itself. Pinned, not `stable`,
+    # so the release body can name an exact version that does not drift.
+    RUST_TOOLCHAIN: "1.93.0"
+    # SP1 release that supplies `cargo prove` and the `succinct` Rust toolchain
+    # which cross-compiles the guest program. MUST match the sp1-sdk / sp1-build
+    # / sp1-zkvm version resolved in prover/Cargo.lock (6.3.1) — a mismatch
+    # silently changes the guest ELF, and therefore the vkey.
+    SP1_VERSION: "v6.3.1"
+    # Emitted by prover/sequencer/build.rs via sp1_build::build_program.
+    GUEST_ELF: target/elf-compilation/riscv64im-succinct-zkvm-elf/release/figaro-prover
+
+jobs:
+    build:
+        name: Build sequencer (${{ matrix.target }})
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 90
+        strategy:
+            # Surface both platforms' failures in one run rather than hiding the
+            # second behind the first. The publish job still requires ALL matrix
+            # legs to succeed, so a partial release is never cut.
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                    - runner: macos-14
+                      target: aarch64-apple-darwin
+
+        steps:
+            # No `submodules: recursive` here, unlike the Solidity workflows:
+            # .gitmodules carries only forge dependencies (openzeppelin, solady).
+            # The Rust workspace's deps are crates.io plus in-repo path crates.
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
+              run: |
+                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+                  rustup default "$RUST_TOOLCHAIN"
+                  rustc --version
+                  # The build below is native — no --target flag — so the matrix
+                  # label is what NAMES the artifact. Assert it matches the real
+                  # host triple, or a runner-image change would silently ship a
+                  # binary under the wrong architecture in its filename.
+                  host=$(rustc -vV | awk '/^host: /{print $2}')
+                  if [ "$host" != "${{ matrix.target }}" ]; then
+                      echo "host triple '$host' != matrix target '${{ matrix.target }}'"
+                      exit 1
+                  fi
+
+            # sp1up bootstrap fetched directly rather than piping
+            # https://sp1up.succinct.xyz into bash: that installer detects the
+            # user's interactive shell to edit a profile file and `exit 1`s when
+            # it cannot, which is exactly the CI case. We only need the binary
+            # plus $GITHUB_PATH. GITHUB_TOKEN is passed because sp1up calls the
+            # GitHub API to resolve the release and is rate-limited without it.
+            - name: Install SP1 ${{ env.SP1_VERSION }}
+              env:
+                  GITHUB_TOKEN: ${{ github.token }}
+              run: |
+                  mkdir -p "$HOME/.sp1/bin"
+                  curl -sSfL https://raw.githubusercontent.com/succinctlabs/sp1/main/sp1up/sp1up \
+                      -o "$HOME/.sp1/bin/sp1up"
+                  chmod +x "$HOME/.sp1/bin/sp1up"
+                  "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
+                  echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+
+            # No build cache. A release build should be a clean build from the
+            # committed lockfile — the same thing a third party rebuilding from
+            # source gets. Cache reuse would trade that away for minutes.
+            - name: Build sequencer
+              working-directory: ./prover
+              run: cargo build --release --locked -p figaro-sequencer --bin sequencer
+
+            # The vkey is the guest ELF's hash: the value DeployMainnet.s.sol
+            # requires as SP1_PROGRAM_VKEY and FigaroBatchVerifier stores as its
+            # `programVKey` immutable. Publishing it lets a downloader check that
+            # this binary proves against the same key the deployed verifier pins.
+            - name: Compute guest program vkey
+              id: vkey
+              working-directory: ./prover
+              run: |
+                  test -f "$GUEST_ELF" || { echo "guest ELF missing at $GUEST_ELF"; exit 1; }
+                  vkey=$(cargo-prove prove vkey --elf "$GUEST_ELF" | tail -n 1 | tr -d '[:space:]')
+                  # Fail loudly rather than publishing an empty or malformed key:
+                  # a silently blank vkey would look like a successful release.
+                  if ! [[ "$vkey" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+                      echo "unexpected vkey output: '$vkey'"
+                      exit 1
+                  fi
+                  echo "vkey=$vkey" >> "$GITHUB_OUTPUT"
+                  echo "vkey: $vkey"
+
+            - name: Package artifact
+              id: package
+              working-directory: ./prover
+              run: |
+                  pkg="figaro-sequencer-${GITHUB_REF_NAME}-${{ matrix.target }}"
+                  mkdir -p "dist/$pkg"
+                  cp target/release/sequencer "dist/$pkg/sequencer"
+                  cp sequencer/README.md "dist/$pkg/README.md"
+                  tar -C dist -czf "dist/$pkg.tar.gz" "$pkg"
+                  # shasum -a 256 rather than sha256sum: present on both the
+                  # Linux and macOS runners, so one invocation covers the matrix.
+                  sum=$(shasum -a 256 "dist/$pkg.tar.gz" | awk '{print $1}')
+                  echo "$sum  $pkg.tar.gz" > "dist/$pkg.tar.gz.sha256"
+                  echo "pkg=$pkg" >> "$GITHUB_OUTPUT"
+                  echo "sha256=$sum" >> "$GITHUB_OUTPUT"
+                  ls -l "dist/$pkg.tar.gz"
+
+            # One machine-readable fact file per target. The publish job reads
+            # these to assemble the release body, so the body's reproducibility
+            # fields are what the build actually did, never a hand-copied guess.
+            - name: Record build facts
+              working-directory: ./prover
+              run: |
+                  cat > "dist/${{ steps.package.outputs.pkg }}.facts" <<EOF
+                  target=${{ matrix.target }}
+                  runner=${{ matrix.runner }}
+                  rust=$(rustc --version)
+                  sp1=${SP1_VERSION}
+                  vkey=${{ steps.vkey.outputs.vkey }}
+                  sha256=${{ steps.package.outputs.sha256 }}
+                  archive=${{ steps.package.outputs.pkg }}.tar.gz
+                  EOF
+                  cat "dist/${{ steps.package.outputs.pkg }}.facts"
+
+            - name: Upload build output
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: ${{ steps.package.outputs.pkg }}
+                  path: |
+                      prover/dist/*.tar.gz
+                      prover/dist/*.tar.gz.sha256
+                      prover/dist/*.facts
+                  retention-days: 7
+                  if-no-files-found: error
+
+    publish:
+        name: Publish release
+        # Requires every matrix leg. A release that silently shipped one
+        # platform because the other broke would be worse than no release.
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            # The only elevated scope in this workflow, and the only one the
+            # release needs. No packages:, no id-token:, no actions:.
+            contents: write
+        steps:
+            - name: Download build outputs
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+              with:
+                  path: staging
+                  merge-multiple: true
+
+            # Cross-platform agreement on the vkey is a real check, not
+            # ceremony: the guest is cross-compiled to RISC-V, so a host that
+            # changed the ELF would mean the two binaries settle against
+            # different verifiers. Diverging keys fail the release.
+            - name: Verify vkey agreement across targets
+              id: facts
+              run: |
+                  keys=$(cat staging/*.facts | grep '^vkey=' | sort -u)
+                  count=$(printf '%s\n' "$keys" | wc -l | tr -d ' ')
+                  if [ "$count" -ne 1 ]; then
+                      echo "guest vkey differs across targets — refusing to publish:"
+                      printf '%s\n' "$keys"
+                      exit 1
+                  fi
+                  echo "vkey=${keys#vkey=}" >> "$GITHUB_OUTPUT"
+                  rust=$(cat staging/*.facts | grep '^rust=' | sort -u | head -n 1)
+                  echo "rust=${rust#rust=}" >> "$GITHUB_OUTPUT"
+
+            # The template lives in this workflow so it ships with every release and
+            # cannot drift from the job that publishes it. Placeholders are
+            # substituted afterwards rather than interpolated by the shell: the body
+            # is dense with backticks, and a QUOTED heredoc keeps them literal
+            # instead of turning them into command substitution.
+            - name: Assemble release notes
+              env:
+                  VKEY: ${{ steps.facts.outputs.vkey }}
+                  RUSTV: ${{ steps.facts.outputs.rust }}
+              run: |
+                  cat > notes.md <<'NOTES'
+                  `figaro-sequencer` built from `__COMMIT__` (`__TAG__`).
+
+                  ## What this is
+
+                  A prebuilt relay binary, so running one no longer starts with installing a
+                  Rust and an SP1 toolchain. It is a convenience and nothing more: the relay
+                  is described in `prover/sequencer/README.md`, and running one is optional.
+
+                  `FigaroBatchVerifier.settleBatch` is permissionless, so this is one relay
+                  among any number. **The relay is transport, not authority.** It holds no
+                  keys and grants no privilege; its honest powers are censor-or-delay, never
+                  forge. The SP1 proof binds settlement to the EIP-712 structs both parties
+                  signed, and participants can always fall back to direct `FigaroCore`
+                  submission.
+
+                  So what you verify is the proof and the chain — not this artifact's
+                  provenance. A downloaded binary vouches for nothing on its own. The source
+                  is in this repo at the commit above; **rebuild and compare** beats trusting
+                  the download, and every field needed to do that is below.
+
+                  ## Rebuilding this
+
+                  ```sh
+                  git clone https://github.com/__REPO__ && cd Figaro
+                  git checkout __COMMIT__
+                  # host toolchain — compiles the sequencer
+                  rustup toolchain install __RUST_PIN__ --profile minimal
+                  # guest toolchain — supplies cargo prove and the succinct rustc
+                  curl -L https://sp1up.succinct.xyz | bash && sp1up --version __SP1__
+                  cd prover && cargo build --release --locked -p figaro-sequencer --bin sequencer
+                  ```
+
+                  | field | value |
+                  | --- | --- |
+                  | commit | `__COMMIT__` |
+                  | host toolchain | `__RUST_FULL__` (pinned `__RUST_PIN__`) |
+                  | SP1 version | `__SP1__` |
+                  | build | `cargo build --release --locked -p figaro-sequencer --bin sequencer`, run in `prover/` |
+
+                  Built without a cargo cache, from the committed `prover/Cargo.lock`.
+
+                  ## Guest program verification key
+
+                  ```
+                  __VKEY__
+                  ```
+
+                  The sequencer embeds the SP1 guest ELF at compile time, so this key is part
+                  of the binary's identity rather than a separate download. It is the value
+                  `DeployMainnet.s.sol` takes as `SP1_PROGRAM_VKEY` and `FigaroBatchVerifier`
+                  stores as its `programVKey` immutable — a build whose key differs from the
+                  one a deployed verifier pins cannot settle against it. Every binary in this
+                  release was checked to carry the same key; the workflow refuses to publish
+                  otherwise. Recompute it with:
+
+                  ```sh
+                  cd prover && cargo-prove prove vkey --elf __GUEST_ELF__
+                  ```
+
+                  ## Checksums
+
+                  ```
+                  NOTES
+                  cat staging/*.tar.gz.sha256 >> notes.md
+                  cat >> notes.md <<'NOTES'
+                  ```
+
+                  Verify with `shasum -a 256 -c <file>.sha256`; the `.sha256` companions are
+                  attached alongside the archives.
+
+                  ## Running it
+
+                  Each archive holds the `sequencer` binary and the relay README, which
+                  documents the environment variables, the HTTP API, and the mempool and
+                  publication bounds.
+                  NOTES
+                  sed -i \
+                      -e "s|__COMMIT__|${GITHUB_SHA}|g" \
+                      -e "s|__TAG__|${GITHUB_REF_NAME}|g" \
+                      -e "s|__REPO__|${GITHUB_REPOSITORY}|g" \
+                      -e "s|__RUST_PIN__|${RUST_TOOLCHAIN}|g" \
+                      -e "s|__RUST_FULL__|${RUSTV}|g" \
+                      -e "s|__SP1__|${SP1_VERSION}|g" \
+                      -e "s|__VKEY__|${VKEY}|g" \
+                      -e "s|__GUEST_ELF__|${GUEST_ELF}|g" \
+                      notes.md
+                  # A placeholder that reached the published body would be a silent
+                  # failure that still looks like a successful release.
+                  if grep -nE "__[A-Z0-9_]+__" notes.md; then
+                      echo "unsubstituted placeholder in release notes"
+                      exit 1
+                  fi
+                  cat notes.md
+
+            - name: Create release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh release create "$GITHUB_REF_NAME" \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --title "figaro-sequencer $GITHUB_REF_NAME" \
+                      --notes-file notes.md \
+                      --verify-tag \
+                      staging/*.tar.gz staging/*.tar.gz.sha256
