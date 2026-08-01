@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use alloy_primitives::Address;
 use tokio::sync::RwLock;
 use tokio::time;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 use figaro_sequencer::api::{self, AppState};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
@@ -38,7 +38,9 @@ async fn main() {
 
     // ── Configuration from environment ────────────────────────────
     let rpc_url = env_or("RPC_URL", "http://127.0.0.1:8545");
-    let chain_id: u64 = env_or("CHAIN_ID", "31337").parse().expect("invalid CHAIN_ID");
+    let chain_id: u64 = env_or("CHAIN_ID", "31337")
+        .parse()
+        .expect("invalid CHAIN_ID");
     let verifier_addr: Address = env_or(
         "BATCH_VERIFIER_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -53,6 +55,27 @@ async fn main() {
     )
     .parse()
     .expect("invalid USAGE_COUNTER_ADDRESS");
+    // The three registries the usage-claim pre-filter reads. Unset (zero)
+    // disables the pre-filter — every claim passes through and the counter's own
+    // gates plus the verifier's try/catch remain the backstop.
+    let clause_registry_addr: Address = env_or(
+        "CLAUSE_REGISTRY_ADDRESS",
+        "0x0000000000000000000000000000000000000000",
+    )
+    .parse()
+    .expect("invalid CLAUSE_REGISTRY_ADDRESS");
+    let assembly_registry_addr: Address = env_or(
+        "ASSEMBLY_REGISTRY_ADDRESS",
+        "0x0000000000000000000000000000000000000000",
+    )
+    .parse()
+    .expect("invalid ASSEMBLY_REGISTRY_ADDRESS");
+    let members_registry_addr: Address = env_or(
+        "MEMBERS_REGISTRY_ADDRESS",
+        "0x0000000000000000000000000000000000000000",
+    )
+    .parse()
+    .expect("invalid MEMBERS_REGISTRY_ADDRESS");
     let verifying_contract: Address = env_or(
         "FIGARO_CORE_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -91,7 +114,12 @@ async fn main() {
     info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
-    let mempool = Mempool::with_caps(chain_id, verifying_contract, mempool_max_ops, mempool_max_usage);
+    let mempool = Mempool::with_caps(
+        chain_id,
+        verifying_contract,
+        mempool_max_ops,
+        mempool_max_usage,
+    );
     let state_mirror = StateMirror::genesis();
     let archive = Archive::open(ArchiveConfig {
         path: (!archive_path.is_empty()).then(|| archive_path.clone().into()),
@@ -127,6 +155,9 @@ async fn main() {
         rpc_url: rpc_url.clone(),
         verifier_address: verifier_addr,
         usage_counter_address: usage_counter_addr,
+        clause_registry_address: clause_registry_addr,
+        assembly_registry_address: assembly_registry_addr,
+        members_registry_address: members_registry_addr,
         private_key,
     };
 
@@ -202,6 +233,18 @@ async fn batch_loop(
         // sitting in the mempool forever.
         let pending = mempool.drain().await;
         let usage_claims = mempool.drain_usage().await;
+
+        // Pre-filter usage claims against live chain state so a poison claim
+        // (excluded/unregistered artifact, or an unstaked seller) never enters a
+        // proof and cannot cost the rest of the batch its accrual. The counter's
+        // own gates and the verifier's try/catch remain the on-chain backstop
+        // for the residual race (a seller unstaking after this read).
+        let (usage_claims, dropped_claims) =
+            submitter::filter_usage_claims(&submitter_config, usage_claims).await;
+        for (claim, why) in &dropped_claims {
+            warn!(artifact = ?claim.artifact, reason = %why, "Dropped usage claim — the counter would reject it");
+        }
+
         if pending.is_empty() && usage_claims.is_empty() {
             continue;
         }
@@ -347,11 +390,8 @@ async fn publish(
     result: &prover::ProveResult,
     settlement_tx: Option<alloy_primitives::B256>,
 ) {
-    let (commits, resolutions) = archive::publication_from_ops(
-        batch.chain_id,
-        batch.verifying_contract,
-        &batch.operations,
-    );
+    let (commits, resolutions) =
+        archive::publication_from_ops(batch.chain_id, batch.verifying_contract, &batch.operations);
     archive
         .record(BatchRecord {
             batch: number,

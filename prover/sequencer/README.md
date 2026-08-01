@@ -99,6 +99,9 @@ CHAIN_ID=31337 \
 FIGARO_CORE_ADDRESS=0x... \
 BATCH_VERIFIER_ADDRESS=0x... \
 USAGE_COUNTER_ADDRESS=0x... \
+CLAUSE_REGISTRY_ADDRESS=0x... \
+ASSEMBLY_REGISTRY_ADDRESS=0x... \
+MEMBERS_REGISTRY_ADDRESS=0x... \
 cargo run -p figaro-sequencer --bin sequencer
 ```
 
@@ -115,6 +118,9 @@ locally.
 | `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract (the kernel) |
 | `BATCH_VERIFIER_ADDRESS` | zero | `FigaroBatchVerifier`; zero = prove-only dry run |
 | `USAGE_COUNTER_ADDRESS` | zero | RPGF `UsageCounter`; zero = credit no usage |
+| `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter |
+| `ASSEMBLY_REGISTRY_ADDRESS` | zero | `AssemblyRegistry`, read by the usage-claim pre-filter |
+| `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; all three zero disables the filter |
 | `SEQUENCER_PRIVATE_KEY` | anvil account 0 | Settlement tx signer (pays gas; no protocol privilege) |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
