@@ -190,7 +190,11 @@ async fn submit_usage(
     match state.mempool.submit_usage_claim(req.claim).await {
         Ok(pending) => {
             info!(route = "/submit-usage", pending, "usage claim admitted");
-            (StatusCode::OK, Json(serde_json::json!({ "pending": pending }))).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "pending": pending })),
+            )
+                .into_response()
         }
         Err(e) => submit_error("/submit-usage", "UsageClaim", e),
     }

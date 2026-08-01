@@ -3,7 +3,7 @@
 use figaro_kernel::kernel::apply_batch_with_state;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
-use sp1_sdk::{self, Elf, Prover, ProveRequest, ProverClient, SP1Stdin};
+use sp1_sdk::{self, Elf, ProveRequest, Prover, ProverClient, SP1Stdin};
 use tracing::info;
 
 /// Result of proving a batch.
@@ -90,7 +90,10 @@ async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<
         .execute(elf, stdin)
         .await
         .map_err(|e| format!("SP1 execution failed: {e}"))?;
-    info!(cycles = report.total_instruction_count(), "SP1 execution complete");
+    info!(
+        cycles = report.total_instruction_count(),
+        "SP1 execution complete"
+    );
     let verified_pv: PublicValues = sp1_pv.read();
     check_state_roots(&verified_pv, pv)?;
     Ok(Vec::new())
@@ -120,9 +123,7 @@ async fn prove_groth16(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<V
 /// root transition; a mismatch means the guest program and the host kernel
 /// have diverged.
 fn check_state_roots(sp1: &PublicValues, local: &PublicValues) -> Result<(), String> {
-    if sp1.prev_state_root != local.prev_state_root
-        || sp1.new_state_root != local.new_state_root
-    {
+    if sp1.prev_state_root != local.prev_state_root || sp1.new_state_root != local.new_state_root {
         return Err("SP1 and local execution produced different state roots".into());
     }
     Ok(())

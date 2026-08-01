@@ -59,7 +59,11 @@ async fn mempool_rejects_bad_buyer_sig() {
     if let KernelOp::Commit { buyer_sig, .. } = &mut ops[0] {
         buyer_sig.r = B256::repeat_byte(0x99);
     }
-    let err = mempool().submit(ops[0].clone()).await.unwrap_err().to_string();
+    let err = mempool()
+        .submit(ops[0].clone())
+        .await
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("buyer"), "{err}");
 }
 
@@ -69,7 +73,11 @@ async fn mempool_rejects_bad_seller_sig() {
     if let KernelOp::Commit { seller_sig, .. } = &mut ops[0] {
         seller_sig.s = B256::repeat_byte(0x77);
     }
-    let err = mempool().submit(ops[0].clone()).await.unwrap_err().to_string();
+    let err = mempool()
+        .submit(ops[0].clone())
+        .await
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("seller"), "{err}");
 }
 
@@ -123,8 +131,14 @@ async fn mempool_requeue_preserves_order() {
 #[tokio::test]
 async fn mempool_accepts_attest_with_valid_witness() {
     let ops = canonical_ops();
-    assert!(mempool().submit(ops[1].clone()).await.is_ok(), "seller attest");
-    assert!(mempool().submit(ops[2].clone()).await.is_ok(), "buyer attest");
+    assert!(
+        mempool().submit(ops[1].clone()).await.is_ok(),
+        "seller attest"
+    );
+    assert!(
+        mempool().submit(ops[2].clone()).await.is_ok(),
+        "buyer attest"
+    );
 }
 
 #[tokio::test]
@@ -135,7 +149,11 @@ async fn mempool_rejects_substituted_witness_spec() {
     if let KernelOp::AttestAsSeller { proof, .. } = &mut ops[1] {
         proof.spec_json = load_spec_json("figaro-handoff");
     }
-    let err = mempool().submit(ops[1].clone()).await.unwrap_err().to_string();
+    let err = mempool()
+        .submit(ops[1].clone())
+        .await
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("SpecIdentityMismatch"), "{err}");
 }
 
@@ -145,17 +163,30 @@ async fn mempool_rejects_content_hash_mismatch() {
     // signature gate passes, Gate C must reject.
     let ops = canonical_ops();
     let (role, target, clause_id, stage, proof) = match &ops[1] {
-        KernelOp::AttestAsSeller { role, target, clause_id, stage, proof, .. } => {
-            (role.clone(), target.clone(), *clause_id, *stage, proof.clone())
-        }
+        KernelOp::AttestAsSeller {
+            role,
+            target,
+            clause_id,
+            stage,
+            proof,
+            ..
+        } => (
+            role.clone(),
+            target.clone(),
+            *clause_id,
+            *stage,
+            proof.clone(),
+        ),
         other => panic!("expected AttestAsSeller, got {other:?}"),
     };
     let bogus_ref = keccak256("not the content");
     let domain = domain_separator(CHAIN_ID, CORE);
-    let (target_order_hash, _) =
-        figaro_kernel::kernel::derive_commitment_ids(&domain, &target);
+    let (target_order_hash, _) = figaro_kernel::kernel::derive_commitment_ids(&domain, &target);
     let struct_hash = attest_seller_struct_hash(&target_order_hash, &clause_id, stage, &bogus_ref);
-    let sig = sign_digest(&make_signing_key(SELLER1_KEY), &typed_data_hash(&domain, &struct_hash));
+    let sig = sign_digest(
+        &make_signing_key(SELLER1_KEY),
+        &typed_data_hash(&domain, &struct_hash),
+    );
 
     let err = mempool()
         .submit(KernelOp::AttestAsSeller {
@@ -181,7 +212,11 @@ async fn mempool_rejects_corrupt_section_data() {
     if let KernelOp::AttestAsSeller { proof, .. } = &mut ops[1] {
         proof.section_data = r#"{"modality":"pickup"}"#.to_string();
     }
-    let err = mempool().submit(ops[1].clone()).await.unwrap_err().to_string();
+    let err = mempool()
+        .submit(ops[1].clone())
+        .await
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("InvalidInclusionProof"), "{err}");
 }
 
@@ -191,18 +226,32 @@ async fn mempool_rejects_attest_signed_by_stranger() {
     // recovered address is not role.seller.
     let ops = canonical_ops();
     let (role, target, clause_id, stage, content_ref, proof) = match &ops[1] {
-        KernelOp::AttestAsSeller { role, target, clause_id, stage, content_ref, proof, .. } => (
-            role.clone(), target.clone(), *clause_id, *stage, *content_ref, proof.clone(),
+        KernelOp::AttestAsSeller {
+            role,
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            proof,
+            ..
+        } => (
+            role.clone(),
+            target.clone(),
+            *clause_id,
+            *stage,
+            *content_ref,
+            proof.clone(),
         ),
         other => panic!("expected AttestAsSeller, got {other:?}"),
     };
     let domain = domain_separator(CHAIN_ID, CORE);
-    let (target_order_hash, _) =
-        figaro_kernel::kernel::derive_commitment_ids(&domain, &target);
+    let (target_order_hash, _) = figaro_kernel::kernel::derive_commitment_ids(&domain, &target);
     let struct_hash =
         attest_seller_struct_hash(&target_order_hash, &clause_id, stage, &content_ref);
-    let stranger_sig =
-        sign_digest(&make_signing_key(BUYER_KEY), &typed_data_hash(&domain, &struct_hash));
+    let stranger_sig = sign_digest(
+        &make_signing_key(BUYER_KEY),
+        &typed_data_hash(&domain, &struct_hash),
+    );
 
     let err = mempool()
         .submit(KernelOp::AttestAsSeller {
@@ -256,7 +305,14 @@ async fn state_mirror_advance_changes_root() {
 #[test]
 fn assembler_batch_preserves_fields() {
     let ops = canonical_ops();
-    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1234, ops.clone(), empty_snapshot(), UsageContext::default());
+    let batch = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1234,
+        ops.clone(),
+        empty_snapshot(),
+        UsageContext::default(),
+    );
     assert_eq!(batch.chain_id, CHAIN_ID);
     assert_eq!(batch.verifying_contract, CORE);
     assert_eq!(batch.block_timestamp, 1234);
@@ -273,7 +329,11 @@ fn assembler_config_defaults() {
 fn pend(ops: Vec<KernelOp>) -> Vec<PendingOp> {
     ops.into_iter()
         .enumerate()
-        .map(|(i, op)| PendingOp { id: i as u64 + 1, key: B256::with_last_byte(i as u8 + 1), op })
+        .map(|(i, op)| PendingOp {
+            id: i as u64 + 1,
+            key: B256::with_last_byte(i as u8 + 1),
+            op,
+        })
         .collect()
 }
 
@@ -325,7 +385,12 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
         assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(ops));
     assert_eq!(valid.len(), 2, "commit + resolve settle");
     assert_eq!(poison.len(), 2, "both attests are dead-lettered");
-    assert!(poison.iter().all(|(_, reason)| reason.contains("OrderResolved")), "{poison:?}");
+    assert!(
+        poison
+            .iter()
+            .all(|(_, reason)| reason.contains("OrderResolved")),
+        "{poison:?}"
+    );
 }
 
 // ── HTTP API ──────────────────────────────────────────────────────
@@ -342,10 +407,15 @@ fn test_app_state() -> AppState {
 #[tokio::test]
 async fn api_status_returns_json() {
     let app = api::router(test_app_state(), ApiConfig::default());
-    let req = Request::builder().uri("/status").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/status")
+        .body(Body::empty())
+        .unwrap();
     let response = app.oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["state_root"].is_string());
     assert_eq!(json["pending_ops"], 0);
@@ -368,9 +438,14 @@ async fn api_submit_valid_op_and_status_reflects_it() {
     let response = app.clone().oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
-    let req = Request::builder().uri("/status").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/status")
+        .body(Body::empty())
+        .unwrap();
     let response = app.oneshot(req).await.unwrap();
-    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["pending_ops"], 1);
 }
@@ -405,8 +480,7 @@ async fn e2e_mempool_to_kernel() {
     let mirror = StateMirror::genesis();
     let prev = mirror.snapshot().await;
 
-    let (valid, poison) =
-        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
+    let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
     assert!(poison.is_empty());
 
     let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
@@ -489,7 +563,11 @@ async fn mempool_rejects_a_claim_with_no_artifact() {
     let input = build_canonical_batch_input();
     let mut claim = input.usage_claims[0].clone();
     claim.artifact = B256::ZERO;
-    let err = mempool().submit_usage_claim(claim).await.unwrap_err().to_string();
+    let err = mempool()
+        .submit_usage_claim(claim)
+        .await
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("artifact"), "{err}");
 }
 
@@ -513,7 +591,10 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
     );
     let (_, _, events_before, post) =
         apply_batch_with_state(&ops_only).expect("ops-only batch applies");
-    assert!(events_before.usage_accruals.is_empty(), "nothing credited yet");
+    assert!(
+        events_before.usage_accruals.is_empty(),
+        "nothing credited yet"
+    );
 
     // Now a batch with NO operations, carrying only the claim.
     let claims_only = assembler::assemble_batch(
@@ -561,7 +642,11 @@ async fn mempool_duplicate_usage_claim_is_idempotent() {
     let mp = mempool();
     let claim = input.usage_claims[0].clone();
     assert_eq!(mp.submit_usage_claim(claim.clone()).await.unwrap(), 1);
-    assert_eq!(mp.submit_usage_claim(claim).await.unwrap(), 1, "still one pending");
+    assert_eq!(
+        mp.submit_usage_claim(claim).await.unwrap(),
+        1,
+        "still one pending"
+    );
     assert_eq!(mp.usage_len().await, 1);
 }
 
@@ -578,7 +663,10 @@ async fn mempool_at_cap_evicts_the_newcomer() {
 
     let input = build_canonical_batch_input();
     let mut other = input.usage_claims[0].clone();
-    assert!(mp.submit_usage_claim(input.usage_claims[0].clone()).await.is_ok());
+    assert!(mp
+        .submit_usage_claim(input.usage_claims[0].clone())
+        .await
+        .is_ok());
     other.artifact = B256::repeat_byte(0x42);
     let err = mp.submit_usage_claim(other).await.unwrap_err();
     assert_eq!(err, SubmitError::Full);
@@ -618,14 +706,24 @@ async fn api_submit_full_mempool_returns_503_structured() {
         .unwrap();
     let response = app.oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
-    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(json["error"].as_str().unwrap().contains("mempool full"), "{json}");
+    assert!(
+        json["error"].as_str().unwrap().contains("mempool full"),
+        "{json}"
+    );
 }
 
 #[tokio::test]
 async fn api_submit_oversized_body_returns_413_structured() {
-    let app = api::router(test_app_state(), ApiConfig { max_body_bytes: 256 });
+    let app = api::router(
+        test_app_state(),
+        ApiConfig {
+            max_body_bytes: 256,
+        },
+    );
     let body = serde_json::json!({ "operation": &canonical_ops()[0] });
     let bytes = serde_json::to_vec(&body).unwrap();
     assert!(bytes.len() > 256, "fixture must exceed the test limit");
@@ -637,7 +735,9 @@ async fn api_submit_oversized_body_returns_413_structured() {
         .unwrap();
     let response = app.oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
-    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["error"].is_string(), "structured error body: {json}");
 }
@@ -653,7 +753,9 @@ async fn api_submit_malformed_json_returns_400_structured() {
         .unwrap();
     let response = app.oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["error"].is_string(), "structured error body: {json}");
 }
@@ -675,7 +777,9 @@ async fn api_submit_duplicate_returns_same_id() {
             .unwrap();
         let response = app.clone().oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-        let bytes = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         ids.push(json["id"].as_u64().unwrap());
     }
@@ -687,12 +791,21 @@ async fn api_submit_duplicate_returns_same_id() {
 async fn api_health_returns_liveness_and_counts() {
     let state = test_app_state();
     let app = api::router(state.clone(), ApiConfig::default());
-    state.mempool.submit(canonical_ops()[0].clone()).await.unwrap();
+    state
+        .mempool
+        .submit(canonical_ops()[0].clone())
+        .await
+        .unwrap();
 
-    let req = Request::builder().uri("/health").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/health")
+        .body(Body::empty())
+        .unwrap();
     let response = app.oneshot(req).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["status"], "ok");
     assert_eq!(json["pending_ops"], 1);
@@ -725,18 +838,25 @@ async fn e2e_http_submission_flows_into_formed_batch() {
     let pending = state.mempool.drain().await;
     assert_eq!(pending.len(), 1);
     let prev = state.state_mirror.snapshot().await;
-    let (valid, poison) =
-        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
+    let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
     assert!(poison.is_empty(), "{poison:?}");
 
     let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
     let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev, UsageContext::default());
-    assert_eq!(batch.operations.len(), 1, "the submitted commit rides the batch");
+    assert_eq!(
+        batch.operations.len(),
+        1,
+        "the submitted commit rides the batch"
+    );
 
     let (pv, _, _, post) = apply_batch_with_state(&batch).unwrap();
     assert_ne!(pv.prev_state_root, pv.new_state_root);
     let snap = post.to_snapshot();
-    assert_eq!(snap.order_status.len(), 1, "the committed order exists in post-state");
+    assert_eq!(
+        snap.order_status.len(),
+        1,
+        "the committed order exists in post-state"
+    );
 
     state.state_mirror.advance(post).await;
     assert_eq!(state.state_mirror.state_root().await, pv.new_state_root);
@@ -823,7 +943,11 @@ async fn archive_retains_what_batch_assembly_clears() {
         mp.submit(op).await.unwrap();
     }
     let pending = mp.drain().await;
-    assert_eq!(mp.len().await, 0, "the mempool keeps nothing after assembly");
+    assert_eq!(
+        mp.len().await,
+        0,
+        "the mempool keeps nothing after assembly"
+    );
 
     let ops: Vec<_> = pending.iter().map(|p| p.op.clone()).collect();
     let archive = Archive::in_memory(archive::DEFAULT_MAX_BATCHES);
@@ -832,7 +956,10 @@ async fn archive_retains_what_batch_assembly_clears() {
         .await;
 
     let (order_hash, process_id) = canonical_ids();
-    let view = archive.order(order_hash).await.expect("the order is published");
+    let view = archive
+        .order(order_hash)
+        .await
+        .expect("the order is published");
     assert!(view.commit.is_some(), "the commitment struct + signatures");
     assert!(view.resolution.is_some(), "and the resolution facts");
     assert_eq!(view.process_id, process_id);
@@ -842,9 +969,14 @@ async fn archive_retains_what_batch_assembly_clears() {
 #[tokio::test]
 async fn archive_is_bounded_and_the_evicted_batch_stops_answering() {
     let archive = Archive::in_memory(1);
-    archive.record(settle_and_publish(1, canonical_ops(), None)).await;
+    archive
+        .record(settle_and_publish(1, canonical_ops(), None))
+        .await;
     let (order_hash, process_id) = canonical_ids();
-    assert!(archive.order(order_hash).await.is_some(), "published while retained");
+    assert!(
+        archive.order(order_hash).await.is_some(),
+        "published while retained"
+    );
 
     archive.record(filler_record(2)).await;
     assert_eq!(archive.len().await, 1, "the window is bounded");
@@ -863,7 +995,9 @@ async fn archive_is_bounded_and_the_evicted_batch_stops_answering() {
 #[tokio::test]
 async fn archive_misses_an_unknown_hash() {
     let archive = Archive::in_memory(4);
-    archive.record(settle_and_publish(1, canonical_ops(), None)).await;
+    archive
+        .record(settle_and_publish(1, canonical_ops(), None))
+        .await;
     assert!(archive.order(B256::repeat_byte(0x11)).await.is_none());
     assert!(archive.process(B256::repeat_byte(0x22)).await.is_none());
 }
@@ -878,7 +1012,9 @@ async fn archive_journal_survives_a_restart() {
             max_batches: 8,
         })
         .await;
-        archive.record(settle_and_publish(1, canonical_ops(), Some(tx))).await;
+        archive
+            .record(settle_and_publish(1, canonical_ops(), Some(tx)))
+            .await;
     }
 
     let reopened = Archive::open(ArchiveConfig {
@@ -887,7 +1023,10 @@ async fn archive_journal_survives_a_restart() {
     })
     .await;
     let (order_hash, _) = canonical_ids();
-    let view = reopened.order(order_hash).await.expect("published across the restart");
+    let view = reopened
+        .order(order_hash)
+        .await
+        .expect("published across the restart");
     assert_eq!(
         view.commit.expect("commit leg").batch.settlement_tx,
         Some(tx),
@@ -914,7 +1053,10 @@ async fn archive_journal_rotates_and_stays_bounded_on_disk() {
     }
     assert_eq!(archive.len().await, 2, "memory window bounded");
     let lines = std::fs::read_to_string(&path).unwrap().lines().count();
-    assert!(lines <= 4, "journal rotates instead of growing: {lines} lines");
+    assert!(
+        lines <= 4,
+        "journal rotates instead of growing: {lines} lines"
+    );
 
     let reopened = Archive::open(ArchiveConfig {
         path: Some(path.clone()),
@@ -922,7 +1064,11 @@ async fn archive_journal_rotates_and_stays_bounded_on_disk() {
     })
     .await;
     assert_eq!(reopened.len().await, 2);
-    assert_eq!(reopened.window().await.last_batch, Some(8), "the newest survive");
+    assert_eq!(
+        reopened.window().await.last_batch,
+        Some(8),
+        "the newest survive"
+    );
     std::fs::remove_file(&path).ok();
     std::fs::remove_file(path.with_extension("jsonl.tmp")).ok();
 }
@@ -949,7 +1095,11 @@ async fn get_json(app: axum::Router, uri: &str) -> (StatusCode, serde_json::Valu
 async fn app_with_canonical_batch() -> axum::Router {
     let archive = Archive::in_memory(archive::DEFAULT_MAX_BATCHES);
     archive
-        .record(settle_and_publish(1, canonical_ops(), Some(B256::repeat_byte(0xab))))
+        .record(settle_and_publish(
+            1,
+            canonical_ops(),
+            Some(B256::repeat_byte(0xab)),
+        ))
         .await;
     api::router(published_app_state(archive), ApiConfig::default())
 }
@@ -957,8 +1107,11 @@ async fn app_with_canonical_batch() -> axum::Router {
 #[tokio::test]
 async fn api_order_route_publishes_the_signed_struct_and_both_signatures() {
     let (order_hash, process_id) = canonical_ids();
-    let (status, json) =
-        get_json(app_with_canonical_batch().await, &format!("/orders/{order_hash}")).await;
+    let (status, json) = get_json(
+        app_with_canonical_batch().await,
+        &format!("/orders/{order_hash}"),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let ops = canonical_ops();
@@ -970,8 +1123,14 @@ async fn api_order_route_publishes_the_signed_struct_and_both_signatures() {
     else {
         panic!("ops[0] is the commit");
     };
-    assert_eq!(json["order_hash"], serde_json::to_value(order_hash).unwrap());
-    assert_eq!(json["process_id"], serde_json::to_value(process_id).unwrap());
+    assert_eq!(
+        json["order_hash"],
+        serde_json::to_value(order_hash).unwrap()
+    );
+    assert_eq!(
+        json["process_id"],
+        serde_json::to_value(process_id).unwrap()
+    );
     // The whole commitment struct — the same information OrderCommitted +
     // OrderSeller + OrderCurrency carry, in the wire format /submit takes.
     assert_eq!(
@@ -997,8 +1156,11 @@ async fn api_order_route_publishes_the_signed_struct_and_both_signatures() {
 #[tokio::test]
 async fn api_order_route_publishes_the_resolution_payouts() {
     let (order_hash, _) = canonical_ids();
-    let (status, json) =
-        get_json(app_with_canonical_batch().await, &format!("/orders/{order_hash}")).await;
+    let (status, json) = get_json(
+        app_with_canonical_batch().await,
+        &format!("/orders/{order_hash}"),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let ops = canonical_ops();
@@ -1029,8 +1191,11 @@ async fn published_order_is_verifiable_by_the_reader() {
     // the parties named INSIDE that struct, and the payout figures must be
     // the kernel's own function of it.
     let (order_hash, _) = canonical_ids();
-    let (_, json) =
-        get_json(app_with_canonical_batch().await, &format!("/orders/{order_hash}")).await;
+    let (_, json) = get_json(
+        app_with_canonical_batch().await,
+        &format!("/orders/{order_hash}"),
+    )
+    .await;
 
     let commitment: Commitment =
         serde_json::from_value(json["commit"]["commitment"].clone()).expect("wire round-trip");
@@ -1079,11 +1244,20 @@ async fn api_process_route_publishes_its_orders_and_resolution_facts() {
     .await;
     assert_eq!(status, StatusCode::OK);
 
-    assert_eq!(json["process_id"], serde_json::to_value(process_id).unwrap());
+    assert_eq!(
+        json["process_id"],
+        serde_json::to_value(process_id).unwrap()
+    );
     let orders = json["orders"].as_array().expect("orders array");
     assert_eq!(orders.len(), 1);
-    assert_eq!(orders[0]["order_hash"], serde_json::to_value(order_hash).unwrap());
-    assert!(orders[0]["commit"].is_object(), "each order carries its commit leg");
+    assert_eq!(
+        orders[0]["order_hash"],
+        serde_json::to_value(order_hash).unwrap()
+    );
+    assert!(
+        orders[0]["commit"].is_object(),
+        "each order carries its commit leg"
+    );
 
     // ProcessResolved(processId, buyer, orderCount) + the authorizing sig.
     let ops = canonical_ops();
@@ -1144,20 +1318,28 @@ async fn api_batches_route_clamps_the_page_size() {
 async fn api_read_routes_reject_absence_and_garbage_structurally() {
     let app = app_with_canonical_batch().await;
 
-    let (status, json) = get_json(app.clone(), &format!("/orders/{}", B256::repeat_byte(0x11))).await;
+    let (status, json) =
+        get_json(app.clone(), &format!("/orders/{}", B256::repeat_byte(0x11))).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert!(
         json["error"].as_str().unwrap().contains("another relay"),
         "absence must never read as 'it did not happen': {json}"
     );
 
-    let (status, json) = get_json(app.clone(), &format!("/processes/{}", B256::repeat_byte(0x22))).await;
+    let (status, json) = get_json(
+        app.clone(),
+        &format!("/processes/{}", B256::repeat_byte(0x22)),
+    )
+    .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert!(json["error"].is_string());
 
     let (status, json) = get_json(app.clone(), "/orders/not-a-hash").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(json["error"].as_str().unwrap().contains("32-byte hash"), "{json}");
+    assert!(
+        json["error"].as_str().unwrap().contains("32-byte hash"),
+        "{json}"
+    );
 
     let (status, json) = get_json(app, "/batches?from=abc").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -1176,6 +1358,3 @@ async fn api_status_reports_the_publication_window() {
     assert_eq!(json["archive"]["retained_batches"], 1);
     assert_eq!(json["archive"]["max_batches"], 64);
 }
-
-
-

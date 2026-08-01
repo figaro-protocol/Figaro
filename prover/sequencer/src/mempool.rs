@@ -137,7 +137,10 @@ impl Mempool {
         let key = self.op_key(&op);
         let mut inner = self.inner.lock().await;
         if let Some(&id) = inner.index.get(&key) {
-            return Ok(Admission { id, duplicate: true });
+            return Ok(Admission {
+                id,
+                duplicate: true,
+            });
         }
         if inner.pending.len() >= self.max_pending_ops {
             return Err(SubmitError::Full);
@@ -146,7 +149,10 @@ impl Mempool {
         inner.next_id += 1;
         inner.index.insert(key, id);
         inner.pending.push_back(PendingOp { id, key, op });
-        Ok(Admission { id, duplicate: false })
+        Ok(Admission {
+            id,
+            duplicate: false,
+        })
     }
 
     /// Semantic dedup key: the on-chain identity of the op's effect, not
@@ -217,7 +223,9 @@ impl Mempool {
     /// evict-the-newcomer policy as ops.
     pub async fn submit_usage_claim(&self, claim: UsageClaim) -> Result<usize, SubmitError> {
         if claim.artifact == alloy_primitives::B256::ZERO {
-            return Err(SubmitError::Invalid("usage claim artifact is zero".to_string()));
+            return Err(SubmitError::Invalid(
+                "usage claim artifact is zero".to_string(),
+            ));
         }
         if claim.order.agreement_hash == alloy_primitives::B256::ZERO {
             return Err(SubmitError::Invalid(
@@ -368,8 +376,7 @@ impl Mempool {
                 buyer_sig,
                 proof,
             } => {
-                let (target_order_hash, target_process_id) =
-                    derive_commitment_ids(&domain, target);
+                let (target_order_hash, target_process_id) = derive_commitment_ids(&domain, target);
                 let struct_hash = attest_buyer_struct_hash(
                     &target_process_id,
                     &target_order_hash,

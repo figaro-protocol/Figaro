@@ -92,8 +92,13 @@ pub fn filter_applicable_ops(
         let mut progressed = false;
         let mut next_round: Vec<PendingOp> = Vec::new();
         for pending_op in remaining {
-            match trial_apply(chain_id, verifying_contract, block_timestamp, &state, &pending_op.op)
-            {
+            match trial_apply(
+                chain_id,
+                verifying_contract,
+                block_timestamp,
+                &state,
+                &pending_op.op,
+            ) {
                 Ok(post) => {
                     state = post;
                     valid.push(pending_op);
@@ -114,10 +119,15 @@ pub fn filter_applicable_ops(
     let poison = remaining
         .into_iter()
         .map(|pending_op| {
-            let reason =
-                trial_apply(chain_id, verifying_contract, block_timestamp, &state, &pending_op.op)
-                    .err()
-                    .unwrap_or_else(|| "op became applicable after filtering".to_string());
+            let reason = trial_apply(
+                chain_id,
+                verifying_contract,
+                block_timestamp,
+                &state,
+                &pending_op.op,
+            )
+            .err()
+            .unwrap_or_else(|| "op became applicable after filtering".to_string());
             (pending_op, reason)
         })
         .collect();
