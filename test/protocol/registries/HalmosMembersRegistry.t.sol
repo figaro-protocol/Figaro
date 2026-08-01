@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
+import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
 
 /// @title HalmosMembersRegistry — the state machine the Sybil bound rests on
 ///
@@ -249,7 +250,15 @@ contract HalmosMembersRegistry is Test {
         uint64[] memory periods = new uint64[](1);
         periods[0] = type(uint64).max;
         UsageCounter counter = new UsageCounter(
-            address(0xC0FFEE), address(members), verifier, keccak256("prov"), new bytes32[](0), 1, periods
+            address(0xC0FFEE),
+            address(members),
+            address(new MockArtifactStake()),
+            address(new MockArtifactStake()),
+            verifier,
+            keccak256("prov"),
+            new bytes32[](0),
+            1,
+            periods
         );
 
         if (leaves) {

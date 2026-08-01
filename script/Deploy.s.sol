@@ -166,7 +166,7 @@ contract Deploy is Script {
         // settleBatch checks each proof's (clause key → spec hash)
         // binding against contentHashOf before settling.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
-        _deployUsageAndVerifier(address(clauses), address(core), address(members), deployer);
+        _deployUsageAndVerifier(address(clauses), address(assemblies), address(core), address(members), deployer);
 
         // ── florin token + RPGF minter ─────────────────────────────────
         FlorinToken florin = new FlorinToken();
@@ -247,9 +247,13 @@ contract Deploy is Script {
     ///      guess fails the deploy instead of silently producing a counter no
     ///      verifier can write to, which would look healthy right up until the
     ///      first batch settled.
-    function _deployUsageAndVerifier(address clauseRegistry, address core, address members, address deployer)
-        internal
-    {
+    function _deployUsageAndVerifier(
+        address clauseRegistry,
+        address assemblyRegistry,
+        address core,
+        address members,
+        address deployer
+    ) internal {
         MockSP1Verifier mockSp1 = new MockSP1Verifier();
         console.log("MockSP1Verifier deployed at:", address(mockSp1));
 
@@ -257,7 +261,7 @@ contract Deploy is Script {
         // then the verifier.
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
 
-        _deployUsageCounter(core, members, predictedVerifier);
+        _deployUsageCounter(core, members, clauseRegistry, assemblyRegistry, predictedVerifier);
 
         // Genesis root is DERIVED — one keccak256("") per kernel state map
         // (processes, orderStatus, orderProcessId) plus the usage leg, which
@@ -312,7 +316,13 @@ contract Deploy is Script {
     ///      Deployed ahead of the RPGF minter and beside the batch verifier,
     ///      because the two reference each other — see
     ///      `_deployUsageAndVerifier`.
-    function _deployUsageCounter(address core, address members, address batchVerifier_) internal {
+    function _deployUsageCounter(
+        address core,
+        address members,
+        address clauseRegistry,
+        address assemblyRegistry,
+        address batchVerifier_
+    ) internal {
         // Accrual periods and per-period RPGF budgets are ONE schedule (the
         // minter validates its budget array against `periodCount()` at
         // deploy). The reference shape (ruled 2026-07-31) is NINE ANNUAL
@@ -353,6 +363,8 @@ contract Deploy is Script {
         UsageCounter counter = new UsageCounter(
             core,
             members, // seller-side live-stake gate: usage counts only for live-staked sellers
+            clauseRegistry, // artifact-side gate: a clause earns only while its deposit is live
+            assemblyRegistry, // artifact-side gate: an assembly earns only while its deposit is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,

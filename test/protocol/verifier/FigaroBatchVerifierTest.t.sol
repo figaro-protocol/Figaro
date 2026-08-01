@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import "src/protocol/verifier/FigaroBatchVerifier.sol";
 import "src/protocol/registries/ClauseRegistry.sol";
+import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockERC20.sol";
 import {MockERC20FeeOnTransfer} from "src/mocks/MockERC20FeeOnTransfer.sol";
@@ -60,8 +61,11 @@ contract FigaroBatchVerifierTest is Test {
         periods[0] = PERIOD_END;
         bytes32[] memory excluded = new bytes32[](1);
         excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        MockArtifactStake stakeGate = new MockArtifactStake();
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
-        counter = new UsageCounter(address(core), address(members), predicted, PROV_KEY, excluded, 1, periods);
+        counter = new UsageCounter(
+            address(core), address(members), address(stakeGate), address(stakeGate), predicted, PROV_KEY, excluded, 1, periods
+        );
         verifier =
             new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
         assertEq(address(verifier), predicted, "verifier address prediction");

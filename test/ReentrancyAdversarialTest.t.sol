@@ -11,6 +11,7 @@ import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockReentrantToken.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
+import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
 
 /// @title ReentrancyAdversarialTest — a malicious settlement token tries to
 ///        re-enter the kernel and the batch verifier during a token movement.
@@ -158,6 +159,8 @@ contract ReentrancyAdversarialTest is Test {
         UsageCounter usageCounter = new UsageCounter(
             address(new FigaroCore()),
             address(new MembersRegistry(0, 0)),
+            address(new MockArtifactStake()),
+            address(new MockArtifactStake()),
             vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1),
             keccak256("prov"),
             new bytes32[](0),

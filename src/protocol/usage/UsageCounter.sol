@@ -18,6 +18,24 @@ interface IMemberStake {
     function registered(address member) external view returns (bool);
 }
 
+/// @notice The ClauseRegistry field the artifact-side gate reads — the clause's
+///         stake state. A clause earns only while its registration deposit is
+///         un-withdrawn; the binding survives withdrawal, so `registrar != 0`
+///         alone is not liveness.
+interface IClauseStake {
+    function depositOf(bytes32 idHash) external view returns (address registrar, bool withdrawn);
+}
+
+/// @notice The AssemblyRegistry field the artifact-side gate reads — the
+///         composition's binding. Live iff registered and the deposit is not
+///         withdrawn.
+interface IAssemblyStake {
+    function bindings(bytes32 compositionHash)
+        external
+        view
+        returns (address author, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
+}
+
 /// @title UsageCounter — verified artifact usage, counted when it happens
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
@@ -72,6 +90,20 @@ contract UsageCounter {
     ///         alone (`icbrt(c·d²·1e18)`), and the network's own growth, not a
     ///         privileged class, is what the 600M pays for.
     IMemberStake public immutable members;
+
+    /// @notice ClauseRegistry / AssemblyRegistry — the ARTIFACT-side stake gate.
+    /// @dev    Usage counts toward the reward only while the artifact's own
+    ///         registration deposit is LIVE (registered and un-withdrawn). This
+    ///         is the artifact-side twin of the seller-side `members` gate: an
+    ///         unregistered `bytes32` is just a self-authored merkle-leaf key, so
+    ///         without this gate a self-dealt process could accrue score to
+    ///         arbitrary keys and inflate `totalScoreIn` at gas cost, diluting
+    ///         every honest author. Neither read is registry PRIOR KNOWLEDGE:
+    ///         both accept ANY live-staked artifact, derived from the live
+    ///         registry, never a hardcoded set. An artifact is a clause OR an
+    ///         assembly; both are consulted because the families are parallel.
+    IClauseStake public immutable clauses;
+    IAssemblyStake public immutable assemblies;
 
     /// @notice `FigaroBatchVerifier` — the ONLY address that may write the
     ///         batch-path accrual, and a PROOF-GATED WRITER, not an owner.
@@ -263,7 +295,9 @@ contract UsageCounter {
     error ZeroAddress();
     error ZeroMinSellers();
     error EmptyPeriods();
+    error TooManyPeriods();
     error PeriodsNotAscending();
+    error ArtifactNotRegistered(bytes32 artifact);
     error AccrualClosed();
     error UnknownOrder();
     error OrderNotResolved();
@@ -280,6 +314,8 @@ contract UsageCounter {
 
     /// @param _core        FigaroCore — the order-status and domain source.
     /// @param _members     MembersRegistry — the seller-side live-stake gate.
+    /// @param _clauses     ClauseRegistry — the clause-side artifact-stake gate.
+    /// @param _assemblies  AssemblyRegistry — the assembly-side artifact-stake gate.
     /// @param _batchVerifier  FigaroBatchVerifier — the proof-gated writer of
     ///                    the batch-path accrual. The verifier needs this
     ///                    contract's address too, so one of the two must be
@@ -297,22 +333,33 @@ contract UsageCounter {
     constructor(
         address _core,
         address _members,
+        address _clauses,
+        address _assemblies,
         address _batchVerifier,
         bytes32 _provenanceClause,
         bytes32[] memory _excluded,
         uint64 _minSellers,
         uint64[] memory _periodEnd
     ) {
-        if (_core == address(0) || _members == address(0) || _batchVerifier == address(0)) {
+        if (
+            _core == address(0) || _members == address(0) || _clauses == address(0) || _assemblies == address(0)
+                || _batchVerifier == address(0)
+        ) {
             revert ZeroAddress();
         }
         if (_minSellers == 0) revert ZeroMinSellers();
         if (_periodEnd.length == 0) revert EmptyPeriods();
+        // `currentPeriod()` / `periodClosed()` narrow the index to uint8; more
+        // than 256 periods would wrap period 256 to 0 and re-open a closed
+        // period's accrual, breaking the finality a consumer's payout relies on.
+        if (_periodEnd.length > 256) revert TooManyPeriods();
         for (uint256 i = 1; i < _periodEnd.length; ++i) {
             if (_periodEnd[i] <= _periodEnd[i - 1]) revert PeriodsNotAscending();
         }
         core = IFigaroCore(_core);
         members = IMemberStake(_members);
+        clauses = IClauseStake(_clauses);
+        assemblies = IAssemblyStake(_assemblies);
         batchVerifier = _batchVerifier;
         provenanceClause = _provenanceClause;
         minSellers = _minSellers;
@@ -391,6 +438,12 @@ contract UsageCounter {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
+        // 3. ARTIFACT-SIDE STAKE GATE. A clause earns only while its own
+        //    registration deposit is live. Without it a self-authored agreement
+        //    could commit any bytes32 key and accrue score to it, inflating the
+        //    shared denominator at gas cost. The seller-side twin is in `_accrue`.
+        if (!_clauseLive(artifact)) revert ArtifactNotRegistered(artifact);
+
         _accrue(artifact, period, processId, order.seller);
     }
 
@@ -428,6 +481,10 @@ contract UsageCounter {
         bytes32 sectionHash = keccak256(expected);
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
+
+        // ARTIFACT-SIDE STAKE GATE, assembly form — the composition must hold a
+        // live AssemblyRegistry binding (registered, deposit un-withdrawn).
+        if (!_assemblyLive(compositionHash)) revert ArtifactNotRegistered(compositionHash);
 
         _accrue(compositionHash, period, processId, order.seller);
     }
@@ -504,7 +561,17 @@ contract UsageCounter {
 
         for (uint256 i = 0; i < accruals.length; ++i) {
             BatchAccrual calldata a = accruals[i];
-            if (excludedArtifact[a.artifact]) revert ArtifactExcluded(a.artifact);
+            // SKIP, never revert — this call runs inside `settleBatch`, so a
+            // revert here would take down the whole batch's TOKEN settlement (a
+            // reward-tier gate blocking the settlement tier). An excluded or
+            // un-live artifact simply earns nothing: don't write it, don't touch
+            // the total, move on. The guest counts without knowing exclusion or
+            // registration (both are live chain state it cannot see), so the
+            // reward's own gates are applied HERE, and applying them as skips is
+            // what keeps trade settling. (Direct path reverts instead — it is a
+            // standalone tx with nothing else to unwind.)
+            if (excludedArtifact[a.artifact]) continue;
+            if (!_clauseLive(a.artifact) && !_assemblyLive(a.artifact)) continue;
 
             Accrual storage stored = batchAccrualOf[a.artifact][period];
             // Cumulative counts can only grow. The state-root check in the
@@ -635,6 +702,22 @@ contract UsageCounter {
     }
 
     // ── Internals ───────────────────────────────────────────────────
+
+    /// @dev Whether `artifact` holds a LIVE ClauseRegistry stake — registered
+    ///      and its deposit un-withdrawn. The binding survives withdrawal
+    ///      (committed agreements reference it forever), so a non-zero registrar
+    ///      is not liveness; `!withdrawn` is.
+    function _clauseLive(bytes32 artifact) internal view returns (bool) {
+        (address registrar, bool withdrawn) = clauses.depositOf(artifact);
+        return registrar != address(0) && !withdrawn;
+    }
+
+    /// @dev Whether `artifact` holds a LIVE AssemblyRegistry binding —
+    ///      registered and its deposit un-withdrawn.
+    function _assemblyLive(bytes32 artifact) internal view returns (bool) {
+        (address author, uint64 registeredAt, bool depositWithdrawn,) = assemblies.bindings(artifact);
+        return author != address(0) && registeredAt != 0 && !depositWithdrawn;
+    }
 
     /// @dev Recompute the order hash from the signed struct and require the
     ///      kernel to report it RESOLVED (status 2). Mirrors

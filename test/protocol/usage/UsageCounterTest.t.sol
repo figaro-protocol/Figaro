@@ -8,6 +8,7 @@ import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
+import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
 
 /// @notice UsageCounter — the accrual that replaces reconstructing usage after
 ///         the fact. Every test here is a property of "count it when it
@@ -23,6 +24,7 @@ contract UsageCounterTest is Test {
     MembersRegistry members;
     UsageCounter counter;
     MockERC20 token;
+    MockArtifactStake stake;
 
     uint256 constant BUYER_KEY = 0xB0;
     uint256 constant SELLER1_KEY = 0x51;
@@ -63,6 +65,11 @@ contract UsageCounterTest is Test {
         core = new FigaroCore();
         token = new MockERC20("Test", "TST");
         members = new MembersRegistry(0, 0);
+        // Artifact-side stake gate. One permissive mock stands in for both the
+        // clause and assembly registries — every artifact is live by default,
+        // so counting tests need no registration; the gate itself is proved in
+        // its own section with `kill()`.
+        stake = new MockArtifactStake();
 
         // The seller-side live-stake gate: only a registered seller's settled
         // trades count. Both sellers stake here (zero deposit in this suite).
@@ -80,7 +87,7 @@ contract UsageCounterTest is Test {
         // main fixture so each test isolates its own property. The floor's own
         // properties are proved in the "Minimum-support floor" section below on
         // a counter deployed at the mainnet value of 3.
-        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, periods);
+        counter = new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, periods);
 
         address[5] memory ppl = [buyer, buyer2, seller1, seller2, seller3];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -260,6 +267,18 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller1));
         _record(b, CARGO_KEY);
+    }
+
+    function test_revertsWhenClauseNotRegistered() public {
+        // The ARTIFACT-side twin of the seller-stake gate: a clause earns only
+        // while its own registration deposit is live. Without it a self-authored
+        // agreement could commit any bytes32 leaf key and accrue score to it,
+        // inflating the shared denominator at gas cost (audit M-2, 2026-08-01).
+        stake.kill(CARGO_KEY);
+        CommitmentTypes.Commitment memory c =
+            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ArtifactNotRegistered.selector, CARGO_KEY));
+        _record(c, CARGO_KEY);
     }
 
     // ── Counting properties ─────────────────────────────────────────
@@ -568,7 +587,7 @@ contract UsageCounterTest is Test {
         periods[0] = P0_END;
         periods[1] = P1_END;
         floored =
-            new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 3, periods);
+            new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 3, periods);
     }
 
     function _recordOn(UsageCounter target, CommitmentTypes.Commitment memory c, bytes32 artifact) internal {
@@ -645,16 +664,29 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(members), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(address(0), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(address(core), address(0), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(0), PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(address(core), address(members), address(0), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        vm.expectRevert(UsageCounter.ZeroAddress.selector);
+        new UsageCounter(address(core), address(members), address(stake), address(0), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        vm.expectRevert(UsageCounter.ZeroAddress.selector);
+        new UsageCounter(address(core), address(members), address(stake), address(stake), address(0), PROV_KEY, _excluded(), 1, p);
+    }
+
+    function test_constructor_rejectsTooManyPeriods() public {
+        uint64[] memory p = new uint64[](257);
+        for (uint256 i = 0; i < 257; ++i) {
+            p[i] = uint64(P0_END + i);
+        }
+        vm.expectRevert(UsageCounter.TooManyPeriods.selector);
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, new uint64[](0));
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -662,7 +694,7 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
     }
 
     function test_constructor_rejectsZeroMinSellers() public {
@@ -671,7 +703,7 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroMinSellers.selector);
-        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 0, p);
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 0, p);
     }
 
     // ── The batch bridge: proof-gated accrual ───────────────────────
@@ -764,11 +796,32 @@ contract UsageCounterTest is Test {
         counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 
-    function test_batchAccrualRejectsAnExcludedArtifact() public {
+    function test_batchAccrualSkipsAnExcludedArtifact() public {
+        // SKIP, never revert: this runs inside settleBatch, so a revert would
+        // take down the whole batch's token settlement. An excluded artifact
+        // simply earns nothing — not written, total untouched, trade settles.
         bytes32 commerce = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ArtifactExcluded.selector, commerce));
         counter.applyBatchAccrual(0, PROV_KEY, _accrual(commerce, 9, 9), _sellers(seller1));
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(commerce, 0);
+        assertEq(c, 0, "excluded artifact not written");
+        assertEq(d, 0, "excluded artifact not written");
+        assertEq(score, 0, "excluded artifact not scored");
+        assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
+    }
+
+    function test_batchAccrualSkipsAnUnregisteredArtifact() public {
+        // Same skip semantics for an artifact with no live registration —
+        // the batch-path twin of the direct path's ArtifactNotRegistered revert.
+        stake.kill(CARGO_KEY);
+        uint256 totalBefore = counter.totalScoreIn(0);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 9, 9), _sellers(seller1));
+        (uint64 c,, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
+        assertEq(c, 0, "unregistered artifact not written");
+        assertEq(score, 0, "unregistered artifact not scored");
+        assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
     }
 
     function test_batchAccrualRejectsAForeignProvenanceClause() public {

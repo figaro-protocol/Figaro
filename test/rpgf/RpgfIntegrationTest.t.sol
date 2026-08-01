@@ -78,7 +78,9 @@ contract RpgfIntegrationTest is Test {
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
-        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, periods);
+        counter = new UsageCounter(
+            address(core), address(members), address(clauses), address(assemblies), batchVerifier, PROV_KEY, _excluded(), 1, periods
+        );
 
         uint256[] memory amounts = new uint256[](3);
         amounts[0] = T0;

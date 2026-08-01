@@ -227,6 +227,8 @@ contract DeployMainnet is Script {
         UsageCounter usageCounter = new UsageCounter(
             _core,
             _members, // seller-side live-stake gate: usage counts only for live-staked sellers
+            _clauses, // artifact-side gate: a clause earns only while its deposit is live
+            _assemblies, // artifact-side gate: an assembly earns only while its deposit is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
