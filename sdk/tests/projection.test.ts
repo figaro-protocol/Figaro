@@ -223,12 +223,16 @@ describe("publicForm — the public/private disposition seam", () => {
         expect(computeAgreementHash(publicForm(agreement, specs))).toBe(computeAgreementHash(agreement));
     });
 
-    it("withholds conservatively when a clause spec is not loaded", () => {
+    it("keeps a section plaintext when its clause spec is not loaded (positive-knowledge withhold)", () => {
         const unknown = {
             ...agreement,
-            sections: [{ clause: "unknown-clause", version: 1, data: { f0: "maybe-private" } }],
+            sections: [{ clause: "unknown-clause", version: 1, data: { f0: "public-until-proven-private" } }],
         };
-        expect(publicForm(unknown, specs).sections[0].data).toBeUndefined();
+        // Unknown spec → NOT withheld: a private value can only be entered through
+        // a disposition-aware input that loads the spec, so a genuinely-private
+        // section always has a warm spec here; withholding on unknown would blank
+        // out the structural PUBLIC clauses (topology, commerce) on a cold cache.
+        expect(publicForm(unknown, specs).sections[0].data).toBeDefined();
     });
 
     it("specHasPrivateField flags a private clause only", () => {

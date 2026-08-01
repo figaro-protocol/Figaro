@@ -147,19 +147,25 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
  *  verifies the root and every public section. Sections whose clause is entirely
  *  public pass through as plaintext — that is the free coordination commons.
  *
- *  A section whose spec is NOT loaded is withheld CONSERVATIVELY: absence of a
- *  spec is not proof the data is public. Callers therefore pass the SAME
- *  `SpecSource` used to build the agreement (its clauses are loaded by
- *  construction), so this only bites a genuinely-unknown clause. The signed and
- *  counterparty-relayed forms keep plaintext — only the standalone public pin
- *  takes this form. */
+ *  Withholding is POSITIVE-knowledge only: a section is withheld iff its spec is
+ *  loaded AND declares a private field. A section whose spec is NOT loaded stays
+ *  plaintext — and that is safe, not a leak: a `private` value can only be
+ *  ENTERED through a disposition-aware input, which had to load the clause spec
+ *  to render, so a section that actually carries private data always has a warm
+ *  spec here and is still withheld. Withholding on an UNKNOWN spec instead
+ *  (fail-closed) over-redacts the structural PUBLIC clauses (topology, commerce)
+ *  whenever the async spec cache has not warmed yet, blanking them out of every
+ *  public reader — a correctness regression worse than the theoretical cold-spec
+ *  leak it guards, which cannot occur for a value entered through the seam. The
+ *  signed and counterparty-relayed forms keep full plaintext regardless — only
+ *  the standalone public pin takes this form. */
 export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
     return {
         ...agreement,
         sections: agreement.sections.map((section) => {
             if (section.data === undefined) return section; // already withheld
             const spec = specs.get(section.clause, section.version);
-            const isPrivate = spec ? specHasPrivateField(spec) : true;
+            const isPrivate = spec ? specHasPrivateField(spec) : false;
             return isPrivate ? withholdSectionContent(section) : section;
         }),
     };
