@@ -8,9 +8,12 @@
  *      `cachedCatalogueURI` is supplied — useful on retry).
  *   2. Build the profile document with the catalogue URI embedded.
  *   3. Pin the profile document to IPFS.
- *   4. Read the on-chain `registrationDeposit` ON DEMAND
- *      (NOT via a React hook whose `data` may still be undefined when
- *      the wizard's submit fires).
+ *   4. Read the on-chain `registrationDeposit` AND the wallet's
+ *      registration status (`registered(wallet)`) ON DEMAND (NOT via a
+ *      React hook whose `data` may still be undefined when the wizard's
+ *      submit fires — the exact race that made the wizard call `register`
+ *      on an already-registered wallet → `AlreadyRegistered` revert →
+ *      a stuck receipt that never renders).
  *   5. Simulate the appropriate registry call (`register` for first-
  *      time, `updateProfile` for re-pin) BEFORE opening the wallet,
  *      so a wrong-deposit / unauthorised revert surfaces as a typed
@@ -22,7 +25,9 @@
  * the deposit from `useRegistrationDeposit()` (could be undefined →
  * `?? 0n` → on-chain revert), skipped simulation, and only relied on
  * `useWaitForTransactionReceipt`'s `isSuccess` without inspecting the
- * receipt status itself.
+ * receipt status itself. The register-vs-update BRANCH is likewise read
+ * on-demand from the chain, not passed in from a React query, for the
+ * same undefined-when-submit-fires reason.
  */
 
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
@@ -53,9 +58,6 @@ export interface PublishMemberInput {
     unitSystem?: UnitSystem;
     /** Subject wallet — used as the catalogue's `subjectAddress`. */
     wallet: `0x${string}`;
-    /** `true` → call `updateProfile(uri)` (no deposit). `false` → call
-     *  `register(uri)` payable with `registrationDeposit` wei. */
-    isRegistered: boolean;
     /** Idempotency cache: if the previous publish attempt pinned the
      *  catalogue but failed at the on-chain step, the caller can pass
      *  the prior URI to skip re-pinning. */
@@ -134,15 +136,23 @@ export function usePublishMemberProfile() {
         );
         const profileURI = profilePin.uri;
 
-        // (d) Read the deposit ON DEMAND. `useRegistrationDeposit`
-        //     can be undefined when the wizard's submit fires; the
-        //     prior `?? 0n` would silently revert on-chain because
-        //     `register` requires `msg.value == registrationDeposit`.
+        // (d) Read the registration status + deposit ON DEMAND. A React
+        //     query (`useMemberProfile` / `useRegistrationDeposit`) can be
+        //     undefined when the wizard's submit fires — trusting a stale
+        //     `false` would call `register` on an already-registered wallet
+        //     and revert `AlreadyRegistered`; a stale deposit would revert
+        //     on `msg.value`. The chain is the authority for both.
         // (e) Simulate before opening the wallet, then submit. Split
         //     by branch so the non-payable `updateProfile` doesn't
         //     receive a `value` arg (wagmi's type would reject it).
+        const alreadyRegistered = (await client.readContract({
+            address: registry,
+            abi: MEMBERS_REGISTRY_ABI,
+            functionName: "registered",
+            args: [input.wallet],
+        })) as boolean;
         let txHash: `0x${string}`;
-        if (input.isRegistered) {
+        if (alreadyRegistered) {
             try {
                 await client.simulateContract({
                     address: registry,

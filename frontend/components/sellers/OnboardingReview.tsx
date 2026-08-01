@@ -136,7 +136,6 @@ export function OnboardingReview() {
                 items,
                 unitSystem: state.catalogue?.unitSystem,
                 wallet: address,
-                isRegistered,
                 cachedCatalogueURI: state.publishedCatalogueURI,
             });
             update({
