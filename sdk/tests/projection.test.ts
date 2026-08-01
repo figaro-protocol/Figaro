@@ -16,9 +16,14 @@ import {
     buildAssemblyTemplate,
     buildOrderAgreement,
     canonicalize,
+    computeAgreementHash,
+    publicForm,
     sectionByField,
+    sectionDataHash,
     serializeAssemblyTemplate,
+    specHasPrivateField,
     validateCommitmentAgreement,
+    type ProjectionSpecView,
     type SpecSource,
 } from "../src/index.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
@@ -171,5 +176,63 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(sectionByField(agreement, "parentOrderHashes", empty)?.clause).toBe(
             "figaro-topology",
         );
+    });
+});
+
+describe("publicForm — the public/private disposition seam", () => {
+    // A minimal SpecSource: one all-public clause, one clause with a private field.
+    const specView = (clauseId: string, dispositions: (string | undefined)[]): ProjectionSpecView => ({
+        clauseId,
+        version: 1,
+        fields: dispositions.map((d, i) => ({
+            name: `f${i}`,
+            required: false,
+            type: "string" as const,
+            ...(d !== undefined && { disposition: d as "public" | "private" }),
+        })),
+    });
+    const specs: SpecSource = {
+        get: (clauseId) =>
+            clauseId === "pub-clause"
+                ? specView("pub-clause", ["public", undefined])
+                : clauseId === "priv-clause"
+                  ? specView("priv-clause", ["private"])
+                  : undefined,
+        list: () => [],
+    };
+    const agreement = {
+        version: "a1" as const,
+        buyer: BUYER,
+        seller: SELLER,
+        sections: [
+            { clause: "pub-clause", version: 1, data: { f0: "open", f1: "map" } },
+            { clause: "priv-clause", version: 1, data: { f0: "secret-coordinate" } },
+        ],
+    };
+
+    it("withholds a private section, keeps a public one plaintext", () => {
+        const withheld = publicForm(agreement, specs);
+        const pub = withheld.sections.find((s) => s.clause === "pub-clause")!;
+        const priv = withheld.sections.find((s) => s.clause === "priv-clause")!;
+        expect(pub.data).toBeDefined(); // public coordination commons stays open
+        expect(priv.data).toBeUndefined(); // paid-edge plaintext removed
+        expect(priv.dataHash).toBe(sectionDataHash({ clause: "priv-clause", version: 1, data: { f0: "secret-coordinate" } }));
+    });
+
+    it("leaves the agreementHash unchanged — the withheld leaf is identical", () => {
+        expect(computeAgreementHash(publicForm(agreement, specs))).toBe(computeAgreementHash(agreement));
+    });
+
+    it("withholds conservatively when a clause spec is not loaded", () => {
+        const unknown = {
+            ...agreement,
+            sections: [{ clause: "unknown-clause", version: 1, data: { f0: "maybe-private" } }],
+        };
+        expect(publicForm(unknown, specs).sections[0].data).toBeUndefined();
+    });
+
+    it("specHasPrivateField flags a private clause only", () => {
+        expect(specHasPrivateField(specView("x", ["public", undefined]))).toBe(false);
+        expect(specHasPrivateField(specView("x", ["public", "private"]))).toBe(true);
     });
 });

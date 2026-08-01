@@ -34,6 +34,7 @@
 import {
     canonicalize,
     computeAgreementHash,
+    withholdSectionContent,
     type Agreement,
     type AgreementSection,
 } from "./agreement.js";
@@ -125,6 +126,43 @@ function parseFillList(raw: unknown): readonly string[] | undefined {
  *  up by: ANY registered clause carrying the field participates. */
 export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): boolean {
     return spec.fields.some((f) => f.name === fieldName);
+}
+
+/** Whether a clause spec declares ANY field as `private`-disposition. A section
+ *  committing such a clause carries paid-edge plaintext that must never reach a
+ *  public surface. Because the merkle leaf model withholds a WHOLE section (never
+ *  one field), a section is treated as private if ANY of its fields is — the
+ *  conservative direction (protect the private value; over-redact co-located
+ *  public fields). Layer-A validation refuses to register a clause that mixes
+ *  dispositions, so in practice this only ever fires on a fully-private clause. */
+export function specHasPrivateField(spec: ProjectionSpecView): boolean {
+    return spec.fields.some((f) => f.disposition === "private");
+}
+
+/** The PUBLIC-pin form of an agreement: every section whose clause declares a
+ *  `private`-disposition field is content-WITHHELD (its plaintext `data` replaced
+ *  by the `dataHash` fingerprint), so a paid-edge value never lands on public
+ *  IPFS or in a shareable audit bundle. The withheld section contributes the
+ *  IDENTICAL merkle leaf, so `agreementHash` is unchanged and any reader still
+ *  verifies the root and every public section. Sections whose clause is entirely
+ *  public pass through as plaintext — that is the free coordination commons.
+ *
+ *  A section whose spec is NOT loaded is withheld CONSERVATIVELY: absence of a
+ *  spec is not proof the data is public. Callers therefore pass the SAME
+ *  `SpecSource` used to build the agreement (its clauses are loaded by
+ *  construction), so this only bites a genuinely-unknown clause. The signed and
+ *  counterparty-relayed forms keep plaintext — only the standalone public pin
+ *  takes this form. */
+export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
+    return {
+        ...agreement,
+        sections: agreement.sections.map((section) => {
+            if (section.data === undefined) return section; // already withheld
+            const spec = specs.get(section.clause, section.version);
+            const isPrivate = spec ? specHasPrivateField(spec) : true;
+            return isPrivate ? withholdSectionContent(section) : section;
+        }),
+    };
 }
 
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —

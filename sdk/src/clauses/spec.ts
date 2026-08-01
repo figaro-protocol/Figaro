@@ -500,6 +500,22 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             if (child !== null) parsedFields.push(child);
         }
     }
+    // A section commits a clause's content fields as ONE merkle leaf, and the
+    // leaf model withholds a WHOLE section, never a single field (agreement.ts).
+    // So a clause whose content fields MIX public and private dispositions cannot
+    // be published safely: withholding it for a public pin over-redacts its
+    // public fields, and NOT withholding leaks its private ones. Author private
+    // data as its own clause (see `figaro-geolocation`'s "private version" note).
+    if (parsedFields.length > 0) {
+        const anyPrivate = parsedFields.some((f) => f.disposition === "private");
+        const anyPublic = parsedFields.some((f) => f.disposition !== "private");
+        if (anyPrivate && anyPublic) {
+            errors.push({
+                path: "$.fields",
+                message: "a clause may not mix public and private field dispositions — a section is withheld as a whole; author private fields as their own clause",
+            });
+        }
+    }
     let parsedStages: Record<number, readonly FieldSpec[]> | undefined;
     if (stages !== undefined) {
         if (!isObject(stages)) {

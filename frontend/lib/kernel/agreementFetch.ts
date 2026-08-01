@@ -15,9 +15,10 @@
  * correct: you can't fetch a body you were never pointed at.
  */
 import type { Hex } from "viem";
-import { computeAgreementHash, type Agreement } from "@figaro/sdk";
+import { computeAgreementHash, publicForm, type Agreement } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { hexEqual } from "@/lib/shared/evm";
 
 const URI_PREFIX = "figaro:agreement-uri:";
@@ -146,7 +147,14 @@ export async function publishAgreement(
 ): Promise<PublishedAgreement> {
     const agreementHash = computeAgreementHash(agreement);
     const t = transport(options);
-    const cid = await t.pinJSON(agreement);
+    // Withhold every `private`-disposition section from the PUBLIC pin — a paid-
+    // edge value's plaintext never lands on public IPFS or in a shareable audit
+    // bundle. The withheld leaf is identical, so `agreementHash` is unchanged and
+    // any reader still verifies the root + every public section. The signed and
+    // counterparty-relayed forms keep plaintext; only this standalone pin is
+    // redacted. `specSource()` is the app-boundary-warmed clause-spec cache the
+    // agreement was already built from; an unknown clause withholds conservatively.
+    const cid = await t.pinJSON(publicForm(agreement, specSource()));
     const uri = t.buildURI(cid);
     saveAgreementUri(agreementHash, uri);
     return { agreementHash, cid, uri };

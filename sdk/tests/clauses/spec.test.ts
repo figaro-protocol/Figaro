@@ -270,4 +270,27 @@ describe("parseClauseSpec — meta-clause validation", () => {
         });
         expect(result.ok).toBe(false);
     });
+
+    it("rejects a clause that mixes public and private field dispositions", () => {
+        const result = parseClauseSpec({
+            clauseId: "figaro-mixed", version: 1, title: "M", description: "D",
+            fields: [
+                { name: "open", required: false, type: "string", disposition: "public" },
+                { name: "secret", required: false, type: "string", disposition: "private" },
+            ],
+        });
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.errors.some((e) => e.path === "$.fields" && /mix public and private/.test(e.message))).toBe(true);
+        }
+    });
+
+    it("accepts an all-private clause (homogeneous disposition)", () => {
+        const result = parseClauseSpec({
+            clauseId: "figaro-private-only", version: 1, title: "P", description: "D",
+            fields: [{ name: "secret", required: false, type: "string", disposition: "private" }],
+        });
+        expect(result.ok).toBe(true);
+    });
+
 });
