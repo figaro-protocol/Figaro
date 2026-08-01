@@ -59,18 +59,18 @@ export interface CoordinationMessagingService {
         params: CoordinationMessagingContext & {
             recipientAddress: string;
             orderId: string;
-            payloadCid: string;
+            payload: string;
         },
     ): Promise<void>;
     subscribeCommitmentPayload(
         params: CoordinationMessagingContext & {
             orderId: string;
-            callback: (payloadCid: string, senderIdentity: string) => void;
+            callback: (payload: string, senderIdentity: string) => void;
         },
     ): Promise<() => void>;
     subscribeAnyCommitmentPayload(
         params: CoordinationMessagingContext & {
-            callback: (payloadCid: string, orderId: string) => void;
+            callback: (payload: string, orderId: string) => void;
         },
     ): Promise<() => void>;
 }
@@ -143,25 +143,25 @@ class DefaultCoordinationMessagingService implements CoordinationMessagingServic
         return channel.onWrappedKey(orderId, callback);
     }
 
-    async sendCommitmentPayload({ recipientAddress, orderId, payloadCid, ...context }: CoordinationMessagingContext & {
+    async sendCommitmentPayload({ recipientAddress, orderId, payload, ...context }: CoordinationMessagingContext & {
         recipientAddress: string;
         orderId: string;
-        payloadCid: string;
+        payload: string;
     }): Promise<void> {
         const channel = await this.getChannel(context);
-        await channel.sendCommitmentPayload({ recipientAddress, orderId, payloadCid });
+        await channel.sendCommitmentPayload({ recipientAddress, orderId, payload });
     }
 
     async subscribeCommitmentPayload({ orderId, callback, ...context }: CoordinationMessagingContext & {
         orderId: string;
-        callback: (payloadCid: string, senderIdentity: string) => void;
+        callback: (payload: string, senderIdentity: string) => void;
     }): Promise<() => void> {
         const channel = await this.getChannel(context);
         return channel.onCommitmentPayload(orderId, callback);
     }
 
     async subscribeAnyCommitmentPayload({ callback, ...context }: CoordinationMessagingContext & {
-        callback: (payloadCid: string, orderId: string) => void;
+        callback: (payload: string, orderId: string) => void;
     }): Promise<() => void> {
         const channel = await this.getChannel(context);
         return channel.onAnyCommitmentPayload(callback);

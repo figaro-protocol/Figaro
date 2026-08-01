@@ -383,7 +383,6 @@ export function useOrderCommitmentFlow() {
                 walletClient: walletClient ?? null,
                 chainId,
                 coordinationMessaging: services.coordinationMessaging,
-                evidenceTransport: services.evidenceTransport,
             });
             setStep("awaiting-buyer");
             return returned;
@@ -433,7 +432,6 @@ export function useOrderCommitmentFlow() {
                 walletClient: walletClient ?? null,
                 chainId,
                 coordinationMessaging: services.coordinationMessaging,
-                evidenceTransport: services.evidenceTransport,
                 // A quote is a DIFFERENT struct than the request (the whole
                 // point) — it answers on the REQUEST's conversation id, where
                 // the buyer is listening.

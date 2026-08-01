@@ -78,13 +78,13 @@ describe("coordinationMessagingService", () => {
             address: "0x1234",
             recipientAddress: "0xabcd",
             orderId: "order-3",
-            payloadCid: "QmExampleCid",
+            payload: "{\"commitment\":{}}",
         });
 
         expect(sendCommitmentPayloadMock).toHaveBeenCalledWith({
             recipientAddress: "0xabcd",
             orderId: "order-3",
-            payloadCid: "QmExampleCid",
+            payload: "{\"commitment\":{}}",
         });
     });
 

@@ -121,7 +121,7 @@ function notifyMessage(
             notify("ECDH_WRAPPED_KEY", message.orderId, message, message.senderIdentity);
             return;
         case "COMMITMENT_PAYLOAD":
-            notify("COMMITMENT_PAYLOAD", message.orderId, message.payloadCid, message.senderIdentity, message.orderId);
+            notify("COMMITMENT_PAYLOAD", message.orderId, message.payload, message.senderIdentity, message.orderId);
             return;
     }
 }
@@ -264,11 +264,11 @@ export function createMockChannel(ownerAddress: string): HandoffChannel {
 
         // ── Commitment payload exchange ──
 
-        async sendCommitmentPayload({ recipientAddress: _, orderId, payloadCid }) {
+        async sendCommitmentPayload({ recipientAddress: _, orderId, payload }) {
             const msg: StoredMockMessage = {
                 type: "COMMITMENT_PAYLOAD",
                 orderId,
-                payloadCid,
+                payload,
                 ts: Date.now(),
                 senderIdentity: ownerAddress,
             };
@@ -280,7 +280,7 @@ export function createMockChannel(ownerAddress: string): HandoffChannel {
                 (message): message is StoredCommitmentSignatureMessage => isStoredCommitmentSignatureMessage(message) && message.orderId === orderId,
             );
             if (existing) {
-                queueMicrotask(() => callback(existing.payloadCid, existing.senderIdentity));
+                queueMicrotask(() => callback(existing.payload, existing.senderIdentity));
             }
             return subscribe("COMMITMENT_PAYLOAD", (pc, s) => callback(pc as string, s as string), orderId);
         },
@@ -290,12 +290,12 @@ export function createMockChannel(ownerAddress: string): HandoffChannel {
                 isStoredCommitmentSignatureMessage,
             );
             for (const message of existing) {
-                queueMicrotask(() => callback(message.payloadCid, message.orderId));
+                queueMicrotask(() => callback(message.payload, message.orderId));
             }
 
             return subscribe(
                 "COMMITMENT_PAYLOAD",
-                (payloadCid, _senderIdentity, orderId) => callback(payloadCid as string, orderId as string),
+                (payload, _senderIdentity, orderId) => callback(payload as string, orderId as string),
             );
         },
 

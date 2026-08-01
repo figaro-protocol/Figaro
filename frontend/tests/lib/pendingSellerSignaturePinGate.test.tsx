@@ -57,15 +57,6 @@ vi.mock("@figaro/sdk", async (importOriginal) => {
     };
 });
 
-const fetchCappedContentMock = vi.fn();
-vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/shared/ipfsService")>();
-    return {
-        ...actual,
-        fetchCappedContent: (...args: unknown[]) => fetchCappedContentMock(...args),
-    };
-});
-
 // The pin — the side effect the gate must protect. We assert on its calls.
 vi.mock("@/lib/kernel/agreementFetch", () => ({
     publishAgreement: vi.fn().mockResolvedValue(undefined),
@@ -115,7 +106,6 @@ describe("usePendingSellerSignature does not pin a stranger's payload (finding 2
         callbacks = [];
         useAccountMock.mockReset();
         useWalletClientMock.mockReset();
-        fetchCappedContentMock.mockReset();
         verifyCommitmentSignatureMock.mockReset();
         // Default: a present signature recovers to its named party (the
         // legitimate case). Targeted-forgery tests override to false.
@@ -132,18 +122,14 @@ describe("usePendingSellerSignature does not pin a stranger's payload (finding 2
 
         // An attacker DMs a payload between two OTHER parties, referencing
         // attacker-chosen agreement content.
-        fetchCappedContentMock.mockResolvedValue({
-            ok: true,
-            text: async () =>
-                JSON.stringify({
+        const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: STRANGER_B },
                     agreement: { sections: [{ clause: "x", version: 1, data: { evil: true } }] },
                     buyerSig: "0xdeadbeef",
-                }),
-        });
+                });
 
         await act(async () => {
-            for (const cb of callbacks) await cb("cid-evil", "order-evil");
+            for (const cb of callbacks) await cb(inboundBody, "order-evil");
         });
 
         // The pin must never fire — the stranger cannot force this node to host
@@ -156,18 +142,14 @@ describe("usePendingSellerSignature does not pin a stranger's payload (finding 2
         const services = makeServices();
         renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: wrapper(services) });
 
-        fetchCappedContentMock.mockResolvedValue({
-            ok: true,
-            text: async () =>
-                JSON.stringify({
+        const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: SELLER },
                     agreement: { sections: [] },
                     buyerSig: "0xdeadbeef",
-                }),
-        });
+                });
 
         await act(async () => {
-            for (const cb of callbacks) await cb("cid-mine", "order-mine");
+            for (const cb of callbacks) await cb(inboundBody, "order-mine");
         });
 
         await waitFor(() => expect(publishAgreement).toHaveBeenCalledTimes(1));
@@ -179,7 +161,6 @@ describe("pin gate also requires a REAL counterparty signature (audit 2026-07-23
         callbacks = [];
         useAccountMock.mockReset();
         useWalletClientMock.mockReset();
-        fetchCappedContentMock.mockReset();
         verifyCommitmentSignatureMock.mockReset();
         vi.mocked(publishAgreement).mockClear();
         // This wallet is genuinely NAMED as the seller — passing isCommitmentParty.
@@ -194,18 +175,14 @@ describe("pin gate also requires a REAL counterparty signature (audit 2026-07-23
         const services = makeServices();
         renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: wrapper(services) });
 
-        fetchCappedContentMock.mockResolvedValue({
-            ok: true,
-            text: async () =>
-                JSON.stringify({
+        const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: SELLER },
                     agreement: { sections: [] },
                     buyerSig: "0xforged",
-                }),
-        });
+                });
 
         await act(async () => {
-            for (const cb of callbacks) await cb("cid-forged", "order-forged");
+            for (const cb of callbacks) await cb(inboundBody, "order-forged");
         });
 
         // isCommitmentParty passed, but the signature gate blocks the pin.
@@ -218,18 +195,14 @@ describe("pin gate also requires a REAL counterparty signature (audit 2026-07-23
         const services = makeServices();
         renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: wrapper(services) });
 
-        fetchCappedContentMock.mockResolvedValue({
-            ok: true,
-            text: async () =>
-                JSON.stringify({
+        const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: SELLER },
                     agreement: { sections: [] },
                     buyerSig: "0xrealbuyersig",
-                }),
-        });
+                });
 
         await act(async () => {
-            for (const cb of callbacks) await cb("cid-real", "order-real");
+            for (const cb of callbacks) await cb(inboundBody, "order-real");
         });
 
         await waitFor(() => expect(publishAgreement).toHaveBeenCalledTimes(1));

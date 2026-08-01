@@ -39,7 +39,7 @@ import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { maxUint256 } from "viem";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";
+import { MAX_INLINE_PAYLOAD_BYTES } from "@/lib/checkout/orderSignedAndShared";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 type ChannelStatus = "idle" | "listening" | "received" | "error";
@@ -118,25 +118,15 @@ function SignPageContent() {
         void coordinationMessaging.subscribeAnyCommitmentPayload({
             address,
             walletClient,
-            callback: async (payloadCid, orderId) => {
+            callback: async (payloadJson, orderId) => {
                 if (cancelled || receivedTransportOrderIdsRef.current.has(orderId)) {
                     return;
                 }
 
-                let payloadJson: string;
-                try {
-                    payloadJson = await fetchCommitmentPayloadJsonByCid(
-                        evidenceTransport,
-                        payloadCid,
-                    );
-                } catch (error) {
-                    if (!cancelled) {
-                        setChannelStatus("error");
-                        setChannelError(extractErrorMessage(error, "Could not fetch the commitment payload from IPFS."));
-                    }
-                    return;
-                }
-
+                // The payload arrives INLINE over the E2E-encrypted coordination
+                // channel (audit F Arm 2), not IPFS — no fetch. Cap defensively:
+                // an unauthenticated inbox can deliver an oversize message.
+                if (new TextEncoder().encode(payloadJson).length > MAX_INLINE_PAYLOAD_BYTES) return;
                 if (cancelled) return;
 
                 // The subscription is wallet-wide and the transport may not be

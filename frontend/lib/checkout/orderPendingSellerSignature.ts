@@ -26,7 +26,8 @@ import {
 import { verifyCommitmentSignature } from "@figaro/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
-import { fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
+import { type IpfsService } from "@/lib/shared/ipfsService";
+import { MAX_INLINE_PAYLOAD_BYTES } from "@/lib/checkout/orderSignedAndShared";
 import type { Hex } from "viem";
 
 /**
@@ -161,18 +162,16 @@ export function usePendingSellerSignature(
             .subscribeAnyCommitmentPayload({
                 address,
                 walletClient: walletClientRef.current ?? null,
-                callback: async (payloadCid, orderId) => {
+                callback: async (payloadJson, orderId) => {
                     if (cancelled || receivedOrderIds.current.has(orderId)) return;
                     try {
-                        // Resolve + fetch the payload by CID via the IPFS gateway.
-                        const url = services.evidenceTransport.resolveFetchUrl(`ipfs://${payloadCid}`);
-                        if (!url) return;
-                        // Size-capped fetch (F4): the CID arrives over the
-                        // coordination channel from a counterparty — oversize
-                        // throws → the catch below → payload ignored.
-                        const res = await fetchCappedContent(url);
-                        if (!res.ok || cancelled) return;
-                        const payload = deserializeCommitmentPayload(await res.text());
+                        // The payload arrives INLINE over the E2E-encrypted
+                        // coordination channel (audit F Arm 2), not IPFS — no
+                        // fetch. Cap its size defensively: a counterparty's inbox
+                        // can deliver an oversize message; oversize → ignored.
+                        if (new TextEncoder().encode(payloadJson).length > MAX_INLINE_PAYLOAD_BYTES) return;
+                        const payload = deserializeCommitmentPayload(payloadJson);
+                        if (cancelled) return;
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
                         // GATE the pin behind party membership. `COMMITMENT_PAYLOAD`
                         // is unauthenticated, so a stranger's inbox can deliver one;
@@ -254,23 +253,3 @@ export function usePendingSellerSignature(
     return { pending, dismiss };
 }
 
-/**
- * Dereference an IPFS-pinned commitment payload to its JSON string.
- * Used by /orders-style subscribers that receive a CID and need the
- * underlying AnyCommitmentPayload JSON for parsing.
- */
-export async function fetchCommitmentPayloadJsonByCid(
-    ipfs: Pick<IpfsService, "resolveFetchUrl">,
-    payloadCid: string,
-): Promise<string> {
-    const url = ipfs.resolveFetchUrl(`ipfs://${payloadCid}`);
-    if (!url) {
-        throw new Error(`Could not resolve IPFS gateway URL for CID: ${payloadCid}`);
-    }
-    // Size-capped fetch (F4): oversize throws, naming the cap.
-    const res = await fetchCappedContent(url);
-    if (!res.ok) {
-        throw new Error(`IPFS fetch failed for CID ${payloadCid}: ${res.status} ${res.statusText}`);
-    }
-    return await res.text();
-}

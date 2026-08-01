@@ -364,25 +364,25 @@ export async function createXmtpChannel(
 
         // ── Commitment payload exchange via XMTP DM ──
 
-        async sendCommitmentPayload({ recipientAddress, orderId, payloadCid }) {
+        async sendCommitmentPayload({ recipientAddress, orderId, payload }) {
             const dm = await client.conversations.createDmWithIdentifier({
                 identifier: recipientAddress.toLowerCase(),
                 identifierKind: IdentifierKind.Ethereum,
             });
-            const payload: CommitmentSignatureMessage = {
+            const message: CommitmentSignatureMessage = {
                 type: "COMMITMENT_PAYLOAD",
                 orderId,
-                payloadCid,
+                payload,
                 ts: Date.now(),
             };
-            await dm.sendText(JSON.stringify(payload));
+            await dm.sendText(JSON.stringify(message));
         },
 
         onCommitmentPayload(orderId, callback) {
             return listenForMessage<CommitmentSignatureMessage>(
                 "COMMITMENT_PAYLOAD",
                 orderId,
-                (msg, senderInboxId) => callback(msg.payloadCid, senderInboxId),
+                (msg, senderInboxId) => callback(msg.payload, senderInboxId),
             );
         },
 
@@ -396,7 +396,7 @@ export async function createXmtpChannel(
                 const messageKey = `${parsed.orderId}:${parsed.ts}`;
                 if (seen.has(messageKey)) return;
                 seen.add(messageKey);
-                callback(parsed.payloadCid, parsed.orderId);
+                callback(parsed.payload, parsed.orderId);
             });
         },
 

@@ -71,13 +71,19 @@ export interface EcdhWrappedKeyMessage {
     ts: number;
 }
 
-/** Commitment payload pointer: the IPFS CID of a pinned, JSON-serialized
- *  `CommitmentPayload` (`@figaro/sdk/agent`). */
+/** Commitment payload delivery: the JSON-serialized `CommitmentPayload`
+ *  (`@figaro/sdk/agent`) carried INLINE over the coordination channel, which is
+ *  end-to-end encrypted (XMTP). Carrying it here rather than pinning it to
+ *  public IPFS is the paid-edge seam's transport half: a `private`-disposition
+ *  section's plaintext reaches only the counterparty, never a public surface
+ *  (audit F Arm 2). The public-verification copy is the WITHHELD standalone
+ *  agreement pin (`publishAgreement`); this delivers the plaintext the
+ *  counterparty needs to sign. */
 export interface CommitmentSignatureMessage {
     type: "COMMITMENT_PAYLOAD";
     orderId: string;
-    /** Bare IPFS CID (no `ipfs://` prefix) of the pinned payload JSON. */
-    payloadCid: string;
+    /** The JSON-serialized `CommitmentPayload`, delivered inline. */
+    payload: string;
     ts: number;
 }
 
@@ -143,24 +149,25 @@ export interface HandoffChannel {
         callback: (msg: EcdhWrappedKeyMessage, senderIdentity: string) => void,
     ): () => void;
 
-    /** Send the IPFS CID of a pinned commitment payload for dual-signature
-     *  collection; the sender pins before invoking. */
+    /** Deliver a JSON-serialized commitment payload INLINE for dual-signature
+     *  collection. Carried over the E2E-encrypted channel, not pinned to public
+     *  IPFS, so a `private`-disposition section's plaintext never leaves the
+     *  parties (audit F Arm 2). */
     sendCommitmentPayload(params: {
         recipientAddress: string;
         orderId: string;
-        payloadCid: string;
+        payload: string;
     }): Promise<void>;
 
-    /** Subscribe to incoming commitment-payload CIDs for `orderId`. */
+    /** Subscribe to incoming commitment payloads for `orderId`. */
     onCommitmentPayload(
         orderId: string,
-        callback: (payloadCid: string, senderIdentity: string) => void,
+        callback: (payload: string, senderIdentity: string) => void,
     ): () => void;
 
-    /** Subscribe to ANY incoming commitment-payload CID for the connected
-     *  wallet. */
+    /** Subscribe to ANY incoming commitment payload for the connected wallet. */
     onAnyCommitmentPayload(
-        callback: (payloadCid: string, orderId: string) => void,
+        callback: (payload: string, orderId: string) => void,
     ): () => void;
 
     /** Tear down the channel (close the transport client, etc.). */

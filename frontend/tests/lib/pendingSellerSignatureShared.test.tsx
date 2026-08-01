@@ -36,15 +36,6 @@ vi.mock("@figaro/sdk", async (importOriginal) => {
 
 // The payload fetch: return the serialized payload JSON so the REAL
 // deserializeCommitmentPayload runs (never mock the parse itself).
-const fetchCappedContentMock = vi.fn();
-vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/shared/ipfsService")>();
-    return {
-        ...actual,
-        fetchCappedContent: (...args: unknown[]) => fetchCappedContentMock(...args),
-    };
-});
-
 // Agreement pinning is a side effect of witnessing — a no-op for this test.
 vi.mock("@/lib/kernel/agreementFetch", () => ({
     publishAgreement: vi.fn().mockResolvedValue(undefined),
@@ -56,9 +47,12 @@ const PAYLOAD = {
     agreement: {},
     buyerSig: "0xdeadbeef",
 };
+// The payload is delivered INLINE over the coordination channel (audit F Arm 2),
+// so the callback receives the serialized body directly — no IPFS fetch.
+const inboundBody = JSON.stringify(PAYLOAD);
 
 // Captured subscription callbacks — one per mounted hook instance.
-let callbacks: Array<(cid: string, orderId: string) => Promise<void> | void>;
+let callbacks: Array<(payload: string, orderId: string) => Promise<void> | void>;
 
 function makeServices(): RuntimeServices {
     return {
@@ -92,13 +86,8 @@ beforeEach(() => {
     callbacks = [];
     useAccountMock.mockReset();
     useWalletClientMock.mockReset();
-    fetchCappedContentMock.mockReset();
     useAccountMock.mockReturnValue({ address: SELLER });
     useWalletClientMock.mockReturnValue({ data: null });
-    fetchCappedContentMock.mockResolvedValue({
-        ok: true,
-        text: async () => JSON.stringify(PAYLOAD),
-    });
 });
 
 describe("usePendingSellerSignature shared dismiss state", () => {
@@ -112,7 +101,7 @@ describe("usePendingSellerSignature shared dismiss state", () => {
 
         // The same relayed order reaches both subscriptions.
         await act(async () => {
-            for (const cb of callbacks) await cb("cid-order-1", "order-1");
+            for (const cb of callbacks) await cb(inboundBody, "order-1");
         });
 
         await waitFor(() => {
@@ -171,7 +160,7 @@ describe("usePendingSellerSignature wallet-arrival resubscription", () => {
 
         // The relayed order now reaches this (previously dead) surface.
         await act(async () => {
-            for (const cb of callbacks) await cb("cid-order-2", "order-2");
+            for (const cb of callbacks) await cb(inboundBody, "order-2");
         });
         await waitFor(() => expect(h.result.current.pending).toHaveLength(1));
     });

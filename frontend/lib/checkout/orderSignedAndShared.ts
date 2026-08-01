@@ -31,13 +31,27 @@ export interface CommitmentPayloadRelay {
         walletClient?: WalletMessageSigner | null;
         recipientAddress: string;
         orderId: string;
-        payloadCid: string;
+        payload: string;
     }): Promise<void>;
 }
 
+/** Ceiling for a payload delivered INLINE over the coordination channel. The
+ *  relayed payload is one order's agreement — KB-scale in every real case — so
+ *  this generous bound is only ever crossed by a pathological order carrying
+ *  megabytes of inline field content, which belongs behind a content-handoff
+ *  clause (already encrypted), not inline in the signed agreement. We error
+ *  loudly rather than fall back to a public IPFS pin: a plaintext pin is the
+ *  exact leak this seam closes, and a withheld pin cannot carry the private
+ *  plaintext the counterparty needs to sign. */
+export const MAX_INLINE_PAYLOAD_BYTES = 256 * 1024;
+
 /**
- * Pin the signed `payload` to IPFS and relay its CID to the seller, keyed by the
- * commitment's on-chain order hash. Returns that order hash.
+ * Relay the signed `payload` to the seller over the E2E-encrypted coordination
+ * channel (NOT a public IPFS pin), keyed by the commitment's on-chain order
+ * hash. The public-verification copy is the WITHHELD standalone agreement pin;
+ * this delivers the plaintext the counterparty needs — including any
+ * `private`-disposition section — without it ever touching a public surface
+ * (audit F Arm 2). Returns that order hash.
  */
 export async function shareSignedOrder(params: {
     payload: CommitmentPayload;
@@ -46,29 +60,34 @@ export async function shareSignedOrder(params: {
     walletClient?: WalletMessageSigner | null;
     chainId: number;
     coordinationMessaging: CommitmentPayloadRelay;
-    evidenceTransport: Pick<IpfsService, "pinBlob" | "pinJSON" | "buildURI" | "resolveFetchUrl">;
+    evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI" | "resolveFetchUrl">;
 }): Promise<string> {
     const {
         payload, recipientAddress, senderAddress, walletClient, chainId,
         coordinationMessaging, evidenceTransport,
     } = params;
 
-    // Pin the agreement body STANDALONE (separate from the relayed payload) and
-    // remember its witnessed-URI pointer, so the SENDER's own order/audit pages
-    // can hydrate it by hash after a fresh navigation. The recipient does the
-    // same when the payload arrives (orderPendingSellerSignature) — content
-    // addressing makes both pins the same CID.
+    // Pin the agreement body STANDALONE — WITHHELD of any private-disposition
+    // section (publishAgreement → publicForm) — and remember its witnessed-URI
+    // pointer, so the SENDER's own order/audit pages hydrate its PUBLIC shape by
+    // hash after a fresh navigation, and anyone can verify the root. The private
+    // plaintext is NOT here; it rides the channel below.
     await publishAgreement(payload.agreement, { evidenceTransport });
 
     const orderId = commitmentOrderHash(payload.commitment, chainId);
-    const blob = new Blob([serializeCommitmentPayload(payload)], { type: "application/json" });
-    const payloadCid = await evidenceTransport.pinBlob(blob);
+    const serialized = serializeCommitmentPayload(payload);
+    if (new TextEncoder().encode(serialized).length > MAX_INLINE_PAYLOAD_BYTES) {
+        throw new Error(
+            "Order payload too large to relay privately over the coordination channel — " +
+                "large content belongs behind a content-handoff clause, not inline in the agreement.",
+        );
+    }
     await coordinationMessaging.sendCommitmentPayload({
         address: senderAddress,
         walletClient,
         recipientAddress,
         orderId,
-        payloadCid,
+        payload: serialized,
     });
     return orderId;
 }

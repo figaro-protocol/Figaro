@@ -57,7 +57,7 @@ import { generateSalt } from "@figaro/sdk";
 import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
-import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";
+import { MAX_INLINE_PAYLOAD_BYTES } from "@/lib/checkout/orderSignedAndShared";
 import type { CommitmentPayloadRelay } from "@/lib/checkout/orderSignedAndShared";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -92,20 +92,23 @@ export async function relayRacePayload(params: {
     walletClient?: WalletMessageSigner | null;
     chainId: number;
     coordinationMessaging: CommitmentPayloadRelay;
-    evidenceTransport: Pick<IpfsService, "pinBlob">;
     /** The conversation's order id, when the payload's own struct is not the
      *  thread (a quote answering a request). Defaults to the payload's. */
     threadOrderId?: string;
 }): Promise<string> {
     const orderId = params.threadOrderId ?? commitmentOrderHash(params.payload.commitment, params.chainId);
-    const blob = new Blob([serializeCommitmentPayload(params.payload)], { type: "application/json" });
-    const payloadCid = await params.evidenceTransport.pinBlob(blob);
+    // Delivered INLINE over the E2E-encrypted channel (audit F Arm 2), not
+    // pinned to public IPFS — the race payload is one drafted order, KB-scale.
+    const serialized = serializeCommitmentPayload(params.payload);
+    if (new TextEncoder().encode(serialized).length > MAX_INLINE_PAYLOAD_BYTES) {
+        throw new Error("Race payload too large to relay over the coordination channel.");
+    }
     await params.coordinationMessaging.sendCommitmentPayload({
         address: params.senderAddress,
         walletClient: params.walletClient,
         recipientAddress: params.recipientAddress,
         orderId,
-        payloadCid,
+        payload: serialized,
     });
     return orderId;
 }
@@ -442,14 +445,16 @@ export function useDispatchRace() {
                     address: checkout.buyer,
                     walletClient: walletClient ?? null,
                     orderId: d.orderId,
-                    callback: (payloadCid: string) => {
+                    callback: (payloadJson: string) => {
                         void (async () => {
                             try {
-                                const json = await fetchCommitmentPayloadJsonByCid(services.evidenceTransport, payloadCid);
-                                await recordReply(d, deserializeCommitmentPayload(json));
+                                // Delivered inline over the E2E channel (F Arm 2);
+                                // cap defensively, then deserialize — no IPFS fetch.
+                                if (new TextEncoder().encode(payloadJson).length > MAX_INLINE_PAYLOAD_BYTES) return;
+                                await recordReply(d, deserializeCommitmentPayload(payloadJson));
                             } catch {
-                                // Unfetchable or malformed reply — ignore; the
-                                // window closes the race regardless.
+                                // Malformed reply — ignore; the window closes the
+                                // race regardless.
                             }
                         })();
                     },
@@ -462,7 +467,6 @@ export function useDispatchRace() {
                     walletClient: walletClient ?? null,
                     chainId,
                     coordinationMessaging: services.coordinationMessaging,
-                    evidenceTransport: services.evidenceTransport,
                 });
             }
             timerRef.current = setTimeout(() => finish(), args.windowMs ?? DEFAULT_RACE_WINDOW_MS);
