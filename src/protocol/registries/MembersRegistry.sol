@@ -109,11 +109,14 @@ contract MembersRegistry {
 
     /// @notice Whether `member` currently holds a LIVE registration stake —
     ///         registered and not yet withdrawal-requested. This is the on-chain
-    ///         read the RPGF path gates on: a settled process's usage counts
-    ///         toward the reward only while its seller-of-record keeps a live ETH
-    ///         stake here. Requesting withdrawal clears the guard, de-surfacing
-    ///         the member AND forfeiting the reward eligibility its trades would
-    ///         confer — while the deposit itself stays locked for the cooldown.
+    ///         read the RPGF path gates on, at RECORD time: a settled process's
+    ///         usage counts toward the reward only while its seller-of-record
+    ///         keeps a live ETH stake here. The gate is RETROACTIVE — requesting
+    ///         withdrawal clears the guard and makes the member's settled-but-
+    ///         unrecorded trades unrecordable for the rest of the period, not
+    ///         merely their future ones (usage is recorded at settlement to close
+    ///         the normal window — see `UsageCounter._accrue`). The deposit
+    ///         itself stays locked for the cooldown.
     function registered(address member) external view returns (bool) {
         return _registered[member];
     }

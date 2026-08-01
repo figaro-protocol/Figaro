@@ -615,10 +615,19 @@ contract UsageCounter {
         // floor; counting it would pay for the floor rather than for adoption.
         if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
-        // holds a LIVE MembersRegistry stake. Requesting withdrawal de-surfaces
-        // the seller AND stops its future trades conferring reward — at request
-        // time, not at claim time, so the gate closes the moment the member asks
-        // to leave. Because `d` counts distinct STAKED sellers, this one gate
+        // holds a LIVE MembersRegistry stake, read at RECORD time. This gate is
+        // RETROACTIVE, not merely prospective: requesting withdrawal de-surfaces
+        // the seller AND makes every one of their settled-but-NOT-YET-RECORDED
+        // processes permanently unrecordable once the period ends — recording
+        // reads live state, and a resolved order carries no timestamp the chain
+        // can gate on. The mitigation is a HABIT, not on-chain state: usage is
+        // recorded AT SETTLEMENT (the buyer's app records every committed
+        // artifact right after resolveProcess confirms — createCapabilityExecutors.ts),
+        // when the seller is definitionally still staked. A seller who wants to
+        // deny a specific author must therefore stay unstaked through the period
+        // end, forfeiting their own eligibility and locking their deposit — a
+        // self-limiting grief accepted by design (DESIGN_DECISIONS "retroactive
+        // seller-stake gate"). Because `d` counts distinct STAKED sellers, this one gate
         // prices breadth itself: n units of the score's dominant term cost n
         // live stakes. Identity cost is the only place Sybil resistance can
         // live (no scoring shape can separate a fabricated counterparty from a

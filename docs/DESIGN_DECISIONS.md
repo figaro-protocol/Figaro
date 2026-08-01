@@ -216,6 +216,24 @@ next version.
 Clause governance — which clauses are authoritative — is a convention-layer
 concern resolved off-chain, consistent with the event-sourced architecture.
 
+**RPGF escalation, accepted (audit 2026-08-01, finding H-2; ruled 2026-08-01):**
+once RPGF pays authors, registry authorship is also the reward PAYEE key
+(`RpgfMinter._isAuthor`), so a front-runner who copies an in-flight registration
+captures its future reward, not just a discovery slot. This was weighed and the
+first-write-wins design KEPT, for two reasons. First, the shared flat clause
+namespace IS the coordination commons — namespacing ids under the author address
+(the structural fix) would fragment it, and signature-based authorship breaks the
+author-is-staker assumption the reward's live-stake gate rests on. Second, reward
+follows real USAGE (network truth): a squatted key earns nothing unless the
+ecosystem actually composes it, which the squatter cannot force, and the deposit
+still prices the attempt. The reactive-front-run window is already minimal —
+registration pins the spec to the author's OWN node and registers in one atomic UI
+action, so nothing is publicly observable before the register tx hits the mempool.
+The residual (mempool front-run of that tx; proactive squatting of a guessable
+name) is the accepted, deposit-priced cost. Assemblies are unaffected — their id is
+content-derived, not a guessable name. Revisit only if reward-capture griefing is
+observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
+
 ---
 
 ## 9. RETIRED — DutchAuction (contract deleted 2026-07-02)
@@ -563,6 +581,58 @@ design refuses, and a fresh Howey fact), and turns permissionless recording into
 paid TO an entity. If the Sybil bound's algebra ever exposes a gap here, the reserve
 lever is lengthening the withdrawal cooldown — which moves no money at all.
 
+## 19. Usage accrual requires the artifact to hold a live registration deposit — an unregistered leaf key scores nothing
+
+**Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
+artifact and its seller is staked — yet still reverts `ArtifactNotRegistered` (direct path)
+or silently skips it (batch path) unless the artifact ALSO holds a live deposit in its own
+registry. A settled, proven use that earns nothing reads like lost accrual.
+
+**Is correct because (audit 2026-08-01, finding M-2):** the artifact key is otherwise just a
+merkle-leaf key a self-authored agreement chooses freely, so without this gate a self-dealt
+process could accrue score to ANY `bytes32` and inflate `totalScoreIn` — the shared payout
+denominator — at gas cost, diluting every honest author. The gate is the ARTIFACT-side twin
+of the seller-side stake gate: score counts only what a live ETH deposit has priced. It does
+not eliminate the paid replication lever (register N keys for N deposits) — that is the
+accepted, deposit-priced cost the reward's uniform pro-rata already dilutes — it closes the
+FREE variant. Direct path reverts (a standalone tx with nothing to unwind); the batch path
+skips (see §20).
+
+## 20. The RPGF accrual never blocks batch settlement — a reverting reward gate does not unwind trade
+
+**Looks wrong because:** `applyBatchAccrual` `continue`s past excluded/unregistered artifacts
+instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
+`BatchAccrualSkipped` and settling anyway. A reward write that can be silently dropped looks
+like lost or manipulable accrual.
+
+**Is correct because (audit 2026-08-01, finding "settlement/reward coupling"):** the accrual
+is a REWARD-tier write inside a SETTLEMENT-tier transaction. A reward gate that reverts
+settlement lets one party block every co-batched trader's already-reconciled money — a free,
+unauthenticated griefing vector (a poison claim naming the excluded `figaro-commerce`, which
+rides every agreement; or a seller who unstakes between prove and submit). Tier separation is
+the doctrine: settlement must never be hostage to the reward. A dropped batch's accrual is
+recovered by the next batch that touches the same artifacts (the counter's write is a
+cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as
+the per-path floor (§17). The sequencer additionally pre-filters poison claims so the catch
+only ever fires on the genuine stake-race.
+
+## 21. The seller-stake gate is retroactive — usage must be recorded while the stake is live
+
+**Looks wrong because:** a seller who requests withdrawal doesn't merely stop FUTURE trades
+counting — every one of their settled-but-not-yet-recorded processes becomes permanently
+unrecordable once the period ends. A seller can even do it deliberately to deny a specific
+author (withdraw, then re-register). That reads like a griefing hole.
+
+**Is correct because (audit 2026-08-01, finding M-1; ruling 2026-08-01):** the chain cannot
+see WHEN a process resolved (the kernel is frozen and stores no per-order timestamp), which is
+the same reason `processCounted` is global — so the stake can only be gated at RECORD time,
+never at settlement time. No stateless on-chain fix exists. The mitigation is a habit, not
+state: usage is recorded AT SETTLEMENT (`createCapabilityExecutors.ts`, right after
+`resolveProcess` confirms), when the seller is definitionally still staked, closing the normal
+window. The residual grief is self-limiting — to deny an author the griefer must stay unstaked
+through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
+the cost of the stateless kernel.
+
 ---
 
 ## Summary Table
@@ -587,3 +657,6 @@ lever is lengthening the withdrawal cooldown — which moves no money at all.
 | 16 | `applyBatchAccrual` has one privileged caller | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
 | 17 | Recorded usage can score zero (`minSellers` floor) | Real settled trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
 | 18 | No per-record fee or burn | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed fee inserts an institution + usage-coupled revenue into an identity-free mechanism |
+| 19 | Usage needs a live artifact registration deposit | A proven, settled use that scores nothing reads like lost accrual | The artifact key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted deposit-priced replication lever |
+| 20 | RPGF accrual never reverts settlement (skip + try/catch) | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind settlement-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
+| 21 | Seller-stake gate is retroactive | A withdrawal makes settled-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-settlement closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
