@@ -25,7 +25,11 @@ function topologyParentOrderHashes(agreement: Agreement | null | undefined): str
     if (!agreement) return null;
     const section = sectionByField(agreement, "parentOrderHashes", specSource());
     if (!section) return null;
-    const raw = (section.data as Record<string, unknown>).parentOrderHashes;
+    // A section fetched from a PUBLIC pin may be content-WITHHELD (its plaintext
+    // `data` replaced by a `dataHash` fingerprint — the public/private seam), so
+    // `data` can be absent. A withheld topology section reads as edgeless, never
+    // a crash — the full edges live in the signed + counterparty-relayed forms.
+    const raw = (section.data as Record<string, unknown> | undefined)?.parentOrderHashes;
     if (!Array.isArray(raw)) return [];
     return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
 }
