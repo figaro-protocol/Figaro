@@ -393,6 +393,66 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
     );
 }
 
+#[test]
+fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
+    // The batch resolves the order (canonical ops) and carries a valid claim
+    // for it. A crafted poison claim — same artifact + seller (so it clears the
+    // registry pre-filter) but a garbage inclusion proof — would abort the WHOLE
+    // guest proof and dead-letter the batch, discarding the valid claim and every
+    // co-batched trade. The claim filter must isolate it: keep the valid claim,
+    // drop only the poison.
+    let input = build_canonical_batch_input();
+    let valid = input.usage_claims[0].clone();
+    let mut poison = valid.clone();
+    poison.inclusion_proof = vec![B256::repeat_byte(0xab)]; // fails the merkle check
+
+    let (kept, dropped) = assembler::filter_applicable_claims(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        &input.operations,
+        input.usage_period,
+        input.provenance_clause,
+        vec![valid, poison],
+    );
+    assert_eq!(kept.len(), 1, "the valid claim survives: {dropped:?}");
+    assert_eq!(dropped.len(), 1, "the poison claim is quarantined");
+    assert!(
+        dropped[0].1.contains("UsageInvalidInclusionProof"),
+        "poison reason: {}",
+        dropped[0].1
+    );
+}
+
+#[test]
+fn claim_filter_drops_an_intra_batch_duplicate() {
+    // The guest counts a process ONCE ever (the counted set rides the state
+    // root). Two valid claims for the same resolved process in one batch would
+    // hit `UsageAlreadyCounted` on the second and abort the proof. The threaded
+    // trial-apply reproduces the guest's counted set across claims and drops the
+    // duplicate individually.
+    let input = build_canonical_batch_input();
+    let claim = input.usage_claims[0].clone();
+    let (kept, dropped) = assembler::filter_applicable_claims(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        &input.operations,
+        input.usage_period,
+        input.provenance_clause,
+        vec![claim.clone(), claim],
+    );
+    assert_eq!(kept.len(), 1, "the process is counted once: {dropped:?}");
+    assert_eq!(dropped.len(), 1);
+    assert!(
+        dropped[0].1.contains("UsageAlreadyCounted"),
+        "duplicate reason: {}",
+        dropped[0].1
+    );
+}
+
 // ── HTTP API ──────────────────────────────────────────────────────
 
 fn test_app_state() -> AppState {

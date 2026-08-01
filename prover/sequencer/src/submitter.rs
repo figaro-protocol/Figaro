@@ -163,15 +163,19 @@ pub async fn read_usage_context(
 /// The pre-filter is an OPTIMISATION, never authority: the counter re-checks all
 /// of it on-chain. So when a registry read fails (RPC hiccup) the claim is
 /// dropped conservatively — it can be re-submitted — rather than proven on
-/// unverified state. If no registries are configured (all `Address::ZERO`) the
-/// filter is disabled and every claim passes through.
+/// unverified state. The filter is keyed on the COUNTER address, not the
+/// registries: with no counter there is no accrual (claims are dropped upstream
+/// when `read_usage_context` returns `None`), so passing them through here is
+/// harmless. When a counter IS configured the filter always runs — a misconfig
+/// that left the registries at `Address::ZERO` while accrual is live must NOT
+/// silently disable the protection (it would re-open the poison-seller
+/// whole-batch drop); the per-claim reads against a zero registry simply fail and
+/// drop the claim loudly, rather than the filter switching itself off.
 pub async fn filter_usage_claims(
     config: &SubmitterConfig,
     claims: Vec<UsageClaim>,
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
-    let disabled = config.clause_registry_address == Address::ZERO
-        && config.assembly_registry_address == Address::ZERO
-        && config.members_registry_address == Address::ZERO;
+    let disabled = config.usage_counter_address == Address::ZERO;
     if disabled || claims.is_empty() {
         return (claims, Vec::new());
     }

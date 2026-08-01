@@ -288,7 +288,7 @@ async fn batch_loop(
         // The period and provenance clause are CHAIN facts — asked of the
         // counter, never derived from the sequencer's clock. If there is no
         // counter, or accrual has closed, the batch settles crediting nothing.
-        let usage = match submitter::read_usage_context(
+        let mut usage = match submitter::read_usage_context(
             &submitter_config.rpc_url,
             submitter_config.usage_counter_address,
         )
@@ -311,6 +311,38 @@ async fn batch_loop(
         };
 
         let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
+
+        // Stateful filter for usage claims — the twin of the op filter above.
+        // The guest credits claims against the batch's POST-OP state and aborts
+        // the WHOLE proof on any that fail (order not resolved, bad inclusion
+        // proof, already-counted). A poison claim there dead-letters the batch
+        // and discards every co-batched trade; claims are publicly submittable,
+        // so this is a gas-free DoS surface. Trial-apply each claim and drop the
+        // poison before proving. (The registry/stake pre-filter above covers the
+        // disjoint set of gates the guest cannot see.)
+        if !usage.claims.is_empty() {
+            let (kept, dropped) = assembler::filter_applicable_claims(
+                chain_id,
+                verifying_contract,
+                timestamp,
+                &prev_state,
+                &ops,
+                usage.period,
+                usage.provenance_clause,
+                std::mem::take(&mut usage.claims),
+            );
+            for (claim, reason) in &dropped {
+                warn!(artifact = ?claim.artifact, %reason, "Dropped usage claim — would abort the batch proof");
+            }
+            usage.claims = kept;
+        }
+
+        // After BOTH filters an all-poison tick can leave nothing to settle
+        // (every op held, every claim dropped). Never assemble an empty batch.
+        if ops.is_empty() && usage.claims.is_empty() {
+            continue;
+        }
+
         let batch = assembler::assemble_batch(
             chain_id,
             verifying_contract,

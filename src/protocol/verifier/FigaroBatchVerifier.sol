@@ -309,6 +309,16 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         //    next batch's cumulative overwrite, or forgone (conservative
         //    under-pay, never over-pay). `batchCount + 1` is the id this batch
         //    receives at step 8.
+        //
+        //    The catch is a catch-ALL, but it does NOT silently swallow a
+        //    misconfiguration: the counter's only non-gate revert is
+        //    `NotBatchVerifier` (msg.sender != its immutable batchVerifier), and
+        //    that address is this contract — the deploy scripts predict this
+        //    verifier's address, pass it to the counter's constructor, and assert
+        //    the prediction (`require(_batchVerifier == predictedVerifier)`), so
+        //    the counter can only ever accept THIS verifier. `NotBatchVerifier`
+        //    is therefore unreachable at runtime; every revert that reaches this
+        //    catch is a genuine accrual-gate skip, surfaced via the event.
         try usageCounter.applyBatchAccrual(usage.period, usage.provenanceClause, usage.accruals, usage.sellers) {
         // accrual applied
         }
