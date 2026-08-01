@@ -11,7 +11,7 @@ import {
     parseEther,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, templateCompositionHash } from '@figaro/sdk';
 import { encodeGeohash } from '@figaro/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
@@ -484,6 +484,21 @@ export interface DiscoveredAssembly {
     slug: string;
     compositionHash: `0x${string}`;
     agreements: Array<{ id?: string; clauses?: Record<string, unknown> }>;
+}
+
+/** The slug of a REFERENCE assembly identified by its IDENTITY — the
+ *  compositionHash over its canonical composition, the same one
+ *  populate-test-data anchors it under. An assembly IS its composition; it is
+ *  never a "kind" inferred from which clauses it happens to carry, so a spec
+ *  that wants a SPECIFIC template must name it by identity, never select it with
+ *  a clause-shape heuristic (which is closed-world AND ambiguous — several
+ *  single-order compositions share the same shape). `name` is the file in
+ *  `assemblies/`. */
+export function referenceAssemblySlug(name: string): string {
+    const template = JSON.parse(
+        fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8'),
+    );
+    return deriveAssemblySlug(templateCompositionHash(template));
 }
 
 /** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered

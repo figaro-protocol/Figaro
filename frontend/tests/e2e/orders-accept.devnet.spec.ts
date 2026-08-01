@@ -25,6 +25,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro/sdk';
 import {
     discoverAnchoredAssemblies,
+    referenceAssemblySlug,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredMember,
@@ -67,12 +68,16 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
  *  anvil-held so the fixture can drive its accept). */
 const POS_SELLER = ANVIL_ACCOUNTS[31] as Hex;
 async function findPosAssembly(): Promise<string> {
-    const pos = (await discoverAnchoredAssemblies()).find((t) =>
-        t.agreements.length === 1
-        && 'figaro-modalities' in (t.agreements[0].clauses ?? {})
-        && !('figaro-content-handoff' in (t.agreements[0].clauses ?? {})));
-    expect(pos, 'the pos reference is anchored (assemblies/pos.json — run populate-test-data)').toBeTruthy();
-    return pos!.slug;
+    // Identify pos.json by IDENTITY (its compositionHash → slug), NOT by a
+    // clause-shape heuristic. The old filter (single-order + has-modalities +
+    // no-content-handoff) is closed-world AND ambiguous — it also matched other
+    // single-order compositions (e.g. the aerial-survey templates), so `.find()`
+    // could seed + order the WRONG assembly, one whose required fields this POS
+    // checkout flow does not fill.
+    const slug = referenceAssemblySlug('pos.json');
+    const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
+    expect(anchored, 'the pos reference (assemblies/pos.json) is anchored — run populate-test-data').toBe(true);
+    return slug;
 }
 async function ensurePosSeller(token: Hex): Promise<Hex> {
     const slug = await findPosAssembly();
