@@ -151,6 +151,20 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
     );
 
+    /// @notice The batch settled its TOKEN positions, but its RPGF accrual was
+    ///         dropped because `UsageCounter.applyBatchAccrual` reverted — a
+    ///         seller unstaked between prove and submit (`SellerNotStaked`), the
+    ///         open period advanced across a boundary (`PeriodMismatch`), or the
+    ///         proven provenance clause did not match. Settlement is decoupled
+    ///         from the reward on purpose: a reward-tier gate must never unwind
+    ///         another party's trade. The dropped accrual is recovered by the
+    ///         next batch that touches the same artifacts (the counter's write
+    ///         is a cumulative overwrite), or forgone — conservative under-pay,
+    ///         never over-pay.
+    /// @param batchId The batch whose accrual was skipped.
+    /// @param reason  The low-level revert data from the counter (for indexers).
+    event BatchAccrualSkipped(uint64 indexed batchId, bytes reason);
+
     /// @dev WARNING: This event shares its topic hash with AttestationCoordinator.Attestation.
     ///      Indexers MUST filter by contract address to distinguish batch from direct events.
     event Attestation(
@@ -278,11 +292,29 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
         // ── 7. Carry the RPGF accrual across the settlement crease ─
         //    The numbers are the proof's; the reward's own gates (open
-        //    period, live seller stake, excluded artifacts) are the
-        //    counter's and are enforced there. A batch with no usage
-        //    claims passes empty arrays and the call is a no-op —
-        //    which is what keeps trade settling after accrual closes.
-        usageCounter.applyBatchAccrual(usage.period, usage.provenanceClause, usage.accruals, usage.sellers);
+        //    period, live seller stake, registration, excluded artifacts)
+        //    are the counter's and are enforced there. A batch with no usage
+        //    claims passes empty arrays and the call is a no-op — which is
+        //    what keeps trade settling after accrual closes.
+        //
+        //    DECOUPLED FROM SETTLEMENT (audit Fix 1a): the call is wrapped so
+        //    an accrual-gate revert — a seller who unstaked between prove and
+        //    submit (`SellerNotStaked`), a period boundary crossed in flight
+        //    (`PeriodMismatch`), a provenance mismatch — can NEVER unwind the
+        //    token settlement executed in step 5. A reward-tier gate must not
+        //    block another party's trade. The counter already skips excluded
+        //    and unregistered artifacts internally (it does not revert on
+        //    those); this catch covers the whole-batch reverts that remain.
+        //    On failure the accrual is dropped wholesale — recovered by the
+        //    next batch's cumulative overwrite, or forgone (conservative
+        //    under-pay, never over-pay). `batchCount + 1` is the id this batch
+        //    receives at step 8.
+        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceClause, usage.accruals, usage.sellers) {
+        // accrual applied
+        }
+        catch (bytes memory reason) {
+            emit BatchAccrualSkipped(batchCount + 1, reason);
+        }
 
         // ── 8. Advance state ──────────────────────────────────────
         stateRoot = pv.newRoot;

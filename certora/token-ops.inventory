@@ -34,5 +34,5 @@ src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:235 | _fund (input
 # single-position rules with the documented inductive generalization;
 # contentHashOf summarized as a revert-only view (sound — the anchor gate
 # refuses settlement, never moves a token). Cloud run green 2026-07-16.
-src/protocol/verifier/FigaroBatchVerifier.sol:487 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/protocol/verifier/FigaroBatchVerifier.sol:497 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/protocol/verifier/FigaroBatchVerifier.sol:519 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/protocol/verifier/FigaroBatchVerifier.sol:529 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation

@@ -688,8 +688,11 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(_hashUsage(u), expected, "the test mirror matches the Rust vector");
 
         // And so does the contract's assembly: a batch committing `expected`
-        // gets past the usage-hash check (it then reverts inside the counter,
-        // on period 3 not being open — which is proof the hash matched).
+        // gets past the usage-hash check into the counter, which rejects period
+        // 3 as not open. Settlement is decoupled from that rejection (Fix 1a),
+        // so the batch SETTLES and the accrual is dropped — which is itself
+        // proof the hash matched (a mismatch would revert UsageAccrualHashMismatch
+        // before the counter is ever reached).
         (, FigaroBatchVerifier.NetPosition[] memory positions,
             FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
         bytes memory pv = abi.encode(
@@ -702,25 +705,35 @@ contract FigaroBatchVerifierTest is Test {
             _hashBindings(events.specBindings),
             expected
         );
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.PeriodMismatch.selector, 0, 3));
+        vm.expectEmit(true, false, false, false, address(verifier));
+        emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
         verifier.settleBatch(hex"", pv, positions, events, u);
+        assertEq(verifier.stateRoot(), newRoot, "settles despite the rejected accrual");
     }
 
-    /// The counter's gates are the COUNTER's — the verifier does not duplicate
-    /// them, and a batch that trips one fails as a whole rather than settling
-    /// the money and dropping the accrual.
-    function test_settleBatch_revertsWhenTheCounterRejectsTheAccrual() public {
+    /// The counter's gates are the COUNTER's, and settlement is DECOUPLED from
+    /// them (audit Fix 1a): a batch that trips a reward-tier gate still settles
+    /// its token positions and advances state — the accrual is dropped, never
+    /// the trade. A reward gate must not unwind another party's money.
+    function test_settleBatch_settlesEvenWhenTheCounterRejectsTheAccrual() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1, 1);
         (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _batchWithUsage(usage);
+            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _batchWithUsage(usage);
 
         vm.prank(seller);
-        members.requestWithdrawal(); // the seller de-surfaces before settlement
+        members.requestWithdrawal(); // the seller de-surfaces between prove and submit
 
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller));
+        uint256 sellerBefore = token.balanceOf(seller);
+
+        // The accrual is dropped (topic1 = batch id 1); reason bytes not asserted.
+        vm.expectEmit(true, false, false, false, address(verifier));
+        emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
         verifier.settleBatch(hex"", pv, positions, events, usage);
 
-        assertEq(verifier.stateRoot(), GENESIS, "and the batch does not advance state");
+        assertEq(verifier.stateRoot(), newRoot, "settlement advances despite the dropped accrual");
+        assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is still paid");
+        (,, uint256 score) = counter.batchAccrualOf(clauseKey, usage.period);
+        assertEq(score, 0, "the accrual was dropped, not applied");
     }
 
     /// Trade outlives the reward: once accrual closes, batches carrying no
