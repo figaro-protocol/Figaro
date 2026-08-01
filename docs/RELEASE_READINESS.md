@@ -182,6 +182,19 @@ SCOPE to include the rebuilt surface is a pre-mainnet deployment task — the
 batch/proof path is a composition ABOVE the frozen kernel, deployed and
 rehearsed with the rest of the stack, not a kernel change.
 
+### Task 9: Florin custody tail
+
+At/after mainnet: stand up the real DAO treasury — a canonical Safe at `DAO_WALLET`
+with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet first.
+Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
+[[project_florin_market_strategy_2026_07]]
+
+### Task 10: npm package provenance for `@figaro/sdk`
+
+At publish (testnet tier): establish published-package ↔ audited-repo traceability
+(npm provenance attestation) so a consumer can verify the SDK on npm was built from
+this repo.
+
 ## Validation Commands
 
 Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
@@ -389,6 +402,23 @@ Expected output: empty.
 | `docs/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/RELEASE_READINESS.md` (this file) | Gate criteria, remaining tasks, frozen scope |
 | `docs/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
+
+**Behaviors to surface to the auditor** (correct by design, but non-obvious — flag
+them so a reviewer does not spend time re-deriving they are intentional):
+
+- `FlorinToken.renounceDeployerMint()` emits NO event (the state is readable via
+  `deployerMintRenounced`; the renounce is a one-way latch, not an event source).
+- `FlorinToken.registerMinter` treats `cap == 0` as the "not a minter" sentinel — a
+  minter registered with a zero cap is indistinguishable from an unregistered one.
+- The kernel has an unreachable `expectedCumulativeValue ∈ (max/3, max/2]` window (bond
+  math would overflow above it; it cannot be reached because a prior order's bond would
+  have reverted first).
+- A blacklisted seller (a token that reverts transfers to that address) bricks
+  `resolveProcess` for the whole process — `FigaroCore.sol:293`; accepted (the buyer
+  chose the token and the seller), a token-choice concern, not a kernel escape hatch.
+- `FigaroCore.sol:238-240` — the multisig-vs-ECDSA note: the kernel recovers an ECDSA
+  signer, so a smart-contract-wallet (multisig) party cannot be a kernel party directly;
+  it transacts through an EOA it controls (the off-protocol auxiliary pattern).
 
 The AI-audit history is provided for context only. The external auditor
 should form their own independent findings.
