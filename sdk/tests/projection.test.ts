@@ -223,16 +223,21 @@ describe("publicForm — the public/private disposition seam", () => {
         expect(computeAgreementHash(publicForm(agreement, specs))).toBe(computeAgreementHash(agreement));
     });
 
-    it("keeps a section plaintext when its clause spec is not loaded (positive-knowledge withhold)", () => {
+    it("withholds a section whose clause spec is not loaded (fail-closed)", () => {
         const unknown = {
             ...agreement,
-            sections: [{ clause: "unknown-clause", version: 1, data: { f0: "public-until-proven-private" } }],
+            sections: [{ clause: "unknown-clause", version: 1, data: { f0: "could-be-private" } }],
         };
-        // Unknown spec → NOT withheld: a private value can only be entered through
-        // a disposition-aware input that loads the spec, so a genuinely-private
-        // section always has a warm spec here; withholding on unknown would blank
-        // out the structural PUBLIC clauses (topology, commerce) on a cold cache.
-        expect(publicForm(unknown, specs).sections[0].data).toBeDefined();
+        // Unknown spec → WITHHELD: a permissionlessly-registered clause could be a
+        // PRIVATE one, and keeping it plaintext would leak on any cold-cache pin
+        // (notably the receiver re-pin, which never loaded the clause). The pin
+        // caller warms the specs first (`warmAgreementSpecs`), so a known public
+        // clause is not over-redacted; an unknown one fails closed here.
+        const projected = publicForm(unknown, specs).sections[0];
+        expect(projected.data).toBeUndefined();
+        expect(projected.dataHash).toBe(
+            sectionDataHash({ clause: "unknown-clause", version: 1, data: { f0: "could-be-private" } }),
+        );
     });
 
     it("specHasPrivateField flags a private clause only", () => {

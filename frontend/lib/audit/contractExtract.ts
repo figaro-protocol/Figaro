@@ -99,8 +99,11 @@ function clauseFromSection(section: AgreementSection): ContractClause {
 function extractJurisdictionSummary(agreement: Agreement) {
     const applicableLaw = sectionByField(agreement, "applicableLaw", specSource());
     if (!applicableLaw) return undefined;
-    const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string };
-    if (!data.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
+    // `data` is undefined on a content-WITHHELD section (a private-disposition
+    // clause on the public pin) — guard like the sibling extractors below, so a
+    // redacted jurisdiction section reads as absence, not a crash.
+    const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string } | undefined;
+    if (!data?.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
     return {
         applicableLaw: data.applicableLaw,
         forum: typeof data.forum === "string" && data.forum.length > 0 ? data.forum : undefined,

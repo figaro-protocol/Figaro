@@ -15,10 +15,12 @@
  * correct: you can't fetch a body you were never pointed at.
  */
 import type { Hex } from "viem";
-import { computeAgreementHash, publicForm, type Agreement } from "@figaro/sdk";
+import { computeAgreementHash, parseClauseRegistryLogs, publicForm, type Agreement } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { specSource } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { publicClient } from "@/lib/shared/wagmi";
 import { hexEqual } from "@/lib/shared/evm";
 
 const URI_PREFIX = "figaro:agreement-uri:";
@@ -140,6 +142,50 @@ export async function unpinAgreement(
     forgetAgreementUri(agreementHash);
 }
 
+/** Warm the clause specs the agreement's sections reference into the module
+ *  cache before `publicForm` decides what to withhold. `publicForm` is
+ *  FAIL-CLOSED (an unknown clause is withheld), so a COLD private spec at pin
+ *  time would over-redact a PUBLIC section — and, without this warm step on the
+ *  RECEIVER re-pin leg (a wallet that never composed the agreement, so never
+ *  loaded the clause through a disposition-aware input), a cold spec is the norm.
+ *  Reads the registry once and loads only the specs actually missing (the common
+ *  warm path short-circuits with zero I/O). Best-effort: if the registry read or
+ *  a spec load fails, the fail-closed projection over-redacts rather than leaking
+ *  — the correct privacy-first direction, never a plaintext-private pin. */
+async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
+    const missing = agreement.sections.filter(
+        (s) => getClauseSpec(s.clause, s.version) === undefined,
+    );
+    if (missing.length === 0) return;
+    const addr = CONTRACTS.clauseRegistry;
+    if (!addr || addr.length !== 42) return;
+    let registered;
+    try {
+        // Minimal ClauseRegistered read via the standalone client + SDK log
+        // parser (kernel-layer legal — no protocol/ import). The withdraw fold is
+        // irrelevant here: a committed agreement resolves its clauses regardless
+        // of whether the registration stake was later reclaimed.
+        const logs = await publicClient.getContractEvents({
+            address: addr,
+            abi: CLAUSE_REGISTRY_ABI,
+            eventName: "ClauseRegistered",
+            fromBlock: 0n,
+            toBlock: "latest",
+        });
+        registered = parseClauseRegistryLogs(logs).registered;
+    } catch {
+        return; // can't warm → publicForm withholds the unknown specs (safe)
+    }
+    await Promise.allSettled(
+        missing.map((s) => {
+            const event = registered.find((r) => r.clauseId === s.clause && r.version === s.version);
+            return event
+                ? loadClauseSpec(s.clause, s.version, event.contentURI, event.contentHash)
+                : Promise.resolve(undefined);
+        }),
+    );
+}
+
 /** Pin an agreement to IPFS (network SSoT) and remember its URI locally. */
 export async function publishAgreement(
     agreement: Agreement,
@@ -152,8 +198,9 @@ export async function publishAgreement(
     // bundle. The withheld leaf is identical, so `agreementHash` is unchanged and
     // any reader still verifies the root + every public section. The signed and
     // counterparty-relayed forms keep plaintext; only this standalone pin is
-    // redacted. `specSource()` is the app-boundary-warmed clause-spec cache the
-    // agreement was already built from; an unknown clause withholds conservatively.
+    // redacted. Warm the specs first so the FAIL-CLOSED projection is exact —
+    // otherwise a cold private spec (common on the receiver re-pin) would leak.
+    await warmAgreementSpecs(agreement);
     const cid = await t.pinJSON(publicForm(agreement, specSource()));
     const uri = t.buildURI(cid);
     saveAgreementUri(agreementHash, uri);

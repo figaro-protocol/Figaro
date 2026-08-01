@@ -147,25 +147,30 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
  *  verifies the root and every public section. Sections whose clause is entirely
  *  public pass through as plaintext — that is the free coordination commons.
  *
- *  Withholding is POSITIVE-knowledge only: a section is withheld iff its spec is
- *  loaded AND declares a private field. A section whose spec is NOT loaded stays
- *  plaintext — and that is safe, not a leak: a `private` value can only be
- *  ENTERED through a disposition-aware input, which had to load the clause spec
- *  to render, so a section that actually carries private data always has a warm
- *  spec here and is still withheld. Withholding on an UNKNOWN spec instead
- *  (fail-closed) over-redacts the structural PUBLIC clauses (topology, commerce)
- *  whenever the async spec cache has not warmed yet, blanking them out of every
- *  public reader — a correctness regression worse than the theoretical cold-spec
- *  leak it guards, which cannot occur for a value entered through the seam. The
- *  signed and counterparty-relayed forms keep full plaintext regardless — only
- *  the standalone public pin takes this form. */
+ *  Withholding is FAIL-CLOSED on the spec: a section is kept as plaintext ONLY
+ *  when its spec is loaded AND declares no private field; a section whose spec is
+ *  NOT loaded is withheld. This is the safe direction — an unknown clause could be
+ *  a permissionlessly-registered PRIVATE one, and positive-knowledge withholding
+ *  (keep-unless-known-private) leaks its plaintext whenever the async spec cache
+ *  is cold at pin time. That cold window is real on the RECEIVER re-pin leg: a
+ *  seller re-pins an agreement it never composed (so never loaded the clause's
+ *  spec through a disposition-aware input), and an offline-delivered payload fires
+ *  the re-pin at app boot when the background spec loader has not settled. So the
+ *  CALLER must WARM the specs for the agreement's clauses before projecting (see
+ *  `warmAgreementSpecs` in `agreementFetch.publishAgreement`); with the cache warm
+ *  this fail-closed form is EXACT — private sections withheld, public sections
+ *  kept — and the over-redaction that fail-closed would otherwise cause for cold
+ *  public clauses (topology, commerce) does not occur. If warming fails, the
+ *  fail-closed default over-redacts (a public reader sees fingerprints) rather
+ *  than leaking — the correct priority. The signed and counterparty-relayed forms
+ *  keep full plaintext regardless — only the standalone public pin takes this form. */
 export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
     return {
         ...agreement,
         sections: agreement.sections.map((section) => {
             if (section.data === undefined) return section; // already withheld
             const spec = specs.get(section.clause, section.version);
-            const isPrivate = spec ? specHasPrivateField(spec) : false;
+            const isPrivate = spec ? specHasPrivateField(spec) : true;
             return isPrivate ? withholdSectionContent(section) : section;
         }),
     };
