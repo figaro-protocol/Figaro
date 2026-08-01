@@ -201,9 +201,9 @@ to every base-currency holder; and the 600M is a FIXED pool a farmer DILUTES rat
 than inflates, in RISING tranches so the largest budgets pay on the most-measured
 periods. Formally: capturing a fraction φ of a period requires attacker score
 φ/(1−φ) times the honest score, at a capital cost LINEAR in that score — the
-rent-dissipation bound whose closed form (and with it the derived deposit and cooldown)
-is the open derivation the punch-list tracks; it is checkable at each period when both
-terms are observable. The florin has no protocol-set price, so the bound is stated as
+rent-dissipation bound whose closed form, and the deposit and cooldown derived from it,
+is published as RPGF paper §7 (`/papers/substrate-broadening-rpgf`), the parameter values
+ratified 2026-07-31; it is checkable at each period when both terms are observable. The florin has no protocol-set price, so the bound is stated as
 dilution per unit of attacker capital, never as a profit threshold.
 [[project_reward_mechanism_ratified_2026_07]] owns the rulings.
 
