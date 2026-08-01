@@ -263,6 +263,15 @@ contract DeployMainnet is Script {
         amounts[6] = 82_500_000 ether;
         amounts[7] = 82_500_000 ether;
         amounts[8] = 82_500_000 ether;
+        // The per-period budgets must sum to the registered minter cap
+        // (RPGF_ALLOC). The FlorinToken cap is the outer backstop, but an over-
+        // committed schedule would turn late-period claims into a first-come
+        // race; assert the two agree at deploy (audit Fix 5b).
+        uint256 amountsSum;
+        for (uint256 i = 0; i < amounts.length; ++i) {
+            amountsSum += amounts[i];
+        }
+        require(amountsSum == RPGF_ALLOC, "RPGF period budgets must sum to the allocation");
         RpgfMinter rpgfMinter = new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, amounts);
         _rpgfMinter = address(rpgfMinter);
         console.log("RpgfMinter:             ", _rpgfMinter);

@@ -382,8 +382,19 @@ contract Deploy is Script {
         ClauseRegistry clauses,
         AssemblyRegistry assemblies
     ) internal {
+        // The per-period budgets must sum to the registered minter cap. The
+        // FlorinToken cap is the outer backstop (a claim over it reverts
+        // MinterCapExceeded), but an over-committed schedule would turn late-
+        // period claims into a first-come race; assert the two agree at deploy
+        // (audit Fix 5b — the ONLY place the minter is deployed).
+        uint256[] memory rpgfAmounts = _rpgfAmounts();
+        uint256 rpgfSum;
+        for (uint256 i = 0; i < rpgfAmounts.length; ++i) {
+            rpgfSum += rpgfAmounts[i];
+        }
+        require(rpgfSum == 600_000_000 ether, "RPGF period budgets must sum to the minter cap");
         RpgfMinter rpgfMinter =
-            new RpgfMinter(address(florin), _usageCounter, address(clauses), address(assemblies), _rpgfAmounts());
+            new RpgfMinter(address(florin), _usageCounter, address(clauses), address(assemblies), rpgfAmounts);
         console.log("RpgfMinter deployed at:", address(rpgfMinter));
         florin.registerMinter(address(rpgfMinter), 600_000_000 ether);
     }
