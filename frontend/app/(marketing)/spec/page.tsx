@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
     title: "Specifications — Figaro Protocol",
-    description: "Canonical on-chain surface: kernel, attestation coordinator, clause registry, token, and optional protocol contracts.",
+    description: "Canonical protocol surface: kernel, attestation coordinator, registries, token, optional protocol contracts — plus the sequencer, the batch path's one off-chain piece.",
 };
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
