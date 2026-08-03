@@ -117,6 +117,23 @@ does — no status, no process, no attestation record. Registry mutations never
 enter a batch at all (they are once-per-artifact ETH-staked intents on the
 direct path).
 
+**PRE-COMMIT composition is direct-path only.**
+`WitnessSwapAndCommitCoordinator.swapAndCommit` funds a party's bond from a
+token they hold and then calls `FigaroCore.commit` in the same transaction
+(`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:178-197`). The
+batch path has no such contract and can have none in-batch: a batch operation is
+`KernelOp::Commit { commitment, buyer_sig, seller_sig }`
+(`prover/lib/src/types.rs:116-120`) — there is no funding leg in the wire format
+or in the proof — and `settleBatch` pulls each party's NET deposit by
+`transferFrom` when the batch lands (`FigaroBatchVerifier._executePositions`),
+so the party must already hold the settlement currency and have approved the
+VERIFIER, not the kernel. The batch-path equivalent is therefore a wallet-side
+swap performed before the signed commitment is submitted. POST-settlement
+composition is identical in both universes — both contracts deliver by ERC-20
+transfer to the party's own address (`FigaroCore.sol:293-294`,
+`FigaroBatchVerifier.sol:529`), so wallet-side routing of received tokens is
+path-blind.
+
 **The direct path remains the fallback.** The sequencer is a liveness
 convenience, never a trust assumption — but "fall back to direct" means starting
 a NEW process on the kernel, not migrating a batched one. There is no migration

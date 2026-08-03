@@ -139,6 +139,47 @@ orders stay locked in the kernel until the buyer resolves the process. (The
 helper was `calculateSubOrderSellerApproval` before; it is now
 `calculateSubOrderApproval` and returns both legs.)
 
+## Bonding in a token you do not hold — a DIRECT-path composition
+
+A party who does not hold the process settlement currency can still bond in one
+transaction, through `WitnessSwapAndCommitCoordinator.swapAndCommit`: it pulls
+their input token via a Permit2 WITNESS signature, swaps it at the coordinator's
+immutable venue, forwards the proceeds to the party's own address, then calls
+`FigaroCore.commit`. The kernel still pulls the bond from the named party, so the
+commitment stays bilaterally signed and the coordinator never becomes a
+counterparty. The SDK ships the off-chain half — the typed data whose hash IS the
+digest Permit2 verifies:
+
+```ts
+import { buildSwapWitnessTypedData, DISABLED_SWAP_FUNDING_LEG,
+         WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI } from "@figaro/sdk";
+
+// The witness binds { router, inputToken, maxInput, keccak256(swapData) } into
+// the digest, so a relayer cannot substitute the swap route and skim the
+// slippage. `coordinator` is Permit2's spender (it performs the pull).
+const typedData = buildSwapWitnessTypedData({
+  chainId, permit2, coordinator, router, inputToken,
+  maxInput, nonce, deadline, swapData,
+});
+const permitSignature = await walletClient.signTypedData({ account, ...typedData });
+
+// swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding) — one leg
+// per party; pass DISABLED_SWAP_FUNDING_LEG for a party that self-funds.
+// Per-party prerequisites: approve(FigaroCore) for the bond currency (as
+// always) plus a one-time approve(Permit2) for the input token.
+```
+
+**There is no batch-path equivalent, and none can exist in-batch.** A sequencer
+accepts a `Commit` operation that is the commitment plus both signatures and
+nothing else — no funding leg in the wire format, none in the proof — and
+`FigaroBatchVerifier.settleBatch` pulls each party's NET deposit with
+`transferFrom` when the batch lands. So on the batch path: **swap in your own
+wallet first**, then sign the commitment in the process currency, hold that
+balance, and approve `FigaroBatchVerifier` (not `FigaroCore`) until the batch
+settles. POST-settlement composition is identical on both paths — both deliver
+ERC-20 to the party's own address, so wallet-side routing of what you received is
+path-blind.
+
 ## Verifying what you are about to sign
 
 **Settlement is UI-independent; presentation at the signing moment is not.** The
@@ -378,6 +419,12 @@ import { deserializeCommitmentPayload } from "@figaro/sdk/agent";
 // never forge. Fall back to direct FigaroCore submission with the SAME
 // artifacts. There is no hosted public endpoint today; the URL is deployment
 // config, like an RPC URL. Surface + run-your-own recipe: prover/sequencer.
+//
+// A batch operation is the SIGNED ARTIFACT AND NOTHING ELSE — there is no
+// funding leg, so swap-and-commit does not exist here. Bonding in a token you
+// do not hold means swapping in your own WALLET first, then submitting; and
+// settleBatch pulls your net deposit, so approve FigaroBatchVerifier, not the
+// kernel. (See "Bonding in a token you do not hold" above.)
 import { SequencerClient } from "@figaro/sdk/agent";
 const seq = new SequencerClient({ url: SEQUENCER_URL });
 if (!(await seq.isAvailable())) { /* direct path instead */ }

@@ -109,6 +109,11 @@ export default function Specifications() {
                                 <td className="py-2 text-ink-body"><code className="font-mono text-xs">settleBatch</code> is <strong>permissionless</strong> &mdash; anyone who can produce the SP1 proof may settle. In practice you <code className="font-mono text-xs">POST /submit</code> the same signed structs to a <strong>sequencer relay</strong> (below), which batches, proves and settles them.</td>
                             </tr>
                             <tr>
+                                <td className="py-2 pr-4">Can I bond in a token I don&apos;t hold?</td>
+                                <td className="py-2 pr-4 text-ink-body">Yes, in one transaction: <code className="font-mono text-xs">WitnessSwapAndCommitCoordinator.swapAndCommit</code> (below) swaps your input token at its immutable venue and then calls <code className="font-mono text-xs">commit</code>.</td>
+                                <td className="py-2 text-ink-body">No pre-commit coordinator exists, and none can run in-batch &mdash; a batch operation is the signed commitment and nothing else. <strong>Swap in your wallet first</strong>, then submit; <code className="font-mono text-xs">settleBatch</code> pulls your <em>net</em> deposit by <code className="font-mono text-xs">transferFrom</code>, so approve the verifier, not the kernel.</td>
+                            </tr>
+                            <tr>
                                 <td className="py-2 pr-4">Did both parties really sign it?</td>
                                 <td className="py-2 pr-4 text-ink-body">The signature bytes live in the commit transaction&apos;s <strong>calldata</strong> &mdash; <code className="font-mono text-xs">OrderCommitted</code> carries the struct but no signatures. Decode, re-bind by order hash, re-verify.</td>
                                 <td className="py-2 text-ink-body">The <strong>proof</strong> is the on-chain evidence that both recovered: <code className="font-mono text-xs">settleBatch</code>&apos;s calldata carries net positions, events and accruals &mdash; <em>no signature bytes</em>. Keep your own copy of the signed artifact.</td>
@@ -210,7 +215,7 @@ export default function Specifications() {
                         title="WitnessSwapAndCommitCoordinator.sol"
                         href={`${GH}/WitnessSwapAndCommitCoordinator.sol`}
                         meta="off-protocol · swap-and-commit"
-                        desc="Off-protocol multi-token bond funding. A buyer holding a token the process isn't denominated in signs a Permit2 witness permit; the coordinator pulls that token, swaps it into the settlement currency, and commits in one transaction — the kernel still sees a single-currency commitment. It reads no kernel state and holds no bond; the kernel is untouched (record key: witnessSwapAndCommitCoordinator)."
+                        desc="Off-protocol multi-token bond funding. A party (buyer or seller) holding a token the process isn't denominated in signs a Permit2 witness permit; the coordinator pulls that token, swaps it into the settlement currency, and commits in one transaction — the kernel still sees a single-currency commitment. It reads no kernel state and holds no bond; the kernel is untouched. DIRECT PATH ONLY: it calls FigaroCore.commit, and the batch path carries no funding leg — there, a party swaps in their own wallet before submitting the signed commitment to a sequencer (record key: witnessSwapAndCommitCoordinator)."
                     />
                     <ContractEntry
                         id="Permit2"
@@ -248,7 +253,7 @@ export default function Specifications() {
                         id="multisender"
                         title="multisender (Disperse)"
                         meta="devnet mock · mainnet canonical"
-                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Mainnet composes the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018); devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
+                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Mainnet composes the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018); devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
             </MarketingSection>
