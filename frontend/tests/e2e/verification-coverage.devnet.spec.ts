@@ -21,7 +21,7 @@
  *
  * The producing flow is the minimal seed-assembly trade (buyer anvil[0] ↔
  * the wizard seller, registered by the devnet-authoring gate); the rungs
- * consume ONLY what that flow put on-chain. Money-legs rule: the bond lock
+ * consume ONLY what that flow put on-chain. Value-legs rule: the bond lock
  * is asserted at commit (rung precedent — no resolve; full-cycle settlement
  * is permissionless-clause's assertion).
  *
@@ -114,7 +114,7 @@ test.describe('VERIFICATION COVERAGE — kernel-revert path, evidence reader, ve
         const processId = event.args.processId! as Hex;
         const agreementHash = event.args.agreementHash! as Hex;
 
-        // Money leg — the bond lock, read from the token contract.
+        // Value leg — the bond lock, read from the token contract.
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),

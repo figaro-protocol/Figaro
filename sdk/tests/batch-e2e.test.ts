@@ -365,7 +365,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         const regHash = await deployerWallet.deployContract({
             abi: CLAUSE_REGISTRY_DEPLOY_ABI,
             bytecode: registryBytecode,
-            args: [0n], // zero-deposit registry keeps the e2e's money legs about bonds only
+            args: [0n], // zero-deposit registry keeps the e2e's value legs about bonds only
         });
         const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash });
         clauseRegistryAddress = regReceipt.contractAddress!;

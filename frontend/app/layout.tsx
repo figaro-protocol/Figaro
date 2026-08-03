@@ -30,21 +30,21 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
     title: "Figaro Protocol — Your deal stays yours.",
-    description: "Nobody holds your money, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
+    description: "Nobody holds your tokens, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
     robots: {
         index: false,
         follow: false,
     },
     openGraph: {
         title: "Figaro Protocol — Your deal stays yours.",
-        description: "Nobody holds your money, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
+        description: "Nobody holds your tokens, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
         siteName: "Figaro Protocol",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
         title: "Figaro Protocol — Your deal stays yours.",
-        description: "Nobody holds your money, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
+        description: "Nobody holds your tokens, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
     },
 };
 

@@ -338,7 +338,7 @@ contract Deploy is Script {
         // Thirty-minute periods, not seconds or ten minutes: deploy + clause
         // population alone takes over a minute, and RESOLVE-TIME USAGE
         // RECORDING (ruled 2026-07-28: the resolve capability records every
-        // committed artifact) needs accrual OPEN for every money-legs spec in
+        // committed artifact) needs accrual OPEN for every value-legs spec in
         // a full suite run — a 3×10-minute schedule closed the book ~30
         // minutes after deploy and every later recordClauseUsage reverted
         // AccrualClosed (measured, not guessed: the tradelens batch). Thirty

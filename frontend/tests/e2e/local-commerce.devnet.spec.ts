@@ -716,7 +716,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             "the captured evidence artifact's URI surfaces in the audit",
         ).toBeVisible({ timeout: 30000 });
 
-        // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
+        // ── EVERY VALUE EVENT: one cash-flow row per kernel ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and
         //    pays out the seller, per order: exactly 8 rows, 2 of each kind. The
         //    cash flow is the consolidated statement's line table. ──

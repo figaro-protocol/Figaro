@@ -197,7 +197,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         const committedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        // Bond-escrow baseline in the payment token — the money leg is asserted
+        // Bond-escrow baseline in the payment token — the value leg is asserted
         // as deltas after the commit (robust to persistent-devnet residue).
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),

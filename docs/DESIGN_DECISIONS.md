@@ -579,7 +579,7 @@ no-institutions stress tests, and the DAO is not yet instantiated), gives the tr
 usage-coupled revenue (exactly the value-accrual coupling the pure-Schelling-point florin
 design refuses, and a fresh Howey fact), and turns permissionless recording into a fee
 paid TO an entity. If the Sybil bound's algebra ever exposes a gap here, the reserve
-lever is lengthening the withdrawal cooldown — which moves no money at all.
+lever is lengthening the withdrawal cooldown — which moves no tokens at all.
 
 ## 19. Usage accrual requires the artifact to hold a live registration deposit — an unregistered leaf key scores nothing
 
@@ -607,7 +607,7 @@ like lost or manipulable accrual.
 
 **Is correct because (audit 2026-08-01, finding "settlement/reward coupling"):** the accrual
 is a REWARD-tier write inside a SETTLEMENT-tier transaction. A reward gate that reverts
-settlement lets one party block every co-batched trader's already-reconciled money — a free,
+settlement lets one party block every co-batched trader's already-reconciled payouts — a free,
 unauthenticated griefing vector (a poison claim naming the excluded `figaro-commerce`, which
 rides every agreement; or a seller who unstakes between prove and submit). Tier separation is
 the doctrine: settlement must never be hostage to the reward. A dropped batch's accrual is

@@ -209,7 +209,7 @@ contract FigaroBatchVerifierTest is Test {
 
         assertEq(verifier.stateRoot(), newRoot, "root advances");
         assertEq(verifier.batchCount(), 1);
-        // Money legs from the chain: buyer pulled 200, seller pushed 300.
+        // Value legs from the chain: buyer pulled 200, seller pushed 300.
         assertEq(buyerBefore - token.balanceOf(buyer), 200 ether, "buyer net deposit");
         assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "seller net payout");
     }
@@ -714,7 +714,7 @@ contract FigaroBatchVerifierTest is Test {
     /// The counter's gates are the COUNTER's, and settlement is DECOUPLED from
     /// them (audit Fix 1a): a batch that trips a reward-tier gate still settles
     /// its token positions and advances state — the accrual is dropped, never
-    /// the trade. A reward gate must not unwind another party's money.
+    /// the trade. A reward gate must not unwind another party's settlement.
     function test_settleBatch_settlesEvenWhenTheCounterRejectsTheAccrual() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1, 1);
         (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,

@@ -21,7 +21,7 @@
  *     BROADCASTS THE COMMIT ITSELF once the root lands — no browser ever
  *     acts for the agent wallet.
  *
- * Money legs from chain: agent nets exactly its posted price, the human
+ * Value legs from chain: agent nets exactly its posted price, the human
  * courier (who counter-signed and lost) nets exactly zero, escrow to
  * baseline.
  *

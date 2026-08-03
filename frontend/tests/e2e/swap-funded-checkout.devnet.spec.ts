@@ -9,7 +9,7 @@
  * Swap-and-commit is the ON-RAMP into that denomination for EITHER party
  * short of it — funding is never the order's denomination.
  *
- * Three passes, each with money legs from the chain (the standing rule),
+ * Three passes, each with value legs from the chain (the standing rule),
  * at the devnet venue's 1:1 rate (prices convert identically):
  *
  *  1. THE PICK — buyer holds the accepted token (MPMT), picks it at checkout;
@@ -137,7 +137,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
     }
 
-    /** The commit that landed for THIS buyer, its receipt, and its money
+    /** The commit that landed for THIS buyer, its receipt, and its value
      *  figures. */
     async function committedEvent(before: number) {
         await expect.poll(async () => (await queryCommitted()).length, {
@@ -178,7 +178,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes DIRECT to the kernel')
             .toBe(core.toLowerCase());
 
-        // Money legs at commit — every one in the PICKED token.
+        // Value legs at commit — every one in the PICKED token.
         const [buyerPickedAfter, sellerPickedAfter, corePickedAfter] = await Promise.all([
             balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
         ]);
@@ -252,7 +252,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         expect(receipt.to?.toLowerCase(), 'the funded payload routed through WitnessSwapAndCommitCoordinator')
             .toBe(coordinator.toLowerCase());
 
-        // Money legs: the buyer paid FROM the default (1:1 venue), the order
+        // Value legs: the buyer paid FROM the default (1:1 venue), the order
         // escrows IN the picked token, and no residue sticks anywhere.
         const [buyerDefaultAfter, buyerPickedAfter, corePickedAfter, coordPicked, coordDefault] = await Promise.all([
             balanceOf(defaultToken, BUYER), balanceOf(pickedToken, BUYER),
@@ -318,7 +318,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         expect(receipt.to?.toLowerCase(), 'the seller-funded accept routed through WitnessSwapAndCommitCoordinator')
             .toBe(coordinator.toLowerCase());
 
-        // Money legs: the seller's bond came FROM their default token; their
+        // Value legs: the seller's bond came FROM their default token; their
         // picked-token balance is untouched at commit.
         const [sellerDefaultAfter, sellerPickedAfter, corePickedAfter] = await Promise.all([
             balanceOf(defaultToken, SELLER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),

@@ -566,7 +566,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // Bond-escrow baseline in the payment token, BEFORE the commit
             // pulls bonds. Deltas (not absolutes) are asserted, so this is
             // robust to whatever residue prior rungs left on the persistent
-            // devnet. This is the money leg: the chain is the point.
+            // devnet. This is the value leg: the chain is the point.
             const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
                 balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
             ]);

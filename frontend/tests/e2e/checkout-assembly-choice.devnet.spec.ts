@@ -10,7 +10,7 @@
  *   - two bindings → the method dropdown renders (never the static line),
  *   - place-order REFUSES until the buyer picks,
  *   - the pick drives checkout → sign → relay → seller counter-sign → commit,
- *   - money legs: exact bond deltas from the chain (standing rule).
+ *   - value legs: exact bond deltas from the chain (standing rule).
  *
  * Dedicated wallet anvil[14]: the wizard seller (anvil[13]) must stay
  * SINGLE-binding by scenario premise — a second binding on it would gate
@@ -167,7 +167,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
             await onboardViaWizard(page, targetSlugs);
         }
 
-        // Chain baselines for the money legs + the commit event.
+        // Chain baselines for the value legs + the commit event.
         const queryCommitted = () => publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted',
             args: { buyer: BUYER }, fromBlock: 0n,
@@ -248,7 +248,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
             description: `order=${event.args.orderHash} payment=${event.args.payment} cumulativeValue=${event.args.cumulativeValue} tx=${receipt.transactionHash} block=${receipt.blockNumber} gasUsed=${receipt.gasUsed}`,
         });
 
-        // ── Money legs (the real test): buyer↓ buyerBond, seller↓ sellerBond,
+        // ── Value legs (the real test): buyer↓ buyerBond, seller↓ sellerBond,
         //    FigaroCore escrow↑ both. Exact deltas — gas is ETH, so the
         //    payment-token deltas are the bonds only. ──
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);

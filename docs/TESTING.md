@@ -39,7 +39,7 @@ reverts) while the outer settlement completes exactly once — across
 `FigaroBatchVerifier.settleBatch`.
 
 `FigaroBatchVerifierTest` covers the batch-settlement verifier: the happy path
-with money legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
+with value legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
 substitution + unregistered clause both revert; a never-seen registered clause
 settles with zero verifier changes), state-root continuity, calldata-tamper
 reverts, and constructor guards.
@@ -130,7 +130,7 @@ own order hash and both signatures recover to the parties named inside it).
 
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 the witness payload, the Rust sequencer binary proves + submits, the Solidity
-verifier checks the hashes and the registry anchor on a live Anvil — money
+verifier checks the hashes and the registry anchor on a live Anvil — value
 legs asserted from the chain. Anvil-gated (skips clean without it).
 
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers

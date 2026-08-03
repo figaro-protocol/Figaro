@@ -672,7 +672,7 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
     let (pv, positions, events, _) =
         apply_batch_with_state(&claims_only).expect("claims-only batch applies");
 
-    assert!(positions.is_empty(), "no money moves — nothing was traded");
+    assert!(positions.is_empty(), "no value moves — nothing was traded");
     assert_eq!(events.usage_accruals.len(), 1, "the artifact is credited");
     assert_ne!(
         pv.prev_state_root, pv.new_state_root,

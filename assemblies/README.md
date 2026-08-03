@@ -11,7 +11,8 @@ vocabulary, these are worked sentences.
 **This is a user-onboarding surface, distinct from the e2e scenario machinery**
 (which exists to prove the frontend generic). Every reference scenario is also
 e2e-tested, and those tests are part of the onboarding story — read them to see
-the scenario driven end to end, money legs included:
+the scenario driven end to end, down to the ERC-20 balance changes
+asserted from chain:
 
 | Reference | Composition | The story | Proven by |
 |---|---|---|---|
@@ -20,7 +21,7 @@ the scenario driven end to end, money legs included:
 | `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off — no marketplace fee | `content-delivery.devnet.spec.ts` |
 | `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one settlement | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one settlement) |
 | `tradelens.json` | 6 orders | The containerised import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage | `scenario-tradelens` + `tradelens-runtime` |
-| `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, money legs, self-authenticating data-terms leaf) |
+| `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, ERC-20 balance assertions, self-authenticating data-terms leaf) |
 | `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different compositionHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (hash-distinctness in the conformance suite; `data-market.devnet.spec.ts` asserts both siblings anchored under distinct compositionHashes) |
 | `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live records — credential over the encrypted hand-off, every record a leaf provable against the settled agreement that produced it; gas is paid once per subscription, never per data point | `data-market.devnet.spec.ts` (full cycle: license anchored to the settled flight process, encrypted hand-off evidence, self-authenticating license leaf) |
 

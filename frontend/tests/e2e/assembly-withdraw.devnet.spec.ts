@@ -34,7 +34,7 @@
  * so its committed agreement is witnessed (localStorage URI) and the gate
  * verifies it.
  *
- * MONEY LEGS (the chain is the point):
+ * VALUE LEGS (the chain is the point):
  *   commit  — buyer ↓ buyerBond, seller ↓ sellerBond, FigaroCore escrow ↑ both
  *   resolve — buyer net −payment, seller net +payment, escrow to baseline
  *   reclaim — registry ETH escrow ↓ exactly registrationDeposit;
@@ -182,7 +182,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         const processId = event.args.processId!;
         const payment = event.args.payment!;
 
-        // Money leg (commit): the asymmetric bonds actually locked.
+        // Value leg (commit): the asymmetric bonds actually locked.
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, payment);
         const [buyerMid, sellerMid, coreMid] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
@@ -228,7 +228,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // Money leg (full cycle): net settlement, escrow back to baseline.
+        // Value leg (full cycle): net settlement, escrow back to baseline.
         const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
@@ -274,7 +274,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
             await expect(caveat, 'no unverifiable deals → no caveat').toBeHidden();
         }
 
-        // ── RECLAIM + MONEY LEG: click; DepositWithdrawn lands; the registry
+        // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands; the registry
         //    escrow drops by exactly the deposit and the author's ETH rises by
         //    exactly deposit − gas (both read from the chain). ──
         const deposit = await publicClient.readContract({

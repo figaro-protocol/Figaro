@@ -1,5 +1,5 @@
 /**
- * data-market.devnet.spec.ts — the DATA-MARKET money-legs e2e: the two
+ * data-market.devnet.spec.ts — the DATA-MARKET value-legs e2e: the two
  * anchored data reference assemblies run as bonded processes, DUAL POSTURE.
  *
  * The scenario (two processes, the postures mirrored):
@@ -18,7 +18,7 @@
  *      the content-delivery ceremony's chain shape); commit → resolve.
  *
  * Asserted, ALL from fresh chain reads (never the writing test's state):
- *   - MONEY LEGS per process: bond lock at commit (buyer 2×payment, seller
+ *   - VALUE LEGS per process: bond lock at commit (buyer 2×payment, seller
  *     2×cumulative, escrow both), net at resolve (buyer −payment, seller
  *     +payment, core net 0).
  *   - DUAL POSTURE from OrderCommitted events: wallet A is seller of
@@ -108,7 +108,7 @@ interface AnchoredTemplate {
     template: AssemblyTemplate;
 }
 
-test.describe('DATA MARKET — dual-posture money legs over the anchored data assemblies (devnet)', () => {
+test.describe('DATA MARKET — dual-posture value legs over the anchored data assemblies (devnet)', () => {
     test.setTimeout(300_000);
 
     test('A flies for B, B streams to A: adopt → commit → resolve twice, every leaf provable against the chain', async () => {
@@ -227,7 +227,7 @@ test.describe('DATA MARKET — dual-posture money legs over the anchored data as
 
         // ── One bonded single-order process, chain-driven end to end:
         //    reconstruct through the SDK's ONE template walk, both parties
-        //    sign, bond, commit — money legs asserted from the token
+        //    sign, bond, commit — value legs asserted from the token
         //    contract at every step. Resolve is separate (process 2 attests
         //    its hand-off while the order is live). ──
         const chainId = LOCAL_ANVIL.id;
@@ -291,7 +291,7 @@ test.describe('DATA MARKET — dual-posture money legs over the anchored data as
             expect(event.args.agreementHash, `${opts.label}: the chain committed the signed agreement root`)
                 .toBe(order.agreementHash);
 
-            // MONEY LEG, bond lock: buyer 2×payment, seller 2×cumulative,
+            // VALUE LEG, bond lock: buyer 2×payment, seller 2×cumulative,
             // escrow up by both — read from the token contract.
             const [buyer1, seller1, core1] = await Promise.all([
                 balanceOf(opts.buyer.address), balanceOf(opts.seller.address), balanceOf(core),
@@ -311,8 +311,8 @@ test.describe('DATA MARKET — dual-posture money legs over the anchored data as
                 address: core, abi: CORE_ABI, functionName: 'resolveProcess',
                 args: [committed.event.args.processId!, [committed.order.commitment]],
             }));
-            // MONEY LEG, net of the whole cycle: buyer −payment, seller
-            // +payment, core exactly flat — the e2e money-legs rule.
+            // VALUE LEG, net of the whole cycle: buyer −payment, seller
+            // +payment, core exactly flat — the e2e value-legs rule.
             const payment = committed.order.payment;
             const { buyer0, seller0, core0 } = committed.baselines;
             const [buyerF, sellerF, coreF] = await Promise.all([

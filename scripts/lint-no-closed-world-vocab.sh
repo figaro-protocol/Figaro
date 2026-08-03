@@ -49,6 +49,16 @@ FAIL_DOCTRINE='>[[:space:]]*1(\.[0-9]+)?[x×]|1[[:space:]]*\+[[:space:]]*(ε|eps
 # ("bond-financing"), never a credit instrument ("bond-default" — bonds forfeit, they
 # cannot default), never measured by capital efficiency, never "bonds are capital".
 FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|bonds are capital'
+# "money" is BANNED (operator ruling 2026-08-03): nothing in this system IS money —
+# the florin is a TOKEN and a SCHELLING POINT; what moves is tokens/value/payments.
+# The word drags readers into the old economic paradigm, and it is just plain wrong
+# for an ERC-20-based protocol. Replacements are context-specific (value / token /
+# payment / deposit / stake / payout) — never mechanical. The ONLY sanctioned uses
+# are sentences about money-the-concept (fiat, historical currency naming, the old
+# platform world), enumerated below; papers are file-exempt (Howey/MiCA quotes,
+# citation titles, Bitcoin-as-money analysis — swept + sanctioned 2026-08-03).
+FAIL_MONEY='\bmoney\b'
+ALLOWED_MONEY='hold the money, decide|real money is a common|Historical money names|ordinary money|hold its money|your identity, your money'
 
 violations=0
 
@@ -76,6 +86,13 @@ for file in "$@"; do
     hits=$(grep -nE "$FAIL_DETERRENT" "$file" || true)
     if [[ -n "$hits" ]]; then
         echo "[closed-world] $file — bonds-as-assets drift: bonds are DETERRENTS, not assets (ruled 2026-07-24) — never bond-financing / bond-default / capital-efficiency / 'bonds are capital'"
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    hits=$(grep -niE "$FAIL_MONEY" "$file" | grep -viE "$ALLOWED_MONEY" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — 'money' is BANNED (ruled 2026-08-03): the florin is a TOKEN, never money; say value / token / payment / deposit / stake per context. A genuinely money-the-concept sentence needs a conscious ALLOWED_MONEY entry."
         echo "$hits" | head -3 | sed 's/^/    /'
         violations=$((violations + 1))
     fi

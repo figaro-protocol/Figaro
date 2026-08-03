@@ -361,7 +361,7 @@ BUT: Bob delivered good food!
   ↓
 Bob's $20 bond ALSO locked (Alice can't approve Order #1 without full delivery)
   ↓
-Bob pressures Charlie: "Fix this or we BOTH lose money!"
+Bob pressures Charlie: "Fix this or we BOTH lose our bonds!"
   ↓
 Self-organizing coordination
 ```
@@ -696,7 +696,7 @@ Rational decision: Don't abuse the system
 **Layers 3–4 Handle Edge Cases Layers 1–2 Don't**:
 
 - Truly irrational actors (rare but possible)
-- Buyers who value spite > money (psychologically abnormal)
+- Buyers who value spite > payoff (psychologically abnormal)
 - Systemic attacks by bad-faith actors
 
 For these cases, arbitration and the legal system provide **deterrent enforcement**. The kernel's event log — `OrderCommitted`, `OrderResolved`, `ProcessResolved`, each carrying its block timestamp — supplies the irrefutable audit trail both forums need. No on-chain governance assists them — the protocol is inert and immutable; the off-chain forums do the rest.
@@ -724,7 +724,7 @@ Traditional protocols pick one enforcement mechanism — an arbitrator, a timeou
 ```
 Problem: Buyer tries to abuse system
 
-Layer 1: Forfeits their own bond (economic deterrence) — irrational unless spite > money
+Layer 1: Forfeits their own bond (economic deterrence) — irrational unless spite > payoff
 Layer 2: Co-sellers remedy any real fault, leaving a pretextless refusal exposed in the permanent record
 Layers 3–4: Loses in arbitration or court (legal deterrence) — immutable evidence, unforgeable timeline
 

@@ -171,7 +171,7 @@ NEVER a signature.**
   events and getters ARE the standard API, so a settlement consumer is a parallel contract family
   that reads it (`AttestationCoordinator` reads `core.orderStatus` for an OPEN process;
   `UsageCounter` reads the same getter for a RESOLVED one). A consumer that inserts itself into
-  the money leg is placement-4 cosplay for contract-as-party.
+  the payment leg is placement-4 cosplay for contract-as-party.
 
 #### The seller problem is a boundary detector, not a composability defect
 

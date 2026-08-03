@@ -921,7 +921,7 @@ resolving forever.
 // 1. Leave the surface. Takes effect immediately: the dedup guard clears, the
 //    member disappears from discovery, and the wallet may register again at once.
 //    MembersRegistry.requestWithdrawal()
-// 2. Take the money, once `withdrawalCooldown` seconds have passed.
+// 2. Take the deposit back, once `withdrawalCooldown` seconds have passed.
 //    MembersRegistry.withdraw()          // reverts CooldownActive(releaseAt) before then
 ```
 

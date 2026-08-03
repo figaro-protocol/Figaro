@@ -146,7 +146,7 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
         await expect(page.getByText('Commitment submitted on-chain.'), 'the /sign page confirms the commit')
             .toBeVisible({ timeout: 30000 });
 
-        // ── Money legs (the real test): buyer↓ buyerBond, seller↓ sellerBond,
+        // ── Value legs (the real test): buyer↓ buyerBond, seller↓ sellerBond,
         //    FigaroCore escrow↑ both. Exact deltas — gas is ETH, so the
         //    payment-token deltas are the bonds only. ──
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);

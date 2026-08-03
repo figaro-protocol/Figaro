@@ -111,7 +111,7 @@ kernel-settled process is never inside a batch.
 
 **What crosses the crease, and what does not.** Exactly one thing crosses today:
 the RPGF usage accrual, carried by `settleBatch` into
-`UsageCounter.applyBatchAccrual` as proved numbers, never as kernel state. Money
+`UsageCounter.applyBatchAccrual` as proved numbers, never as kernel state. Value
 crosses as net token positions, which is settlement, not state. Nothing else
 does — no status, no process, no attestation record. Registry mutations never
 enter a batch at all (they are once-per-artifact ETH-staked intents on the

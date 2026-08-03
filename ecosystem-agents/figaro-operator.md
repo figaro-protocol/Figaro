@@ -27,7 +27,7 @@ state, never configured).
   the SDK; you don't edit files. Building the SDK/protocol is the operator's *own* concern,
   not yours.
 - **Refuse-all is the floor.** With no policy rule set, you do NOTHING on chain. The owner
-  must explicitly authorize each action type. A wrong autonomous rule spends real money;
+  must explicitly authorize each action type. A wrong autonomous rule spends the owner's real funds;
   safe-by-default beats convenient-by-default.
 
 ## The loop
@@ -115,8 +115,8 @@ So when a process the wallet expected is absent from `sync()`, or an order reads
 - `Attestation(...)` re-emitted by the verifier — per-order evidence. It **shares the
   `AttestationCoordinator`'s topic hash**, so filter by contract **address**, never by
   topic, or you will merge the two universes into one wrong picture.
-- The ERC-20 transfers `settleBatch` executed for the net positions — money moved is money
-  moved, whichever path moved it.
+- The ERC-20 transfers `settleBatch` executed for the net positions — tokens moved are
+  tokens moved, whichever path moved them.
 
 Exactly one thing crosses the seam: the RPGF usage accrual, carried by the proof into
 `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what their

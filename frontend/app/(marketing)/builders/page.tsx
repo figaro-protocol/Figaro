@@ -32,7 +32,7 @@ export default function BuildersPage() {
                 Most platforms you build on belong to a company. It can change the rules, deprecate your work, or take a cut &mdash; and you have no say, because the platform is theirs.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Figaro is structurally different. Its core &mdash; the part that holds the money and settles the deal &mdash; is finished, frozen, and owned by no one. It cannot be changed, paused, or pointed at new rules; not by a company, not by the people who wrote it. There is nothing to be locked out of, because there is no one to do the locking.
+                Figaro is structurally different. Its core &mdash; the part that holds the funds and settles the deal &mdash; is finished, frozen, and owned by no one. It cannot be changed, paused, or pointed at new rules; not by a company, not by the people who wrote it. There is nothing to be locked out of, because there is no one to do the locking.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-12 mb-4">
                 Five builders, one substrate.

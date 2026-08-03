@@ -10,7 +10,7 @@
  * shape: three orders, every one composing the content hand-off — no other
  * anchored assembly does), seeds its three sellers (the lead's binding
  * designates the contributors through the per-clause commit-order cursor),
- * and runs the chain end to end with every money leg from chain:
+ * and runs the chain end to end with every value leg from chain:
  *
  *   checkout  the client signs three orders (virtual modality, encrypted
  *             transfer on every deliverable), relays.

@@ -26,7 +26,7 @@
  * six sellers, and checks out as the buyer through SIGN + relay with the
  * derived chain total asserted. The runtime leg
  * (tradelens-runtime.devnet.spec.ts) consumes the anchored artifact and
- * carries the money legs.
+ * carries the value legs.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { planSubOrderSellers } from '@figaro/sdk';

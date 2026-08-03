@@ -35,7 +35,7 @@ export default function Assemblies() {
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Traditionally you pay one company a single lump sum, and where that
-                    money goes &mdash; to the cooks, the courier, the farm that grew the
+                    payment goes &mdash; to the cooks, the courier, the farm that grew the
                     tomatoes, the landlord, the owner&apos;s cut &mdash; is decided inside
                     the company, privately, after the fact. The firm is where that
                     breakdown stays hidden. An assembly turns it inside out and puts it in

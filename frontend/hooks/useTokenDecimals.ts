@@ -11,7 +11,7 @@ import { ERC20_ABI } from "@/lib/kernel/contracts";
  * locally because localAnvil and hardhat share id 31337).
  *
  * `ready` distinguishes "resolved to 18" from "not yet resolved" — callers that
- * compute money amounts should gate on it rather than compute against the
+ * compute token amounts should gate on it rather than compute against the
  * fallback before the real value lands.
  */
 export default function useTokenDecimals(tokenAddress?: `0x${string}`) {

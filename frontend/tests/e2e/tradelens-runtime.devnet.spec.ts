@@ -12,7 +12,7 @@
  *             all six orders, relays.
  *   accepts   each of the six sellers accepts on ITS /orders — root first,
  *             then commit order; after every accept the exact 2P/2G bond
- *             deltas are asserted from token balances (the money legs).
+ *             deltas are asserted from token balances (the value legs).
  *   witnesses the story of the container, filed by the party that lived it:
  *             the shipper seals (chain-of-custody "applied"), the inspector
  *             passes the goods (acceptance-criteria "conforming"), the
@@ -68,7 +68,7 @@ const ERC20_ABI = parseAbi([
 test.describe('TRADELENS RUNTIME — six sellers bond, the container story attests, one resolve pays the chain (devnet)', () => {
     test.setTimeout(900_000);
 
-    test('accept → witness → resolve, every money leg from chain', async ({ page, context }) => {
+    test('accept → witness → resolve, every value leg from chain', async ({ page, context }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         await context.grantPermissions(['geolocation']);
         await context.setGeolocation({ latitude: DEVICE.lat, longitude: DEVICE.lon });

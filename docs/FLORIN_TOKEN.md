@@ -60,12 +60,12 @@ not a governance right, not a staking instrument.
 
 **The florin.** Ticker **FLORIN**, symbol **ƒ** (U+0192).
 
-Figaro is the protocol; the florin is its money. The unit is a **common noun** —
+Figaro is the protocol; the florin is its token. The unit is a **common noun** —
 lowercase in prose, natural plural "florins" — because real money is a common
 noun with a symbol, not a perpetually-capitalized brand. The teaching sentence:
 *"Figaro settles in florins — the unit Florence gave world trade."*
 
-**The rule this name obeys: a money name DENOMINATES, it never DESCRIBES.** A
+**The rule this name obeys: a token name DENOMINATES, it never DESCRIBES.** A
 name that describes the service reads as a substitutable product brand (the
 "Filecoin mismatch"). Historical money names come from four sources only —
 weights (peso, lira, pound), places (dollar ← thaler; florin ← Florence),
@@ -104,7 +104,7 @@ no admin, no owner, no vote decides a resolution. The DAO governs its own treasu
 the 300M is spent on — which public goods to fund, which programs to stand up, who gets
 paid for what — all by discretionary decision, the human-judgment layer the uniform 600M
 RPGF deliberately avoids. Those are two different objects at two different tiers, and collapsing them is the error
-this section exists to prevent. A DAO vote can move the DAO's money; nothing can move a
+this section exists to prevent. A DAO vote can move the DAO's treasury; nothing can move a
 bonded commitment except its buyer.
 
 **The DAO can spend its 300M three ways.** Nothing gates which — these are treasury acts,

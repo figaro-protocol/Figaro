@@ -55,7 +55,7 @@ export default function FlorinSchellingPointTokenPaper() {
         >
             <PaperSection title="1. Introduction">
                 <p>
-                    The florin &mdash; the unit Florence gave world trade &mdash; is the native money that ships alongside the Figaro settlement primitive. This paper describes its design and defends a specific framing of what it is. The framing is the substantive contribution; the supply-integrity and distribution mechanics follow from it.
+                    The florin &mdash; the unit Florence gave world trade &mdash; is the native token that ships alongside the Figaro settlement primitive. This paper describes its design and defends a specific framing of what it is. The framing is the substantive contribution; the supply-integrity and distribution mechanics follow from it.
                 </p>
                 <p>
                     The framing: <em>the florin is a Schelling-point token for the Figaro ecosystem.</em> Its value to participants is not a claim on protocol revenue (there is no protocol fee), not a governance vote (the kernel has no governance), not a yield stream (no activity-coupled emission), not a utility token purchasable for on-chain services (there are no protocol-layer services that require it), and not bond collateral (the kernel is token-agnostic). Its value is its focality: in the sense of Schelling (1960), the florin is the focal point that Figaro-aligned participants converge on when they want to signal alignment without coordinating through a central authority.

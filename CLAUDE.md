@@ -176,7 +176,7 @@ Verify 3× before suggesting any change to kernel invariants. The MAD equilibriu
 
 ### Why the Name
 
-**Protocol = Figaro; its money = the florin** (FLORIN, ƒ) — a common noun: lowercase, plural florins. Figaro is Rossini's factotum: coordinates everything, owns nothing. The metaphor is the thesis, not decoration; no alternatives (no "Uber-killer" / "Stripe but decentralized"). **A money name DENOMINATES, never DESCRIBES.** Factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` "Appendix: Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
+**Protocol = Figaro; its token = the florin** (FLORIN, ƒ) — a common noun: lowercase, plural florins. Figaro is Rossini's factotum: coordinates everything, owns nothing. The metaphor is the thesis, not decoration; no alternatives (no "Uber-killer" / "Stripe but decentralized"). **A token name DENOMINATES, never DESCRIBES** (the rule historical currency naming teaches). Factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` "Appendix: Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
 
 ### Framing Discipline
 

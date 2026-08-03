@@ -41,7 +41,7 @@
  *     the wizard with the unbind-all-then-bind-own step, so each run is
  *     self-contained regardless of what the other left bound.
  *
- * MONEY LEGS (the chain is the point):
+ * VALUE LEGS (the chain is the point):
  *   register — ClauseRegistry ETH escrow +registrationDeposit exactly;
  *              author −(deposit + gasUsed×effectiveGasPrice) exactly
  *   commit   — buyer ↓ buyerBond, seller ↓ sellerBond, core escrow ↑ both
@@ -129,7 +129,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         const registerBtn = page.getByTestId('clause-register-button');
         await registerBtn.waitFor({ state: 'visible', timeout: 30000 });
 
-        // Money-leg baselines, taken immediately before the ONE author tx.
+        // Value-leg baselines, taken immediately before the ONE author tx.
         const deposit = await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
         }) as bigint;
@@ -147,7 +147,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
             'the receipt names the registered clause id',
         ).toHaveText(CLAUSE_ID);
 
-        // Money leg (register): the registration event from strictly after the
+        // Value leg (register): the registration event from strictly after the
         // pre-click head (pattern 17), its tx receipt for the exact gas.
         const registeredEvents = await publicClient.getContractEvents({
             address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered',
@@ -300,7 +300,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         const processId = event.args.processId!;
         const payment = event.args.payment!;
 
-        // Money leg (commit): the asymmetric bonds actually locked.
+        // Value leg (commit): the asymmetric bonds actually locked.
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, payment);
         const [buyerMid, sellerMid, coreMid] = await Promise.all([
             balanceOf(AUTHOR), balanceOf(SELLER), balanceOf(core),
@@ -344,7 +344,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: AUTHOR }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // Money leg (full cycle): net settlement, escrow back to baseline.
+        // Value leg (full cycle): net settlement, escrow back to baseline.
         const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
             balanceOf(AUTHOR), balanceOf(SELLER), balanceOf(core),
         ]);
@@ -388,7 +388,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
             await expect(caveat, 'no unverifiable deals → no caveat').toBeHidden();
         }
 
-        // ── RECLAIM + MONEY LEG: click; DepositWithdrawn lands for this run's
+        // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands for this run's
         //    idHash; the registry escrow drops by exactly the deposit and the
         //    author's ETH rises by exactly deposit − gas. ──
         const withdrawBlockBefore = await publicClient.getBlockNumber();

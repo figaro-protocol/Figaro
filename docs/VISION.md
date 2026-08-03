@@ -566,7 +566,7 @@ Imagine you want to buy something for $10:
 If the deal goes through, the lockbox opens: you get your $10 guarantee
 back, the seller gets their $20 guarantee back plus the $10 payment.
 If either of you tries to cheat, **both of you lose everything in the
-lockbox**. The cheater loses money, but so does the victim. That sounds
+lockbox**. The cheater loses their deposit, but so does the victim. That sounds
 harsh, but it's the whole point: cheating always costs you more than
 just playing fair.
 
@@ -594,19 +594,19 @@ You (buyer)
  └─ Driver (delivers it, bonds $W)
 ```
 
-Each person locks their own money. Each person gets paid directly for
+Each person locks their own deposit. Each person gets paid directly for
 the value they added. And if any one person in the process screws up,
 **the whole process fails and everyone loses their deposits**. So every
 person in the process is motivated to make sure every other person does
-their job — group-project peer pressure with real money on the line.
+their job — group-project peer pressure with real value on the line.
 
 This same pattern works for rides, repairs, international shipments,
-freelance work — any deal between people. Lock money, do the work, get
+freelance work — any deal between people. Lock a deposit, do the work, get
 paid. No leap of faith needed.
 
 ### What everyone can see (and what they can't)
 
-How much money is locked, who's involved, whether it got completed —
+How much value is locked, who's involved, whether it got completed —
 all visible on chain. On purpose. It's a public bulletin board: anyone
 can see "there's a $10 delivery needed in downtown Austin" or "50
 orders happening in this neighborhood right now," and drivers (or AI
@@ -621,7 +621,7 @@ master database to steal.
 
 Nobody. There's no company running Figaro, no CEO, no customer
 support, no one who can freeze your account. What protects you, in
-order: the money (cheating always costs more than playing fair, so
+order: the economics (cheating always costs more than playing fair, so
 almost every deal never needs anything else), teammates who fix
 problems (nobody gets paid until you say the job is done, so everyone
 in the process pitches in to put a fault right — the shared stake is
