@@ -115,15 +115,17 @@ export interface CappedFetchOptions {
  * Content-Length header is only a fast-reject hint upstream; this is the actual
  * enforcement, because a hostile gateway can lie about (or omit) the header.
  */
-async function readBodyCapped(res: Response, cap: number, controller: AbortController): Promise<string> {
+async function readBodyBytesCapped(res: Response, cap: number, controller: AbortController): Promise<Uint8Array> {
     const reader = res.body?.getReader?.();
     if (!reader) {
         // No readable stream (e.g. a minimal test stub) — buffer, then enforce
         // the cap on what came back. Not the primary path in a real browser/undici.
-        const text = await res.text();
-        const size = new TextEncoder().encode(text).length;
-        if (size > cap) throw documentTooLargeError(size, cap);
-        return text;
+        // arrayBuffer preferred: a text() round-trip corrupts binary bodies.
+        const bytes = res.arrayBuffer
+            ? new Uint8Array(await res.arrayBuffer())
+            : new TextEncoder().encode(await res.text());
+        if (bytes.byteLength > cap) throw documentTooLargeError(bytes.byteLength, cap);
+        return bytes;
     }
 
     const chunks: Uint8Array[] = [];
@@ -151,7 +153,11 @@ async function readBodyCapped(res: Response, cap: number, controller: AbortContr
         joined.set(chunk, offset);
         offset += chunk.byteLength;
     }
-    return new TextDecoder().decode(joined);
+    return joined;
+}
+
+async function readBodyCapped(res: Response, cap: number, controller: AbortController): Promise<string> {
+    return new TextDecoder().decode(await readBodyBytesCapped(res, cap, controller));
 }
 
 /**
@@ -184,6 +190,33 @@ export async function fetchCappedContent(
 
     const body = await readBodyCapped(res, cap, controller);
     return { ok: true, status: res.status, statusText: res.statusText, text: async () => body };
+}
+
+/** A fetched, size-capped BINARY body — the byte-exact sibling of
+ *  `fetchCappedContent` for content whose hash binds the raw bytes (a text
+ *  decode round-trip would corrupt them). Same cap enforcement, same
+ *  `{ ok: false }` pass-through on a non-OK response (`bytes` null there). */
+export async function fetchCappedBinary(
+    url: string,
+    options: CappedFetchOptions = {},
+): Promise<{ ok: boolean; status: number; statusText: string; bytes: Uint8Array | null }> {
+    const cap = options.cap ?? MAX_IPFS_DOCUMENT_BYTES;
+    const doFetch = options.fetch ?? ((u: string, init?: RequestInit) => fetch(u, init));
+    const controller = new AbortController();
+    const res = await doFetch(url, { signal: controller.signal });
+
+    if (!res.ok) {
+        return { ok: false, status: res.status, statusText: res.statusText, bytes: null };
+    }
+
+    const declared = Number(res.headers?.get?.("content-length"));
+    if (Number.isFinite(declared) && declared > cap) {
+        controller.abort();
+        throw documentTooLargeError(declared, cap);
+    }
+
+    const bytes = await readBodyBytesCapped(res, cap, controller);
+    return { ok: true, status: res.status, statusText: res.statusText, bytes };
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -242,6 +275,13 @@ interface IpfsPublishResult {
 export interface IpfsService {
     pinJSON(data: unknown): Promise<string>;
     pinBlob(blob: Blob): Promise<string>;
+    /** Pin raw bytes as a single RAW block multihashed with keccak-256, so the
+     *  CID's digest IS `keccak256(bytes)` — an on-chain keccak fingerprint
+     *  doubles as the content address, derivable by any reader with no
+     *  registry or pointer. Returns the CID Kubo reports (base32); callers
+     *  verify its digest against their own keccak256 before trusting the pin.
+     *  Raw blocks cap at 1 MiB — callers pin KB-scale ABI payloads. */
+    pinKeccakRawBlock(bytes: Uint8Array): Promise<string>;
     publishJSON(data: unknown): Promise<IpfsPublishResult>;
     uploadFile(file: File): Promise<IpfsPublishResult>;
     /** Remove the pin for a CID on the configured node — the erasure half of
@@ -295,6 +335,33 @@ class DefaultIpfsService implements IpfsService {
         const form = new FormData();
         form.append("file", blob);
         return this.add(form, "IPFS pin failed", "IPFS pin returned no CID", ipfsTimeoutForBytes(blob.size));
+    }
+
+    async pinKeccakRawBlock(bytes: Uint8Array): Promise<string> {
+        const form = new FormData();
+        form.append("file", new Blob([bytes as BlobPart]));
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ipfsTimeoutForBytes(bytes.byteLength));
+        let res: Response;
+        try {
+            res = await fetch(
+                `${this.apiUrl}/api/v0/block/put?cid-codec=raw&mhtype=keccak-256&mhlen=-1&pin=true`,
+                { method: "POST", body: form, signal: controller.signal },
+            );
+        } finally {
+            clearTimeout(timer);
+        }
+
+        if (!res.ok) {
+            throw new Error(`IPFS block put failed: ${res.status} ${res.statusText}`);
+        }
+
+        const result = await safeJsonFromResponse<{ Key?: unknown }>(res);
+        const cid = result?.Key;
+        if (typeof cid !== "string" || cid.length === 0) {
+            throw new Error("IPFS block put returned no CID");
+        }
+        return cid;
     }
 
     async publishJSON(data: unknown): Promise<IpfsPublishResult> {

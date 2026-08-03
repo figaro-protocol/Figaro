@@ -129,6 +129,21 @@ export interface EncodeOptions {
 }
 
 /**
+ * The field set a content payload encodes (and decodes) against — the ONE
+ * stage-selection authority: `stages[stage]` when declared, else the spec's
+ * default `fields`. Encoder, decoder, and any disposition gate over a
+ * content payload must share this selection, or they drift.
+ */
+export function contentFieldsFor(
+    spec: ClauseSpec,
+    options: EncodeOptions = {},
+): readonly FieldSpec[] {
+    return options.stage !== undefined && spec.stages?.[options.stage] !== undefined
+        ? spec.stages[options.stage]
+        : spec.fields;
+}
+
+/**
  * Encode JSON content to canonical ABI bytes from the parsed `ClauseSpec`
  * alone — no clause-specific code path. If `options.stage` is set and the
  * spec defines a matching stage override, that stage's fields drive the
@@ -140,10 +155,7 @@ export function encodeContentFromSpec(
     content: Record<string, unknown>,
     options: EncodeOptions = {},
 ): Hex {
-    const fields: readonly FieldSpec[] =
-        options.stage !== undefined && spec.stages?.[options.stage] !== undefined
-            ? spec.stages[options.stage]
-            : spec.fields;
+    const fields = contentFieldsFor(spec, options);
     const params = fields.map(abiParamOf);
     const values = fields.map((field) => abiValueOf(field, content[field.name]));
     return encodeAbiParameters(params, values as never);
@@ -197,10 +209,7 @@ export function decodeContentFromSpec(
     content: Hex,
     options: EncodeOptions = {},
 ): Record<string, unknown> {
-    const fields: readonly FieldSpec[] =
-        options.stage !== undefined && spec.stages?.[options.stage] !== undefined
-            ? spec.stages[options.stage]
-            : spec.fields;
+    const fields = contentFieldsFor(spec, options);
     const params = fields.map((field) => ({ ...abiParamOf(field), name: field.name }));
     const values = decodeAbiParameters(params, content);
     const out: Record<string, unknown> = {};

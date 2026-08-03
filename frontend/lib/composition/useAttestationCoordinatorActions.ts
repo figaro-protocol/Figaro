@@ -14,6 +14,7 @@ import { keccak256 } from "viem";
 import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro/sdk";
+import { publishWitnessContent } from "@/lib/composition/witnessContent";
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */
@@ -144,6 +145,18 @@ export function useAttestationCoordinatorActions() {
             // content preimage lives off-chain, never in calldata.
             const contentRef = content ? keccak256(content) : sectionHash;
 
+            // Public-disposition content publishes at its fingerprint-derived
+            // keccak-CID so any audit reader can resolve the values; private or
+            // unknown-spec content is withheld inside (fail-closed). Published
+            // BEFORE the broadcast: the chain event is what readers key on, so
+            // the preimage must be resolvable the moment the event exists — a
+            // post-broadcast pin races the caller's next navigation and dies
+            // mid-flight. Best-effort: a pin failure never blocks the
+            // attestation (an unattested orphan pin is public content, erasable).
+            // Re-asserts publish nothing: their preimage is the committed
+            // section, already in the agreement pin.
+            if (content) await publishWitnessContent({ clauseId, stage, content });
+
             return await writeContractAsync({
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI,
@@ -174,6 +187,10 @@ export function useAttestationCoordinatorActions() {
             // Re-assert (content omitted) ⇒ contentRef IS the committed section's
             // fingerprint; otherwise bind the runtime content by its hash.
             const contentRef = content ? keccak256(content) : sectionHash;
+
+            // Same publication seam as the seller path — see the note there
+            // (publish before broadcast: readers key on the chain event).
+            if (content) await publishWitnessContent({ clauseId, stage, content });
 
             return await writeContractAsync({
                 address: attestationCoordinator,

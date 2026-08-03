@@ -62,7 +62,7 @@
  *              a financial statement per seller + the consolidation; the cash-flow log
  *              carrying EVERY kernel transfer (2 rows per commit, 2 per order
  *              at resolve — 8 exactly); the clause evidence with every
- *              committed leaf, all EIGHT ladder stages and all THREE decoded hand-off witnesses; BOTH agreements
+ *              committed leaf, all EIGHT ladder stages and the TWO decoded hand-off witnesses; BOTH agreements
  *              pinned to IPFS with the hash verifier recomputing each merkle
  *              root to the on-chain agreementHash; the audit-bundle PDF
  *              downloaded (real %PDF bytes) and the dispute panel's evidence
@@ -695,16 +695,26 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             ).toBeVisible({ timeout: 30000 });
         }
 
-        // The two hand-off witnesses (the courier's + the buyer's co-witness),
-        // each receipted by the FINGERPRINT the chain carries. The detected band
-        // and the device-captured evidence URI are part of the witness preimage,
-        // which never enters calldata (WS2) — so neither is renderable from chain
-        // data alone, and asserting them here asserted a decode that could only
-        // ever fail silently. Restoring those two readings needs published
-        // public-disposition witness content; punch-listed.
+        // The two hand-off witnesses (the courier's + the buyer's co-witness):
+        // each receipted by the FINGERPRINT the chain carries, AND decoded —
+        // the attester published the public-disposition preimage at the
+        // keccak-CID the fingerprint derives, so the reader resolves it from
+        // the network, verifies it hashes back, and renders the detected band
+        // with the spec's own labels.
         const witnessRef = evidence.locator(`[data-testid="audit-content-ref-${PROXIMITY_CLAUSE}-1"]`);
         await expect(witnessRef, 'every witness record is receipted in the audit').toHaveCount(2, { timeout: 60000 });
         await expect(witnessRef.first().getByText(/^0x[0-9a-fA-F]{64}$/)).toBeVisible();
+        const witnessDl = evidence.locator(`[data-testid="audit-witness-${PROXIMITY_CLAUSE}-1"]`);
+        await expect(witnessDl, 'every witness record decodes in the audit').toHaveCount(2, { timeout: 60000 });
+        await expect(witnessDl.first().getByText('Detected band')).toBeVisible();
+        await expect(witnessDl.first().getByText('Zone (Wi-Fi)')).toBeVisible();
+        // The DEVICE-CAPTURED evidence URI — pinned at the buyer's co-witness
+        // click — is part of that published witness preimage: the courier
+        // market's device layer is audit-captured, read back from the network.
+        await expect(
+            evidence.getByText(evidenceUri).first(),
+            "the captured evidence artifact's URI surfaces in the audit",
+        ).toBeVisible({ timeout: 30000 });
 
         // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and

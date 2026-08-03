@@ -527,8 +527,38 @@ export function describeClause(clauseId: string, data: Record<string, unknown> |
     return { clauseId, title: spec.title, fields };
 }
 
-/** Module-internal: the only external consumer (`describeWitness`) went with the
- *  calldata-decode path WS2 retired; `clauseEnumValues` below still needs it. */
+/** Describe a runtime WITNESS attestation's decoded content through its
+ *  declared stage fields — the stage-selected sibling of `describeClause`
+ *  (same shape, same value rendering). Falls back to raw key/value pairs when
+ *  the clause or stage is unknown — an unknown witness still renders. */
+export function describeWitness(
+    clauseId: string,
+    stage: number,
+    data: Record<string, unknown> | undefined,
+    version?: number,
+): ClauseDescription {
+    const spec = getClauseSpec(clauseId, version);
+    const stageFields = spec?.stages?.[stage];
+    const d = data ?? {};
+    if (!spec || !stageFields) {
+        return {
+            clauseId,
+            title: spec?.title ?? `${clauseId.slice(0, 10)}…`,
+            fields: Object.entries(d)
+                .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
+                .filter((f) => f.values.length > 0),
+        };
+    }
+    const fields: ClauseFieldDescription[] = [];
+    for (const field of stageFields) {
+        const values = renderFieldValues(field, d[field.name]);
+        if (values.length === 0) continue;
+        fields.push({ name: field.name, label: field.label ?? field.name, values });
+    }
+    return { clauseId, title: spec.title, fields };
+}
+
+/** Module-internal: `clauseEnumValues` below needs it. */
 function clauseFieldSpec(clauseId: string, fieldPath: string): FieldSpec | undefined {
     let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseId)?.fields;
     const segments = fieldPath.split(".");

@@ -280,11 +280,11 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         expect(await balanceOf(core), 'FigaroCore escrow returned to its baseline')
             .toBe(base.get(core.toLowerCase())!);
 
-        // ── AUDIT: three content-hand-off witness RECEIPTS in the bundle. ──
-        // Fingerprints, not decoded values: the coordinator takes bytes32 and the
-        // preimage never enters calldata, so this is the evidence the chain
-        // actually carries. Rendering the values needs public-disposition witness
-        // content to be published — punch-listed, not faked here.
+        // ── AUDIT: three content-hand-off witness receipts, each DECODED. ──
+        // The chain carries only the fingerprint (WS2); the attester published
+        // the public-disposition preimage at the keccak-CID that fingerprint
+        // derives, so the audit reader resolves, verifies, and renders the
+        // values again — from network state, not calldata.
         await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -294,5 +294,11 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             evidence.locator(`[data-testid="audit-content-ref-${CONTENT_CLAUSE}-1"]`),
             'every deliverable\'s completion is receipted in the audit',
         ).toHaveCount(3, { timeout: 60000 });
+        const contentWitness = evidence.locator(`[data-testid="audit-witness-${CONTENT_CLAUSE}-1"]`);
+        await expect(
+            contentWitness,
+            'every deliverable\'s completion evidence decodes in the audit',
+        ).toHaveCount(3, { timeout: 60000 });
+        await expect(contentWitness.first().getByText('Delivered content hash')).toBeVisible();
     });
 });

@@ -109,6 +109,13 @@ Two on-chain touch points remain:
   touches public calldata (it lives off-chain, bound to the hash). It validates **no content
   shape** — an attestation whose clause was not committed at signing cannot land (the proof
   won't open), but any committed clause attests with zero per-clause on-chain code.
+  **Public-disposition content is fingerprint-addressed on IPFS**: the attesting frontend
+  pins the exact ABI content bytes as a RAW block multihashed with keccak-256, so the CID
+  digest IS the event's `contentRef` (CIDv1 `f01551b20<contentRef-hex>`) — any reader
+  derives the address from the event alone, verifies the fetched bytes hash back to the
+  fingerprint, and decodes them against the spec's stage fields; no registry, no pointer.
+  Withholding is FAIL-CLOSED (unknown spec, or any `private` field in the encoded set), and
+  a resolved-empty lookup reads as absence — withheld, private, and erased are one state.
 
 ## Clause-spec format
 
