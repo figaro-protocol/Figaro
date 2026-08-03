@@ -97,11 +97,12 @@
             {
                 "name": "evidenceUri",
                 "type": "string",
+                "format": "evidence-capture",
                 "required": false,
                 "minLength": 0,
                 "maxLength": 512,
                 "label": "Record evidence",
-                "description": "Optional reference to the full off-chain logger record (time series, excursion report, MKT calculation)."
+                "description": "Optional reference to the full off-chain logger record (time series, excursion report, MKT calculation) — or a device-captured evidence artifact anchoring the recording context (geohash cell, hashed tag/device identifiers, raw-capture hash). Browsers read no thermometer: the observed range is typed or logger-derived; the capture witnesses WHERE/WHEN the record was filed."
             }
         ]
     },

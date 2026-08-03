@@ -259,6 +259,17 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await witnessInput(C.coldChain, 'periodEnd').fill('2026-07-23T22:00');
         await witnessInput(C.coldChain, 'observedMinC').fill('3');
         await witnessInput(C.coldChain, 'observedMaxC').fill('6');
+        // The record's evidence is DEVICE-CAPTURED: the spec declares
+        // `format: "evidence-capture"` on `evidenceUri`, so the same capture
+        // affordance the proximity witness carries mounts here with zero
+        // clause-specific code. Browsers read no thermometer — the observed
+        // range above is typed/logger-derived; the capture witnesses WHERE the
+        // record was filed (the reefer's cell at mechanism grain).
+        await witnessInput(C.coldChain, 'evidenceUri-capture-geolocation-cross-check').click();
+        await expect.poll(async () => witnessInput(C.coldChain, 'evidenceUri').inputValue(), {
+            timeout: 30000, message: "the captured evidence pins and its URI fills the reefer record's field",
+        }).toMatch(/^ipfs:\/\/.+/);
+        const reeferEvidenceUri = await witnessInput(C.coldChain, 'evidenceUri').inputValue();
         await executeWitness(C.coldChain, "the carrier's reefer period record", 'periodStart');
         await witnessInput(C.custody, 'event-transferred').check();
         await witnessInput(C.custody, 'unitIdentifier').fill('MSKU1234565');
@@ -339,5 +350,17 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
                 `the "${text}" evidence leaf surfaces in the audit`,
             ).toBeVisible({ timeout: 30000 });
         }
+        // The reefer record DECODES: the published witness content resolves at
+        // the keccak-CID its on-chain fingerprint derives, and renders with the
+        // spec's own labels — observed range and the device-captured evidence
+        // URI, read back from the network.
+        const reeferRecord = evidence.locator(`[data-testid="audit-witness-${C.coldChain}-1"]`);
+        await expect(reeferRecord, "the carrier's temperature record decodes in the audit").toHaveCount(1, { timeout: 60000 });
+        await expect(reeferRecord.first().getByText('Observed min (°C)')).toBeVisible();
+        await expect(reeferRecord.first().getByText('Observed max (°C)')).toBeVisible();
+        await expect(
+            evidence.getByText(reeferEvidenceUri).first(),
+            "the reefer record's captured evidence URI surfaces in the audit",
+        ).toBeVisible({ timeout: 30000 });
     });
 });
