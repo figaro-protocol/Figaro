@@ -40,6 +40,15 @@ contract StubCounter {
     function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256) {
         return _score[artifact][period];
     }
+
+    /// @dev HOSTILE override: force `totalScoreIn` out of sync with the
+    ///      per-artifact scores — the shape a buggy or malicious accrual would
+    ///      present. With consistent data the minter's budget backstop is
+    ///      structurally unreachable, so only an inconsistent stub can make it
+    ///      observable; the backstop test is its sole caller.
+    function forceTotal(uint8 period, uint256 v) external {
+        totalScoreIn[period] = v;
+    }
 }
 
 contract RpgfMinterTest is Test {
@@ -341,6 +350,26 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(A_KEY));
         assertEq(minter.minted(0), (T0 * 100) / 1000);
         assertLe(minter.minted(0), T0);
+    }
+
+    /// The `PeriodBudgetExceeded` backstop is STRUCTURALLY UNREACHABLE while
+    /// the counter's data is consistent (duplicate-free lists + one author of
+    /// record per artifact + closed-period totals keep every pro-rata sum
+    /// within the budget — the 2026-08-01 audit's finding), so no honest-data
+    /// test can reach it and deleting the line would change no other test's
+    /// outcome. It is still the LAST line of defense for the fixed pool if the
+    /// accrual ever misreports: feed the minter a counter whose per-artifact
+    /// score exceeds its own period total (share > 1 ⇒ amount > budget) and
+    /// the backstop must refuse to over-mint rather than pay it.
+    function test_budgetBackstopRefusesOverMintOnInconsistentCounterData() public {
+        counter.setScore(A_KEY, 0, 100);
+        counter.forceTotal(0, 10); // hostile: total below the artifact's own score
+        counter.setClosed(0, true);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodBudgetExceeded.selector, 0));
+        minter.claim(0, _one(A_KEY));
+        assertEq(minter.minted(0), 0);
+        assertEq(florin.balanceOf(alice), 0);
     }
 
     // ── Constructor ─────────────────────────────────────────────────
