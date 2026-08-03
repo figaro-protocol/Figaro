@@ -196,22 +196,12 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         ).first();
         const witnessInput = (clauseId: string, field: string) =>
             page.getByTestId(`capability-input-${clauseId}-${field}`);
-        const executeWitness = async (clauseId: string, label: string, settleProbe?: string) => {
+        const executeWitness = async (clauseId: string, label: string) => {
             const before = await attestationCount();
             await witnessCap(clauseId).getByTestId('capability-execute-submit-clause-attestation').click();
             await expect.poll(attestationCount, {
                 timeout: 60000, message: `${label} lands on the AttestationCoordinator`,
             }).toBe(before + 1);
-            // SAME-PAGE SETTLE: the app's post-success reload re-derives the
-            // model and REMOUNTS the capability forms (resetting them). A next
-            // witness typed on this page before that reload lands gets wiped
-            // mid-fill — so wait for the reset to be VISIBLE (the field we
-            // just filled reads empty) before the caller types the next form.
-            // Both ends in the UI: the chain poll alone is not "settled".
-            if (settleProbe) {
-                await expect(witnessInput(clauseId, settleProbe), `${label}: the rail settles (form reset) before the next witness`)
-                    .toHaveValue('', { timeout: 30000 });
-            }
         };
 
         // The shipper seals the container — custody "applied" on the root.
@@ -270,11 +260,20 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             timeout: 30000, message: "the captured evidence pins and its URI fills the reefer record's field",
         }).toMatch(/^ipfs:\/\/.+/);
         const reeferEvidenceUri = await witnessInput(C.coldChain, 'evidenceUri').inputValue();
-        await executeWitness(C.coldChain, "the carrier's reefer period record", 'periodStart');
+        // Pre-type the custody transfer BEFORE the reefer record lands: the
+        // post-action reload re-derives the model, and a second form typed
+        // mid-flight must SURVIVE it (the bumpProcessReload remount bug —
+        // orders now persist across a same-process refresh, so the rail never
+        // unmounts and no form is wiped).
         await witnessInput(C.custody, 'event-transferred').check();
         await witnessInput(C.custody, 'unitIdentifier').fill('MSKU1234565');
         await witnessInput(C.custody, 'occurredAt').fill('2026-07-23T10:30');
-        await executeWitness(C.custody, "the carrier's custody-transferred event", 'unitIdentifier');
+        await executeWitness(C.coldChain, "the carrier's reefer period record");
+        await expect(
+            witnessInput(C.custody, 'unitIdentifier'),
+            'a second form typed mid-flight survives the post-action reload',
+        ).toHaveValue('MSKU1234565', { timeout: 30000 });
+        await executeWitness(C.custody, "the carrier's custody-transferred event");
         await witnessInput(C.emissions, 'gramsCO2e').fill('480000');
         await executeWitness(C.emissions, "the carrier's voyage emissions disclosure");
 

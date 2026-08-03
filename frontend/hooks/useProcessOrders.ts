@@ -16,7 +16,7 @@
  * bonds are derived from payment and cumulativeValue at read time.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
 import type { WatchContractEventOnLogsParameter } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
@@ -106,6 +106,15 @@ export function useProcessOrders(processId: string | null): Order[] {
     const publicClient = usePublicClient();
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
+    // Which processId the current `orders` belong to — so a same-process
+    // REFRESH (processReloadKey bump after an action lands) keeps the last
+    // result rendered until the new one swaps in atomically. Clearing on
+    // every reload emptied the list for the fetch window, which flipped the
+    // derived role to "spectator", unmounted the capability rail, and wiped
+    // values a user was mid-typing in a second form (the punch-listed
+    // bumpProcessReload remount). Only a process-identity CHANGE clears —
+    // another process's orders must never linger under the new id.
+    const ordersForProcessRef = useRef<string | null>(null);
 
     const shouldLoad = !!processId;
 
@@ -123,6 +132,10 @@ export function useProcessOrders(processId: string | null): Order[] {
     // Real mode: load historical logs on mount / when processId changes
     // ------------------------------------------------------------------
     useEffect(() => {
+        if (ordersForProcessRef.current !== processId) {
+            ordersForProcessRef.current = processId;
+            setOrders([]);
+        }
         if (!publicClient || !contractAddr || !shouldLoad) return;
 
         let cancelled = false;
@@ -164,7 +177,6 @@ export function useProcessOrders(processId: string | null): Order[] {
 
         return () => {
             cancelled = true;
-            setOrders([]);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [publicClient, contractAddr, processId, processReloadKey]);
