@@ -71,7 +71,7 @@ export default function Security() {
                     In practice this means shortfalls are put right <em>before</em> settlement, not compensated after it. Nothing resolves until the buyer resolves, and the buyer resolves only once the agreed terms are met &mdash; so a missed or defective delivery is normally remade, resent, or otherwise remedied first. There is no refund path and no unilateral unwind; the buyer&apos;s sole lever is to withhold the close, which keeps every stake locked until the work is set right.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">cryptoeconomics</Link>.
+                    The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/papers" className="text-ink-heading font-medium hover:underline">papers</Link>.
                 </p>
             </MarketingSection>
 
@@ -242,8 +242,8 @@ export default function Security() {
                         <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
                     </li>
                     <li>
-                        <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
-                            Cryptoeconomics
+                        <Link href="/papers" className="text-ink-heading font-medium hover:underline">
+                            Papers
                         </Link>
                         <span className="text-ink-body"> &mdash; the bonding equilibrium, the weakest-link subgame, the social mechanism &mdash; with the formal derivations and the eight-discipline reading.</span>
                     </li>

@@ -286,7 +286,7 @@ export default function Specifications() {
 
             <MarketingSection title="Composition">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
+                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/papers" className="underline">Papers</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
                     for the clause validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools. The external half &mdash; forums, offset markets, payout routing, and the rest of the compositional surface named above (<code>witnessSwapAndCommitCoordinator</code>, <code>multisender</code>, and the funding contracts) &mdash; is catalogued on <Link href="/composes" className="underline">Composes</Link>.
@@ -308,8 +308,8 @@ export default function Specifications() {
                         <span className="text-ink-body"> &mdash; the rule-making lineage: coercion, cognition, crypto. What Figaro contributes to the third.</span>
                     </li>
                     <li>
-                        <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
-                            Cryptoeconomics
+                        <Link href="/papers" className="text-ink-heading font-medium hover:underline">
+                            Papers
                         </Link>
                         <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
                     </li>

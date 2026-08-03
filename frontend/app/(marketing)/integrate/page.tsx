@@ -449,7 +449,7 @@ for (const [processId, process] of processes) {
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">
                     Related:&nbsp;
                     <Link href="/protocol" className="underline">Protocol</Link>{" "}(kernel invariants);&nbsp;
-                    <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>{" "}(academic frame);&nbsp;
+                    <Link href="/papers" className="underline">Papers</Link>{" "}(academic frame);&nbsp;
                     <Link href="/builders" className="underline">Builders</Link>{" "}(composition tools);&nbsp;
                     <Link href="/local-commerce" className="underline">Local Commerce</Link>{" "}(reference assembly);&nbsp;
                     <Link href="/discover" className="underline">Discover</Link>{" "}(seller catalogue);&nbsp;

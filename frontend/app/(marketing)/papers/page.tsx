@@ -19,7 +19,7 @@ export default function Papers() {
                 title="Papers."
                 lead={
                     <>
-                        Discussion starters, not doctrine. Each paper reads the bonded settlement primitive through one of the eight cryptoeconomic disciplines &mdash; a seed for the working groups that form around it, anywhere and without permission, to extend it, contest it, or fork it into an implementation of their own. Each reads in the browser, with server-rendered math, and exports to PDF. The disciplines, the self-forming groups, and how the work is funded sit at{" "}
+                        Discussion starters, not doctrine. Each paper reads the bonded settlement primitive through one of the eight cryptoeconomic disciplines &mdash; a seed for the working groups that form around it, anywhere and without permission, to extend it, contest it, or fork it into an implementation of their own. Each reads in the browser, with server-rendered math, and exports to PDF. The self-forming groups and how the work is funded sit at{" "}
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
                             cryptoeconomics
                         </Link>
