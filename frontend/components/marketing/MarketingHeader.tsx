@@ -3,7 +3,7 @@ import { NAV_LINKS_MARKETING_DRAWER } from "@/components/shared/navLinks";
 
 /**
  * Wagmi-free header for marketing routes (`app/(marketing)/`). Same chrome
- * as `Header.tsx` but without `ConnectButton` / `YourTurnBadge` /
+ * as `Header.tsx` but without `ConnectWallet` / `YourTurnBadge` /
  * `useWalletConnected` so marketing pages don't pull the wallet provider
  * into their client bundle.
  *

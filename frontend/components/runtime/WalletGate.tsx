@@ -6,7 +6,7 @@
  *
  * Replaces the inline duplicates that used to be repeated across
  * assembly-runtime views and the legacy seller-onboarding form
- * (each had its own `if (!address) { hint + <ConnectButton /> } else
+ * (each had its own `if (!address) { hint + <ConnectWallet /> } else
  * { ... }` block). The Web2 UI/UX audit (2026-04-26) flagged the
  * duplication; this is the one-place wrapper.
  *
@@ -26,14 +26,14 @@
  *     <RegistrationForm />
  *   </WalletGate>
  *
- * Adding a `<ConnectButton />` outside this wrapper should be reserved for
+ * Adding a `<ConnectWallet />` outside this wrapper should be reserved for
  * the global header. Anywhere else in the app — gate it via WalletGate so
  * the placement audit stays trivial.
  */
 
 import type { ReactNode } from "react";
 import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectWallet } from "@/components/shared/ConnectWallet";
 import { useMounted } from "@/hooks/useMounted";
 
 export interface WalletGateProps {
@@ -96,7 +96,7 @@ export function WalletGate({
                     <p className="text-sm font-semibold text-black mb-1">{title}</p>
                 )}
                 <p className="text-xs text-gray-500 mb-6">{hint}</p>
-                <ConnectButton />
+                <ConnectWallet />
             </div>
         );
     }
@@ -104,7 +104,7 @@ export function WalletGate({
     return (
         <div className={wrapperClass} data-testid={testId ?? "wallet-gate"}>
             <p>{hint}</p>
-            <ConnectButton />
+            <ConnectWallet />
         </div>
     );
 }

@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
@@ -81,7 +81,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const { address: buyer } = useCommerce();
     const { items } = useCartStore();
-    const { openConnectModal } = useConnectModal();
+    const connectInjected = useConnectInjected();
 
     const { assemblies: boundAssemblies } = useSellerBoundAssemblies(sellerAddressTyped);
 
@@ -577,7 +577,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const handlePlaceOrder = () => {
         if (!buyer) {
-            openConnectModal?.();
+            connectInjected();
             return;
         }
         if (cartItems.length === 0) return;

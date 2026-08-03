@@ -61,6 +61,23 @@ vi.mock('wagmi', () => ({
     useChainId() {
         return 1;
     },
+    useConnect() {
+        return {
+            connect: vi.fn(),
+            connectAsync: vi.fn(),
+            connectors: [],
+            isPending: false,
+        };
+    },
+    useConnectors() {
+        return [];
+    },
+    useDisconnect() {
+        return {
+            disconnect: vi.fn(),
+            disconnectAsync: vi.fn(),
+        };
+    },
     useWriteContract() {
         return {
             writeContract: vi.fn(),
@@ -91,9 +108,4 @@ vi.mock('wagmi', () => ({
             signTypedDataAsync: vi.fn(),
         };
     },
-}));
-
-// Mock RainbowKit
-vi.mock('@rainbow-me/rainbowkit', () => ({
-    ConnectButton: () => null,
 }));

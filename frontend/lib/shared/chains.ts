@@ -10,9 +10,9 @@ export const DEVNET_CHAIN_ID = 31337;
  * and MetaMask's built-in "Hardhat" entry.  This prevents MetaMask v11+
  * from routing wallet_switchEthereumChain through the Snaps
  * network-management dialog, which would ask the user to authorise sending
- * information to third parties.  We name the chain "Localhost" so the
- * RainbowKit UI displays it that way, while the underlying chainId matches
- * the MetaMask preset — no custom chain add required.
+ * information to third parties.  We name the chain "Localhost" so wallet UI
+ * (and this app's own ChainGuard) displays it that way, while the underlying
+ * chainId matches the MetaMask preset — no custom chain add required.
  */
 export const localAnvil = defineChain({
     id: DEVNET_CHAIN_ID,

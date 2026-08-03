@@ -136,8 +136,9 @@ NEXT_PUBLIC_BATCH_VERIFIER=0x...
 # and anchors the batch's state root on chain before rendering it.
 NEXT_PUBLIC_BATCH_RELAY_URL=
 
-# Wallet + dev helpers
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
+# Wallet + dev helpers — injected-only (Task 7.2, 2026-08-03): RainbowKit has
+# no wagmi-3 support, so the wallet-provider fallback is the bare injected()
+# connector; there is no WalletConnect project id to configure.
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 
 # IPFS — used by ipfsService.ts + memberBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).

@@ -1,6 +1,6 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectWallet } from "@/components/shared/ConnectWallet";
 import { YourTurnBadge } from "@/components/shared/YourTurnBadge";
 import { HeaderShell } from "@/components/shared/HeaderShell";
 import { useWalletConnected } from "@/hooks/useWalletConnected";
@@ -9,7 +9,7 @@ import { useWalletConnected } from "@/hooks/useWalletConnected";
  * Wallet-aware header for the builder/authoring tier (the designer).
  *
  * Same publication nav row as the marketing chrome — HeaderShell's default
- * `NAV_LINKS` (Protocol / Builders / Discover) — PLUS the `<ConnectButton>`,
+ * `NAV_LINKS` (Protocol / Builders / Discover) — PLUS the `<ConnectWallet>`,
  * because authoring and publishing an assembly needs a wallet. But it has
  * NO `(app)` second nav row (Orders / Sellers): the designer is a
  * Builders-section surface, not the runtime dashboard. This is the third
@@ -23,7 +23,7 @@ export function BuilderHeader() {
             right={
                 <>
                     {walletConnected && <YourTurnBadge theme="light" />}
-                    <ConnectButton />
+                    <ConnectWallet />
                 </>
             }
         />

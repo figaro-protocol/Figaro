@@ -4,7 +4,7 @@ import { Footer } from "@/components/shared/Footer";
 
 // The whole site is statically exported (`output: 'export'` in
 // next.config.mjs) — no server runtime. Wallet-dependent pages in this group
-// read window.ethereum + wagmi/RainbowKit client state, but only AFTER mount
+// read window.ethereum + wagmi client state, but only AFTER mount
 // (the `useMounted` hydration gate — first render matches the prerendered
 // shell, never `ssr:true`), so the static shell hydrates cleanly. The
 // id-bearing detail routes (`/orders/view`, `/audit/view`, `/s/view`,
@@ -16,10 +16,10 @@ import { Footer } from "@/components/shared/Footer";
 
 /**
  * Layout for the (app) tier — wallet-aware routes that mount the full
- * `<Providers>` stack (WagmiProvider, RainbowKit, QueryClient, ChainGuard,
+ * `<Providers>` stack (WagmiProvider, QueryClient, ChainGuard,
  * CommerceProvider, HandoffCleanupProvider, CommitmentSignPreviewProvider,
  * ConfigurationBanner, ClientInit, Toaster, RpcBanner) and the
- * wallet-aware `<Header>` (with ConnectButton + YourTurnBadge).
+ * wallet-aware `<Header>` (with ConnectWallet + YourTurnBadge).
  *
  * The canonical inventory of (app) routes is the directory listing of
  * `app/(app)/`. (`/builders` itself moved to `(marketing)/`;

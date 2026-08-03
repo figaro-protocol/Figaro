@@ -14,7 +14,7 @@ import { Footer } from "@/components/shared/Footer";
  * Layout for marketing-tier routes. Canonical inventory is the directory
  * listing of `app/(marketing)/`.
  *
- * Does NOT mount `<Providers>` (WagmiProvider + RainbowKit + ChainGuard
+ * Does NOT mount `<Providers>` (WagmiProvider + ChainGuard
  * + CommerceProvider + HandoffCleanupProvider + CommitmentSignPreviewProvider
  * + ConfigurationBanner + ClientInit + Toaster + RpcBanner) — pure
  * publication pages have no wallet semantics. See CLAUDE.md

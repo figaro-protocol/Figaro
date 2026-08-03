@@ -8,7 +8,9 @@ import {
     type Transport,
 } from "viem";
 import { unstable_connector } from "wagmi";
-import { injected } from "wagmi/connectors";
+// Scoped subpath — see lib/shared/connectors.ts for why the "wagmi/connectors"
+// barrel breaks the production build.
+import { injected } from "wagmi/connectors/injected";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
 import { DEVNET_CHAIN_ID } from "./chains";
 import { isE2EMockSession, isE2EDevnetSession } from "./e2e";
@@ -213,8 +215,10 @@ export function mockAwareHttp(
  *    one rejected attempt, never a broken call.
  *
  * The injected connector type covers bare `injected()` and every EIP-6963
- * discovered wallet; a RainbowKit-typed connector (e.g. walletConnect) simply
- * falls through to http.
+ * discovered wallet — the only connector kind this app registers
+ * (`lib/shared/connectors.ts` is injected-only since Task 7.2 dropped
+ * RainbowKit/WalletConnect); any other connector type would simply fall
+ * through to http.
  *
  * `walletTransport` is injectable for tests only — the default is the real
  * wagmi connector transport.

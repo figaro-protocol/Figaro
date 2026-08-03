@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useConnect, useAccount, useChainId } from "wagmi";
+import { findInjectedConnector } from "@/lib/shared/connectors";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/shared/testHelpers";
 import { useOrderStore } from "@/lib/kernel/store";
 import { calculateBonds } from "@figaro/sdk";
@@ -77,17 +78,6 @@ export default function ClientInit() {
     const { connect, connectors } = useConnect();
     const { isConnected, address } = useAccount();
     const chainId = useChainId();
-
-    const findInjectedConnector = useCallback(() =>
-        connectors.find((connector) => {
-            const candidate = connector as typeof connector & { type?: string };
-            return (
-                candidate.id === 'injected' ||
-                candidate.id === 'metaMask' ||
-                candidate.id === 'io.metamask' ||
-                candidate.type === 'injected'
-            );
-        }), [connectors]);
 
     // Raw `?e2e=` param — deliberately NOT getE2EModeFromSearchParams, which
     // collapses any non-exact value (e.g. `devnet-share`) to null.
@@ -264,9 +254,9 @@ export default function ClientInit() {
 
     // Devnet auto-connect: when the Playwright injector sets window.ethereum,
     // connect the injected wagmi connector so the app has an address without
-    // the user clicking the RainbowKit ConnectButton.
+    // the user clicking the "Connect Wallet" button.
     //
-    // Dependency on `connectors`: wagmi v2 adds EIP-6963 providers AFTER mount
+    // Dependency on `connectors`: wagmi adds EIP-6963 providers AFTER mount
     // via `eip6963:announceProvider`. The connectors array changes when discovery
     // completes, re-triggering this effect with the newly-registered connector.
     useEffect(() => {
@@ -291,15 +281,14 @@ export default function ClientInit() {
         }
 
         // Match any injected-style connector wagmi may have registered:
-        //  - legacy window.ethereum:        id='injected' or type='injected'
-        //  - RainbowKit MetaMask wallet:     id='metaMask'
-        //  - EIP-6963 (our rdns):            id='io.metamask'
-        const injectedConnector = findInjectedConnector();
+        //  - legacy window.ethereum:        type='injected'
+        //  - EIP-6963 (our rdns, e.g. 'io.metamask'): also type='injected'
+        const injectedConnector = findInjectedConnector(connectors);
         if (injectedConnector) {
             connect({ connector: injectedConnector });
         }
         // Re-run whenever connectors changes so we catch late EIP-6963 discovery
-    }, [connectors, isConnected, connect, findInjectedConnector, getE2EMode, isDevnetMode]);
+    }, [connectors, isConnected, connect, getE2EMode, isDevnetMode]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -312,7 +301,7 @@ export default function ClientInit() {
         };
 
         devnetWindow.__FIGARO_DEVNET_CONNECT__ = () => {
-            const injectedConnector = findInjectedConnector();
+            const injectedConnector = findInjectedConnector(connectors);
             if (injectedConnector) {
                 connect({ connector: injectedConnector });
             }
@@ -328,7 +317,7 @@ export default function ClientInit() {
             delete devnetWindow.__FIGARO_DEVNET_CONNECT__;
             delete devnetWindow.__FIGARO_SET_VIEWED_PROCESS_ID__;
         };
-    }, [connect, findInjectedConnector, getE2EMode, isDevnetMode]);
+    }, [connect, connectors, getE2EMode, isDevnetMode]);
 
     // Devnet: mirror wagmi's connection state onto `window.__FIGARO_WALLET__`
     // so Playwright waits on the wallet via a DOM-free, page-agnostic signal

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAccount, useChainId } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
@@ -194,7 +194,7 @@ export function OnboardingProfileForm({
     const mounted = useMounted();
     const chainId = useChainId();
     const { address, isConnected } = useAccount();
-    const { openConnectModal } = useConnectModal();
+    const connectInjected = useConnectInjected();
     const { state, loaded, update } = useOnboardingState(address);
 
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -419,7 +419,7 @@ export function OnboardingProfileForm({
                     saves your progress under that wallet&apos;s address; if you
                     switch wallets, you&apos;ll see that wallet&apos;s separate draft.
                 </p>
-                <Button onClick={() => openConnectModal?.()}>Connect wallet</Button>
+                <Button onClick={() => connectInjected()}>Connect wallet</Button>
             </Card>
         );
     }

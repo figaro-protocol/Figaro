@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-// This is a placeholder. Replace with your actual wallet connection logic if you use wagmi or RainbowKit.
+// This is a placeholder. Replace with your actual wallet connection logic if you use wagmi.
 export function useWalletConnected(): boolean {
     // Example: check for window.ethereum.selectedAddress or similar
     const [connected, setConnected] = useState(false);

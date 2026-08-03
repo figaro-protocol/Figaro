@@ -7,7 +7,7 @@ import type { NavLink } from "@/components/shared/navLinks";
 interface HeaderShellProps {
     /** Right cluster — varies by tier. Marketing passes null (audience CTAs
      *  live on the pages, not in the header); (app) uses `<YourTurnBadge>` +
-     *  `<ConnectButton>`. */
+     *  `<ConnectWallet>`. */
     right: ReactNode;
     /** Optional CTA pinned to the top of the mobile slide-out drawer.
      *  No current tier passes one; the slot stays for a tier that does. */
