@@ -428,7 +428,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </div>
     ) : resolved.kind === "draft" ? (
         <Link
-            href={`/builders/designer/edit/${encodeURIComponent(slug)}`}
+            href={`/builders/designer/edit?slug=${encodeURIComponent(slug)}`}
             className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold"
             data-testid="view-edit-button"
         >

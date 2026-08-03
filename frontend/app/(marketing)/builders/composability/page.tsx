@@ -83,7 +83,7 @@ export default function Composability() {
                     </div>
                 </dl>
                 <p className="text-sm text-ink-muted mt-6">
-                    Operational tools at each tier &mdash; Designer, Clauses, Contracts, SDK, Console &mdash; are catalogued at <Link href="/builders" className="underline">/builders</Link>.
+                    Operational tools at each tier &mdash; Designer, Clauses, Contracts, SDK &mdash; are catalogued at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingSection>
 

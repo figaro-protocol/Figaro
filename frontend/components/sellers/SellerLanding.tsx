@@ -153,7 +153,7 @@ function RegisteredCard({
                     <p className="text-sm text-ink-body">{profile.specialty}</p>
                 )}
                 <Link
-                    href={`/s/${address}`}
+                    href={`/s/view?seller=${address}`}
                     className="inline-block text-sm text-ink-faint hover:text-ink-heading underline"
                 >
                     View public profile →

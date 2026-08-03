@@ -14,8 +14,6 @@ import type { Metadata } from "next";
  *
  * Server component — the top-level page doesn't use hooks itself; the
  * `<HashVerifier />` child carries its own `"use client"`.
- *
- * The legacy `/verify` route redirects here.
  */
 
 import { HashVerifier } from "./_components/HashVerifier";
