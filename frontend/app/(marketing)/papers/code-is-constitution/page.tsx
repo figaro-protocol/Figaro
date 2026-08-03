@@ -128,7 +128,7 @@ export default function CodeIsConstitutionPaper() {
 
             <PaperSection title="Acknowledgements">
                 <p>
-                    The author thanks Vlad Zamfir, Primavera De Filippi, and Aaron Wright &mdash; years of conversation and collaboration shaped the questions this paper tries to answer, long before this framing arrived. The errors are the author&rsquo;s alone.
+                    The author thanks Vlad Zamfir and Primavera De Filippi &mdash; years of conversation and collaboration shaped the questions this paper tries to answer, long before this framing arrived. The errors are the author&rsquo;s alone.
                 </p>
             </PaperSection>
         </PaperLayout>
