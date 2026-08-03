@@ -158,7 +158,11 @@ function sequencerBinaryExists(): boolean {
     return fs.existsSync(sequencerBinaryPath());
 }
 
-function startSequencer(batchVerifierAddress: Address, usageCounterAddress: Address): ChildProcess {
+function startSequencer(
+    batchVerifierAddress: Address,
+    usageCounterAddress: Address,
+    registries: { clauses: Address; assemblies: Address; members: Address },
+): ChildProcess {
     const binPath = sequencerBinaryPath();
     const child = spawn(binPath, [], {
         env: {
@@ -167,14 +171,25 @@ function startSequencer(batchVerifierAddress: Address, usageCounterAddress: Addr
             CHAIN_ID: "31337",
             BATCH_VERIFIER_ADDRESS: batchVerifierAddress,
             // The RPGF counter the sequencer reads the open period and the
-            // provenance clause from. No usage claims are submitted here, so
-            // the accrual settles empty — which is the path every batch takes
-            // once the reward's last period has closed.
+            // provenance clause from.
             USAGE_COUNTER_ADDRESS: usageCounterAddress,
+            // The registry addresses the usage-claim PRE-FILTER eth-calls
+            // (excluded / live-deposit / live-stake gates). Left unset they
+            // default to address(0), every read fails, and each claim is
+            // dropped "conservatively" — the batch settles with EMPTY accruals
+            // and the counter credits nothing, silently (056365a6).
+            CLAUSE_REGISTRY_ADDRESS: registries.clauses,
+            ASSEMBLY_REGISTRY_ADDRESS: registries.assemblies,
+            MEMBERS_REGISTRY_ADDRESS: registries.members,
             // The kernel uses this as the EIP-712 verifyingContract.
             // For the batch path, it must be the batch verifier address.
             FIGARO_CORE_ADDRESS: batchVerifierAddress,
             SEQUENCER_PRIVATE_KEY: DEPLOYER_KEY,
+            // A fresh archive per run: the default path persists in the sdk/
+            // cwd across runs, and a replayed journal re-admits operations
+            // against the PREVIOUS run's (dead) contract addresses — the
+            // batch poisons and nothing settles.
+            ARCHIVE_PATH: `sequencer-archive-e2e-${process.pid}.jsonl`,
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT}`,
             BATCH_INTERVAL_SECS: "2",
             MAX_BATCH_OPS: "50",
@@ -424,6 +439,20 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         });
         await publicClient.waitForTransactionReceipt({ hash: registerHash });
 
+        // The counter gates accrual on LIVE artifact registration (the 08-01
+        // audit fix), so it takes both artifact registries. The clause under
+        // test is already anchored in clauseRegistryAddress above; assemblies
+        // play no part in this fixture, so an empty zero-deposit registry
+        // satisfies the constructor's nonzero check.
+        const assemblyRegistryHash = await deployerWallet.deployContract({
+            abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
+            bytecode: loadBytecode("AssemblyRegistry.sol/AssemblyRegistry.json"),
+            args: [0n],
+        });
+        const assemblyRegistryAddress = (
+            await publicClient.waitForTransactionReceipt({ hash: assemblyRegistryHash })
+        ).contractAddress!;
+
         const deployerNonce = await publicClient.getTransactionCount({
             address: deployerAccount.address,
         });
@@ -434,12 +463,14 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         const usageCounterHash = await deployerWallet.deployContract({
             abi: parseAbi([
-                "constructor(address _core, address _members, address _batchVerifier, bytes32 _provenanceClause, bytes32[] _excluded, uint64 _minSellers, uint64[] _periodEnd)",
+                "constructor(address _core, address _members, address _clauses, address _assemblies, address _batchVerifier, bytes32 _provenanceClause, bytes32[] _excluded, uint64 _minSellers, uint64[] _periodEnd)",
             ]),
             bytecode: loadBytecode("UsageCounter.sol/UsageCounter.json"),
             args: [
                 coreAddress,
                 membersAddress,
+                clauseRegistryAddress,
+                assemblyRegistryAddress,
                 predictedVerifier,
                 keccak256(encodeAbiParameters(
                     [{ type: "string" }, { type: "uint64" }],
@@ -532,7 +563,11 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // ── Start sequencer ─────────────────────────────────────
 
-        sequencerProcess = startSequencer(batchVerifierAddress, usageCounterAddress);
+        sequencerProcess = startSequencer(batchVerifierAddress, usageCounterAddress, {
+            clauses: clauseRegistryAddress,
+            assemblies: assemblyRegistryAddress,
+            members: membersAddress,
+        });
 
         sequencerProcess.stderr?.on("data", (chunk: Buffer) => {
             const line = chunk.toString().trim();
