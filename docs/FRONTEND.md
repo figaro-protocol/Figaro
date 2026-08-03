@@ -10,13 +10,15 @@ CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-r
 
 ## Routes (`frontend/app/`)
 
-Audit by `ls app/(marketing)/ app/(app)/ app/(builders)/`. Source of truth is the directory listing, not this paragraph.
+Audit by `ls app/(marketing)/ app/(app)/ app/(builders)/`. Source of truth is the directory listing, not this paragraph. **This is the ONE route catalogue**, classified by wallet-provider tier (tier definitions + rules: § "Wallet-provider scope per route" below).
 
-**`(marketing)/` (no wallet provider):** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce` (worked example), `/papers/<slug>` (the paper corpus), `/physics`, `/protocol`, `/artifact-rewards`, `/clauses`, `/security`, `/spec`, `/users`, `/why`. The `/clauses` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
+**Marketing — `(marketing)/`, no wallet provider:** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce` (worked example), `/papers/<slug>` (the paper corpus), `/physics`, `/protocol`, `/artifact-rewards`, `/clauses`, `/security`, `/spec`, `/users`, `/why`. The `/clauses` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
 
-**`(app)/` (wallet provider mounted):** `/audit` + `/audit/view?process=<id>`, `/discover` (seller catalogue), `/evidence-display` (forum-iframe evidence reader), `/s/view?seller=<addr>` (seller detail + cart) + `/s/checkout?seller=<addr>` (order review + commit), `/sellers` (enrolment) + its sub-routes `/sellers/{agents,assemblies,catalogue,identity,review}` and `/sellers/edit/{agents,assemblies,catalogue,identity}`, `/orders` (the wallet's actor-neutral order list — buyer + seller, with the "Your turn" accept section), `/orders/view?process=<id>` (per-order live timeline), `/rewards` (an author's RPGF tranche claim, read from `UsageCounter` + `RpgfMinter`), `/sign`, `/settings` (the user's runtime endpoint overrides — RPC provider, IPFS node/gateway, and geocoder via `lib/shared/userEndpoints.ts`; the build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never seizes users onto the operator's provider key or pinning node).
+**Reference / read-only — in `(app)/` or `(builders)/`, wallet provider mounted for inline write affordances via `WalletGate`:** `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit?slug=<slug>`, `/builders/designer/view?slug=<slug>` (in `(builders)/`; drafts in localStorage), `/builders/clauses` (in `(builders)/`; clause authoring — paste a spec, validate via Layer-A, register on `ClauseRegistry`, reclaim a registered clause's stake; reads walletlessly, register + reclaim writes gated by `WalletGate`), `/discover` (seller catalogue), `/audit` + `/audit/view?process=<id>` (audit / forensics — the spectator surface: no account hook anywhere in the tree; a walletless visitor reads the full record), `/evidence-display` (forum-iframe evidence reader — needs neither the provider nor an account: it builds its own read client from query params), `/s/view?seller=<addr>` (seller detail + cart — read-mode catalogue with WalletGate-protected place-order CTA), `/rewards` (an author's RPGF tranche claim, read from `UsageCounter` + `RpgfMinter`; the claim writes are `WalletGate`-protected).
 
-**`(builders)/` (wallet provider mounted — authoring publishes on-chain):** `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit?slug=<slug>`, `/builders/designer/view?slug=<slug>`, `/builders/clauses` (clause authoring — paste a spec, validate via Layer-A, register on `ClauseRegistry`; reclaim a registered clause's stake). (`/builders` and `/builders/composability` are `(marketing)/` pages.)
+**Transactional — `(app)/`, requires a connected wallet:** `/sign`, `/s/checkout?seller=<addr>` (order review + commit), `/sellers` (enrolment) + its sub-routes `/sellers/{agents,assemblies,catalogue,identity,review}` and `/sellers/edit/{agents,assemblies,catalogue,identity}`, `/orders` (the wallet's actor-neutral order list — buyer + seller; the "Your turn" section is where counter-sign/accept fires) + `/orders/view?process=<id>` (per-order live timeline; resolveProcess fires here), `/settings` (the user's runtime endpoint overrides — RPC provider, IPFS node/gateway, and geocoder via `lib/shared/userEndpoints.ts`; the build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never seizes users onto the operator's provider key or pinning node).
+
+**Deliberate orphan:** `/evidence-display` is unlinked from every in-app surface BY DESIGN — it is the iframe target a recognised arbitration forum embeds (hence the `frame-ancestors` override for it in `public/_headers`), reached by a forum-composed URL, never by navigation. It is excluded from `app/sitemap.ts` for the same reason. Reachability audits should not flag it.
 
 **API:** none — the app has zero server routes. The former `/api/geocode` Nominatim proxy was retired 2026-07-09 (no-PP/ToS ruling): the geocoder is a user endpoint (`lib/shared/userEndpoints.ts`, OpenStreetMap's public instance by default) called directly from the browser, so no typed address transits an operator server.
 
@@ -84,7 +86,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
   from `ClauseRegistered` events (the seed clauses in `clauses/` on the devnet —
   all runtime-attestable except the agreement-only `figaro-topology` —
-  plus any third-party registrations;
+  plus any third-party registrations);
   spec-consuming surfaces gate on its `loaded`.
 
 ## Components (`components/`)
@@ -165,20 +167,22 @@ Y", not as an open-ended build.)
   `frontend/tests/e2e/assemblies-inventory.devnet.spec.ts`.
 - **Scenario e2e** — `frontend/tests/e2e/local-commerce.devnet.spec.ts` is the
   live exemplar (authors on the canvas, pins to IPFS + anchors on-chain, then
-  consumes from chain + IPFS — discovers, never imports a roster). The old
-  seeded `scenario-*`/`*-runtime` pairs were deleted with the fixture
-  migration; open-world rebuilds of 2–3 scenarios are punch-listed.
+  consumes from chain + IPFS — discovers, never imports a roster).
+  `scenario-tradelens.devnet.spec.ts` + `tradelens-runtime.devnet.spec.ts` are
+  the live producer/consumer pair (the scenario anchors the assembly, the
+  runtime spec adopts it and says so in its own assertion message).
 - **Network reads** — `lib/kernel/indexer.ts` (order events) + `lib/protocol/membersRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
   process/clause/seller state from chain events).
 
 ## Wallet-provider scope per route
 
 Every route in `frontend/app/` is classified into one of three tiers
-governing wallet-provider load:
+governing wallet-provider load. **The per-tier route lists live in the ONE
+catalogue at § "Routes" above** — do not maintain a second list here.
 
-- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/agents`, `/assemblies`, `/builders`, `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce`, `/physics`, `/protocol`, `/artifact-rewards`, `/clauses`, `/security`, `/spec`, `/users`, `/why`.
-- **Reference / read-only (in `(app)/` or `(builders)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders/designer*` (in `(builders)/`; drafts in localStorage), `/builders/clauses` (in `(builders)/`; clause authoring — reads walletlessly, register + reclaim writes gated by `WalletGate`), `/discover` (seller catalogue), `/audit` + `/audit/view?process=<id>` (audit / forensics — the spectator surface: no account hook anywhere in the tree; a walletless visitor reads the full record), `/evidence-display` (forum-iframe evidence reader — needs neither the provider nor an account: it builds its own read client from query params), `/s/view?seller=<addr>` (read-mode catalogue with WalletGate-protected place-order CTA), `/rewards` (RPGF tranche reader; the claim writes are `WalletGate`-protected). The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
-- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/sign`, `/sellers`, `/orders` (the wallet's actor-neutral order list — buyer + seller; the "Your turn" section is where counter-sign/accept fires) + `/orders/view?process=<id>` (per-order timeline; resolveProcess fires here).
+- **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider.
+- **Reference / read-only (in `(app)/` or `(builders)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
+- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet.
 
 **Rules:**
 

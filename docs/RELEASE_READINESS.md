@@ -8,7 +8,7 @@ This note is the current answer to a simple question: what is ready now, what is
 
 ## Deployment Targets
 
-Ruled by the operator 2026-07-17: the public deployment target is **Ethereum mainnet**.
+Ruled by the operator 2026-07-23: the public deployment target is **Ethereum mainnet**.
 **Polygon** is a possible additional deployment. A **Cairo rewrite** of the contracts
 (Starknet) is planned as a later line of work. Testnet rehearses the mainnet deployment
 (testnet = mainnet rehearsal); chain-coupled compositions resolve against these targets —
@@ -114,7 +114,7 @@ broadcast: re-measure `g` on the target chain and record the deployment's point 
 Remaining output:
 
 1. ~~`NEXT_PUBLIC_ASSEMBLY_REGISTRY` and `NEXT_PUBLIC_USAGE_COUNTER` deployer-log lines~~ — DONE 2026-07-27: both are printed by `_logAddresses()`.
-2. Its `registrationDeposit` reasoned per Task 3 (it currently carries the devnet `0.001 ether` placeholder, same as the other two registries).
+2. ~~Its `registrationDeposit` reasoned per Task 3~~ — DONE: `script/DeployMainnet.s.sol` deploys `AssemblyRegistry(0.05 ether)`, the Task-3 ratified value (same stake as the other two registries).
 
 ### Task 5: Launch Scenario — Assembly Seeding Decision
 
@@ -135,7 +135,7 @@ Remaining output:
 
 ### Task 6: IPFS Content Persistence — Pinning Durability
 
-The chain stores only the agreement fingerprint (`agreementHash` / assembly `contentHash`); the agreement itself lives on IPFS, and every downstream consumer — counterparty validation, indexer graph reconstruction, a dispute forum — retrieves it by CID. IPFS does **not** auto-replicate: pinned content lives only on the node(s) that pin it, so a single Kubo node is a single point of failure. The devnet runs one Docker Kubo node (API `:5001` and gateway `:8080` are two interfaces to the *same* node), which is correct for device-only dev (wiped each `devup`, no long-lived commitments). On a live network a commitment's agreement must stay fetchable by its CID for the life of any possible dispute, so content durability must outlive any single node.
+The chain stores only the agreement fingerprint (`agreementHash` / assembly `contentHash`); the agreement itself lives on IPFS, and every downstream consumer — counterparty validation, indexer graph reconstruction, a dispute forum — retrieves it by CID. IPFS does **not** auto-replicate: pinned content lives only on the node(s) that pin it, so a single Kubo node is a single point of failure. The devnet runs one native (brew-installed) Kubo node (API `:5001` and gateway `:8080` are two interfaces to the *same* node), which is correct for device-only dev (wiped each `devup`, no long-lived commitments). On a live network a commitment's agreement must stay fetchable by its CID for the life of any possible dispute, so content durability must outlive any single node.
 
 Required output:
 
@@ -244,7 +244,7 @@ Expected output:
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-Expected output: `✅ All 7 Halmos properties proved.` (exit code 0)
+Expected output: `✅ All 14 Halmos properties proved (7 FigaroCore + 7 MembersRegistry).` (exit code 0)
 
 ### Certora Formal Verification
 
@@ -253,8 +253,8 @@ export CERTORAKEY=<key>
 ./scripts/test-certora.sh
 ```
 
-Expected output: all 4 specs green (FigaroCore, AttestationCoordinator,
-TokenOpsVerification, FlorinToken). `Failed on rule_not_vacuous` alone is the
+Expected output: all 5 specs green (FigaroCore, AttestationCoordinator,
+TokenOpsVerification, FlorinToken, BatchVerifierTokenOps). `Failed on rule_not_vacuous` alone is the
 vacuity heuristic, not a rule failure — the results table is the authority.
 
 ### Echidna Fuzzing
@@ -343,7 +343,7 @@ High-value browser checks that must remain covered:
 These are current design realities that are accepted by the protocol surface, not accidental defects introduced by this hardening pass:
 
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
-2. very large processs are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
+2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel
 
 ## Accepted Runtime Posture

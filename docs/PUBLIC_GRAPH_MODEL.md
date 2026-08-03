@@ -16,7 +16,7 @@ its own truth boundary, purpose, and consumer profile.
 
 ### 1. Process Graph (Protocol-Enforced)
 
-**Source:** `FigaroCore` — orders, bonds, processs, settlement.
+**Source:** `FigaroCore` — orders, bonds, processes, settlement.
 
 The process graph records who committed to what, under what economic terms,
 and whether the commitment was fulfilled. It is the only graph directly
@@ -41,8 +41,9 @@ autonomous agents (human or AI) to discover, filter, and route work.
 free-form specialty tags.
 
 **Analytics clauses composed by default are intentional incentive design, not
-noise.** The RPGF weighting (below) pays clauses that feed the public analytics
-graphs — geo, value, topology — so `figaro-geolocation` staying on assemblies
+noise.** Under the uniform reward (below) a geo/coordination clause is
+usage-scored like every clause — no weighting — and it earns exactly when the
+assemblies that need it are used, so `figaro-geolocation` staying on assemblies
 like direct-sale even when a consume-onsite sale ships nothing is deliberate:
 geo is graph data locating the exchange, not delivery metadata. Optionality
 lives at assembly-composition level — a seller who won't track geo doesn't bind
@@ -61,19 +62,20 @@ at 6 chars), not a doorstep.
 
 ### 3. GHG / Disclosure Graph (Protocol-Derived)
 
-**Source:** `ClauseRegistry`, `AttestationCoordinator`, and content-addressed
-off-chain disclosure artifacts.
+**Source:** the `figaro-emissions` clause and its attestations
+(`AttestationCoordinator`), referencing content-addressed off-chain
+disclosure artifacts.
 
-The GHG graph overlays environmental disclosure onto the process graph.
-Reporting entities open boundaries, buyers create per-order requirements,
-and sellers submit disclosure references — all anchored to the same process
-DAG that enforces economic coordination.
+The GHG graph overlays environmental disclosure onto the process graph: an
+order that composes `figaro-emissions` commits its disclosure terms in the
+signed agreement, and sellers attest disclosure references — anchored to the
+same process DAG that enforces economic coordination.
 
-**Contents:** Clause registrations, reporting boundaries, order-level
-requirements, seller disclosure submissions.
+**Contents:** `figaro-emissions` sections in signed agreements, timestamped
+disclosure attestations, content-addressed disclosure artifacts.
 
-**Truth boundary:** Protocol-derived. The anchoring is on-chain (immutable
-clause references, timestamped submissions), but the disclosure content
+**Truth boundary:** Protocol-derived. The anchoring is on-chain (merkle-bound
+agreement sections, timestamped attestations), but the disclosure content
 itself lives off-chain. The protocol ensures *referential integrity*, not
 *substantive accuracy*. See `CLAUSES.md` §"When something deserves a clause — payload vs anchor".
 
@@ -86,9 +88,7 @@ bonds locked at commit, payouts at resolve. It is LINEAR per process — the
 kernel's own view (a chain of commits against a monotonic cumulative-value
 accumulator). It carries no topology: how orders relate as a DAG is the
 process graph's business, reconstructed off-chain, and the two layers are
-independent of one another. (This entry was formerly named the "capital
-graph" — a name that collapsed the linear bond record into the topology
-layer and read bonds as capital; bonds are deterrents.)
+independent of one another. Bonds are deterrents, not capital.
 
 **Contents:** Bond amounts per order, settlement payouts.
 
@@ -100,7 +100,7 @@ verified by contract invariants.
 **Source:** Published assembly metadata, agreement/publication links, and
 protocol-linked attestations that connect one process context to another.
 
-The cross-process graph connects independent processs via provenance
+The cross-process graph connects independent processes via provenance
 links — enabling process provenance, template reuse, and multi-institution
 coordination.
 
@@ -130,7 +130,7 @@ Making these graphs public enables:
    pickup/drop-off zones.
 4. **Reputation derivation** — Settlement history, on-time rates, and
    disclosure compliance can be computed from public graph data.
-5. **Cross-institution interoperability** — Other archetypes (not just Local Commerce)
+5. **Cross-institution interoperability** — Assemblies beyond Local Commerce
    can consume the same graphs for their own coordination logic.
 
 This is the "economic pheromones" model: coordination signals left by
@@ -180,7 +180,7 @@ protocol plus two clauses present in essentially all of them: **topology** (the
 value-added chain — who comes before whom) and **commerce** (who pays whom, in what
 token, how much). From these alone the network emits its economic skeleton by
 construction — who paid whom, in what denomination, for how much, who the parties
-in the value-added process are, and how value accumulates (the Process and Capital
+in the value-added process are, and how value accumulates (the Process and Settlement
 graphs above). That skeleton is complete on its own.
 
 **What it cannot see is *where*.** The must-haves record *that* value was added and
@@ -252,12 +252,10 @@ That is what levels the field.
 ## What Is Not Public
 
 Private delivery details (exact street address, apartment number, recipient
-phone, special instructions) are never stored on-chain. They are:
-
-1. Encrypted with a per-order AES key at checkout
-2. Stored in the order's encrypted fields
-3. Exchanged out-of-band between buyer and assigned driver only
-4. Decryptable only by the buyer and the assigned driver for that specific order
+phone, special instructions) are never stored on-chain. They travel the
+per-order ECDH channel with a wallet-signed hash anchor on-chain for tamper
+evidence — `ARCHITECTURE.md` § "The other boundary — public vs confidential
+data" owns that design.
 
 ### The private side is the owner's asset
 

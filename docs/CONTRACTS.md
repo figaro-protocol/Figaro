@@ -431,8 +431,9 @@ kernel's `COMMIT_GAS_PER_ORDER`/`RESOLVE_GAS_PER_ORDER` pair: one measured home,
 else quotes it.
 
 No owner, no admin, no pause; records are idempotent per (artifact, process).
-Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (28, incl. the fuzzed
-`icbrt` floor-cube-root property over all of `uint256`, and a no-saturation regression).
+Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (the count is derived,
+never stored; incl. the fuzzed `icbrt` floor-cube-root property over all of `uint256`,
+and a no-saturation regression).
 
 ## The florin (`src/florin/`)
 
@@ -442,12 +443,8 @@ caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then
 
 **`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)` interface florin minter modules implement; `FlorinToken.registerMinter` is where implementations attach (before renounce).
 
-**Florin allocation (canonical, 1B total):**
-- **70M (7%) founders** — genesis mint, no vesting, no unlock
-- **30M (3%) supporters** — friends & family / early supporters; genesis mint, no vesting, no unlock
-- **300M (30%) DAO**       — genesis mint, no vesting, no unlock
-- **600M (60%) RPGF** — clause authors + assembly designers of record, distributed by
-  `RpgfMinter` below. The incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
+**Florin allocation:** `FLORIN_TOKEN.md` owns the canonical allocation table; the
+incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
 
 Deploy flow: deployer deploys `RpgfMinter`, registers it with cap 600M, registers itself
 as a one-shot genesis minter with cap 400M, mints 70M+30M+300M to the founder/supporters/DAO

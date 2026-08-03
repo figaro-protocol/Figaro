@@ -52,6 +52,7 @@ naming one with another's word is the recurring drift):
 | Designer override | the **denomination pin** (`figaro-denomination`, assembly-scoped — `design.scope: "assembly"`, a designer fill folded into every agreement) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
 | On-ramp | **swap-and-commit** (`WitnessSwapAndCommitCoordinator`, buyer and/or seller funding legs) | either party short of the process denomination converts what they hold INTO it, atomically at commit/accept. A funding input is never the order's denomination |
 | No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
+| Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
 
 **SYSTEM A (trade) ≠ SYSTEM B (funding) — three words the deleted optimistic/QF apparatus
 overloaded, now SINGLE-REFERENT** (the System-B meanings were deleted, so each word has ONE
@@ -76,7 +77,6 @@ no RPGF program, no payout root, no bond and no referee; the reward simply rides
 proof that already exists, because a batch-settled process never acquires kernel status and the
 counter's direct path could otherwise never see it (see the settlement-universes crease below).
 Say "the batch proof also carries usage", never "the RPGF is proved".
-| Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
 
 **TWO SETTLEMENT UNIVERSES — `FigaroCore` vs `FigaroBatchVerifier`** (crease stated 2026-07-30;
 owner: `SCALING_STRATEGY.md` § "Two settlement paths, two DISJOINT state universes"). The two
@@ -122,7 +122,8 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 - **`lint-no-closed-world-vocab.sh`** — bans stored taxonomy fields (`roleKind`/`archetypeId`/etc.).
 - **`lint-architecture-lexicon.sh`** — cross-cutting retired terms (`process tree`, `progressive
   collateralization`, `schema`, `order-received`, the retired clause tiers `category-1/2` /
-  `manifest-only`, and `manifest` as off-chain-content) plus the token-concept coupling bans
+  `manifest-only`, `manifest` as off-chain-content, and the retired package name `@figaro/core` —
+  the SDK is `@figaro/sdk`) plus the token-concept coupling bans
   (florin↔`figaro-denomination`, florin↔privileged-token, "florin structural demand"); grows
   tier by tier.
 - **synonym-audit agent (PENDING)** — the reasoning backstop for a *newly-minted* synonym no static

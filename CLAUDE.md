@@ -260,7 +260,7 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 
 ### Before Raising Any Finding
 
-Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents 14 patterns that look like vulnerabilities but are correct by design. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
+Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents the intentional patterns that look like vulnerabilities but are correct by design — count them there, never quote a remembered number. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
 
 ### The Core Question for Any Proposed Change
 

@@ -1,6 +1,6 @@
 # Figaro V5 — Verification Map (Theory → Code → Tests → TLA+ → UI)
 
-Last updated: 2026-07-15
+Last updated: 2026-08-03
 
 ## 0) Purpose
 
@@ -10,7 +10,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
 - **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states)
-- **Halmos** — what is symbolically proved at the bytecode level (7 invariants, z3 solver)
+- **Halmos** — what is symbolically proved at the bytecode level (14 properties across 2 harnesses, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
 
@@ -24,7 +24,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 - **Kernel**: `src/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
 - **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
-- **Florin ecosystem**: `FlorinToken` (`IFlorinMinter` interface; no implementation wired)
+- **Florin ecosystem**: `FlorinToken` + `RpgfMinter` (implements `IFlorinMinter`; registered as a minter at genesis)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
 - **Frontend**: All pages in `frontend/app/`, components, mechanism modules
@@ -107,7 +107,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 | ID | Statement | Code enforcement | Tests | UI presentation |
 |---|---|---|---|---|
 | E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: all 3 paths + cross-order same-process | `/papers/on-chain-evidence` → evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
-| E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: registration, dedup, deposit + withdraw paths | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
+| E-2 | Registered clauses cannot be overwritten | `registerClause`: first-write-wins storage — three mappings, incl. `contentHashOf` (load-bearing for the batch path's content validation); dedup guard rejects re-registration | `ClauseRegistryTest`: registration, dedup, deposit + withdraw paths | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
 | E-4 | Member deposit = staked intent (K4), reclaimed in TWO steps: `requestWithdrawal()` de-surfaces IMMEDIATELY (guard cleared, re-registration allowed at once), `withdraw()` releases the ETH only after `withdrawalCooldown`. The cooldown is what makes the deposit price identity rather than rent it — without it one deposit serves N identities in sequence | `register()`: deposit-bound match + dedup guard; `requestWithdrawal()`: requires registered, clears the guard, accrues `pendingDeposit` + sets `releaseAt`; `withdraw()`: requires something pending and `block.timestamp >= releaseAt`, else `NothingPending` / `CooldownActive`. `updateProfile()` is a separate caller-only path that emits `MemberProfileUpdated` without touching the deposit | `MembersRegistryTest`: register, deposit-bound match, dedup, de-surface-at-request, cooldown-gates-the-claim, immediate re-registration costs a SECOND deposit, repeated requests accumulate + restart the clock, double-claim refused, zero-cooldown and zero-deposit degenerate cases, fuzz `everyDepositIsEventuallyClaimable` (no strandable funds); e2e `seller-withdraw` (UI drives BOTH steps + exact registry ETH delta, and asserts the ETH does NOT move at step 1) | `/local-commerce` → Members Registry; `/sellers`; `/builders` → Seller identity |
 | E-5 | The four stake properties the economic Sybil bound `deposit · N · T / P` rests on. Proving them does NOT prove the deposit is big ENOUGH — that is the Tullock rent-dissipation argument and stays paper work. It proves the machine that argument describes is the machine that shipped | `MembersRegistry`: exact-value `register` + dedup guard (solvency, and no path from locked ETH to a fresh registration); `requestWithdrawal` clears `_registered` and books `pendingDeposit` without touching it on re-register (no recycling ⇒ the `N` term survives); `withdraw` never re-registers (eligibility ends at REQUEST ⇒ the `T` term survives); `UsageCounter._accrue` / `applyBatchAccrual` gate on `members.registered` (the linkage) | **Halmos `HalmosMembersRegistry` — 7 symbolic properties, pass 3/3 of `scripts/test-halmos.sh`**: solvency under arbitrary two-member interleavings, pending-always-claimable-in-full, re-registration costs a SECOND deposit, locked ETH cannot fund a registration, de-surfacing at request + no self-heal on claim, the cooldown cannot be skipped for any instant before `releaseAt`, and the counter admits usage iff the stake is live. The two anti-recycling properties were MUTATION-CHECKED (a deliberate recycling bug produces counterexamples), so they are load-bearing rather than vacuous. Concrete companions in `MembersRegistryTest` + `UsageCounterTest.test_sellerLeavingTheRegistryStopsCounting` | `/sellers` leave/claim flow — the UI drives both steps and the ETH moves only at step 2 |
 | E-6 | Florin supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FlorinToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/florin-schelling-point-token` → supply integrity |
@@ -133,7 +133,6 @@ This section tracks features that are not protocol invariants but are significan
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/builders` → Composability (the graph above the kernel) | `TopologyCanvas` (`/builders/designer/new`, `/builders/designer/view?slug=<slug>`) | — |
 | **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | checkout/order surfaces render via the SDK (the dedicated `BondCalculator` component was deleted) | — |
-| **EIP-2612 permit** | removed (permit path deleted 2026-07-02; frontend limbs buried 2026-07-17; approve-only) | — | — | — | — |
 | **Single-currency binding** | `src/kernel/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
 | **Fee-on-transfer rejection** | `src/kernel/FigaroCore.sol` `_pullExact()` | — | `/builders` → Composability → Fee-on-Transfer Guard | — | — |
 
@@ -203,7 +202,7 @@ This section tracks features that are not protocol invariants but are significan
 
 ## 9) Halmos symbolic testing — current posture
 
-### Harness: `test/kernel/HalmosFigaroCore.t.sol`
+### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol`
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),
@@ -214,7 +213,7 @@ This closes the verification gap between TLA+ (which verifies the abstract model
 and Foundry/Echidna (which test concrete/random scenarios). Halmos proves the
 actual compiled bytecode satisfies the invariants.
 
-### Properties proved (7/7)
+### Properties proved (14/14)
 
 **HalmosFigaroCore (7 properties)**
 
@@ -228,7 +227,9 @@ actual compiled bytecode satisfies the invariants.
 | `check_buyerDominance_revert` | K-2 | z3 | 21 |
 | `check_cumulativeValueMonotonic` | K-5, A-4 | z3 | 31 |
 
-**Total: 7/7 proved (FigaroCore 7), 0 failed. Typical wall time ~4 minutes.**
+**HalmosMembersRegistry (7 properties)** — the stake-machine proofs behind invariant E-5; the per-property map is the E-5 row in §5.
+
+**Total: 14/14 proved (FigaroCore 7 + MembersRegistry 7), 0 failed. Typical wall time ~4 minutes.**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
@@ -251,8 +252,9 @@ pipx install halmos      # Halmos CLI (Python 3.12+)
 ```
 
 The wrapper (`scripts/test-halmos.sh`) checks for both prerequisites, runs the 6
-fast properties batched in one `halmos` process, then runs
-`check_resolutionPayouts` in a second, fresh `halmos` process. Per-assertion
+fast FigaroCore properties batched in one `halmos` process, runs
+`check_resolutionPayouts` in a second, fresh `halmos` process, then runs the 7
+`HalmosMembersRegistry` properties in a third. Per-assertion
 timeout defaults to 10 minutes; override with `HALMOS_SOLVER_TIMEOUT_MS`.
 
 ---
@@ -309,9 +311,9 @@ Foundry-covered companion:
 
 ### Status
 
-25 declared rules across 4 specs (FigaroCore 8 + FlorinToken 6 +
-AttestationCoordinator 4 + TokenOpsVerification 7). **All green**. AC
-re-dispatched 2026-04-23 after the agreement-receipt ABI change.
+29 declared rules across 5 specs (FigaroCore 8 + FlorinToken 6 +
+AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4).
+**All green**. AC re-dispatched 2026-04-23 after the agreement-receipt ABI change.
 
 | Spec | Report URL |
 |---|---|
@@ -359,8 +361,8 @@ owns the harness inventory.
 | Layer | Census | What it covers |
 |---|---|---|
 | **TLA+ model checking** | 2 models, 15 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
-| **Halmos symbolic testing** | 1 harness, 7 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. |
-| **Certora formal verification** | 4 specs, 25 declared rules (8 + 4 + 7 + 6) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. |
+| **Halmos symbolic testing** | 2 harnesses, 14 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. |
+| **Certora formal verification** | 5 specs, 29 declared rules (8 + 4 + 7 + 6 + 4) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. |
 | **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
 | **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |
@@ -377,7 +379,7 @@ owns the harness inventory.
 forge test --via-ir
 ```
 
-### Halmos (7 symbolic proofs)
+### Halmos (14 symbolic proofs across 2 harnesses)
 
 ```bash
 ./scripts/test-halmos.sh
@@ -385,7 +387,7 @@ forge test --via-ir
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-### Certora (25 declared rules across 4 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken — requires API key)
+### Certora (29 declared rules across 5 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps — requires API key)
 
 ```bash
 export CERTORAKEY=<key from certora.com/signup>
@@ -426,18 +428,3 @@ cd frontend && npx vitest run
 ```bash
 cd frontend && npx playwright test --project=devnet  # Anvil required
 ```
-
----
-
-## 14) Known gaps
-
-All gaps from the initial map have been closed. The following items are infrastructure
-details that are now explained on `/builders` but do not appear on marketing pages
-(by conscious decision — they are developer-facing invariants, not user-facing narratives):
-
-| Item | Code location | UI status |
-|---|---|---|
-| Single-currency binding (K-7) | `FigaroCore.sol` `CurrencyMismatch` revert | `/builders` → Composability → Single-Currency Binding |
-| Fee-on-transfer rejection (A-7) | `FigaroCore.sol` `_pullExact()` | `/builders` → Composability → Fee-on-Transfer Guard |
-| EIP-2612 permit pathway | removed (permit path deleted 2026-07-02; frontend limbs buried 2026-07-17; approve-only) | — |
-| Content-addressed order IDs (K-9) | `FigaroCore.sol` commit hash | `/builders` → Composability → Content-Addressed Order IDs |

@@ -2,9 +2,7 @@
 
 The canonical doctrine for Figaro's open-world model and how the runtime composes
 it. CLAUDE.md's top section is the one-paragraph summary; **this is the full
-statement** it points to. Consolidates the former `RUNTIME.md` (runtime thesis +
-frontend composition model + semantic-derivation layer) and the open-world-lens /
-future-proofing doctrine into one home (2026-06-22).
+statement** it points to.
 
 Four parts: the **paradigm** (§1), how the ecosystem **extends** (§2), how the
 runtime **composes** an institution (§3), and the **semantic layer** that bridges
@@ -201,7 +199,7 @@ problem to whoever must run the wrapper, online and signing, indefinitely.
 
 The frontend renders **institutions from bounded composition units** — not one hardcoded
 app shell, not page-specific contract forms, not arbitrary remote UI. The same secured
-protocol base renders a buyer storefront, seller cockpit, fulfiller workspace, reviewer
+protocol base renders a buyer storefront, seller cockpit, courier workspace, reviewer
 surface, or agent control plane without redefining the protocol each time. The goal is
 **bounded institutional mutation**, not maximum composability.
 
@@ -285,7 +283,7 @@ Not final APIs — the shapes the frontend should represent:
 - **MechanismModel** — semantic wrapper for one coordination mechanism (what it does, what
   it secures, what it can touch, who acts through it, where it's attached).
 - **RoleContext** — a role held by a *specific actor in a specific context* (buyer-of-this-
-  order, assigned-fulfiller-of-this-suborder, attesting-seller-of-this-order). A wallet
+  order, seller-of-this-sub-order, attesting-seller-of-this-order). A wallet
   alone is not a sufficient semantic object; role is **derived in context**, not stored.
 - **ProcessModel** — a FigaroCore process + attached mechanisms (orders, topology, state +
   economic summary, upstream/downstream links).

@@ -545,7 +545,7 @@ to design.)
 **Cross-references inside the repo**:
 - `CLAUDE.md` § "What Figaro Is", § "What Figaro Is Not", § "Common Misframings — Do Not Propose"
 - `docs/THEORY.md` — game-theoretic derivation of the kernel invariants
-- `docs/DESIGN_DECISIONS.md` — 12 intentional patterns that look like vulnerabilities but are correct by design (entry #12 captures the MLETR-non-implementability finding from this research)
+- `docs/DESIGN_DECISIONS.md` — the intentional patterns that look like vulnerabilities but are correct by design (count them there; entry #12 captures the MLETR-non-implementability finding from this research)
 - `docs/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
 - `frontend/lib/audit/clauseDataExtract.ts` — the GENERIC per-clause view (`describeClause`) that already surfaces every committed leaf from its spec; the audit bundle carries no genre document
 - `frontend/lib/audit/auditBundle.ts` — the per-order audit bundle (generic; no per-genre extractor)

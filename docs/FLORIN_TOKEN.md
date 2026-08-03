@@ -241,29 +241,37 @@ After renounce:
 
 ### Devnet — `script/Deploy.s.sol`
 
-On devnet `Deploy.s.sol` stands up the UsageCounter with accrual periods
-compressed to +14d/+35d/+60d (so the e2e suite can close a period and claim in
-real time) and the boosted tag `keccak256("geo")`, registers the RpgfMinter over
-it at 600M, then registers itself with a 400M cap, mints 100M to its own wallet
-(founder + supporters stand-in; mainnet splits this into 70M FOUNDER_WALLET +
+On devnet `Deploy.s.sol` stands up the UsageCounter with the same nine-period
+schedule as mainnet, compressed to thirty-minute periods (deploy + clause
+population alone takes over a minute, and resolve-time usage recording needs
+accrual open across a full e2e suite run; nine 30-minute periods give a
+4.5-hour accrual life while still letting the rewards spec advance the chain
+past a period boundary). The constructor wires the seller-side live-stake gate
+(`MembersRegistry`), the artifact-side deposit gates (`ClauseRegistry` +
+`AssemblyRegistry`), the batch verifier as the proof-gated writer of the
+batch-path accrual, the assembly-provenance clause key, the three excluded
+protocol-floor clauses (`figaro-commerce`, `figaro-topology`,
+`figaro-assembly-provenance` — their count is the process count and carries no
+adoption signal), and the minimum-support floor `minSellers = 3` (the mainnet
+value, rehearsed on devnet). It then registers the RpgfMinter over it at 600M,
+registers itself with a 400M cap, mints 100M to its own wallet (founder +
+supporters stand-in; mainnet splits this into 70M FOUNDER_WALLET +
 30M SUPPORTERS_WALLET) and 300M to `MockTreasuryMultisig` (DAO stand-in), and
 renounces.
 
 ---
 
-## Open Design Questions
+## Settled decisions
 
-All resolved. Each item is a **decision**, not an open question.
+Each item is a **decision**, not an open question.
 
 1. **Total supply: 1,000,000,000 florins.** Round, memorable.
 2. **Founder + supporters + DAO at genesis, no vesting.** See "Rationale" above.
 3. **Florin token standard: ERC-20 + EIP-2612 permit.**
 4. **No emission contract, no settlement-anchored minting.**
-5. **RPGF distribution counts usage on chain, as it happens** (2026-07-27,
-   replacing the optimistic posted-root design): the chain cannot look backwards,
-   so recording the fact when it occurs is what removes the posting, the bond, the
-   challenge window, and the forum entirely. Nothing to believe, nothing to
-   adjudicate, and no recurring cost to anyone.
+5. **RPGF distribution counts usage on chain, as it happens**: the chain cannot
+   look backwards, so the fact is recorded when it occurs. Nothing to believe,
+   nothing to adjudicate, and no recurring cost to anyone.
 6. **Immutability.** Once deployed, no contract in the florin stack can be
    upgraded, paused, or reconfigured. If any contract is wrong, a new one
    is deployed and the community migrates. There is no admin.

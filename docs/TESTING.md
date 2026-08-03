@@ -1,6 +1,6 @@
 # Testing — Harness Inventory
 
-CLAUDE.md keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all verification layers.
+`LOCAL_DEV.md` keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all verification layers.
 
 ## Foundry (`test/`)
 
@@ -14,7 +14,7 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
 `Eip712ParityTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
-`UsageCounterTest` (28) covers the reward-accrual counter: the RESOLVED-order gate, merkle
+`UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
 inclusion against the signed `agreementHash`, per-(artifact, process) GLOBAL idempotence (a
 process counts once ever — re-recording it in a later period reverts, and a later period
 counts only trade new to it), the **live-seller-stake gate** (`SellerNotStaked` when the seller-of-record is
@@ -24,7 +24,7 @@ maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `
 domain** plus a no-saturation regression (the earlier version of that fuzz sampled `uint64`
 only — the one domain where a wrong cube bound was coincidentally exact, which is how the
 score-saturation bug survived; never bound a fuzz domain to less than the function's own).
-`RpgfMinterTest` (19) exercises
+`RpgfMinterTest` exercises
 the payout maths against a counter stub — uniform pro-rata share (**no per-wallet cap**: a
 dominant wallet takes its full pro-rata share), a withdrawn author forfeiting the reward,
 author-of-record verification against both registries, the closed-period requirement, and the
@@ -171,13 +171,30 @@ CI jobs with no chain and no skipIf — the SDK↔kernel signature agreement tha
 was previously only in the skipIf-gated `integration.test.ts` round-trip is now
 a hard gate.
 
-## Playwright — devnet (e2e) + mobile (viewport) projects
+## Playwright — the project model (`playwright.config.ts`)
 
 `npm run test:e2e:devnet` (preflight → populate-test-data (clauses + ONE seed
 assembly + sellers; seeding is pre-population, never a test) → run) and
 `npm run test:e2e:mobile`.
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
+
+Five projects:
+
+- **`devnet-authoring`** — the `sellers-onboarding` spec, a dependency project
+  of `devnet` (runs first so the anchors exist; a file-filtered run pulls it
+  too — pass `--no-deps` when the chain is already anchored).
+- **`devnet-standalone`** — self-contained acceptance specs that author + run +
+  audit their OWN full cycle (`permissionless-clause`, `clause-coverage`,
+  `assembly-withdraw`, `clause-authoring`); they share no seeded state, so they
+  do not pull the authoring gate.
+- **`devnet`** — every other `*.devnet.spec.ts`; depends on `devnet-authoring`.
+- **`mobile`** — the lone non-e2e browser project: responsive/viewport chrome
+  jsdom can't render.
+- **`smoke`** — OPERATOR-MANUAL smokes over real external transports the devnet
+  suite deliberately mocks (the XMTP hosted `dev` network); never part of any
+  suite run — explicitly `npx playwright test --project=smoke`; pass/fail is an
+  operator observation, not a CI gate.
 
 **⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
 acceptance specs (`clause-coverage`, `permissionless-clause`,
@@ -271,85 +288,41 @@ iteration. In production builds, test-helper gating honors only the explicit
 `lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
 hard-off (RA-5 intent preserved).
 
-**devnet (`*.devnet.spec.ts`)** — the census is the directory listing
-(`ls frontend/tests/e2e/*.devnet.spec.ts` — derived, never a stored count).
-Every spec drives the real UI against Anvil + deployed contracts
-(action in the UI, reaction in the UI): commerce / checkout / order lifecycle
-(`seller-page`, `orders-accept` — the bilateral full-cycle spine;
-`sign-countersign` — the /sign counter-party leg: the relayed payload received
-over the coordination channel, the shared agreement review rendered INLINE
-with the Layer-A verified banner BEFORE any bond authorization, counter-sign
-through the confirm gate, commit with exact bond deltas;
-`checkout-assembly-choice` — a seller bound to TWO published assemblies forces
-the buyer's pick: the method dropdown (never the static line), place-order
-refusing until the choice, the picked assembly committing with exact bond
-deltas — the mechanism derived from binding state, no taxonomy;
-`assembly-chain` — the multi-order value-added chain: three sellers bound +
-designated through the UI, walk-order accepts with exact per-party bond
-deltas, runtime attestations, one atomic resolve paying every party, full
-audit; `buyer-assigned` — the SAME delivery assembly adopted WITHOUT a
-courier designation: the unbound node falls to the buyer's checkout choice
-(the SellerCataloguePicker), the committed courier is the buyer's pick,
-settlement exact — coordination as an ADOPTION property; `dispatch-race` —
-the SAME unbound node resolved by the countersign-first race (market
-formation with zero contracts): unsigned drafts to every priceable
-discovered catalogue, two couriers counter-sign-and-return on their OWN
-/sign tabs (concurrent contexts), the cheapest AVAILABLE candidate wins
-(cheaper-posted candidates lose by silence), the winner submits the
-commit-ready relay from /orders, settlement exact, the LOSER nets zero;
-`rfq-checkout` — the RFQ leg at checkout: the buyer names a CEILING, each
-courier authors their OWN price on /sign, the counter-draft verifies by
-reconstruction and answers on the REQUEST's conversation id, the cheapest
-QUOTE commits (not the ceiling, not the posted price), the losing quoter
-nets zero, and the settled process renders full audit financials (one
-statement per seller + consolidation — market-formed = ordinary to the
-audit); `mixed-pairing` — HUMAN buyer × AGENT candidate in ONE race: the
-agent is a headless Node service (real key, `services.rest` declared, the
-HttpChannel wire) that counter-signs over HTTP while a human courier
-counter-signs on /sign, wins on price, receives the commit-ready payload at
-its endpoint, and BROADCASTS THE COMMIT ITSELF — no browser ever acts for
-the agent wallet; the losing human nets zero; `kit-diamond` — the
-multi-PARENT topology: the diamond drawn on the canvas (select-add-parent),
-four orders, the leaf committing BOTH parents' real hashes in its topology
-section and bonding 2× the entire upstream value, one atomic 4-order
-resolve, 16 cash-flow rows; `rate-pricing` — a contributor prices per
-started km: the wizard's pricing-policy fields, checkout deriving payment =
-rate × ceil(geodistance) from the sub-order's committed endpoints, signed +
-relayed; `catalogue-fold` — catalogue-authored clause values folding onto
-the committed leaf; `clause-version` — the (clauseId, version) identity key;
-`local-commerce` — the meal-delivery scenario authored on the designer
-canvas, pinned by both its sellers, run buyer→merchant→courier with BOTH full
-process ladders attested stage by stage — stage labels DERIVED from the
-registered specs at run time, never a roster — the hand-off witness PAIRED at
-each courier arrival stage (single committed proximity band), the buyer's
-co-witness filed through the rail's form, and the post-resolve
-evidence-window-closed assertion), designer + assembly registry (`designer-save-draft`, `designer-view`,
-`designer-agreement-drawer`, `designer-drafts-delete`,
-`published-list-ui`), sellers (`sellers-onboarding`, `seller-edit-ui`,
-`seller-withdraw`), inventories (`assemblies-inventory`, `clauses-inventory`),
-and the open-world proof (`permissionless-clause`
-— a never-seen clause attestable with zero per-clause on-chain code, plus a
-never-seen WITNESS clause whose declared `stages[1]` form/filing/decode all
-derive from the declaration; `clause-coverage` — the same harness iterated,
-one rung per protocol clause no other e2e drives: drawer → encode → commit →
-witness → audit through the generic pipeline, values authored via the
-checkout fill surface (general-clause transaction particulars — design time
-is structural, ruled 2026-07-14), the wizard's catalogue clause-values
-editor, the nested sub-clause tree, or the consent AFFIX (a designer
-fill — `block.design.fills`) (file → IPFS pin → keccak anchor
-through the array-of-object repeater; the rung asserts the preview modal's
-consent-terms notice at the signing moment and the document's pin
-out-of-band); the witness leg is DERIVED per rung from the registered
-spec's `stages` — a declaring spec with no rung fills fails as a coverage
-gap, never a silent skip). Every spec in `clauses/` now has a green rung —
-the former figaro-consent exclusion closed 2026-07-10.
+**devnet (`*.devnet.spec.ts`)** — **the directory listing is the census**
+(`ls frontend/tests/e2e/*.devnet.spec.ts` — derived, never a stored count; the
+listing, not this section, is the inventory — read each spec's own header for
+its scenario). Every spec drives the real UI against Anvil + deployed
+contracts (action in the UI, reaction in the UI, chain facts asserted
+out-of-band). A handful of specs define the PATTERNS the rest follow:
+
+- `orders-accept` — the bilateral full-cycle spine (also the CI e2e gate).
+- `assembly-chain` — the multi-order value-added chain: sellers bound +
+  designated through the UI, walk-order accepts with exact per-party bond
+  deltas, one atomic resolve paying every party, full audit.
+- `dispatch-race` / `rfq-checkout` — market formation with zero contracts:
+  the countersign-first race and the buyer-ceiling RFQ leg; the cheapest
+  available candidate/quote commits, losers net zero, settlement exact.
+- `mixed-pairing` — HUMAN buyer × AGENT candidate in ONE race: a headless
+  Node service on the HttpChannel wire counter-signs over HTTP and
+  broadcasts its own commit — no browser ever acts for the agent wallet.
+- `local-commerce` — the designer-authored scenario run end to end, both
+  process ladders attested stage by stage with labels DERIVED from the
+  registered specs at run time, never a roster.
+- `permissionless-clause` / `clause-coverage` — the open-world proof: a
+  never-seen clause (incl. a witness clause) attestable with zero
+  per-clause on-chain code; the same harness iterated, one rung per
+  protocol clause no other e2e drives — the witness leg derived per rung
+  from the registered spec's `stages`, so a declaring spec with no rung
+  fills fails as a coverage gap, never a silent skip. Every spec in
+  `clauses/` has a green rung.
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 
 ## CI (`.github/workflows/`)
 
-Four workflows gate `main`/`develop` on push + PR, path-filtered:
+Six workflows. Five gate `main`/`develop` on push + PR (the language-scoped
+four path-filtered, the guard battery whole-tree); the sixth publishes:
 - **`foundry-ci`** — `forge build`/`test`/`fmt` + Halmos symbolic proofs (Certora
   is excluded by design — it needs the operator-held CERTORAKEY, never stored).
 - **`sdk-ci`** — tsc type-check, `npm test`, build.
@@ -360,6 +333,13 @@ Four workflows gate `main`/`develop` on push + PR, path-filtered:
   `deploy-local.sh` stack, `populate-test-data`, then the `orders-accept` devnet
   spec against the production static export. The highest-catch layer, no longer
   operator-discipline-only. Broader devnet specs stay operator-run.
+- **`guards-ci`** — the whole-tree guard battery, NOT path-filtered: the guards
+  are repo-wide and lint-staged only ever sees a commit's touched files, so this
+  job re-certifies the whole tree on every push/PR.
+- **`sequencer-release`** — publishes the prebuilt `figaro-sequencer` relay
+  binary as a GitHub Release artifact (pinned toolchains + the computed vkey
+  printed into the release body for rebuild-and-compare); build-and-publish
+  only, gates no merge.
 
 The EIP-712 parity harness (above) rides `foundry-ci` + `sdk-ci`; both run its
 two halves unconditionally.

@@ -111,8 +111,9 @@ the seller publishes in its DID Document**: `didWebEndpointResolver` resolves th
 verifies the wallet binding, and returns the `service` endpoint to route the offer to
 (see "Agent Service Endpoints" below). `verify-origination-http.devnet.mjs` proves a
 full bonded process originates over a real socket. Transport is provider-agnostic by
-doctrine (XMTP or A2A implement the same interface), the way dispute resolution is not
-any one forum.
+doctrine — `A2aChannel` (`sdk/src/agent/a2aChannel.ts`, with `makeA2aOfferResponder`
+on the seller side) implements the same `CoordinationChannel` interface over the A2A
+message format, and XMTP can too — the way dispute resolution is not any one forum.
 
 ---
 
@@ -193,8 +194,8 @@ firms would dissolve when transaction costs reach zero.
 
 | Agent Type | Graph Consumed | Action Taken |
 |------------|---------------|--------------|
-| Driver (human) | Geo, Process, Capital | Filter jobs by zone, accept work |
-| Driver (AI) | Geo, Process, Capital | Optimize multi-stop routes, update its own catalogue rate |
+| Driver (human) | Geo, Process, Settlement | Filter jobs by zone, accept work |
+| Driver (AI) | Geo, Process, Settlement | Optimize multi-stop routes, update its own catalogue rate |
 | Food preparer | Process | Accept/decline orders, manage prep pipeline |
 | Buyer | Process, GHG | Place orders, verify disclosures |
 | Market observer | Settlement, Geo | Monitor settlement flows, demand density, catalogue coverage |
@@ -242,8 +243,8 @@ No new contracts are needed:
 ### Agent Service JSON Convention
 
 An autonomous agent includes a `services` section in its member metadata.
-The clause can be anchored in `ClauseRegistry` as
-`erc8004-agent-services` for reference integrity.
+The convention lives in the member profile document itself — it is member
+metadata, not a clause, and gets no registry anchoring.
 
 ```json
 {

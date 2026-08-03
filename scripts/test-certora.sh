@@ -9,11 +9,12 @@
 # The script runs each committed spec against Certora's cloud and reports
 # per-spec outcome. Verification reports are returned as URLs.
 #
-# Specs currently committed (25 rules total — VERIFICATION_MAP.md is the owner):
+# Specs currently committed (29 rules total — VERIFICATION_MAP.md is the owner):
 #   certora/FigaroCore.spec             — kernel state-machine invariants (8 rules)
 #   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability (4 rules)
 #   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules)
-#   certora/FlorinToken.spec               — supply cap + minter registry (6 rules)
+#   certora/FlorinToken.spec            — supply cap + minter registry (6 rules)
+#   certora/BatchVerifierTokenOps.spec  — batch-path token-flow invariants (4 rules)
 #
 # Conf flag note:
 #   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
@@ -69,7 +70,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps)
 fi
 
 for spec in "${SPECS[@]}"; do
