@@ -59,13 +59,13 @@ export default function BuildersPage() {
                 <div>
                     <dt className="font-semibold text-ink-heading">Clause authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live. Sixty percent of the florin supply (600 million) is reserved for clause authors AND assembly designers together, distributed by a fixed formula that measures real adoption &mdash; how many deals settled under the artifact, and how many different sellers, each holding a live deposit of their own, carried it. Breadth weighs heavier than repeat volume, and there is a floor: three different depositing sellers must have used it in settled trade before it scores at all, and a year that ends short of three pays nothing for that year. Your own registration deposit has to stay live to claim. Same formula, same terms, for clauses and assemblies alike.
+                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live, and it earns from the protocol&apos;s reward pool by real, measured adoption &mdash; see <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">how clause authors and assembly designers get paid</Link>.
                     </dd>
                 </div>
                 <div>
                     <dt className="font-semibold text-ink-heading">Assembly authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Compose clauses and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the assembly template in the AssemblyRegistry, parallel to the clause registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary. Assemblies earn from the same 600 million as clauses, by the same formula: a settled process credits the assembly it ran under to its designer of record, exactly as it credits each clause to its author.
+                        Compose clauses and roles into multi-party bonded processes. The Designer tool produces drafts on a canvas; publishing anchors the assembly template in the AssemblyRegistry, parallel to the clause registry. Assemblies are how new use cases &mdash; delivery, supply chain, freelance work &mdash; get expressed in the protocol&apos;s vocabulary, and they earn from the same reward pool as clauses, by the same formula.
                     </dd>
                 </div>
                 <div>
@@ -82,47 +82,24 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward pays out once a year for nine years, on a schedule fixed at deployment, and the yearly budgets rise: fifteen percent of the reserve across the first two years, thirty percent across years three to five, fifty-five percent across years six to nine, split evenly inside each stretch. The largest budgets sit where the evidence is deepest &mdash; the early network is the thinnest and the easiest to game, so the early years are deliberately the leanest. It is built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward pays out once a year for nine years, weighted toward later years once the evidence is deepest &mdash; full schedule at <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">artifact rewards</Link>. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
             </p>
+
             <h2 className="text-base font-semibold text-ink-heading mb-4">
-                Where to start
+                Where to start &mdash; in order
             </h2>
-            <ul className="space-y-3 text-base">
-                <li>
-                    <Link href="/builders/designer" className="text-ink-heading font-medium hover:underline">
-                        The Designer
-                    </Link>
-                    <span className="text-ink-body"> &mdash; compose a bonded process on a canvas and edit its agreement clauses.</span>
-                </li>
-                <li>
-                    <Link href="/builders/clauses" className="text-ink-heading font-medium hover:underline">
-                        Register a clause
-                    </Link>
-                    <span className="text-ink-body"> &mdash; paste a spec, validate it against the live off-chain check, and anchor it on the <code>ClauseRegistry</code>.</span>
-                </li>
+            <ol className="space-y-3 text-base list-decimal pl-5 mb-10">
                 <li>
                     <Link href="/clauses" className="text-ink-heading font-medium hover:underline">
                         Clauses
                     </Link>
-                    <span className="text-ink-body"> &mdash; the validation architecture, the reference clauses, and the authoring checklist.</span>
+                    <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form. Start here: everything above composes from these.</span>
                 </li>
                 <li>
-                    <Link href="/integrate" className="text-ink-heading font-medium hover:underline">
-                        The SDK
+                    <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">
+                        Assemblies
                     </Link>
-                    <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders.</span>
-                </li>
-                <li>
-                    <Link href="/spec" className="text-ink-heading font-medium hover:underline">
-                        The contract surface
-                    </Link>
-                    <span className="text-ink-body"> &mdash; every contract above the kernel, with its source link and verification status.</span>
-                </li>
-                <li>
-                    <Link href="/security#builders-registries" className="text-ink-heading font-medium hover:underline">
-                        Security posture for authors
-                    </Link>
-                    <span className="text-ink-body"> &mdash; first-write-wins registry binding, merkle-bound attestations, three-tier anti-spam posture, and what an immutable v1 means for how you ship.</span>
+                    <span className="text-ink-body"> &mdash; clauses wired into a multi-order process, anchored on <code>AssemblyRegistry</code>.</span>
                 </li>
                 <li>
                     <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">
@@ -137,16 +114,46 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; the external composition catalogue: forums, offset markets, payout routing, and what &ldquo;wired&rdquo; vs &ldquo;architectural slot&rdquo; means today.</span>
                 </li>
                 <li>
-                    <Link href="/agents" className="text-ink-heading font-medium hover:underline">
-                        Agents
+                    <Link href="/integrate" className="text-ink-heading font-medium hover:underline">
+                        Integrate
                     </Link>
-                    <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and how an operator transacts.</span>
+                    <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders, the two-settlement-path read recipe.</span>
                 </li>
                 <li>
-                    <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">
-                        The reward
+                    <Link href="/spec" className="text-ink-heading font-medium hover:underline">
+                        Specifications
                     </Link>
-                    <span className="text-ink-body"> &mdash; how clause authors AND assembly designers get paid: 60% of the florin supply, by a fixed formula, for the artifacts that get used.</span>
+                    <span className="text-ink-body"> &mdash; every contract above the kernel, with its source link and verification status.</span>
+                </li>
+            </ol>
+
+            <h2 className="text-base font-semibold text-ink-heading mb-4">
+                Do it now
+            </h2>
+            <ul className="space-y-3 text-base mb-10">
+                <li>
+                    <Link href="/builders/designer" className="text-ink-heading font-medium hover:underline">
+                        The Designer
+                    </Link>
+                    <span className="text-ink-body"> &mdash; compose a bonded process on a canvas and edit its agreement clauses.</span>
+                </li>
+                <li>
+                    <Link href="/builders/clauses" className="text-ink-heading font-medium hover:underline">
+                        Register a clause
+                    </Link>
+                    <span className="text-ink-body"> &mdash; paste a spec, validate it against the live off-chain check, and anchor it on the <code>ClauseRegistry</code>.</span>
+                </li>
+            </ul>
+
+            <h2 className="text-base font-semibold text-ink-heading mb-4">
+                The adversarial reference
+            </h2>
+            <ul className="space-y-3 text-base">
+                <li>
+                    <Link href="/security#builders-registries" className="text-ink-heading font-medium hover:underline">
+                        Security
+                    </Link>
+                    <span className="text-ink-body"> &mdash; first-write-wins registry binding, merkle-bound attestations, three-tier anti-spam posture, and what an immutable v1 means for how you ship &mdash; every guarantee stated beside its caveat.</span>
                 </li>
             </ul>
         </section>

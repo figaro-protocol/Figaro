@@ -10,6 +10,7 @@
  * marketing telling lives at /artifact-rewards; this page is the doing surface.
  */
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
@@ -82,6 +83,11 @@ export function RewardsView() {
                 pro rata with no cap. Eligibility is a live ETH stake — you earn only while your
                 artifact&apos;s stake stays live. Nothing is
                 posted, bonded, or disputed; there is no committee and no application.
+            </p>
+            <p className="text-sm text-ink-muted mb-8">
+                <Link href="/artifact-rewards" className="hover:underline text-ink-heading">
+                    How the reward works &rarr;
+                </Link>
             </p>
 
             {!rewards.available && (

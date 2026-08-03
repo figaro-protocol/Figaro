@@ -9,6 +9,25 @@ export const metadata: Metadata = {
         "Plain-language answers to the security questions you should ask before sending tokens through Figaro. What the protocol guarantees, what it does not, and how the guarantees are verified.",
 };
 
+/** The page's thirteen questions, in order — a jump index rendered right
+ *  under the hero. Titles are copied verbatim from each `MarketingSection`
+ *  below; keep the two in lockstep if a heading changes. */
+const JUMP_INDEX: { id: string; title: string }[] = [
+    { id: "custody", title: "Who holds the tokens?" },
+    { id: "counterparty", title: "What if the counterparty doesn't deliver?" },
+    { id: "disputes", title: "What if you genuinely disagree?" },
+    { id: "layers", title: "What stands behind a deal?" },
+    { id: "keys", title: "What if you lose your keys?" },
+    { id: "privacy", title: "What does the network learn about you?" },
+    { id: "verification", title: "Has the code been audited?" },
+    { id: "signing", title: "Can this website lie about what you're signing?" },
+    { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
+    { id: "ownership", title: "Who owns Figaro?" },
+    { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
+    { id: "builders-registries", title: "Can someone hijack a clause or seller slot?" },
+    { id: "compatibility", title: "What else you should know." },
+];
+
 export default function Security() {
     return (
         <>
@@ -20,6 +39,20 @@ export default function Security() {
                     </>
                 }
             />
+
+            <MarketingSection bottomPad="default">
+                <nav aria-label="Jump to a question" data-testid="security-jump-index">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                        {JUMP_INDEX.map((item) => (
+                            <li key={item.id}>
+                                <Link href={`#${item.id}`} className="text-ink-heading hover:underline">
+                                    {item.title}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+            </MarketingSection>
 
             <MarketingSection title="Who holds the tokens?" sectionId="custody">
                 <p className="text-base text-ink-body leading-relaxed mb-5">

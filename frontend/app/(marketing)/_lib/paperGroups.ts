@@ -1,4 +1,5 @@
-import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
+/** 1–8 — Voshmgir & Zargham's eight disciplines; drives the `#discipline-N` anchors. */
+type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 /**
  * Disciplinary grouping ("registry" was a tier-word homograph; the on-chain registries are the protocol anchors) — Voshmgir & Zargham, "Foundations of Cryptoeconomic
@@ -7,9 +8,9 @@ import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
  * without departing from the taxonomy.
  *
  * Papers, `currentWork`, `grants`, and `venue` are all optional. Every
- * discipline always has a charter; `/cryptoeconomics` renders whatever
- * concrete work exists under each one, or just the charter when none
- * does yet. The asymmetry surfaces where the project actually is.
+ * discipline always has a charter; `/papers` renders the discipline map
+ * (the `#discipline-N` anchors live there). The asymmetry surfaces where
+ * the project actually is.
  *
  * Per-group `venue` overrides surface a dedicated channel when a
  * discipline has one. There is no project-wide coordination channel
@@ -44,7 +45,7 @@ interface ReferenceLink {
 export interface PaperGroup {
     /** URL slug (stable). Used for `#discipline-N`-style anchors. */
     slug: string;
-    /** 1–8 — drives the `<DisciplineGlyph>` and the per-discipline anchor. */
+    /** 1–8 — drives the per-discipline anchor. */
     disciplineIndex: DisciplineIndex;
     /** Zargham's discipline name. */
     name: string;
@@ -208,7 +209,7 @@ export function getPaperNavigation(slug: string): PaperNavigation | null {
             discipline: {
                 name: group.name,
                 disciplineIndex: group.disciplineIndex,
-                anchor: `/cryptoeconomics#discipline-${group.disciplineIndex}`,
+                anchor: `/papers#discipline-${group.disciplineIndex}`,
             },
             prev: i > 0 ? group.papers[i - 1] : null,
             next: i < group.papers.length - 1 ? group.papers[i + 1] : null,

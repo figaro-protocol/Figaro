@@ -39,22 +39,8 @@ export default function Assemblies() {
             </MarketingSection>
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
-                <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Traditionally you pay one company a single lump sum, and where that
-                    payment goes &mdash; to the cooks, the courier, the farm that grew the
-                    tomatoes, the landlord, the owner&apos;s cut &mdash; is decided inside
-                    the company, privately, after the fact. The firm is where that
-                    breakdown stays hidden. An assembly turns it inside out and puts it in
-                    front of you before you commit: pay 8.40 to the kitchen, 2.10 to the
-                    courier, 0.30 to the farm &mdash; the complete P&amp;L of the purchase,
-                    line by line, at checkout.
-                </p>
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line is its own bonded commitment, and at resolve they settle
-                    together or none of them do. The multi-seller version is the ordinary
-                    case &mdash; a restaurant, a warehouse-to-door chain, a farm-to-consumer chain
-                    all have this shape at any scale. A single-merchant purchase is simply
-                    the shortest one: a P&amp;L with a single line.
+                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Worked through end to end, in plain language, at <Link href="/local-commerce" className="underline">Local Commerce</Link>.
                 </p>
             </MarketingSection>
 
@@ -185,7 +171,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the reference clauses, and the authoring checklist.</span>
+                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
                     </li>
                     <li>
                         <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">Local Commerce</Link>

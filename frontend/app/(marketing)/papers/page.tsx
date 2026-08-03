@@ -53,7 +53,7 @@ export default function Papers() {
                 </p>
                 <div className="space-y-10">
                     {groups.map((g) => (
-                        <div key={g.slug}>
+                        <div key={g.slug} id={`discipline-${g.disciplineIndex}`} className="scroll-mt-24">
                             <h3 className="text-heading-h3 text-ink-heading leading-snug">{g.name}</h3>
                             <p className="text-xs text-ink-muted italic mt-0.5 mb-3">{g.discipline}</p>
                             <ul className="space-y-2 text-base">

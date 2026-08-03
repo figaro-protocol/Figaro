@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { READING_PATH_STEPS } from "@/components/marketing/ReadingPathStrip";
 import { ReadButton } from "@/components/shared/ReadButton";
 import { BuildButton } from "@/components/shared/BuildButton";
 
@@ -54,45 +55,24 @@ export default function Home() {
             </MarketingHero>
 
             {/* Reading path — a curriculum, not a funnel. Five reads in order;
-                each step names what the page answers. */}
+                each step names what the page answers. Rendered FROM
+                READING_PATH_STEPS (@/components/marketing/ReadingPathStrip) —
+                the same array the footer-adjacent strip on every marketing
+                page reads, so the two tellings can never diverge. */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
                 <h2 className="text-heading-h3 text-ink-heading mb-6">Read it in order</h2>
                 <ol className="space-y-3 text-base" data-testid="reading-path">
-                    <li className="flex gap-4">
-                        <span className="text-ink-muted font-mono text-sm mt-0.5">1</span>
-                        <p className="text-ink-body">
-                            <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>
-                            <span> &mdash; how a deal works: the lockbox, the stakes, the one rule.</span>
-                        </p>
-                    </li>
-                    <li className="flex gap-4">
-                        <span className="text-ink-muted font-mono text-sm mt-0.5">2</span>
-                        <p className="text-ink-body">
-                            <Link href="/why" className="text-ink-heading font-medium hover:underline">Why</Link>
-                            <span> &mdash; why it exists: three eras of rule-making, and what the third changes.</span>
-                        </p>
-                    </li>
-                    <li className="flex gap-4">
-                        <span className="text-ink-muted font-mono text-sm mt-0.5">3</span>
-                        <p className="text-ink-body">
-                            <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">Local commerce</Link>
-                            <span> &mdash; one deal, lived: a meal ordered, cooked, carried, and settled.</span>
-                        </p>
-                    </li>
-                    <li className="flex gap-4">
-                        <span className="text-ink-muted font-mono text-sm mt-0.5">4</span>
-                        <p className="text-ink-body">
-                            <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
-                            <span> &mdash; what can go wrong, answered plainly &mdash; and how to verify any deal yourself.</span>
-                        </p>
-                    </li>
-                    <li className="flex gap-4">
-                        <span className="text-ink-muted font-mono text-sm mt-0.5">5</span>
-                        <p className="text-ink-body">
-                            <Link href="/users" className="text-ink-heading font-medium hover:underline">Users</Link>
-                            <span> &mdash; take part: buy something, or offer something.</span>
-                        </p>
-                    </li>
+                    {READING_PATH_STEPS.map((step, i) => (
+                        <li key={step.href} className="flex gap-4">
+                            <span className="text-ink-muted font-mono text-sm mt-0.5">{i + 1}</span>
+                            <p className="text-ink-body">
+                                <Link href={step.href} className="text-ink-heading font-medium hover:underline">
+                                    {step.label}
+                                </Link>
+                                <span> &mdash; {step.description}</span>
+                            </p>
+                        </li>
+                    ))}
                 </ol>
             </section>
 

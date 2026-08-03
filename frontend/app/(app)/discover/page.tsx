@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SellerDiscovery } from "./_components/SellerDiscovery";
 
 export const metadata: Metadata = {
@@ -22,6 +23,10 @@ export default function DiscoverPage() {
                 filter by what is close to you, pick one, and place a bonded
                 order &mdash; locking your stake against the deal while the seller
                 locks theirs to accept.
+            </p>
+            <p className="text-sm text-gray-500 mb-10">
+                New to this? <Link href="/users" className="underline hover:text-black">See how taking part works</Link>, or read{" "}
+                <Link href="/local-commerce" className="underline hover:text-black">one deal, lived</Link> end to end.
             </p>
             <SellerDiscovery />
         </section>

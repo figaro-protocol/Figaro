@@ -962,6 +962,13 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         ))}
 
+                        <p className="text-xs text-neutral-500" data-testid="checkout-security-link">
+                            Can this website lie about what you&apos;re signing?{" "}
+                            <Link href="/security#signing" className="underline text-black hover:text-neutral-600">
+                                How to check &rarr;
+                            </Link>
+                        </p>
+
                         <Button
                             onClick={handlePlaceOrder}
                             disabled={

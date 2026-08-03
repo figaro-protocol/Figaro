@@ -113,7 +113,7 @@ export default function Composes() {
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the reference clauses, and the authoring checklist.</span>
+                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
                     </li>
                     <li>
                         <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>

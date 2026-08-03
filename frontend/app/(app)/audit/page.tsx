@@ -16,6 +16,7 @@ import type { Metadata } from "next";
  * `<HashVerifier />` child carries its own `"use client"`.
  */
 
+import Link from "next/link";
 import { HashVerifier } from "./_components/HashVerifier";
 
 export const metadata: Metadata = {
@@ -35,6 +36,12 @@ export default function AuditPage() {
                     chain. For process-bound audit (financials, audit-bundle PDF,
                     and verifier scoped to the process), open <code>/audit/view?process=…</code>{" "}
                     directly.
+                </p>
+                <p className="text-sm text-ink-muted">
+                    For the verification stack and audit status behind these checks, see{" "}
+                    <Link href="/security#verification" className="hover:underline text-ink-heading">
+                        Security &rarr;
+                    </Link>.
                 </p>
             </header>
 
