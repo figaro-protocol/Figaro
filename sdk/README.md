@@ -243,7 +243,9 @@ salt, deadline` — everything except the two signatures).
 ### `@figaro/sdk/agent` — Agent Coordination
 
 Context sync, network discovery, action proposer, human-in-the-loop queue,
-autonomous execution, did:web identity.
+autonomous execution, did:web identity, and the coordination transports that
+carry an offer between two agents — `InProcessChannel`, `HttpChannel`, and
+`A2aChannel` (the Agent2Agent wire), all one interface.
 
 ```ts
 import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "@figaro/sdk/agent";
@@ -347,14 +349,61 @@ await attestAsSeller(
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
 import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
-// REFUSE-ALL FLOOR: without an `accept` policy the handler declines EVERY offer.
-// Autonomy is opt-in — the policy is where you bound currency/amount before the
-// seller bonds against them. (A `() => true` accept-all is possible but unsafe.)
+// REFUSE-ALL FLOOR, BOTH HALVES: with no `accept` business rule OR no economic
+// `policy` the handler declines EVERY offer. Autonomy is opt-in — these are
+// where you bound currency/magnitude before the seller bonds against them.
+// (A `() => true` accept-all is possible but unsafe.)
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
     accept: (offer) => offer.commitment.currency === myAcceptedToken
         && offer.commitment.expectedCumulativeValue <= myMaxBond,
+    policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
 }));
-const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, overrides });
+const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, buyer, seller, currency, payment, chainId, core, overrides });
+
+// TRANSPORTS — `CoordinationChannel` is ONE method (`sendOffer`), and the SDK
+// ships three implementations of it: `InProcessChannel` (both agents in one
+// process — tests), `HttpChannel` (a bare POST to the endpoint the seller
+// publishes), and `A2aChannel` (the Agent2Agent wire). Only the channel
+// changes: the handshake, the anti-tamper gate, and the refuse-all floor are
+// the same object underneath, and the SDK never fabricates the counterparty
+// signature on any of them.
+
+// A2A — reach for it when the counterparty already speaks Agent2Agent (use
+// HttpChannel when it just exposes an offer URL). The offer envelope rides as
+// the `data` part of an A2A message, and the JSON-RPC `message/send`
+// request/response IS the handshake's request/response — so a third-party A2A
+// agent interoperates WITHOUT importing this SDK: it sees an ordinary message
+// whose data part carries the envelope, counter-signs, and replies in kind.
+import { A2aChannel, makeA2aOfferResponder, didWebEndpointResolver } from "@figaro/sdk/agent";
+// BUYER: resolve the seller's A2A endpoint — a did:web service entry of type
+// "A2AEndpoint", a static map, or a read of the seller's published profile
+// (`projectAgentServices(profileJson).services.a2a`, below) — then originate
+// over it exactly as above.
+const a2a = new A2aChannel({
+    resolveEndpoint: didWebEndpointResolver(sellerToDid, { serviceType: "A2AEndpoint", chainId }),
+});
+const a2aTx = await originateProcess(buyerWallet, publicClient, addresses,
+    { channel: a2a, template, buyer, seller, currency, payment, chainId, core, overrides });
+// SELLER: the SDK ships no server. `makeA2aOfferResponder` is a pure
+// request→response function any server drives (node:http, express, a
+// serverless function), wrapping the SAME `makeSellerOfferHandler` — so the
+// refuse-all floor is unchanged: no `accept` OR no `policy` declines everything.
+const respond = makeA2aOfferResponder(
+    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy }), // the two floors above
+);
+const { status, body } = await respond(rawRequestBody); // status is always 200 — JSON-RPC carries the outcome
+// The three handshake outcomes on the wire, mirroring HttpChannel's 200/204/422:
+//   • result message WITH a data part  → counter-signed (sendOffer returns the envelope);
+//   • result message with NO data part → policy DECLINE (sendOffer returns null);
+//   • JSON-RPC error → sendOffer THROWS — `-32002` when the seller's anti-tamper
+//     gate rejected the offer, `-32602`/`-32700` for a malformed request. A
+//     rejection is never a silent decline.
+// An unresolvable endpoint is ABSENCE, not a decline: sendOffer returns null.
+// Hand-rolling either side (a non-SDK A2A agent, a custom server)? The codec is
+// exported: `a2aMessageFromOffer(offer, "user" | "agent", messageId)` and
+// `offerFromA2aMessage(message)` — null when the message carries no data part,
+// THROWS on a malformed one (malformed is not absence). `messageId` is
+// correlation metadata only; the envelope's own signatures authenticate.
 
 // The dispatch race — market formation with zero contracts, the seller-signs-
 // first INVERSE of the handshake above: a buyer relays the SAME unsigned draft
