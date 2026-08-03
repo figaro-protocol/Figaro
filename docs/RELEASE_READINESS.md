@@ -161,9 +161,21 @@ surface with user-owned RPC/IPFS endpoints, so no edge middleware is presumed.) 
 
 Required output:
 
-1. Audit `script/Deploy.s.sol` + `script/DeployMainnet.s.sol` — confirm the env-var contract, no mocks, and that the atomic clause-validator binding composes on Sepolia.
+1. ~~Audit `script/Deploy.s.sol` + `script/DeployMainnet.s.sol`~~ — DONE 2026-08-03, verdict
+   clean: the env-var contract hard-reverts everywhere (no `envOr`, no silent defaults);
+   `DeployMainnet.s.sol` imports zero mocks; the `UsageCounter`↔`FigaroBatchVerifier`
+   adjacent-pair address prediction is `require`-asserted in both scripts; the Task-3
+   ratified registry values are hardcoded literals (correct-by-construction, no env lever).
+   Process residuals folded into the smoke-test item below.
 2. **Resolve the wagmi-2 advisory gate (blocking — ten highs do not deploy to a public testnet).** The 39 frontend prod advisories sit in wagmi 2's bundled connector sub-tree; the only npm fix is the wagmi@3 major, and RainbowKit peers `wagmi ^2.9.0`. Re-check RainbowKit wagmi-3 support and migrate; if still absent, go injected-only (drop RainbowKit/WalletConnect). Either path lands before the smoke test, since it changes the frontend under test. This is a decision point with a self-owned fallback, never a wait on RainbowKit.
-3. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a public testnet).
+3. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a
+   public testnet). Rehearsal checks from the 2026-08-03 deploy-script audit: (a) neither
+   script guards `block.chainid`, so verify the `--rpc-url` target by hand immediately before
+   every `--broadcast` — the devnet script would happily deploy its mock stack to a public
+   chain; (b) the genesis state root is computed, not deploy-time-verified against the Rust
+   value — treat one REAL batch settling cleanly post-deploy as the genesis-root proof, not
+   the deploy transaction succeeding; (c) confirm Succinct publishes an SP1 verifier gateway
+   on Sepolia (or self-deploy one) before setting `SP1_VERIFIER_GATEWAY`.
 
 (Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
 
@@ -177,10 +189,10 @@ state — CLOSED". A real local SP1 Core proof of the canonical batch generates
 and verifies; the cross-language batch e2e (`sdk/tests/batch-e2e.test.ts`) and
 `BatchVerifierTokenOps.spec` are green. Mainnet deploy wires Succinct's SP1
 verifier gateway + the program vkey (`DeployMainnet.s.sol`,
-`SP1_VERIFIER_GATEWAY`/`SP1_PROGRAM_VKEY`). Re-establishing the FROZEN AUDIT
-SCOPE to include the rebuilt surface is a pre-mainnet deployment task — the
-batch/proof path is a composition ABOVE the frozen kernel, deployed and
-rehearsed with the rest of the stack, not a kernel change.
+`SP1_VERIFIER_GATEWAY`/`SP1_PROGRAM_VKEY`). The FROZEN AUDIT SCOPE was
+re-established to include the rebuilt surface on 2026-08-03 (see the frozen-scope
+table) — the batch/proof path is a composition ABOVE the frozen kernel, deployed
+and rehearsed with the rest of the stack, not a kernel change.
 
 ### Task 9: Florin custody tail
 
@@ -377,7 +389,11 @@ external-audit gates above:
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (florin allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `MembersRegistry` surface (dropped `role` from `register` + `MemberRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). A further amendment (2026-07-30) landed the batch-usage bridge's deploy consequences in both scripts: `UsageCounter` and `FigaroBatchVerifier` now reference each other, so they deploy as an ADJACENT PAIR with the verifier's address predicted from the deployer nonce and ASSERTED (`require(... == predictedVerifier)`) — a wrong prediction fails the deploy rather than producing a counter no verifier can write to. `UsageCounter` gains a `_batchVerifier` constructor arg, `FigaroBatchVerifier` a `_usageCounter` arg, and the genesis state root gains a fourth leg (the RPGF usage state) — the deployed root is asserted equal to the Rust `KernelState::compute_root()` on the empty state, since a mismatch would mean no batch could ever settle. An earlier amendment (2026-07-03) removed `ProcessOffsetReceipt.sol` from scope — the carbon-offset apparatus was deleted (no on-network retirement router exists on the deployment chain; see `CONTRACTS.md`). Amendment history is in `git log`; current frozen scope is below.
+**Initial freeze**: 2026-04-20. **Latest amendment (2026-08-03)**: the frozen scope was
+extended to `src/protocol/usage/`, `src/protocol/verifier/`, and `src/rpgf/` — the
+witness-rebuilt batch path and the ratified-uniform RPGF surface — closing Task 8's
+re-establishment; their audit-fix churn ended 2026-08-01 and the whole audited Solidity
+surface is now one scope. Earlier amendments landed a pre-audit findings batch (florin allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `MembersRegistry` surface (dropped `role` from `register` + `MemberRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). A further amendment (2026-07-30) landed the batch-usage bridge's deploy consequences in both scripts: `UsageCounter` and `FigaroBatchVerifier` now reference each other, so they deploy as an ADJACENT PAIR with the verifier's address predicted from the deployer nonce and ASSERTED (`require(... == predictedVerifier)`) — a wrong prediction fails the deploy rather than producing a counter no verifier can write to. `UsageCounter` gains a `_batchVerifier` constructor arg, `FigaroBatchVerifier` a `_usageCounter` arg, and the genesis state root gains a fourth leg (the RPGF usage state) — the deployed root is asserted equal to the Rust `KernelState::compute_root()` on the empty state, since a mismatch would mean no batch could ever settle. An earlier amendment (2026-07-03) removed `ProcessOffsetReceipt.sol` from scope — the carbon-offset apparatus was deleted (no on-network retirement router exists on the deployment chain; see `CONTRACTS.md`). Amendment history is in `git log`; current frozen scope is below.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to
@@ -394,13 +410,18 @@ directory IS the tier map); the frozen *contracts* are unchanged by the move.
 | `src/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
 | `src/protocol/registries/` | `ClauseRegistry.sol`, `MembersRegistry.sol`, `AssemblyRegistry.sol` |
 | `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol` |
+| `src/protocol/usage/` | `UsageCounter.sol` |
+| `src/protocol/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` |
+| `src/rpgf/` | `RpgfMinter.sol` |
 | `src/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
 
-`src/protocol/usage/`, `src/rpgf/`, and `src/protocol/verifier/` are
-NOT yet in the frozen scope — extending it to cover them is the pre-mainnet
-re-establishment task noted under Task 8.
+The Task-8 re-establishment landed 2026-08-03: `src/protocol/usage/`,
+`src/rpgf/`, and `src/protocol/verifier/` entered the frozen scope after the
+RPGF/data-seam audit's fix waves closed (their last Solidity edits, 2026-08-01,
+were all scoped audit-finding fixes — the churn the freeze was waiting out).
+The whole audited Solidity surface is now one frozen scope.
 
 ### Explicitly out of scope (not frozen)
 
