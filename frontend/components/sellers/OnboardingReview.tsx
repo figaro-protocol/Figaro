@@ -14,9 +14,9 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useMemberProfile,
     useRegistrationDeposit,
-} from "@/lib/seller/useMembersRegistry";
-import { type MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
-import { usePublishMemberProfile } from "@/lib/seller/usePublishMemberProfile";
+} from "@/lib/member/useMembersRegistry";
+import { type MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
 
 /**
  * Step 6 — review and publish.

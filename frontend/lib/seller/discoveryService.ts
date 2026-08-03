@@ -7,8 +7,8 @@ import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetada
 import {
     MemberProfileMetadata,
     tryParseMemberProfileDocument,
-} from '@/lib/seller/memberProfileMetadata';
-import { tryParseCatalogueItems } from '@/lib/seller/memberProfileAdapter';
+} from '@/lib/member/memberProfileMetadata';
+import { tryParseCatalogueItems } from '@/lib/member/memberProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 interface DiscoveryResult {

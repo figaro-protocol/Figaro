@@ -29,10 +29,10 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
+import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
-import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
+import { useUpdateMemberProfile } from "@/lib/member/useUpdateMemberProfile";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { fetchSellerCatalogue } from "@/lib/seller/catalogueFetcher";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type {
@@ -40,7 +40,7 @@ import type {
     UnitSystem,
     CatalogueItemMetadata,
 } from "@/lib/seller/sellerCatalogueMetadata";
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import { OnboardingCatalogueForm } from "@/components/sellers/OnboardingCatalogueForm";
 

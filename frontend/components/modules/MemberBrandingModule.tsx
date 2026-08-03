@@ -5,7 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMemberBranding } from "@/lib/seller/useMemberBranding";
+import { useMemberBranding } from "@/lib/member/useMemberBranding";
 import { resolveImageUri } from "@/lib/shared/ipfsService";
 
 /**

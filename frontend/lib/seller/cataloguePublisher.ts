@@ -16,7 +16,7 @@ import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetada
 import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { invalidateCatalogueCache } from "@/lib/seller/catalogueFetcher";
-import { clearBrandingCache } from "@/lib/seller/memberBranding";
+import { clearBrandingCache } from "@/lib/member/memberBranding";
 
 export interface PublishResult {
     /** The IPFS CID of the pinned document */

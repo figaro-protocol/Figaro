@@ -3,7 +3,7 @@ import {
     fetchMemberBranding,
     clearBrandingCache,
     resolveMemberBrandingFromMemberProfile,
-} from '@/lib/seller/memberBranding';
+} from '@/lib/member/memberBranding';
 import { MEMBER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/memberMetadata';
 
 describe('memberBranding', () => {

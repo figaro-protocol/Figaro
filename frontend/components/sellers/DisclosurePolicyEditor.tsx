@@ -4,7 +4,7 @@ import { useState } from "react";
 import { isAddress } from "viem";
 import { Card } from "@/components/ui/Card";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import type { DisclosurePolicyEntry } from "@/lib/seller/memberProfileMetadata";
+import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 
 /**

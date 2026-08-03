@@ -10,7 +10,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import type { MemberAgentServices } from "@/lib/seller/memberProfileMetadata";
+import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 
 /**
  * Step 6 of the onboarding wizard. Collects ERC-8004-compatible

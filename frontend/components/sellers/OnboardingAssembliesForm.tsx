@@ -15,7 +15,7 @@ import type {
     AssemblyBindingRecord,
     CounterpartyBinding,
     DisclosurePolicyEntry,
-} from "@/lib/seller/memberProfileMetadata";
+} from "@/lib/member/memberProfileMetadata";
 import {
     type AssemblyChoice,
     requiredCounterpartyClauses,

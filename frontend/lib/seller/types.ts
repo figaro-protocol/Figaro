@@ -1,6 +1,6 @@
 import type { CatalogueItemMetadata, UnitSystem } from "@/lib/seller/sellerCatalogueMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/seller/memberProfileMetadata";
+import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 
 /**
  * Buyer-side projection of a seller's profile + catalogue.

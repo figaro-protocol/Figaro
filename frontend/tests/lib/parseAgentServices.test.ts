@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAgentServices } from '@/lib/seller/useMembersRegistry';
+import { parseAgentServices } from '@/lib/member/useMembersRegistry';
 
 describe('parseAgentServices', () => {
     it('returns isAgent=false when no services key is present', () => {

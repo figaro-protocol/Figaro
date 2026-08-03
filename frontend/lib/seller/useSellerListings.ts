@@ -21,7 +21,7 @@ import {
     type Listing,
 } from "@/lib/seller/sellerListing";
 import { getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
-import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";

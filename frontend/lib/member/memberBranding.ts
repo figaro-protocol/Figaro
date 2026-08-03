@@ -12,9 +12,9 @@
  * frontends can render the member's identity.
  */
 
-import type { MemberBrandingMetadata } from "@/lib/seller/memberBrandingMetadata";
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
-import { createUriFetcher } from "@/lib/seller/uriFetcher";
+import type { MemberBrandingMetadata } from "@/lib/member/memberBrandingMetadata";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -13,11 +13,11 @@ import { useEffect, useState } from "react";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
-import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
+import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import {
     tryParseMemberProfileDocument,
     type CounterpartyBinding,
-} from "@/lib/seller/memberProfileMetadata";
+} from "@/lib/member/memberProfileMetadata";
 import {
     useAllPublishedAssemblies,
     fetchAssemblyTemplate,

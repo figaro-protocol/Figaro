@@ -27,7 +27,7 @@ import type {
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
 import { encodeGeohash } from "@figaro/sdk/derive";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
-import { geocodeAddress, type GeocodeFailureReason } from "@/lib/seller/geocode";
+import { geocodeAddress, type GeocodeFailureReason } from "@/lib/member/geocode";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { getCommonTokens, type CommonToken } from "@/lib/seller/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";

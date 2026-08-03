@@ -6,8 +6,8 @@
  * withdraw (no successor) erases everything; unpin failures never throw.
  */
 import { describe, expect, it, vi } from "vitest";
-import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 function profile(overrides: Partial<MemberProfileMetadata>): MemberProfileMetadata {
     return {

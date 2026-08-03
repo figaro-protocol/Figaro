@@ -10,8 +10,8 @@
 import {
     fetchMemberBranding,
     type ResolvedMemberBranding,
-} from "@/lib/seller/memberBranding";
-import { useAsyncMemberResource } from "@/lib/seller/useAsyncMemberResource";
+} from "@/lib/member/memberBranding";
+import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
 
 export interface UseMemberBrandingResult {
     branding: ResolvedMemberBranding | null;

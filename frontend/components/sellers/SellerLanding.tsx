@@ -30,14 +30,14 @@ import {
     useRequestWithdrawal,
     useWithdrawalStatus,
     useWithdrawalCooldown,
-} from "@/lib/seller/useMembersRegistry";
+} from "@/lib/member/useMembersRegistry";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
-import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { formatEther } from "viem";
 import { OnboardingWelcome } from "@/components/sellers/OnboardingWelcome";
 import { OnboardingShell } from "@/components/sellers/OnboardingShell";

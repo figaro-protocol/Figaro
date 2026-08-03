@@ -28,7 +28,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FEATURE_LAYERS='checkout|composition|semantic|designer|seller|handoff|audit|agent'
+FEATURE_LAYERS='checkout|composition|semantic|designer|seller|member|handoff|audit|agent'
 
 files=("$@")
 whole_tree=0

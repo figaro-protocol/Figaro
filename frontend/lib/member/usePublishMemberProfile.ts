@@ -37,7 +37,7 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
     parseMemberProfileDocument,
     type MemberProfileMetadata,
-} from "@/lib/seller/memberProfileMetadata";
+} from "@/lib/member/memberProfileMetadata";
 import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import type {
     CatalogueItemMetadata,

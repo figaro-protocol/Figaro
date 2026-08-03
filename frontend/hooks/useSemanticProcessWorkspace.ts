@@ -14,7 +14,7 @@ import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useMembersRegistry";
+import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/member/useMembersRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { createCapabilityExecutors } from "@/lib/semantic/createCapabilityExecutors";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";

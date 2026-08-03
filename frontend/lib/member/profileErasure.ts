@@ -13,7 +13,7 @@
  * same erasure is idempotent (unpinning an absent pin is absence).
  */
 import { extractIpfsCid, type IpfsService } from "@/lib/shared/ipfsService";
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 /** The URI-valued fields a profile document can reference on IPFS. */
 function referencedUris(profile: MemberProfileMetadata | null | undefined): string[] {

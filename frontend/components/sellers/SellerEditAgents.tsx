@@ -25,14 +25,14 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
+import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
-import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
+import { useUpdateMemberProfile } from "@/lib/member/useUpdateMemberProfile";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type {
     MemberAgentServices,
     MemberProfileMetadata,
-} from "@/lib/seller/memberProfileMetadata";
+} from "@/lib/member/memberProfileMetadata";
 import { OnboardingAgentsForm } from "@/components/sellers/OnboardingAgentsForm";
 
 export function SellerEditAgents() {

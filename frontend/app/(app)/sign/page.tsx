@@ -30,9 +30,9 @@ import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFunding
 import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
-import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
-import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import { useMemberProfile } from "@/lib/member/useMembersRegistry";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";

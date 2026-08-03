@@ -10,7 +10,7 @@
  * and any address-validating reader would reject the whole fixture.
  */
 
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 export const MEMBER_PROFILE_METADATA_EXAMPLE: MemberProfileMetadata = {
     subjectAddress: "0x00000000000000000000000000000000000e0001",

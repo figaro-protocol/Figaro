@@ -28,13 +28,13 @@ import type {
     DisclosurePolicyEntry,
     MemberAgentServices,
     MemberAssetReferences,
-} from "@/lib/seller/memberProfileMetadata";
+} from "@/lib/member/memberProfileMetadata";
 import type {
     CatalogueItemMetadata,
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import type { MemberBrandingMetadata } from "@/lib/seller/memberBrandingMetadata";
+import type { MemberBrandingMetadata } from "@/lib/member/memberBrandingMetadata";
 
 // ── Shape ────────────────────────────────────────────────────────────────────
 

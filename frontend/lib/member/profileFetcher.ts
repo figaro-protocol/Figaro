@@ -13,9 +13,9 @@
  * after a write are fresh without explicit invalidation.
  */
 
-import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
-import { tryParseMemberProfileDocument } from "@/lib/seller/memberProfileMetadata";
-import { createUriFetcher } from "@/lib/seller/uriFetcher";
+import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { tryParseMemberProfileDocument } from "@/lib/member/memberProfileMetadata";
+import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
 const profileFetcher = createUriFetcher<MemberProfileMetadata>({
     parse: (doc) => tryParseMemberProfileDocument(doc),

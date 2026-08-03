@@ -31,12 +31,12 @@
 import { useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
+import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import {
     parseMemberProfileDocument,
     type MemberProfileMetadata,
-} from "@/lib/seller/memberProfileMetadata";
-import { useUpdateProfile } from "@/lib/seller/useMembersRegistry";
+} from "@/lib/member/memberProfileMetadata";
+import { useUpdateProfile } from "@/lib/member/useMembersRegistry";
 
 type MemberProfilePatch = Partial<MemberProfileMetadata>;
 

@@ -19,12 +19,12 @@ import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
-import { useAsyncMemberResource } from "@/lib/seller/useAsyncMemberResource";
+import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
 import {
     AgentServiceInfo,
     MemberAgentServices,
     projectAgentServices,
-} from "@/lib/seller/memberProfileMetadata";
+} from "@/lib/member/memberProfileMetadata";
 
 const registry = getMembersRegistry();
 
