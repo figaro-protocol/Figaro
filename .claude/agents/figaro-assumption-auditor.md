@@ -40,7 +40,8 @@ Before auditing, read these (they are short):
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_no_marketing_hero_eyebrow.md` — decorative claims / eyebrows
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_give_complete_information.md` — completeness / detail discipline
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_paper_corpus_organization.md` — the Zargham discipline taxonomy
-- `CLAUDE.md` § "What Figaro Is Not", "Wallet-provider scope per route"
+- `CLAUDE.md` § "What Figaro Is Not"
+- `docs/FRONTEND.md` § "Wallet-provider scope per route"
 
 You cite from these in findings.
 

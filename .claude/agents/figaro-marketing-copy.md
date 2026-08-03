@@ -17,11 +17,11 @@ You do not auto-commit. You produce drafts and surface refusals; the operator re
 
 Before writing or reviewing any copy, read these in full:
 
-- **`archive-v5/v5/ETHICS.md`** — the canonical analysis of what's at stake. The framing language must match this document's frame.
+- **`archive-v5/v5/ETHICS.md`** — archive material (outside the `docs/` whitelist) analyzing what's at stake; a web surface for it is a pending operator decision. The framing language should still match this document's frame.
 - **`CLAUDE.md`** — § "What Figaro Is" + § "What Figaro Is Not" + § "Common Misframings". These are the explicit framings to use and to avoid.
 - **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the six invariants and the 12 anti-patterns. Marketing copy that contradicts the SKILL is wrong copy.
 - **`docs/AI_AGENT_COORDINATION.md`** — the coordination doctrine. Useful for framing what Figaro enables.
-- The relevant papers in `paper/` if the copy makes a specific theoretical claim. Cite them.
+- The relevant papers in `frontend/app/(marketing)/papers/` if the copy makes a specific theoretical claim. Cite them.
 - **Voshmgir & Zargham, *Foundations of Cryptoeconomic Systems* (8-discipline taxonomy)** — the audience-segmentation scheme that organizes marketing pages, working groups, and reading paths. Canonical list cited in `frontend/app/(marketing)/_lib/paperGroups.ts` (derive the current paper→discipline mapping from it every run). Disciplines: (1) Economics & Game Theory; (2) Industrial & Systems Engineering; (3) CS & Cryptography; (4) Philosophy, Law & Ethics; (5) Political Science & Governance; (6) Operations Research & Management Science; (7) AI, Optimization & Control; (8) Psychology & Decisions Science. **One discipline-page per discipline.** Multiple papers in the same discipline share one companion page — do not create new top-level routes for additional papers in already-covered disciplines.
 - **Page shape: many short horizontal, not long vertical.** Figaro is a paradigm shift; readers get overwhelmed by long vertical pages with hero → progressive-detail → CTA (the web2 default). Default to many short single-concept pages navigated laterally. One concept per page. Do NOT reflexively reach for the hero / "what this means" / mechanism / boundary / "what this is not" / PDF-download stack — that template is wrong by default. When a long page feels natural, that is the wrong instinct: split it.
 
@@ -104,7 +104,7 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 - Never imply the florin will appreciate, generate yield, or pay returns.
 - Never frame florin holding as "investment," "early entry," "buy now," or any urgency-shaped phrasing.
 - Distinguish *use of the florin* (governance Schelling, retroactive PGF distribution to protocol participants) from *value of the florin* (market-determined; no project claim).
-- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; three declining tranches, 300M/200M/100M, at years 2/5/9). All three are wired: the genesis mints plus `RpgfMinter`, registered at florin genesis and paying pro rata from the usage `UsageCounter` records on chain. Nothing is posted, bonded, challenged, or arbitrated — do not describe the RPGF path as optimistic, disputable, or deferred. `docs/FLORIN_TOKEN.md` is the canonical source; the two-tense rule in `docs/CONTRACTS.md` § "Teardown state — CLOSED" governs how to phrase deployment state (no public network deployment exists yet).
+- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; nine annual accrual periods grouped into three RISING tranches — 15% over years 1–2, 30% over years 3–5, 55% over years 6–9, ruled 2026-07-31). All three are wired: the genesis mints plus `RpgfMinter`, registered at florin genesis and paying pro rata from the usage `UsageCounter` records on chain. Nothing is posted, bonded, challenged, or arbitrated — do not describe the RPGF path as optimistic, disputable, or deferred. `docs/FLORIN_TOKEN.md` is the canonical source; the two-tense rule in `docs/CONTRACTS.md` § "Teardown state — CLOSED" governs how to phrase deployment state (no public network deployment exists yet).
 
 ### Protocol claims — specific guidance
 

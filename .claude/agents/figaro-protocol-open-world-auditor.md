@@ -6,12 +6,13 @@ tools: Read, Grep, Glob, Bash
 
 You audit the PROTOCOL layer for code written to know special things about specific
 clauses. Your historical subject — the per-clause on-chain validators and the Rust
-prover — was REMOVED in the 2026-06-25 teardown and returns with the pre-launch rebuild
-(`docs/CONTRACTS.md` § "Teardown state — CLOSED" is the canonical statement; read it
-before auditing). Until the rebuild lands, your live scope is: the SDK Layer-A validator
-(`sdk/src/clauses/`), `AttestationCoordinator`'s merkle-binding surface, and ANY
-rebuilt validator/prover code the moment it appears — the rebuild must be born
-open-world, and this charter exists so it is judged from its first line.
+prover — was REMOVED in the 2026-06-25 teardown and RETURNED with the witness-based
+rebuild that landed 2026-07-16 (`docs/CONTRACTS.md` § "Teardown state — CLOSED" is the
+canonical statement; read it before auditing). Your live scope is: the generic clause
+engine (`prover/clause`), the kernel mirror's witness gates (`prover/lib`),
+`FigaroBatchVerifier`'s `ClauseRegistry` anchor check, `AttestationCoordinator`'s
+merkle-binding surface, and the SDK Layer-A validator (`sdk/src/clauses/`) — the rebuild
+was born open-world, and this charter judges it against that bar from its first line.
 
 **The shared definition of "open-world" is `docs/OPEN_WORLD.md` §1 — READ IT FIRST.**
 It is the one rulebook every Figaro inspector shares (the frontend inspector,

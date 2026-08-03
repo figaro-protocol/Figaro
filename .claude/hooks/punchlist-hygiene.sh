@@ -8,22 +8,21 @@
 # COMMIT, superseded by a later RULING, or subsumed by another ITEM — need a reading pass
 # the hook can't do; this just surfaces the cheap signals so the next agent starts there.
 #
-# Carve-outs: the intro (before the first "## ▶" section) and the "Punchlist hygiene"
-# section both DESCRIBE these markers as examples — excluded so the hook never flags its
-# own instructions. `SUPERSEDES` (active — a live ruling naming what it replaced) is NOT a
-# marker; only passive `SUPERSEDED` is.
+# Carve-out: the intro (before the first "## " section) DESCRIBES these markers as
+# examples — excluded so the hook never flags its own instructions. `SUPERSEDES` (active
+# — a live ruling naming what it replaced) is NOT a marker; only passive `SUPERSEDED` is.
 set -euo pipefail
 
 PUNCHLIST="$HOME/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md"
 [ -f "$PUNCHLIST" ] || exit 0
 
-# Body = from the first "## " section onward, minus any Punchlist-hygiene section.
+# Body = from the first "## " section onward.
 # (Anchor was "## ▶" until 2026-07-22 — the list's headers moved to "## N · Title"
 # and the hook silently scanned NOTHING; anchor on any "## " so a future format
 # drift degrades to over-scanning, never to silence.)
 hits=$(awk '
-  /^## / { started=1; hygiene = ($0 ~ /Punchlist hygiene/) }
-  started && !hygiene
+  /^## / { started=1 }
+  started
 ' "$PUNCHLIST" | grep -E '✅|\bDONE\b|\bSUBSUMED\b|\bSUPERSEDED\b|\b(SHIPPED|[Ss]hipped)\b|\bPOSTPONED\b|\bRULED:|\bLANDED\b|[Cc]losed this session|\bPASSED\b' || true)
 
 if [ -n "$hits" ]; then

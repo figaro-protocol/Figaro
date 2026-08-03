@@ -25,9 +25,10 @@ Read in full:
 Then sample these to learn current patterns (use `Read` with offset/limit; do not read whole files unless small):
 
 - A representative lens panel in `frontend/components/` — for the lens-system pattern used in `TopologyCanvas`.
-- An attestation form component (search for one that calls `useFigaroActions` or `useCommitmentFlow`).
+- An attestation form component (search for one that calls `useFigaroActions` or `useOrderCommitmentFlow`).
 - A page in `frontend/app/(app)/` — `app` route-group conventions.
 - A page in `frontend/app/(marketing)/` — marketing-page conventions (no wagmi).
+- A page in `frontend/app/(builders)/` — the third route group (builder tooling, e.g. the assembly designer).
 
 State explicitly which files you read and what conventions you extracted before writing anything.
 
@@ -68,7 +69,7 @@ If the request is ambiguous (which sub-case? which clause?), ask before writing.
 - **DeFi / TradFi vocabulary.** No "yield," "lending," "trading," "liquidity," "pools," "investment vehicle." Figaro is a coordination protocol.
 - **Decorative claims.** Every visible claim should trace to a theorem, proposition, or spec. Strip anything that doesn't.
 - **Badges next to names.** No "Reference Archetype" or similar labels next to site names or headings.
-- **Mirroring changes into `archive-frontend/`.** That tree is archived. Never edit it.
+- **Mirroring changes into `archive-v4/archive-frontend/`.** That tree is archived. Never edit it.
 
 If the request implies any of the above, refuse and explain which rule it breaks.
 
@@ -78,7 +79,7 @@ If the request implies any of the above, refuse and explain which rule it breaks
 
 You may write to:
 
-- `frontend/app/` (excluding `archive-frontend/`)
+- `frontend/app/` (excluding `archive-v4/archive-frontend/`)
 - `frontend/components/`
 - `frontend/lib/` — but only user-facing UI helpers; do not modify `lib/handoff/`, `lib/audit/`, `lib/kernel/`, `lib/protocol/`, `lib/shared/` without explicit instruction (those are owned by other workflows)
 - `frontend/tests/components/` and `frontend/tests/lib/` for tests
@@ -89,7 +90,7 @@ You may NOT write to:
 - `sdk/` — protocol SDK, clause-author's domain
 - `agents/` — agent infrastructure
 - `frontend/lib/handoff/`, `lib/audit/`, `lib/kernel/`, `lib/protocol/`, `lib/shared/` without explicit instruction
-- `archive-frontend/` — never
+- `archive-v4/archive-frontend/` — never
 
 If a request requires changes outside this scope, refuse and refer to the appropriate agent or maintainer.
 
@@ -100,7 +101,7 @@ If a request requires changes outside this scope, refuse and refer to the approp
 When writing clause UI:
 
 - Lens panels render content read-only; they do not initiate transactions.
-- Input forms call the relevant hook (`useFigaroActions`, `useCommitmentFlow`); do not duplicate that logic.
+- Input forms call the relevant hook (`useFigaroActions`, `useOrderCommitmentFlow`); do not duplicate that logic.
 - Clause decoders come from `@figaro/sdk/clauses`. Do not parse content yourself.
 - Reuse UI primitives in `frontend/components/ui/`. Do not reinvent.
 
@@ -157,7 +158,7 @@ For internal-only surfaces (`app/(app)/` only, no nav changes, no new design pri
 - (app)/(marketing) route-group split: <yes/no>
 - No wallet-connect-as-auth:          <verified>
 - No web2 product framing:            <verified>
-- No archive-frontend mirroring:      <verified>
+- No archive-v4/archive-frontend mirroring: <verified>
 
 ### Verification
 - type-check: <pass/fail>

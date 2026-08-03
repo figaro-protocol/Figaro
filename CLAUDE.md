@@ -215,14 +215,14 @@ When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommend
 The recurring, weeks-costly failure is modeling a concern as a stored value when it is **derived** from the graph. The canonical case: **there is no "fulfilment" field and no "delivery" checkbox.**
 
 - **The requested modality is a CLAUSE; fulfilment reality is DERIVED.** `figaro-modalities` commits the buyer's request (consume-onsite/pickup/delivery/virtual) at signing; reality reads from topology + clauses — a second co-equal **buyer↔courier order** carrying `figaro-courier-process` IS delivery; one node = on-site/pickup. No stored fulfilment-status field; no node-spawning checkbox — delivery is a second drawn order.
-- **Coordination lives in the process clauses** — `merchant-process` on the merchant order, `courier-process` on the courier order — not in a fulfilment field.
+- **Coordination lives in the process clauses** — `figaro-merchant-process` on the merchant order, `figaro-courier-process` on the courier order — not in a fulfilment field.
 - **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned are distinct assemblies (composed at the assembly level, like proximity), not a stored field. (Dutch-auction pricing abandoned 2026-07-02; pricing is a catalogue concern.)
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
 - **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.design.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
 Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/CLAUSES.md`.
 
-Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
+Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and fails on retired `fulfilment` vocabulary (promoted WARN→FAIL 2026-06-11).
 
 **The 600M reward is UNIFORM** (ratified 2026-07-29, `project_reward_mechanism_ratified_2026_07`): every artifact's score is its real usage alone — `icbrt(c·d²·1e18)`, no tag, no category, no weight. The substrate-broadening weight, `boostedTag`, and `rpgfTag` are **deleted**; do not reintroduce a per-clause reward multiplier — that TradFi "privilege a category" reasoning is exactly what the uniform reward closed. **Neutrality is achieved by the STAKE, not by weighting:** Sybil resistance is the two-sided LIVE ETH STAKE (seller-gated usage in `UsageCounter`; author eligibility in `RpgfMinter._isAuthor`, both requiring an un-withdrawn deposit), and the ETH stake is a VALUE LOOP (more trade → more base-currency demand → ETH appreciates for every registry staker), not a cost. There is **no per-wallet cap** and **no quadratic-funding / match round** (`MatchPool` deleted); the 300M DAO treasury funds public goods by discretionary decision. Owner → `project_reward_mechanism_ratified_2026_07`; on-chain surface → `CONTRACTS.md` § RPGF.
 
@@ -316,7 +316,7 @@ One test layer per concern. These boundaries are hard; respect them when writing
 
 ### Smart Contracts
 
-All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No contract belongs to a dapp; every one is a permissionless primitive. The kernel — `FigaroCore.sol` + `CommitmentTypes.sol` — is frozen (see Agent Permissions). Full per-contract surfaces, ABI, the mock inventory, and "what does NOT exist" → `CONTRACTS.md`. **If `CONTRACTS.md` does not list a contract, treat it as not existing in this repo.**
+All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`, V4 (the excised product-app frontend) in `archive-v4/`, legacy docs in `archive-v5/`. No contract belongs to a dapp; every one is a permissionless primitive. The kernel — `FigaroCore.sol` + `CommitmentTypes.sol` — is frozen (see Agent Permissions). Full per-contract surfaces, ABI, the mock inventory, and "what does NOT exist" → `CONTRACTS.md`. **If `CONTRACTS.md` does not list a contract, treat it as not existing in this repo.**
 
 ### Clause Validation
 
