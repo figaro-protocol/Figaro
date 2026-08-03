@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import {
-    ReadingPathStrip,
-    READING_PATH_STEPS,
-} from "@/components/marketing/ReadingPathStrip";
+import { ReadingPathStrip } from "@/components/marketing/ReadingPathStrip";
+import { READING_PATH_STEPS } from "@/components/marketing/readingPathSteps";
 
 const usePathnameMock = vi.fn(() => "/");
 

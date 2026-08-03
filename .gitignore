@@ -17,6 +17,7 @@ yarn-error.log*
 frontend/.next/
 frontend/.next-e2e/
 frontend/.next-export/
+frontend/.next-probe/
 frontend/out/
 frontend/build/
 frontend/playwright-report/

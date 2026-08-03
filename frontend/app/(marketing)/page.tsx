@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { READING_PATH_STEPS } from "@/components/marketing/ReadingPathStrip";
+import { READING_PATH_STEPS } from "@/components/marketing/readingPathSteps";
 import { ReadButton } from "@/components/shared/ReadButton";
 import { BuildButton } from "@/components/shared/BuildButton";
 
@@ -56,7 +56,7 @@ export default function Home() {
 
             {/* Reading path — a curriculum, not a funnel. Five reads in order;
                 each step names what the page answers. Rendered FROM
-                READING_PATH_STEPS (@/components/marketing/ReadingPathStrip) —
+                READING_PATH_STEPS (@/components/marketing/readingPathSteps) —
                 the same array the footer-adjacent strip on every marketing
                 page reads, so the two tellings can never diverge. */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
