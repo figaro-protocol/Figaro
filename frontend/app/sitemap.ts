@@ -40,6 +40,7 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/cryptoeconomics", changeFrequency: "weekly", priority: 0.9 },
     { path: "/spec", changeFrequency: "weekly", priority: 0.9 },
     { path: "/security", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/consequences", changeFrequency: "monthly", priority: 0.7 },
     { path: "/users", changeFrequency: "weekly", priority: 0.9 },
     { path: "/data", changeFrequency: "monthly", priority: 0.8 },
     { path: "/builders", changeFrequency: "weekly", priority: 0.9 },

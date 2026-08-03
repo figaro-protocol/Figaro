@@ -226,6 +226,12 @@ export default function Security() {
                         </Link>
                         <span className="text-ink-body"> &mdash; the rule-making lineage Figaro sits in: coercion, cognition, crypto.</span>
                     </li>
+                    <li>
+                        <Link href="/consequences" className="text-ink-heading font-medium hover:underline">
+                            Consequences
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the larger question this page doesn&apos;t answer: what does it do to the world, if it works.</span>
+                    </li>
                 </ul>
             </MarketingSection>
         </>

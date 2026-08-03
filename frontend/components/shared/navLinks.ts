@@ -90,6 +90,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/cryptoeconomics", label: "Cryptoeconomics" },
             { href: "/papers", label: "Papers" },
             { href: "/security", label: "Security" },
+            { href: "/consequences", label: "Consequences" },
             { href: "/spec", label: "Specifications" },
         ],
     },

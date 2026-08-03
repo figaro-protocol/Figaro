@@ -29,6 +29,7 @@ export default function CodeIsConstitutionPaper() {
             references={
                 <>
                     <li>Alston, E., Law, W., Murtazashvili, I. &amp; Weiss, M. Blockchain Networks as Constitutional and Competitive Polycentric Orders. <em>Journal of Institutional Economics</em>, 18(5):707&ndash;723, 2022.</li>
+                    <li>Berman, H. J. <em>Law and Revolution: The Formation of the Western Legal Tradition</em>. Harvard University Press, Cambridge, MA, 1983.</li>
                     <li>Buchanan, J. M. &amp; Tullock, G. <em>The Calculus of Consent: Logical Foundations of Constitutional Democracy</em>. University of Michigan Press, Ann Arbor, 1962.</li>
                     <li>Buterin, V. Credible Neutrality as a Guiding Principle. <em>Nakamoto.com</em>, January 3, 2020.</li>
                     <li>De Filippi, P. &amp; Wright, A. <em>Blockchain and the Law: The Rule of Code</em>. Harvard University Press, Cambridge, MA, 2018.</li>
@@ -37,8 +38,10 @@ export default function CodeIsConstitutionPaper() {
                     <li>Hinman, W. Digital Asset Transactions: When Howey Met Gary (Plastic). U.S. Securities and Exchange Commission, June 14, 2018.</li>
                     <li>Lessig, L. <em>Code and Other Laws of Cyberspace</em>. Basic Books, New York, 1999.</li>
                     <li>Madison, J. Federalist No. 48. 1788.</li>
+                    <li>Milgrom, P. R., North, D. C. &amp; Weingast, B. R. The Role of Institutions in the Revival of Trade: The Law Merchant, Private Judges, and the Champagne Fairs. <em>Economics &amp; Politics</em>, 2(1):1&ndash;23, 1990.</li>
                     <li>Murtazashvili, I., Palida, A. &amp; Madison, M. J. The Past, Present, and Future of Polycentric Legal Order: A Comparative Institutional Analysis of Lex Mercatoria and Blockchain. <em>Journal of Institutional Economics</em>, 22:e2, 2026.</li>
                     <li>Ostrom, E. <em>Governing the Commons: The Evolution of Institutions for Collective Action</em>. Cambridge University Press, Cambridge, 1990.</li>
+                    <li>Radin, M. J. <em>Boilerplate: The Fine Print, Vanishing Rights, and the Rule of Law</em>. Princeton University Press, Princeton, NJ, 2012.</li>
                     <li>Szabo, N. Money, Blockchains, and Social Scalability. <em>Unenumerated</em>, February 9, 2017.</li>
                     <li><em>Van Loon v. Department of the Treasury</em>, No. 23-50669 (5th Cir. November 26, 2024).</li>
                     <li>Zamfir, V. Against Szabo&rsquo;s Law, For a New Crypto Legal System. <em>Crypto Law Review</em>, January 29, 2019.</li>
@@ -71,11 +74,26 @@ export default function CodeIsConstitutionPaper() {
                     Legal theory has already mapped much of this terrain. Primavera De Filippi and Aaron Wright, in the most sustained treatment the field has received, named the rule-set such systems administer <em>lex cryptographia</em> &mdash; rules enforced through self-executing code and decentralized organizations, operating alongside state law and demanding analysis on their own terms rather than dismissal or deference (De Filippi &amp; Wright, 2018). The framing offered here accepts that analysis and presses it one layer down. What distinguishes these systems is not that their rules form a new <em>body</em> of law beside the old ones, but where in the hierarchy of rules they sit: not statutes, which are enacted, applied with discretion, and repealed, but the entrenched procedural stratum <em>beneath</em> enactment. That stratum fixes how commitments are recognized, how rules may change, and what no rule may do.
                 </p>
                 <p>
-                    The framing also explains a fact that has puzzled regulators for a decade &mdash; why &ldquo;sufficiently decentralized&rdquo; networks have proven so hard to legislate; what capture actually targets, and why it finds nothing here to attach to, is the work of Section 4.
+                    The framing also explains a fact that has puzzled regulators for a decade &mdash; why &ldquo;sufficiently decentralized&rdquo; networks have proven so hard to legislate; what capture actually targets, and why it finds nothing here to attach to, is the work of Section 5.
                 </p>
             </PaperSection>
 
-            <PaperSection title="3. Legality Without a Legislator">
+            <PaperSection title="3. Trade&rsquo;s Rule-Makers, in Succession">
+                <p>
+                    The claim that a protocol can hold trade&rsquo;s entrenched layer is not argued from first principles alone. Trade has cycled through rule-makers before, and the cycle is instructive. The first was the merchant community itself. Medieval and early-modern commerce grew across town, fair, and jurisdiction faster than any single crown&rsquo;s courts could follow it, so merchants wrote their own commercial law and staffed their own courts at the fairs and staple towns where they actually traded &mdash; the lex mercatoria, one strand within the broader medieval formation of Western legal institutions (Berman, 1983). Its enforcement ran not on a sovereign&rsquo;s writ but on exclusion: a documented account of the Champagne fairs shows private judges settling disputes with no coercive power of their own, because a trader who ignored a judgment lost something no crown could restore &mdash; standing to trade at the fair again (Milgrom, North &amp; Weingast, 1990). The rule-maker here was neither state nor firm; it was the trading community holding its own exit as the sanction.
+                </p>
+                <p>
+                    States did not defeat this order; they absorbed it. As royal and then national courts asserted jurisdiction over commercial disputes and legislatures codified merchant custom into statute, trade&rsquo;s rule-book moved from the fair court to the ordinary bench and the legislative chamber &mdash; re-seated, not replaced, its substance surviving inside commercial codes that still carry the law merchant&rsquo;s fingerprints (Murtazashvili, Palida &amp; Madison, 2026). The rule-maker changed from a self-governing guild to a public institution, but the shape held: a rule-set trade could rely on, adjudicated by a party with no stake in the specific dispute.
+                </p>
+                <p>
+                    The shape broke with the platform. A single firm now drafts the operative rules of a trade by itself, publishes them as a clickwrap no counterparty negotiates, and reserves the unilateral right to amend them at will &mdash; governing not a bounded guild but millions of strangers who transact through it. Disputes are not adjudicated by an independent judge, merchant or public, but resolved inside the drafter&rsquo;s own support queue: the party who wrote the rule also rules on whether it was followed. Margaret Jane Radin&rsquo;s account of this shift names it precisely &mdash; mass-market boilerplate degrading from a negotiated term into private legislation, a rule one party writes for a population of counterparties who never bargained over it (Radin, 2012). Run this rule-maker against the legality checklist the next section applies to a protocol, and it fails early: a rule unilaterally amendable by the party it binds has neither constancy nor prospectivity, because the rule that resolves tomorrow&rsquo;s dispute may not be the rule the trade was struck under, and the drafter alone decides which one applies.
+                </p>
+                <p>
+                    A protocol is the fourth rule-maker, and it closes the loop the other three could not. It returns trade&rsquo;s operative rules to a form no single party owns &mdash; like the law merchant, and unlike the platform &mdash; but without the law merchant&rsquo;s dependence on a bounded community able to enforce exclusion, and without the platform&rsquo;s structure of a drafter who amends and adjudicates its own rule. Entry is open to any counterparty who can sign and bond; the entrenched core cannot be amended by the party it binds, only superseded by new law registered beside the old under a new identifier; and what results is close to what Primavera De Filippi and Aaron Wright named lex cryptographia &mdash; rules enforced through self-executing code, standing alongside state law rather than inside one firm&rsquo;s terms of service (De Filippi &amp; Wright, 2018). Trade&rsquo;s rule-makers did not end with the legislature or begin with the platform. The protocol is the next entry in a genuinely old lineage: the entrenched procedural layer beneath enactment, arrived at this time by mathematics rather than by guild or crown.
+                </p>
+            </PaperSection>
+
+            <PaperSection title="4. Legality Without a Legislator">
                 <p>
                     The claim that a piece of infrastructure has constitutional shape can be tested, because legal philosophy long ago specified what lawlike rules require. Lon Fuller&rsquo;s <em>The Morality of Law</em> names eight principles of legality: rules must be general; public; prospective; clear; non-contradictory; possible to follow; constant over time; and &mdash; the principle legal systems fail most &mdash; <em>congruent</em>, meaning the rule as applied must be the rule as declared (Fuller, 1964).
                 </p>
@@ -87,7 +105,7 @@ export default function CodeIsConstitutionPaper() {
                 </p>
             </PaperSection>
 
-            <PaperSection title="4. What Capture Actually Targets">
+            <PaperSection title="5. What Capture Actually Targets">
                 <p>
                     It is tempting to conclude that abstraction is what protects such systems: an algorithm sufficiently abstract to run anywhere, universally understandable, is infrastructure rather than product, and so escapes capture. The conclusion is close, but the mechanism is not abstraction. GPS is abstract, universal, and infrastructure by any definition, and it is operated by a military. Universality is necessary; it is not what does the work.
                 </p>
@@ -102,7 +120,7 @@ export default function CodeIsConstitutionPaper() {
                 </p>
             </PaperSection>
 
-            <PaperSection title="5. The Constitution of a Voluntary Order">
+            <PaperSection title="6. The Constitution of a Voluntary Order">
                 <p>
                     An objection should be met head-on. Constitutions constitute polities: they bind persons who never consented, within borders they did not choose. A protocol binds no one. Entry is a voluntary act &mdash; a signature, a bond &mdash; and exit is free. In the classical sense, then, a protocol is closer to contract than constitution.
                 </p>
@@ -110,11 +128,11 @@ export default function CodeIsConstitutionPaper() {
                     The precise claim is therefore narrower and older than it first appears: such a protocol is the constitution of a <em>voluntary order</em> &mdash; Buchanan&rsquo;s constitutional contract, entered at the rule-choosing level by everyone who participates. Institutional economists have begun analyzing blockchains in exactly these terms, as constitutional and polycentric orders that change through internal collective-choice processes and external competitive pressure (Alston, Law, Murtazashvili &amp; Weiss, 2022).
                 </p>
                 <p>
-                    And for a <em>trade</em> protocol specifically, history supplies a seven-century precedent. The medieval law merchant &mdash; lex mercatoria &mdash; was privately produced commercial law: stateless, voluntary, enforced by bonds, sureties, reputation, and exclusion, administered in merchants&rsquo; own courts across jurisdictions whose sovereigns it did not consult. States did not defeat it; they learned from it and absorbed it, and its descendants run through commercial codes today. The comparative-institutional case that blockchain continues this polycentric lineage has now been made directly (Murtazashvili, Palida &amp; Madison, 2026). A bonded commitment between strangers, secured by stakes that make cooperation the dominant strategy and producing a record any court can read, is the merchant&rsquo;s pledge with the surety made mathematical. The constitutional order of trade is not a novel legal claim. It is the oldest one commerce has, re-implemented on a substrate that finally satisfies Fuller&rsquo;s checklist.
+                    And for a <em>trade</em> protocol specifically, the succession of Section 3 supplies a seven-century precedent: privately produced commercial law, enforced by bonds, sureties, reputation, and exclusion, that states absorbed rather than defeated &mdash; and the comparative-institutional case that blockchain continues this polycentric lineage has now been made directly (Murtazashvili, Palida &amp; Madison, 2026). A bonded commitment between strangers, secured by stakes that make cooperation the dominant strategy and producing a record any court can read, is the merchant&rsquo;s pledge with the surety made mathematical. The constitutional order of trade is not a novel legal claim. It is the oldest one commerce has, re-implemented on a substrate that finally satisfies Fuller&rsquo;s checklist.
                 </p>
             </PaperSection>
 
-            <PaperSection title="6. What the Reframing Changes">
+            <PaperSection title="7. What the Reframing Changes">
                 <p>
                     For builders, the framing is a design criterion. If code is constitution, then the constitutional virtues are the engineering requirements: entrench the core and strip it of emergency powers; keep rulemaking above it open and non-retroactive; keep the core neutral among the politics composed on top of it; and produce evidence in a form courts can consume. Each of these is a checkable property, not a posture.
                 </p>
