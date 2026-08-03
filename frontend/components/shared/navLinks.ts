@@ -100,6 +100,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/builders/designer", label: "Designer" },
             { href: "/builders/clauses", label: "Register a clause" },
             { href: "/builders/composability", label: "Composability" },
+            { href: "/composes", label: "What Figaro composes with" },
             { href: "/clauses", label: "Clauses" },
             { href: "/assemblies", label: "Assemblies" },
             { href: "/local-commerce", label: "Local Commerce reference" },
@@ -112,6 +113,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "Users",
         links: [
             { href: "/users", label: "Users" },
+            { href: "/data", label: "Your records" },
             { href: "/discover", label: "Discover sellers" },
             { href: "/sellers", label: "Sellers" },
             { href: "/agents", label: "Agents" },

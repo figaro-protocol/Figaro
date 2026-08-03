@@ -122,6 +122,12 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
                 </li>
                 <li>
+                    <Link href="/composes" className="text-ink-heading font-medium hover:underline">
+                        Composes
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the external composition catalogue: forums, offset markets, payout routing, and what &ldquo;wired&rdquo; vs &ldquo;architectural slot&rdquo; means today.</span>
+                </li>
+                <li>
                     <Link href="/agents" className="text-ink-heading font-medium hover:underline">
                         Agents
                     </Link>

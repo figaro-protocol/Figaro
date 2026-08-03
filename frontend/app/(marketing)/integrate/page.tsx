@@ -434,71 +434,8 @@ for (const [processId, process] of processes) {
             </MarketingSection>
 
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
-                <div className="border-l-2 border-default pl-6 mb-8">
-                    <p className="text-sm text-ink-body leading-relaxed">
-                        <strong>Implementation status.</strong> Currently wired: Kleros evidence export, XMTP messaging, IPFS storage, emissions disclosure attestations. Everything else below is a <strong>compositional surface</strong> &mdash; an architectural slot integrators can build against, with named vendors as illustrative examples rather than current integrations.
-                    </p>
-                </div>
-
-                <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Figaro&apos;s useful compositions are predominantly external: the kernel does not include a dispute forum, a carbon-offset market, a prediction market, an insurance pool, a lending facility, a tax-reporting service, an identity provider, a storage layer, or a messaging fabric. An assembly names which external surfaces it composes with. A concrete walkthrough first, then the surface area.
-                </p>
-
-                <div className="border-l-2 border-default pl-6 mb-8">
-                    <h3 className="text-base font-semibold text-ink-heading mb-3">
-                        Architectural example &mdash; carbon offset before settlement
-                    </h3>
-                    <p className="text-sm text-ink-body leading-relaxed mb-4">
-                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the emissions clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits &mdash; any bonded seller whose value-add is retirement.)
-                    </p>
-                    <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
-                        <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>
-                        <li><strong>Buyer commits a sub-order.</strong> Same <code>processId</code>, non-zero <code>cumulativeValue</code>, offset seller as seller. Buyer bonds <code>2&times;Y</code>; seller bonds 2&times; cumulative value (the <Link href="/papers/asymmetric-bonding" className="underline">N-party bonding equilibrium</Link>).</li>
-                        <li><strong>Wallet handles any token swap.</strong> Multi-token bookkeeping is resolved before the commit; the kernel sees a single-currency sub-order.</li>
-                        <li><strong>Seller delivers.</strong> Burns the offset and posts the burn receipt as an attestation against the sub-order.</li>
-                        <li><strong>Buyer calls <code>resolveProcess</code> once.</strong> Main order and offset sub-order settle atomically. Offset receipt joins the evidence bundle.</li>
-                    </ol>
-                    <p className="mt-4 text-sm text-ink-muted leading-relaxed">
-                        Result: one settled process whose evidence bundle contains both the commerce record and an offset record verifiable against the burn receipt&apos;s on-chain attestation.
-                    </p>
-                </div>
-
-                <h3 className="text-heading-h3 text-ink-heading mb-4">Compositional surfaces.</h3>
-                <ul className="space-y-4">
-                    <LabelledListRow label="Forums" uppercase>
-                        <strong>Kleros, SIAC, ICC, courts.</strong> Parties&apos; agreement designates the forum; Figaro exports its evidence bundle there. Kernel does not adjudicate. Kleros wired today; other forums are off-chain referents named in the agreement. See <a href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</a>.
-                    </LabelledListRow>
-                    <LabelledListRow label="Offsets" uppercase>
-                        <strong>Any retirement provider that bonds as a seller.</strong> Architectural slot &mdash; the offset purchase is an ordinary bonded sub-order. Walkthrough above.
-                    </LabelledListRow>
-                    <LabelledListRow label="Prediction" uppercase>
-                        <strong>Polymarket, Augur.</strong> Compositional target for outcome-resolution oracles that feed attestations gating a process.
-                    </LabelledListRow>
-                    <LabelledListRow label="Insurance" uppercase>
-                        <strong>Nexus Mutual, Sherlock.</strong> Compositional target for smart-contract-failure cover, or cover on the real-world goods a process carries, priced against Figaro&apos;s evidence bundle. The bond itself is not an insurable position &mdash; a policy on bond forfeiture would hedge away the deterrent.
-                    </LabelledListRow>
-                    <LabelledListRow label="Lending" uppercase>
-                        <strong>Aave, Compound, Morpho.</strong> Compositional target for ordinary treasury borrowing &mdash; a lender is a separate counterparty in a separate process. The bond itself is never financed: it is the party&apos;s own staked deterrent.
-                    </LabelledListRow>
-                    <LabelledListRow label="Payout routing" uppercase>
-                        <strong>Disperse.</strong> Compositional target for post-settlement batch dispersal &mdash; one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations), and the self-sovereign fiscal trail falls out as a byproduct. Canonical ownerless deployment, same address across chains; the devnet stack rehearses it with an interface-matching mock.
-                    </LabelledListRow>
-                    <LabelledListRow label="Tax / reporting" uppercase>
-                        <strong>TaxBit, Koinly, Cryptio.</strong> Compositional target for jurisdictional reports derived from chain state. No reconciliation &mdash; the chain is the primary record.
-                    </LabelledListRow>
-                    <LabelledListRow label="Identity" uppercase>
-                        <strong>DID:web, Polygon ID, Worldcoin.</strong> Compositional target for optional real-world identity attachment when the forum requires it.
-                    </LabelledListRow>
-                    <LabelledListRow label="Storage" uppercase>
-                        <strong>IPFS.</strong> Off-chain agreement documents and large evidence artifacts. <code>agreementHash</code> anchors them on chain. Wired today.
-                    </LabelledListRow>
-                    <LabelledListRow label="Messaging" uppercase>
-                        <strong>XMTP.</strong> Per-order encrypted handoff channels. Wired via <code>lib/handoff/</code>.
-                    </LabelledListRow>
-                </ul>
-
-                <p className="mt-8 text-sm text-ink-body leading-relaxed">
-                    <strong>How composition stays safe.</strong> An external mechanism that could override resolution, claw back a bond, or revoke a counterparty mid-process would import an escape hatch the kernel was designed to deny. The coordinator pattern gives three sufficient conditions under which composition preserves the bonding equilibrium: the external reads kernel state and emits its own evidence, but never writes to kernel state, never reverses a resolution, and never controls a bond. Integrators bringing a new external into an assembly should verify the composition against the same conditions. Property-side treatment, with the escape-hatch theorem it rests on: <Link href="/builders/composability" className="underline">Composability</Link>.
+                <p className="text-sm text-ink-body leading-relaxed">
+                    What Figaro composes with &mdash; the external surfaces the kernel deliberately does not include (dispute forums, offset markets, prediction markets, insurance, lending, payout routing, tax reporting, identity, storage, messaging), the wired-vs-architectural-slot status of each, and a worked carbon-offset walkthrough &mdash; is catalogued on its own page: <Link href="/composes" className="underline">/composes</Link>.
                 </p>
             </MarketingSection>
 

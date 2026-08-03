@@ -289,7 +289,7 @@ export default function Specifications() {
                     Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
                     for the clause validation architecture and the anchoring doctrine, and the{" "}
-                    <Link href="/builders" className="underline">Builders</Link> surface for composition tools.
+                    <Link href="/builders" className="underline">Builders</Link> surface for composition tools. The external half &mdash; forums, offset markets, payout routing, and the rest of the compositional surface named above (<code>witnessSwapAndCommitCoordinator</code>, <code>multisender</code>, and the funding contracts) &mdash; is catalogued on <Link href="/composes" className="underline">Composes</Link>.
                 </p>
             </MarketingSection>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { parseUnits, type Hex } from "viem";
 import { Button } from "@/components/ui/Button";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
@@ -74,7 +75,8 @@ export function PayoutRoutingPanel({ currency }: Props) {
                 Split what you were paid to earmarked addresses in one transaction,
                 through the public multisender this deployment composes with. Your
                 wallet, your receipts — the batch is atomic and the split becomes
-                part of your own on-chain record.
+                part of your own on-chain record.{" "}
+                <Link href="/composes#payout-routing" className="underline">What is this for?</Link>
             </p>
             <div className="space-y-2">
                 {legs.map((leg, i) => (

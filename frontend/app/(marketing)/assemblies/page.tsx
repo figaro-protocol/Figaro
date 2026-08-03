@@ -189,6 +189,10 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                         <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
                         <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
                     </li>
+                    <li>
+                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
+                        <span className="text-ink-body"> &mdash; the external surfaces an assembly can name: forums, offset markets, payout routing, and the rest of the compositional catalogue.</span>
+                    </li>
                 </ul>
             </MarketingSection>
         </>

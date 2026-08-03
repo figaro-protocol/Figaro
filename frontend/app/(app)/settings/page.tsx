@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SettingsForm } from "./_components/SettingsForm";
 
 /**
@@ -32,7 +33,12 @@ export default function SettingsPage() {
                     yours, not an operator&apos;s: chain reads go through your own RPC
                     provider, and what you publish is pinned on your own IPFS
                     node — you pay for it, and you can erase it. Leave a field
-                    empty to use this deployment&apos;s default.
+                    empty to use this deployment&apos;s default. The same ownership
+                    extends to your trade records — see{" "}
+                    <Link href="/data" className="text-ink-heading font-medium hover:underline">
+                        your records, your terms
+                    </Link>
+                    .
                 </p>
             </header>
 
