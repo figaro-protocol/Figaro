@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { SettlementProceedsPanel } from "@/components/runtime/SettlementProceedsPanel";
+import { PayoutRoutingPanel } from "@/components/runtime/PayoutRoutingPanel";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
@@ -161,6 +162,14 @@ export function OrderTimelineView({ processId }: Props) {
                     payment={myOrder.payment}
                     bondReturned={myOrder.settlementBreakdown.lockedBond.amount}
                 />
+            )}
+
+            {/* Post-settlement payout routing — the settled seller splits its
+                own receipts onward through the composed public multisender.
+                Kernel-core sibling of the proceeds panel (no clause to key
+                on); renders only when a multisender is configured. */}
+            {isResolved && isSeller && myOrder && (
+                <PayoutRoutingPanel currency={(myOrder.currency ?? ZERO_ADDRESS) as `0x${string}`} />
             )}
 
             {/* Declared interaction surfaces — for every clause, on every order

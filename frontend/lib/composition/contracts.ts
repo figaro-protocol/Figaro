@@ -20,6 +20,7 @@ const COMPOSITION_CONTRACTS = {
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
     usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
     batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
+    multisender: (process.env.NEXT_PUBLIC_MULTISENDER || "") as `0x${string}`,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -78,4 +79,13 @@ export function getUsageCounter(): `0x${string}` | null {
  *  network, which is absence, never "not settled". */
 export function getBatchVerifier(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.batchVerifier);
+}
+
+/** The public multisender the payout-routing surface composes with —
+ *  provider-agnostic (mainnet: the canonical ownerless Disperse deployment;
+ *  devnet: MockDisperse, which mirrors its verified interface). Fifth-noun
+ *  composition over a wallet's OWN settled receipts, never a Figaro-owned
+ *  silo. Resolved-empty: null = the routing surface simply doesn't render. */
+export function getMultisender(): `0x${string}` | null {
+    return resolveAddress(COMPOSITION_CONTRACTS.multisender);
 }

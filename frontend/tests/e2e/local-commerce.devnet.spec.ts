@@ -840,5 +840,36 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'every kernel transfer renders for a walletless reader',
         ).toHaveCount(8, { timeout: 30000 });
         await spectator.close();
+
+        // ── PAYOUT ROUTING: the settled merchant splits its receipts onward —
+        //    two earmarked legs through the composed public multisender
+        //    (devnet: MockDisperse, mirroring canonical Disperse), one atomic
+        //    batch. Wallet-side, post-settlement: the kernel already paid;
+        //    this is the merchant spending its own balance. VALUE LEGS from
+        //    chain: both recipients' deltas and the merchant's own, asserted
+        //    out-of-band via balanceOf, never from the screen. ──
+        const KITCHEN_SUPPLIER = '0x00000000000000000000000000000000000000a1' as Hex;
+        const KITCHEN_LANDLORD = '0x00000000000000000000000000000000000000b2' as Hex;
+        const [supplier0, landlord0, merchantSettled] = await Promise.all([
+            balanceOf(KITCHEN_SUPPLIER), balanceOf(KITCHEN_LANDLORD), balanceOf(MERCHANT),
+        ]);
+        await gotoAsWallet(page, MERCHANT, `/orders/view?process=${processId}&e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const routing = page.getByTestId('payout-routing');
+        await expect(routing, 'the routing surface derives for the settled seller').toBeVisible({ timeout: 30000 });
+        await page.getByTestId('payout-routing-recipient-0').fill(KITCHEN_SUPPLIER);
+        await page.getByTestId('payout-routing-amount-0').fill('0.3');
+        await page.getByTestId('payout-routing-add-leg').click();
+        await page.getByTestId('payout-routing-recipient-1').fill(KITCHEN_LANDLORD);
+        await page.getByTestId('payout-routing-amount-1').fill('0.25');
+        await page.getByTestId('payout-routing-execute').click();
+        await expect(
+            page.getByTestId('payout-routing-success'),
+            'the batch routes (approve + one atomic disperse)',
+        ).toBeVisible({ timeout: 60000 });
+        expect(await balanceOf(KITCHEN_SUPPLIER) - supplier0, 'the supplier leg arrived exactly').toBe(parseEther('0.3'));
+        expect(await balanceOf(KITCHEN_LANDLORD) - landlord0, 'the landlord leg arrived exactly').toBe(parseEther('0.25'));
+        expect(merchantSettled - await balanceOf(MERCHANT), 'the merchant paid exactly the batch total').toBe(parseEther('0.55'));
     });
 });
