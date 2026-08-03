@@ -195,6 +195,30 @@ At publish (testnet tier): establish published-package ↔ audited-repo traceabi
 (npm provenance attestation) so a consumer can verify the SDK on npm was built from
 this repo.
 
+### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
+
+Sequenced after the GitHub remote/CI item (publishing hashes and proving rebuilds
+needs CI + a public repo). The signing-moment mitigations already shipped
+(`scripts/verify-signed-agreement.mjs` + the `/audit` signature verdicts); this task
+is the delivery-of-the-frontend half:
+
+1. **Content-addressing is the primary integrity mechanism.** Every public release
+   is pinned as the static export it already is; the release CID is recorded in the
+   repo (tag/release notes). "Verify the frontend" = load it by CID from your own
+   gateway — the CID covers every asset including the HTML SRI cannot. Per-asset SRI
+   is subsumed for CID users; for DNS-origin users it is a cheap-if-easy addition,
+   never a gate.
+2. **Reproducible builds are attempted, published as a recipe, and claimed only when
+   proven.** Pin the toolchain, strip nondeterminism, publish the exact rebuild steps
+   so anyone can rebuild and diff against the release CID. No public "reproducible"
+   claim until CI has produced the same CID on two independent machines.
+3. **Second-frontend verification is stated in its honest present form.** `/security`
+   says: trust no single origin — verify the typed data on your own machine with the
+   SDK verifier (or any independent implementation built on the SDK; the
+   `clause.block` seam makes frontends replaceable). No statement implying a second
+   frontend exists. Copy edits go through `figaro-marketing-copy` /
+   `figaro-builders-docs` at execution time.
+
 ## Validation Commands
 
 Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
