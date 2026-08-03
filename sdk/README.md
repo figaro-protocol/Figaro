@@ -614,6 +614,32 @@ format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint` (decimal-string for JSON safety), `boolean`, `enum`,
 `array`, `object`. Per-stage overrides via `spec.stages[stage]`.
 
+**Before you register: `computeClauseKey` is the pre-registration collision
+check.** `ClauseRegistry.registerClause` is permissionless and
+first-write-wins (`src/protocol/registries/ClauseRegistry.sol:154-170`) — an
+`id`+`version` someone already registered is taken **permanently** (no
+overwrite, no version bump onto the same slot; the adding-a-clause checklist
+is `docs/CLAUSES.md`). Compute the exact key the registry hashes and read
+whether it is already live BEFORE spending the registration deposit:
+
+```ts
+import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro/sdk";
+
+const key = computeClauseKey("figaro-my-new-clause", 1); // keccak256(abi.encode(clauseId, version))
+const taken = await client.readContract({
+  address: addresses.clauseRegistry!,
+  abi: CLAUSE_REGISTRY_ABI,
+  functionName: "registered",
+  args: [key],
+});
+if (taken) throw new Error("this id+version is already registered — pick another");
+```
+
+The same `computeClauseKey` reappears later (below, and in
+`@figaro/sdk/agent`) as the `clauseId` argument to `attestAs{Seller,Buyer}` —
+one function, two moments: before registering (is this slot free?) and at
+attestation time (which registered clause does this section attest?).
+
 ### `@figaro/sdk/handoff` — Runtime Handoff Wire Protocol
 
 The wire vocabulary two wallets speak when a pending commitment (or a sealed
@@ -899,6 +925,73 @@ import {
 Signatures and the exact fold rules live in the `dist/checkoutPlan.d.ts`
 docblocks — treat them as the contract; this list is the map, not the territory.
 
+### Worked example — the fill pipeline in sequence
+
+The fills above are always run in the SAME shape: start from a node's clause
+map, run every fill its composed clauses declare, hand the result to
+`reconstructOrdersFromTemplate` as that node's `overrides`. One node — root or
+sub-order — looks like this:
+
+```ts
+import {
+  reconstructOrdersFromTemplate, fillCommerceSection, fillClassSections,
+  fillProfileSections, fillProvenanceSection, profileValuesFor,
+  templateCompositionHash, type AssemblyCheckoutLineItem, type PlannedTemplateOrder,
+} from "@figaro/sdk";
+
+const lineItems: AssemblyCheckoutLineItem[] = [
+  { itemId: "espresso", name: "Espresso", quantity: 2, unitPrice: "150000000000000000" },
+];
+
+await reconstructOrdersFromTemplate(template, {
+  buyer, currency, chainId, core: addresses.core!, specs,
+  nodes: (planned: PlannedTemplateOrder) => {
+    // `planned.clauses` is ALREADY the assembly-scope FOLD: planTemplateOrders
+    // (the walk `reconstructOrdersFromTemplate` runs internally) merges
+    // `template.assemblyClauses` into every node's bag before you ever see
+    // it — start the fills from `planned.clauses`, never from a fresh
+    // `{ ...node.clauses }` you build off a raw `template.agreements[i]` lookup.
+    const filled = fillProvenanceSection(
+      fillProfileSections(
+        fillClassSections(
+          fillCommerceSection(planned.clauses, payment, specs, lineItems),
+          lineItems, specs,
+        ),
+        profileValuesFor(seller, sellerCatalogues), specs,
+      ),
+      templateCompositionHash(template), specs,
+    );
+    return { seller, payment, overrides: filled };
+  },
+  onOrder: async (order) => { /* sign, pin, share — see "the ONE walk" above */ },
+});
+```
+
+**The sequencing nuance the fold does NOT save you from.** Each fill above
+finds its target clause by DECLARED FIELD, searching only the keys of the map
+you pass it (`composedClauseDeclaring`, `checkoutPlan.ts`) — it never reads
+`template.assemblyClauses` itself. So the fold's guarantee is scoped to
+`planned.clauses`, not to whatever local map your own code builds. The moment
+you have a reason to rebuild that map from the raw template yourself — e.g. to
+hand `resolveSubOrderPricing` its `node: TemplateAgreement` argument, which
+`planned.clauses` alone doesn't satisfy — you must re-apply the same fold by
+hand before running any fill:
+
+```ts
+const rawNode = template.agreements.find((a) => a.id === planned.nodeId)!;
+const clauses = { ...template.assemblyClauses, ...rawNode.clauses }; // ← the pre-merge
+const filled = fillProvenanceSection(clauses, templateCompositionHash(template), specs);
+```
+
+Skip the pre-merge and `fillProvenanceSection` (which writes the mandatory,
+assembly-scoped `figaro-assembly-provenance` clause — `docs/CLAUSES.md`) finds
+no clause in `rawNode.clauses` declaring `compositionHash` and silently
+no-ops. The section is still PRESENT in the signed agreement either way — the
+fold inside `reconstructOrdersFromTemplate` guarantees that — but it arrives
+**empty** (`{}`) instead of carrying the hash that makes the process
+creditable to its assembly's designer of record
+(`UsageCounter.recordAssemblyUsage`).
+
 ## Member Profile + Catalogue Documents
 
 Two off-chain JSON documents describe a participant. Both are **Layer-A** — their
@@ -970,10 +1063,13 @@ import type { MemberProfileMetadata, SellerCatalogueMetadata } from "@figaro/sdk
 
 // 1. Discovery hands you the metadataURI for each registered seller.
 const graph = reconstructDiscovery(events);
-const seller = graph.getMembers()[0]; // → RegisteredMember { seller, metadataURI }
+// → RegisteredMember { member, metadataURI } — the wallet field is `.member`,
+// NOT `.seller` (a member is any registered wallet; the role is event-derived
+// elsewhere, never a stored field on this record).
+const registeredMember = graph.getMembers()[0];
 
 // 2. Fetch + parse the profile document (IPFS/HTTP fetch is yours to make).
-const profileJson = await (await fetch(gateway(seller.metadataURI))).json();
+const profileJson = await (await fetch(gateway(registeredMember.metadataURI))).json();
 const profile: MemberProfileMetadata = parseMemberProfileDocument(profileJson);
 const { isAgent, services } = projectAgentServices(profileJson);
 

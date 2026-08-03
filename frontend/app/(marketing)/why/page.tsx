@@ -16,10 +16,15 @@ export default function Why() {
                 title="Three eras of rule-making."
                 lead={
                     <>
-                        Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. This is Figaro read as history: how it arrives, not what it is.
+                        You already know the feeling of paying a stranger and hoping some institution &mdash; a bank, a platform, a court &mdash; will make it good if the deal goes wrong. Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. This is Figaro read as history: how it arrives, not what it is.
                     </>
                 }
-            />
+            >
+                <p className="text-sm text-ink-muted italic mt-6">
+                    This is the reflective read. For the mechanism itself &mdash; what actually happens in a deal &mdash; start at{" "}
+                    <Link href="/protocol" className="hover:underline">/protocol</Link>.
+                </p>
+            </MarketingHero>
 
             <MarketingSection title="Coercion, cognition, crypto.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">

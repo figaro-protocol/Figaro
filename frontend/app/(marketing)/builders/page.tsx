@@ -28,6 +28,15 @@ export default function BuildersPage() {
             <p className="text-body-lead text-ink-muted italic mb-8">
                 Extend it without asking. If people use what you built, it pays you back.
             </p>
+            <p className="text-sm text-ink-muted leading-relaxed mb-8">
+                This page orients &mdash; it doesn&apos;t specify.{" "}
+                <Link href="/clauses" className="text-ink-heading font-medium hover:underline">/clauses</Link> and{" "}
+                <Link href="/composes" className="text-ink-heading font-medium hover:underline">/composes</Link> teach
+                the composition surface itself; <Link href="/integrate" className="text-ink-heading font-medium hover:underline">/integrate</Link> is
+                the how-to. <Link href="/spec" className="text-ink-heading font-medium hover:underline">/spec</Link> and{" "}
+                <Link href="/security" className="text-ink-heading font-medium hover:underline">/security</Link> are
+                the adversarial reference &mdash; dense by design, every guarantee there stated beside its caveat.
+            </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Most platforms you build on belong to a company. It can change the rules, deprecate your work, or take a cut &mdash; and you have no say, because the platform is theirs.
             </p>

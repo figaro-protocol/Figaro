@@ -41,7 +41,7 @@ export default function Agents() {
 
             <MarketingSection title="Bond-weighted reputation.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The validation layer for an agent is its bonding history. An agent that has settled a thousand orders with two-times collateral locked on each has proven more than any number of permissionless feedback ratings can convey. Bonding is itself the proof of stake in the deal; settlement history is itself the reputation record. There is nothing else to consult.
+                    The validation layer for an agent is its bonding history. Imagine an agent that has settled a thousand orders with two-times collateral locked on each: that record would prove more than any number of permissionless feedback ratings can convey. Bonding is itself the proof of stake in the deal; settlement history is itself the reputation record. There is nothing else to consult.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     This is structurally different from external feedback systems &mdash; ERC-8004 ratings, peer-rating exchanges, third-party reputation oracles &mdash; each of which assumes the substrate cannot itself enforce honesty. The bonding mechanism removes that assumption.

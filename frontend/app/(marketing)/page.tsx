@@ -26,10 +26,16 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
+                    A straight fact before anything else: the network is pre-launch. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Say dinner costs thirty tokens. To buy it, you lock sixty &mdash; the thirty you owe, plus thirty of your own as a stake. The kitchen locks sixty too, all of it stake. Confirm the meal arrived, and both stakes come home while your thirty settles as payment. Walk away instead, and your own locked stake never comes home &mdash; it stays in the box for good, benefiting no one.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
                     Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine. Both sides put a stake into a lockbox &mdash; a small program that runs in the open, owned by no one. Cheat, and you forfeit a stake worth more than anything you could have taken. Honor the deal, and the box opens: the seller is paid and both stakes come home. Nobody has to trust anybody. The arithmetic does it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    It runs on Ethereum: you take part with a wallet app and digital tokens, nothing to sign up for. Your stake is real value set aside &mdash; a dinner worth thirty tokens locks sixty of them until you confirm it arrived, and thirty comes home the moment you do.
+                    It runs on Ethereum: you take part with a wallet app and digital tokens, nothing to sign up for.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Most real work is more than two people. A delivered meal is a cook, whoever supplied the ingredients, and a courier &mdash; each posts their own stake, all linked into one deal that settles in one stroke. If any one of them fails, every stake is on the line, so each has a direct, stake-backed reason to want the others to deliver. No platform assigns the work. The shape of the deal does.

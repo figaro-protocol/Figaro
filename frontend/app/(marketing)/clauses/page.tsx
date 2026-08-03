@@ -22,6 +22,12 @@ export default function Clauses() {
                 }
             />
 
+            <MarketingSection title="In plain words.">
+                <p className="text-sm text-ink-body leading-relaxed">
+                    A clause is one reusable term a deal can be built from &mdash; how a dispute gets escalated, how emissions get reported, how a delivery address gets handled &mdash; written once and available to anyone drafting an agreement, the same way an ordinary contract is assembled from clauses. Nothing here is proprietary or gatekept: anyone can write one and anyone can use one. What follows below gets technical &mdash; the exact hashes, the two validation layers, how to write and register your own &mdash; but the inventory further down is not a curated catalogue: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="One spec. Two enforcement layers. In lockstep.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered clause is enforced at two layers. A new clause is not &ldquo;done&rdquo; until both layers ship together:

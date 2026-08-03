@@ -32,6 +32,12 @@ export default function Assemblies() {
                 }
             />
 
+            <MarketingSection title="In plain words.">
+                <p className="text-sm text-ink-body leading-relaxed">
+                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. Somebody draws the shape once (a meal with a kitchen, a supplier, and a courier, say), and every seller who fits that shape can offer it without redoing the design work. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Traditionally you pay one company a single lump sum, and where that
