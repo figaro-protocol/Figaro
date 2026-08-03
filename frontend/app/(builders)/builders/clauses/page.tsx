@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { RegisterClauseForm } from "./_components/RegisterClauseForm";
 import { RegisteredClausesReclaim } from "./_components/RegisteredClausesReclaim";
+import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = {
     title: "Register a clause — Figaro Protocol",
@@ -31,6 +32,12 @@ export default function ClauseAuthoring() {
     return (
         <div className="min-h-screen bg-canvas">
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
+                <Breadcrumb
+                    items={[
+                        { label: "Builders", href: "/builders" },
+                        { label: "Register a clause" },
+                    ]}
+                />
                 <h1 className="text-heading-h1 text-ink-heading mb-6">
                     Register a clause.
                 </h1>

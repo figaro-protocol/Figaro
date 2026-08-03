@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = {
     title: "Composability — Figaro Protocol",
@@ -12,6 +13,14 @@ export const metadata: Metadata = {
 export default function Composability() {
     return (
         <>
+            <div className="container mx-auto px-6 pt-8">
+                <Breadcrumb
+                    items={[
+                        { label: "Builders", href: "/builders" },
+                        { label: "Composability" },
+                    ]}
+                />
+            </div>
             <MarketingHero
                 title="What the kernel's narrowness produces."
                 lead={

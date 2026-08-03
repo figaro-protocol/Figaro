@@ -2,6 +2,7 @@ import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { getPaperNavigation } from "@/app/(marketing)/_lib/paperGroups";
+import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { PrintButton } from "./PrintButton";
 import { BackToTop } from "./BackToTop";
 
@@ -52,21 +53,13 @@ export function PaperLayout({
             </div>
 
             {nav && (
-                <nav aria-label="Breadcrumb" className="print:hidden mb-4 text-sm text-ink-faint">
-                    <Link href="/papers" className="hover:text-ink-body hover:underline">
-                        Papers
-                    </Link>
-                    <span className="mx-2" aria-hidden>
-                        ›
-                    </span>
-                    <Link href={nav.discipline.anchor} className="hover:text-ink-body hover:underline">
-                        {nav.discipline.name}
-                    </Link>
-                    <span className="mx-2" aria-hidden>
-                        ›
-                    </span>
-                    <span className="text-ink-muted">{title}</span>
-                </nav>
+                <Breadcrumb
+                    items={[
+                        { label: "Papers", href: "/papers" },
+                        { label: nav.discipline.name, href: nav.discipline.anchor },
+                        { label: title },
+                    ]}
+                />
             )}
 
             <div className="print:hidden mb-8 flex justify-end">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DraftsList } from "./_components/DraftsList";
 import { PublishedList } from "./_components/PublishedList";
 import { ClausesList } from "./_components/ClausesList";
+import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = {
     title: "Designer — Figaro Protocol",
@@ -13,6 +14,12 @@ export default function DesignerLanding() {
     return (
         <div className="min-h-screen bg-canvas">
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
+                <Breadcrumb
+                    items={[
+                        { label: "Builders", href: "/builders" },
+                        { label: "Designer" },
+                    ]}
+                />
                 <h1 className="text-heading-h1 text-ink-heading mb-6">
                     Compose an assembly.
                 </h1>
