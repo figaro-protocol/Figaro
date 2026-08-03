@@ -138,6 +138,32 @@ participants that other agents learn from, without centralized orchestration.
 
 ---
 
+## The design instrument — three forward-looking stress tests
+
+The 600M's design constraints are not aesthetic preferences; they are DERIVED, and
+this is the instrument they are derived with (operator, ratified with the reward
+mechanism 2026-07-29). The 600M exists to incentivize the permissionless creation of
+the protocol-layer **public graphs** — the coordination commons agents and humans
+(same level) learn from for free. Platforms' moat is privately holding
+who-moves-what-where, reputation, and demand; make that a public good and the moat
+dissolves. The kernel is fixed and neutral — **it's what we and others put in the
+protocol layer that makes the difference.** Every mechanism proposal is checked
+against three forward-looking stress tests:
+
+1. **Break the platform companies** — the mechanism must work where the private
+   flow-map monopoly is gone, because it built the public one.
+2. **Operate post-apocalyptic** — no institutions: nothing in the path may require a
+   committee, a registry authority, or a standing organization.
+3. **Operate off-planet** — no Earth committee, no KYC oracle: identity-free,
+   self-contained, no trusted third party.
+
+These tests are the WORKING instrument, not decoration: they are what declined the
+per-record fee routed to the DAO (inserts an institution into the identity-free
+mechanical path — fails tests 2 and 3; see `DESIGN_DECISIONS.md` § "Recording has no
+protocol fee and no burn"), and they are why the whole reward path is permissionless,
+identity-free, and adjudication-free end to end. A future proposal that passes
+benchmark reasoning but fails one of the three is wrong here.
+
 ## Why the flow-map gets built — the geo/coordination incentive under a uniform reward
 
 This section is load-bearing: it explains why the geo/coordination clauses exist and

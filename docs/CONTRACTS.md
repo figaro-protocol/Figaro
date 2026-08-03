@@ -301,6 +301,15 @@ two-step inclusion-plus-content-match into a single structural gate. The provena
 key is fixed at deploy, which stops a caller substituting some other clause. Without that
 clause in the agreement, no process can credit its designer.
 
+**Excluded artifacts earn nothing directly:** `UsageCounter.excludedArtifact` holds the
+protocol-floor clauses that ride every (or nearly every) agreement — `figaro-commerce`,
+`figaro-topology`, and `figaro-assembly-provenance` — and `recordClauseUsage` on any of
+them reverts `ArtifactExcluded` by design (scoring the floor would pay its author for
+the protocol's own mandatory carriage). The provenance clause's exclusion is what makes
+the resolve-time recording loop's clause leg and assembly leg independent: the clause
+record on provenance always reverts while `recordAssemblyUsage` still credits the
+assembly's designer of record.
+
 Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
 LIVE-STAKED SELLERS of record — ruled 2026-07-31), and `score = icbrt(c·d²·1e18)` when
 `d ≥ minSellers`, else **zero** — **UNIFORM**, breadth weighted twice as heavily as

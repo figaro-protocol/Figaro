@@ -142,45 +142,26 @@ redesign). The reward was ratified UNIFORM on 2026-07-29 (owner: memory
 usage alone**, with no category, tag, or weight tilting the split toward any kind
 of contribution.
 
-**The mechanism COUNTS USAGE WHEN IT HAPPENS** — see `UsageCounter` and
-`RpgfMinter` in `docs/CONTRACTS.md`. `UsageCounter.recordClauseUsage` is permissionless
-and proves, from data the chain already holds, that an order is RESOLVED and that
-the artifact was merkle-committed in the agreement both parties signed. Accrual
-buckets into fixed ANNUAL **periods**; a period's counts are final once it ends,
-and each period's budget pays for that period alone: `claim(periodId, artifacts)`
-mints `periodAmount · yourScore / totalScoreInPeriod` — **uniform pro rata, no
-per-wallet cap** — with authorship verified against `ClauseRegistry` /
-`AssemblyRegistry`. The 600M pool is fixed: a farmer only ever dilutes it, never
-inflates it. Claims never expire — a closed period's arithmetic is stable forever.
-Nine annual periods, budgets grouped into three RISING tranches — 15% over years
-1–2, 30% over 3–5, 55% over 6–9, equal slices within each (ruled 2026-07-31: the
-largest share pays on the most-measured evidence; the cold-start years carry the
-smallest budgets, and early evidence-poor funding is the DAO treasury's job).
-Devnet and testnet compress the schedule (time compresses when time is involved;
-ruled 2026-07-15).
+**The mechanism COUNTS USAGE WHEN IT HAPPENS** — `UsageCounter` records each
+artifact's real usage at resolve, permissionlessly, from facts the chain already
+holds, and `RpgfMinter.claim` pays **uniform pro rata, no per-wallet cap** from the
+period's fixed budget. The MECHANICS — proof shape, the `icbrt(c·d²·1e18)` score,
+the two-sided live-ETH-stake gates, and what deliberately does NOT exist (no
+posting, no bonds, no challenges, no forum) — are owned by `docs/CONTRACTS.md`
+(§ `UsageCounter` / `RpgfMinter`); the stake/value-loop rationale and the honest
+Sybil bound by `docs/PUBLIC_GRAPH_MODEL.md` § "What the stake does and does not
+do". Neither is restated here. This doc owns the ALLOCATION facts:
 
-**Nothing is posted, bonded, challenged, or adjudicated.** The predecessor
-reconstructed usage after the fact, which forced someone to POST the answer, a BOND
-to make posting costly, a CHALLENGE to contest it, and a FORUM to award the bonds —
-an entire apparatus for making the chain believe a claim about the past. It was
-deleted 2026-07-27 and does not return.
-
-**Sybil-resistance is the STAKE, not a weight.** There is no per-clause multiplier:
-every artifact scores on real usage `icbrt(c·d²·1e18)` alone. What raises the cost of
-farming it is the two-sided **live ETH stake** — it aligns the honest majority rather
-than deterring a determined adversary, and the mechanism is not "farm-proof"; the honest
-bound and its residual are stated in `docs/PUBLIC_GRAPH_MODEL.md` § "What the stake does
-and does not do", which owns that rationale. Usage counts only when the process's
-seller-of-record holds a live `MembersRegistry` stake (`UsageCounter` reads
-`MembersRegistry.registered`, else `SellerNotStaked`), and an author is paid only while
-their registration deposit is un-withdrawn (`RpgfMinter._isAuthor` requires clause
-`depositOf.withdrawn == false`, assembly `bindings.depositWithdrawn == false`) —
-withdraw and you forfeit future RPGF. The ETH stake is a **value loop, not a cost**:
-more trade means more base-currency demand for gas, so ETH appreciates in fiat for
-every registry staker. Florin is the Schelling-point REWARD; ETH is the ALIGNMENT. Repeat trade between
-one pair is discounted by the `c^(1/3)` exponent rather than refused: a per-pair
-cap of 5 was deleted 2026-07-30 because it never bound an attacker optimising
-score per unit cost, and only ever bound honest repeat trade.
+- The 600M pool is **fixed** — a farmer only ever dilutes it, never inflates it.
+- Accrual buckets into fixed ANNUAL **periods**; a period's counts are final once
+  it ends, each period's budget pays for that period alone, and claims never
+  expire — a closed period's arithmetic is stable forever.
+- Nine annual periods, budgets grouped into three RISING tranches — 15% over years
+  1–2, 30% over 3–5, 55% over 6–9, equal slices within each (ruled 2026-07-31: the
+  largest share pays on the most-measured evidence; the cold-start years carry the
+  smallest budgets, and early evidence-poor funding is the DAO treasury's job).
+  Devnet and testnet compress the schedule (time compresses when time is involved;
+  ruled 2026-07-15).
 
 The incentive rationale — why the flow-map gets built under a uniform reward — lives in
 `docs/PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built — the geo/coordination incentive under a uniform reward".

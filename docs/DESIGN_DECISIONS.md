@@ -581,6 +581,15 @@ design refuses, and a fresh Howey fact), and turns permissionless recording into
 paid TO an entity. If the Sybil bound's algebra ever exposes a gap here, the reserve
 lever is lengthening the withdrawal cooldown — which moves no tokens at all.
 
+**The accepted posture (recorded so it is not re-litigated):** the ONLY non-recoverable
+per-trade cost in the reward path is the network's own EIP-1559 base-fee burn — in base
+currency, automatic, free of protocol machinery, and scaling with fake volume exactly as
+with real. That this is the WHOLE per-record cost is accepted, knowingly: together with
+live-stake-to-earn and the fixed 600M pool (which a farmer dilutes, never inflates), it
+is the residual anti-Sybil bite, and in the positive-sum frame that residual is a minor
+leak, not a hole. Do not "fix" it by adding a protocol-side cost — both variants above
+are declined and the door is closed on the family.
+
 ## 19. Usage accrual requires the artifact to hold a live registration deposit — an unregistered leaf key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
