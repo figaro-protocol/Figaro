@@ -1,0 +1,19 @@
+{
+    "name": "figaro-example-settle-a-deal",
+    "version": "0.0.0",
+    "private": true,
+    "description": "One complete Figaro trade — discover, sign, commit, attest, resolve — narrated against a local devnet.",
+    "type": "module",
+    "main": "settle-a-deal.mjs",
+    "scripts": {
+        "start": "node settle-a-deal.mjs"
+    },
+    "dependencies": {
+        "@figaro/sdk": "file:../../sdk",
+        "viem": "^2.55.1"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "license": "MIT"
+}
