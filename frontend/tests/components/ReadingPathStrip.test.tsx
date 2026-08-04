@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe("ReadingPathStrip", () => {
-    it("renders all four steps as links, in order (well-formed input)", () => {
+    it("renders all five steps as links, in order (well-formed input)", () => {
         usePathnameMock.mockReturnValue("/protocol");
         render(<ReadingPathStrip />);
         for (const step of READING_PATH_STEPS) {
@@ -31,18 +31,28 @@ describe("ReadingPathStrip", () => {
         const current = screen.getByRole("link", { name: "Local commerce" });
         expect(current).toHaveAttribute("aria-current", "page");
         const position = screen.getByTestId("reading-path-strip-position").textContent!;
-        expect(position).toContain("step 2 of 4");
+        expect(position).toContain("step 2 of 5");
+        expect(position).toContain("next: Why");
+    });
+
+    it("places Why third, after the lived example and before Security (ruling: /why re-enters after local-commerce)", () => {
+        usePathnameMock.mockReturnValue("/why");
+        render(<ReadingPathStrip />);
+        const current = screen.getByRole("link", { name: "Why" });
+        expect(current).toHaveAttribute("aria-current", "page");
+        const position = screen.getByTestId("reading-path-strip-position").textContent!;
+        expect(position).toContain("step 3 of 5");
         expect(position).toContain("next: Security");
     });
 
     it("names no next step after the last one (optional-field handling — no 'next' when there is none)", () => {
         usePathnameMock.mockReturnValue("/users");
         render(<ReadingPathStrip />);
-        expect(screen.getByTestId("reading-path-strip-position").textContent).toContain("step 4 of 4");
+        expect(screen.getByTestId("reading-path-strip-position").textContent).toContain("step 5 of 5");
         expect(screen.getByTestId("reading-path-strip-position").textContent).not.toContain("next:");
     });
 
-    it("renders with no step highlighted on a page outside the four-step path (malformed / non-member input)", () => {
+    it("renders with no step highlighted on a page outside the five-step path (malformed / non-member input)", () => {
         usePathnameMock.mockReturnValue("/data");
         render(<ReadingPathStrip />);
         expect(screen.getByTestId("reading-path-strip-position").textContent).not.toContain("step");
@@ -61,7 +71,7 @@ describe("ReadingPathStrip", () => {
         }
     });
 
-    it("renders the argument track (Why, Physics, Consequences) with no step-position claim (optional-field handling)", () => {
+    it("renders the argument track (Physics, Consequences) with no step-position claim (optional-field handling)", () => {
         usePathnameMock.mockReturnValue("/protocol");
         render(<ReadingPathStrip />);
         const track = screen.getByTestId("reading-path-strip-argument-track");

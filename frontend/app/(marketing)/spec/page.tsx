@@ -224,7 +224,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed, with budgets grouped into three rising tranches &mdash; 15% of the reserve over years 1&ndash;2, 30% over 3&ndash;5, 55% over 6&ndash;9 &mdash; nothing posted, bonded, or challenged). See <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/artifact-rewards" className="underline">Artifact rewards</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 
@@ -283,7 +283,7 @@ function attestViaResolver(
                         title="RpgfMinter.sol"
                         href={`${GH}/rpgf/RpgfMinter.sol`}
                         meta="600M · no owner"
-                        desc="The retroactive distribution: pays clause authors and assembly designers of record from a 600M-florin reserve, pro rata to real recorded usage. Nine annual accrual periods whose budgets rise across the schedule — 15% of the reserve over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each group (45M/45M · 60M×3 · 82.5M×4). The claim unit is the PERIOD: claim(periodId, artifacts) pays from periodAmount[periodId] and requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. The three tranches are deploy-script data describing how the nine figures were chosen; this contract knows only periods and their budgets, and its budget array is validated against UsageCounter.periodCount() at deploy so the two schedules cannot drift. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the artifact's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per period, every artifact passed in that call (duplicate-free) and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[periodId] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
+                        desc="The retroactive distribution: pays clause authors and assembly designers of record from a 600M-florin reserve, pro rata to real recorded usage. Nine annual accrual periods; the rising-budget schedule and the scoring formula are not re-derived here — see Artifact rewards. The claim unit is the PERIOD: claim(periodId, artifacts) pays from periodAmount[periodId] and requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. This contract knows only periods and their budgets, and its budget array is validated against UsageCounter.periodCount() at deploy so the two schedules cannot drift. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the artifact's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per period, every artifact passed in that call (duplicate-free) and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[periodId] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
                     />
                     <ContractEntry
                         id="daoTreasury"
@@ -298,6 +298,9 @@ function attestViaResolver(
                         desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Mainnet composes the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018); devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
+                <p className="text-sm text-ink-muted mt-4">
+                    The RPGF reward&apos;s rising-budget schedule and its scoring formula are catalogued once, on <Link href="/artifact-rewards" className="underline">Artifact rewards</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Canonical deployments">

@@ -22,11 +22,9 @@ export default function Why() {
             >
                 <div className="border-l-2 border-default pl-6 mt-6">
                     <p className="text-sm text-ink-body leading-relaxed">
-                        <strong>Reading this page.</strong> This page argues that Figaro belongs to a third way of giving economic rules legitimacy, after coercion and shared belief &mdash; written for readers who want that historical and philosophical case, not the mechanics of a deal. If you want the mechanism instead, skip straight to{" "}
-                        <Link href="/local-commerce" className="hover:underline">/local-commerce</Link>{" "}
-                        for one deal lived end to end, or{" "}
-                        <Link href="/protocol" className="hover:underline">/protocol</Link>{" "}
-                        for the specification.
+                        <strong>Reading this page.</strong> You just saw how one deal works &mdash; bonded stakes, buyer-only resolution, no platform in the middle. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, skip ahead to{" "}
+                        <Link href="/security" className="hover:underline">/security</Link>{" "}
+                        for what the design protects against, and what it does not.
                     </p>
                 </div>
             </MarketingHero>

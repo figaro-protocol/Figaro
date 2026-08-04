@@ -28,7 +28,11 @@ export default function Composability() {
                         <code>FigaroCore</code> takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. Every other question lives above it &mdash; permissionless to add, permissionless to fork, equally bound by the same Nash equilibrium. What follows is both halves of composability: the property that narrowness produces, and the architecture that preserves it.
                     </>
                 }
-            />
+            >
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
+                    This page is the <strong>doctrine</strong> &mdash; the rules any composition must obey to stay safe. The <strong>catalogue</strong> &mdash; what actually composes with Figaro, wired or architectural slot &mdash; is on <Link href="/composes" className="underline">/composes</Link>.
+                </p>
+            </MarketingHero>
 
             <MarketingSection title="Anyone can express anything; the equilibrium does not care.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">

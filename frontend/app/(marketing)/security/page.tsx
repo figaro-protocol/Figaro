@@ -30,7 +30,7 @@ const DEEPER_QUESTIONS: { id: string; title: string }[] = [
     { id: "signing", title: "Can this website lie about what you're signing?" },
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
     { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
-    { id: "builders-registries", title: "Can someone hijack a clause or seller slot?" },
+    { id: "builders-registries", title: "Can someone hijack your registration or clause?" },
     { id: "compatibility", title: "What else you should know." },
 ];
 
@@ -52,6 +52,44 @@ export default function Security() {
                         <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
                             Before you trade
                         </h2>
+                        <div className="overflow-x-auto -mx-6 px-6 mb-4">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                        <th scope="col" className="py-2 pr-4">Scenario</th>
+                                        <th scope="col" className="py-2 pr-4">What happens</th>
+                                        <th scope="col" className="py-2">Where to read</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                                    <tr>
+                                        <td className="py-2 pr-4 text-ink-body">Wrong item, or a defective delivery</td>
+                                        <td className="py-2 pr-4 text-ink-body">Remade, resent, or otherwise fixed before the deal closes &mdash; no refund button, only a fix-first close.</td>
+                                        <td className="py-2"><Link href="#counterparty" className="text-ink-heading font-medium hover:underline">Counterparty doesn&apos;t deliver</Link></td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-2 pr-4 text-ink-body">Seller vanishes without delivering</td>
+                                        <td className="py-2 pr-4 text-ink-body">Every stake stays locked; a counterparty who simply forfeits loses twice what you lose.</td>
+                                        <td className="py-2"><Link href="#counterparty" className="text-ink-heading font-medium hover:underline">Counterparty doesn&apos;t deliver</Link></td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-2 pr-4 text-ink-body">Buyer never confirms, even after delivery</td>
+                                        <td className="py-2 pr-4 text-ink-body">Nothing leaves the lockbox until the buyer signs the close &mdash; that is the rule, not a malfunction.</td>
+                                        <td className="py-2"><Link href="#layers" className="text-ink-heading font-medium hover:underline">What stands behind a deal</Link></td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-2 pr-4 text-ink-body">Genuine disagreement over the terms</td>
+                                        <td className="py-2 pr-4 text-ink-body">Three layers in order &mdash; bond economics, then co-seller pressure, then an off-chain forum or court reading the on-chain record.</td>
+                                        <td className="py-2"><Link href="#disputes" className="text-ink-heading font-medium hover:underline">You genuinely disagree</Link></td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-2 pr-4 text-ink-body">You lose your wallet keys</td>
+                                        <td className="py-2 pr-4 text-ink-body">Recovery is your wallet&apos;s job, not the protocol&apos;s &mdash; set it up (e.g. EIP-7702) before you ever commit.</td>
+                                        <td className="py-2"><Link href="#keys" className="text-ink-heading font-medium hover:underline">If you lose your keys</Link></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
                             {BEFORE_YOU_TRADE.map((item) => (
                                 <li key={item.id}>
@@ -90,7 +128,7 @@ export default function Security() {
 
             <MarketingSection title="What if the counterparty doesn't deliver?" sectionId="counterparty">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The bond architecture answers this before it becomes a recourse problem. Each party posts more than they could gain by defecting. The buyer locks twice the payment; the seller locks twice the cumulative value flowing through them. The arithmetic makes cooperation the strategy that weakly dominates defection for both parties &mdash; a result called the bonding equilibrium. Cooperation is the unique strategy profile surviving iterated elimination of weakly dominated strategies, derivable from the 2:1 ratio alone, with no reliance on reputation, repeated interaction, or external enforcement.
+                    The bond architecture answers this before it becomes a recourse problem. Each party posts more than they could gain by defecting. The buyer locks twice the payment; the seller locks twice the cumulative value flowing through them. The arithmetic makes cooperation the strategy that weakly dominates defection for both parties &mdash; a result called the bonding equilibrium. Cooperation is the unique strategy profile surviving iterated elimination of weakly dominated strategies, derivable from the 2:1 ratio alone, with no reliance on reputation, repeated interaction, or external enforcement. In plain terms: whatever the other side does, honoring the deal always leaves you better off than cheating does.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     In practice this means shortfalls are put right <em>before</em> settlement, not compensated after it. Nothing resolves until the buyer resolves, and the buyer resolves only once the agreed terms are met &mdash; so a missed or defective delivery is normally remade, resent, or otherwise remedied first. There is no refund path and no unilateral unwind; the buyer&apos;s sole lever is to withhold the close, which keeps every stake locked until the work is set right.
@@ -162,6 +200,41 @@ export default function Security() {
                     <li>&mdash; <strong className="text-ink-heading font-medium">The infrastructure is yours.</strong> RPC and IPFS endpoints are runtime settings you control, under Endpoints. What you publish is pinned on your node, paid for by you, and erasable by you; the build-baked defaults are only defaults.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Device location stays on the device.</strong> Your location is encoded to a geohash locally in the browser. A typed address goes straight from your browser to OpenStreetMap&apos;s Nominatim geocoder &mdash; a third party, and configurable under Endpoints &mdash; only when you take an explicit action, and that is disclosed at the input. No server of this frontend&apos;s sits in between; it has none.</li>
                 </ul>
+                <p className="text-sm text-ink-muted leading-relaxed mb-2">
+                    The same picture, split by what the chain sees versus what stays off it:
+                </p>
+                <div className="overflow-x-auto -mx-6 px-6 mb-5">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Public on-chain</th>
+                                <th scope="col" className="py-2">Private / off-chain</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            <tr>
+                                <td className="py-2 pr-4 text-ink-body">Wallet addresses and on-chain activity &mdash; pseudonymous, linkable by anyone</td>
+                                <td className="py-2 text-ink-body">&mdash;</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 text-ink-body">A keccak256 fingerprint of the agreement</td>
+                                <td className="py-2 text-ink-body">The agreement&apos;s own terms &mdash; public-disposition ones published in the open (a shared commons), private-disposition ones published only behind the fingerprint, encrypted</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 text-ink-body">A keccak256 fingerprint of each attestation&apos;s content</td>
+                                <td className="py-2 text-ink-body">The attestation&apos;s actual evidence content</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 text-ink-body">The 32-byte hash of the encrypted delivery blob</td>
+                                <td className="py-2 text-ink-body">The delivery address itself (name, street, door number) &mdash; encrypted end-to-end per order, purged when the tab closes or the order/process resolves</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 text-ink-body">&mdash;</td>
+                                <td className="py-2 text-ink-body">Geohashes on published profiles/agreements, capped at six characters (roughly 1.2 km); door-level precision only inside the encrypted per-order envelope</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <p className="text-base text-ink-body leading-relaxed">
                     The honest limits. Wallet addresses and on-chain activity are public and linkable by anyone &mdash; this is pseudonymity, not anonymity; the fingerprints reveal no content, but the graph of which addresses transacted, and when, is visible to everyone. Unpinning stops your node from serving content and lets the network garbage-collect it, but anything another node copied before you unpinned it is beyond your recall &mdash; unpin is not a network-wide delete. And there is no privacy policy or terms of service here, by design rather than omission: those are the documents of a service with an operator in the middle, and this frontend is a reader of network state with no accounts and no operator-side services &mdash; there is no counterparty to contract with. Where a trade itself needs consent terms, that is an agreement concern: an assembly composes a consent clause and affixes its document to the deal.
                 </p>
@@ -207,6 +280,9 @@ export default function Security() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Be exact about what these are: detectors you run, not protection that runs for you. Neither one stops a doctored prompt; they let you catch one &mdash; the first before you sign, the second afterwards and by anybody.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The definitive, non-technical answer to this whole question is a verifiable build: a release pinned by its own content hash (a CID) with a published rebuild recipe anyone can diff against it, and eventually a second, independently built frontend attesting to the same typed data &mdash; so no single origin&apos;s word is required at all. That is a named, tracked release task, not something shipped today &mdash; see <Link href="/status" className="text-ink-heading font-medium hover:underline">/status</Link> for where it stands. Until it ships, the two checks above are the check, and the limitation below stands as written.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     And what is not fixed: your wallet still shows a hash, not the deal in words. That is the kernel&apos;s doing and it is staying. The signed record binds the agreement by fingerprint, and the kernel has no upgrade key &mdash; a friendlier prompt would cost a kernel someone can change, and every other property described on this page depends on there being no such person. It is also precisely that fingerprint-binding which lets both checks above run outside our reach: a hash anyone can recompute without us is worth more than a prettier prompt you have to take our word for.
                 </p>
@@ -242,7 +318,7 @@ export default function Security() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Can someone hijack a clause or seller slot?" sectionId="builders-registries">
+            <MarketingSection title="Can someone hijack your registration or clause?" sectionId="builders-registries">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Clause, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a registry &mdash; a clauseId, a member profile, an assembly slug &mdash; the binding is immutable: no admin can rebind it, no later registrant can displace it. On the direct attestation path the chain validates no content shape &mdash; it merkle-binds each attestation to its signed agreement and content-hash-binds the evidence. The batched, proof-based settlement path adds a content check: a generic SP1 proof engine re-validates each clause against the exact spec the <code>ClauseRegistry</code> anchors, so a permissive substitute cannot settle. Either way there are no per-clause validator contracts &mdash; any registered clause is attestable and settleable with zero on-chain code changes.
                 </p>
@@ -259,7 +335,7 @@ export default function Security() {
                     Three operational facts that aren&apos;t vulnerabilities but are worth knowing before you commit to the protocol.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading font-medium">Gas ceilings per process.</strong> Two separate gas constraints govern a process. <em>Resolution</em> settles every order in a single transaction, so its per-call gas cost gates the per-process size: at Ethereum mainnet&apos;s 30M block gas limit, roughly 1,240 orders (~23k gas per order, measured all-in on transaction receipts). <em>Commit</em> is the other constraint &mdash; each commit is its own transaction (~144k gas for a sub-order, ~235k for the process root), so a single block can land about 200 commits and a 1,200-order process needs roughly 6 blocks to assemble before it can resolve. Both numbers are chain-specific; a chain with a higher block gas limit raises both proportionally. Large coordinations should compose across processes &mdash; the kernel supports this structurally &mdash; rather than push a single process toward either ceiling.
+                    <strong className="text-ink-heading font-medium">Gas ceilings per process.</strong> Two separate gas constraints govern a process. <em>Resolution</em> settles every order in a single transaction, so its per-call gas cost gates the per-process size: at Ethereum mainnet&apos;s 30M block gas limit, roughly 1,240 orders (~23k gas per order, measured all-in on transaction receipts &mdash; 23,000 &times; 1,240 &asymp; 28.5M, under the 30M ceiling). <em>Commit</em> is the other constraint &mdash; each commit is its own transaction (~144k gas for a sub-order, ~235k for the process root), so a single block can land about 200 commits (144,000 &times; 200 &asymp; 28.8M, likewise under the ceiling) and a 1,200-order process needs roughly 6 blocks to assemble before it can resolve. In dollar terms: at typical mainnet gas prices, a single commit or resolution costs cents to a few dollars &mdash; the exact figure moves with the network&apos;s own gas price at the time, not with anything Figaro sets or charges. Both gas numbers above are chain-specific; a chain with a higher block gas limit raises both proportionally. Large coordinations should compose across processes &mdash; the kernel supports this structurally &mdash; rather than push a single process toward either ceiling.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you intend to pay with &mdash; the common standard for tokens on Ethereum &mdash; takes a percentage on transfer, FigaroCore refuses the commit. This is intentional: the bond arithmetic depends on the kernel receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.

@@ -17,9 +17,13 @@ import { useWalletConnected } from "@/hooks/useWalletConnected";
  *     in `feedback_header_buttons.md` and is independent of the two-nav
  *     decision.
  *  2. A second nav row sits under the main row, listing protocol-surface
- *     routes via `NAV_LINKS_APP_PRIMARY`. The mobile drawer uses
- *     `NAV_LINKS_APP_DRAWER` (grouped publication + reference +
- *     transactional sections). Marketing tier renders neither.
+ *     routes via `NAV_LINKS_APP_PRIMARY`, preceded by a small "Figaro App"
+ *     label so the layer-crossing from the marketing tier is named rather
+ *     than silent — the label uses the same `text-[11px] font-semibold
+ *     text-neutral-500` treatment `MobileNav` already uses for its own
+ *     "App" section header, so the desktop and mobile announcements match.
+ *     The mobile drawer uses `NAV_LINKS_APP_DRAWER` (grouped publication +
+ *     reference + transactional sections). Marketing tier renders neither.
  */
 export function Header() {
     const walletConnected = useWalletConnected();
@@ -33,11 +37,16 @@ export function Header() {
             }
             mobileLinks={NAV_LINKS_APP_DRAWER}
             bottomRow={
-                <NavLinksRow
-                    links={NAV_LINKS_APP_PRIMARY}
-                    testId="desktop-nav-app"
-                    variant="secondary"
-                />
+                <div className="hidden md:flex items-center gap-4">
+                    <span className="text-[11px] font-semibold text-neutral-500" data-testid="app-tier-label">
+                        Figaro App
+                    </span>
+                    <NavLinksRow
+                        links={NAV_LINKS_APP_PRIMARY}
+                        testId="desktop-nav-app"
+                        variant="secondary"
+                    />
+                </div>
             }
         />
     );

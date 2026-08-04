@@ -5,7 +5,7 @@ export interface ReadingPathStep {
 }
 
 /**
- * The four-page reading path — the site's front-door curriculum. Rendered by
+ * The five-page reading path — the site's front-door curriculum. Rendered by
  * `ReadingPathStrip`, mounted once in `app/(marketing)/layout.tsx` above the
  * footer on every marketing page; the homepage points at it with a single
  * demoted sentence rather than restating it. It lives in this plain module —
@@ -13,6 +13,11 @@ export interface ReadingPathStep {
  * exports reach server components as unmappable proxies (the homepage
  * prerender throws; only `next build` catches it). Do not restate the
  * curriculum anywhere else.
+ *
+ * `/why` sits at step 3, AFTER the lived example (`/local-commerce`) rather
+ * than before it — the conviction content lands once the reader has seen a
+ * deal, not before. This position is deliberate and distinct from `/why`'s
+ * old placement in the (now two-item) argument track below.
  */
 export const READING_PATH_STEPS: ReadingPathStep[] = [
     {
@@ -24,6 +29,11 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         href: "/local-commerce",
         label: "Local commerce",
         description: "one deal, lived: a meal ordered, cooked, carried, and settled.",
+    },
+    {
+        href: "/why",
+        label: "Why",
+        description: "why it exists: three eras of rule-making, and what the third changes.",
     },
     {
         href: "/security",
@@ -39,16 +49,12 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
 
 /**
  * "The argument" — the second track alongside the numbered path: the case
- * for why the mechanism exists and what it implies, rather than the
+ * for the mechanism's origin and its implications, rather than the
  * mechanism itself. Same shape as `READING_PATH_STEPS` but unordered — no
- * "step N of" claim is made for this track.
+ * "step N of" claim is made for this track. `/why` moved into the numbered
+ * spine (above); this track is now Physics + Consequences.
  */
 export const ARGUMENT_TRACK_STEPS: ReadingPathStep[] = [
-    {
-        href: "/why",
-        label: "Why",
-        description: "why it exists: three eras of rule-making, and what the third changes.",
-    },
     {
         href: "/physics",
         label: "Physics",

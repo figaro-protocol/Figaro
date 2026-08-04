@@ -14,7 +14,7 @@ export default function Composes() {
     return (
         <>
             <MarketingHero
-                title="What the network composes with."
+                title="What composes with Figaro."
                 lead={
                     <>
                         Figaro composes two ways. <strong>Internally</strong>, clauses assemble
@@ -30,7 +30,7 @@ export default function Composes() {
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    This page explains composition. To compose against the kernel, go to <Link href="/builders/composability" className="underline">/builders/composability</Link>.
+                    This page is the <strong>catalogue</strong> &mdash; what actually composes with Figaro, wired or architectural slot. The <strong>doctrine</strong> &mdash; the rules any composition must obey to stay safe &mdash; is on <Link href="/builders/composability" className="underline">/builders/composability</Link>.
                 </p>
             </MarketingHero>
 

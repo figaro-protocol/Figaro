@@ -47,4 +47,10 @@ describe("Header", () => {
         const logo = screen.getByText("Figaro Protocol");
         expect(logo.closest("a")).toBeTruthy();
     });
+
+    it("names the app-tier layer crossing with a 'Figaro App' label next to the secondary nav row", () => {
+        useWalletConnectedMock.mockReturnValue(false);
+        render(<Header />);
+        expect(screen.getByTestId("app-tier-label")).toHaveTextContent("Figaro App");
+    });
 });

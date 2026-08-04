@@ -32,7 +32,7 @@ export default function Home() {
                     Say dinner costs thirty tokens. To buy it, you lock sixty &mdash; the thirty you owe, plus thirty of your own as a stake. The kitchen locks sixty too, all of it stake. Confirm the meal arrived, and both stakes come home while your thirty settles as payment. Walk away instead, and your own locked stake never comes home &mdash; it stays in the box for good, benefiting no one.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine. Both sides put a stake into a lockbox &mdash; a small program that runs in the open, owned by no one. Cheat, and you forfeit a stake worth more than anything you could have taken. Honor the deal, and the box opens: the seller is paid and both stakes come home. Nobody has to trust anybody. The arithmetic does it.
+                    That doubling is the whole mechanism, not a fee or a favor &mdash; the full derivation is on <Link href="/protocol" className="hover:underline">Protocol</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     It runs on Ethereum: you take part with a wallet app and digital tokens, nothing to sign up for with Figaro.
@@ -58,7 +58,7 @@ export default function Home() {
                 <p className="text-base text-ink-body" data-testid="reading-path">
                     New here?{" "}
                     <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
-                        Read the protocol in four steps &rarr;
+                        Read the protocol in five steps &rarr;
                     </Link>
                 </p>
             </section>

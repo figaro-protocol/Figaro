@@ -142,11 +142,26 @@ export default function Status() {
                     <p className="text-sm text-ink-body leading-relaxed">
                         &ldquo;Not yet by an external auditor. That is the honest answer,
                         and the protocol does not call itself release-ready until that
-                        audit lands. &hellip; external audit decision and scheduling is
-                        one of two named release blockers.&rdquo;
+                        audit lands. The Solidity surface was frozen for external audit
+                        on 20 April 2026 (with subsequent amendments scoped to the
+                        freeze); external audit decision and scheduling is one of two
+                        named release blockers.&rdquo;
                     </p>
                     <p className="text-xs text-ink-faint">
                         &mdash; stated at <Link href="/security#verification" className="hover:underline">/security</Link>
+                    </p>
+                </div>
+                <div className="border-l-2 border-default pl-6 my-3 space-y-1">
+                    <p className="text-sm text-ink-body leading-relaxed">
+                        &ldquo;The definitive, non-technical answer to this whole
+                        question is a verifiable build: a release pinned by its own
+                        content hash (a CID) with a published rebuild recipe anyone can
+                        diff against it, and eventually a second, independently built
+                        frontend attesting to the same typed data&hellip; That is a
+                        named, tracked release task, not something shipped today.&rdquo;
+                    </p>
+                    <p className="text-xs text-ink-faint">
+                        &mdash; stated at <Link href="/security#signing" className="hover:underline">/security</Link>
                     </p>
                 </div>
                 <div className="border-l-2 border-default pl-6 my-3 space-y-1">

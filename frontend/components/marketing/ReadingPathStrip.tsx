@@ -18,14 +18,15 @@ const GO_DEEPER_LINKS: { href: string; label: string }[] = [
  * `app/(marketing)/layout.tsx` above the `Footer` — every marketing page
  * carries it, not just the homepage. Position indicator is modeled on
  * `PaperLayout`'s prev/next nav: the current step is DERIVED from
- * `usePathname` each render, never stored. A page outside the four steps
- * (e.g. `/data`, reached via "go deeper") renders the same four links with
- * no step highlighted and no "step N of 4" claim — the strip never asserts a
+ * `usePathname` each render, never stored. A page outside the five steps
+ * (e.g. `/data`, reached via "go deeper") renders the same five links with
+ * no step highlighted and no "step N of 5" claim — the strip never asserts a
  * position it can't back up.
  *
  * A second, unordered track ("The argument": `ARGUMENT_TRACK_STEPS`) sits
- * below the numbered path — the case for the mechanism rather than the
- * mechanism itself. It carries no position indicator; it is not a sequence.
+ * below the numbered path — the case for the mechanism's origin and
+ * implications rather than the mechanism itself. It carries no position
+ * indicator; it is not a sequence.
  */
 export function ReadingPathStrip() {
     const pathname = usePathname();
