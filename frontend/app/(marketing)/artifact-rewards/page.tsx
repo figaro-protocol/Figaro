@@ -16,7 +16,7 @@ export default function ArtifactRewards() {
                 title="The map is the monopoly."
                 lead={
                     <>
-                        Platforms don&apos;t own the trucks or the kitchens. They own the map. Figaro makes the map a public good &mdash; and pays the people who draw it.
+                        Platforms don&apos;t own the trucks or the kitchens. They own the map. This page shows what breaks that: a 600M-florin reward, paid by a published formula to whoever draws the map best.
                     </>
                 }
             />

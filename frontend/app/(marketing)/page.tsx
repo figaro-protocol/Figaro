@@ -58,7 +58,7 @@ export default function Home() {
                 <p className="text-base text-ink-body" data-testid="reading-path">
                     New here?{" "}
                     <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
-                        Read the protocol in five steps &rarr;
+                        Read the protocol in four steps &rarr;
                     </Link>
                 </p>
             </section>

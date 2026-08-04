@@ -131,7 +131,17 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
 // publication row; on mobile that row was the ONLY way in, leaving every page
 // behind a doorway reachable only by scrolling to the footer. Grouped like
 // `NAV_LINKS_APP_DRAWER` so the whole map is one tap away.
-export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = MARKETING_MAP.flatMap((group) => [
-    { isSectionHeader: true, label: group.section, href: "" },
-    ...group.links,
-]);
+export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = [
+    ...MARKETING_MAP.flatMap((group) => [
+        { isSectionHeader: true, label: group.section, href: "" } as NavLink,
+        ...group.links,
+    ]),
+    // The app tier, announced on marketing mobile exactly as the footer's App
+    // column announces it on desktop — DERIVED (filtered spread), never a
+    // hand-copy. Routes the marketing map already lists (e.g. /discover,
+    // /sellers under Users) are not repeated here.
+    { isSectionHeader: true, label: "App", href: "" },
+    ...NAV_LINKS_APP_PRIMARY.filter(
+        (link) => !MARKETING_MAP.some((g) => g.links.some((l) => l.href === link.href)),
+    ),
+];

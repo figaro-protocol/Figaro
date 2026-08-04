@@ -14,10 +14,15 @@ export interface ReadingPathStep {
  * prerender throws; only `next build` catches it). Do not restate the
  * curriculum anywhere else.
  *
- * `/why` sits at step 3, AFTER the lived example (`/local-commerce`) rather
- * than before it — the conviction content lands once the reader has seen a
- * deal, not before. This position is deliberate and distinct from `/why`'s
- * old placement in the (now two-item) argument track below.
+ * THE SPINE'S SHAPE IS FINAL (ruled 2026-08-04, close of the probe cycle).
+ * Across three blind expert runs the /why placement cycled full circle —
+ * run-8 said take it off the spine, run-9 said insert it after the lived
+ * example, run-10 (with it inserted) said take it off again. Both placements
+ * carry a real cost; expert-driven flipping is the wrong methodology for a
+ * taste decision. The ruling: the numbered path is ALL-CONCRETE (mechanism →
+ * lived deal → risks → participation) and /why LEADS "The argument" track
+ * beside it. Do not move /why again on probe evidence alone — reopening this
+ * requires an operator ruling that cites this comment.
  */
 export const READING_PATH_STEPS: ReadingPathStep[] = [
     {
@@ -29,11 +34,6 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         href: "/local-commerce",
         label: "Local commerce",
         description: "one deal, lived: a meal ordered, cooked, carried, and settled.",
-    },
-    {
-        href: "/why",
-        label: "Why",
-        description: "why it exists: three eras of rule-making, and what the third changes.",
     },
     {
         href: "/security",
@@ -51,10 +51,15 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
  * "The argument" — the second track alongside the numbered path: the case
  * for the mechanism's origin and its implications, rather than the
  * mechanism itself. Same shape as `READING_PATH_STEPS` but unordered — no
- * "step N of" claim is made for this track. `/why` moved into the numbered
- * spine (above); this track is now Physics + Consequences.
+ * "step N of" claim is made for this track. /why leads it (see the spine
+ * ruling above).
  */
 export const ARGUMENT_TRACK_STEPS: ReadingPathStep[] = [
+    {
+        href: "/why",
+        label: "Why",
+        description: "why it exists: three eras of rule-making, and what the third changes.",
+    },
     {
         href: "/physics",
         label: "Physics",
