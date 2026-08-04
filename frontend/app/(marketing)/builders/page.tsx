@@ -159,7 +159,7 @@ export default function BuildersPage() {
                     <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">
                         Asymmetric Bonding and Buyer Dominance
                     </Link>
-                    <span className="text-ink-body"> &mdash; the mechanism-design paper: the game-theoretic derivation of why cooperation is the dominant strategy under the 2&times; bonding ratio. <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">Funding &amp; working groups</Link> covers how work on the substrate organizes and pays for itself, not the mechanism design itself.</span>
+                    <span className="text-ink-body"> &mdash; the mechanism-design paper: the game-theoretic derivation of why cooperation is the dominant strategy under the 2&times; bonding ratio. <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">Funding</Link> and <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">working groups</Link> cover how work on the substrate organizes and pays for itself, not the mechanism design itself.</span>
                 </li>
             </ul>
         </section>

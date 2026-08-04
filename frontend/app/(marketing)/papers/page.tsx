@@ -19,9 +19,9 @@ export default function Papers() {
                 title="Papers."
                 lead={
                     <>
-                        Discussion starters, not doctrine. Each paper reads the bonded settlement primitive through one of the eight cryptoeconomic disciplines &mdash; a seed for the working groups that form around it, anywhere and without permission, to extend it, contest it, or fork it into an implementation of their own. Each reads in the browser, with server-rendered math, and exports to PDF. The self-forming groups and how the work is funded sit at{" "}
-                        <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
-                            cryptoeconomics
+                        Discussion starters, not doctrine. Each paper reads the bonded settlement primitive through one of the eight cryptoeconomic disciplines &mdash; a seed for the working groups that form around it, anywhere and without permission, to extend it, contest it, or fork it into an implementation of their own. Each reads in the browser, with server-rendered math, and exports to PDF. How that work is funded &mdash; the allocation that pays authors and designers by the use their artifacts get &mdash; sits at{" "}
+                        <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">
+                            artifact rewards
                         </Link>
                         .
                     </>
@@ -50,6 +50,9 @@ export default function Papers() {
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-8">
                     The corpus deliberately spans engineering &mdash; the kernel, its verification, the composition discipline &mdash; and political economy or philosophy &mdash; what the mechanism displaces; the two registers read the same primitive at a different altitude, and the grouping below is the map between them.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-8">
+                    The eight disciplines are not ours. They are the taxonomy set out in Voshmgir, S. &amp; Zargham, M., &ldquo;Foundations of Cryptoeconomic Systems&rdquo; (Working Paper Series 1/2020, Research Institute for Cryptoeconomics, WU Vienna, 2020), which argues that cryptoeconomic systems are irreducibly multi-disciplinary objects and enumerates the disciplines a full account of one must pass through. The corpus adopts that list rather than inventing its own, so that a reader arriving from any one of the eight finds the substrate addressed in that discipline&rsquo;s own vocabulary, and so that the depth of coverage under each is measured against a list the project did not draw.
                 </p>
                 <div className="space-y-10">
                     {groups.map((g) => (

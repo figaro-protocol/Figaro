@@ -42,6 +42,11 @@ jobs:
             - name: Run forge fmt check
               run: forge fmt --check
 
+    # NOTE: no coverage job yet — scripts/coverage.sh currently FAILS at
+    # instrumented compilation (Yul stack-too-deep even under --ir-minimum;
+    # reproduced 2026-08-04). Fix the instrumentation first, then add the
+    # job + lcov artifact upload. Tracked in the punch-list (audit handover).
+
     # Formal-proof coverage in CI is halmos/z3 only. Certora is EXCLUDED by
     # design: it needs the operator-held CERTORAKEY, supplied inline at run
     # time (CERTORAKEY=<key> ./scripts/test-certora.sh) and never stored, so

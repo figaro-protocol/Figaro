@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
+import { LockedFundsStateFigure } from "@/components/figures/LockedFundsStateFigure";
 
 export const metadata: Metadata = {
     title: "Security — Figaro Protocol",
@@ -9,20 +11,24 @@ export const metadata: Metadata = {
         "Plain-language answers to the security questions you should ask before sending tokens through Figaro. What the protocol guarantees, what it does not, and how the guarantees are verified.",
 };
 
-/** The page's thirteen questions, in order — a jump index rendered right
- *  under the hero. Titles are copied verbatim from each `MarketingSection`
- *  below; keep the two in lockstep if a heading changes. */
-const JUMP_INDEX: { id: string; title: string }[] = [
+/** The page's thirteen questions, in document order, split into two labeled
+ *  groups by what each question is actually about — not by position. Titles
+ *  are copied verbatim from each `MarketingSection` below; keep the three in
+ *  lockstep if a heading changes. */
+const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
     { id: "custody", title: "Who holds the tokens?" },
     { id: "counterparty", title: "What if the counterparty doesn't deliver?" },
     { id: "disputes", title: "What if you genuinely disagree?" },
     { id: "layers", title: "What stands behind a deal?" },
-    { id: "keys", title: "What if you lose your keys?" },
     { id: "privacy", title: "What does the network learn about you?" },
+    { id: "ownership", title: "Who owns Figaro?" },
+];
+
+const DEEPER_QUESTIONS: { id: string; title: string }[] = [
+    { id: "keys", title: "What if you lose your keys?" },
     { id: "verification", title: "Has the code been audited?" },
     { id: "signing", title: "Can this website lie about what you're signing?" },
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
-    { id: "ownership", title: "Who owns Figaro?" },
     { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
     { id: "builders-registries", title: "Can someone hijack a clause or seller slot?" },
     { id: "compatibility", title: "What else you should know." },
@@ -42,15 +48,34 @@ export default function Security() {
 
             <MarketingSection bottomPad="default">
                 <nav aria-label="Jump to a question" data-testid="security-jump-index">
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                        {JUMP_INDEX.map((item) => (
-                            <li key={item.id}>
-                                <Link href={`#${item.id}`} className="text-ink-heading hover:underline">
-                                    {item.title}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
+                    <div className="mb-6">
+                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                            Before you trade
+                        </h2>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            {BEFORE_YOU_TRADE.map((item) => (
+                                <li key={item.id}>
+                                    <Link href={`#${item.id}`} className="text-ink-heading hover:underline">
+                                        {item.title}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div>
+                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                            Deeper questions
+                        </h2>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            {DEEPER_QUESTIONS.map((item) => (
+                                <li key={item.id}>
+                                    <Link href={`#${item.id}`} className="text-ink-heading hover:underline">
+                                        {item.title}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </nav>
             </MarketingSection>
 
@@ -70,6 +95,10 @@ export default function Security() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     In practice this means shortfalls are put right <em>before</em> settlement, not compensated after it. Nothing resolves until the buyer resolves, and the buyer resolves only once the agreed terms are met &mdash; so a missed or defective delivery is normally remade, resent, or otherwise remedied first. There is no refund path and no unilateral unwind; the buyer&apos;s sole lever is to withhold the close, which keeps every stake locked until the work is set right.
                 </p>
+                <LockedFundsStateFigure className="mb-5" />
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The figure above is the whole lifecycle: where each stake sits in every state, who can move it forward, and the two exits that deliberately do not exist.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/papers" className="text-ink-heading font-medium hover:underline">papers</Link>.
                 </p>
@@ -88,6 +117,7 @@ export default function Security() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Five things, each a reason the deal goes right, stacked from the inside out. The bonds behind them are not a fund anyone draws on and not property anyone seizes &mdash; they are deterrents, and the innermost layers do almost all the work. The outer layers exist only for the residue the inner ones cannot reach.
                 </p>
+                <LayeredDefenseFigure className="mb-6" />
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">The chain.</strong> The deal runs on Ethereum. Once its record is written, no one can rewrite it &mdash; not a counterparty, not Figaro, not the party who wrote it.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">The lockbox and its record.</strong> FigaroCore holds both sides&apos; doubled stakes by fixed rule, and writes an unforgeable, timestamped record of every step as it happens &mdash; always, not on request. Nothing leaves the lockbox until the buyer signs the close.</li>
@@ -117,7 +147,7 @@ export default function Security() {
 
             <MarketingSection title="What does the network learn about you?" sectionId="privacy">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Almost nothing. The kernel stores fingerprints, not content &mdash; the hashes of the agreements, and the keccak256 of each attestation&apos;s content, never the content itself. Everything a person might recognise as personal data stays off-chain, encrypted, held where the parties can erase it. This is the pattern the European Data Protection Board recommends for blockchains in its Guidelines 02/2025 &mdash; keep personal data off the ledger, store it off-chain under crypto-shredding, make pinned content erasable, and minimise any location data that is published. Figaro implements that pattern. It does not call itself &ldquo;compliant&rdquo;: compliance is a property of a deployment and the party running it, not of the code.
+                    Almost nothing. The kernel stores fingerprints, not content &mdash; the hashes of the agreements, and the keccak256 of each attestation&apos;s content, never the content itself. Everything a person might recognise as personal data stays off-chain, encrypted, held where the parties can erase it. The European Data Protection Board&apos;s Guidelines 02/2025 lay out what that looks like for a blockchain: keep personal data off the ledger, store it off-chain under crypto-shredding, make pinned content erasable, and minimise any location data that is published. Figaro implements that pattern, and does not call itself &ldquo;compliant&rdquo; &mdash; compliance is a property of a deployment and the party running it, not of the code.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Underneath the concrete measures is a choice the protocol hands to every deal. Because the chain records only a fingerprint of a deal&apos;s terms &mdash; a keccak256 hash &mdash; and never the terms themselves, each term can be shared or held back without changing what the ledger keeps. Terms meant to coordinate &mdash; a locality, a standard, a unit of account, the kind of thing that lets a network be navigated at all &mdash; are published in the open, a shared commons anyone can read and build on. Terms that are sensitive &mdash; a price, a name, a specification worth keeping &mdash; are published only behind the fingerprint: encrypted, or carried in a form that proves the term was agreed to without revealing what it says. Either way the chain sees only the hash, and a private term&apos;s readable text never lands on the public, permanent ledger. The encrypted delivery address below is one application of the same spirit &mdash; you show only what you choose, and the network holds the rest as a fingerprint no one can read backward.
@@ -140,6 +170,9 @@ export default function Security() {
             <MarketingSection title="Has the code been audited?" sectionId="verification">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Not yet by an external auditor. That is the honest answer, and the protocol does not call itself release-ready until that audit lands. The Solidity surface was frozen for external audit on 20 April 2026 (with subsequent amendments scoped to the freeze); external audit decision and scheduling is one of two named release blockers.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <strong>You do not have to take any of this on faith.</strong> <Link href="/audit" className="text-ink-heading font-medium hover:underline">Verify any deal yourself at /audit</Link> &mdash; paste a process ID and get back the on-chain record and a per-order signature check, no wallet or account needed.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     What is in place is a verification stack &mdash; six independent tools targeting the same kernel from different angles:

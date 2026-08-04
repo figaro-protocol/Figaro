@@ -20,7 +20,11 @@ export default function Clauses() {
                         A clause in Figaro is the content type of an attestation &mdash; a structured piece of evidence emitted during the lifecycle of a bonded process. Every attestation under a registered <code>clauseId</code> is validated off-chain against one canonical JSON spec, then merkle-bound to the signed agreement on-chain. The reference clauses register on-chain when the protocol deploys; anyone can register more, without permission.
                     </>
                 }
-            />
+            >
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
+                    This page explains clauses. To register a clause, go to <Link href="/builders/clauses" className="underline">/builders/clauses</Link>.
+                </p>
+            </MarketingHero>
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">

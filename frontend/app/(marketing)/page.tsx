@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { READING_PATH_STEPS } from "@/components/marketing/readingPathSteps";
 import { ReadButton } from "@/components/shared/ReadButton";
 import { BuildButton } from "@/components/shared/BuildButton";
 
@@ -27,7 +26,7 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    A straight fact before anything else: the network is pre-launch. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
+                    A straight fact before anything else: the network is <Link href="/status" className="hover:underline">pre-launch</Link>. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Say dinner costs thirty tokens. To buy it, you lock sixty &mdash; the thirty you owe, plus thirty of your own as a stake. The kitchen locks sixty too, all of it stake. Confirm the meal arrived, and both stakes come home while your thirty settles as payment. Walk away instead, and your own locked stake never comes home &mdash; it stays in the box for good, benefiting no one.
@@ -36,10 +35,7 @@ export default function Home() {
                     Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine. Both sides put a stake into a lockbox &mdash; a small program that runs in the open, owned by no one. Cheat, and you forfeit a stake worth more than anything you could have taken. Honor the deal, and the box opens: the seller is paid and both stakes come home. Nobody has to trust anybody. The arithmetic does it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    It runs on Ethereum: you take part with a wallet app and digital tokens, nothing to sign up for.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Most real work is more than two people. A delivered meal is a cook, whoever supplied the ingredients, and a courier &mdash; each posts their own stake, all linked into one deal that settles in one stroke. If any one of them fails, every stake is on the line, so each has a direct, stake-backed reason to want the others to deliver. No platform assigns the work. The shape of the deal does.
+                    It runs on Ethereum: you take part with a wallet app and digital tokens, nothing to sign up for with Figaro.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Nobody runs it. There is no company behind it and no account that can be closed &mdash; shared infrastructure, the way the internet is. The TCP/IP of trade: like email, anyone can build an app on it, and no one can shut it down.
@@ -54,26 +50,17 @@ export default function Home() {
                 </p>
             </MarketingHero>
 
-            {/* Reading path — a curriculum, not a funnel. Five reads in order;
-                each step names what the page answers. Rendered FROM
-                READING_PATH_STEPS (@/components/marketing/readingPathSteps) —
-                the same array the footer-adjacent strip on every marketing
-                page reads, so the two tellings can never diverge. */}
+            {/* The full curriculum lives in `ReadingPathStrip`, mounted once in
+                `app/(marketing)/layout.tsx` on every marketing page. The
+                homepage demotes to a single pointer so the three audience
+                tiles below stay the page's sole primary router. */}
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
-                <h2 className="text-heading-h3 text-ink-heading mb-6">Read it in order</h2>
-                <ol className="space-y-3 text-base" data-testid="reading-path">
-                    {READING_PATH_STEPS.map((step, i) => (
-                        <li key={step.href} className="flex gap-4">
-                            <span className="text-ink-muted font-mono text-sm mt-0.5">{i + 1}</span>
-                            <p className="text-ink-body">
-                                <Link href={step.href} className="text-ink-heading font-medium hover:underline">
-                                    {step.label}
-                                </Link>
-                                <span> &mdash; {step.description}</span>
-                            </p>
-                        </li>
-                    ))}
-                </ol>
+                <p className="text-base text-ink-body" data-testid="reading-path">
+                    New here?{" "}
+                    <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
+                        Read the protocol in four steps &rarr;
+                    </Link>
+                </p>
             </section>
 
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-xl">

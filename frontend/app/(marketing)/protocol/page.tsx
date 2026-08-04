@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 export const metadata: Metadata = {
     title: "How it works — Figaro Protocol",
@@ -36,11 +35,17 @@ export default function Protocol() {
                 One rule decides who opens the lockbox: the buyer, and only the buyer. That can sound like an advantage held over the seller. It is not. The buyer is locked at twice the value too, so stalling &mdash; or refusing to close &mdash; costs the buyer exactly as much as it costs anyone else. The buyer is simply the party with the most reason to see the deal finished, made the one who finishes it. No arbitrator weighs the case. No timer releases what is locked on its own. The deal ends when the buyer ends it. And because nothing settles until the buyer closes it, whatever the two sides agreed to is met before that &mdash; a remake, a redelivery, whatever the terms demand &mdash; rather than compensated after the fact. There is no refund button and no unwind; a shortfall is put right first, then the deal closes.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Most real work is not two people. A delivered meal can involve a cook, whoever supplied the ingredients, and a courier. Figaro handles that with the same move, repeated: every contributor posts their own stake, and all of them are linked into one deal. Two separate things are doing that work: the stacked stake is what lets the chain grow to any length &mdash; each new contributor stakes against everything already added ahead of them, not just their own leg &mdash; while the buyer&apos;s single all-or-nothing close is what then holds that whole length together, since every stake in it comes home, or none do. If any single one fails, the whole deal fails and every stake is at risk &mdash; so each person has a direct, stake-backed reason to want everyone else to deliver. No manager hands out the work or inspects it. The shape of the deal does that &mdash; the figure below works it through with a real three-seller chain and exact numbers.
+                Most real work is not two people. A delivered meal can involve a cook, whoever supplied the ingredients, and a courier. Figaro handles that with the same move, repeated: every contributor posts their own stake, and all of them are linked into one deal. Two separate things are doing that work: the stacked stake is what lets the chain grow to any length &mdash; each new contributor stakes against everything already added ahead of them, not just their own leg &mdash; while the buyer&apos;s single all-or-nothing close is what then holds that whole length together, since every stake in it comes home, or none do. If any single one fails, the whole deal fails and every stake is at risk &mdash; so each person has a direct, stake-backed reason to want everyone else to deliver. No manager hands out the work or inspects it. The shape of the deal does that.
             </p>
-            <StackedBondChainFigure className="mb-8" />
+            <p className="text-base text-ink-body leading-relaxed mb-8">
+                A real three-seller chain, worked through with exact numbers, is the figure in the dinner story at{" "}
+                <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">
+                    Local commerce
+                </Link>
+                .
+            </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                And the rare case &mdash; someone who cheats anyway, who burns their own stake out of spite? The stake settles the overwhelming majority of deals long before spite enters the picture; cheating simply is not worth it, and almost no one tries. For the exception, the protocol does one more thing, quietly, the whole way through: it writes down every step. When the work was accepted, when it changed hands, when it arrived &mdash; each is recorded the moment it happens, permanently, where no one can edit it afterward. If a deal ever does reach an arbitrator or a court, the account is already there and cannot be forged. No one has to reconstruct what happened.
+                The rare case &mdash; someone who forfeits out of spite rather than economics &mdash; is walked through there as well; either way, the protocol writes down every step, permanently, the moment it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
                 That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. Everything else Figaro can do &mdash; carrying many kinds of agreement, linking long chains of contributors &mdash; is built on those two facts and changes neither. The hard part was never the machinery. It was making it simple enough that you never have to trust the person on the other side. And because the machinery never changes, everything built on top of it &mdash; every new deal-shape, every reusable composition &mdash; is a public commons that anyone can extend without permission, and that the network pays back when it comes to rely on the work.
@@ -59,7 +64,7 @@ export default function Protocol() {
                     <Link href="/papers" className="text-ink-heading font-medium hover:underline">
                         Papers
                     </Link>
-                    <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
+                    <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy (&ldquo;Foundations of Cryptoeconomic Systems,&rdquo; Working Paper Series 1/2020, WU Vienna), and the papers along each.</span>
                 </li>
                 <li>
                     <Link href="/spec" className="text-ink-heading font-medium hover:underline">

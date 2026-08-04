@@ -28,7 +28,11 @@ export default function Composes() {
                         catalogues the external half.
                     </>
                 }
-            />
+            >
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
+                    This page explains composition. To compose against the kernel, go to <Link href="/builders/composability" className="underline">/builders/composability</Link>.
+                </p>
+            </MarketingHero>
 
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
                 <div className="border-l-2 border-default pl-6 mb-8">

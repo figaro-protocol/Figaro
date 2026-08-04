@@ -3,9 +3,9 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The three entries: Protocol (the substrate), Builders (affordances),
-//   Users (participation via /discover). The logo links home; no "Home"
-//   item here.
+//   The four entries: Protocol (the substrate), Builders (affordances),
+//   Users (participation via /discover), Papers (the research corpus). The
+//   logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
 //   entry MUST be a protocol surface (a role-bound tool, clause family,
@@ -31,6 +31,7 @@ export const NAV_LINKS: NavLink[] = [
     { href: "/protocol", label: "Protocol" },
     { href: "/builders", label: "Builders" },
     { href: "/users", label: "Users" },
+    { href: "/papers", label: "Papers" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The
@@ -75,7 +76,7 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 
 /**
  * The marketing map — the canonical section→pages structure of the `(marketing)`
- * tier, grouped under the three publication doorways (each group's first entry
+ * tier, grouped under the four publication doorways (each group's first entry
  * IS its doorway). ONE source, two renderings: `Footer` lays each group out as a
  * column; `NAV_LINKS_MARKETING_DRAWER` flattens it with section headers. Add a
  * marketing page here and both surfaces carry it.
@@ -87,8 +88,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/protocol", label: "Protocol mechanisms" },
             { href: "/why", label: "Why" },
             { href: "/physics", label: "Physics" },
-            { href: "/cryptoeconomics", label: "Funding" },
-            { href: "/papers", label: "Papers" },
+            { href: "/artifact-rewards", label: "Funding" },
             { href: "/security", label: "Security" },
             { href: "/consequences", label: "Consequences" },
             { href: "/spec", label: "Specifications" },
@@ -120,9 +120,13 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/agents", label: "Agents" },
         ],
     },
+    {
+        section: "Papers",
+        links: [{ href: "/papers", label: "Papers" }],
+    },
 ];
 
-// The marketing mobile drawer. The desktop marketing nav is the three-doorway
+// The marketing mobile drawer. The desktop marketing nav is the four-doorway
 // publication row; on mobile that row was the ONLY way in, leaving every page
 // behind a doorway reachable only by scrolling to the footer. Grouped like
 // `NAV_LINKS_APP_DRAWER` so the whole map is one tap away.

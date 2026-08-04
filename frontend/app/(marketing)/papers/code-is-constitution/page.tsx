@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
     PaperLayout,
     PaperSection,
@@ -60,6 +61,13 @@ export default function CodeIsConstitutionPaper() {
                 </p>
                 <p>
                     The same conclusion was reached from inside the protocol-design community itself. Vlad Zamfir&rsquo;s case against &ldquo;Szabo&rsquo;s law&rdquo; &mdash; the maxim that a blockchain&rsquo;s rules should change only for technical maintenance &mdash; insisted that blockchain governance is, and ought to remain, a social process: a crypto-legal order that pretends otherwise is making a political claim while denying that it is one (Zamfir, 2019). That argument, often read as a rejection of rule-by-code, is better read as the constitutional framing stated from the governance side: code can hold the entrenched layer, but only a community can hold the constituent one.
+                </p>
+                <p>
+                    One clarification governs everything that follows. <em>Constitution</em> is used here in the constitutional-political-economy sense &mdash; the rule-choosing level, an entrenched procedural stratum that fixes how commitments are recognized and what no rule may do &mdash; and not in the sense of an order that enforces anything against anyone. On enforcement the claim of this paper is the modest evidentiary one developed at length in{" "}
+                    <Link href="/papers/on-chain-evidence" className="text-ink-heading hover:underline">On-Chain Evidence, Off-Chain Adjudication</Link>
+                    {" "}and{" "}
+                    <Link href="/papers/coercion-variable" className="text-ink-heading hover:underline">Coercion as a Substrate Variable</Link>
+                    : settlement is on-chain by nature and adjudication off-chain by nature, so what the protocol supplies to law is a record that existing forums already know how to consume, and what it substitutes for is the coercive apparatus&rsquo;s settlement-enforcement function alone, leaving every other function of law where it stood. The constitutional framing below adds a description of <em>which layer of rules</em> such an artifact occupies; it adds no enforcement capacity, and wherever the two registers appear to diverge &mdash; Section 6 returns to the divergence directly &mdash; the evidentiary one states the reality and this one states the shape.
                 </p>
             </PaperSection>
 

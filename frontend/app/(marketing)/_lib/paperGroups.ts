@@ -3,7 +3,8 @@ type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 /**
  * Disciplinary grouping ("registry" was a tier-word homograph; the on-chain registries are the protocol anchors) — Voshmgir & Zargham, "Foundations of Cryptoeconomic
- * Systems" (2024, Figure 1). Eight disciplines, fixed. Each discipline is a
+ * Systems" (Working Paper Series 1/2020, Research Institute for Cryptoeconomics,
+ * WU Vienna, 2020; Figure 1). Eight disciplines, fixed. Each discipline is a
  * stable lens for reading the substrate; the list cannot grow or shrink
  * without departing from the taxonomy.
  *

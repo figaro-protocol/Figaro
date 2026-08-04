@@ -102,7 +102,7 @@ export default function LocalCommercePage() {
                     What you never had to worry about
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Your address was sealed so that only the courier could read it, and the key was thrown away when the deal settled &mdash; no standing middleman keeps a file of where you live. And the whole way through, the protocol quietly wrote down every step &mdash; when the kitchen accepted, when the food changed hands, when it arrived &mdash; each recorded the moment it happened, permanently, where no one can edit it afterward. If a deal ever does go wrong, the account of what happened is already there, and anyone can check it.
+                    Your address was sealed so that only the courier could read it, and the key was thrown away when the deal settled &mdash; no standing middleman keeps a file of where you live. The record of how the evening went &mdash; accepted, handed off, arrived &mdash; is the same permanent one described above: already there if a deal ever does go wrong, and anyone can check it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The scene is dinner, but nothing in it is about food. The same three-sided shape carries a bookshop order, a tailor&apos;s alteration, a plumber&apos;s house call &mdash; any local deal where something is made, carried, and confirmed.

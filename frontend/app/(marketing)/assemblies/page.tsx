@@ -30,11 +30,21 @@ export default function Assemblies() {
                         surface the buyer-facing choice.
                     </>
                 }
-            />
+            >
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
+                    This page explains assemblies. To compose an assembly, go to <Link href="/builders/designer" className="underline">/builders/designer</Link>.
+                </p>
+            </MarketingHero>
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
                     An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. Somebody draws the shape once (a meal with a kitchen, a supplier, and a courier, say), and every seller who fits that shape can offer it without redoing the design work. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="How one is composed.">
+                <p className="text-sm text-ink-body leading-relaxed">
+                    Every assembly carries two mandatory clauses automatically &mdash; capital flow (committed at buy time) and topology. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
                 </p>
             </MarketingSection>
 

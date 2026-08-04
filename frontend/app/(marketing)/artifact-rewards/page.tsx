@@ -63,6 +63,29 @@ export default function ArtifactRewards() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Three capital sources, not one.">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    The 600 million reward above is the largest of three ways work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring &mdash; gets funded, and the only one paid automatically, by the fixed formula above, with no gatekeeper between a contributor and the reward. Two more capital sources sit beside it, funded on a different basis by design.
+                </p>
+                <dl className="space-y-4 text-sm">
+                    <div className="border-l-2 border-default pl-4">
+                        <dt className="text-base font-semibold text-ink-heading">DAO treasury (300M)</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">
+                            30% of supply, minted to the DAO wallet at genesis with no vesting (the DAO is not yet instantiated). Where the 600M pays out by formula, the 300M is the human-judgment layer by design: the DAO funds public goods by choosing to &mdash; paying a third party, procuring through the protocol, standing up a program &mdash; from its own treasury, never through a market. There is no quadratic-funding round and no crowd-matching mechanism; the discretion is the point.
+                        </dd>
+                    </div>
+                    <div className="border-l-2 border-default pl-4">
+                        <dt className="text-base font-semibold text-ink-heading">Direct contributions</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">
+                            Any wallet can send assets to a group&apos;s published address or to the DAO wallet, in the open. On-chain visibility preserves the funding graph &mdash; who paid whom is as legible as who traded with whom.
+                        </dd>
+                    </div>
+                </dl>
+                <p className="text-sm text-ink-muted leading-relaxed mt-4">
+                    Who organizes around this funding, and how: <Link href="/working-groups" className="underline">Working Groups</Link>.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="More for builders" bottomPad="wide">
                 <ul className="space-y-3 text-base">
                     <li>

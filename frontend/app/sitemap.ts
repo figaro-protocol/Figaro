@@ -37,9 +37,10 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/protocol", changeFrequency: "weekly", priority: 0.9 },
     { path: "/why", changeFrequency: "weekly", priority: 0.9 },
     { path: "/physics", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/cryptoeconomics", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/working-groups", changeFrequency: "weekly", priority: 0.9 },
     { path: "/spec", changeFrequency: "weekly", priority: 0.9 },
     { path: "/security", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/status", changeFrequency: "weekly", priority: 0.7 },
     { path: "/consequences", changeFrequency: "monthly", priority: 0.7 },
     { path: "/users", changeFrequency: "weekly", priority: 0.9 },
     { path: "/data", changeFrequency: "monthly", priority: 0.8 },
@@ -60,9 +61,9 @@ const PUBLIC_ROUTES: Entry[] = [
 ];
 
 /**
- * Paper URLs are DERIVED from `PAPER_GROUPS` — the same source the
- * `/papers` and `/cryptoeconomics` listings render from — never a hand list,
- * so a paper added to a discipline is crawlable without touching this file.
+ * Paper URLs are DERIVED from `PAPER_GROUPS` — the same source the `/papers`
+ * listing renders from — never a hand list, so a paper added to a discipline
+ * is crawlable without touching this file.
  *
  * A `PaperRef.href` is either a `/papers/<slug>` page route or a path to a
  * PDF for a paper still authored in LaTeX; only the page routes are emitted

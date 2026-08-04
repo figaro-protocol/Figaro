@@ -353,7 +353,7 @@ function attestViaResolver(
                         <Link href="/papers" className="text-ink-heading font-medium hover:underline">
                             Papers
                         </Link>
-                        <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
+                        <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy (&ldquo;Foundations of Cryptoeconomic Systems,&rdquo; Working Paper Series 1/2020, WU Vienna), and the papers along each.</span>
                     </li>
                     <li>
                         <Link href="/audit" className="text-ink-heading font-medium hover:underline">

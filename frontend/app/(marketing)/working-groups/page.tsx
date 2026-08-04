@@ -4,9 +4,9 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
-    title: "Funding & Working Groups — Figaro Protocol",
+    title: "Working Groups — Figaro Protocol",
     description:
-        "How work on the Figaro substrate organizes and pays for itself: a 600M retroactive usage-paid pool, a 300M DAO-discretionary treasury, direct contributions, and the composability working groups that build above the kernel.",
+        "How work on Figaro organizes itself: composability working groups that self-form around builder outputs — assemblies and clauses — rather than a roster of teams, funded by the protocol's open-world registries and RPGF.",
 };
 
 interface CompositionGroup {
@@ -41,14 +41,14 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
     },
 ];
 
-export default function Cryptoeconomics() {
+export default function WorkingGroups() {
     return (
         <>
             <MarketingHero
-                title="Nobody assigns this work; the substrate pays for what gets used."
+                title="Nobody assigns this work."
                 lead={
                     <>
-                        Work on Figaro &mdash; research, review, verification, assembly design, clause authoring &mdash; funds itself three ways, and organizes around builder outputs rather than a roster of teams: because the substrate is open-world &mdash; permissionless registries, and RPGF that rewards a contribution by how much it helps the network evolve &mdash; the working groups below self-form, build, and fund themselves without anyone&apos;s leave. The eight cryptoeconomic disciplines that frame the substrate (Voshmgir &amp; Zargham) and the papers seeding each one are catalogued on <Link href="/papers" className="underline">Papers</Link>; this page covers the funding and the working groups.
+                        Work on Figaro funds itself three ways &mdash; a 600M usage-paid reward pool, a 300M DAO-discretionary treasury, and direct contributions (<Link href="/artifact-rewards" className="underline">the mechanics</Link>) &mdash; and the people doing it organize themselves around builder outputs, assemblies and clauses, rather than a roster of teams. Take a clause for measuring greenhouse-gas emissions in a supply chain: the spec-and-conformance work draws from Computer Science and Cryptography, the content definition from Operations Research or Industrial Engineering &mdash; two people who have never met, pulled together by what the artifact needed rather than by an org chart. They register the clause; sellers start reaching for it in real settled trade; RPGF pays them for what it carries, automatically, once three different sellers have used it. That is a working group: not appointed, not headcount-planned, formed by the shape of the artifact.
                     </>
                 }
             />
@@ -86,34 +86,6 @@ export default function Cryptoeconomics() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Grants &amp; capital sources">
-                <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring, documentation &mdash; is funded three ways. The 600M retroactive pool pays authors automatically for the trade their work carries, with no gatekeeper between a contributor and the reward (<Link href="/artifact-rewards" className="underline">How clause authors and assembly designers get paid</Link> walks through it). The DAO spends its own treasury at its discretion. And anyone can fund anyone directly, in the open.
-                </p>
-                <dl className="space-y-4 text-sm">
-                    <div className="border-l-2 border-default pl-4">
-                        <dt className="text-base font-semibold text-ink-heading">
-                            Retroactive reward (600M)
-                        </dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">
-                            Sixty percent of all florins &mdash; the largest allocation by far &mdash; pays clause authors and assembly designers for the real, settled trade their work carried, by a fixed formula with no application and no gatekeeper. Full mechanism: <Link href="/artifact-rewards" className="underline">How clause authors and assembly designers get paid</Link>.
-                        </dd>
-                    </div>
-                    <div className="border-l-2 border-default pl-4">
-                        <dt className="text-base font-semibold text-ink-heading">DAO treasury (300M)</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">
-                            30% of supply, minted to the DAO wallet at genesis with no vesting (the DAO is not yet instantiated). Where the 600M pays out by formula, the 300M is the human-judgment layer by design: the DAO funds public goods by choosing to &mdash; paying a third party, procuring through the protocol, standing up a program &mdash; from its own treasury, never through a market. There is no quadratic-funding round and no crowd-matching mechanism; the discretion is the point.
-                        </dd>
-                    </div>
-                    <div className="border-l-2 border-default pl-4">
-                        <dt className="text-base font-semibold text-ink-heading">Direct contributions</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">
-                            Any wallet can send assets to a group&apos;s published address or to the DAO wallet. On-chain visibility preserves the funding graph.
-                        </dd>
-                    </div>
-                </dl>
-            </MarketingSection>
-
             <MarketingSection title="Local &amp; international">
                 <p className="text-base text-ink-body leading-relaxed">
                     Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against <code>frontend/app/(marketing)/_lib/paperGroups.ts</code>. Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
@@ -131,6 +103,12 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="More on the protocol" bottomPad="wide">
                 <ul className="space-y-3 text-base">
+                    <li>
+                        <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">
+                            Artifact rewards
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the three capital sources and the full 600M reward mechanism: the schedule, the three-seller floor, the live-deposit condition.</span>
+                    </li>
                     <li>
                         <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
                             Protocol

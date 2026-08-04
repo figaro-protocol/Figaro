@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MARKETING_MAP } from "@/components/shared/navLinks";
+import { MARKETING_MAP, NAV_LINKS_APP_PRIMARY } from "@/components/shared/navLinks";
 
 const COL_LINK_CLS =
     "block text-sm text-ink-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
@@ -8,12 +8,17 @@ const COL_LINK_CLS =
  * The footer renders `MARKETING_MAP` one column per section — the same map the
  * mobile drawer flattens (`NAV_LINKS_MARKETING_DRAWER`). The section names are
  * structural here, not printed: each column already opens with its doorway link.
+ *
+ * The trailing "App" column MAPS `NAV_LINKS_APP_PRIMARY` — never a hand-typed
+ * list (see that array's own comment on why a hand-copy drifts). The column is
+ * uniform across every marketing tier: it does not mount a wallet provider, and
+ * each target page gates its own connected-state affordances.
  */
 export function Footer() {
     return (
         <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-16">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
                     {MARKETING_MAP.map((group) => (
                         <div key={group.section} className="space-y-2">
                             {group.links.map((link) => (
@@ -23,6 +28,13 @@ export function Footer() {
                             ))}
                         </div>
                     ))}
+                    <div className="space-y-2">
+                        {NAV_LINKS_APP_PRIMARY.map((link) => (
+                            <Link key={link.href} href={link.href} className={COL_LINK_CLS}>
+                                {link.label}
+                            </Link>
+                        ))}
+                    </div>
                 </div>
                 <div className="mt-12 pt-8 border-t border-default flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex flex-wrap gap-x-5 gap-y-1">
@@ -47,6 +59,12 @@ export function Footer() {
                             className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                         >
                             Security
+                        </Link>
+                        <Link
+                            href="/status"
+                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
+                        >
+                            Status
                         </Link>
                     </div>
                     <div className="space-y-1 sm:text-right">
