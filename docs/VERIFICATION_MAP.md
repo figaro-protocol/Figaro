@@ -10,7 +10,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
 - **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states)
-- **Halmos** — what is symbolically proved at the bytecode level (14 properties across 2 harnesses, z3 solver)
+- **Halmos** — what is symbolically proved at the bytecode level (32 properties across 4 harness files, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
 
@@ -202,7 +202,7 @@ This section tracks features that are not protocol invariants but are significan
 
 ## 9) Halmos symbolic testing — current posture
 
-### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol`
+### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol` + `test/protocol/usage/HalmosUsageCounter.t.sol` + `test/protocol/registries/HalmosArtifactRegistries.t.sol`
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),
@@ -213,7 +213,7 @@ This closes the verification gap between TLA+ (which verifies the abstract model
 and Foundry/Echidna (which test concrete/random scenarios). Halmos proves the
 actual compiled bytecode satisfies the invariants.
 
-### Properties proved (14/14)
+### Properties proved (32/32)
 
 **HalmosFigaroCore (7 properties)**
 
@@ -229,7 +229,29 @@ actual compiled bytecode satisfies the invariants.
 
 **HalmosMembersRegistry (7 properties)** — the stake-machine proofs behind invariant E-5; the per-property map is the E-5 row in §5.
 
-**Total: 14/14 proved (FigaroCore 7 + MembersRegistry 7), 0 failed. Typical wall time ~4 minutes.**
+**HalmosUsageCounter (6 properties, 2026-08-03)** — the accrual arithmetic on top of
+the E-5 stake gate (which is NOT re-proved here): direct-path accrual monotonicity;
+the batch write REPLACES cumulative `(c,d)`, never adds; `scoreOf == accrualOf.score
++ batchAccrualOf.score` (the only meeting point of the two settlement universes);
+period bucketing (every timestamp lands in exactly its window; a wrong-period claim
+is rejected and the other period's slot is untouched); cross-artifact isolation.
+Replace-not-add and score-composition are MUTATION-CHECKED. Enters via a test-only
+`UsageCounterHarness` exposing `_accrue` (public entry points require ECDSA + merkle
+proofs unreachable to the solver — the same doctrine as the ECDSA workaround in
+HalmosMembersRegistry).
+
+**HalmosClauseRegistry + HalmosAssemblyRegistry (6 properties each, one file:
+`HalmosArtifactRegistries.t.sol`, 2026-08-03)** — the author-side stake machines
+`RpgfMinter._isAuthor` reads at claim: deposit solvency under arbitrary
+two-registrar interleavings; live deposits withdrawable in full; first-write-wins
+permanence (no second registration ever succeeds, for ANY caller); one-shot
+withdrawal; eligibility ends at withdraw with nothing restoring it; cross-key
+isolation. Solvency and first-write-wins MUTATION-CHECKED on both contracts
+(4/4 mutations produced counterexamples).
+
+**Total: 32/32 proved (FigaroCore 7 + MembersRegistry 7 + UsageCounter 6 +
+ClauseRegistry 6 + AssemblyRegistry 6), 0 failed. Typical wall time ~1–2 minutes
+(2026-08-04 full re-run: ~63s solver total across the six passes).**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
@@ -309,18 +331,40 @@ Foundry-covered companion:
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
+**RpgfMinter (8 declared rules — authored 2026-08-03; deps summarized via ghosts/wildcard dispatch)**
+
+| CVL rule | Maps to | Type |
+|---|---|---|
+| `mintedNeverExceedsPeriodBudget` | E-6 (600M budget) | Inductive conservation — the tranche-overdraw bug class (`f9a6d37e`) |
+| `noDoubleClaimPerWalletPerPeriod` | E-5/E-6 | State-machine guard |
+| `cannotClaimWhilePeriodOpen` | E-6 | Period gating |
+| `duplicateArtifactReverts` | E-6 | Input-hygiene guard (the historical exploit path) |
+| `ineligibleArtifactCannotBePaid` | E-5 | The live-stake `_isAuthor` gate — a withdrawn deposit pays nothing |
+| `mintedMonotonic` | E-6 | Parametric (never decreases) |
+| `claimableRejectsDuplicatesToo` | — | View/state parity |
+| `claimableReturnsZeroForAlreadyClaimedWallet` | — | View/state parity |
+
+Mutation-checked 2026-08-03 (conservation, double-claim, eligibility): each rule
+FAILED against a deliberately broken contract, then passed clean after revert —
+load-bearing, not vacuous.
+
 ### Status
 
-29 declared rules across 5 specs (FigaroCore 8 + FlorinToken 6 +
-AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4).
-**All green**. AC re-dispatched 2026-04-23 after the agreement-receipt ABI change.
+37 declared rules across 6 specs (FigaroCore 8 + FlorinToken 6 +
+AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4 +
+RpgfMinter 8).
+**All green** — full 6-spec suite re-run 2026-08-04 with `--wait_for_results all`
+(zero rule violations, zero sanity failures across every spec), after the 08-03
+session's verdicts were lost to a machine crash.
 
 | Spec | Report URL |
 |---|---|
-| FigaroCore | https://prover.certora.com/output/9512759/dc9fa6e2d9dd4361845214222bd70258 (2026-04-21) |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/dd5e5e4dde634419967d3be4958a0eae (2026-04-23, commitment-arg ABI + receipt binding) |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, FigaroCore token-flow universal proof) |
-| FlorinToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
+| FigaroCore | https://prover.certora.com/output/9512759/4fecd265ad4f426bae0243d5038a79c9 (2026-08-04) |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/88c56429629f4bb889b40bc99ca5acab (2026-08-04) |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/3130c848a9e043e79f8a8565fc55fab8 (2026-08-04) |
+| FlorinToken | https://prover.certora.com/output/9512759/008234514f674ae4a9056c2b4dbb5124 (2026-08-04) |
+| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/be3dad10f296412eb3e640a5bdeb56e2 (2026-08-04, usage-bridge `settleBatch` signature) |
+| RpgfMinter | https://prover.certora.com/output/9512759/2a202438b7ec4e4aaa22154550f30f73 (2026-08-04, first verdict) |
 
 ```bash
 # Install
@@ -361,8 +405,8 @@ owns the harness inventory.
 | Layer | Census | What it covers |
 |---|---|---|
 | **TLA+ model checking** | 2 models, 15 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
-| **Halmos symbolic testing** | 2 harnesses, 14 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. |
-| **Certora formal verification** | 5 specs, 29 declared rules (8 + 4 + 7 + 6 + 4) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. |
+| **Halmos symbolic testing** | 4 harness files, 32 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two settlement universes, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the author-side stake machines RPGF eligibility reads. |
+| **Certora formal verification** | 6 specs, 37 declared rules (8 + 4 + 7 + 6 + 4 + 8) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
 | **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
 | **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |
@@ -379,7 +423,7 @@ owns the harness inventory.
 forge test --via-ir
 ```
 
-### Halmos (14 symbolic proofs across 2 harnesses)
+### Halmos (32 symbolic proofs across 4 harness files)
 
 ```bash
 ./scripts/test-halmos.sh
@@ -387,7 +431,7 @@ forge test --via-ir
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-### Certora (29 declared rules across 5 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps — requires API key)
+### Certora (37 declared rules across 6 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter — requires API key)
 
 ```bash
 export CERTORAKEY=<key from certora.com/signup>

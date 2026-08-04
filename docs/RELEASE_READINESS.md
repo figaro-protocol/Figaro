@@ -167,7 +167,13 @@ Required output:
    adjacent-pair address prediction is `require`-asserted in both scripts; the Task-3
    ratified registry values are hardcoded literals (correct-by-construction, no env lever).
    Process residuals folded into the smoke-test item below.
-2. **Resolve the wagmi-2 advisory gate (blocking — ten highs do not deploy to a public testnet).** The 39 frontend prod advisories sit in wagmi 2's bundled connector sub-tree; the only npm fix is the wagmi@3 major, and RainbowKit peers `wagmi ^2.9.0`. Re-check RainbowKit wagmi-3 support and migrate; if still absent, go injected-only (drop RainbowKit/WalletConnect). Either path lands before the smoke test, since it changes the frontend under test. This is a decision point with a self-owned fallback, never a wait on RainbowKit.
+2. ~~Resolve the wagmi-2 advisory gate~~ — **RESOLVED 2026-08-03**: RainbowKit still has no
+   wagmi-3 support (rainbow-me/rainbowkit#2575 open), so the ruled fallback landed — wagmi 3,
+   RainbowKit/WalletConnect removed, injected connector only (one `ConnectWallet` +
+   `useConnectInjected`; extension wallets via EIP-6963 unaffected; WalletConnect-only mobile
+   wallets no longer connect). `npm audit --omit=dev`: 39 (11 high) → 3, all in Next itself
+   (static-export-inapplicable per the Pre-Mainnet note; build-host hygiene bump advisable).
+   Full verification in the migration commit.
 3. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a
    public testnet). Rehearsal checks from the 2026-08-03 deploy-script audit: (a) neither
    script guards `block.chainid`, so verify the `--rpc-url` target by hand immediately before
@@ -256,7 +262,7 @@ Expected output:
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-Expected output: `✅ All 14 Halmos properties proved (7 FigaroCore + 7 MembersRegistry).` (exit code 0)
+Expected output: `✅ All 32 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry).` (exit code 0)
 
 ### Certora Formal Verification
 
@@ -265,8 +271,8 @@ export CERTORAKEY=<key>
 ./scripts/test-certora.sh
 ```
 
-Expected output: all 5 specs green (FigaroCore, AttestationCoordinator,
-TokenOpsVerification, FlorinToken, BatchVerifierTokenOps). `Failed on rule_not_vacuous` alone is the
+Expected output: all 6 specs green (FigaroCore, AttestationCoordinator,
+TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter). `Failed on rule_not_vacuous` alone is the
 vacuity heuristic, not a rule failure — the results table is the authority.
 
 ### Echidna Fuzzing
@@ -475,6 +481,11 @@ Any Solidity edit after the freeze commit must be:
 1. Explicitly scoped to a specific finding or accepted-risk item
 2. Reviewed by the original auditor or a qualified substitute
 3. Recorded in the backlog with finding reference and outcome
+4. Followed by a full formal-suite re-run (Certora + Halmos), not just Foundry —
+   a signature change silently orphans any CVL spec that calls it, and the break
+   is invisible until the gate actually runs (2026-08-03 instance: the 07-30
+   usage-bridge amendment added `settleBatch`'s `BatchUsageData` parameter and
+   `BatchVerifierTokenOps.spec` stopped type-checking, unnoticed for four days)
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require
 re-audit unless they expose a new on-chain attack surface.

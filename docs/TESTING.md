@@ -51,12 +51,14 @@ canonical Permit2 deployment and that a substituted swap route is rejected by re
 Permit2's own signature check — the one claim the mocked suite proves only against
 our own digest reconstruction (`MockWitnessPermit2`).
 
-## Halmos (`test/`) — 2 harnesses, 14 properties
+## Halmos (`test/`) — 4 harness files, 32 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the RPGF Sybil bound assumes: solvency, no deposit recycling, de-surfacing at request, the counter reads that gate |
+| `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two settlement universes), period bucketing ×2, cross-artifact isolation. Mutation-checked (replace-not-add, score composition) 2026-08-03. |
+| `HalmosArtifactRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary two-registrar interleavings, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked (solvency + first-write-wins, both contracts, 4/4 counterexamples) 2026-08-03. |
 
 Run with `scripts/test-halmos.sh` (three passes). **Halmos does not model
 `expectRevert`** — assert on a low-level call's own success flag instead. It
@@ -70,7 +72,7 @@ properties are mutation-checked: a deliberate recycling bug in
 any new property whose failure mode matters — "it proved" is not evidence that
 it *could* fail.
 
-## Certora (`certora/`) — 5 specs
+## Certora (`certora/`) — 6 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -78,7 +80,8 @@ it *could* fail.
 | `AttestationCoordinator.spec` | 4 | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
-| `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model; cloud run green 2026-07-16. |
+| `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model 2026-07-16; realigned again 2026-08-03 to the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
+| `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-artifact rejection, live-stake eligibility (`_isAuthor` author-of-record gate), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked (conservation, double-claim, eligibility) 2026-08-03. |
 
 Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 

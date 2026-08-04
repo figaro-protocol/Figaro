@@ -1,8 +1,10 @@
 #!/bin/bash
 # test-halmos.sh — Reproducible Halmos symbolic proofs for Figaro.
 #
-# Halmos symbolically executes the HalmosFigaroCore harness against the Z3
-# SMT solver and proves 7 properties hold for ALL possible inputs:
+# Halmos symbolically executes the harnesses against the Z3 SMT solver and
+# proves 32 properties hold for ALL possible inputs: 7 HalmosFigaroCore +
+# 7 HalmosMembersRegistry + 6 HalmosUsageCounter + 6 HalmosClauseRegistry +
+# 6 HalmosAssemblyRegistry.
 #
 #   HalmosFigaroCore (7 properties):
 #     check_tokenConservation_afterCommit
@@ -37,7 +39,7 @@
 #   HALMOS_SOLVER_TIMEOUT_MS=900000 ./scripts/test-halmos.sh   # raise per-assertion timeout (ms)
 #
 # Exit codes:
-#   0  — all 7 properties proved
+#   0  — all 32 properties proved
 #   >0 — at least one property failed or the environment is misconfigured
 
 set -e
@@ -73,7 +75,7 @@ CORE_ARGS=(
 
 # ── Pass 1: six fast properties, batched ───────────────────────────────────
 
-echo "▶ Pass 1/3 — 6 batched FigaroCore properties (fast)"
+echo "▶ Pass 1/6 — 6 batched FigaroCore properties (fast)"
 echo ""
 
 FOUNDRY_PROFILE=halmos halmos \
@@ -82,7 +84,7 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 2/3 — check_resolutionPayouts (run in isolation)"
+echo "▶ Pass 2/6 — check_resolutionPayouts (run in isolation)"
 echo ""
 
 # ── Pass 2: the one heavy property, in a fresh halmos process ──────────────
@@ -93,7 +95,7 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 3/3 — MembersRegistry: the state machine the RPGF Sybil bound rests on"
+echo "▶ Pass 3/6 — MembersRegistry: the state machine the RPGF Sybil bound rests on"
 echo ""
 
 # ── Pass 3: the stake mechanics the economic bound assumes ────────────────
@@ -112,4 +114,50 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "✅ All 14 Halmos properties proved (7 FigaroCore + 7 MembersRegistry)."
+echo "▶ Pass 4/6 — UsageCounter: the accrual ARITHMETIC on top of the (already proved) stake gate"
+echo ""
+
+# ── Pass 4: the two-settlement-universes accounting ────────────────────────
+#
+# Direct-path accrual never regresses; the batch write REPLACES cumulative
+# (c,d), never adds; scoreOf == accrualOf.score + batchAccrualOf.score (the
+# ONLY place the two settlement universes meet); every timestamp buckets into
+# exactly its period window; artifact A's record never touches artifact B.
+# The stake GATE itself is Pass 3's job (E-5) — not re-proved here.
+
+FOUNDRY_PROFILE=halmos halmos \
+    --contract HalmosUsageCounter \
+    --solver z3 \
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
+    "$@"
+
+echo ""
+echo "▶ Pass 5/6 — ClauseRegistry: the stake machine RPGF author eligibility reads"
+echo ""
+
+# ── Passes 5 + 6: the artifact-registry stake machines ─────────────────────
+#
+# MembersRegistry's siblings minus the cooldown: solvency under arbitrary
+# interleavings, first-write-wins permanence, one-shot withdrawal, eligibility
+# ends at withdraw with nothing restoring it, cross-key isolation. These
+# deposits are held-at-claim for RpgfMinter._isAuthor, so their state machines
+# carry the author half of the Sybil bound.
+
+FOUNDRY_PROFILE=halmos halmos \
+    --contract HalmosClauseRegistry \
+    --solver z3 \
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
+    "$@"
+
+echo ""
+echo "▶ Pass 6/6 — AssemblyRegistry: the same stake machine, compositionHash-keyed"
+echo ""
+
+FOUNDRY_PROFILE=halmos halmos \
+    --contract HalmosAssemblyRegistry \
+    --solver z3 \
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
+    "$@"
+
+echo ""
+echo "✅ All 32 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry)."

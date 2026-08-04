@@ -94,6 +94,17 @@ methods {
     function FigaroBatchVerifier._hashAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
+
+    // The usage-bridge amendment's additions (2026-07-30), same idiom as the
+    // three hash summaries above. `_hashUsage`'s assembly-packed hashing of a
+    // nested-dynamic-array struct defeats the prover's pointer analysis (the
+    // 2026-08-03 run burned the 2h global timeout inside it before reaching
+    // any rule); its result only gates settlement against the proof's public
+    // values — revert-only power, no token movement — so NONDET is sound for
+    // balance rules. The counter's accrual call is a reward-tier write behind
+    // try/catch, no token movement either way.
+    function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
+    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchAccrual[], address[]) external => NONDET;
 }
 
 function summarizeSafeTransfer(address to, uint256 value) {
@@ -121,7 +132,8 @@ definition MAX_VALUE() returns uint256 = 2^200;
 
 function validSinglePositionBatch(
     FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents
+    FigaroBatchVerifier.BatchEventData batchEvents,
+    FigaroBatchVerifier.BatchUsageData usage
 ) returns bool {
     return
         positions.length == 1 &&
@@ -132,7 +144,12 @@ function validSinglePositionBatch(
         // Collapse the event loops to zero iterations — we're not proving
         // any event-re-emission or anchor-check property here.
         batchEvents.attestations.length == 0 &&
-        batchEvents.specBindings.length == 0;
+        batchEvents.specBindings.length == 0 &&
+        // Same strategy for the usage bridge (2026-07-30 amendment): the
+        // accrual loops are not token-flow paths — the counter call is
+        // try/catch decoupled from settlement — so collapse them too.
+        usage.accruals.length == 0 &&
+        usage.sellers.length == 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -143,15 +160,16 @@ rule singlePositionUserDelta(
     bytes proof,
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents
+    FigaroBatchVerifier.BatchEventData batchEvents,
+    FigaroBatchVerifier.BatchUsageData usage
 ) {
-    require validSinglePositionBatch(positions, batchEvents);
+    require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
 
     env e;
 
     mathint before = balance[p.user];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
     bool reverted = lastReverted;
     mathint after_ = balance[p.user];
 
@@ -168,15 +186,16 @@ rule singlePositionContractDelta(
     bytes proof,
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents
+    FigaroBatchVerifier.BatchEventData batchEvents,
+    FigaroBatchVerifier.BatchUsageData usage
 ) {
-    require validSinglePositionBatch(positions, batchEvents);
+    require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
 
     env e;
 
     mathint before = balance[currentContract];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
     bool reverted = lastReverted;
     mathint after_ = balance[currentContract];
 
@@ -194,16 +213,17 @@ rule singlePositionAllowanceDrainSafety(
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
+    FigaroBatchVerifier.BatchUsageData usage,
     address a
 ) {
-    require validSinglePositionBatch(positions, batchEvents);
+    require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
     require a != p.user && a != currentContract;
 
     env e;
 
     mathint before = balance[a];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
     bool reverted = lastReverted;
     mathint after_ = balance[a];
 
@@ -219,16 +239,17 @@ rule singlePositionConservation(
     bytes proof,
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents
+    FigaroBatchVerifier.BatchEventData batchEvents,
+    FigaroBatchVerifier.BatchUsageData usage
 ) {
-    require validSinglePositionBatch(positions, batchEvents);
+    require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
     require p.user != currentContract;
 
     env e;
 
     mathint totalBefore = balance[p.user] + balance[currentContract];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
     bool reverted = lastReverted;
     mathint totalAfter = balance[p.user] + balance[currentContract];
 
