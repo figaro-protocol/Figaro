@@ -26,7 +26,7 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    A straight fact before anything else: the network is <Link href="/status" className="hover:underline">pre-launch</Link>. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
+                    The network is <Link href="/status" className="hover:underline">pre-launch</Link>. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Say dinner costs thirty tokens. To buy it, you lock sixty &mdash; the thirty you owe, plus thirty of your own as a stake. The kitchen locks sixty too, all of it stake. Confirm the meal arrived, and both stakes come home while your thirty settles as payment. Walk away instead, and your own locked stake never comes home &mdash; it stays in the box for good, benefiting no one.
@@ -41,7 +41,7 @@ export default function Home() {
                     Nobody runs it. There is no company behind it and no account that can be closed &mdash; shared infrastructure, the way the internet is. The TCP/IP of trade: like email, anyone can build an app on it, and no one can shut it down.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-5">
-                    And it is built to grow. The deal-shapes, the terms, the ready-made compositions are a public commons: anyone can extend them without asking permission, and the network pays back the people whose work it comes to rely on. Figaro is a seed that compounds, not a finished product.
+                    It is built to grow. The deal-shapes, the terms, the ready-made compositions are a public commons: anyone can extend them without asking permission, and the network pays back the people whose work it comes to rely on. Figaro is a seed that compounds, not a finished product.
                 </p>
                 <p className="text-sm text-ink-muted italic mt-6">
                     <Link href="/protocol" className="hover:underline">

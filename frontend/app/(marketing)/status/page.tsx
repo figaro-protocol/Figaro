@@ -151,10 +151,9 @@ export default function Status() {
                 </div>
                 <div className="border-l-2 border-default pl-6 my-3 space-y-1">
                     <p className="text-sm text-ink-body leading-relaxed">
-                        &ldquo;A straight fact before anything else: the network is
-                        pre-launch. There are no live sellers on it yet &mdash; what
-                        follows describes how a deal works, not a marketplace you can
-                        order from tonight.&rdquo;
+                        &ldquo;The network is pre-launch. There are no live sellers on
+                        it yet &mdash; what follows describes how a deal works, not a
+                        marketplace you can order from tonight.&rdquo;
                     </p>
                     <p className="text-xs text-ink-faint">
                         &mdash; stated at <Link href="/" className="hover:underline">/</Link>
@@ -162,9 +161,8 @@ export default function Status() {
                 </div>
                 <div className="border-l-2 border-default pl-6 my-3 space-y-1">
                     <p className="text-sm text-ink-body leading-relaxed">
-                        &ldquo;One note before the mechanism: the network is pre-launch,
-                        so what follows describes how a deal works, not a marketplace
-                        running today.&rdquo;
+                        &ldquo;The network is pre-launch: what follows describes how a
+                        deal works, not a marketplace running today.&rdquo;
                     </p>
                     <p className="text-xs text-ink-faint">
                         &mdash; stated at <Link href="/protocol" className="hover:underline">/protocol</Link>
