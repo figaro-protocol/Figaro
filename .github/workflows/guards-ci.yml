@@ -5,8 +5,8 @@ name: Guards CI
 # clauses/, scripts/, docs/, certora/, formal/), and lint-staged only ever sees a
 # commit's touched files — so a guard added or tightened after a file last
 # changed never re-inspects it. This job re-certifies the whole tree on every
-# push/PR. (Replaces the deleted prover-ci.yml, whose prover/ workspace was
-# removed in the proof-apparatus teardown.)
+# push/PR. (prover-ci.yml exists again — restored 2026-08-04 after the
+# witness-based prover rebuild; it covers the SP1-free prover crates.)
 
 on:
     push:

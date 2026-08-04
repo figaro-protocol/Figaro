@@ -183,4 +183,4 @@ Core theory + design:
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The MIT license covers the code only — see [TRADEMARK.md](TRADEMARK.md) for the "Figaro" name and branding.

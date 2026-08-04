@@ -80,3 +80,4 @@ runs = 256
 # Set ETHERSCAN_API_KEY env var or use --etherscan-api-key flag.
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.etherscan.io/api" }
+mainnet = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/api" }

@@ -1,0 +1,80 @@
+name: Prover CI
+
+# Runs `cargo test` for the prover workspace (see prover/Cargo.toml).
+#
+# Scope: only the two crates that build and test WITHOUT the SP1 toolchain —
+# `figaro-clause` (prover/clause) and `figaro-kernel` (prover/lib). The other
+# three workspace members — `figaro-prover` (prover/program, the SP1 guest),
+# `figaro-prove-test` (prover/script), and `figaro-sequencer`
+# (prover/sequencer) — all pull in `sp1-build`/`sp1-zkvm`/`sp1-sdk` and their
+# `build.rs` calls `sp1_build::build_program`, which needs `cargo prove` (the
+# SP1 toolchain) to cross-compile the guest ELF to RISC-V. Installing that
+# toolchain and rebuilding the guest on every push/PR is exactly the cost
+# `.github/workflows/sequencer-release.yml` already pays, deliberately, only
+# at tag time (see that workflow's "Install SP1" step) — mirror that pattern
+# if/when this job needs to grow into the SP1-dependent crates rather than
+# installing the SP1 toolchain here too.
+#
+# `figaro-clause` and `figaro-kernel` have no build.rs and no sp1-* deps
+# (figaro-kernel depends on figaro-clause, alloy-primitives, k256 — see
+# prover/lib/Cargo.toml and prover/clause/Cargo.toml), so `cargo test` on
+# just those two exercises the Layer-B clause-validation mirror without the
+# guest-program toolchain tax.
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "prover/**"
+            - ".github/workflows/prover-ci.yml"
+    pull_request:
+        branches: [main]
+        paths:
+            - "prover/**"
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        name: cargo test (figaro-clause, figaro-kernel)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            # Single source of truth, same read as sequencer-release.yml's
+            # "Read pinned Rust toolchain" step — prover/rust-toolchain.toml
+            # is pinned to the host toolchain the guest ELF (and therefore
+            # the SP1 verification key) was built against.
+            - name: Read pinned Rust toolchain
+              id: toolchain
+              run: |
+                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
+                  if [ -z "$RUST_TOOLCHAIN" ]; then
+                      echo "could not read channel from prover/rust-toolchain.toml"
+                      exit 1
+                  fi
+                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+                  echo "pinned Rust toolchain: $RUST_TOOLCHAIN"
+
+            - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
+              run: |
+                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+                  rustup default "$RUST_TOOLCHAIN"
+                  rustc --version
+
+            - name: Cache cargo registry + target
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      prover/target
+                  key: ${{ runner.os }}-prover-cargo-${{ hashFiles('prover/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-prover-cargo-
+
+            - name: cargo test (figaro-clause, figaro-kernel)
+              working-directory: ./prover
+              run: cargo test --locked -p figaro-clause -p figaro-kernel

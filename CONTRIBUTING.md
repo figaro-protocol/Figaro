@@ -128,6 +128,15 @@ They are the public counterpart to the operator-private subagents above. See `ec
 - New operator-private subagents go in `.claude/agents/<name>.md`; new public ecosystem agents go in `ecosystem-agents/<name>.md`. Both are prompts with frontmatter (`name`, `description`, `tools`, `model`); read-only agents declare `tools: Read, Grep, Glob, Bash` to make the constraint explicit.
 - Agent prompts must cite canonical sources (papers, `docs/`, `CLAUDE.md`) — not paraphrase. Drift between an agent's rules and the publications is a bug.
 
+## Maintainership
+
+Figaro has a single maintainer (`@adaliana` — see `.github/CODEOWNERS`). Decisions
+on scope, architecture, and what merges are maintainer rulings, recorded in-repo
+(commit messages, `CLAUDE.md`, `docs/`) rather than voted on. There is no core-team
+process, no governance body, and no maintainer roadmap beyond what's committed.
+External contributions are welcome via PR per this document — open one, and expect
+a review from the maintainer, not a committee.
+
 ## Documentation discipline
 
 Per repository policy, when a code change makes an existing doc statement stale, update the affected docs in the same change. Key files to keep in sync include:
@@ -154,6 +163,6 @@ When in doubt, update or add a short note in `README.md` describing new scripts,
 
 ## Questions
 
-If you're unsure where something should live, open a PR with a short note and request review from the core maintainers.
+If you're unsure where something should live, open a PR with a short note and request review from the maintainer.
 
 Thank you — your contributions keep Figaro reliable and well-documented.
