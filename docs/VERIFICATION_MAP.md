@@ -9,7 +9,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
-- **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states)
+- **TLA+** — what is exhaustively model-checked (49 invariants across 4 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states, WitnessSwapAndCommitCoordinator 10 / 2M distinct states, SettlementUniverses 24 / 2.6M distinct states)
 - **Halmos** — what is symbolically proved at the bytecode level (32 properties across 4 harness files, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
@@ -138,7 +138,12 @@ This section tracks features that are not protocol invariants but are significan
 
 ---
 
-## 7) TLA+ formal model — current posture
+## 7) TLA+ formal models — current posture
+
+Four models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 8
+invariants are the E-6 rows), and — added 2026-08-04 —
+`WitnessSwapAndCommitCoordinator.tla` and `SettlementUniverses.tla`
+(both detailed below; harness inventory + state counts: `TESTING.md` § TLA+).
 
 ### Model file: `formal/FigaroCore.tla`
 
@@ -174,6 +179,46 @@ This section tracks features that are not protocol invariants but are significan
 | `CumulativeIntegrity` | A-4 ($cumVal = \sum payment$) | ✅ Verified |
 | `ActiveCountCorrect` | A-5 ($activeCount = count(committed)$) | ✅ Verified |
 | `ResolutionAlwaysPossible` | A-6 (solvency + atomic resolution guaranteed) | ✅ Verified |
+
+### Model file: `formal/WitnessSwapAndCommitCoordinator.tla` (2026-08-04)
+
+The swap-funded on-ramp at EVM-step granularity (explicit revert frames, so
+"swap landed, commit didn't" states are reachable and proved never quiescent).
+ECDSA/EIP-712/Permit2 digest validity abstracted; route substitution is NOT
+assumed away — it is the modeled attack (`Inv_WitnessRouteBinding`).
+
+| TLA+ invariant | Maps to |
+|---|---|
+| `Inv_Conservation`, `Inv_NonNegative`, `Inv_TypeOK` | A-1/A-2-class conservation across payer/venue/coordinator/Core |
+| `Inv_ZeroRetention` | Coordinator holds 0 of every token at every quiescent state (full output forwarded, input residual refunded) |
+| `Inv_AllowanceHygiene` | No standing coordinator→router allowance survives a call (`forceApprove(router, 0)`) |
+| `Inv_Atomicity` | A swap moved value in a call **iff** the commit landed (incl. kernel-side `InvalidRootCumulativeValue` revert after the swap) |
+| `Inv_BondFormula`, `Inv_CoreEscrowExact` | K-1 at the coordinator seam — Core ends holding exactly the doubled bonds of landed orders |
+| `Inv_WitnessRouteBinding` | No route executes that the paying party did not sign (the predecessor bug the witness variant exists to close) |
+| `Inv_CoordinatorNotCounterparty` | Kernel parties stay the EIP-712 signers; the coordinator funds in place |
+
+Mutation-checked 2026-08-04: 6 deliberate Next-relation bugs, each caught by
+exactly its target invariant.
+
+### Model file: `formal/SettlementUniverses.tla` (2026-08-04)
+
+The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier + UsageCounter +
+the off-chain guest kernel under arbitrary interleavings — the only harness
+that can see the two-settlement-universes crease (every other layer is
+per-contract). 24 invariants; the load-bearing rows:
+
+| Property | Code | Formal |
+|---|---|---|
+| A batch-settled order never acquires kernel status; `orderStatus` gates are blind to batched trade | `FigaroBatchVerifier.settleBatch` (no kernel write) | `KernelBlindToBatch`, `BatchInvisibleToKernelGates` |
+| The same signed commitment cannot settle in both universes | EIP-712 domain separation: `FigaroBatchVerifier.sol` `pv.verifyingContract == address(this)` vs the kernel's own domain; processId IS the typed-data digest | `NoDoublePayout`, `UniverseDisjointOrders` — carried by **`AssumeDomainSeparation`** (CONTRACT-ENFORCED; flipping it violates 4 invariants) |
+| Token conservation + pool disjointness across kernel + verifier | per-order exact escrow both sides | `TokenConservation`, `CoreExactEscrow`, `VerifierExactEscrow`, `ResolutionAlwaysPossible` |
+| `scoreOf == direct + batch`; the bridge write REPLACES the cumulative pair | `UsageCounter.applyBatchAccrual` | `ScoreComposition`, `ScoreCacheCorrect`, `TotalScoreIntegrity`, `BatchWriteReplacesNeverAdds` (unconditional) |
+| A settled process is counted toward an artifact in exactly one universe | `UsageCounter` direct-path gate + guest-owned idempotence | `ProcessCountedInOneUniverse` — carried by `AssumeDomainSeparation` |
+| A dropped batch accrual under-pays, never over-pays; the loss is permanent at process granularity (recovered only at artifact granularity) | `settleBatch`'s try/catch around `applyBatchAccrual` + the guest's global counted set | `AccrualNeverOverPays` (unconditional) vs `AccrualNotLost` — carried by **`AssumeAccrualGatesAligned`** (NOT contract-enforced — the documented conservative-under-pay posture, now pinned precisely) |
+
+Both assumptions ship TRUE in the `.cfg`; flipping either to FALSE is the
+model's experiment and is EXPECTED to fail. Mutation-checked 2026-08-04
+(5 mutations + 7 non-vacuity witnesses, each caught).
 
 ---
 
@@ -404,7 +449,7 @@ owns the harness inventory.
 
 | Layer | Census | What it covers |
 |---|---|---|
-| **TLA+ model checking** | 2 models, 15 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
+| **TLA+ model checking** | 4 models, 49 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states; WitnessSwapAndCommitCoordinator: 10 across 1,979,101 distinct states; SettlementUniverses: 24 across 2,632,247 distinct states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel escrow) + the composed settlement universes (no cross-universe double payout, per-pool escrow, score composition, kernel blindness) |
 | **Halmos symbolic testing** | 4 harness files, 32 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two settlement universes, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the author-side stake machines RPGF eligibility reads. |
 | **Certora formal verification** | 6 specs, 37 declared rules (8 + 4 + 7 + 6 + 4 + 8) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
 | **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
@@ -446,7 +491,7 @@ export CERTORAKEY=<key from certora.com/signup>
 
 Prereqs: `brew install echidna`.
 
-### TLA+ model checking (15 invariants across 2 models)
+### TLA+ model checking (49 invariants across 4 models)
 
 ```bash
 ./scripts/test-tla.sh

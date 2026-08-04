@@ -293,7 +293,10 @@ Expected output: all properties hold on both harnesses (kernel + FlorinToken), e
 
 Prereqs: Java 11+, `tla2tools.jar` in `formal/` (script header has the `curl`).
 
-Expected output: both models verify every invariant, TLC exit code 0.
+Expected output: all four models verify every invariant, TLC exit code 0.
+(`SettlementUniverses.cfg` ships both named assumptions TRUE; flipping either
+to FALSE is a deliberate experiment that is EXPECTED to fail — not a gate
+regression.)
 
 ### SDK Tests
 

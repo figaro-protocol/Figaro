@@ -95,7 +95,7 @@ Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — decla
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 15 invariants across 2 models (FigaroCore 7 + FlorinToken 8)
+## TLA+ (`formal/`) — 49 invariants across 4 models (FigaroCore 7 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + SettlementUniverses 24)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -105,6 +105,31 @@ FlorinToken (`FlorinToken.tla` + `FlorinToken.cfg`): `Inv_MaxSupply`,
 `Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
 `Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
+
+WitnessSwapAndCommitCoordinator (`WitnessSwapAndCommitCoordinator.tla` + `.cfg`,
+2026-08-04): the swap-funded on-ramp at EVM-step granularity (revert frames
+explicit, so "swap landed, commit didn't" states are reachable and proved never
+quiescent): `Inv_TypeOK`, `Inv_Conservation`, `Inv_NonNegative`,
+`Inv_ZeroRetention`, `Inv_AllowanceHygiene`, `Inv_Atomicity`,
+`Inv_BondFormula`, `Inv_CoreEscrowExact`, `Inv_WitnessRouteBinding`,
+`Inv_CoordinatorNotCounterparty` — 38,028,525 states / 1,979,101 distinct,
+depth 17, ~3–4 min. Mutation-checked (6 mutations, each caught) 2026-08-04.
+
+SettlementUniverses (`SettlementUniverses.tla` + `.cfg`, 2026-08-04): the
+CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
+off-chain guest kernel under arbitrary interleavings; the only harness that can
+see the two-settlement-universes crease (every other layer is per-contract).
+24 invariants: no double payout across the universes, token conservation +
+exact per-pool escrow, usage-score composition (`scoreOf == direct + batch`,
+the bridge write REPLACES never adds), kernel blindness (`settleBatch` writes
+no kernel `orderStatus`) — 7,455,943 states / 2,632,247 distinct, depth 15,
+~3 min. Mutation-checked (5 mutations + 7 non-vacuity witnesses) 2026-08-04.
+Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
+(contract-enforced — EIP-712 `verifyingContract` disjointness carries
+no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
+dropped batch's accrual is forgone at process granularity, under-pay only).
+Flipping either to FALSE is the experiment, is EXPECTED to fail, and is not a
+regression.
 
 ## Rust — the proof apparatus (`prover/`)
 
