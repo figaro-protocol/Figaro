@@ -60,7 +60,7 @@ our own digest reconstruction (`MockWitnessPermit2`).
 | `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two settlement universes), period bucketing ×2, cross-artifact isolation. Mutation-checked (replace-not-add, score composition) 2026-08-03. |
 | `HalmosArtifactRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary two-registrar interleavings, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked (solvency + first-write-wins, both contracts, 4/4 counterexamples) 2026-08-03. |
 
-Run with `scripts/test-halmos.sh` (three passes). **Halmos does not model
+Run with `scripts/test-halmos.sh` (six passes). **Halmos does not model
 `expectRevert`** — assert on a low-level call's own success flag instead. It
 also needs the compiler AST, so a build made without it silently yields "no
 tests found"; the runner's `forge build --ast` handles that, but a manual

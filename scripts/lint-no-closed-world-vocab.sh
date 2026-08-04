@@ -60,6 +60,13 @@ FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|b
 FAIL_MONEY='\bmoney\b'
 ALLOWED_MONEY='hold the money, decide|real money is a common|Historical money names|ordinary money|hold its money|your identity, your money|money judgment|happens with real money, once'
 
+# Card-rail vocabulary is BANNED on protocol surfaces (operator, 2026-08-04:
+# "chargeback" reached /security via a blind probe's phrasing — defining the
+# mechanism by comparison to platform/card rails is the framing doctrine's
+# definition-by-elimination failure). The mechanism is described in its OWN
+# terms: withheld close, atomic settlement, the record + ordinary law.
+FAIL_CARD_RAILS='\bchargeback\b|\bclawback\b'
+
 violations=0
 
 for file in "$@"; do
@@ -93,6 +100,13 @@ for file in "$@"; do
     hits=$(grep -niE "$FAIL_MONEY" "$file" | grep -viE "$ALLOWED_MONEY" || true)
     if [[ -n "$hits" ]]; then
         echo "[closed-world] $file — 'money' is BANNED (ruled 2026-08-03): the florin is a TOKEN, never money; say value / token / payment / deposit / stake per context. A genuinely money-the-concept sentence needs a conscious ALLOWED_MONEY entry."
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    hits=$(grep -niE "$FAIL_CARD_RAILS" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — card-rail vocabulary is BANNED (ruled 2026-08-04): never define the mechanism by comparison to platform/card rails. Describe it in its own terms — withheld close, atomic settlement, the record + ordinary law."
         echo "$hits" | head -3 | sed 's/^/    /'
         violations=$((violations + 1))
     fi

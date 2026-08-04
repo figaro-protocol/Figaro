@@ -44,6 +44,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 ./scripts/devdown.sh                     # the inverse: stops Anvil + Kubo (and ONLY those). KEEP_IPFS=1 leaves Kubo pinning
 # …or the individual steps it wraps:
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology) — self-sufficient
+./scripts/deploy-mainnet.sh              # MAINNET wrapper for script/DeployMainnet.s.sol — refuses without MAINNET_DEPLOY_CONFIRM=yes + all env vars + chain-id 1 read-back; never run casually
 ```
 
 Full harness inventory (file lists, property names, rule counts) → `TESTING.md`.
