@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 /// @title IRoleResolver
+/// @custom:audit-status UNAUDITED — This interface has not been reviewed by an independent security auditor.
 /// @notice Role-authorization interface for mechanism contracts.
 ///
 /// Mechanism contracts implement this to let the AttestationCoordinator

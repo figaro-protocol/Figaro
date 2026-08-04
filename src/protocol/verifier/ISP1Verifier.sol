@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 /// @title ISP1Verifier — Interface for SP1 on-chain proof verification
+/// @custom:audit-status UNAUDITED — This interface has not been reviewed by an independent security auditor.
 /// @notice Matches the Succinct SP1 verifier gateway interface.
 ///         See https://docs.succinct.xyz/docs/onchain-verification
 interface ISP1Verifier {

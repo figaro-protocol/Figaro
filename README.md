@@ -37,17 +37,21 @@ Start with [docs/README.md](docs/README.md) for the doc map + reading path.
 
 
 src/                        Solidity contracts (0.8.26, Foundry)
-  FigaroCore.sol            Protocol kernel
-  CommitmentTypes.sol       EIP-712 commitment structs + hashing
-  AttestationCoordinator.sol  Zero-storage role-gated attestation
-  ClauseRegistry.sol        Permissionless clause anchoring
-  MembersRegistry.sol       On-chain participant registration
-  AssemblyRegistry.sol      Permissionless assembly anchoring
-  WitnessSwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 witness-bound swap route + Uniswap Universal Router)
-  IRoleResolver.sol         Role-authorization interface for delegated attestation
+  kernel/                   FigaroCore.sol (protocol kernel, frozen) + CommitmentTypes.sol (EIP-712 structs + hashing)
+  protocol/coordinators/    AttestationCoordinator.sol (zero-storage role-gated attestation) + IRoleResolver.sol + WitnessSwapAndCommitCoordinator.sol (Permit2 witness-bound swap-funded bonds)
+  protocol/registries/      ClauseRegistry.sol, MembersRegistry.sol, AssemblyRegistry.sol (permissionless, first-write-wins, ETH-staked)
+  protocol/usage/           UsageCounter.sol (per-artifact usage accrual, both settlement paths)
+  protocol/verifier/        FigaroBatchVerifier.sol (SP1 proof-based batch settlement) + ISP1Verifier.sol
+  rpgf/                     RpgfMinter.sol (600M florin usage-pro-rata reward)
   florin/                   the florin (ERC-20, minter registry)
   mocks/                    Test tokens, fee-on-transfer/permit variants, swap-venue mocks
   echidna/                  Echidna fuzzing harnesses
+
+clauses/                    Canonical clause specs (Layer A / ClauseRegistry seed data)
+assemblies/                 Reference assemblies (anchored at deploy, e2e-tested)
+prover/                     Rust proof apparatus (guest kernel, clause engine, sequencer)
+certora/                    Certora CVL specs (6) + token-ops inventory
+script/ + scripts/          Foundry deploy scripts + the sanctioned .sh wrappers/guards
 
 sdk/                        TypeScript SDK (@figaro/sdk)
   src/                      Event parsing, state reconstruction, agent coordination
@@ -133,7 +137,7 @@ cd sdk && npm test
 
 ## Testing
 
-See [CLAUDE.md](CLAUDE.md#testing) for the full inventory. Quick commands:
+See [docs/TESTING.md](docs/TESTING.md) for the full inventory. Quick commands:
 
 ```bash
 forge test --via-ir                         # Foundry
@@ -152,7 +156,7 @@ cd frontend && npm run test:e2e:devnet      # E2E, real UI against Anvil + contr
 TLA+ model of FigaroCore in `formal/`. Key invariants: `TokenConservation`,
 `ContractSolvency`, `ResolutionAlwaysPossible`, `CumulativeIntegrity`.
 
-See [formal/README.md](formal/README.md) and [CLAUDE.md](CLAUDE.md#testing) for the full verification inventory.
+See [formal/README.md](formal/README.md) and [docs/VERIFICATION_MAP.md](docs/VERIFICATION_MAP.md) for the full verification inventory.
 
 ---
 
@@ -174,7 +178,7 @@ Core theory + design:
 - [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF distribution
 - [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1 (deferred design baseline)
 - [OPEN_WORLD.md](docs/OPEN_WORLD.md) — Why this is a runtime, not just contracts (paradigm + frontend composition model + semantic layer; consolidates the former RUNTIME.md)
-- [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — 13 intentional patterns that look like vulnerabilities (read before auditing)
+- [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — the catalogue of intentional patterns that look like vulnerabilities (read before auditing)
 - [VERIFICATION_MAP.md](docs/VERIFICATION_MAP.md) — Every invariant → code → test → formal layer
 
 ## License

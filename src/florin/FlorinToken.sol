@@ -6,6 +6,8 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title FlorinToken
+/// @custom:security-contact figarosecurity@gmail.com
+/// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Canonical ERC-20 + EIP-2612 permit token for the Figaro protocol: the florin.
 /// @notice Market stance, permanent as of deployment: neither the DAO treasury nor the
 ///         founder will ever sell, buy, or provide liquidity for this token on any market.

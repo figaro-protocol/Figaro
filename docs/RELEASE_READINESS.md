@@ -171,9 +171,12 @@ Required output:
    wagmi-3 support (rainbow-me/rainbowkit#2575 open), so the ruled fallback landed — wagmi 3,
    RainbowKit/WalletConnect removed, injected connector only (one `ConnectWallet` +
    `useConnectInjected`; extension wallets via EIP-6963 unaffected; WalletConnect-only mobile
-   wallets no longer connect). `npm audit --omit=dev`: 39 (11 high) → 3, all in Next itself
-   (static-export-inapplicable per the Pre-Mainnet note; build-host hygiene bump advisable).
-   Full verification in the migration commit.
+   wallets no longer connect). `npm audit --omit=dev`: 39 (11 high) → 2, both in the Next
+   tree (`next` + its bundled `postcss`; major-only fix, static-export-inapplicable per the
+   Pre-Mainnet note; build-host hygiene bump advisable). A third residual — `ws` reached via
+   `viem → isows`, runtime browser code, NOT Next — was mis-attributed to Next here until
+   2026-08-04; fixed by a non-breaking bump (`ws` 8.18.3 → 8.21.2, Vitest 585/585 green
+   after). Full verification in the migration commit.
 3. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a
    public testnet). Rehearsal checks from the 2026-08-03 deploy-script audit: (a) neither
    script guards `block.chainid`, so verify the `--rpc-url` target by hand immediately before

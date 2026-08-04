@@ -23,15 +23,17 @@ small project — but every report is read.
 In scope:
 
 - `src/**/*.sol` — the kernel (`FigaroCore.sol`, `CommitmentTypes.sol`), the
-  attestation / clause / mechanism contracts, the florin token contracts, the
-  per-clause validators, and the batch verifier.
+  attestation / registry / mechanism contracts, the florin token contracts,
+  the usage counter + RPGF minter, and the batch verifier. (Per-clause
+  validator contracts do not exist, permanently — clause content validation
+  is off-chain Layer A plus the batch path's generic proof engine.)
 - `formal/` — the TLA+ models and Certora CVL specs, if a spec asserts an
   invariant the kernel does not actually hold.
 
 Out of scope:
 
 - `src/mocks/`, `src/echidna/` — test infrastructure, never deployed.
-- `archive-v3/`, `archive-v4/`, `archive-frontend/` — retired code.
+- `archive-v3/`, `archive-v4/`, `archive-v5/` — retired code (local-only, untracked).
 - `frontend/` and `sdk/` for issues that do not reach on-chain state — report
   those as ordinary issues.
 
