@@ -310,6 +310,9 @@ await seq.status();   // { state_root, pending_ops,
                 >
                     <code>npm install @figaro/sdk viem</code>
                 </pre>
+                <p className="text-sm text-ink-body leading-relaxed mb-3">
+                    <strong>Honest scope: the package is not yet on the npm registry.</strong> Publication with provenance attestation is a tracked pre-release task; until it closes, install from a repo checkout (<code>&quot;@figaro/sdk&quot;: &quot;file:../sdk&quot;</code> after building it from the repo root).
+                </p>
                 <pre
                     tabIndex={0}
                     className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 overflow-x-auto whitespace-pre"

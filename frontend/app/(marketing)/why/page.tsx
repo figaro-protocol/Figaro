@@ -20,13 +20,15 @@ export default function Why() {
                     </>
                 }
             >
-                <p className="text-sm text-ink-muted italic mt-6">
-                    This page argues that Figaro belongs to a third way of giving economic rules legitimacy, after coercion and shared belief &mdash; written for readers who want that historical and philosophical case, not the mechanics of a deal. If you want the mechanism instead, skip straight to{" "}
-                    <Link href="/local-commerce" className="hover:underline">/local-commerce</Link>{" "}
-                    for one deal lived end to end, or{" "}
-                    <Link href="/protocol" className="hover:underline">/protocol</Link>{" "}
-                    for the specification.
-                </p>
+                <div className="border-l-2 border-default pl-6 mt-6">
+                    <p className="text-sm text-ink-body leading-relaxed">
+                        <strong>Reading this page.</strong> This page argues that Figaro belongs to a third way of giving economic rules legitimacy, after coercion and shared belief &mdash; written for readers who want that historical and philosophical case, not the mechanics of a deal. If you want the mechanism instead, skip straight to{" "}
+                        <Link href="/local-commerce" className="hover:underline">/local-commerce</Link>{" "}
+                        for one deal lived end to end, or{" "}
+                        <Link href="/protocol" className="hover:underline">/protocol</Link>{" "}
+                        for the specification.
+                    </p>
+                </div>
             </MarketingHero>
 
             <MarketingSection title="Coercion, cognition, crypto.">

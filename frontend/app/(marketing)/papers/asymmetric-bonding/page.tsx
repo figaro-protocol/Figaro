@@ -7,6 +7,7 @@ import {
     PaperRemark,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 export const metadata: Metadata = {
     title: "Asymmetric Bonding and Buyer Dominance — Figaro Protocol",
@@ -309,6 +310,10 @@ export default function AsymmetricBondingPaper() {
                         </table>
                     </div>
                     <p>Charlie risks $24 to earn $2 (<Math>{"\\rho = 12"}</Math>); Bob risks $20 to earn $10 (<Math>{"\\rho = 2"}</Math>). The deeper participant faces amplified consequences.</p>
+                    <p>
+                        The same accounting, worked through a three-order chain of unequal payments, is illustrated below.
+                    </p>
+                    <StackedBondChainFigure idPrefix="asymmetric-bonding-stacked-bond-chain" />
                 </PaperSubsection>
                 <PaperSubsection title="5.2 Self-Enforcing Cumulative-Value Reporting">
                     <p>Must the mechanism validate the cumulative value reported by each seller at commit time? It need not &mdash; the bonding rule itself makes honest reporting dominant whenever the probability of non-resolution is positive.</p>

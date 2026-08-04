@@ -13,6 +13,11 @@ key-agreement. Three runtime dependencies: `viem`, plus `@noble/curves` +
 npm install @figaro/sdk
 ```
 
+> **Honest scope:** `@figaro/sdk` is not yet published to the npm registry —
+> publication (with provenance attestation) is a tracked pre-release task.
+> Until then, install from a repo checkout: `"@figaro/sdk": "file:../sdk"`
+> (build it first: `npm run build --workspace sdk` from the repo root).
+
 ## Five Entry Points
 
 ### `@figaro/sdk` — Protocol Primitives
