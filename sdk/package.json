@@ -45,20 +45,30 @@
     },
     "dependencies": {
         "@noble/curves": "^1.9.1",
-        "@noble/hashes": "^1.8.0",
+        "@noble/hashes": "^1.8.0"
+    },
+    "peerDependencies": {
         "viem": "^2.55.1"
     },
     "devDependencies": {
         "ajv": "^8.20.0",
         "fast-check": "^4.9.0",
         "typescript": "^5.5.0",
+        "viem": "^2.55.1",
         "vitest": "^2.0.0"
     },
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/user/Figaro",
+        "url": "git+https://github.com/figaro-protocol/Figaro.git",
         "directory": "sdk"
+    },
+    "bugs": {
+        "url": "https://github.com/figaro-protocol/Figaro/issues"
+    },
+    "homepage": "https://github.com/figaro-protocol/Figaro/tree/main/sdk#readme",
+    "publishConfig": {
+        "access": "public"
     },
     "keywords": [
         "figaro",

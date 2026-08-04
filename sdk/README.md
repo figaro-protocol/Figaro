@@ -1164,6 +1164,18 @@ The event log is the read path: verify an update landed by re-running discovery
 - **Live kernel event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`agreementHash`, `salt`, `deadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
 - **Agent-native** — the proposer generates typed actions; the HITL queue and autonomous gateway are two execution modes for the same action type.
 
+## Versioning & stability
+
+`@figaro/sdk` is pre-1.0 (currently `0.1.0`). Per semver's pre-1.0 convention,
+**minor version bumps may include breaking changes** — there is no stable
+public API yet. Pin an exact version or a narrow range if you need
+reproducible builds against this package.
+
+Every published change is recorded in the repo-root
+[`CHANGELOG.md`](../CHANGELOG.md) (Keep a Changelog format) — check it before
+upgrading. The first git tag (`v0.1.0`) is minted by the maintainer at the
+first public push; this package has no tagged releases before that point.
+
 ## Test
 
 ```bash

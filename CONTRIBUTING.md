@@ -4,7 +4,11 @@ Thanks for helping maintain Figaro. This file describes the recommended local se
 
 ## Quickstart (local dev)
 
-Prerequisites: Foundry, Node.js 18+, Rust toolchain (for `prover`), Docker (the agent runs IPFS / Mythril / LaTeX through it — keep Docker Desktop running).
+Prerequisites: Foundry, Node.js 18+ (pinned major in `.nvmrc`), a Rust toolchain
+(for `prover`, pinned in `prover/rust-toolchain.toml`), the SP1 toolchain
+(`cargo prove`, for `prover`'s guest program — see `prover/README.md`), IPFS
+(Kubo, run natively — see below, not Docker), Docker (the agent runs Mythril /
+LaTeX through it — keep Docker Desktop running).
 
 1. Install dependencies
 
@@ -20,7 +24,23 @@ cd frontend && npm install
 
 # Rust deps for prover
 cd prover && cargo fetch
+
+# SP1 toolchain for prover (cargo prove + the succinct guest toolchain);
+# version must match prover/Cargo.lock's resolved sp1-sdk version — see
+# prover/README.md
+curl -L https://sp1up.succinct.xyz | bash
+sp1up --version v6.3.1
 ```
+
+### IPFS (Kubo) — native, not Docker
+
+Docker Desktop no longer installs on the macOS versions some contributors run
+(e.g. Ventura 13.x), so Kubo runs natively rather than in the `figaro-ipfs`
+container: `brew install ipfs` and the CORS/offline-daemon setup are in
+`docs/LOCAL_DEV.md` § "Docker-hosted services" → "Native Kubo (no Docker)".
+`devup.sh` accepts either — anything listening on `:5001` — so a native
+daemon and the Docker container are interchangeable from the scripts'
+perspective.
 
 2. Common dev commands
 

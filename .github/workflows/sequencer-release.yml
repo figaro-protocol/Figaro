@@ -35,9 +35,11 @@ permissions:
     contents: read
 
 env:
-    # Host toolchain that compiles the sequencer itself. Pinned, not `stable`,
-    # so the release body can name an exact version that does not drift.
-    RUST_TOOLCHAIN: "1.93.0"
+    # Host toolchain that compiles the sequencer itself. The version is read
+    # at runtime from the committed `prover/rust-toolchain.toml` (single
+    # source of truth — see "Read pinned Rust toolchain" below) rather than
+    # duplicated here; RUST_TOOLCHAIN is populated into $GITHUB_ENV by that
+    # step, not hardcoded.
     # SP1 release that supplies `cargo prove` and the `succinct` Rust toolchain
     # which cross-compiles the guest program. MUST match the sp1-sdk / sp1-build
     # / sp1-zkvm version resolved in prover/Cargo.lock (6.3.1) — a mismatch
@@ -69,6 +71,17 @@ jobs:
             # The Rust workspace's deps are crates.io plus in-repo path crates.
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Read pinned Rust toolchain
+              id: toolchain
+              run: |
+                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
+                  if [ -z "$RUST_TOOLCHAIN" ]; then
+                      echo "could not read channel from prover/rust-toolchain.toml"
+                      exit 1
+                  fi
+                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+                  echo "pinned Rust toolchain: $RUST_TOOLCHAIN"
 
             - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
               run: |
@@ -148,6 +161,9 @@ jobs:
             # One machine-readable fact file per target. The publish job reads
             # these to assemble the release body, so the body's reproducibility
             # fields are what the build actually did, never a hand-copied guess.
+            # rust_pin carries the channel read from prover/rust-toolchain.toml
+            # across the job boundary — $GITHUB_ENV set in this job does not
+            # reach the separate `publish` job, so the pin travels via this file.
             - name: Record build facts
               working-directory: ./prover
               run: |
@@ -155,6 +171,7 @@ jobs:
                   target=${{ matrix.target }}
                   runner=${{ matrix.runner }}
                   rust=$(rustc --version)
+                  rust_pin=${RUST_TOOLCHAIN}
                   sp1=${SP1_VERSION}
                   vkey=${{ steps.vkey.outputs.vkey }}
                   sha256=${{ steps.package.outputs.sha256 }}
@@ -207,6 +224,17 @@ jobs:
                   echo "vkey=${keys#vkey=}" >> "$GITHUB_OUTPUT"
                   rust=$(cat staging/*.facts | grep '^rust=' | sort -u | head -n 1)
                   echo "rust=${rust#rust=}" >> "$GITHUB_OUTPUT"
+                  # The pinned channel (prover/rust-toolchain.toml) must also
+                  # agree across targets — a leg on a different pin would mean
+                  # the matrix built against different sources of truth.
+                  pins=$(cat staging/*.facts | grep '^rust_pin=' | sort -u)
+                  pin_count=$(printf '%s\n' "$pins" | wc -l | tr -d ' ')
+                  if [ "$pin_count" -ne 1 ]; then
+                      echo "pinned Rust toolchain differs across targets — refusing to publish:"
+                      printf '%s\n' "$pins"
+                      exit 1
+                  fi
+                  echo "rust_pin=${pins#rust_pin=}" >> "$GITHUB_OUTPUT"
 
             # The template lives in this workflow so it ships with every release and
             # cannot drift from the job that publishes it. Placeholders are
@@ -217,6 +245,7 @@ jobs:
               env:
                   VKEY: ${{ steps.facts.outputs.vkey }}
                   RUSTV: ${{ steps.facts.outputs.rust }}
+                  RUST_TOOLCHAIN: ${{ steps.facts.outputs.rust_pin }}
               run: |
                   cat > notes.md <<'NOTES'
                   `figaro-sequencer` built from `__COMMIT__` (`__TAG__`).

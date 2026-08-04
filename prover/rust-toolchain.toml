@@ -1,0 +1,7 @@
+[toolchain]
+# Pinned to the host toolchain `.github/workflows/sequencer-release.yml` uses
+# to compile the sequencer (env.RUST_TOOLCHAIN). The SP1 guest ELF's hash IS
+# the verification key `FigaroBatchVerifier` pins as its `programVKey`
+# immutable, so a reproducible rebuild needs this pin committed, not only
+# declared inside CI — see `prover/README.md`.
+channel = "1.93.0"
