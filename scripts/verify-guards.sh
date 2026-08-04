@@ -84,6 +84,7 @@ fed "clause-choices-are-bounded"  scripts/lint-clause-choices-are-bounded.sh 'cl
 
 # ── Self-sourcing guards (glob the tree themselves) ──
 
+solo "duplicate-links"         scripts/lint-duplicate-links.sh
 solo "lib-import-direction"    scripts/lint-lib-import-direction.sh
 solo "no-network-fallbacks"    scripts/lint-no-network-fallbacks.sh
 solo "runtime-tests-from-chain" scripts/lint-runtime-tests-from-chain.sh

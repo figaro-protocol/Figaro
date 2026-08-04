@@ -34,7 +34,7 @@ export default function BuildersPage() {
                 <Link href="/composes" className="text-ink-heading font-medium hover:underline">/composes</Link> teach
                 the composition surface itself; <Link href="/integrate" className="text-ink-heading font-medium hover:underline">/integrate</Link> is
                 the how-to. <Link href="/spec" className="text-ink-heading font-medium hover:underline">/spec</Link> and{" "}
-                <Link href="/security" className="text-ink-heading font-medium hover:underline">/security</Link> are
+                /security are
                 the adversarial reference &mdash; dense by design, every guarantee there stated beside its caveat.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
@@ -159,7 +159,7 @@ export default function BuildersPage() {
                     <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">
                         Asymmetric Bonding and Buyer Dominance
                     </Link>
-                    <span className="text-ink-body"> &mdash; the mechanism-design paper: the game-theoretic derivation of why cooperation is the dominant strategy under the 2&times; bonding ratio. <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">Funding</Link> and <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">working groups</Link> cover how work on the substrate organizes and pays for itself, not the mechanism design itself.</span>
+                    <span className="text-ink-body"> &mdash; the mechanism-design paper: the game-theoretic derivation of why cooperation is the dominant strategy under the 2&times; bonding ratio. Funding and <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">working groups</Link> cover how work on the substrate organizes and pays for itself, not the mechanism design itself.</span>
                 </li>
             </ul>
         </section>

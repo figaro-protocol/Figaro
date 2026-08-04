@@ -44,9 +44,7 @@ export default function Home() {
                     It is built to grow. The deal-shapes, the terms, the ready-made compositions are a public commons: anyone can extend them without asking permission, and the network pays back the people whose work it comes to rely on. Figaro is a seed that compounds, not a finished product.
                 </p>
                 <p className="text-sm text-ink-muted italic mt-6">
-                    <Link href="/protocol" className="hover:underline">
-                        The whole machine, in ten minutes &rarr;
-                    </Link>
+                    The whole machine, in ten minutes &rarr;
                 </p>
             </MarketingHero>
 

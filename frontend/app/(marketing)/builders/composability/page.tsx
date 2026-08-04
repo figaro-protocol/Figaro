@@ -53,7 +53,7 @@ export default function Composability() {
                     Those three conditions govern what a composition <em>writes</em>; a fourth governs what it <strong>reads</strong> &mdash; settlement runs on two disjoint state universes (the direct kernel and the batched, proof-based path), so a composition that gates only on <code>orderStatus</code> is blind to whichever one it isn&apos;t reading. The full read-both recipe, runnable, is on <Link href="/integrate" className="underline">Integrate</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>Getting trade onto that batched path is itself a permissionless composition.</strong> <code>FigaroBatchVerifier.settleBatch</code> has no caller gate, no owner, and no fee, so a sequencer relaying signed operations to it is a relay, never an authority &mdash; the coordinator conditions bind it exactly as they bind any other composition. The relay mechanics, and how to run or submit to one, are on <Link href="/integrate" className="underline">Integrate</Link>.
+                    <strong>Getting trade onto that batched path is itself a permissionless composition.</strong> <code>FigaroBatchVerifier.settleBatch</code> has no caller gate, no owner, and no fee, so a sequencer relaying signed operations to it is a relay, never an authority &mdash; the coordinator conditions bind it exactly as they bind any other composition. The relay mechanics, and how to run or submit to one, are on Integrate.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <strong>One kind of composition does not cross that seam with you: the pre-commit kind.</strong> <code>WitnessSwapAndCommitCoordinator.swapAndCommit</code> lets a party bond in a token the process isn&apos;t denominated in, but only on the direct path &mdash; the batch path has no funding leg, so a party swaps in their own wallet first, then signs the commitment in the process currency. Full treatment on <Link href="/composes" className="underline">Composes</Link>.
@@ -121,7 +121,7 @@ export default function Composability() {
                             <li>Custom clause content &mdash; the off-chain validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
                             <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
                             <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
-                            <li>Presentation at the signing moment &mdash; settlement is UI-independent (the kernel binds the agreement by merkle root and verifies both signatures itself), but what your surface <em>displays</em> beside the wallet prompt is not. A composed surface owes its users an off-origin way to recompute the root before they sign; the recipe is on <Link href="/integrate" className="underline">Integrate</Link>.</li>
+                            <li>Presentation at the signing moment &mdash; settlement is UI-independent (the kernel binds the agreement by merkle root and verifies both signatures itself), but what your surface <em>displays</em> beside the wallet prompt is not. A composed surface owes its users an off-origin way to recompute the root before they sign; the recipe is on Integrate.</li>
                             <li>Reading both settlement paths &mdash; nothing warns a composition that gates on <code>orderStatus</code> that batch-settled trade is invisible to it. Fold the verifier&apos;s events too.</li>
                         </ul>
                     </div>
@@ -168,7 +168,7 @@ export default function Composability() {
                         <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and how an operator transacts.</span>
                     </li>
                     <li>
-                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
+                        Integrate
                         <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders.</span>
                     </li>
                 </ul>

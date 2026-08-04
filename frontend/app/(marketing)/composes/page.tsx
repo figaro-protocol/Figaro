@@ -20,8 +20,7 @@ export default function Composes() {
                         Figaro composes two ways. <strong>Internally</strong>, clauses assemble
                         into assemblies and mechanism contracts that extend the protocol
                         without altering the frozen kernel &mdash; permissionless at every
-                        tier, covered in full on{" "}
-                        <Link href="/builders/composability" className="underline">Composability</Link>.{" "}
+                        tier, covered in full on Composability.{" "}
                         <strong>Externally</strong>, composition happens through primitives
                         the kernel deliberately does not include &mdash; a dispute forum, an
                         offset market, a lending facility, and the rest below. This page
@@ -30,7 +29,7 @@ export default function Composes() {
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    This page is the <strong>catalogue</strong> &mdash; what actually composes with Figaro, wired or architectural slot. The <strong>doctrine</strong> &mdash; the rules any composition must obey to stay safe &mdash; is on <Link href="/builders/composability" className="underline">/builders/composability</Link>.
+                    This page is the <strong>catalogue</strong> &mdash; what actually composes with Figaro, wired or architectural slot. The <strong>doctrine</strong> &mdash; the rules any composition must obey to stay safe &mdash; is on /builders/composability.
                 </p>
             </MarketingHero>
 

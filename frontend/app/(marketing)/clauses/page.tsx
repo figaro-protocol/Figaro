@@ -46,7 +46,7 @@ export default function Clauses() {
                     The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/integrate" className="underline">Integrate</Link> for the deployment record.
+                    For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see Integrate for the deployment record.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     There is no static roster of clauses &mdash; the count is derived, never stored. The canonical spec source for the reference set is the <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/</code> directory</a> in the repository; on chain, discover every registered clause (reference or third-party) the same way this inventory does &mdash; by reading the <code>ClauseRegistry</code>&apos;s <code>ClauseRegistered</code> event stream.

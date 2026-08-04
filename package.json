@@ -43,7 +43,8 @@
       "bash scripts/lint-composition-is-designer-only.sh",
       "bash scripts/lint-no-network-fallbacks.sh",
       "bash scripts/lint-window-globals.sh",
-      "bash scripts/lint-runtime-tests-from-chain.sh"
+      "bash scripts/lint-runtime-tests-from-chain.sh",
+      "bash scripts/lint-duplicate-links.sh"
     ],
     "sdk/src/**/*.ts": [
       "bash scripts/lint-no-clause-names.sh"

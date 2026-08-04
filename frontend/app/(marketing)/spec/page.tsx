@@ -320,7 +320,7 @@ function attestViaResolver(
                     </table>
                 </div>
                 <p className="text-xs text-ink-muted mt-4">
-                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table when it goes live; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is on <Link href="/integrate" className="underline">Integrate</Link>.
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table when it goes live; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is on Integrate.
                 </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
@@ -331,7 +331,7 @@ function attestViaResolver(
 
             <MarketingSection title="Composition">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/papers" className="underline">Papers</Link>. See{" "}
+                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are catalogued on Protocol; the academic frame for why the kernel is narrow is on <Link href="/papers" className="underline">Papers</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
                     for the clause validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools. The external half &mdash; forums, offset markets, payout routing, and the rest of the compositional surface named above (<code>witnessSwapAndCommitCoordinator</code>, <code>multisender</code>, and the funding contracts) &mdash; is catalogued on <Link href="/composes" className="underline">Composes</Link>.

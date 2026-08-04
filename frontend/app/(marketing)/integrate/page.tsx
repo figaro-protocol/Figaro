@@ -22,7 +22,7 @@ export default function Integrate() {
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    Kernel context lives at <Link href="/protocol" className="underline">Protocol</Link>; contract catalogue at <Link href="/spec" className="underline">/spec</Link>; clause architecture at <Link href="/clauses" className="underline">/clauses</Link>; composition tools at <Link href="/builders" className="underline">/builders</Link>.
+                    Kernel context lives at <Link href="/protocol" className="underline">Protocol</Link>; contract catalogue at /spec; clause architecture at /clauses; composition tools at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingHero>
 
@@ -176,7 +176,7 @@ const direct = await fetchUsageRecords(client, USAGE_COUNTER, toBlock);
 const batch  = await fetchBatchUsageRecords(client, USAGE_COUNTER, toBlock);`}</code>
                 </pre>
                 <p className="text-sm text-ink-muted leading-relaxed">
-                    Contract-by-contract statement of the seam, with the which-function-answers-what table: <Link href="/spec#settlement-paths" className="underline">/spec#settlement-paths</Link>. Composition targets that read order state: <Link href="/builders/composability" className="underline">Composability</Link>.
+                    Contract-by-contract statement of the seam, with the which-function-answers-what table: /spec#settlement-paths. Composition targets that read order state: <Link href="/builders/composability" className="underline">Composability</Link>.
                 </p>
             </MarketingSection>
 
@@ -338,7 +338,7 @@ for (const [processId, process] of processes) {
 
             <MarketingSection title="The deployment record.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Where <code>CORE_ADDRESS</code> and the rest come from: per-network contract addresses ship as a <strong>deployment record</strong> &mdash; a JSON file the deploy script emits at <code>.deployments/&lt;network&gt;.json</code>. A local devnet writes <code>.deployments/local.json</code>; each public network&apos;s addresses are published in the <Link href="/spec" className="underline">/spec</Link> deployments table when that network goes live. Addresses are never hardcoded into these pages or the SDK &mdash; a local deployment rotates its addresses every redeploy, so read them from the record, not from prose. On a fresh devnet <code>DEPLOY_BLOCK</code> can be <code>0n</code>; on a public network, use the block the deploy landed in. The record deliberately carries no endpoints &mdash; those are yours: on the local devnet the conventions are Anvil at <code>http://127.0.0.1:8545</code> (chain 31337) and a local Kubo IPFS API at <code>http://127.0.0.1:5001</code>; on a public network, any RPC provider and IPFS gateway you trust.
+                    Where <code>CORE_ADDRESS</code> and the rest come from: per-network contract addresses ship as a <strong>deployment record</strong> &mdash; a JSON file the deploy script emits at <code>.deployments/&lt;network&gt;.json</code>. A local devnet writes <code>.deployments/local.json</code>; each public network&apos;s addresses are published in the /spec deployments table when that network goes live. Addresses are never hardcoded into these pages or the SDK &mdash; a local deployment rotates its addresses every redeploy, so read them from the record, not from prose. On a fresh devnet <code>DEPLOY_BLOCK</code> can be <code>0n</code>; on a public network, use the block the deploy landed in. The record deliberately carries no endpoints &mdash; those are yours: on the local devnet the conventions are Anvil at <code>http://127.0.0.1:8545</code> (chain 31337) and a local Kubo IPFS API at <code>http://127.0.0.1:5001</code>; on a public network, any RPC provider and IPFS gateway you trust.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The script that writes it: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/deploy-local.sh" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/deploy-local.sh</code></a>. Clone <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">the repository</a> and run <code>./scripts/deploy-local.sh</code> against a running Anvil to produce a fresh <code>.deployments/local.json</code> &mdash; or run <code>./scripts/devup.sh</code>, which brings up Anvil and IPFS first and calls this same script for you.
@@ -372,7 +372,7 @@ for (const [processId, process] of processes) {
                     The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>membersRegistry</code> / <code>assemblyRegistry</code> keep their names. Those six are the <em>only</em> keys <code>FigaroAddresses</code> carries &mdash; <code>addressesFromDeploymentRecord</code> reads them and ignores the rest. Every other key (<code>permitTokenAddress</code>, <code>florinToken</code>, and the composition/funding contracts below) is read directly by name when you compose against it; the SDK does not fold them into its address map.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The composition and funding keys, one line each &mdash; catalogued in full on <Link href="/spec" className="underline">/spec</Link>:
+                    The composition and funding keys, one line each &mdash; catalogued in full on /spec:
                 </p>
                 <ul className="space-y-3 mb-4">
                     <LabelledListRow label="witnessSwapAndCommitCoordinator" labelWidth="wide">
@@ -447,10 +447,10 @@ for (const [processId, process] of processes) {
                     Related:&nbsp;
                     <Link href="/protocol" className="underline">Protocol</Link>{" "}(kernel invariants);&nbsp;
                     <Link href="/papers" className="underline">Papers</Link>{" "}(academic frame);&nbsp;
-                    <Link href="/builders" className="underline">Builders</Link>{" "}(composition tools);&nbsp;
+                    Builders (composition tools);&nbsp;
                     <Link href="/local-commerce" className="underline">Local Commerce</Link>{" "}(reference assembly);&nbsp;
                     <Link href="/discover" className="underline">Discover</Link>{" "}(seller catalogue);&nbsp;
-                    <Link href="/clauses" className="underline">Clauses</Link>{" "}(attestation content for indexers).
+                    Clauses (attestation content for indexers).
                 </p>
             </MarketingSection>
 
