@@ -86,6 +86,30 @@ invocation, and the guest program's verification key (the value
 either way: the relay is transport, not authority, and what you verify is the
 proof and the chain — never the provenance of a download.
 
+## Proving cost
+
+Proving is a **batch-operator** cost, not a per-trade cost paid by any buyer
+or seller — whoever runs the sequencer absorbs it once per batch, never once
+per order, and no protocol fee passes it through to participants. No
+benchmark numbers are published here: proof time, memory, and proof size
+depend on your hardware, the batch size, and whether the k256 precompile
+patch is active (pinned in `prover/Cargo.toml`). Measure your own setup with
+the `figaro-prove-test` crate — from `prover/`:
+
+```sh
+SP1_REAL_PROOF=1 cargo run -p figaro-prove-test --release
+```
+
+This runs a real local CPU proof of the canonical batch and prints cycle
+count, proof generation time, and proof size for your machine. Without
+`SP1_REAL_PROOF=1` it only mock-executes (fast, no proof). `SP1_PROVER=cpu`
+(or `cuda`) is what this sequencer runs itself, entirely locally — no
+external proving service is wired into this codebase today. Because
+`FigaroBatchVerifier.settleBatch` is permissionless, a proof produced any
+other way — bigger hardware, or a third-party SP1 proving network — settles
+identically; this crate's local flow is one way to produce a proof, not the
+only one.
+
 ## Running locally against devnet
 
 The sequencer is started explicitly — `devup` does not launch it.

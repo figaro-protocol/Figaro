@@ -10,6 +10,10 @@ export const metadata: Metadata = {
 export default function SellersPage() {
     return (
         <>
+            <p className="text-sm text-ink-faint mb-4">
+                Registering as a seller &mdash; to browse and order instead, visit{" "}
+                <Link href="/discover" className="underline">/discover</Link>.
+            </p>
             <p className="text-base text-ink-body leading-relaxed mb-6">
                 Register a wallet here and it becomes a seller on the network &mdash; a kitchen, a tailor, a courier, anyone with something to offer &mdash; discoverable by any buyer, with no application and no one to say yes. The network is early, pre-launch: registering now sets up your listing so it is ready the moment buyers can order.
             </p>

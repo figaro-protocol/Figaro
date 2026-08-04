@@ -26,7 +26,7 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    The network is <Link href="/status" className="hover:underline">pre-launch</Link>. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
+                    The network is <Link href="/status" className="hover:underline">pre-launch</Link> &mdash; no launch date is promised, the external audit gate decides readiness. There are no live sellers on it yet &mdash; what follows describes how a deal works, not a marketplace you can order from tonight. Below is the mechanism, worked through once with real numbers, so you can judge it for yourself.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Say dinner costs thirty tokens. To buy it, you lock sixty &mdash; the thirty you owe, plus thirty of your own as a stake. The kitchen locks sixty too, all of it stake. Confirm the meal arrived, and both stakes come home while your thirty settles as payment. Walk away instead, and your own locked stake never comes home &mdash; it stays in the box for good, benefiting no one.

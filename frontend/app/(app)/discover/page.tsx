@@ -14,6 +14,10 @@ export default function DiscoverPage() {
             <h1 className="text-4xl sm:text-5xl font-bold text-black leading-tight tracking-tight mb-3">
                 Bonded sellers on this network.
             </h1>
+            <p className="text-sm text-gray-500 mb-4">
+                Browsing as a buyer &mdash; to offer something instead, register on{" "}
+                <Link href="/sellers" className="underline hover:text-black">/sellers</Link>.
+            </p>
             <p className="text-base text-gray-600 leading-relaxed max-w-2xl mb-10">
                 Everyone here is someone you can order from directly &mdash; a
                 kitchen, a tailor, a courier, a service &mdash; each running its

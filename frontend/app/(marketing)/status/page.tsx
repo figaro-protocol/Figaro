@@ -29,10 +29,12 @@ export default function Status() {
                 title="Where things stand."
                 lead={
                     <>
-                        The network is pre-launch. This page collects that fact and its
-                        neighbors &mdash; what is built and verified today, what Solidity
-                        surface is frozen, and what still blocks release &mdash; quoted from
-                        the pages that state them, with a link back to each.
+                        The network is pre-launch, and no launch date is promised &mdash;
+                        the release blockers below decide readiness, not a calendar. This
+                        page collects that fact and its neighbors &mdash; what is built and
+                        verified today, what Solidity surface is frozen, and what still
+                        blocks release &mdash; quoted from the pages that state them, with a
+                        link back to each.
                     </>
                 }
             />
@@ -166,7 +168,8 @@ export default function Status() {
                 </div>
                 <div className="border-l-2 border-default pl-6 my-3 space-y-1">
                     <p className="text-sm text-ink-body leading-relaxed">
-                        &ldquo;The network is pre-launch. There are no live sellers on
+                        &ldquo;The network is pre-launch &mdash; no launch date is promised,
+                        the external audit gate decides readiness. There are no live sellers on
                         it yet &mdash; what follows describes how a deal works, not a
                         marketplace you can order from tonight.&rdquo;
                     </p>

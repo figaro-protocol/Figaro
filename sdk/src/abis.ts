@@ -155,6 +155,49 @@ export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
     "error OutputBelowBond(uint256 received, uint256 required)",
 ]);
 
+// ── Permit2 ABI (Uniswap canonical, external contract) ──────────────────────
+//
+// Permit2 is NOT a Figaro contract — it is the external, canonical
+// SignatureTransfer deployment (same address on every chain it's deployed to)
+// that `WitnessSwapAndCommitCoordinator` pulls a party's swap-input token
+// through (`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol` —
+// `IPermit2WitnessTransfer`). This is the MINIMAL surface the coordinator's
+// off-chain half (`swapFunding.ts`, `buildSwapWitnessTypedData`) exists for:
+// the WITNESS variant of `permitTransferFrom`, which folds the coordinator's
+// `SwapWitness` into the digest the party signs so a relayer cannot
+// substitute the swap route. Curated here — same rationale as `ERC20_ABI`
+// above (an external, ABI-stable standard, not a Figaro contract) — so an
+// integrator building a swap-funded leg imports ONE canonical ABI instead of
+// hand-rolling it or re-fetching Uniswap's own.
+
+const PERMIT2_TOKEN_PERMISSIONS_TUPLE = "(address token, uint256 amount)";
+const PERMIT2_PERMIT_TRANSFER_FROM_TUPLE =
+    `(${PERMIT2_TOKEN_PERMISSIONS_TUPLE} permitted, uint256 nonce, uint256 deadline)`;
+const PERMIT2_SIGNATURE_TRANSFER_DETAILS_TUPLE = "(address to, uint256 requestedAmount)";
+
+export const PERMIT2_ABI = parseAbi([
+    `function permitWitnessTransferFrom(${PERMIT2_PERMIT_TRANSFER_FROM_TUPLE} permit, ${PERMIT2_SIGNATURE_TRANSFER_DETAILS_TUPLE} transferDetails, address owner, bytes32 witness, string witnessTypeString, bytes signature) external`,
+]);
+
+// ── Uniswap Universal Router ABI (canonical, external contract) ─────────────
+//
+// Also not a Figaro contract — the production venue
+// `WitnessSwapAndCommitCoordinator`'s immutable `router` points at (devnet
+// substitutes `MockUniversalRouter`, an ABI-INCOMPATIBLE stand-in — see
+// `src/mocks/MockUniversalRouter.sol` — the coordinator forwards `swapData`
+// to `router` OPAQUELY via `router.call(...)`, so it never decodes this ABI
+// on-chain). It is needed OFF-chain: whoever builds `swapData` for a
+// production Permit2 witness (the real-venue sibling of
+// `frontend/lib/composition/swapFunding.ts`'s devnet route builder) encodes a
+// call to `execute` — the Universal Router's entrypoint. Both overloads are
+// curated here so integrators import ONE canonical ABI instead of re-fetching
+// Uniswap's own.
+
+export const UNIVERSAL_ROUTER_ABI = parseAbi([
+    "function execute(bytes commands, bytes[] inputs) external payable",
+    "function execute(bytes commands, bytes[] inputs, uint256 deadline) external payable",
+]);
+
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([

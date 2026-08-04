@@ -73,7 +73,7 @@ export function RewardsView() {
 
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-3xl" data-testid="rewards-page">
-            <h1 className="text-heading-h1 text-ink-heading mb-3">Rewards</h1>
+            <h1 className="text-heading-h1 text-ink-heading mb-3">Claim artifact rewards</h1>
             <p className="text-base text-ink-body leading-relaxed mb-8">
                 The 600M florins reserved for clause authors and assembly designers of record.
                 Usage is counted on chain as it happens — a settled process, the artifact proven
