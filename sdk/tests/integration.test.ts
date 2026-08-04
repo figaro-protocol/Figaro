@@ -87,7 +87,14 @@ function loadBytecode(contractPath: string): Hex {
 describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
     const transport = http(ANVIL_URL);
 
-    const publicClient = createPublicClient({ chain: foundry, transport });
+    // cacheTime: 0 — viem's default (chain.blockTime/3, 4000ms for the foundry
+    // preset which declares no blockTime) caches `getBlockNumber()` across
+    // calls. This suite's whole lifecycle (commit → resolve → re-fetch) runs
+    // well under that window on local Anvil, so a cached block number from the
+    // FIRST fetchCoreEvents call silently starves the SECOND of the blocks the
+    // resolve landed in — the resolved process reads back as still-active.
+    // Every read here must see the chain's actual current tip.
+    const publicClient = createPublicClient({ chain: foundry, transport, cacheTime: 0 });
 
     const buyerWallet = createWalletClient({
         chain: foundry,

@@ -23,6 +23,7 @@ import {
     serializeAssemblyTemplate,
     specHasPrivateField,
     validateCommitmentAgreement,
+    warnProcessLogFillsTrap,
     type ProjectionSpecView,
     type SpecSource,
 } from "../src/index.js";
@@ -243,5 +244,74 @@ describe("publicForm — the public/private disposition seam", () => {
     it("specHasPrivateField flags a private clause only", () => {
         expect(specHasPrivateField(specView("x", ["public", undefined]))).toBe(false);
         expect(specHasPrivateField(specView("x", ["public", "private"]))).toBe(true);
+    });
+});
+
+describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap", () => {
+    // A synthetic field + hints view, mirroring the specView() helper above but
+    // parameterized on the hash-load-bearing `hints` under test.
+    const specView = (
+        clauseId: string,
+        hints: ProjectionSpecView["hints"],
+    ): ProjectionSpecView => ({
+        clauseId,
+        version: 1,
+        fields: [{ name: "eventType", required: true, type: "string" as const }],
+        ...(hints !== undefined && { hints }),
+    });
+
+    it("warns nothing for a real process-log clause with no fills — the shipped shape", () => {
+        // figaro-merchant-process / figaro-courier-process: article "attestations",
+        // design.fills / checkout.*Fills all empty.
+        const spec = specView("figaro-merchant-process", { article: "attestations" });
+        expect(warnProcessLogFillsTrap(spec)).toEqual([]);
+    });
+
+    it("warns nothing for a non-process-log clause that declares design.fills — the normal pattern", () => {
+        // figaro-denomination: article "settlement", design.fills: ["currency"].
+        const spec = specView("figaro-denomination", { article: "settlement", designFills: ["currency"] });
+        expect(warnProcessLogFillsTrap(spec)).toEqual([]);
+    });
+
+    it("warns nothing for a clause with no article at all", () => {
+        const spec = specView("untagged-clause", undefined);
+        expect(warnProcessLogFillsTrap(spec)).toEqual([]);
+    });
+
+    it("warns when article is 'attestations' AND design.fills is declared — the trap", () => {
+        const spec = specView("trap-clause", { article: "attestations", designFills: ["eventType"] });
+        const warnings = warnProcessLogFillsTrap(spec);
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain("trap-clause");
+        expect(warnings[0]).toContain("attestations");
+        expect(warnings[0]).toContain("design.fills");
+        expect(warnings[0]).toContain("never be validated");
+    });
+
+    it("warns when article is 'attestations' AND checkout.catalogueFills is declared", () => {
+        const spec = specView("trap-clause-2", { article: "attestations", catalogueFills: ["eventType"] });
+        const warnings = warnProcessLogFillsTrap(spec);
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain("catalogueFills");
+    });
+
+    it("warns when article is 'attestations' AND checkout.profileFills is declared", () => {
+        const spec = specView("trap-clause-3", { article: "attestations", profileFills: ["eventType"] });
+        const warnings = warnProcessLogFillsTrap(spec);
+        expect(warnings).toHaveLength(1);
+    });
+
+    it("returns both warnings when design.fills AND checkout fills are both declared", () => {
+        const spec = specView("trap-clause-4", {
+            article: "attestations",
+            designFills: ["eventType"],
+            catalogueFills: ["eventType"],
+        });
+        expect(warnProcessLogFillsTrap(spec)).toHaveLength(2);
+    });
+
+    it("matches the real shipped process-log fixtures exactly (via parseProjectionHints)", () => {
+        const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get("figaro-merchant-process")!;
+        expect(warnProcessLogFillsTrap(merchant)).toEqual([]);
     });
 });

@@ -145,6 +145,7 @@ export {
     calculateRootApproval,
     calculateSubOrderApproval,
     validateBonds,
+    assertApprovalCoversBond,
 } from "./bonds.js";
 
 // Chain gas ceilings — per-process resolve cap + per-block commit landing rate.
@@ -196,6 +197,7 @@ export {
     specIsAssemblyScoped,
     specIsMandatory,
     specDesignFills,
+    warnProcessLogFillsTrap,
     validateCommitmentAgreement,
 } from "./projection.js";
 export type {

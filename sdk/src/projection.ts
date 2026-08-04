@@ -228,6 +228,53 @@ export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
     return spec.hints?.profileFills ?? [];
 }
 
+/** A Layer-A WARNING (never an error — the permissionless extension axiom:
+ *  a third-party clause may declare ANY article) for the one construction
+ *  that never makes sense under `article: "attestations"`: pinning content
+ *  at DESIGN or CHECKOUT time (`design.fills` / `checkout.catalogueFills` /
+ *  `checkout.profileFills`) on a clause the article marks a process-log
+ *  (`specIsProcessLog`).
+ *
+ *  Process-log clauses are runtime event ladders — content arrives via
+ *  LATER attestation submissions, never the initial agreement — so
+ *  `validateCommitmentAgreement` SKIPS content validation for every section
+ *  of such a clause (its `specIsProcessLog` short-circuit) and
+ *  `withSpecDefaults` never fills its omitted fields. A fill declared on
+ *  such a clause is therefore content the author believes is pinned and
+ *  checked, that in fact commits unchecked — the "reserved article silently
+ *  commits an empty (unvalidated) anchor" trap. This is scoped precisely to
+ *  that combination: `attestations` alone is not warned (it is meaningful
+ *  and correct for a real process-log clause — neither shipped one,
+ *  `figaro-merchant-process` nor `figaro-courier-process`, declares any
+ *  fill list, which is the signal a genuine process-log clause never
+ *  trips), and a fill list alone on any other article is the normal,
+ *  intended pattern (`figaro-denomination`, `figaro-dimweight`, …). */
+export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly string[] {
+    if (!specIsProcessLog(spec)) return [];
+    const warnings: string[] = [];
+    if (specDesignFills(spec).length > 0) {
+        warnings.push(
+            `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
+            `content arrives via later runtime attestations, never the initial agreement) but the ` +
+            `spec also declares block.design.fills. The pinned fields will never be validated — ` +
+            `validateCommitmentAgreement skips content validation entirely for process-log sections. ` +
+            `If this clause's content should be committed and checked at design time, use a ` +
+            `different article; "attestations" is reserved for runtime event ladders.`,
+        );
+    }
+    if (specCatalogueFills(spec).length > 0 || specProfileFills(spec).length > 0) {
+        warnings.push(
+            `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
+            `content arrives via later runtime attestations, never the initial agreement) but the ` +
+            `spec also declares block.checkout.catalogueFills or profileFills. That checkout-authored ` +
+            `content will never be validated — validateCommitmentAgreement skips content validation ` +
+            `entirely for process-log sections. "attestations" is reserved for runtime event ladders ` +
+            `whose content arrives later, not checkout-time fills.`,
+        );
+    }
+    return warnings;
+}
+
 // ── Agreement projection ────────────────────────────────────────────────────
 
 export interface OrderAgreement {

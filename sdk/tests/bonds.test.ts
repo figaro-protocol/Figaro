@@ -5,6 +5,7 @@ import {
     calculateRootApproval,
     calculateSubOrderApproval,
     validateBonds,
+    assertApprovalCoversBond,
 } from "../src/bonds.js";
 
 describe("calculateBonds", () => {
@@ -66,6 +67,46 @@ describe("calculateSubOrderApproval", () => {
         const result = calculateSubOrderApproval(5n, 27n);
         expect(result.buyerApproval).toBe(10n);
         expect(result.sellerApproval).toBe(54n);
+    });
+});
+
+describe("assertApprovalCoversBond", () => {
+    it("passes silently when approval matches the calculator output exactly", () => {
+        const calc = calculateSubOrderApproval(5n, 27n);
+        expect(() => assertApprovalCoversBond(calc, calc)).not.toThrow();
+    });
+
+    it("passes when approval exceeds what's required", () => {
+        const calc = calculateSubOrderApproval(5n, 27n);
+        const generousApproval = { buyerApproval: calc.buyerApproval * 10n, sellerApproval: calc.sellerApproval * 10n };
+        expect(() => assertApprovalCoversBond(generousApproval, calc)).not.toThrow();
+    });
+
+    it("catches the classic increment-only sub-order bug (seller side)", () => {
+        // A process at cumulativeValue 20 grows to 27 with a new order of payment 5.
+        // The classic bug approves 2×(27-20)=14 instead of the full 2×27=54.
+        const previousCumulativeValue = 20n;
+        const newCumulativeValue = 27n;
+        const calc = calculateSubOrderApproval(5n, newCumulativeValue);
+        const buggyApproval = {
+            buyerApproval: calc.buyerApproval,
+            sellerApproval: (newCumulativeValue - previousCumulativeValue) * 2n,
+        };
+        expect(() => assertApprovalCoversBond(buggyApproval, calc)).toThrow(/Seller approval/);
+        expect(() => assertApprovalCoversBond(buggyApproval, calc)).toThrow(/increment/);
+    });
+
+    it("catches an under-approved buyer side", () => {
+        const calc = calculateSubOrderApproval(5n, 27n);
+        const buggyApproval = { buyerApproval: calc.buyerApproval - 1n, sellerApproval: calc.sellerApproval };
+        expect(() => assertApprovalCoversBond(buggyApproval, calc)).toThrow(/Buyer approval/);
+    });
+
+    it("works against calculateRootApproval too", () => {
+        const calc = calculateRootApproval(100n);
+        expect(() => assertApprovalCoversBond(calc, calc)).not.toThrow();
+        const under = { buyerApproval: 50n, sellerApproval: 50n };
+        expect(() => assertApprovalCoversBond(under, calc)).toThrow(/Buyer approval/);
     });
 });
 

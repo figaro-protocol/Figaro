@@ -156,6 +156,18 @@ orders stay locked in the kernel until the buyer resolves the process. (The
 helper was `calculateSubOrderSellerApproval` before; it is now
 `calculateSubOrderApproval` and returns both legs.)
 
+Catch the mistake before it reverts on-chain: pass the approval you're about
+to submit and the calculator's own output to `assertApprovalCoversBond` —
+it throws with the specific "never approve only the increment" message
+instead of leaving you to decode `ERC20InsufficientAllowance`.
+
+```ts
+import { assertApprovalCoversBond } from "@figaro/sdk";
+
+const required = calculateSubOrderApproval(payment, newCumulativeValue);
+assertApprovalCoversBond({ buyerApproval, sellerApproval }, required); // throws if either falls short
+```
+
 ## Bonding in a token you do not hold — a DIRECT-path composition
 
 A party who does not hold the process settlement currency can still bond in one
@@ -762,6 +774,18 @@ import type { SpecSource, ProjectionSpecView } from "@figaro/sdk";
 // Pick either by accident — say you group an attestation clause under
 // "attestations" — and your clause behaves differently with no error raised.
 // Registration is permanent and first-write-wins, so choose before you register.
+//
+// `warnProcessLogFillsTrap(view)` catches the one construction that never
+// makes sense under "attestations": declaring `design.fills` or
+// `checkout.catalogueFills`/`profileFills` (designer/catalogue/profile
+// content pins) on a clause the article marks a process-log. A process-log
+// section is unvalidated at commit (`validateCommitmentAgreement` skips it
+// outright), so a pinned fill there is content the author believes is
+// checked that in fact never is. It's a WARNING, not a parse error —
+// "attestations" is correct and meaningful for a real process-log clause
+// (`figaro-merchant-process`, `figaro-courier-process` both use it, with no
+// fill list — the shape a genuine one always has); this fires only on that
+// specific fills-on-process-log combination.
 function makeSpecSource(rawSpecsByKey: Map<string, unknown>): SpecSource {
   const views = new Map<string, ProjectionSpecView>();
   for (const [key, raw] of rawSpecsByKey) {   // key = `${clauseId}@${version}`

@@ -239,6 +239,22 @@ export interface FigaroAddresses {
     clauseRegistry?: Address;
     membersRegistry?: Address;
     assemblyRegistry?: Address;
+    /** FigaroBatchVerifier — batch-settled clause content verification (batch path only). */
+    batchVerifier?: Address;
+    /** UsageCounter — records verified clause/assembly usage per accrual period. */
+    usageCounter?: Address;
+    /** RpgfMinter — pays clause authors and assembly designers pro rata to recorded usage. */
+    rpgfMinter?: Address;
+    /** Permit2 — the permit layer WitnessSwapAndCommitCoordinator pulls swap input tokens through. */
+    permit2?: Address;
+    /** Uniswap Universal Router (or devnet mock) — the swap venue the coordinator routes through. */
+    swapRouter?: Address;
+    /** WitnessSwapAndCommitCoordinator — off-protocol multi-token bond funding via Permit2 witness + swap + commit. */
+    witnessSwapAndCommitCoordinator?: Address;
+    /** Disperse (or devnet mock) — composed post-settlement batch dispersal. */
+    multisender?: Address;
+    /** DAO treasury multisig — holds the 300M-florin DAO genesis allocation. */
+    daoTreasury?: Address;
 }
 
 /** The key names a PUBLISHED DEPLOYMENT RECORD uses (the etherscan-equivalent
@@ -246,8 +262,12 @@ export interface FigaroAddresses {
  *  They are NOT the `FigaroAddresses` field names — `figaroCore` vs `core`,
  *  `tokenAddress` vs `token` — so a record spread verbatim into an SDK call
  *  yields undefined contract addresses. Map it through
- *  `addressesFromDeploymentRecord` instead. A record may carry more keys
- *  (coordinators, routers, governance tokens); the SDK reads only these. */
+ *  `addressesFromDeploymentRecord` instead. This type is the full published
+ *  record (mirrors `.deployments/*.json` and the `/spec` route-key table:
+ *  the kernel, registries, and coordinators/routers/RPGF surface); core reads
+ *  require only the six — `figaroCore`, `tokenAddress`, `attestationCoordinator`,
+ *  `clauseRegistry`, `membersRegistry`, `assemblyRegistry`. The rest are optional
+ *  and pass through only when present. */
 export interface FigaroDeploymentRecord {
     figaroCore: Address;
     tokenAddress?: Address;
@@ -255,6 +275,14 @@ export interface FigaroDeploymentRecord {
     clauseRegistry?: Address;
     membersRegistry?: Address;
     assemblyRegistry?: Address;
+    batchVerifier?: Address;
+    usageCounter?: Address;
+    rpgfMinter?: Address;
+    permit2?: Address;
+    swapRouter?: Address;
+    witnessSwapAndCommitCoordinator?: Address;
+    multisender?: Address;
+    daoTreasury?: Address;
 }
 
 /** Map a published deployment record to the SDK's `FigaroAddresses` — the
@@ -272,6 +300,14 @@ export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): F
         ...(record.clauseRegistry ? { clauseRegistry: record.clauseRegistry } : {}),
         ...(record.membersRegistry ? { membersRegistry: record.membersRegistry } : {}),
         ...(record.assemblyRegistry ? { assemblyRegistry: record.assemblyRegistry } : {}),
+        ...(record.batchVerifier ? { batchVerifier: record.batchVerifier } : {}),
+        ...(record.usageCounter ? { usageCounter: record.usageCounter } : {}),
+        ...(record.rpgfMinter ? { rpgfMinter: record.rpgfMinter } : {}),
+        ...(record.permit2 ? { permit2: record.permit2 } : {}),
+        ...(record.swapRouter ? { swapRouter: record.swapRouter } : {}),
+        ...(record.witnessSwapAndCommitCoordinator ? { witnessSwapAndCommitCoordinator: record.witnessSwapAndCommitCoordinator } : {}),
+        ...(record.multisender ? { multisender: record.multisender } : {}),
+        ...(record.daoTreasury ? { daoTreasury: record.daoTreasury } : {}),
     };
 }
 

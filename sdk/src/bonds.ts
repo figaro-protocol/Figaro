@@ -97,6 +97,40 @@ export function calculateSubOrderApproval(
 }
 
 /**
+ * Guard against the classic sub-order approval bug: approving only the
+ * INCREMENT since the previous order's cumulative value instead of the
+ * full per-order bond the kernel pulls. `_pullExact` pulls 2× the order's
+ * OWN `cumulativeValue`/`payment` on every commit — root or sub — never an
+ * offset against bonds a prior order already left held (see
+ * `calculateSubOrderApproval`).
+ *
+ * Pass the approval a caller is about to submit and the calculator output
+ * for the order actually being committed (`calculateRootApproval` or
+ * `calculateSubOrderApproval`). Throws before the transaction is sent
+ * rather than letting an under-approval surface later as an opaque
+ * `ERC20InsufficientAllowance` revert from inside the settlement token.
+ */
+export function assertApprovalCoversBond(
+    approval: { buyerApproval: bigint; sellerApproval: bigint },
+    calc: { buyerApproval: bigint; sellerApproval: bigint },
+): void {
+    if (approval.buyerApproval < calc.buyerApproval) {
+        throw new Error(
+            `Buyer approval ${approval.buyerApproval} is below the required ${calc.buyerApproval} ` +
+            `(2× payment for THIS order). The kernel pulls the full per-order bond on every commit — ` +
+            `never approve only the increment since a prior order.`,
+        );
+    }
+    if (approval.sellerApproval < calc.sellerApproval) {
+        throw new Error(
+            `Seller approval ${approval.sellerApproval} is below the required ${calc.sellerApproval} ` +
+            `(2× cumulativeValue for THIS order). The kernel pulls the full per-order bond on every ` +
+            `commit — never approve only the increment over a prior order's cumulativeValue.`,
+        );
+    }
+}
+
+/**
  * Verify that a bond configuration satisfies the protocol invariants.
  * Useful for agents to validate before signing.
  */
