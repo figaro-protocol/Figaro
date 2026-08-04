@@ -114,7 +114,7 @@ const attestations = parseAttestationLogs(logs);
                     <strong>There are two settlement paths and they are disjoint state universes.</strong> <code>FigaroCore</code> (direct) and <code>FigaroBatchVerifier</code> (batched, proof-based) share no state and never call each other. The batch path replaces the whole <code>commit</code>-plus-<code>resolveProcess</code> lifecycle inside the proof, so <strong>a batch-settled process never acquires kernel status and emits no kernel event</strong> &mdash; <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds: a kernel-settled process is never inside a batch. Nothing migrates between them.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    So the two things above &mdash; <code>reconstruct()</code> over <code>fetchCoreEvents</code>, and any gate you write on <code>orderStatus</code> &mdash; see the <em>direct path only</em>. Not &ldquo;late&rdquo;: not at all. <code>orderStatus == 0</code> means <em>&ldquo;not on this path&rdquo;</em>, never <em>&ldquo;not settled&rdquo;</em>, and concluding the latter is the one mistake this section exists to prevent. On the batch path there is <strong>no per-order settled flag on chain</strong>: the order&apos;s state lives under the verifier&apos;s <code>stateRoot()</code>, and the public facts are the batch that carried it, the attestations it re-emitted, and the ERC-20 transfers it executed. Both ABIs ship in the SDK &mdash; <code>CORE_ABI</code> and <code>BATCH_VERIFIER_ABI</code>:
+                    So the two things above &mdash; <code>reconstruct()</code> over <code>fetchCoreEvents</code>, and any gate you write on <code>orderStatus</code> &mdash; see the <em>direct path only</em>. Not &ldquo;late&rdquo;: not at all. <code>orderStatus == 0</code> means <em>&ldquo;not on this path&rdquo;</em>, never <em>&ldquo;not settled&rdquo;</em>, and concluding the latter is the one mistake this section exists to prevent. On the batch path there is no per-order settled flag on chain &mdash; the full statement of what each path answers with is on <Link href="/spec#settlement-paths" className="underline">/spec#settlement-paths</Link>. Both ABIs ship in the SDK &mdash; <code>CORE_ABI</code> and <code>BATCH_VERIFIER_ABI</code>:
                 </p>
                 <pre
                     tabIndex={0}
@@ -176,7 +176,7 @@ const direct = await fetchUsageRecords(client, USAGE_COUNTER, toBlock);
 const batch  = await fetchBatchUsageRecords(client, USAGE_COUNTER, toBlock);`}</code>
                 </pre>
                 <p className="text-sm text-ink-muted leading-relaxed">
-                    Contract-by-contract statement of the seam, with the which-function-answers-what table: <Link href="/spec" className="underline">/spec</Link>. Composition targets that read order state: <Link href="/builders/composability" className="underline">Composability</Link>.
+                    Contract-by-contract statement of the seam, with the which-function-answers-what table: <Link href="/spec#settlement-paths" className="underline">/spec#settlement-paths</Link>. Composition targets that read order state: <Link href="/builders/composability" className="underline">Composability</Link>.
                 </p>
             </MarketingSection>
 

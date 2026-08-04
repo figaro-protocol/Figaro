@@ -95,7 +95,7 @@ Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — decla
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 49 invariants across 4 models (FigaroCore 7 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + SettlementUniverses 24)
+## TLA+ (`formal/`) — 46 invariants across 4 models (FigaroCore 7 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + SettlementUniverses 21)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -119,7 +119,7 @@ SettlementUniverses (`SettlementUniverses.tla` + `.cfg`, 2026-08-04): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
 off-chain guest kernel under arbitrary interleavings; the only harness that can
 see the two-settlement-universes crease (every other layer is per-contract).
-24 invariants: no double payout across the universes, token conservation +
+21 invariants: no double payout across the universes, token conservation +
 exact per-pool escrow, usage-score composition (`scoreOf == direct + batch`,
 the bridge write REPLACES never adds), kernel blindness (`settleBatch` writes
 no kernel `orderStatus`) — 7,455,943 states / 2,632,247 distinct, depth 15,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 export const metadata: Metadata = {
     title: "Local Commerce — Figaro Protocol",
@@ -44,8 +45,9 @@ export default function LocalCommercePage() {
                     That dissolving institution left something behind that an ordinary evening never does: you saw where your payment was going before you committed to any of it. Order from an ordinary restaurant chain and it lands as one lump sum; where it goes after that &mdash; the cooks, the courier, the farm that grew the tomatoes, the landlord, the owner&apos;s cut &mdash; is decided inside the company, privately, after the fact. Order this way and you saw the split at checkout: 8.40 to the kitchen, 2.10 to the courier, 0.30 to the farm &mdash; the complete P&amp;L of your dinner, line by line, before you paid a cent.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Every line was its own stake, and they all had to settle together or not at all &mdash; that is the same rule that let the kitchen and the courier trust each other without a dispatcher. Three parties on one receipt is the ordinary shape here; a bookshop order or a single tailor&apos;s bill is simply the shortest version, a P&amp;L with one line.
+                    Every line was its own stake, and they all had to settle together or not at all &mdash; that is the same rule that let the kitchen and the courier trust each other without a dispatcher. The figure below lays out each leg&apos;s stake and payout side by side. Three parties on one receipt is the ordinary shape here; a bookshop order or a single tailor&apos;s bill is simply the shortest version, a P&amp;L with one line.
                 </p>
+                <StackedBondChainFigure className="mt-8" />
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">

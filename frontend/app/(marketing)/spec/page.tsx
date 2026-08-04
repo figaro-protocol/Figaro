@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ContractEntry } from "@/components/shared/ContractEntry";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
 
 export const metadata: Metadata = {
     title: "Specifications — Figaro Protocol",
@@ -83,12 +84,16 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Two settlement paths, two disjoint state universes.">
+            <MarketingSection title="Two settlement paths, two disjoint state universes." sectionId="settlement-paths">
+                <SettlementPathsFigure className="mb-6" />
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other. The batch path replaces the entire direct lifecycle &mdash; <code>commit</code> and <code>resolveProcess</code> both execute inside the proof &mdash; so <strong>a batch-settled process never acquires kernel status</strong>: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds too: a kernel-settled process is never inside a batch. There is no migration between the two, and none is planned; the split is the design, not a gap in it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-settled process satisfies neither, forever &mdash; which is exactly why the batch proof carries the RPGF usage accrual across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process record, no attestation state.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed mb-4">
+                    The split is exhaustively model-checked, not just asserted: <a href="https://github.com/figaro-protocol/Figaro/blob/main/formal/SettlementUniverses.tla" target="_blank" rel="noopener noreferrer" className="underline"><code>formal/SettlementUniverses.tla</code></a> treats <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> as one composed system across every interleaving and checks 21 invariants &mdash; among them that no order settles in both universes and that a batch-settled order never flips a kernel status.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     So &ldquo;is this settled?&rdquo; is answered by a different contract on each path. Ask the right one:

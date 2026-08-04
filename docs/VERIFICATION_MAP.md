@@ -9,7 +9,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
-- **TLA+** — what is exhaustively model-checked (49 invariants across 4 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states, WitnessSwapAndCommitCoordinator 10 / 2M distinct states, SettlementUniverses 24 / 2.6M distinct states)
+- **TLA+** — what is exhaustively model-checked (46 invariants across 4 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states, WitnessSwapAndCommitCoordinator 10 / 2M distinct states, SettlementUniverses 21 / 2.6M distinct states)
 - **Halmos** — what is symbolically proved at the bytecode level (32 properties across 4 harness files, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
@@ -205,7 +205,7 @@ exactly its target invariant.
 The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier + UsageCounter +
 the off-chain guest kernel under arbitrary interleavings — the only harness
 that can see the two-settlement-universes crease (every other layer is
-per-contract). 24 invariants; the load-bearing rows:
+per-contract). 21 invariants (AccrualNeverOverPays is a defined alias of BatchWriteReplacesNeverAdds, not a separate check); the load-bearing rows:
 
 | Property | Code | Formal |
 |---|---|---|
@@ -449,7 +449,7 @@ owns the harness inventory.
 
 | Layer | Census | What it covers |
 |---|---|---|
-| **TLA+ model checking** | 4 models, 49 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states; WitnessSwapAndCommitCoordinator: 10 across 1,979,101 distinct states; SettlementUniverses: 24 across 2,632,247 distinct states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel escrow) + the composed settlement universes (no cross-universe double payout, per-pool escrow, score composition, kernel blindness) |
+| **TLA+ model checking** | 4 models, 46 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states; WitnessSwapAndCommitCoordinator: 10 across 1,979,101 distinct states; SettlementUniverses: 21 across 2,632,247 distinct states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel escrow) + the composed settlement universes (no cross-universe double payout, per-pool escrow, score composition, kernel blindness) |
 | **Halmos symbolic testing** | 4 harness files, 32 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two settlement universes, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the author-side stake machines RPGF eligibility reads. |
 | **Certora formal verification** | 6 specs, 37 declared rules (8 + 4 + 7 + 6 + 4 + 8) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
 | **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
@@ -491,7 +491,7 @@ export CERTORAKEY=<key from certora.com/signup>
 
 Prereqs: `brew install echidna`.
 
-### TLA+ model checking (49 invariants across 4 models)
+### TLA+ model checking (46 invariants across 4 models)
 
 ```bash
 ./scripts/test-tla.sh

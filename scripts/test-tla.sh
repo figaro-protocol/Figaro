@@ -37,7 +37,7 @@
 #      UsageCounter + the off-chain guest kernel, under arbitrary
 #      interleavings — the only harness that can see the two-settlement-
 #      universes crease (Foundry/Halmos/Certora are all per-contract).
-#      Verifies 24 safety invariants exhaustively: no double payout across
+#      Verifies 21 safety invariants exhaustively: no double payout across
 #      the universes; token conservation + exact per-pool escrow; usage-
 #      score composition (scoreOf == direct + batch, the bridge write
 #      REPLACES never adds); kernel blindness (settleBatch writes no
@@ -66,7 +66,7 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 49 invariants hold across the explored state space (four models)
+#   0  — all 46 invariants hold across the explored state space (four models)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
 set -e
@@ -129,7 +129,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 4/4 — Composed settlement universes (24 invariants)"
+echo "▶ Pass 4/4 — Composed settlement universes (21 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config SettlementUniverses.cfg \
