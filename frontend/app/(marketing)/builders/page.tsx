@@ -82,7 +82,7 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward pays out once a year for nine years, weighted toward later years once the evidence is deepest &mdash; full schedule at <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">artifact rewards</Link>. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward pays out once a year for nine years, weighted toward later years once the evidence is deepest &mdash; full schedule at <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">artifact rewards</Link>. There is no hosted public testnet yet, so &ldquo;watch it settle end to end&rdquo; means running a local network yourself: clone <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">the repository</a>, run <code>./scripts/devup.sh</code> to bring up Anvil, IPFS, and the deployed protocol stack, then drive a commit and a resolve against the kernel directly using the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README&apos;s</a> <code>commit</code>/<code>resolveProcess</code> walkthrough. The closest thing to a worked, narrated demonstration today is the Playwright e2e suite itself &mdash; every spec commits, resolves, and asserts the resulting chain state (<code>cd frontend &amp;&amp; npm run test:e2e:devnet</code>) &mdash; there is no separate tutorial script yet.
             </p>
 
             <h2 className="text-base font-semibold text-ink-heading mb-4">
@@ -154,6 +154,12 @@ export default function BuildersPage() {
                         Security
                     </Link>
                     <span className="text-ink-body"> &mdash; first-write-wins registry binding, merkle-bound attestations, three-tier anti-spam posture, and what an immutable v1 means for how you ship &mdash; every guarantee stated beside its caveat.</span>
+                </li>
+                <li>
+                    <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">
+                        Asymmetric Bonding and Buyer Dominance
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the mechanism-design paper: the game-theoretic derivation of why cooperation is the dominant strategy under the 2&times; bonding ratio. <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">Funding &amp; working groups</Link> covers how work on the substrate organizes and pays for itself, not the mechanism design itself.</span>
                 </li>
             </ul>
         </section>

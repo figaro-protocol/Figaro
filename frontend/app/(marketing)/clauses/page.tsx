@@ -44,6 +44,9 @@ export default function Clauses() {
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/integrate" className="underline">Integrate</Link> for the deployment record.
                 </p>
+                <p className="text-sm text-ink-muted leading-relaxed mb-6">
+                    There is no static roster of clauses &mdash; the count is derived, never stored. The canonical spec source for the reference set is the <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/</code> directory</a> in the repository; on chain, discover every registered clause (reference or third-party) the same way this inventory does &mdash; by reading the <code>ClauseRegistry</code>&apos;s <code>ClauseRegistered</code> event stream.
+                </p>
                 <ClauseInventory />
             </MarketingSection>
 

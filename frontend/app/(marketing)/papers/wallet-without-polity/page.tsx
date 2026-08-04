@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
     PaperLayout,
     PaperSection,
@@ -85,7 +86,7 @@ export default function WalletWithoutPolityPaper() {
                     The mechanism and its verification are summarized here only as far as the argument needs.
                 </p>
                 <p>
-                    The primitive composes two mechanisms. <em>Asymmetric bonding</em> makes defection more expensive than cooperation at every bonded edge. <em>Buyer dominance with atomic resolution</em> settles every active order in a process simultaneously, at the buyer&rsquo;s signature, with no third-party adjudicator. The first mechanism removes the trusted enforcer; the second removes the trusted clearing house. For the present paper both are load-bearing: the displaced or stateless subject lacks access to either, and the primitive&rsquo;s contribution is to make both unnecessary.
+                    The primitive composes two mechanisms, derived in <Link href="/papers/asymmetric-bonding" className="text-ink-heading hover:underline">Asymmetric Bonding and Buyer Dominance</Link> (&sect;4.1 for the bilateral equilibrium, &sect;5.1 for the multi-party case). <em>Asymmetric bonding</em> makes defection more expensive than cooperation at every bonded edge. <em>Buyer dominance with atomic resolution</em> settles every active order in a process simultaneously, at the buyer&rsquo;s signature, with no third-party adjudicator. The first mechanism removes the trusted enforcer; the second removes the trusted clearing house. For the present paper both are load-bearing: the displaced or stateless subject lacks access to either, and the primitive&rsquo;s contribution is to make both unnecessary.
                 </p>
                 <p>
                     A transaction between two parties is consummated by dual-signed digital commitments. Each party signs from their own wallet. Each party locks a bond against their own performance &mdash; the buyer locks <Math>{"2P"}</Math>, the seller locks <Math>{"2G"}</Math> where <Math>{"G"}</Math> is the cumulative upstream value bonded in the process. Only the buyer can trigger resolution. Defection is structurally more expensive than cooperation. There is no platform between the parties, no arbitrator authorized to resolve disputes on-chain, and no admin key permitting external override.

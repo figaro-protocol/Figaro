@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
     PaperLayout,
     PaperSection,
@@ -133,17 +134,17 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     We now develop the central technical claim. Let a <em>process</em> be the kernel object: a root bonded commitment, zero or more sub-order commitments sharing a common root buyer and currency, a monotonic cumulative-value accumulator, and a buyer-initiated atomic resolution. Every commitment is a pair of dual-signed EIP-712 payloads; every resolution is an atomic distribution governed by the payout functions <Math>{"\\pi_{s,i} = 2G_i + P_i"}</Math> and <Math>{"\\pi_{b,i} = P_i"}</Math>, where <Math>{"P_i"}</Math> is the payment for order <Math>{"i"}</Math> and <Math>{"G_i"}</Math> is the cumulative value accumulator snapshot at order <Math>{"i"}</Math>. The kernel&rsquo;s conservation law states that <Math>{"\\pi_{s,i} + \\pi_{b,i} = C_{s,i} + C_{b,i}"}</Math> for every order: the total distributed equals the total locked.
                 </p>
                 <p>
-                    The accounting argument that follows depends specifically on Mechanism&nbsp;2 of the primitive &mdash; buyer dominance with atomic resolution. Mechanism&nbsp;1 (asymmetric bonding) supplies the balance-sheet positions during process life; Mechanism&nbsp;2 supplies the period-close, since atomic resolution is what guarantees that every active order in the process settles in a single moment. A non-atomic resolution would yield partial closes that are not period-closes in the accounting sense, and the self-closing-ledger-period claim below would not survive.
+                    The accounting argument that follows depends specifically on Mechanism&nbsp;2 of the primitive &mdash; buyer dominance with atomic resolution &mdash; as both mechanisms are defined and derived in <Link href="/papers/asymmetric-bonding" className="text-ink-heading hover:underline">Asymmetric Bonding and Buyer Dominance</Link> (&sect;3.1 for the definitions used below, &sect;3.3 for the payout functions, &sect;4.1 for the equilibrium the bond posture rests on). Mechanism&nbsp;1 (asymmetric bonding) supplies the balance-sheet positions during process life; Mechanism&nbsp;2 supplies the period-close, since atomic resolution is what guarantees that every active order in the process settles in a single moment. A non-atomic resolution would yield partial closes that are not period-closes in the accounting sense, and the self-closing-ledger-period claim below would not survive.
                 </p>
                 <p>
-                    We claim this structure is equivalent to a self-closing ledger period in the accounting sense. We proceed in three steps.
+                    We claim this structure is equivalent to a self-closing ledger period in the accounting sense. We proceed in four steps.
                 </p>
-                <PaperSubsection title="5.1 The contract state as a balance-sheet position">
+                <PaperSubsection title="4.1 The contract state as a balance-sheet position">
                     <p>
                         At any time <Math>{"t"}</Math> during the life of a process, the contract holds an escrow balance equal to the sum of all active bonds: <Math>{"\\sum_i 2G_i"}</Math> in seller bonds (one per committed order) plus <Math>{"\\sum_i 2P_i"}</Math> in buyer bonds (one per committed order). This balance is a liability of the contract toward the parties: each buyer&rsquo;s bond is a liability toward that buyer; each seller&rsquo;s bond is a liability toward that seller; together with the obligation to pay the seller&rsquo;s payment at resolution, the contract&rsquo;s liabilities at any time during process life sum to exactly the assets it holds.
                     </p>
                     <div className="border-l-2 border-default pl-6 my-2 space-y-3">
-                        <p className="text-sm font-semibold text-ink-heading">Definition 5.1 (Custodial Ledger Identity).</p>
+                        <p className="text-sm font-semibold text-ink-heading">Definition 4.1 (Custodial Ledger Identity).</p>
                         <p>
                             At any reachable state of the contract, for a given process <Math>{"\\Pi"}</Math>, the escrowed custody balance attributable to <Math>{"\\Pi"}</Math> equals the aggregated claim of the process&rsquo;s counterparties against the contract:
                         </p>
@@ -158,7 +159,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                         The buyers and sellers in this identity are wallets representing real-world assets, with the wallet, the asset, and the seller distinct in ways that matter when the identity is read at scale. The present section&rsquo;s identity holds independently of the wallet&rsquo;s institutional shape behind the address.
                     </p>
                 </PaperSubsection>
-                <PaperSubsection title="5.2 Commits as journal entries; resolution as closing entries">
+                <PaperSubsection title="4.2 Commits as journal entries; resolution as closing entries">
                     <p>Each commitment produces a journal entry of the form:</p>
                     <ul className="space-y-1 list-disc pl-6 text-sm">
                         <li>Debit: <em>Custody &mdash; buyer <Math>{"B"}</Math> bond</em> &nbsp; <Math>{"+\\, 2P_i"}</Math></li>
@@ -183,7 +184,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                         These are the <em>custodian&rsquo;s</em> entries. The contracting parties&rsquo; own books, which run in parallel, do not close to zero &mdash; the resolution moves <Math>{"P_i"}</Math> from the buyer&rsquo;s books (where it was a deposit / asset against the custodian) into the seller&rsquo;s books, where it lands as revenue under the applicable revenue-recognition standard. The seller&rsquo;s <Math>{"2G_i"}</Math> component is bond returned &mdash; an asset reclassification (cash equivalent ex-custody back to cash equivalent in-wallet) with no P&amp;L impact. Symmetrically, the buyer&rsquo;s <Math>{"2P_i"}</Math> bond returns as an asset reclassification. The custodian&rsquo;s books closing to zero is the period-close; the parties&rsquo; books continue, with the period&rsquo;s net economic result &mdash; revenue earned, expense incurred &mdash; captured at the resolution moment in the parties&rsquo; own classification.
                     </p>
                 </PaperSubsection>
-                <PaperSubsection title="5.3 Supporting documentation and the complete record">
+                <PaperSubsection title="4.3 Supporting documentation and the complete record">
                     <p>The accounting record of a process consists of:</p>
                     <ul className="space-y-2 list-disc pl-6 text-sm">
                         <li><em>Journal entries</em>: the commitment and resolution events. Timestamped, signed, content-addressed, publicly verifiable.</li>
@@ -194,7 +195,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                         Together, these constitute a complete and contemporaneously produced accounting record for the process, from opening through resolution. No party maintains additional books; the record is complete without them.
                     </p>
                 </PaperSubsection>
-                <PaperSubsection title="5.4 Reconstruction">
+                <PaperSubsection title="4.4 Reconstruction">
                     <p>
                         The complete kernel state of a process is recoverable by a deterministic replay of the events &mdash; the equivalent of a universal trial-balance generator: any reader with read access to the chain can reconstruct the complete ledger state of any process, at any historical moment, without any party&rsquo;s cooperation. The reconstruction is verifiable against the chain and depends on no off-chain record beyond the documents the bound agreements&rsquo; hashes reference.
                     </p>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
     PaperLayout,
     PaperSection,
@@ -76,7 +77,7 @@ export default function OnChainEvidencePaper() {
 
             <PaperSection title="2. The Layered Architecture">
                 <p>
-                    Figaro&rsquo;s enforcement architecture is layered. The mechanism details &mdash; the bonding equilibrium and the atomic-resolution subgame &mdash; are established results we take as given; we state each layer here from the legal-design perspective and walk it through operationally, because practitioners frequently arrive with the question &ldquo;where does my dispute go?&rdquo;
+                    Figaro&rsquo;s enforcement architecture is layered. The mechanism details &mdash; the bonding equilibrium and the atomic-resolution subgame, derived in <Link href="/papers/asymmetric-bonding" className="text-ink-heading hover:underline">Asymmetric Bonding and Buyer Dominance</Link> (&sect;4.1 and &sect;5.3 respectively) &mdash; are taken as given; we state each layer here from the legal-design perspective and walk it through operationally, because practitioners frequently arrive with the question &ldquo;where does my dispute go?&rdquo;
                 </p>
                 <PaperSubsection title="Layer 0 — chain security">
                     <p>

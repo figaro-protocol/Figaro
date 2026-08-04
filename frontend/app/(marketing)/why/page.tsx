@@ -21,8 +21,11 @@ export default function Why() {
                 }
             >
                 <p className="text-sm text-ink-muted italic mt-6">
-                    This is the reflective read. For the mechanism itself &mdash; what actually happens in a deal &mdash; start at{" "}
-                    <Link href="/protocol" className="hover:underline">/protocol</Link>.
+                    This page argues that Figaro belongs to a third way of giving economic rules legitimacy, after coercion and shared belief &mdash; written for readers who want that historical and philosophical case, not the mechanics of a deal. If you want the mechanism instead, skip straight to{" "}
+                    <Link href="/local-commerce" className="hover:underline">/local-commerce</Link>{" "}
+                    for one deal lived end to end, or{" "}
+                    <Link href="/protocol" className="hover:underline">/protocol</Link>{" "}
+                    for the specification.
                 </p>
             </MarketingHero>
 

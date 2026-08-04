@@ -61,6 +61,43 @@ export default function Specifications() {
                         meta="receipt-bound · merkle-only"
                         desc="Three attest modes (seller / buyer / resolver). A merkle inclusion proof binds each attestation to the signed agreementHash, and the evidence is content-hashed; the chain validates no content shape. Attestations whose clause was not committed cannot land (InvalidInclusionProof revert)."
                     />
+                </ul>
+                <p className="text-sm text-ink-muted leading-relaxed mt-4 mb-2">
+                    <code>AttestationCoordinator</code>&apos;s three attest entry points, copied verbatim from source:
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-6 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`function attestAsSeller(
+    CommitmentTypes.Commitment calldata role,
+    CommitmentTypes.Commitment calldata target,
+    bytes32 clauseId,
+    uint8 stage,
+    bytes32 sectionHash,
+    bytes32[] calldata proof,
+    bytes32 contentRef
+) external;
+
+function attestAsBuyer(
+    CommitmentTypes.Commitment calldata target,
+    bytes32 clauseId,
+    uint8 stage,
+    bytes32 sectionHash,
+    bytes32[] calldata proof,
+    bytes32 contentRef
+) external;
+
+function attestViaResolver(
+    CommitmentTypes.Commitment calldata target,
+    bytes32 clauseId,
+    uint8 stage,
+    bytes32 sectionHash,
+    bytes32[] calldata proof,
+    bytes32 contentRef
+) external;`}</code>
+                </pre>
+                <ul className="space-y-4">
                     <ContractEntry
                         id="ClauseRegistry"
                         title="ClauseRegistry.sol"

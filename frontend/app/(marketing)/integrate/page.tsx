@@ -346,6 +346,9 @@ for (const [processId, process] of processes) {
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Where <code>CORE_ADDRESS</code> and the rest come from: per-network contract addresses ship as a <strong>deployment record</strong> &mdash; a JSON file the deploy script emits at <code>.deployments/&lt;network&gt;.json</code>. A local devnet writes <code>.deployments/local.json</code>; each public network&apos;s addresses are published in the <Link href="/spec" className="underline">/spec</Link> deployments table when that network goes live. Addresses are never hardcoded into these pages or the SDK &mdash; a local deployment rotates its addresses every redeploy, so read them from the record, not from prose. On a fresh devnet <code>DEPLOY_BLOCK</code> can be <code>0n</code>; on a public network, use the block the deploy landed in.
                 </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The script that writes it: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/deploy-local.sh" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/deploy-local.sh</code></a>. Clone <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">the repository</a> and run <code>./scripts/deploy-local.sh</code> against a running Anvil to produce a fresh <code>.deployments/local.json</code> &mdash; or run <code>./scripts/devup.sh</code>, which brings up Anvil and IPFS first and calls this same script for you.
+                </p>
                 <pre
                     tabIndex={0}
                     className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
