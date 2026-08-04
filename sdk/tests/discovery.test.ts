@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { keccak256, toBytes, encodeAbiParameters, pad, type Log } from "viem";
+import { describe, it, expect, vi } from "vitest";
+import { keccak256, toBytes, encodeAbiParameters, pad, type Log, type PublicClient } from "viem";
 import {
     DiscoveryGraph,
     reconstructDiscovery,
@@ -7,9 +7,10 @@ import {
     parseClauseRegistryLogs,
     parseMembersRegistryLogs,
     parseAssemblyRegistryLogs,
+    fetchDiscoveryEvents,
     type DiscoveryEvents,
 } from "../src/discovery.js";
-import type { Address, Hex } from "../src/types.js";
+import type { Address, FigaroAddresses, Hex } from "../src/types.js";
 
 const MEMBER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const MEMBER_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
@@ -243,5 +244,40 @@ describe("DiscoveryGraph — empty", () => {
         expect(g.getClauses()).toEqual([]);
         expect(g.getMembers()).toEqual([]);
         expect(g.getAssemblies()).toEqual([]);
+    });
+});
+
+describe("fetchDiscoveryEvents — chunked getLogs", () => {
+    /** A stub client whose `getLogs` always answers empty (only the chunking of
+     *  the CALLS themselves is under test here — decoding is covered above),
+     *  and whose calls are recorded for assertion. */
+    function mockClient(): PublicClient {
+        const getLogs = vi.fn(async () => [] as Log[]);
+        return { getLogs } as unknown as PublicClient;
+    }
+
+    const addresses: FigaroAddresses = {
+        core: "0x000000000000000000000000000000000000c0de" as Address,
+        clauseRegistry: "0x0000000000000000000000000000000000c1a05e" as Address,
+        membersRegistry: "0x0000000000000000000000000000000000dead01" as Address,
+        assemblyRegistry: "0x0000000000000000000000000000000000a55e60" as Address,
+    };
+
+    it("threads a custom chunkSize through to every configured registry's getLogs calls", async () => {
+        const client = mockClient();
+        await fetchDiscoveryEvents(client, addresses, 0n, 25n, 10n);
+        // Three registries × three 10-block chunks over [0,25] = 9 calls.
+        expect(client.getLogs).toHaveBeenCalledTimes(9);
+        expect(client.getLogs).toHaveBeenCalledWith({
+            address: addresses.clauseRegistry,
+            fromBlock: 20n,
+            toBlock: 25n,
+        });
+    });
+
+    it("defaults to DEFAULT_LOG_CHUNK_SIZE, issuing one call per registry on a devnet-sized range", async () => {
+        const client = mockClient();
+        await fetchDiscoveryEvents(client, addresses, 0n, 100n);
+        expect(client.getLogs).toHaveBeenCalledTimes(3);
     });
 });

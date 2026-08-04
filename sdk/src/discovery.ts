@@ -30,6 +30,7 @@ import {
     MEMBERS_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
 } from "./abis.js";
+import { fetchLogsChunked } from "./events.js";
 import type {
     Hex,
     Address,
@@ -202,22 +203,26 @@ const EMPTY_DISCOVERY: DiscoveryEvents = {
  * Fetch registry events across the given block range. Each family degrades
  * gracefully: a registry whose address is unconfigured contributes nothing,
  * so an agent pointed at a partial deployment still discovers what it can.
+ *
+ * `chunkSize` overrides `DEFAULT_LOG_CHUNK_SIZE` for providers with a
+ * different (or no) block-range cap — see `fetchLogsChunked` (events.ts).
  */
 export async function fetchDiscoveryEvents(
     client: PublicClient,
     addresses: FigaroAddresses,
     fromBlock: bigint = 0n,
     toBlock: bigint | "latest" = "latest",
+    chunkSize?: bigint,
 ): Promise<DiscoveryEvents> {
     const [clause, seller, assembly] = await Promise.all([
         addresses.clauseRegistry
-            ? client.getLogs({ address: addresses.clauseRegistry, fromBlock, toBlock }).then(parseClauseRegistryLogs)
+            ? fetchLogsChunked(client, { address: addresses.clauseRegistry, fromBlock, toBlock, chunkSize }).then(parseClauseRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as ClauseRegistryEvents),
         addresses.membersRegistry
-            ? client.getLogs({ address: addresses.membersRegistry, fromBlock, toBlock }).then(parseMembersRegistryLogs)
+            ? fetchLogsChunked(client, { address: addresses.membersRegistry, fromBlock, toBlock, chunkSize }).then(parseMembersRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as MembersRegistryEvents),
         addresses.assemblyRegistry
-            ? client.getLogs({ address: addresses.assemblyRegistry, fromBlock, toBlock }).then(parseAssemblyRegistryLogs)
+            ? fetchLogsChunked(client, { address: addresses.assemblyRegistry, fromBlock, toBlock, chunkSize }).then(parseAssemblyRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as AssemblyRegistryEvents),
     ]);
 

@@ -72,6 +72,11 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // array — NOT one flat log list. (Attestations are NOT in here: they live on
 // the AttestationCoordinator, a separate contract — read those with
 // EV_ATTESTATION + parseAttestationLogs; see @figaro/sdk/derive.)
+// `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`,
+// `fetchBatchUsageRecords`) chunk `getLogs` internally in sub-ranges of
+// `DEFAULT_LOG_CHUNK_SIZE` (9,500 blocks) so a wide range doesn't exceed a
+// public RPC provider's block-range cap; pass a trailing `chunkSize` to tune
+// it for a stricter (or more permissive) provider.
 const events = await fetchCoreEvents(client, addresses, 0n);
 
 // Reconstruct full process/order state from events

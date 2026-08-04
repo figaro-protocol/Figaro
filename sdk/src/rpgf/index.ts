@@ -23,6 +23,7 @@ import { USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
 import { computeClauseKey } from "../discovery.js";
+import { fetchLogsChunked } from "../events.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
 import { toSequencerCommitment } from "../agent/sequencer.js";
 import type { Commitment } from "../types.js";
@@ -272,13 +273,16 @@ export function computeRpgfAllocations(
 // ── Chain fetcher ────────────────────────────────────────────────────
 
 /** Fetch the counter's full record stream over `[0, toBlock]`, in
- *  (blockNumber, logIndex) order. */
+ *  (blockNumber, logIndex) order. `chunkSize` overrides
+ *  `DEFAULT_LOG_CHUNK_SIZE` for providers with a different (or no)
+ *  block-range cap — see `fetchLogsChunked` (../events.ts). */
 export async function fetchUsageRecords(
     client: PublicClient,
     usageCounter: Address,
     toBlock: bigint,
+    chunkSize?: bigint,
 ): Promise<UsageRecord[]> {
-    const logs = await client.getLogs({ address: usageCounter, fromBlock: 0n, toBlock });
+    const logs = await fetchLogsChunked(client, { address: usageCounter, fromBlock: 0n, toBlock, chunkSize });
     const records: UsageRecord[] = [];
     for (const log of logs) {
         try {
@@ -310,13 +314,15 @@ export async function fetchUsageRecords(
  *  A reader that folds only `fetchUsageRecords` sees the direct path alone and
  *  silently under-reports every artifact whose trade moved to batches — which
  *  is the whole failure the bridge exists to close. Pass both streams to
- *  `computeUsageAccruals`. */
+ *  `computeUsageAccruals`. `chunkSize` overrides `DEFAULT_LOG_CHUNK_SIZE` —
+ *  see `fetchLogsChunked` (../events.ts). */
 export async function fetchBatchUsageRecords(
     client: PublicClient,
     usageCounter: Address,
     toBlock: bigint,
+    chunkSize?: bigint,
 ): Promise<BatchUsageRecord[]> {
-    const logs = await client.getLogs({ address: usageCounter, fromBlock: 0n, toBlock });
+    const logs = await fetchLogsChunked(client, { address: usageCounter, fromBlock: 0n, toBlock, chunkSize });
     const records: BatchUsageRecord[] = [];
     for (const log of logs) {
         try {

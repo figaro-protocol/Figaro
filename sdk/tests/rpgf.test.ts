@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { encodePacked, keccak256, type Address, type Hex } from "viem";
+import { describe, expect, it, vi } from "vitest";
+import { encodePacked, keccak256, type Address, type Hex, type Log, type PublicClient } from "viem";
 import {
     computeRpgfAllocations,
     computeUsageAccruals,
@@ -12,6 +12,8 @@ import {
     type BatchUsageRecord,
     type UsageRecord,
     buildUsageClaims,
+    fetchUsageRecords,
+    fetchBatchUsageRecords,
 } from "../src/rpgf/index.js";
 import {
     computeAgreementHash,
@@ -584,5 +586,44 @@ describe("buildUsageClaims", () => {
                 `proof for ${claim.artifact}`,
             ).toBe(true);
         }
+    });
+});
+
+describe("fetchUsageRecords / fetchBatchUsageRecords — chunked getLogs", () => {
+    const USAGE_COUNTER = "0x000000000000000000000000000000000000f00d" as Address;
+
+    /** A stub client whose `getLogs` always answers empty — only the chunking
+     *  of the calls themselves is under test; decoding is covered elsewhere. */
+    function mockClient(): PublicClient {
+        const getLogs = vi.fn(async () => [] as Log[]);
+        return { getLogs } as unknown as PublicClient;
+    }
+
+    it("fetchUsageRecords threads a custom chunkSize through to getLogs", async () => {
+        const client = mockClient();
+        await fetchUsageRecords(client, USAGE_COUNTER, 25n, 10n);
+        expect(client.getLogs).toHaveBeenCalledTimes(3);
+        expect(client.getLogs).toHaveBeenNthCalledWith(1, { address: USAGE_COUNTER, fromBlock: 0n, toBlock: 9n });
+        expect(client.getLogs).toHaveBeenNthCalledWith(2, { address: USAGE_COUNTER, fromBlock: 10n, toBlock: 19n });
+        expect(client.getLogs).toHaveBeenNthCalledWith(3, { address: USAGE_COUNTER, fromBlock: 20n, toBlock: 25n });
+    });
+
+    it("fetchUsageRecords defaults to DEFAULT_LOG_CHUNK_SIZE, issuing one call on a devnet-sized range", async () => {
+        const client = mockClient();
+        await fetchUsageRecords(client, USAGE_COUNTER, 100n);
+        expect(client.getLogs).toHaveBeenCalledTimes(1);
+        expect(client.getLogs).toHaveBeenCalledWith({ address: USAGE_COUNTER, fromBlock: 0n, toBlock: 100n });
+    });
+
+    it("fetchBatchUsageRecords threads a custom chunkSize through to getLogs", async () => {
+        const client = mockClient();
+        await fetchBatchUsageRecords(client, USAGE_COUNTER, 25n, 10n);
+        expect(client.getLogs).toHaveBeenCalledTimes(3);
+    });
+
+    it("fetchBatchUsageRecords defaults to DEFAULT_LOG_CHUNK_SIZE, issuing one call on a devnet-sized range", async () => {
+        const client = mockClient();
+        await fetchBatchUsageRecords(client, USAGE_COUNTER, 100n);
+        expect(client.getLogs).toHaveBeenCalledTimes(1);
     });
 });

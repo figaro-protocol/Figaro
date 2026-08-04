@@ -128,22 +128,76 @@ export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
 
 
 
+// ── Chunked log fetch ────────────────────────────────────────────────────────
+
+/**
+ * Default chunk size for `fetchLogsChunked` — comfortably under the 10k-block
+ * range cap common on public RPC providers (some cap by result count
+ * instead; `chunkSize` is a per-call override for those).
+ */
+export const DEFAULT_LOG_CHUNK_SIZE = 9_500n;
+
+/**
+ * `client.getLogs` in sequential sub-ranges of at most `chunkSize` blocks,
+ * concatenated in block order.
+ *
+ * Every bulk fetcher in this SDK (`fetchCoreEvents`, `fetchDiscoveryEvents`,
+ * the RPGF mirror's `fetchUsageRecords`/`fetchBatchUsageRecords`) used to
+ * issue ONE unchunked `getLogs` over the full range — fine on a local devnet,
+ * but public RPC providers commonly cap a single call's block range (10k
+ * blocks, or a result-count limit), so an integrator's first wide-range read
+ * against a real deployment simply fails. This is chunking only — no
+ * retry/backoff beyond what `client.getLogs` already does.
+ *
+ * `toBlock: "latest"` is resolved once via `getBlockNumber` so every
+ * sub-range chunks against the same snapshot instead of a moving target.
+ */
+export async function fetchLogsChunked(
+    client: PublicClient,
+    params: {
+        address: Address;
+        fromBlock: bigint;
+        toBlock: bigint | "latest";
+        chunkSize?: bigint;
+    },
+): Promise<Log[]> {
+    const chunkSize = params.chunkSize ?? DEFAULT_LOG_CHUNK_SIZE;
+    if (chunkSize <= 0n) throw new Error("fetchLogsChunked: chunkSize must be positive");
+
+    const resolvedToBlock = params.toBlock === "latest" ? await client.getBlockNumber() : params.toBlock;
+
+    const logs: Log[] = [];
+    let from = params.fromBlock;
+    while (from <= resolvedToBlock) {
+        const to = from + chunkSize - 1n < resolvedToBlock ? from + chunkSize - 1n : resolvedToBlock;
+        const chunk = await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
+        logs.push(...chunk);
+        from = to + 1n;
+    }
+    return logs;
+}
+
 // ── Bulk fetch helpers ──────────────────────────────────────────────────────
 
 /**
  * Fetch all core events from the given block range and return parsed typed objects.
  * This is the primary entry point for agents bootstrapping state.
+ *
+ * `chunkSize` overrides `DEFAULT_LOG_CHUNK_SIZE` for providers with a
+ * different (or no) block-range cap — see `fetchLogsChunked`.
  */
 export async function fetchCoreEvents(
     client: PublicClient,
     addresses: FigaroAddresses,
     fromBlock: bigint = 0n,
     toBlock: bigint | "latest" = "latest",
+    chunkSize?: bigint,
 ) {
-    const logs = await client.getLogs({
+    const logs = await fetchLogsChunked(client, {
         address: addresses.core,
         fromBlock,
         toBlock,
+        chunkSize,
     });
 
     return {
