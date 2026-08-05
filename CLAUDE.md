@@ -18,15 +18,19 @@ easy; nothing makes delivering it credible. Figaro fixed consideration with mech
 design: the buyer bonds twice the payment, each seller twice the cumulative value at
 their link in the value-added chain — each bond its party's own staked deterrent — and
 two Nash equilibria follow: cooperation dominates every edge, and the buyer's atomic
-resolution settles the chain as one (weakest link). That is the kernel — the floor,
-one sentence, done. Everything people touch is built above it:
+resolution settles the chain as one (weakest link). A social layer rides the second:
+nobody is paid until the buyer resolves, so co-sellers hold a live, bonded interest in
+remedying any one seller's fault. That is the kernel and its social mechanism — the
+floor. Everything people touch is built above it:
 
 - **Terms and conditions** — the contract's body — are clauses: composable public
   artifacts, verified on-chain, tailored by designers.
 - **Offer and acceptance** are assemblies and checkout — whole deal-shapes anyone
-  publishes and anyone reuses.
-- **Capacity** is permissionless admission — any signer, human or software agent, on
-  equal footing, backed by staked registries.
+  publishes and anyone reuses; offers FORM by dispatch race or RFQ — market formation
+  with zero extra contracts.
+- **Capacity** is permissionless admission — any signer, human, software agent, or an
+  asset holding its own wallet, on equal footing, trading, authoring, composing,
+  routing; backed by staked registries.
 - **Mutual assent** is the bilateral EIP-712 signature — no custodian between the
   parties.
 - **Legality** — arbitration and fiscal routing compose in; where no forum is
@@ -34,16 +38,25 @@ one sentence, done. Everything people touch is built above it:
   pick the venue afterward) — legal-entity coordination pushed to the edges;
   demonstrating compliance is cheap, from the record.
 
-No admitting authority, custodian, or keeper in the stack: self-sovereign
-wallets on the base chain, the same contract reproducible anywhere on Earth or off it
-(commit and resolve need no synchrony), at pennies of fixed gas — the friction of
-centralized coordination collapsed to a signature. The trail of data is the **data
+Composability is the network effect: every deal plugs into the chain's other
+contracts — a Kleros ruling, a Uniswap swap, the fiscal multisender — a network, not
+a silo. And all of it is transparent and verifiable: what a platform asks you to
+believe, Figaro lets you check. No admitting authority, custodian, or keeper in the
+stack: self-sovereign wallets on the base chain, the same contract reproducible
+anywhere on Earth or off it (commit and resolve need no synchrony), at pennies of
+fixed gas, proof-batched at scale — the friction of centralized coordination
+collapsed to a signature. The trail of data is the **data
 layer** — the platform allocation inverted: the aggregate map is public, the private
-detail sealed and sellable only on its owner's terms. The commons funds itself through
+detail sealed and sellable only on its owner's terms. Four token kinds meet here: coordination (stablecoins, the florin — a pure
+Schelling point); utility (a designer pins their token as an assembly's
+denomination — the moat); community (a displaced community's token, spent in Los
+Angeles or Lima, sustains its value at home — no fiat pipeline, a Uniswap hop
+satisfying the regulator); and the social signalling that pick makes visible —
+support you can check, not a company's claim. The commons funds itself through
 retroactive public-goods funding — 600M florins, the protocol's token, pro-rata to
-authors whose artifacts get used — with its own equilibrium: usage and authorship both
-require a live ETH stake, a value loop — exposure to the growth one's own work
-produces, not a fee.
+authors whose artifacts get used (the 300M DAO treasury funds by human judgment) —
+with its own equilibrium: usage and authorship both require a live ETH stake, a value
+loop — exposure to the growth one's own work produces, not a fee.
 
 **Self-check before any synthesis:** does your draft cover at least six of the seven layers — kernel, clauses,
 assemblies, composition, registries+RPGF, data, agents? Is every sentence
@@ -168,10 +181,7 @@ An agent may NOT:
 
 ### Where these rules are enforced
 
-- **Path-level rules** (e.g., "never edit `src/kernel/FigaroCore.sol`") can be enforced at the Claude Code harness level via `.claude/settings.json` `permissions.deny` entries plus the existing `.claude/hooks/kernel-warn.sh` hook. The harness blocks (or prompts on) the tool call before it reaches the file.
-- **Ownership-level rules** (e.g., "do not edit another user's assembly") cannot be enforced by the harness — the harness has no notion of which wallet owns which file. They live in agent prompts, in CLAUDE.md, and in human review at PR/commit time.
-
-See `.claude/skills/figaro-kernel-discipline/SKILL.md` for the kernel-specific anti-patterns; that skill is the canonical source the kernel-reviewer subagent reads.
+Path-level rules → the harness (`.claude/settings.json` `permissions.deny` + `.claude/hooks/kernel-warn.sh`). Ownership-level rules (whose wallet owns which artifact) are invisible to the harness — they live in agent prompts, this file, and review. Kernel anti-patterns → `.claude/skills/figaro-kernel-discipline/SKILL.md`.
 
 When in doubt, ask. Cheap question, expensive cleanup.
 
@@ -257,29 +267,15 @@ Each protocol artifact family (clauses → `ClauseRegistry`; participants → `M
 
 When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommending an anchoring or registry-reuse choice.
 
-### Meaning lives in clauses + topology — never in a flat catch-all field
+### Meaning is derived from the graph, never stored
 
-The recurring, weeks-costly failure is modeling a concern as a stored value when it is **derived** from the graph. The canonical case: **there is no "fulfilment" field and no "delivery" checkbox.**
-
-- **The requested modality is a CLAUSE; fulfilment reality is DERIVED.** `figaro-modalities` commits the buyer's request (consume-onsite/pickup/delivery/virtual) at signing; reality reads from topology + clauses — a second co-equal **buyer↔courier order** carrying `figaro-courier-process` IS delivery; one node = on-site/pickup. No stored fulfilment-status field; no node-spawning checkbox — delivery is a second drawn order.
-- **Coordination lives in the process clauses** — `figaro-merchant-process` on the merchant order, `figaro-courier-process` on the courier order — not in a fulfilment field.
-- **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned are distinct assemblies (composed at the assembly level, like proximity), not a stored field.
-- **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order); the DAG parent edge is value-topology, not dominance.
-- **Clauses are a nestable hierarchy: article → clause → sub-clause** (articles = `block.design.article`, surfaced by the existing grouping component — do not rebuild it). **Sub-clauses live in the clause JSON spec; reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
-
-Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/CLAUSES.md`.
-
-Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and fails on retired `fulfilment` vocabulary (promoted WARN→FAIL 2026-06-11).
+The recurring, weeks-costly failure: modeling a concern as a stored value when it is **derived**. Canonical case — fulfilment: no field, no checkbox; the requested modality is a clause, a second co-equal buyer↔courier order IS delivery, coordination variants are separate assemblies, sub-clauses render off-chain from the spec (never a hardcoded tree). Full model → memory `feedback_fulfilment_retired_modality_derived` + `docs/CLAUSES.md`; the vocabulary is mechanically enforced by `scripts/lint-no-closed-world-vocab.sh` (pre-commit).
 
 **The 600M reward is UNIFORM** (ratified 2026-07-29): every artifact's score is its real usage alone — `icbrt(c·d²·1e18)`, no tag, category, weight, per-wallet cap, or quadratic-funding/match round (`MatchPool`, `boostedTag`, `rpgfTag` all deleted); never reintroduce a per-clause multiplier — TradFi "privilege a category" reasoning. **Neutrality is achieved by the STAKE, not by weighting:** Sybil resistance is the two-sided LIVE ETH stake (seller-gated usage in `UsageCounter`; author eligibility in `RpgfMinter._isAuthor`), a VALUE LOOP, not a cost. The 300M DAO treasury funds public goods by discretionary decision. Owner → `project_reward_mechanism_ratified_2026_07`; on-chain surface → `CONTRACTS.md` § RPGF.
 
-### Dispute Resolution — Three Layers
+### Dispute resolution
 
-1. **MAD via asymmetric bonding** — economic self-enforcement
-2. **Buyer dominance → coordination pressure** — multi-party processes self-resolve
-3. **Timestamped on-chain attestations** — tamper-proof evidence for off-chain forums
-
-The dispute layer is provider-agnostic; Kleros is one arbitration forum, not the system. Don't couple naming or abstractions to "kleros".
+The canonical stack is FIVE layers — blockchain → Core bonding+evidence → co-seller social layer → arbitration composition → law — never truncated (the layered-security memory owns it; forums rule regardless of composition). Provider-agnostic: Kleros is one forum, not the system — never couple naming or abstractions to "kleros".
 
 ---
 

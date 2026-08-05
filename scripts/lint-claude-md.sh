@@ -33,12 +33,15 @@
 #      fails if any reappears. Adopting a new tool = a deliberate edit to
 #      MIRROR_DENYLIST below, not silent drift.
 #
-#   6. SIZE TRIPWIRE — CLAUDE.md must stay under MAX_BYTES. Above Claude Code's
-#      documented ~40,000-char threshold, instruction adherence degrades (the file
-#      is NOT truncated); this fails the commit first, forcing a move-to-owning-doc
-#      decision (inventories -> docs/*)
-#      rather than a silent overflow. The file holds discipline + pointers;
-#      lists live in the indexed docs.
+#   6. SIZE TRIPWIRE — CLAUDE.md must stay under MAX_BYTES. This is a SELF-IMPOSED
+#      adherence budget, NOT an Anthropic limit (verified against official docs
+#      2026-08-05: CLAUDE.md is loaded in full at any size and never truncated;
+#      the only official guidance is soft — "shorter files produce better
+#      adherence", ~200-line target, path-scoped .claude/rules/ for conditional
+#      load. The 40K folklore likely garbles MEMORY.md's real 25KB/200-line
+#      auto-memory cap). Failing the commit forces a move-to-owning-doc decision
+#      (inventories -> docs/*) rather than a silent overflow. The file holds
+#      discipline + pointers; lists live in the indexed docs.
 #
 # Exit codes:
 #   0 — clean
