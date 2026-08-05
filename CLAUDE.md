@@ -8,44 +8,51 @@ every synthesis — pitch, projection, positioning, audit — starts from the wh
 frame below, never from the kernel** (ratified 2026-08-04;
 probe-validated across five blind audiences 2026-08-05).
 
-### The frame — hold this message through the whole session
+### The frame — hold this message all session
 
 **Figaro completes the contract.** Every trade is a contract, and a binding contract
 needs six elements — offer, acceptance, consideration, capacity, legality, mutual
 assent — plus two things every contract implies: a body of terms, and a trail of data.
 Between strangers the element that fails is **consideration** — promising value is
-easy; nothing makes delivering it trustworthy. Figaro fixed consideration with
-mechanism design: the buyer bonds twice the payment, each seller twice the cumulative
-value at their link in the value-added chain, and cooperation becomes every party's
-dominant strategy — settled atomically, by the buyer alone. That is the kernel — the
-floor, one sentence, done. Everything people touch is built above it:
+easy; nothing makes delivering it credible. Figaro fixed consideration with mechanism
+design: the buyer bonds twice the payment, each seller twice the cumulative value at
+their link in the value-added chain — each bond its party's own staked deterrent — and
+two Nash equilibria follow: cooperation dominates every edge, and the buyer's atomic
+resolution settles the chain as one (weakest link). That is the kernel — the floor,
+one sentence, done. Everything people touch is built above it:
 
 - **Terms and conditions** — the contract's body — are clauses: composable public
   artifacts, verified on-chain, tailored by designers.
 - **Offer and acceptance** are assemblies and checkout — whole deal-shapes anyone
   publishes and anyone reuses.
-- **Capacity** is open admission — any signer, human or software agent, on equal
-  footing, backed by staked registries.
+- **Capacity** is permissionless admission — any signer, human or software agent, on
+  equal footing, backed by staked registries.
 - **Mutual assent** is the bilateral EIP-712 signature — no custodian between the
   parties.
 - **Legality** is composition with on-network contracts — arbitration forums ruling on
-  the evidence record, fiscal routing at settlement — making demonstrating compliance
-  cheap.
+  the evidence record, fiscal routing at settlement — legal-entity coordination pushed
+  to the edges; demonstrating compliance is cheap, from the record.
 
-The trail of data is the **data layer** — the platform allocation inverted: the
-aggregate map is public, the private detail sealed and sellable only on its owner's
-terms. The commons funds itself through retroactive public-goods funding: 600M
-florins — the protocol's token — paid pro-rata to authors whose artifacts get used.
+No admitting authority, custodian, or keeper in the stack — a forum rules only where
+the parties composed it in: self-sovereign
+wallets on the base chain, the same contract reproducible anywhere on Earth or off it
+(commit and resolve need no synchrony), at pennies of fixed gas — the friction of
+centralized coordination collapsed to a signature. The trail of data is the **data
+layer** — the platform allocation inverted: the aggregate map is public, the private
+detail sealed and sellable only on its owner's terms. The commons funds itself through
+retroactive public-goods funding — 600M florins, the protocol's token, pro-rata to
+authors whose artifacts get used — with its own equilibrium: usage and authorship both
+require a live ETH stake, a value loop — exposure to the growth one's own work
+produces, not a fee.
 
 **Self-check before any synthesis:** does your draft cover at least six of the seven layers — kernel, clauses,
 assemblies, composition, registries+RPGF, data, agents? Is every sentence
 untransplantable to another project? If either fails, start over.
 
-### Beneath the frame — the kernel, then the five nouns
+### Beneath the frame — kernel, then five nouns
 
-Two cuts of ONE object, kept distinct: the frame above is the synthesis altitude (what
-you SAY); the kernel and five nouns below are the ontology (what anyone DOES). Never
-collapse one into the other.
+Two cuts of ONE object: the frame above is the synthesis altitude (what you SAY); the
+kernel and five nouns below are the ontology (what anyone DOES). Never collapse them.
 
 **The kernel (`FigaroCore`) is two mechanisms:** asymmetric bonding at commit, and
 buyer dominance with atomic resolution. They make cooperation the Nash equilibrium,
@@ -65,8 +72,8 @@ the network's gas. Nothing more is needed to make trade safe between strangers.
 5. **Composition with other on-network contracts** (Kleros, Uniswap, …) — what makes the
    network compositional instead of a silo.
 
-It is **open-world**: anyone contributes permissionlessly, and **RPGF** rewards them by
-how much their contribution helps the network evolve.
+It is **open-world**: anyone contributes permissionlessly; **RPGF** rewards what helps
+the network evolve.
 
 **The frontend exists only to let people DO these five and READ network state.** Every
 surface expresses buyer, seller, clause, assembly, or composition — or it is **silt to
@@ -178,20 +185,20 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
-- **Mechanism 1 — Asymmetric bonding.** Buyer locks 2× payment, seller locks 2× cumulative value. Produces the bilateral Nash equilibrium (cooperation weakly dominates defection for both parties; the unique profile surviving iterated elimination of weakly dominated strategies) AND scales the primitive from 2-party to N-party — each seller bonds against cumulative upstream value, forming a mesh of independently secured edges, each carrying its own equilibrium at every depth. 2× is the minimum viable multiplier.
-- **Mechanism 2 — Buyer dominance.** Only the buyer can trigger `resolveProcess`; resolution is **atomic** — all orders in the process settle together or not at all. Operates on the already-scaled mesh to enforce inter-seller coordination: a weakest-link subgame reproducing Grameen joint-liability peer enforcement under strictly weaker assumptions (no repeated interaction, no shared community, no exogenous punishment technology).
-- **Security constraint — No escape hatches.** Any unilateral exit path weakens the equilibrium (α≥½ breaks weak dominance directly; an unbonded third party J ∉ {B,S} reintroduces discretion). Not a third mechanism — a constraint protecting the two. External legal forums adjudicating under duress / frustration / impossibility are NOT escape hatches: they're constrained by their own institutional bond structures and operate on the commitment as evidentiary input.
+- **Mechanism 1 — Asymmetric bonding.** Buyer locks 2× payment, seller locks 2× cumulative value. Produces the bilateral Nash equilibrium (cooperation weakly dominates defection for both parties) AND scales the primitive from 2-party to N-party — each seller bonds against cumulative upstream value, forming a mesh of independently secured edges, each carrying its own equilibrium at every depth. 2× is the minimum viable multiplier.
+- **Mechanism 2 — Buyer dominance.** Only the buyer can trigger `resolveProcess`; resolution is **atomic** — all orders in the process settle together or not at all. Operates on the already-scaled mesh to enforce inter-seller coordination: a weakest-link subgame reproducing Grameen joint-liability peer enforcement under strictly weaker assumptions.
+- **Security constraint — No escape hatches.** Any unilateral exit path weakens the equilibrium (α≥½ breaks weak dominance directly; an unbonded third party J ∉ {B,S} reintroduces discretion). Not a third mechanism — a constraint protecting the two. External legal forums adjudicating under duress / frustration / impossibility are NOT escape hatches: constrained by their own institutional bond structures, they operate on the commitment as evidentiary input.
 
-The mechanisms are inseparable in practice: bonding alone gives a mesh that still needs N mutual agreements to resolve; buyer-dominance alone gives a resolver with nothing at stake. Together, the bonding ratio creates the mesh and buyer dominance + atomic resolution make it resolvable from a single signature while propagating cooperation pressure through it.
+The mechanisms are inseparable: bonding alone leaves a mesh needing N mutual agreements to resolve; buyer-dominance alone is a resolver with nothing at stake — together the mesh resolves from a single signature that propagates cooperation pressure through it.
 
-The kernel sees only **linear process chains** — `commit` calls extending a monotonic cumulative-value accumulator (`ProcessState`: `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives in the upper composability layer, reconstructed off-chain by indexers, never in the kernel. Each bonded process is a transaction-scoped institution that dissolves at settlement; every participant is an independent value-adder. What a traditional model calls a "restaurant" is a process of independent contributors — cook, kitchen seller, ingredient sourcer — each bonding and settling independently.
+The kernel sees only **linear process chains** — `commit` calls extending a monotonic cumulative-value accumulator (`ProcessState` has no DAG fields). DAG topology lives in the upper composability layer, reconstructed off-chain by indexers, never in the kernel. Each bonded process is a transaction-scoped institution that dissolves at settlement; a "restaurant" is just independent value-adders — cook, kitchen, sourcer — each bonding and settling independently.
 
 **Three mistakes to avoid:**
 1. Do not collapse the two mechanisms to "one mechanism plus rules." Atomic resolution does mechanism-style work — it enforces inter-seller coordination via the weakest-link subgame, not just convenience-of-resolution.
 2. Do not credit buyer dominance with scaling. Scaling is asymmetric bonding's work — each seller bonding against cumulative upstream value; buyer dominance enforces coordination on the *already-scaled* mesh.
 3. Do not treat no-escape-hatches as a third mechanism. It's a security constraint protecting the equilibrium the two mechanisms induce.
 
-Full game-theoretic derivation → `THEORY.md`. Post-firm economy, Coasean collapse, token denomination → `VISION.md`. The RWA-as-wallet / social-mechanism apparatus → `/papers/self-closing-ledger-periods` §7 (and memory `reference_rwa_as_wallet.md`, `reference_social_mechanism.md`). Immutable evidence is produced by the on-chain composition layer, not the kernel.
+Full game-theoretic derivation → `THEORY.md`. Post-firm economy, Coasean collapse, token denomination → `VISION.md`. The RWA-as-wallet / social-mechanism apparatus → `/papers/self-closing-ledger-periods` §7 (+ its two memories). Immutable evidence is produced by the on-chain composition layer, not the kernel.
 
 ### What Figaro Is Not
 
@@ -212,7 +219,7 @@ These each break a specific protocol property. **The tier tag is load-bearing** 
 - **(protocol — clause tier) Zero-payment "non-market" commitments** → zero stake = no equilibrium (+ free Sybil/RPGF farming); `figaro-commerce` `payment ≥ 1` is a mechanism floor (ruled 2026-07-14) — non-market graphs use their own ERC-20 denomination instead
 - **(kernel) Multi-currency bonding within one process** → breaks the same-unit comparability that makes the 2:1 bond ratio Nash-stable from chain state alone (would need an oracle, DEX, or pre-agreed FX rate — each reintroduces a trusted/discretionary actor). Multi-token vendor UX is achievable through composition: N independent monotoken processes, or a wallet-side swap before commit.
 
-Verify 3× before suggesting any change to kernel invariants. The MAD equilibrium is fragile — any single escape hatch degrades it.
+Verify 3× before touching kernel invariants — the MAD equilibrium is fragile; any single escape hatch degrades it.
 
 ### Why the Name
 
@@ -224,9 +231,9 @@ Reason from the core property downward: self-enforcing agreements between strang
 
 Never frame Figaro as "removing the middleman." Figaro is sovereign P2P commerce infrastructure. The platform companies are not being replaced; the architecture makes them structurally unnecessary.
 
-Do not reify topology labels into entities. "Restaurant", "merchant", "supplier" are descriptive labels for participants within an assembly, not firms.
+Do not reify topology labels ("restaurant", "merchant", "supplier") into entities — descriptive labels for participants within an assembly, not firms.
 
-The kernel is ideologically agnostic; the graph is the politics. FigaroCore takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. A market-liberal graph, a cooperative graph, an Islamic-finance graph, and a mutual-aid graph all use the same kernel. Never take positions on ideology at the kernel layer; never describe Figaro as aligned with any political or economic tradition. Ideology lives at the assembly tier — expressed in the graph composed there. Composition is the **designer's** act; sellers bind that graph and buyers select it — neither composes (open-world lens #1).
+The kernel is ideologically agnostic; the graph is the politics. FigaroCore takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. A market-liberal graph, a cooperative graph, an Islamic-finance graph, and a mutual-aid graph all use the same kernel. Never describe Figaro as aligned with any political or economic tradition. Ideology lives at the assembly tier — expressed in the graph composed there. Composition is the **designer's** act; sellers bind that graph and buyers select it — neither composes (open-world lens #1).
 
 ### Three-Tier Naming
 
