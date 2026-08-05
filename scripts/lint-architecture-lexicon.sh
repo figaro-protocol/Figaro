@@ -94,17 +94,17 @@ for file in "$@"; do
         "retired package name: the SDK is '@figaro/sdk' — '@figaro/core' misapplies the kernel tier-word 'core' to the runtime client."
 
     # ── clause vocabulary (cross-tier) ─────────────────────────────
-    # Canonical: the protocol artifact family is the 'clause' (`ClauseRegistry`,
+    # Canonical: the protocol registry family is the 'clause' (`ClauseRegistry`,
     # `IClauseValidator`, `clauseId`). The 'schema'→'clause' rename shipped, so
     # any new 'schema' is drift. Carve-outs (legitimate, different sense): IETF
     # "JSON Schema" (the spec format) and the frozen kernel's "commitment
     # schema" / "schema version" (struct layout).
-    # Carve-out: a *.schema.json artifact (and its conformance test) IS an IETF
+    # Carve-out: a *.schema.json file (and its conformance test) IS an IETF
     # JSON Schema — the published format definition of a clause spec — a homonym
-    # of the retired Figaro 'schema' (the clause artifact family), not drift.
+    # of the retired Figaro 'schema' (the clause registry family), not drift.
     check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/LEXICON\.md)$|\.schema\.json$|schema-conformance\.test' \
         'json[ -]schema|commitment schema|schema version|schema\.org|\.schema\.json|\$schema' \
-        "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
+        "retired: the protocol registry family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
 
     # ── retired clause vocabulary ('tier' / 'manifest', 2026) ──────
     # block.tier is DEAD — ripped from the block model. There is NO per-clause

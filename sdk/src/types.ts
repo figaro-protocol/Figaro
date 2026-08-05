@@ -104,7 +104,7 @@ export interface AttestationEvent {
     transactionHash: Hex | null;
 }
 
-// ── Discovery: registry events (the three artifact families) ─────────────────
+// ── Discovery: registry events (the three registry families) ─────────────────
 //
 // Parallel to the core process events above. A cold-start agent folds these to
 // learn what clauses, sellers, and assemblies EXIST — the registries are the
@@ -179,7 +179,7 @@ export interface AssemblyWithdrawnEvent {
     logIndex: number;
 }
 
-// ── Discovery: live views (deposit-withdrawn artifacts filtered out) ─────────
+// ── Discovery: live views (deposit-withdrawn entries filtered out) ─────────
 //
 // What `getClauses/getMembers/getAssemblies` return: the LIVE-staked set, each
 // a pointer (contentURI/metadataURI) the consumer hydrates from IPFS itself —

@@ -27,7 +27,7 @@ expires post-commit). See `DESIGN_DECISIONS.md` §13.
 
 ## Registries (`src/protocol/registries/`)
 
-The three artifact-family anchors — **parallel, not nested**. Each has its own identity scheme, evolution path, and event stream; none references another's existence.
+The three registry-family anchors — **parallel, not nested**. Each has its own identity scheme, evolution path, and event stream; none references another's existence.
 
 **`src/protocol/registries/ClauseRegistry.sol`** — Permissionless clause anchoring with a
 reclaimable ETH deposit (staked intent — K4).
@@ -98,7 +98,7 @@ field of it (`registered`) as the seller-side RPGF gate.
 
 **`src/protocol/registries/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
 reclaimable ETH deposit. An assembly is a composition template that USES
-clauses; this registry is the assembly artifact family's anchor, parallel to
+clauses; this registry is the assembly registry family's anchor, parallel to
 `ClauseRegistry` (clauses) and `MembersRegistry` (participants) per the
 separation-of-concerns doctrine. Two external functions:
 `registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
@@ -244,14 +244,14 @@ universes: a batch-settled process never acquires kernel status, so
 `UsageCounter`'s direct path — which requires `FigaroCore.orderStatus ==
 RESOLVED` — can never see batched trade, and the 600M would measure a
 shrinking fraction of real adoption exactly as the protocol scales. The guest
-proves each artifact's cumulative `(c, d)`; an 8th public value
+proves each clause's or assembly's cumulative `(c, d)`; an 8th public value
 (`usageAccrualHash`) commits the period, the provenance clause key, those
 accruals and the distinct sellers behind them; and `settleBatch` re-derives
 that hash from calldata before forwarding to `applyBatchAccrual`. **Both array
 lengths are in the hash preimage** — an accrual record is 48 bytes and a
 seller 20, so without them the same preimage could be re-split, presenting
 accruals whose sellers were never stake-checked. The gates the proof cannot
-see (open period, live seller stake, excluded artifacts) belong to the counter
+see (open period, live seller stake, excluded clauses or assemblies) belong to the counter
 and are checked there, not here. A batch that credits no usage passes empty
 arrays; that call is a no-op, which is what lets trade keep settling after the
 reward's last period closes.
@@ -275,14 +275,14 @@ assembly carried, **on chain, at the moment it happens**.
 
 It exists because the chain cannot look backwards: `FigaroCore` never calls the
 registries, the kernel is frozen, and contracts cannot read events — so no contract
-can learn an artifact's usage after the fact. Reconstructing it later is what forced
+can learn a clause's or assembly's usage after the fact. Reconstructing it later is what forced
 the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
 the fact as it happens leaves no claim to believe and nothing to adjudicate.
 
 Two permissionless functions, plus one proof-gated writer for the batch path.
-`recordClauseUsage(order, artifact, sectionHash, proof)`
+`recordClauseUsage(order, clauseOrAssembly, sectionHash, proof)`
 proves two things from data the chain already holds: the order is real and **RESOLVED**
-(`core.orderStatus == 2`), and the artifact was committed in that order's signed
+(`core.orderStatus == 2`), and the clause or assembly was committed in that order's signed
 agreement (merkle inclusion against `agreementHash`). It carries only the section
 FINGERPRINT (`sectionHash = keccak256(sectionData)`), never the preimage — so a
 `private`-disposition section's plaintext never touches public calldata. Same check
@@ -301,20 +301,20 @@ two-step inclusion-plus-content-match into a single structural gate. The provena
 key is fixed at deploy, which stops a caller substituting some other clause. Without that
 clause in the agreement, no process can credit its designer.
 
-**Excluded artifacts earn nothing directly:** `UsageCounter.excludedArtifact` holds the
+**Excluded clauses and assemblies earn nothing directly:** `UsageCounter.excludedClauseOrAssembly` holds the
 protocol-floor clauses that ride every (or nearly every) agreement — `figaro-commerce`,
 `figaro-topology`, and `figaro-assembly-provenance` — and `recordClauseUsage` on any of
-them reverts `ArtifactExcluded` by design (scoring the floor would pay its author for
+them reverts `ClauseOrAssemblyExcluded` by design (scoring the floor would pay its author for
 the protocol's own mandatory carriage). The provenance clause's exclusion is what makes
 the resolve-time recording loop's clause leg and assembly leg independent: the clause
 record on provenance always reverts while `recordAssemblyUsage` still credits the
 assembly's designer of record.
 
-Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
+Per clause or assembly per period it keeps `c` (distinct settled processes), `d` (distinct
 LIVE-STAKED SELLERS of record — ruled 2026-07-31), and `score = icbrt(c·d²·1e18)` when
 `d ≥ minSellers`, else **zero** — **UNIFORM**, breadth weighted twice as heavily as
 volume, value deliberately not a term. There is **no tag, category, or weight
-multiplier**: every artifact's score is its real usage alone (ratified 2026-07-29 — the
+multiplier**: every clause's and assembly's score is its real usage alone (ratified 2026-07-29 — the
 substrate-broadening weight and `boostedTag`/`rpgfTagOf` read are deleted). **Why sellers,
 not (buyer, seller) pairs (the pre-2026-07-31 statistic):** pairs cannot be priced — the
 buyer side holds no stake, so one staked seller plus N free buyer wallets was N units of
@@ -323,8 +323,8 @@ sublinearly (k staked buyers × m staked sellers mint k·m pairs from k+m deposi
 Distinct staked sellers is the leverage-free statistic: n units of breadth cost n live
 stakes, exactly linear, which is what the Sybil bound's rent-dissipation argument needs.
 **The minimum-support floor** (`minSellers`, constructor-immutable; mainnet 3, devnet
-rehearses 3): an artifact scores nothing in a period until 3 distinct staked sellers have
-carried it there — below the floor sit exactly the artifacts one actor can fabricate
+rehearses 3): a clause or assembly scores nothing in a period until 3 distinct staked sellers have
+carried it there — below the floor sit exactly the clauses and assemblies one actor can fabricate
 alone (self-farms, fragmentation shards, squatted names, trivial riders). Counting is
 never refused below the floor; the score springs whole when it is crossed. The floor
 lives in `_score`, so both settlement paths inherit it identically and PER PATH — the
@@ -336,7 +336,7 @@ repeat depth raised to α. So **α is the elasticity of reward to repeat depth**
 earns 2× the score), and when every pair trades once (`c = d`) the score is the count itself
 for any α at all. `α < 1/2` is justified because a new relationship informs more than another
 observation of a known one; **α = 1/3 exactly is a JUDGMENT, not a derivation** — uniform
-across artifacts, so it is not curation. It is **not** a Sybil defense and must not be
+across clauses and assemblies, so it is not curation. It is **not** a Sybil defense and must not be
 described as one (2026-07-30): no scoring shape can separate a fabricated counterparty from a
 genuine one. **Seller-side live-stake gate:** a record counts only if
 the process's seller-of-record holds a live `MembersRegistry` stake
@@ -361,10 +361,10 @@ functions above; it arrives here instead, and only from `FigaroBatchVerifier`
 (`batchVerifier`, immutable). This is a **proof-gated writer, not an admin** — the
 caller has no discretion, only numbers an immutable vkey committed;
 `DESIGN_DECISIONS.md` §16 owns that argument and an auditor should read it before
-filing the finding. The write is an OVERWRITE of the artifact's CUMULATIVE `(c, d)`
+filing the finding. The write is an OVERWRITE of the clause's or assembly's CUMULATIVE `(c, d)`
 for the period, because the guest proves the running totals off-chain — so this
 contract keeps **no per-process storage for the batch path at all**, and cost is
-O(distinct artifacts in the batch) rather than O(records). That is the whole economy
+O(distinct clauses and assemblies in the batch) rather than O(records). That is the whole economy
 of the bridge: ~85% of a direct record's ~169k gas is storage plus `icbrt`, so
 batching only the authorisation would have saved nothing. Counts are asserted
 non-decreasing (`AccrualWentBackwards`) — free, since the previous score is read for
@@ -376,7 +376,7 @@ An EMPTY accrual returns before `currentPeriod()` is consulted, and must: otherw
 every batch would revert `AccrualClosed` forever once the last period ended, and the
 reward path would brick the scaling path.
 
-**Merging the two paths: sum the SCORES, never the components.** `scoreOf(artifact,
+**Merging the two paths: sum the SCORES, never the components.** `scoreOf(clauseOrAssembly,
 period)` returns `accrualOf.score + batchAccrualOf.score`, and `totalScoreIn` counts
 both. Adding `c` to `c` and `d` to `d` would over-count breadth for any (buyer, seller)
 pair active on both sides — the chain holds counts, not the pair SETS needed to union
@@ -385,7 +385,7 @@ twice for breadth they never had. Summing scores can never over-count: the score
 concave and homogeneous of degree 1, so the component merge is superadditive, and the
 shortfall is EXACTLY ZERO when the split is proportional. No PROCESS is ever counted
 on both sides — the universes are disjoint. **`RpgfMinter` reads `scoreOf`**; a reader
-that reaches for `accrualOf` alone silently under-reports every artifact whose trade
+that reaches for `accrualOf` alone silently under-reports every clause or assembly whose trade
 moved to batches, and the batch leg emits its own `BatchUsageRecorded` (cumulative,
 REPLACES rather than adds) which an indexer must fold differently from `UsageRecorded`.
 
@@ -398,7 +398,7 @@ sampled `uint64` only, the one domain where the wrong bound is coincidentally ex
 fuzzes the whole `uint256` domain, and the fix was corroborated against solady's audited
 `FixedPointMathLib.cbrt` over 512 runs.
 
-**Idempotence is GLOBAL — a process counts ONCE EVER per artifact** (ruled 2026-07-30),
+**Idempotence is GLOBAL — a process counts ONCE EVER per clause or assembly** (ruled 2026-07-30),
 in whichever period it is first recorded. A resolved order stays resolved and its struct is
 public in the commit event, so a per-period key let the same trade be re-presented in every
 period: rational play became "re-record everything each period," which pays for *recording
@@ -414,7 +414,7 @@ falls as `t^(-2/3)` in trades-per-counterparty), so the cap sat at 5 and never b
 while it did bind honest repeat trade. The `c^(1/3)` exponent already discounts repetition
 far more steeply than the cliff did. The pair statistic followed it out for the deeper form
 of the same disease (unpriceable breadth — see above); breadth is now `sellerSeen`, a
-boolean per (artifact, period, seller). **The general rule both instances teach: Sybil
+boolean per (clause-or-assembly, period, seller). **The general rule both instances teach: Sybil
 resistance cannot live in the shape of the score.** No scoring function can separate a
 fabricated counterparty from a genuine one — any concavity that dampens fake breadth
 dampens real breadth identically — so it can only live in the cost of an identity, which is
@@ -430,7 +430,7 @@ that anchor plus the 21,000 tx base cost — never a re-derivation. Same discipl
 kernel's `COMMIT_GAS_PER_ORDER`/`RESOLVE_GAS_PER_ORDER` pair: one measured home, everything
 else quotes it.
 
-No owner, no admin, no pause; records are idempotent per (artifact, process).
+No owner, no admin, no pause; records are idempotent per (clause-or-assembly, process).
 Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (the count is derived,
 never stored; incl. the fuzzed `icbrt` floor-cube-root property over all of `uint256`,
 and a no-saturation regression).
@@ -461,24 +461,24 @@ most-measured evidence — the early network is the thinnest, most manipulable d
 and early evidence-poor funding is the 300M DAO treasury's job. Annual, because authors
 cannot price a multi-year lag in an unpriced token, and shorter periods shrink the deposit
 recycling window. Paid to clause authors and assembly designers of record, in proportion
-to the trade their artifacts actually carried. No donors, no pool. No buyer or seller
+to the trade their clauses and assemblies actually carried. No donors, no pool. No buyer or seller
 touches it.
 
-**`src/rpgf/RpgfMinter.sol`** — `claim(periodId, artifacts)` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period (a wallet passes every artifact it authored in that one call). The tranche grouping is deploy-script data; the minter knows only periods and their budgets, and validates its budget array against `UsageCounter.periodCount()` at deploy so the two schedules cannot drift (`AmountsPeriodsMismatch`).
+**`src/rpgf/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period (a wallet passes every clause or assembly it authored in that one call). The tranche grouping is deploy-script data; the minter knows only periods and their budgets, and validates its budget array against `UsageCounter.periodCount()` at deploy so the two schedules cannot drift (`AmountsPeriodsMismatch`).
 
 **There is nothing to post, nothing to bond, and nothing to dispute.** `UsageCounter` (above) records verified usage as it happens, so a period's payout is arithmetic over numbers that are already final. `claim` requires `counter.periodClosed(periodId)`, which is why no snapshot, checkpoint array, or history walk is needed.
 
-**The caller's list must be duplicate-free** — a repeat reverts `DuplicateArtifact`. Until
+**The caller's list must be duplicate-free** — a repeat reverts `DuplicateClauseOrAssembly`. Until
 2026-07-30 duplicates were summed and the sum then CLAMPED to the period total, so an author
-of record for ANY artifact with a non-zero score could repeat it until the sum reached the
+of record for ANY clause or assembly with a non-zero score could repeat it until the sum reached the
 denominator and mint the entire period budget, leaving every other author to revert on
 the budget backstop; the clamp was what made it maximal, silently rounding a malformed
 claim up to the whole pool rather than letting the budget backstop reject it. Both are gone —
-with distinct artifacts `score ≤ total` holds structurally, so there is nothing to clamp.
-(The test that was supposed to cover this passed a SOLE artifact, where taking 100% is the
+with distinct clauses and assemblies `score ≤ total` holds structurally, so there is nothing to clamp.
+(The test that was supposed to cover this passed a SOLE clause or assembly, where taking 100% is the
 correct answer either way — a case that cannot distinguish inflation from correctness.)
 
-Each artifact in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registrar == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (author == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your artifact's stake stays live. Payout is **UNIFORM pro rata with no cap** — `periodAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
+Each clause or assembly in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registrar == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (author == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your clause's or assembly's stake stays live. Payout is **UNIFORM pro rata with no cap** — `periodAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
 
 No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per period here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` + `test/rpgf/RpgfIntegrationTest.t.sol` (no stubs — real process → real counter → real mint).
 

@@ -9,9 +9,9 @@ interface IUsageCounter {
     function periodClosed(uint8 period) external view returns (bool);
     function totalScoreIn(uint8 period) external view returns (uint256);
     /// @dev BOTH settlement paths, summed as SCORES — never `accrualOf`,
-    ///      which sees the direct path only and would under-pay every
-    ///      artifact whose trade moved to batches.
-    function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256);
+    ///      which sees the direct path only and would under-pay every clause
+    ///      or assembly whose trade moved to batches.
+    function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
 }
 
 /// @notice Author of record for a clause — `ClauseRegistry.depositOf`.
@@ -48,7 +48,8 @@ interface IAssemblyAuthor {
 ///         There is NOTHING TO POST, NOTHING TO BOND, AND NOTHING TO DISPUTE.
 ///         Usage is counted on chain as it happens by `UsageCounter`, so a
 ///         tranche is arithmetic over numbers that are already final: a wallet's
-///         share is its artifacts' score in that period over the period's total.
+///         share is its clauses' and assemblies' score in that period over the
+///         period's total.
 ///         The previous design reconstructed usage after the fact, which
 ///         required someone to POST the answer, a BOND to make posting costly, a
 ///         CHALLENGE to contest it, and a FORUM to award the bonds — an entire
@@ -63,7 +64,8 @@ interface IAssemblyAuthor {
 ///         a number no later record can change. No checkpoints, no history walk.
 ///
 /// @dev    UNIFORM PRO RATA — no per-wallet cap. A wallet's share is its
-///         artifacts' score over the period's total, paid straight. Sybil
+///         clauses' and assemblies' score over the period's total, paid
+///         straight. Sybil
 ///         resistance is the two-sided LIVE ETH STAKE (author eligibility here,
 ///         seller-gated usage in `UsageCounter`), not a cap: breadth counts
 ///         distinct staked sellers, so every unit of the score's dominant term
@@ -96,7 +98,8 @@ contract RpgfMinter {
     mapping(uint8 => uint256) public minted;
 
     /// @notice period → wallet → claimed. One claim per wallet per period; a
-    ///         wallet passes all of its artifacts in that single call.
+    ///         wallet passes all of its clauses and assemblies in that single
+    ///         call.
     mapping(uint8 => mapping(address => bool)) public claimed;
 
     // ── Events ──────────────────────────────────────────────────────
@@ -110,9 +113,9 @@ contract RpgfMinter {
     error AmountsPeriodsMismatch(uint256 amounts, uint256 periods);
     error PeriodStillAccruing(uint8 periodId);
     error AlreadyClaimed(uint8 periodId, address account);
-    error NoArtifacts();
-    error DuplicateArtifact(bytes32 artifact);
-    error NotAuthorOfRecord(bytes32 artifact, address caller);
+    error NoClausesOrAssemblies();
+    error DuplicateClauseOrAssembly(bytes32 clauseOrAssembly);
+    error NotAuthorOfRecord(bytes32 clauseOrAssembly, address caller);
     error NothingToClaim();
     error PeriodBudgetExceeded(uint8 periodId);
 
@@ -143,31 +146,36 @@ contract RpgfMinter {
         return periodAmount.length;
     }
 
-    /// @notice What `account` could claim for `periodId` with `artifacts`,
-    ///         without sending a transaction. Zero once claimed.
-    function claimable(uint8 periodId, address account, bytes32[] calldata artifacts) external view returns (uint256) {
+    /// @notice What `account` could claim for `periodId` with
+    ///         `clausesOrAssemblies`, without sending a transaction. Zero once
+    ///         claimed.
+    function claimable(uint8 periodId, address account, bytes32[] calldata clausesOrAssemblies)
+        external
+        view
+        returns (uint256)
+    {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
         if (claimed[periodId][account]) return 0;
-        (uint256 amount,) = _entitlement(periodId, account, artifacts);
+        (uint256 amount,) = _entitlement(periodId, account, clausesOrAssemblies);
         return amount;
     }
 
     // ── Claim ───────────────────────────────────────────────────────
 
     /// @notice Mint your share of a closed period. Once per wallet per period;
-    ///         pass every artifact you authored in one call.
+    ///         pass every clause and assembly you authored in one call.
     /// @param periodId  The accrual period being claimed.
-    /// @param artifacts Clause idHashes and/or assembly compositionHashes the
-    ///                  caller is author of record for. Each is verified against
-    ///                  its own registry — the caller's list is a lookup key,
-    ///                  never a claim of ownership.
-    function claim(uint8 periodId, bytes32[] calldata artifacts) external {
+    /// @param clausesOrAssemblies Clause idHashes and/or assembly
+    ///                  compositionHashes the caller is author of record for.
+    ///                  Each is verified against its own registry — the caller's
+    ///                  list is a lookup key, never a claim of ownership.
+    function claim(uint8 periodId, bytes32[] calldata clausesOrAssemblies) external {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
         if (!counter.periodClosed(periodId)) revert PeriodStillAccruing(periodId);
         if (claimed[periodId][msg.sender]) revert AlreadyClaimed(periodId, msg.sender);
-        if (artifacts.length == 0) revert NoArtifacts();
+        if (clausesOrAssemblies.length == 0) revert NoClausesOrAssemblies();
 
-        (uint256 amount, uint256 score) = _entitlement(periodId, msg.sender, artifacts);
+        (uint256 amount, uint256 score) = _entitlement(periodId, msg.sender, clausesOrAssemblies);
         if (amount == 0) revert NothingToClaim();
 
         uint256 spent = minted[periodId] + amount;
@@ -183,23 +191,25 @@ contract RpgfMinter {
 
     // ── Internals ───────────────────────────────────────────────────
 
-    /// @dev Sum the caller's artifacts' scores for the period and take the
-    ///      pro-rata share of its budget. UNIFORM pro rata: no per-wallet cap.
+    /// @dev Sum the caller's clauses' and assemblies' scores for the period and
+    ///      take the pro-rata share of its budget. UNIFORM pro rata: no cap.
     ///      The reward tracks real usage directly, and the fixed 600M pool is one
     ///      a farmer DILUTES, never inflates.
     ///
     ///      THE LIST MUST BE DUPLICATE-FREE, and that is enforced here rather
     ///      than assumed. Until 2026-07-30 this loop summed each entry as given
     ///      and then CLAMPED `score` to `total` — so an author of record for any
-    ///      artifact with a non-zero score could repeat it until the sum reached
-    ///      the period total and mint the ENTIRE tranche, leaving every other
+    ///      clause or assembly with a non-zero score could repeat it until the
+    ///      sum reached the period total and mint the ENTIRE tranche, leaving
+    ///      every other
     ///      author to revert on `TrancheBudgetExceeded`. The clamp is what made
     ///      it maximal: it silently rounded a malformed claim UP to the whole
     ///      pool instead of letting the budget backstop reject it. Both are gone
-    ///      — duplicates revert, and with distinct artifacts `score <= total`
-    ///      holds structurally (`totalScoreIn` is the sum over ALL artifacts, of
-    ///      which the caller's are a subset), so there is nothing left to clamp.
-    function _entitlement(uint8 periodId, address account, bytes32[] calldata artifacts)
+    ///      — duplicates revert, and with a distinct list `score <= total` holds
+    ///      structurally (`totalScoreIn` is the sum over ALL clauses and
+    ///      assemblies, of which the caller's are a subset), so there is nothing
+    ///      left to clamp.
+    function _entitlement(uint8 periodId, address account, bytes32[] calldata clausesOrAssemblies)
         internal
         view
         returns (uint256 amount, uint256 score)
@@ -207,13 +217,13 @@ contract RpgfMinter {
         uint256 total = counter.totalScoreIn(periodId);
         if (total == 0) return (0, 0);
 
-        for (uint256 i = 0; i < artifacts.length; ++i) {
-            bytes32 artifact = artifacts[i];
+        for (uint256 i = 0; i < clausesOrAssemblies.length; ++i) {
+            bytes32 clauseOrAssembly = clausesOrAssemblies[i];
             for (uint256 j = 0; j < i; ++j) {
-                if (artifacts[j] == artifact) revert DuplicateArtifact(artifact);
+                if (clausesOrAssemblies[j] == clauseOrAssembly) revert DuplicateClauseOrAssembly(clauseOrAssembly);
             }
-            if (!_isAuthor(artifact, account)) revert NotAuthorOfRecord(artifact, account);
-            score += counter.scoreOf(artifact, periodId);
+            if (!_isAuthor(clauseOrAssembly, account)) revert NotAuthorOfRecord(clauseOrAssembly, account);
+            score += counter.scoreOf(clauseOrAssembly, periodId);
         }
         if (score == 0) return (0, 0);
 
@@ -222,21 +232,22 @@ contract RpgfMinter {
 
     /// @dev Author of record with a LIVE stake — the clause registrar or the
     ///      assembly author, each only while their registration deposit is
-    ///      un-withdrawn. An artifact is one or the other; both registries are
+    ///      un-withdrawn. A key is one or the other; both registries are
     ///      consulted because the families are parallel and neither knows the
     ///      other exists.
     ///
     ///      The `!withdrawn` requirement is the AUTHOR-SIDE half of the two-sided
     ///      live-ETH-stake gate (its seller-side half lives in `UsageCounter`):
-    ///      you earn RPGF only while your artifact's stake stays live. Withdraw
-    ///      and you de-surface AND forfeit future reward — the stake is aligned
+    ///      you earn RPGF only while your clause's or assembly's stake stays
+    ///      live. Withdraw and you de-surface AND forfeit future reward — the
+    ///      stake is aligned
     ///      upside (more trade → more base-currency demand → ETH appreciates for
     ///      every registry staker), not a cost, so keeping it live is the honest
     ///      author's default.
-    function _isAuthor(bytes32 artifact, address account) internal view returns (bool) {
-        (address registrar, bool withdrawn) = clauses.depositOf(artifact);
+    function _isAuthor(bytes32 clauseOrAssembly, address account) internal view returns (bool) {
+        (address registrar, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
         if (registrar != address(0)) return registrar == account && !withdrawn;
-        (address author,, bool depositWithdrawn,) = assemblies.bindings(artifact);
+        (address author,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
         return author != address(0) && author == account && !depositWithdrawn;
     }
 }

@@ -1,9 +1,9 @@
 /**
  * @figaro/sdk/derive — Withdraw gate (commits==resolves)
  *
- * The off-chain, advisory half of the K4 staked-intent model: an artifact
+ * The off-chain, advisory half of the K4 staked-intent model: a clause-or-assembly
  * author (clause registrar / assembly author) must not reclaim their
- * registration stake while deals COMPOSED FROM that artifact are still in
+ * registration stake while deals COMPOSED FROM that clause or assembly are still in
  * flight. This is the read-side derivation RPGF attribution pays on — the same
  * count. It is ADVISORY today (surfaced as a disabled affordance) and hardens
  * on-chain later when the prover returns; nothing here touches the kernel.
@@ -26,21 +26,21 @@
  *      per-node clause sets OVER-block (both authors see the deal), which is the
  *      safe direction for a withdraw gate.
  *
- * `canWithdraw(artifact) == (inFlightCount === 0)`.
+ * `canWithdraw(clauseOrAssembly) == (inFlightCount === 0)`.
  *
  * VERIFIED in-flight deals block; UNVERIFIED deals are counted and SURFACED
  * but do not block. An in-flight order whose agreement could not be
  * fetched/verified is passed here as `agreement: null` and lands in
  * `unverifiedCount` — an informational caveat, never a veto. Two reasons,
  * both structural: (i) agreement bodies are PARTY-PRIVATE — a reader holds a
- * URI only for orders their own wallet witnessed — so an artifact author can
+ * URI only for orders their own wallet witnessed — so a clause-or-assembly author can
  * never verify a stranger's deal; blocking on unverifiable foreign agreements
  * would dead-lock every author's withdraw whenever ANY deal is in flight
  * anywhere on the network. (ii) The on-chain hardening this advisory gate
  * anticipates is an opt-in INCLUSION-PROOF model: a deal locks the stake only
- * by PROVING the artifact's leaf is in its committed agreement, so unrevealed
+ * by PROVING the clause or assembly's leaf is in its committed agreement, so unrevealed
  * deals don't lock it there either — the advisory mirrors those semantics.
- * Absence stays absence: an artifact with NO in-flight orders resolves to
+ * Absence stays absence: a clause or assembly with NO in-flight orders resolves to
  * `canWithdraw: true` (reads-at-edge — resolved-empty is absence, not error).
  */
 
@@ -98,11 +98,11 @@ export interface InFlightAgreement {
 }
 
 export interface WithdrawGate {
-    /** True iff no in-flight deal VERIFIABLY composes the artifact — the
+    /** True iff no in-flight deal VERIFIABLY composes the clause or assembly — the
      *  advisory "safe to reclaim the stake now" signal
      *  (`inFlightCount === 0`; unverified deals never block). */
     canWithdraw: boolean;
-    /** In-flight deals that verifiably compose the artifact. */
+    /** In-flight deals that verifiably compose the clause or assembly. */
     inFlightCount: number;
     /** In-flight deals whose agreement could not be verified — surfaced as an
      *  informational caveat, never blocking: terms are party-private, and the
@@ -115,7 +115,7 @@ function gate(inFlightCount: number, unverifiedCount: number): WithdrawGate {
 }
 
 /**
- * Withdraw gate for a CLAUSE artifact. A deal composes the clause iff its
+ * Withdraw gate for a CLAUSE. A deal composes the clause iff its
  * agreement names it (`sections[].clause`). Counted per order — each committed
  * order is a distinct live commitment bound to the clause. Version-agnostic by
  * design: withdrawing a registration de-surfaces the clause for NEW
@@ -162,7 +162,7 @@ function fingerprintsEqual(a: readonly string[], b: readonly string[]): boolean 
 }
 
 /**
- * Withdraw gate for an ASSEMBLY artifact. A deal is composed from the assembly
+ * Withdraw gate for an ASSEMBLY. A deal is composed from the assembly
  * iff it is a PROCESS whose committed orders reproduce the template's per-node
  * clause composition (see `assemblyFingerprint`). Counted per process. A
  * process with any unverifiable agreement can't be fully fingerprinted, so it

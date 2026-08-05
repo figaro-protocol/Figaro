@@ -36,14 +36,14 @@ pub struct PendingOp {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Admission {
     pub id: u64,
-    /// True when the same artifact was already pending — the original
+    /// True when the same submission was already pending — the original
     /// acknowledgment is returned and nothing is enqueued twice.
     pub duplicate: bool,
 }
 
 /// Why a submission was refused. `Full` is a capacity signal (retry after
 /// the next batch drains the queue); `Invalid` is a rejection of the
-/// artifact itself.
+/// submission itself.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SubmitError {
     Invalid(String),
@@ -208,8 +208,9 @@ impl Mempool {
     /// Claims are SUBMITTED, never derived here — exactly as attestation
     /// witnesses are. The sequencer holds no agreements: it sees commitment
     /// structs, whose `agreement_hash` is a root, not the sections. Whoever
-    /// holds the agreement (the artifact's author, typically, since this is
-    /// how their work gets counted) supplies the section fingerprint and the
+    /// holds the agreement (the author of the clause or assembly, typically,
+    /// since this is how their work gets counted) supplies the section
+    /// fingerprint and the
     /// inclusion proof. Nothing is trusted either way — the guest re-proves
     /// settlement and inclusion, and the counter enforces the reward's own
     /// gates on chain.
@@ -222,9 +223,9 @@ impl Mempool {
     /// nothing. Bounded by `max_pending_usage` with the same
     /// evict-the-newcomer policy as ops.
     pub async fn submit_usage_claim(&self, claim: UsageClaim) -> Result<usize, SubmitError> {
-        if claim.artifact == alloy_primitives::B256::ZERO {
+        if claim.clause_or_assembly == alloy_primitives::B256::ZERO {
             return Err(SubmitError::Invalid(
-                "usage claim artifact is zero".to_string(),
+                "usage claim clause-or-assembly is zero".to_string(),
             ));
         }
         if claim.order.agreement_hash == alloy_primitives::B256::ZERO {

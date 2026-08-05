@@ -123,8 +123,8 @@ contract RpgfIntegrationTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    /// @dev One real bonded process, settled, committing `artifact`.
-    function _settle(bytes32 artifact, uint256 salt) internal returns (CommitmentTypes.Commitment memory c) {
+    /// @dev One real bonded process, settled, committing `clause or assembly`.
+    function _settle(bytes32 clauseOrAssembly, uint256 salt) internal returns (CommitmentTypes.Commitment memory c) {
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -132,7 +132,7 @@ contract RpgfIntegrationTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(artifact, SECTION),
+            agreementHash: AgreementTestHelper.singleSectionRoot(clauseOrAssembly, SECTION),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -253,7 +253,7 @@ contract RpgfIntegrationTest is Test {
     function test_assemblyCannotBeCreditedWithoutItsProvenanceSection() public {
         // An agreement that never committed the provenance clause cannot credit
         // an assembly — there is no leaf to open. This is the path that looked
-        // like it worked when the artifact key was passed directly.
+        // like it worked when the clause or assembly key was passed directly.
         CommitmentTypes.Commitment memory p = _settle(GEO_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
         counter.recordAssemblyUsage(p, ASM, new bytes32[](0));
@@ -269,7 +269,7 @@ contract RpgfIntegrationTest is Test {
         counter.recordAssemblyUsage(p, keccak256("other-assembly"), new bytes32[](0));
     }
 
-    function test_nonAuthorCannotClaimSomeoneElsesArtifact() public {
+    function test_nonAuthorCannotClaimSomeoneElsesClauseOrAssembly() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
         counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
         vm.warp(P0_END + 1);

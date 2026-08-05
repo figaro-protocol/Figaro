@@ -120,7 +120,7 @@ So when a process the wallet expected is absent from `sync()`, or an order reads
 
 Exactly one thing crosses the seam: the RPGF usage accrual, carried by the proof into
 `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what their
-artifacts earned, read `scoreOf(artifact, period)` (it sums both paths) — never
+clauses and assemblies earned, read `scoreOf(clauseOrAssembly, period)` (it sums both paths) — never
 `accrualOf` alone, and if you mirror the events off-chain, fold `UsageRecorded` **and**
 `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it does not add).
 
@@ -131,7 +131,7 @@ Public statement of all of this, for the owner: `/spec` § "Two settlement paths
 
 You cannot drive `settleBatch` the way you drive `commit`: it takes an SP1 validity proof
 over a whole batch. It is nonetheless **permissionless** — no caller gate, no owner, no
-fee — so the ordinary route is to hand your signed artifact to a **sequencer**, an HTTP
+fee — so the ordinary route is to hand your signed operations to a **sequencer**, an HTTP
 relay that pools operations, proves the batch, and settles it. `SequencerClient`
 (`@figaro/sdk/agent`) speaks its wire format exactly; never hand-roll the JSON.
 
@@ -155,12 +155,12 @@ safety you do not have:
   struct you signed, settle something you did not sign, or take a bond.
 - Because `settleBatch` is permissionless, censorship is not a trap: the owner can run
   their own relay, or you fall back to direct `FigaroCore` submission with the *same*
-  signed artifacts. Say so when you report a stalled submission.
+  signed operations. Say so when you report a stalled submission.
 
 Operationally: `submitCommit` is **idempotent on on-chain identity** (order hash), so a
 retry — even one where you re-signed — returns the original `{ id }` and enqueues nothing;
 never treat a repeat as a double-spend. `503` means the relay's mempool is at capacity,
-not that your artifact was rejected — retry after the next batch. `413` is the body cap
+not that your submission was rejected — retry after the next batch. `413` is the body cap
 (1 MiB default) and `422` a body that is not a valid operation shape. **Confirm nothing
 from the relay's acknowledgment**: an `{ id }` is a queue receipt, not settlement. Verify
 from chain — `BatchSettled` on the verifier, the ERC-20 transfers, and `scoreOf` for the
@@ -275,7 +275,7 @@ are requirements ON it, written now so the floor is never mistaken for the ceili
 - **F6 — The sandbox is what backs the seam.** The own-wallet-only / never-the-repo seam is
   stated correctly in prose above, but prose does not enforce it — the F5 sandbox is the
   structural backstop that makes the seam real (deny repo writes, deny other wallets'
-  artifacts). Until the sandbox exists, the seam is a promise the agent keeps, not a barrier
+  registrations). Until the sandbox exists, the seam is a promise the agent keeps, not a barrier
   the runtime imposes.
 
 ## Discipline

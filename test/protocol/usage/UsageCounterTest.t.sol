@@ -8,13 +8,13 @@ import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
-import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
+import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @notice UsageCounter — the accrual that replaces reconstructing usage after
 ///         the fact. Every test here is a property of "count it when it
 ///         happens": nothing is trusted but the proof, a settled process counts
 ///         exactly once, breadth counts distinct LIVE-STAKED SELLERS (so every
-///         unit of it costs a stake), an artifact scores nothing until the
+///         unit of it costs a stake), a clause or assembly scores nothing until the
 ///         minimum-support floor is met, and a period's numbers stop moving
 ///         when it ends.
 contract UsageCounterTest is Test {
@@ -24,7 +24,7 @@ contract UsageCounterTest is Test {
     MembersRegistry members;
     UsageCounter counter;
     MockERC20 token;
-    MockArtifactStake stake;
+    MockClauseOrAssemblyStake stake;
 
     uint256 constant BUYER_KEY = 0xB0;
     uint256 constant SELLER1_KEY = 0x51;
@@ -65,11 +65,11 @@ contract UsageCounterTest is Test {
         core = new FigaroCore();
         token = new MockERC20("Test", "TST");
         members = new MembersRegistry(0, 0);
-        // Artifact-side stake gate. One permissive mock stands in for both the
-        // clause and assembly registries — every artifact is live by default,
+        // Clause-or-assembly-side stake gate. One permissive mock stands in for both the
+        // clause and assembly registries — every clause or assembly is live by default,
         // so counting tests need no registration; the gate itself is proved in
         // its own section with `kill()`.
-        stake = new MockArtifactStake();
+        stake = new MockClauseOrAssemblyStake();
 
         // The seller-side live-stake gate: only a registered seller's settled
         // trades count. Both sellers stake here (zero deposit in this suite).
@@ -126,10 +126,10 @@ contract UsageCounterTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    /// @dev A settled one-order process whose agreement commits `artifact`.
+    /// @dev A settled one-order process whose agreement commits `clause or assembly`.
     ///      Returns the commitment so the counter can be handed the signed
     ///      struct exactly as the parties signed it.
-    function _settledOrder(bytes32 artifact, address b, uint256 bKey, address s, uint256 sKey, uint256 salt)
+    function _settledOrder(bytes32 clauseOrAssembly, address b, uint256 bKey, address s, uint256 sKey, uint256 salt)
         internal
         returns (CommitmentTypes.Commitment memory c)
     {
@@ -140,7 +140,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(artifact, SECTION),
+            agreementHash: AgreementTestHelper.singleSectionRoot(clauseOrAssembly, SECTION),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -153,7 +153,7 @@ contract UsageCounterTest is Test {
     }
 
     /// @dev A committed-but-open process — nothing resolved.
-    function _openOrder(bytes32 artifact, uint256 salt) internal returns (CommitmentTypes.Commitment memory c) {
+    function _openOrder(bytes32 clauseOrAssembly, uint256 salt) internal returns (CommitmentTypes.Commitment memory c) {
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -161,17 +161,17 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(artifact, SECTION),
+            agreementHash: AgreementTestHelper.singleSectionRoot(clauseOrAssembly, SECTION),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
         core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER1_KEY));
     }
 
-    function _record(CommitmentTypes.Commitment memory c, bytes32 artifact) internal {
+    function _record(CommitmentTypes.Commitment memory c, bytes32 clauseOrAssembly) internal {
         // The section FINGERPRINT (keccak256 of the committed bytes) — never the
         // preimage — is what the merkle leaf needs and all the calldata carries.
-        counter.recordClauseUsage(c, artifact, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
     }
 
     // ── What a record proves ────────────────────────────────────────
@@ -222,7 +222,7 @@ contract UsageCounterTest is Test {
         _record(c, CARGO_KEY);
     }
 
-    function test_revertsWhenArtifactNotInAgreement() public {
+    function test_revertsWhenClauseOrAssemblyNotInAgreement() public {
         // The agreement commits CARGO; claiming GEO was used must not open.
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
@@ -270,14 +270,14 @@ contract UsageCounterTest is Test {
     }
 
     function test_revertsWhenClauseNotRegistered() public {
-        // The ARTIFACT-side twin of the seller-stake gate: a clause earns only
+        // The CLAUSE-OR-ASSEMBLY-side twin of the seller-stake gate: a clause earns only
         // while its own registration deposit is live. Without it a self-authored
         // agreement could commit any bytes32 leaf key and accrue score to it,
         // inflating the shared denominator at gas cost (audit M-2, 2026-08-01).
         stake.kill(CARGO_KEY);
         CommitmentTypes.Commitment memory c =
             _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ArtifactNotRegistered.selector, CARGO_KEY));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, CARGO_KEY));
         _record(c, CARGO_KEY);
     }
 
@@ -363,7 +363,7 @@ contract UsageCounterTest is Test {
 
         CommitmentTypes.Commitment memory c =
             _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ArtifactExcluded.selector, commerceKey));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, commerceKey));
         _record(c, commerceKey);
 
         (uint64 cCount,, uint256 score) = counter.accrualOf(commerceKey, 0);
@@ -375,17 +375,17 @@ contract UsageCounterTest is Test {
     function test_exclusionIsDeployFrozenNotSelfDeclared() public view {
         // A registrar cannot opt their own clause out or in — the set is fixed
         // at deploy, because a self-declared exclusion would never be declared.
-        assertTrue(counter.excludedArtifact(keccak256(abi.encode("figaro-commerce", uint64(1)))));
-        assertTrue(counter.excludedArtifact(keccak256(abi.encode("figaro-topology", uint64(1)))));
-        assertTrue(counter.excludedArtifact(PROV_KEY));
-        assertFalse(counter.excludedArtifact(CARGO_KEY));
-        assertFalse(counter.excludedArtifact(GEO_KEY));
+        assertTrue(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-commerce", uint64(1)))));
+        assertTrue(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-topology", uint64(1)))));
+        assertTrue(counter.excludedClauseOrAssembly(PROV_KEY));
+        assertFalse(counter.excludedClauseOrAssembly(CARGO_KEY));
+        assertFalse(counter.excludedClauseOrAssembly(GEO_KEY));
     }
 
     // ── Uniform scoring (no tag / category / weight) ─────────────────
 
-    function test_scoringIsUniformAcrossArtifacts() public {
-        // Equal usage ⇒ equal score, whatever the artifact: no boosted tag, no
+    function test_scoringIsUniformAcrossClausesAndAssemblies() public {
+        // Equal usage ⇒ equal score, whatever the clause or assembly: no boosted tag, no
         // category, no weight. The 600M pays for real usage alone.
         CommitmentTypes.Commitment memory g = _settledOrder(GEO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(g, GEO_KEY);
@@ -438,7 +438,7 @@ contract UsageCounterTest is Test {
     }
 
     function test_sameProcessCannotCountInASecondPeriod() public {
-        // Idempotence is GLOBAL per (artifact, process): one settled trade is
+        // Idempotence is GLOBAL per (clause-or-assembly, process): one settled trade is
         // counted once ever. A resolved order stays resolved and its struct is
         // public, so a per-period key would let the same trade be re-presented
         // in every period — paying for recording gas instead of adoption, and
@@ -503,7 +503,7 @@ contract UsageCounterTest is Test {
     // ── Gas anchor ──────────────────────────────────────────────────
 
     /// @notice The canonical cost of ONE `recordClauseUsage` call, all-in on a cold
-    ///         first record for an artifact (the shape an attacker or an author
+    ///         first record for a clause or assembly (the shape an attacker or an author
     ///         actually pays). Measured here because this is the only place it is
     ///         measured — it is NOT in `sdk/src/gasCeilings.ts`, which exists to
     ///         derive per-block/per-process CEILINGS and has no consumer for this
@@ -522,7 +522,7 @@ contract UsageCounterTest is Test {
     ///         write replaced the pairKey derivation, measuring 169,241 all-in
     ///         under legacy codegen (less under --via-ir, which is why the
     ///         via-ir suite runs never tripped the old 169,000 ceiling).
-    uint256 internal constant RECORD_USAGE_GAS = 171_000;
+    uint256 internal constant RECORD_USAGE_GAS = 180_000; // repriced 2026-08-05: measured 175,250 after the clauseOrAssembly rename wave (drift predates it; anchor is a drift alarm)
 
     function test_Gas_recordUsageStaysAtItsAnchor() public {
         CommitmentTypes.Commitment memory c =
@@ -545,7 +545,7 @@ contract UsageCounterTest is Test {
         return counter.icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
     }
 
-    /// Real usage must not saturate: the score has to keep separating artifacts
+    /// Real usage must not saturate: the score has to keep separating clauses and assemblies
     /// far beyond `c * d^2 = 19`, where the old bound flattened everything to
     /// 2642245 and turned the pro-rata split into an equal split.
     function test_scoreDoesNotSaturateAtRealUsage() public view {
@@ -564,7 +564,7 @@ contract UsageCounterTest is Test {
         assertGt(_score(uint64(c) * 1000 + 1, d), _score(c, d));
     }
 
-    function test_totalScoreIsTheSumOfArtifactScores() public {
+    function test_totalScoreIsTheSumOfClauseAndAssemblyScores() public {
         CommitmentTypes.Commitment memory g = _settledOrder(GEO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(g, GEO_KEY);
         CommitmentTypes.Commitment memory k = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller2, SELLER2_KEY, 2);
@@ -577,7 +577,7 @@ contract UsageCounterTest is Test {
 
     // ── Minimum-support floor (ruled 2026-07-31) ────────────────────
     //
-    // Below the floor sit exactly the artifacts one actor can fabricate alone —
+    // Below the floor sit exactly the clauses and assemblies one actor can fabricate alone —
     // self-farms, fragmentation shards, squatted names, trivial riders. These
     // tests run a counter at the mainnet value (3): the minimum viable farm is
     // three live stakes, and honest thin adoption is deferred, never lost.
@@ -590,8 +590,8 @@ contract UsageCounterTest is Test {
             new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 3, periods);
     }
 
-    function _recordOn(UsageCounter target, CommitmentTypes.Commitment memory c, bytes32 artifact) internal {
-        target.recordClauseUsage(c, artifact, keccak256(SECTION), new bytes32[](0));
+    function _recordOn(UsageCounter target, CommitmentTypes.Commitment memory c, bytes32 clauseOrAssembly) internal {
+        target.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
     }
 
     function test_floor_belowFloorAccruesButScoresZero() public {
@@ -699,7 +699,7 @@ contract UsageCounterTest is Test {
 
     function test_constructor_rejectsZeroMinSellers() public {
         // 0 would read as "no floor" but so does 1, and 1 says it honestly —
-        // every scored artifact needs at least one staked seller by definition.
+        // every scored clause or assembly needs at least one staked seller by definition.
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroMinSellers.selector);
@@ -711,15 +711,15 @@ contract UsageCounterTest is Test {
     // A batch-settled process never acquires kernel status, so none of this
     // can travel the direct path. What the counter still owns, and enforces
     // here, is the reward's own gates: who may write, which period is open,
-    // which sellers are staked, which artifacts are excluded.
+    // which sellers are staked, which clauses and assemblies are excluded.
 
-    function _accrual(bytes32 artifact, uint64 c, uint64 d)
+    function _accrual(bytes32 clauseOrAssembly, uint64 c, uint64 d)
         internal
         pure
         returns (UsageCounter.BatchAccrual[] memory a)
     {
         a = new UsageCounter.BatchAccrual[](1);
-        a[0] = UsageCounter.BatchAccrual(artifact, c, d);
+        a[0] = UsageCounter.BatchAccrual(clauseOrAssembly, c, d);
     }
 
     function _sellers(address s) internal pure returns (address[] memory list) {
@@ -772,7 +772,7 @@ contract UsageCounterTest is Test {
     /// coincide EXACTLY when the split is proportional. Both halves are
     /// asserted because both are load-bearing — the inequality is what closes
     /// the split-across-universes farm, and the equality is why closing it
-    /// costs an honest artifact nothing when its trade divides evenly.
+    /// costs an honest clause or assembly nothing when its trade divides evenly.
     function test_summingScoresNeverExceedsTheComponentMerge() public view {
         // Lopsided: depth on one path, breadth on the other.
         assertLt(_score(4, 1) + _score(1, 4), _score(5, 5), "non-proportional split loses a little");
@@ -796,31 +796,31 @@ contract UsageCounterTest is Test {
         counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 
-    function test_batchAccrualSkipsAnExcludedArtifact() public {
+    function test_batchAccrualSkipsAnExcludedClauseOrAssembly() public {
         // SKIP, never revert: this runs inside settleBatch, so a revert would
-        // take down the whole batch's token settlement. An excluded artifact
+        // take down the whole batch's token settlement. An excluded clause or assembly
         // simply earns nothing — not written, total untouched, trade settles.
         bytes32 commerce = keccak256(abi.encode("figaro-commerce", uint64(1)));
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, PROV_KEY, _accrual(commerce, 9, 9), _sellers(seller1));
         (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(commerce, 0);
-        assertEq(c, 0, "excluded artifact not written");
-        assertEq(d, 0, "excluded artifact not written");
-        assertEq(score, 0, "excluded artifact not scored");
+        assertEq(c, 0, "excluded clause or assembly not written");
+        assertEq(d, 0, "excluded clause or assembly not written");
+        assertEq(score, 0, "excluded clause or assembly not scored");
         assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
     }
 
-    function test_batchAccrualSkipsAnUnregisteredArtifact() public {
-        // Same skip semantics for an artifact with no live registration —
-        // the batch-path twin of the direct path's ArtifactNotRegistered revert.
+    function test_batchAccrualSkipsAnUnregisteredClauseOrAssembly() public {
+        // Same skip semantics for a clause or assembly with no live registration —
+        // the batch-path twin of the direct path's ClauseOrAssemblyNotRegistered revert.
         stake.kill(CARGO_KEY);
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 9, 9), _sellers(seller1));
         (uint64 c,, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
-        assertEq(c, 0, "unregistered artifact not written");
-        assertEq(score, 0, "unregistered artifact not scored");
+        assertEq(c, 0, "unregistered clause or assembly not written");
+        assertEq(score, 0, "unregistered clause or assembly not scored");
         assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
     }
 
@@ -846,7 +846,7 @@ contract UsageCounterTest is Test {
     }
 
     /// Writes are OVERWRITES of a cumulative total, not additions — so a
-    /// second batch reporting (6,4) leaves the artifact at (6,4), and the
+    /// second batch reporting (6,4) leaves the clause or assembly at (6,4), and the
     /// period total moves by the DELTA of the scores, never by the new score.
     function test_batchAccrualOverwritesRatherThanAccumulates() public {
         vm.startPrank(batchVerifier);

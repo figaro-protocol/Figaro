@@ -15,10 +15,10 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `Eip712ParityTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
-inclusion against the signed `agreementHash`, per-(artifact, process) GLOBAL idempotence (a
+inclusion against the signed `agreementHash`, per-(clause-or-assembly, process) GLOBAL idempotence (a
 process counts once ever — re-recording it in a later period reverts, and a later period
 counts only trade new to it), the **live-seller-stake gate** (`SellerNotStaked` when the seller-of-record is
-not registered; a seller who leaves the registry stops counting), **uniform scoring across artifacts** (no
+not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses and assemblies** (no
 category, tag, or weight), period boundaries and `periodClosed`, `totalScoreIn` delta
 maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
 domain** plus a no-saturation regression (the earlier version of that fuzz sampled `uint64`
@@ -57,8 +57,8 @@ our own digest reconstruction (`MockWitnessPermit2`).
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the RPGF Sybil bound assumes: solvency, no deposit recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two settlement universes), period bucketing ×2, cross-artifact isolation. Mutation-checked (replace-not-add, score composition) 2026-08-03. |
-| `HalmosArtifactRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary two-registrar interleavings, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked (solvency + first-write-wins, both contracts, 4/4 counterexamples) 2026-08-03. |
+| `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two settlement universes), period bucketing ×2, isolation across clauses and assemblies. Mutation-checked (replace-not-add, score composition) 2026-08-03. |
+| `HalmosClauseAndAssemblyRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary two-registrar interleavings, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked (solvency + first-write-wins, both contracts, 4/4 counterexamples) 2026-08-03. |
 
 Run with `scripts/test-halmos.sh` (six passes). **Halmos does not model
 `expectRevert`** — assert on a low-level call's own success flag instead. It
@@ -81,7 +81,7 @@ it *could* fail.
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model 2026-07-16; realigned again 2026-08-03 to the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
-| `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-artifact rejection, live-stake eligibility (`_isAuthor` author-of-record gate), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked (conservation, double-claim, eligibility) 2026-08-03. |
+| `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor` author-of-record gate), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked (conservation, double-claim, eligibility) 2026-08-03. |
 
 Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
@@ -263,7 +263,7 @@ in one day (2026-07-30) and *only* by chain-fact assertions:
 
 | what was broken | what it looked like | the assertion that caught it |
 |---|---|---|
-| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts for excluded artifacts, so the **assembly-designer half of the 600M recorded nothing, on every deployment** | clause authors accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` artifacts, read from chain |
+| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts for excluded clauses or assemblies, so the **assembly-designer half of the 600M recorded nothing, on every deployment** | clause authors accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
 | the audit's witness decode read calldata for a preimage WS2 had removed; the throw landed in a swallowed `catch` | the page rendered, just with zero evidence rows | witness receipts `toHaveCount(3)` |
 | the claim button compared `Date.now()` to a **block** timestamp | button simply disabled; no error anywhere | drive the claim, assert the ETH moves |
 | `UsageCounter` itself | — | *correct throughout; that is the point* |
@@ -280,11 +280,11 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
 - **Absolute where the design accumulates.** `pendingDeposit == deposit` fails on a
   re-used chain because withdrawal requests accumulate BY DESIGN. Assert the
   **delta** across the action.
-- **Totals that are only true in isolation.** `periodTotal == thisArtifact.score`
+- **Totals that are only true in isolation.** `periodTotal == thisClauseOrAssembly.score`
   holds only on a chain where nothing else traded; inside a suite ~28 specs have
   already accrued. Assert the real relationship (`>=`), not the isolated case.
 - **Quoting a different set than the UI acts on.** The rewards page claims EVERY
-  artifact the wallet authored; quoting one and asserting equality is a category
+  clause or assembly the wallet authored; quoting one and asserting equality is a category
   error. Prefer asserting **what the UI promised the user** — the rendered figure
   — against what the chain moved: the number on screen is the number that moves.
 - **Running a consumer spec without its producer.** `tradelens-runtime` consumes

@@ -109,8 +109,8 @@ NEXT_PUBLIC_SWAP_ROUTER=0x...
 # canonical Disperse deployment (0xD152f5…2150, same address across chains)
 NEXT_PUBLIC_MULTISENDER=0x...
 
-# The florin + the RPGF distribution. UsageCounter records verified artifact
-# usage as it happens; the minter (registered at genesis) pays each tranche pro
+# The florin + the RPGF distribution. UsageCounter records verified usage of
+# each clause or assembly as it happens; the minter (registered at genesis) pays each tranche pro
 # rata from a closed accrual period. Nothing is posted, bonded, or challenged,
 # so there is no arbitrator address.
 NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=0x...

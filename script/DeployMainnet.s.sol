@@ -110,12 +110,12 @@ contract DeployMainnet is Script {
         console.log("AttestationCoordinator: ", _attestation);
 
         // ── Author-side stakes (Clause / Assembly) — sized 2026-07-31 ──
-        // 0.05 ETH per artifact, NO cooldown (withdrawal is one-shot per key
+        // 0.05 ETH per registration, NO cooldown (withdrawal is one-shot per key
         // with a permanent binding — nothing can be recycled). What sizes it:
         // author-side RPGF eligibility requires the deposit LIVE AT CLAIM
         // (RpgfMinter._isAuthor), so unlike the seller stake this capital is
         // held for the WHOLE accrual period, undiscounted — and it is the
-        // price of the artifact-REPLICATION lever: an adversary multiplying
+        // price of the registration-REPLICATION lever: an adversary multiplying
         // score across m self-authored clauses committed into the same
         // fabricated agreements holds m of these for the full period. The
         // spam floor is cleared ~100× over registration gas. Derivation:
@@ -125,7 +125,7 @@ contract DeployMainnet is Script {
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
-        // AssemblyRegistry — the assembly artifact family's anchor, parallel to
+        // AssemblyRegistry — the assembly registry family's anchor, parallel to
         // ClauseRegistry and MembersRegistry. RpgfMinter reads it for the
         // assembly author of record. Same stake, same reasoning as above.
         AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
@@ -217,7 +217,7 @@ contract DeployMainnet is Script {
         }
 
         // Protocol floor earns nothing — the two order-mandatory clauses plus the
-        // assembly-provenance clause (see UsageCounter.excludedArtifact). Assembly
+        // assembly-provenance clause (see UsageCounter.excludedClauseOrAssembly). Assembly
         // designers still accrue via recordAssemblyUsage (credits the compositionHash).
         bytes32[] memory excluded = new bytes32[](3);
         excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
@@ -227,12 +227,12 @@ contract DeployMainnet is Script {
         UsageCounter usageCounter = new UsageCounter(
             _core,
             _members, // seller-side live-stake gate: usage counts only for live-staked sellers
-            _clauses, // artifact-side gate: a clause earns only while its deposit is live
-            _assemblies, // artifact-side gate: an assembly earns only while its deposit is live
+            _clauses, // registration-side gate: a clause earns only while its deposit is live
+            _assemblies, // registration-side gate: an assembly earns only while its deposit is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
-            3, // minimum-support floor (ruled 2026-07-31): d' >= 3 distinct staked sellers before an artifact scores
+            3, // minimum-support floor (ruled 2026-07-31): d' >= 3 distinct staked sellers before a clause or assembly scores
             periods
         );
         _usageCounter = address(usageCounter);

@@ -5,7 +5,7 @@
  * 6 freight + 7 cold-chain/regulated + 10 cross-border + recourse; the
  * settled composition lives in the project_tradelens_assembly memory;
  * /papers/after-tradelens is NARRATIVE, never spec; shared vocabulary in
- * tradelensScenario.ts — the runtime leg consumes the same artifact).
+ * tradelensScenario.ts — the runtime leg consumes the same assembly).
  *
  * Six orders, importer-of-record as root buyer on every one (kernel star):
  *   order-0 root  shipper-of-record   cargo, incoterms, chain-of-custody,
@@ -25,7 +25,7 @@
  * mainnet; idempotent by SHAPE discovery, never a slug), onboards + binds the
  * six sellers, and checks out as the buyer through SIGN + relay with the
  * derived chain total asserted. The runtime leg
- * (tradelens-runtime.devnet.spec.ts) consumes the anchored artifact and
+ * (tradelens-runtime.devnet.spec.ts) consumes the anchored assembly and
  * carries the value legs.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';

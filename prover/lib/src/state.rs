@@ -14,15 +14,15 @@ pub struct KernelState {
     pub processes: BTreeMap<B256, ProcessState>,
     pub order_status: BTreeMap<B256, u8>,
     pub order_process_id: BTreeMap<B256, B256>,
-    /// (artifact, processId) already counted for RPGF on the batch path.
+    /// (clauseOrAssembly, processId) already counted for RPGF on the batch path.
     /// Under the root because idempotence is guest-owned — see
     /// `KernelStateSnapshot`.
     pub usage_counted: BTreeSet<(B256, B256)>,
-    /// (artifact, period, seller) — breadth counts distinct staked
+    /// (clauseOrAssembly, period, seller) — breadth counts distinct staked
     /// sellers per period (ruled 2026-07-31; the stake itself is checked
     /// on-chain against the declared seller list).
     pub usage_seller_seen: BTreeSet<(B256, u8, Address)>,
-    /// (artifact, period) → (c, d), the running batch-path accrual.
+    /// (clauseOrAssembly, period) → (c, d), the running batch-path accrual.
     pub usage_accrual: BTreeMap<(B256, u8), (u64, u64)>,
 }
 
@@ -93,21 +93,21 @@ impl KernelState {
         let mut data = Vec::new();
 
         data.extend_from_slice(&(self.usage_counted.len() as u64).to_be_bytes());
-        for (artifact, process_id) in &self.usage_counted {
-            data.extend_from_slice(artifact.as_slice());
+        for (clause_or_assembly, process_id) in &self.usage_counted {
+            data.extend_from_slice(clause_or_assembly.as_slice());
             data.extend_from_slice(process_id.as_slice());
         }
 
         data.extend_from_slice(&(self.usage_seller_seen.len() as u64).to_be_bytes());
-        for (artifact, period, seller) in &self.usage_seller_seen {
-            data.extend_from_slice(artifact.as_slice());
+        for (clause_or_assembly, period, seller) in &self.usage_seller_seen {
+            data.extend_from_slice(clause_or_assembly.as_slice());
             data.push(*period);
             data.extend_from_slice(seller.as_slice());
         }
 
         data.extend_from_slice(&(self.usage_accrual.len() as u64).to_be_bytes());
-        for ((artifact, period), (c, d)) in &self.usage_accrual {
-            data.extend_from_slice(artifact.as_slice());
+        for ((clause_or_assembly, period), (c, d)) in &self.usage_accrual {
+            data.extend_from_slice(clause_or_assembly.as_slice());
             data.push(*period);
             data.extend_from_slice(&c.to_be_bytes());
             data.extend_from_slice(&d.to_be_bytes());

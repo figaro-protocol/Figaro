@@ -45,12 +45,12 @@ nothing to bond and nothing to dispute**. Trade settled through
 a second route: `buildUsageClaims` turns a settled batch order plus its
 agreement into the claims a sequencer proves, and the mirror folds BOTH event
 streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
-under-reports every artifact whose trade moved to batches, and the two merge as
+under-reports every clause or assembly whose trade moved to batches, and the two merge as
 SCORES, never as components. The reward is UNIFORM (no tag,
-category or weight — every artifact's score is `icbrt(c·d²·10^18)`, its real
+category or weight — every clause or assembly's score is `icbrt(c·d²·10^18)`, its real
 usage alone) and UNCAPPED; the only eligibility gate is a two-sided live ETH
 stake (usage counts only for a live-staked seller-of-record, and an author earns
-only while the artifact's registration deposit stays un-withdrawn). The mirror
+only while the clause or assembly's registration deposit stays un-withdrawn). The mirror
 exists to display a distribution, predict a claim, and verify a recorded
 accrual; `formula.json` is the normative prose statement of the mechanism and
 the source of every constant the mirror uses.
@@ -492,7 +492,7 @@ import { deserializeCommitmentPayload } from "@figaro/sdk/agent";
 // Submitting to the BATCH path — SequencerClient. `FigaroBatchVerifier.
 // settleBatch` is PERMISSIONLESS (no caller gate, no owner, no fee), but it
 // takes an SP1 proof over a whole batch, so the ordinary route is to hand the
-// signed artifact to a sequencer: an HTTP relay that pools operations, proves
+// signed operation to a sequencer: an HTTP relay that pools operations, proves
 // the batch, and settles it. This client emits EXACTLY the wire format the
 // endpoint accepts — never hand-roll the JSON.
 //
@@ -500,10 +500,10 @@ import { deserializeCommitmentPayload } from "@figaro/sdk/agent";
 // call the same kernel functions the proof runs (so it rejects earlier than
 // the proof, never accepts more), and its honest powers are censor and delay —
 // never forge. Fall back to direct FigaroCore submission with the SAME
-// artifacts. There is no hosted public endpoint today; the URL is deployment
+// signed operations. There is no hosted public endpoint today; the URL is deployment
 // config, like an RPC URL. Surface + run-your-own recipe: prover/sequencer.
 //
-// A batch operation is the SIGNED ARTIFACT AND NOTHING ELSE — there is no
+// A batch operation is the SIGNED PAYLOAD AND NOTHING ELSE — there is no
 // funding leg, so swap-and-commit does not exist here. Bonding in a token you
 // do not hold means swapping in your own WALLET first, then submitting; and
 // settleBatch pulls your net deposit, so approve FigaroBatchVerifier, not the
@@ -577,8 +577,8 @@ const forClause = filterByClause(attestations, clauseId);
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
 
-// Withdraw gate (advisory): an artifact author must not reclaim their
-// registration stake while deals composed from the artifact are in flight.
+// Withdraw gate (advisory): a clause-or-assembly author must not reclaim their
+// registration stake while deals composed from that clause or assembly are in flight.
 // The join is derived at read time from chain + IPFS, never stored:
 const events = await fetchCoreEvents(client, addresses, 0n);
 const inFlight = deriveInFlightOrders(events); // committed, process unresolved
@@ -1157,7 +1157,7 @@ const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://�
 //   MembersRegistry.updateProfile(metadataURI)
 ```
 
-**Raw call signatures for the two artifact registries** (for `cast send` /
+**Raw call signatures for the two clause-or-assembly registries** (for `cast send` /
 direct-ABI callers — the exact parameter types are the function's identity, so
 a mistyped one reverts with an opaque selector mismatch, not a friendly error):
 
@@ -1180,7 +1180,7 @@ the registering call (`register` / `registerClause` / `registerAssembly`, all
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
 figure. Clause and assembly deposits come back in one call —
-`withdrawDeposit(idHash | compositionHash)`, which de-surfaces the artifact while
+`withdrawDeposit(idHash | compositionHash)`, which de-surfaces the clause or assembly while
 leaving the binding permanent, because agreements committed against them keep
 resolving forever.
 
@@ -1214,7 +1214,7 @@ freshly registered assembly correctly reads `depositWithdrawn == false`; that fa
 `ClauseRegistry`'s parallel stake struct (`depositOf[idHash]`, surfaced to the SDK as
 `RegisteredClause.registrar`) names the same field `registrar` rather than `author` — the
 two names identify the same concept under each registry's own vocabulary (the
-registering wallet), and `RpgfMinter._isAuthor` treats both as the artifact's author for
+registering wallet), and `RpgfMinter._isAuthor` treats both as the clause-or-assembly's author for
 600M reward eligibility.
 
 The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →

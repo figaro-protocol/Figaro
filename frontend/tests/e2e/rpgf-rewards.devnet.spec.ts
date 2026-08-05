@@ -18,7 +18,7 @@
  * scale a test run can observe. Devnet is a mainnet REHEARSAL, not a sandbox.
  *
  * THE MINIMUM-SUPPORT FLOOR IS DRIVEN, NOT DODGED (ruled 2026-07-31). Devnet
- * deploys `minSellers = 3`, the mainnet value: an artifact scores ZERO until
+ * deploys `minSellers = 3`, the mainnet value: a clause or assembly scores ZERO until
  * three distinct live-staked sellers carried it. The scenario settles the
  * clause through THREE sellers and asserts both halves — nothing scores below
  * the floor, and the full score springs when the third seller lands.
@@ -101,7 +101,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
 
         const publicClient = localPublicClient();
         const chainId = LOCAL_ANVIL.id;
-        const artifact = computeClauseKey(USED_CLAUSE, USED_CLAUSE_VERSION);
+        const clauseKey = computeClauseKey(USED_CLAUSE, USED_CLAUSE_VERSION);
         const period = (await publicClient.readContract({
             address: counter, abi: USAGE_COUNTER_ABI, functionName: 'currentPeriod',
         })) as number;
@@ -214,7 +214,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
             if (attest) {
                 await receipt(await buyerWallet.writeContract({
                     address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsBuyer',
-                    args: [commitment, artifact, 0, sectionHash, proof, sectionHash],
+                    args: [commitment, clauseKey, 0, sectionHash, proof, sectionHash],
                 }));
             }
 
@@ -224,18 +224,18 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
             }));
 
             // 6. Record the usage. Permissionless — the proof is what is trusted,
-            //    never the caller — and idempotent per (artifact, process), once
+            //    never the caller — and idempotent per (clause, process), once
             //    ever. The salt is fresh per run, so this is a new process and
             //    the record must SUCCEED.
             await receipt(await buyerWallet.writeContract({
                 address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordClauseUsage',
-                args: [commitment, artifact, sectionHash, proof],
+                args: [commitment, clauseKey, sectionHash, proof],
             }));
         }
 
         const accrual = async () =>
             (await publicClient.readContract({
-                address: counter, abi: USAGE_COUNTER_ABI, functionName: 'accrualOf', args: [artifact, period],
+                address: counter, abi: USAGE_COUNTER_ABI, functionName: 'accrualOf', args: [clauseKey, period],
             })) as readonly [bigint, bigint, bigint];
 
         // ── The floor, both halves (ruled 2026-07-31) ─────────────────────
@@ -275,18 +275,18 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
             .toContainText(USED_CLAUSE, { timeout: 60000 });
         await expect(page.getByTestId(`period-accruals-${period}`), 'with the counts the chain recorded')
             .toContainText(`score ${score.toString()}`);
-        // The period total is the sum over EVERY artifact that accrued in this
-        // period, so it equals this artifact's score only on a chain where
+        // The period total is the sum over EVERY clause and assembly that accrued in this
+        // period, so it equals this clause's score only on a chain where
         // nothing else traded — which is never true inside the full suite (this
         // spec runs after ~28 others on the same chain). Assert the real
         // relationship instead: the divisor is present and is at least this
-        // artifact's share of it.
+        // clause's share of it.
         const totalText = await page.getByTestId(`period-total-score-${period}`).innerText();
-        const totalMatch = totalText.match(/period score across all artifacts:\s*(\d+)/);
+        const totalMatch = totalText.match(/period score across all clauses and assemblies:\s*(\d+)/);
         expect(totalMatch, `the period total renders (got: ${totalText})`).not.toBeNull();
         expect(
             BigInt(totalMatch![1]),
-            'the period total it divides by covers this artifact',
+            'the period total it divides by covers this clause',
         ).toBeGreaterThanOrEqual(score);
 
         // ── The period is honestly ACCRUING: no claim is offered ─────────
@@ -329,7 +329,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         // ── The UI follows the chain: accruing → claimable ────────────────
         const quoted = (await publicClient.readContract({
             address: minter, abi: RPGF_MINTER_ABI, functionName: 'claimable',
-            args: [period, AUTHOR, [artifact]],
+            args: [period, AUTHOR, [clauseKey]],
         })) as bigint;
         expect(quoted, 'a closed period with recorded usage owes its author something').toBeGreaterThan(0n);
 
@@ -354,7 +354,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         const after = (await publicClient.readContract({
             address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
         })) as bigint;
-        // The UI claims EVERY artifact this wallet authored in the period, not the
+        // The UI claims EVERY clause or assembly this wallet authored in the period, not the
         // single one quoted above (on devnet one wallet registers every clause, so
         // that is the whole period budget). Assert against what the UI actually PROMISED
         // the user — the claimable figure it rendered — which is the property that
@@ -365,12 +365,12 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
             18,
         );
         expect(after - before, 'the payout matches what the UI promised').toBe(promised);
-        expect(after - before, 'and covers the single-artifact quote').toBeGreaterThanOrEqual(quoted);
+        expect(after - before, 'and covers the single-clause quote').toBeGreaterThanOrEqual(quoted);
         await expect(page.getByTestId(`period-status-${period}`)).toHaveText('claimed');
 
         test.info().annotations.push({
             type: 'RpgfClaim',
-            description: `artifact=${USED_CLAUSE} period=${period} c=${c} d=${d} score=${score} paid=${after - before}`,
+            description: `clause=${USED_CLAUSE} period=${period} c=${c} d=${d} score=${score} paid=${after - before}`,
         });
     });
 });

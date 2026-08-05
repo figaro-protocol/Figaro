@@ -33,7 +33,7 @@
  * Self-contained: registers its OWN novel clause, authors + publishes its OWN
  * assembly, onboards its OWN seller (anvil[14], used by no other spec). It does
  * NOT snapshot/revert — devnet is a mainnet rehearsal, so it leaves its state
- * on-chain and a per-run nonce (minted below) keeps every artifact unique.
+ * on-chain and a per-run nonce (minted below) keeps every clause and assembly unique.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  */

@@ -203,7 +203,7 @@ fn bincode_roundtrip_public_values_and_events() {
             spec_hash: B256::repeat_byte(0x0b),
         }],
         usage_accruals: vec![UsageAccrual {
-            artifact: B256::repeat_byte(0x0c),
+            clause_or_assembly: B256::repeat_byte(0x0c),
             c: 3,
             d: 2,
         }],

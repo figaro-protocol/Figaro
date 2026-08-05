@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-07-29 (the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each artifact pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owner: memory `project_reward_mechanism_ratified_2026_07`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the contract status. Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-07-29 (the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owner: memory `project_reward_mechanism_ratified_2026_07`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the contract status. Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -90,7 +90,7 @@ breadth statistic is what makes possible. Capturing a share `φ` of a period cos
    withdrawal is one-shot per key with a permanent binding, so nothing recycles. These
    stakes do MORE work than the seller stake per unit: author-side RPGF eligibility
    requires the deposit live AT CLAIM, so the capital is held for the whole period,
-   undiscounted — and it prices the artifact-replication lever (an adversary multiplying
+   undiscounted — and it prices the clause-or-assembly-replication lever (an adversary multiplying
    score across `m` self-authored clauses in the same fabricated agreements holds `m`
    full deposits for the period; portfolio cost stays linear in score with the clause
    deposit entering under a square root — paper §7.3 scopes this).

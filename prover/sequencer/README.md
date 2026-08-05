@@ -49,10 +49,10 @@ these checks. A relay that publishes nothing is simply less useful than one
 that does — which is why `404` here says "not in **this** relay's archive",
 never "did not happen".
 
-**Custody, honestly.** The parties always hold their own signed artifacts —
+**Custody, honestly.** The parties always hold their own signed records —
 each keeps its copy of the commitment and the signatures it produced. A relay
-is a convenience publisher, never the sole custodian: if every relay drops an
-artifact, the parties still have it, and any of them can re-publish or
+is a convenience publisher, never the sole custodian: if every relay drops a
+record, the parties still have it, and any of them can re-publish or
 re-submit it.
 
 **Attestations are already on chain.** `FigaroBatchVerifier` re-emits every
@@ -166,7 +166,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   `{"AttestAsSeller":{…}}`, `{"AttestAsBuyer":{…}}`); the SDK's
   `SequencerClient` (`@figaro/sdk/agent`) emits exactly this wire format.
   `200 {"id": n}` on admission — idempotent: re-submitting the same semantic
-  artifact (same order hash / process id / attestation identity) returns the
+  operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. `400` on signature or witness-gate
   rejection, `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
   variant, missing field), `413` over `MAX_BODY_BYTES`, `415` on a wrong

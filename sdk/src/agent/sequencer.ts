@@ -10,7 +10,7 @@
  * Participants can always fall back to direct FigaroCore submission.
  *
  * The batched surface is the kernel + attestation ops only. Registry
- * mutations (clause/seller/assembly registration) are once-per-artifact
+ * mutations (clause/seller/assembly registration) are once-per-registration
  * ETH-staked intents that stay on the direct path.
  *
  * Every batched attestation carries the full witness payload: the
@@ -99,18 +99,21 @@ export interface SequencerCommitment {
 }
 
 /**
- * A claim that one SETTLED BATCH order used one artifact — the wire form of the
+ * A claim that one SETTLED BATCH order used one clause or assembly — the wire form of the
  * Rust guest's `UsageClaim`. Build these with `buildUsageClaims` (rpgf), which
- * knows which artifacts the counter excludes; never hand-roll one.
+ * knows which clauses or assemblies the counter excludes; never hand-roll one.
  *
  * Nothing here is trusted. The guest re-proves that the order settled and that
- * the artifact was in the signed agreement; the counter then applies the
+ * the clause or assembly was in the signed agreement; the counter then applies the
  * reward's own gates on chain. A claim is a REQUEST to be counted, never an
  * assertion that counts.
  */
 export interface SequencerUsageClaim {
     order: SequencerCommitment;
-    artifact: Hex;
+    /** Clause idHash or assembly compositionHash. Field name mirrors the Rust
+     *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
+     *  wire-protocol identity; renamed in lockstep with the Rust side 2026-08-05. */
+    clause_or_assembly: Hex;
     /** serde's externally-tagged encoding of the Rust `UsageClaimKind`. */
     kind: { Clause: { section_hash: Hex } } | "Assembly";
     inclusion_proof: Hex[];
@@ -483,7 +486,7 @@ export class SequencerClient {
      * is still credited by that batch.
      *
      * Build claims with `buildUsageClaims` — never hand-roll one, and never
-     * include an artifact the counter excludes: `applyBatchAccrual` reverts on
+     * include a clause or assembly the counter excludes: `applyBatchAccrual` reverts on
      * it and takes the whole batch, every other party's settlement included.
      */
     async submitUsageClaim(claim: SequencerUsageClaim): Promise<{ pending: number }> {

@@ -122,7 +122,7 @@ echo ""
 # Direct-path accrual never regresses; the batch write REPLACES cumulative
 # (c,d), never adds; scoreOf == accrualOf.score + batchAccrualOf.score (the
 # ONLY place the two settlement universes meet); every timestamp buckets into
-# exactly its period window; artifact A's record never touches artifact B.
+# exactly its period window; clause A's record never touches clause B.
 # The stake GATE itself is Pass 3's job (E-5) — not re-proved here.
 
 FOUNDRY_PROFILE=halmos halmos \
@@ -135,7 +135,7 @@ echo ""
 echo "▶ Pass 5/6 — ClauseRegistry: the stake machine RPGF author eligibility reads"
 echo ""
 
-# ── Passes 5 + 6: the artifact-registry stake machines ─────────────────────
+# ── Passes 5 + 6: the clause+assembly registry stake machines ─────────────────────
 #
 # MembersRegistry's siblings minus the cooldown: solvency under arbitrary
 # interleavings, first-write-wins permanence, one-shot withdrawal, eligibility

@@ -105,8 +105,8 @@ pub struct AttestationContentProof {
 /// A single kernel operation within a proof batch.
 ///
 /// Registry mutations (clause/seller/assembly registration) are NOT
-/// batched: they are once-per-artifact ETH-staked intents (K4) that
-/// don't fit ERC-20 position netting, carry no throughput concern, and
+/// batched: they are once-per-clause-or-assembly ETH-staked intents (K4)
+/// that don't fit ERC-20 position netting, carry no throughput concern, and
 /// batching them would fork a second first-write-wins namespace. They
 /// stay on the direct path; the batch covers the high-frequency kernel
 /// + attestation surface.
@@ -164,26 +164,26 @@ pub enum KernelOp {
 
 // ── Usage accrual (the RPGF bridge) ───────────────────────────────
 
-/// Which of the two artifact families a usage claim credits, and the
+/// Which family — clause or assembly — a usage claim credits, and the
 /// witness each needs. Mirrors `UsageCounter.recordClauseUsage` /
 /// `recordAssemblyUsage` — same leaf convention, same proof, one step
 /// different in how the section is identified.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum UsageClaimKind {
-    /// Clause usage. The leaf key IS the artifact, and the section's
+    /// Clause usage. The leaf key IS the clause, and the section's
     /// committed bytes are supplied as a FINGERPRINT — the preimage
     /// never enters the batch, exactly as on the direct path.
     Clause { section_hash: B256 },
     /// Assembly usage. The leaf key is the PROVENANCE clause (never the
-    /// artifact — a compositionHash is not a leaf key), and the section
-    /// bytes are REPRODUCED from the artifact rather than supplied:
+    /// assembly — a compositionHash is not a leaf key), and the section
+    /// bytes are REPRODUCED from the assembly rather than supplied:
     /// `{"compositionHash":"0x…"}`. A wrong compositionHash derives a
     /// leaf that is simply not in the tree.
     Assembly,
 }
 
-/// A claim that one SETTLED order used one artifact. The guest proves
-/// it against the batch's own post-state and the order's signed
+/// A claim that one SETTLED order used one clause or assembly. The guest
+/// proves it against the batch's own post-state and the order's signed
 /// `agreement_hash`; nothing here is taken on the sequencer's word.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UsageClaim {
@@ -191,21 +191,23 @@ pub struct UsageClaim {
     pub order: Commitment,
     /// Clause idHash or assembly compositionHash — the same identity
     /// each family's own registry uses, never a new identifier.
-    pub artifact: B256,
+    pub clause_or_assembly: B256,
     pub kind: UsageClaimKind,
     /// Sorted-pair Merkle proof of the section leaf against the order's
     /// signed `agreement_hash`.
     pub inclusion_proof: Vec<B256>,
 }
 
-/// One artifact's accrual AFTER this batch — the CUMULATIVE `(c, d)` for
-/// the batch path in `period`, not a delta. The verifier overwrites the
-/// counter's batch-side slot with it, so the on-chain write is O(distinct
-/// artifacts in the batch) and carries no per-process storage at all.
+/// One clause-or-assembly's accrual AFTER this batch — the CUMULATIVE
+/// `(c, d)` for the batch path in `period`, not a delta. The verifier
+/// overwrites the counter's batch-side slot with it, so the on-chain write
+/// is O(distinct clauses or assemblies in the batch) and carries no
+/// per-process storage at all.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UsageAccrual {
-    pub artifact: B256,
-    /// Distinct settled processes that used this artifact (batch path).
+    pub clause_or_assembly: B256,
+    /// Distinct settled processes that used this clause or assembly (batch
+    /// path).
     pub c: u64,
     /// Distinct staked sellers in this period (batch path).
     pub d: u64,
@@ -236,13 +238,13 @@ pub struct KernelStateSnapshot {
     pub processes: Vec<(B256, ProcessState)>,
     pub order_status: Vec<(B256, u8)>,
     pub order_process_id: Vec<(B256, B256)>,
-    /// (artifact, processId) already counted — global, not per period,
+    /// (clauseOrAssembly, processId) already counted — global, not per period,
     /// mirroring `UsageCounter.processCounted`.
     pub usage_counted: Vec<(B256, B256)>,
-    /// (artifact, period, seller) — breadth counts distinct staked
+    /// (clauseOrAssembly, period, seller) — breadth counts distinct staked
     /// sellers PER PERIOD, mirroring `UsageCounter.sellerSeen`.
     pub usage_seller_seen: Vec<(B256, u8, Address)>,
-    /// (artifact, period) → (c, d) — the running batch-path accrual the
+    /// (clauseOrAssembly, period) → (c, d) — the running batch-path accrual the
     /// verifier writes out.
     pub usage_accrual: Vec<((B256, u8), (u64, u64))>,
 }
@@ -297,11 +299,11 @@ pub struct PublicValues {
     /// `ClauseRegistry.contentHashOf` before accepting the batch.
     pub spec_bindings_hash: B256,
     /// Hash of the batch's RPGF usage accrual — the period, the
-    /// provenance-clause key, the per-artifact cumulative `(c, d)`, and
-    /// the distinct sellers the accrual rests on. The on-chain verifier
+    /// provenance-clause key, the per-clause-or-assembly cumulative `(c, d)`,
+    /// and the distinct sellers the accrual rests on. The on-chain verifier
     /// re-derives it from calldata, anchors every seller against
-    /// `MembersRegistry.registered` and every artifact against
-    /// `UsageCounter.excludedArtifact`, then writes the accrual.
+    /// `MembersRegistry.registered` and every clause or assembly against
+    /// `UsageCounter.excludedClauseOrAssembly`, then writes the accrual.
     pub usage_accrual_hash: B256,
 }
 
@@ -334,8 +336,8 @@ pub struct BatchEvents {
     /// Deduplicated, sorted — the verifier checks each against the
     /// live ClauseRegistry.
     pub spec_bindings: Vec<SpecBinding>,
-    /// Per-artifact cumulative accrual after this batch, sorted by
-    /// artifact. Empty when the batch carries no usage claims.
+    /// Per-clause-or-assembly cumulative accrual after this batch, sorted
+    /// by key. Empty when the batch carries no usage claims.
     pub usage_accruals: Vec<UsageAccrual>,
     /// The distinct sellers of record behind those accruals, sorted.
     /// The verifier requires a LIVE MembersRegistry stake for each —
@@ -412,10 +414,10 @@ pub enum KernelError {
     /// Usage is what a FINISHED process leaves behind — the inverse of
     /// the attestation gate, exactly as on the direct path.
     UsageOrderNotResolved(B256),
-    /// This (artifact, process) pair was already counted in an earlier
+    /// This (clause-or-assembly, process) pair was already counted in an earlier
     /// batch (or earlier in this one). Once ever, whatever the period —
     /// the guest's mirror of `UsageCounter.AlreadyCounted`.
-    UsageAlreadyCounted { artifact: B256, process_id: B256 },
+    UsageAlreadyCounted { clause_or_assembly: B256, process_id: B256 },
     /// The claimed section is not a leaf of the order's signed
     /// agreement — for an assembly claim, the usual cause is a
     /// compositionHash that does not match the committed provenance
@@ -436,9 +438,12 @@ impl core::fmt::Display for KernelError {
             Self::SpecIdentityMismatch(h) => write!(f, "SpecIdentityMismatch({h})"),
             Self::UsageOrderNotResolved(h) => write!(f, "UsageOrderNotResolved({h})"),
             Self::UsageAlreadyCounted {
-                artifact,
+                clause_or_assembly,
                 process_id,
-            } => write!(f, "UsageAlreadyCounted(artifact={artifact}, process={process_id})"),
+            } => write!(
+                f,
+                "UsageAlreadyCounted(clause_or_assembly={clause_or_assembly}, process={process_id})"
+            ),
             other => write!(f, "{other:?}"),
         }
     }

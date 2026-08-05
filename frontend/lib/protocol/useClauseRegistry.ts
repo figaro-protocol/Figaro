@@ -344,10 +344,11 @@ export function useRegisterClause() {
         const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(rawSpec);
 
         // No reward tag is anchored: the 600M reward is UNIFORM (ratified
-        // 2026-07-29) — every artifact scores on its real usage alone, with no
-        // category or weight — so the registry stores no incentive input. The
-        // only classification a clause carries is `block.design.article`, a
-        // reader grouping that stays off-chain entirely.
+        // 2026-07-29) — every clause and assembly scores on its real usage
+        // alone, with no category or weight — so the registry stores no
+        // incentive input. The only classification a clause carries is
+        // `block.design.article`, a reader grouping that stays off-chain
+        // entirely.
         const deposit = await client.readContract({
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,

@@ -62,7 +62,7 @@ export function getRpgfMinter(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.rpgfMinter);
 }
 
-/** The UsageCounter — verified artifact usage, counted on chain as it
+/** The UsageCounter — verified clause and assembly usage, counted on chain as it
  *  happens. The minter pays from its periods; this resolver is what the
  *  rewards surface reads accrual (c, d, score) and period-closure from.
  *  Resolved-empty: null = accrual is unreadable on this network. */

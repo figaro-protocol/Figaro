@@ -235,14 +235,15 @@ async fn batch_loop(
         let usage_claims = mempool.drain_usage().await;
 
         // Pre-filter usage claims against live chain state so a poison claim
-        // (excluded/unregistered artifact, or an unstaked seller) never enters a
-        // proof and cannot cost the rest of the batch its accrual. The counter's
+        // (excluded/unregistered clause or assembly, or an unstaked seller) never
+        // enters a proof and cannot cost the rest of the batch its accrual. The
+        // counter's
         // own gates and the verifier's try/catch remain the on-chain backstop
         // for the residual race (a seller unstaking after this read).
         let (usage_claims, dropped_claims) =
             submitter::filter_usage_claims(&submitter_config, usage_claims).await;
         for (claim, why) in &dropped_claims {
-            warn!(artifact = ?claim.artifact, reason = %why, "Dropped usage claim — the counter would reject it");
+            warn!(clause_or_assembly = ?claim.clause_or_assembly, reason = %why, "Dropped usage claim — the counter would reject it");
         }
 
         if pending.is_empty() && usage_claims.is_empty() {
@@ -332,7 +333,7 @@ async fn batch_loop(
                 std::mem::take(&mut usage.claims),
             );
             for (claim, reason) in &dropped {
-                warn!(artifact = ?claim.artifact, %reason, "Dropped usage claim — would abort the batch proof");
+                warn!(clause_or_assembly = ?claim.clause_or_assembly, %reason, "Dropped usage claim — would abort the batch proof");
             }
             usage.claims = kept;
         }

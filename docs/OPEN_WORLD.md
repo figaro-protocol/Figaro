@@ -136,7 +136,7 @@ every composition.
   (Kleros/Klima/Toucan are builders composing through the boundary), never its
   shipped-depth.
 
-- **Each artifact family gets its own anchor** (clauses → ClauseRegistry; sellers →
+- **Each registry family gets its own anchor** (clauses → ClauseRegistry; sellers →
   MembersRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
   one way: assemblies use clauses; clauses don't know assemblies exist.
 

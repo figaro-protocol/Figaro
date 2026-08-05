@@ -8,7 +8,7 @@ import {
     RPGF_SCORE_SCALE,
     RPGF_MIN_SELLERS,
     type UsagePeriodAccrual,
-    type ArtifactAccrual,
+    type ClauseOrAssemblyAccrual,
     type BatchUsageRecord,
     type UsageRecord,
     buildUsageClaims,
@@ -72,7 +72,7 @@ describe("usageScore", () => {
         expect(moreSellers).toBeGreaterThan(moreProcesses);
     });
 
-    it("is uniform — equal (c, d) gives equal score for any artifact (no weight)", () => {
+    it("is uniform — equal (c, d) gives equal score for any clause or assembly (no weight)", () => {
         expect(usageScore(5n, 3n)).toBe(usageScore(5n, 3n));
         expect(usageScore(1n, 1n, 1n)).toBe(10n ** 6n); // icbrt(1e18), floor disabled
     });
@@ -104,7 +104,7 @@ const sellerOf = (s: string): Address => `0x${keccak256(encodePacked(["string"],
 
 let logCounter = 0;
 function record(
-    artifact: Hex,
+    clauseOrAssembly: Hex,
     processId: string,
     seller: Address,
     overrides: Partial<UsageRecord> = {},
@@ -114,7 +114,7 @@ function record(
     return {
         blockNumber: 100n,
         logIndex: logCounter++,
-        artifact,
+        clauseOrAssembly,
         period: 0,
         processId: seed(processId),
         seller,
@@ -126,7 +126,7 @@ function record(
 }
 
 describe("computeUsageAccruals", () => {
-    it("counts distinct processes and distinct staked sellers per artifact, bucketed by period", () => {
+    it("counts distinct processes and distinct staked sellers per clause or assembly, bucketed by period", () => {
         const s1 = sellerOf("seller1");
         const s2 = sellerOf("seller2");
         const accruals = computeUsageAccruals([
@@ -135,8 +135,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_B, "p1", s1),
         ], [], 1n);
         const period = accruals.get(0)!;
-        expect(period.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n });
-        expect(period.byArtifact.get(CLAUSE_B)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n });
+        expect(period.byClauseOrAssembly.get(CLAUSE_B)!.direct).toMatchObject({ c: 1n, d: 1n });
         expect(period.totalScore).toBe(usageScore(2n, 2n, 1n) + usageScore(1n, 1n, 1n));
     });
 
@@ -150,14 +150,14 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "q2", s1),
             record(CLAUSE_A, "q3", s1),
         ], [], 1n);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 3n, d: 1n });
+        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 3n, d: 1n });
     });
 
-    it("is idempotent per (artifact, process) — a replay adds nothing", () => {
+    it("is idempotent per (clause or assembly, process) — a replay adds nothing", () => {
         const s1 = sellerOf("seller1");
         const once = computeUsageAccruals([record(CLAUSE_A, "p1", s1)], [], 1n);
         const twice = computeUsageAccruals([record(CLAUSE_A, "p1", s1), record(CLAUSE_A, "p1", s1)], [], 1n);
-        expect(twice.get(0)!.byArtifact.get(CLAUSE_A)).toEqual(once.get(0)!.byArtifact.get(CLAUSE_A));
+        expect(twice.get(0)!.byClauseOrAssembly.get(CLAUSE_A)).toEqual(once.get(0)!.byClauseOrAssembly.get(CLAUSE_A));
     });
 
     it("counts a process ONCE EVER — re-recording it in a later period adds nothing", () => {
@@ -169,8 +169,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "px-0", s1, { period: 0 }),
             record(CLAUSE_A, "px-0", s1, { period: 1 }),
         ], [], 1n);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)?.byArtifact.get(CLAUSE_A)).toBeUndefined();
+        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)?.byClauseOrAssembly.get(CLAUSE_A)).toBeUndefined();
     });
 
     it("a later period counts only trade that is NEW to it", () => {
@@ -179,7 +179,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "py-old", sellerOf("seller1"), { period: 1 }),
             record(CLAUSE_A, "py-new", sellerOf("seller2"), { period: 1 }),
         ], [], 1n);
-        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("counts every repeat process into c, but a seller is one unit of d", () => {
@@ -191,7 +191,7 @@ describe("computeUsageAccruals", () => {
             [],
             1n,
         );
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toEqual({
+        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toEqual({
             c: 8n,
             d: 1n,
             score: usageScore(8n, 1n, 1n),
@@ -200,14 +200,14 @@ describe("computeUsageAccruals", () => {
         expect(usageScore(8n, 1n, 1n)).toBeLessThan(usageScore(8n, 8n, 1n));
     });
 
-    it("counts breadth per artifact — a fresh staked seller adds a unit of d", () => {
+    it("counts breadth per clause or assembly — a fresh staked seller adds a unit of d", () => {
         const repeat = sellerOf("seller1");
         const fresh = sellerOf("seller9");
         const accruals = computeUsageAccruals([
             ...Array.from({ length: 7 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
             record(CLAUSE_A, "pe-fresh", fresh),
         ], [], 1n);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({
+        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({
             c: 8n,
             d: 2n,
         });
@@ -219,8 +219,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-0", s1, { period: 0 }),
             record(CLAUSE_A, "pf-1", s1, { period: 1 }),
         ], [], 1n);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("scores uniformly — equal usage gives equal score, clause or assembly", () => {
@@ -230,11 +230,11 @@ describe("computeUsageAccruals", () => {
             1n,
         );
         const period = accruals.get(0)!;
-        expect(period.byArtifact.get(CLAUSE_A)!.score).toBe(period.byArtifact.get(CLAUSE_B)!.score);
+        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.score).toBe(period.byClauseOrAssembly.get(CLAUSE_B)!.score);
     });
 
     it("reproduces the running score the chain emitted", () => {
-        // The event carries the artifact's score AFTER the record; the mirror
+        // The event carries the clause-or-assembly's score AFTER the record; the mirror
         // must land on the same number from the counting rules alone.
         const s1 = sellerOf("seller1");
         const s2 = sellerOf("seller2");
@@ -242,7 +242,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "ph-0", s1, { c: 1n, d: 1n, score: usageScore(1n, 1n, 1n) }),
             record(CLAUSE_A, "ph-1", s2, { c: 2n, d: 2n, score: usageScore(2n, 2n, 1n) }),
         ];
-        const accrual = computeUsageAccruals(emitted, [], 1n).get(0)!.byArtifact.get(CLAUSE_A)!.direct;
+        const accrual = computeUsageAccruals(emitted, [], 1n).get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct;
         const last = emitted[emitted.length - 1];
         expect(accrual).toEqual({ c: last.c, d: last.d, score: last.score });
     });
@@ -250,7 +250,7 @@ describe("computeUsageAccruals", () => {
     // ── The batch leg ───────────────────────────────────────────────
 
     function batchRecord(
-        artifact: Hex,
+        clauseOrAssembly: Hex,
         c: bigint,
         d: bigint,
         over: Partial<BatchUsageRecord> = {},
@@ -258,7 +258,7 @@ describe("computeUsageAccruals", () => {
         return {
             blockNumber: 200n,
             logIndex: 0,
-            artifact,
+            clauseOrAssembly,
             period: 0,
             c,
             d,
@@ -269,7 +269,7 @@ describe("computeUsageAccruals", () => {
 
     it("folds batch-settled usage into the same period", () => {
         const period = computeUsageAccruals([], [batchRecord(CLAUSE_A, 4n, 2n)], 1n).get(0)!;
-        const entry = period.byArtifact.get(CLAUSE_A)!;
+        const entry = period.byClauseOrAssembly.get(CLAUSE_A)!;
         expect(entry.batch).toEqual({ c: 4n, d: 2n, score: usageScore(4n, 2n, 1n) });
         expect(entry.direct).toEqual({ c: 0n, d: 0n, score: 0n });
         expect(entry.score).toBe(usageScore(4n, 2n, 1n));
@@ -285,7 +285,7 @@ describe("computeUsageAccruals", () => {
             [batchRecord(CLAUSE_A, 1n, 1n)], // batch:  c=1, d=1
             1n,
         ).get(0)!;
-        const entry = period.byArtifact.get(CLAUSE_A)!;
+        const entry = period.byClauseOrAssembly.get(CLAUSE_A)!;
 
         expect(entry.score).toBe(usageScore(1n, 1n, 1n) * 2n);
         expect(entry.score).toBeLessThanOrEqual(usageScore(2n, 2n, 1n));
@@ -304,7 +304,7 @@ describe("computeUsageAccruals", () => {
             ],
             1n,
         ).get(0)!;
-        expect(period.byArtifact.get(CLAUSE_A)!.batch).toEqual({ c: 5n, d: 3n, score: usageScore(5n, 3n, 1n) });
+        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.batch).toEqual({ c: 5n, d: 3n, score: usageScore(5n, 3n, 1n) });
         expect(period.totalScore).toBe(usageScore(5n, 3n, 1n));
     });
 
@@ -315,7 +315,7 @@ describe("computeUsageAccruals", () => {
         );
         const forward = computeUsageAccruals(records, [], 1n).get(0)!;
         const reversed = computeUsageAccruals([...records].reverse(), [], 1n).get(0)!;
-        expect(reversed.byArtifact.get(CLAUSE_A)).toEqual(forward.byArtifact.get(CLAUSE_A));
+        expect(reversed.byClauseOrAssembly.get(CLAUSE_A)).toEqual(forward.byClauseOrAssembly.get(CLAUSE_A));
         expect(reversed.totalScore).toBe(forward.totalScore);
     });
 
@@ -326,7 +326,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-a", sellerOf("s1")),
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
         ]); // default minSellers = 3 (the formula reference)
-        expect(below.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n, score: 0n });
+        expect(below.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n, score: 0n });
         expect(below.get(0)!.totalScore).toBe(0n);
 
         const crossed = computeUsageAccruals([
@@ -334,7 +334,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
             record(CLAUSE_A, "pf-c", sellerOf("s3")),
         ]);
-        expect(crossed.get(0)!.byArtifact.get(CLAUSE_A)!.direct.score).toBe(usageScore(3n, 3n));
+        expect(crossed.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct.score).toBe(usageScore(3n, 3n));
         expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n));
     });
 
@@ -344,9 +344,9 @@ describe("computeUsageAccruals", () => {
         // own. Conservative by design, like the score merge itself.
         const period = computeUsageAccruals(
             [record(CLAUSE_A, "pp-a", sellerOf("s1")), record(CLAUSE_A, "pp-b", sellerOf("s2"))],
-            [{ blockNumber: 200n, logIndex: 0, artifact: CLAUSE_A, period: 0, c: 2n, d: 2n, score: 0n }],
+            [{ blockNumber: 200n, logIndex: 0, clauseOrAssembly: CLAUSE_A, period: 0, c: 2n, d: 2n, score: 0n }],
         ).get(0)!;
-        expect(period.byArtifact.get(CLAUSE_A)!.score).toBe(0n);
+        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.score).toBe(0n);
         expect(period.totalScore).toBe(0n);
     });
 });
@@ -354,17 +354,17 @@ describe("computeUsageAccruals", () => {
 // ── The payout (RpgfMinter.claim, mirrored) ──────────────────────────
 
 function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
-    const byArtifact = new Map<Hex, ArtifactAccrual>();
+    const byClauseOrAssembly = new Map<Hex, ClauseOrAssemblyAccrual>();
     let totalScore = 0n;
-    for (const [artifact, score] of entries) {
-        byArtifact.set(artifact, {
+    for (const [clauseOrAssembly, score] of entries) {
+        byClauseOrAssembly.set(clauseOrAssembly, {
             direct: { c: 1n, d: 1n, score },
             batch: { c: 0n, d: 0n, score: 0n },
             score,
         });
         totalScore += score;
     }
-    return { byArtifact, totalScore };
+    return { byClauseOrAssembly, totalScore };
 }
 
 describe("computeRpgfAllocations", () => {
@@ -375,14 +375,14 @@ describe("computeRpgfAllocations", () => {
     ]);
 
     it("splits a period budget pro rata over the period's total score", () => {
-        // Ten equal artifacts, ten authors: each takes 10%.
-        const artifacts = Array.from(
+        // Ten equal clauses or assemblies, ten authors: each takes 10%.
+        const clausesOrAssemblies = Array.from(
             { length: 10 },
             (_, i) => `0x${(i + 1).toString(16).padStart(64, "0")}` as Hex,
         );
-        const period = periodOf(artifacts.map((artifact) => [artifact, 100n] as [Hex, bigint]));
+        const period = periodOf(clausesOrAssemblies.map((clauseOrAssembly) => [clauseOrAssembly, 100n] as [Hex, bigint]));
         const tenAuthors = new Map<Hex, Address>(
-            artifacts.map((artifact, i) => [artifact, `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
+            clausesOrAssemblies.map((clauseOrAssembly, i) => [clauseOrAssembly, `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
         );
         const out = computeRpgfAllocations(period, tenAuthors, 10_000n);
         expect(out.length).toBe(10);
@@ -391,7 +391,7 @@ describe("computeRpgfAllocations", () => {
         }
     });
 
-    it("sums a wallet's artifacts — clause and assembly families merge", () => {
+    it("sums a wallet's clauses and assemblies — clause and assembly families merge", () => {
         const period = periodOf([
             [CLAUSE_A, 50n],
             [ASSEMBLY, 50n],
@@ -423,14 +423,14 @@ describe("computeRpgfAllocations", () => {
         expect(minted).toBe(1_000n); // the whole period budget is allocated
     });
 
-    it("ignores artifacts with no author of record but keeps them in the denominator", () => {
+    it("ignores clauses or assemblies with no author of record but keeps them in the denominator", () => {
         const period = periodOf([
             [CLAUSE_A, 100n],
             [CLAUSE_B, 900n],
         ]);
         const onlyA = new Map<Hex, Address>([[CLAUSE_A, AUTHOR_A]]);
         const out = computeRpgfAllocations(period, onlyA, 1_000_000n);
-        // The unauthored artifact's 900 stays in the denominator: A takes
+        // The unauthored clause or assembly's 900 stays in the denominator: A takes
         // 100/1000, not 100/100.
         expect(out).toEqual([
             { account: AUTHOR_A.toLowerCase() as Address, amount: 100_000n, score: 100n },
@@ -438,7 +438,7 @@ describe("computeRpgfAllocations", () => {
     });
 
     it("returns nothing for a period with no score", () => {
-        expect(computeRpgfAllocations({ byArtifact: new Map(), totalScore: 0n }, authors, 1_000n)).toEqual([]);
+        expect(computeRpgfAllocations({ byClauseOrAssembly: new Map(), totalScore: 0n }, authors, 1_000n)).toEqual([]);
     });
 
     it("floors dust rather than over-allocating", () => {
@@ -487,12 +487,12 @@ describe("buildUsageClaims", () => {
         const agreement = agreementWith([modalities, commerce]);
         const claims = buildUsageClaims(order, agreement, {
             provenanceClause: PROVENANCE,
-            excludedArtifacts: [],
+            excludedClausesOrAssemblies: [],
         });
 
         expect(claims).toHaveLength(2);
         const modalityClaim = claims.find(
-            (c) => c.artifact === computeClauseKey("figaro-modalities", 1),
+            (c) => c.clause_or_assembly === computeClauseKey("figaro-modalities", 1),
         )!;
         expect(modalityClaim.kind).toEqual({
             Clause: { section_hash: sectionDataHash(modalities) },
@@ -502,21 +502,21 @@ describe("buildUsageClaims", () => {
         expect(modalityClaim.order.agreement_hash).toBe(order.agreementHash);
     });
 
-    // Not an optimisation. `applyBatchAccrual` reverts `ArtifactExcluded` and
+    // Not an optimisation. `applyBatchAccrual` reverts `ClauseOrAssemblyExcluded` and
     // takes the ENTIRE batch with it — every other party's settlement included.
-    it("drops excluded artifacts, because one would revert the whole batch", () => {
+    it("drops excluded clauses or assemblies, because one would revert the whole batch", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities, commerce]), {
             provenanceClause: PROVENANCE,
-            excludedArtifacts: [COMMERCE],
+            excludedClausesOrAssemblies: [COMMERCE],
         });
 
-        expect(claims.map((c) => c.artifact)).toEqual([computeClauseKey("figaro-modalities", 1)]);
+        expect(claims.map((c) => c.clause_or_assembly)).toEqual([computeClauseKey("figaro-modalities", 1)]);
     });
 
     it("is case-insensitive about the excluded set", () => {
         const claims = buildUsageClaims(order, agreementWith([commerce]), {
             provenanceClause: PROVENANCE,
-            excludedArtifacts: [COMMERCE.toUpperCase() as Hex],
+            excludedClausesOrAssemblies: [COMMERCE.toUpperCase() as Hex],
         });
         expect(claims).toHaveLength(0);
     });
@@ -529,20 +529,20 @@ describe("buildUsageClaims", () => {
         const claims = buildUsageClaims(
             order,
             agreementWith([modalities, commerce, provenance]),
-            { provenanceClause: PROVENANCE, excludedArtifacts: [COMMERCE, PROVENANCE] },
+            { provenanceClause: PROVENANCE, excludedClausesOrAssemblies: [COMMERCE, PROVENANCE] },
         );
 
         const assembly = claims.find((c) => c.kind === "Assembly");
         expect(assembly, "the assembly leg must not be coupled to the clause leg").toBeDefined();
-        expect(assembly!.artifact).toBe(COMPOSITION);
+        expect(assembly!.clause_or_assembly).toBe(COMPOSITION);
         // And it credits the compositionHash — never the provenance clause key.
-        expect(claims.map((c) => c.artifact)).not.toContain(PROVENANCE);
+        expect(claims.map((c) => c.clause_or_assembly)).not.toContain(PROVENANCE);
     });
 
     it("emits no assembly claim when the process ran under no assembly", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities]), {
             provenanceClause: PROVENANCE,
-            excludedArtifacts: [],
+            excludedClausesOrAssemblies: [],
         });
         expect(claims.some((c) => c.kind === "Assembly")).toBe(false);
     });
@@ -558,12 +558,12 @@ describe("buildUsageClaims", () => {
         };
         const claims = buildUsageClaims(order, agreementWith([modalities, withheld]), {
             provenanceClause: PROVENANCE,
-            excludedArtifacts: [PROVENANCE],
+            excludedClausesOrAssemblies: [PROVENANCE],
         });
 
         expect(claims.some((c) => c.kind === "Assembly")).toBe(false);
         expect(claims).toHaveLength(1);
-        expect(claims[0].artifact).toBe(computeClauseKey("figaro-modalities", 1));
+        expect(claims[0].clause_or_assembly).toBe(computeClauseKey("figaro-modalities", 1));
     });
 
     it("produces inclusion proofs that verify against the signed agreement hash", () => {
@@ -571,7 +571,7 @@ describe("buildUsageClaims", () => {
         const root = computeAgreementHash(agreement);
         const claims = buildUsageClaims(order, agreement, {
             provenanceClause: PROVENANCE,
-            excludedArtifacts: [],
+            excludedClausesOrAssemblies: [],
         });
 
         for (const claim of claims) {
@@ -579,11 +579,11 @@ describe("buildUsageClaims", () => {
                 claim.kind === "Assembly"
                     ? provenance
                     : agreement.sections.find(
-                          (s) => computeClauseKey(s.clause, s.version) === claim.artifact,
+                          (s) => computeClauseKey(s.clause, s.version) === claim.clause_or_assembly,
                       )!;
             expect(
                 verifyInclusionProof(root, computeSectionLeaf(section), claim.inclusion_proof),
-                `proof for ${claim.artifact}`,
+                `proof for ${claim.clause_or_assembly}`,
             ).toBe(true);
         }
     });

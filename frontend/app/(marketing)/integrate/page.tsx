@@ -155,7 +155,7 @@ const attestations = await client.getLogs({
 });`}</code>
                 </pre>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    <strong>Exactly one thing crosses the seam: the RPGF usage accrual</strong>, carried by <code>settleBatch</code> into <code>UsageCounter.applyBatchAccrual</code> as proved numbers &mdash; never as kernel state. So the same rule governs adoption reads, and the SDK already ships it: <strong>fold BOTH streams</strong>. <code>UsageRecorded</code> is the direct path and is a per-process <em>increment</em>; <code>BatchUsageRecorded</code> is the batch path and is <em>cumulative</em> &mdash; a later record <strong>REPLACES</strong> an earlier one rather than adding to it. <code>fetchUsageRecords</code> alone silently under-reports every artifact whose trade moved to batches; pair it with <code>fetchBatchUsageRecords</code> and pass both to <code>computeUsageAccruals</code>. On chain the merge is already done for you: read <code>scoreOf(artifact, period)</code>, which sums BOTH paths&apos; scores &mdash; never <code>accrualOf</code> alone. Scores are summed; the <code>c</code>/<code>d</code> components never are (the same seller may trade on both sides and the chain holds no seller SETS to union, so adding breadth would pay for breadth nobody had).
+                    <strong>Exactly one thing crosses the seam: the RPGF usage accrual</strong>, carried by <code>settleBatch</code> into <code>UsageCounter.applyBatchAccrual</code> as proved numbers &mdash; never as kernel state. So the same rule governs adoption reads, and the SDK already ships it: <strong>fold BOTH streams</strong>. <code>UsageRecorded</code> is the direct path and is a per-process <em>increment</em>; <code>BatchUsageRecorded</code> is the batch path and is <em>cumulative</em> &mdash; a later record <strong>REPLACES</strong> an earlier one rather than adding to it. <code>fetchUsageRecords</code> alone silently under-reports every clause or assembly whose trade moved to batches; pair it with <code>fetchBatchUsageRecords</code> and pass both to <code>computeUsageAccruals</code>. On chain the merge is already done for you: read <code>scoreOf(clauseOrAssembly, period)</code>, which sums BOTH paths&apos; scores &mdash; never <code>accrualOf</code> alone. Scores are summed; the <code>c</code>/<code>d</code> components never are (the same seller may trade on both sides and the chain holds no seller SETS to union, so adding breadth would pay for breadth nobody had).
                 </p>
                 <pre
                     tabIndex={0}
@@ -166,7 +166,7 @@ const score = await client.readContract({
   address: USAGE_COUNTER,       // record: usageCounter
   abi: USAGE_COUNTER_ABI,
   functionName: "scoreOf",
-  args: [artifact, period],
+  args: [clauseOrAssembly, period],
 });
 
 // Off chain, if you are mirroring: fold both event streams.

@@ -7,7 +7,7 @@
  * hand-off panel, and the canvas's identity readout all go through it, so the
  * hash a designer SEES while composing is by construction the hash publish
  * anchors — a readout derived by a second, near-identical walk could disagree
- * with the artifact, which is worse than showing nothing.
+ * with the assembly, which is worse than showing nothing.
  *
  * The walk itself is `buildAssemblyTemplate` (`@figaro/sdk`), fed by the
  * live-cache `specSource()` adapter. It VERIFIES scope placement and throws on

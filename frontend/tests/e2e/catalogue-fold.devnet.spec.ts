@@ -24,7 +24,7 @@
  * Self-contained + idempotent like the other devnet specs: onboards its OWN
  * seller (anvil[15], used by no other spec), authors its OWN assembly, and leaves
  * its state on-chain (no snapshot/revert — devnet is a mainnet rehearsal). A
- * per-run nonce keeps every artifact unique against prior runs / retries.
+ * per-run nonce keeps every assembly unique against prior runs / retries.
  *
  * NOTE: figaro-cargo is a PROTOCOL clause (seeded at devup), so — unlike
  * permissionless-clause — no clause is registered here; the novelty under test is

@@ -135,15 +135,15 @@ upgrade for the buyer key, rehearsed on testnet before adoption.
 ### The 600M RPGF allocation
 
 The *intent* of this allocation is unchanged: 60% of the supply is reserved for
-the people whose artifacts broaden the protocol's substrate — clause authors
+the people whose clauses and assemblies broaden the protocol's substrate — clause authors
 and assembly designers of record (recipients widened by the 2026-07-09
 redesign). The reward was ratified UNIFORM on 2026-07-29 (owner: memory
-`project_reward_mechanism_ratified_2026_07`): every artifact earns by its **real
+`project_reward_mechanism_ratified_2026_07`): every clause and assembly earns by its **real
 usage alone**, with no category, tag, or weight tilting the split toward any kind
 of contribution.
 
 **The mechanism COUNTS USAGE WHEN IT HAPPENS** — `UsageCounter` records each
-artifact's real usage at resolve, permissionlessly, from facts the chain already
+clause's or assembly's real usage at resolve, permissionlessly, from facts the chain already
 holds, and `RpgfMinter.claim` pays **uniform pro rata, no per-wallet cap** from the
 period's fixed budget. The MECHANICS — proof shape, the `icbrt(c·d²·1e18)` score,
 the two-sided live-ETH-stake gates, and what deliberately does NOT exist (no
@@ -247,7 +247,7 @@ population alone takes over a minute, and resolve-time usage recording needs
 accrual open across a full e2e suite run; nine 30-minute periods give a
 4.5-hour accrual life while still letting the rewards spec advance the chain
 past a period boundary). The constructor wires the seller-side live-stake gate
-(`MembersRegistry`), the artifact-side deposit gates (`ClauseRegistry` +
+(`MembersRegistry`), the clause-or-assembly-side deposit gates (`ClauseRegistry` +
 `AssemblyRegistry`), the batch verifier as the proof-gated writer of the
 batch-path accrual, the assembly-provenance clause key, the three excluded
 protocol-floor clauses (`figaro-commerce`, `figaro-topology`,

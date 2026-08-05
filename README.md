@@ -18,7 +18,7 @@ The organizational consequence: each process assembles a temporary institution o
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, members registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
-- **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified artifact usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
+- **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
 - **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
@@ -40,7 +40,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   kernel/                   FigaroCore.sol (protocol kernel, frozen) + CommitmentTypes.sol (EIP-712 structs + hashing)
   protocol/coordinators/    AttestationCoordinator.sol (zero-storage role-gated attestation) + IRoleResolver.sol + WitnessSwapAndCommitCoordinator.sol (Permit2 witness-bound swap-funded bonds)
   protocol/registries/      ClauseRegistry.sol, MembersRegistry.sol, AssemblyRegistry.sol (permissionless, first-write-wins, ETH-staked)
-  protocol/usage/           UsageCounter.sol (per-artifact usage accrual, both settlement paths)
+  protocol/usage/           UsageCounter.sol (per-clause/assembly usage accrual, both settlement paths)
   protocol/verifier/        FigaroBatchVerifier.sol (SP1 proof-based batch settlement) + ISP1Verifier.sol
   rpgf/                     RpgfMinter.sol (600M florin usage-pro-rata reward)
   florin/                   the florin (ERC-20, minter registry)

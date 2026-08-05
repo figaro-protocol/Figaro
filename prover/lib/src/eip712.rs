@@ -126,8 +126,8 @@ pub fn attest_buyer_struct_hash(
 
 // Registry authorizations (RegisterClause / SetMechanismClause /
 // RegisterSeller / UpdateProfile) are gone: registry mutations are
-// once-per-artifact ETH-staked intents that stay on the direct path —
-// the batch covers the kernel + attestation surface only.
+// once-per-clause-or-assembly ETH-staked intents that stay on the direct
+// path — the batch covers the kernel + attestation surface only.
 
 // ── Typed data hash ───────────────────────────────────────────────
 

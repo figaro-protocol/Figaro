@@ -11,7 +11,7 @@ pragma solidity 0.8.26;
 ///         STAKED INTENT: registering requires an ETH deposit
 ///         (`registrationDeposit`, immutable at deploy) — registering IS
 ///         declaring intent to generate transactions. Surfacing derives
-///         from the live stake: readers hide artifacts whose deposit has
+///         from the live stake: readers hide clauses whose deposit has
 ///         been withdrawn (withdraw = de-surface), so polluting the
 ///         registry costs deposit × time-surfaced. There is no time lock.
 ///         The clause BINDING is permanent — never cleared on withdraw —
@@ -47,8 +47,9 @@ pragma solidity 0.8.26;
 ///         headings), derived from the spec, never stored.
 ///
 ///         There is NO reward tag either. The 600M reward is UNIFORM (ratified
-///         2026-07-29): every artifact's score is its real usage alone, with no
-///         category, tag, or weight — so the registry stores no incentive input.
+///         2026-07-29): every clause or assembly's score is its real usage alone,
+///         with no category, tag, or weight — so the registry stores no
+///         incentive input.
 ///         (A `rpgfTag` field existed until then, as a predecessor `family` did
 ///         before it — both deleted as the reward stopped privileging any class.)
 ///

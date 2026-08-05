@@ -508,7 +508,7 @@ same trade (the guest's counted set rides the batch state root, so idempotence
 holds across batches), and cannot be repointed — `batchVerifier` is
 `immutable` and no setter exists. What it can do is exactly what the direct
 path lets *anyone* do permissionlessly: present proof that settled trade used
-an artifact.
+a clause or assembly.
 
 The distinction that matters is **discretion, not permission**. An admin
 function is one whose outcome depends on who calls it. This one's outcome
@@ -520,11 +520,11 @@ vkey, and a named caller is how a vkey's authority reaches storage.
 
 **What the counter still enforces itself**, because the proof cannot see live
 chain state: the open period, each seller's live `MembersRegistry` stake, and
-the excluded-artifact set. The verifier deliberately checks none of these — it
+the set of excluded clauses and assemblies. The verifier deliberately checks none of these — it
 owns the proof, the counter owns the reward's gates.
 
 **Blast radius if the vkey were wrong**: a bad program could inflate
-batch-path accrual for artifacts of its choosing, diluting every honest
+batch-path accrual for clauses or assemblies of its choosing, diluting every honest
 author's pro-rata share of a tranche. It could not mint, could not touch
 direct-path accrual, could not reach bonds or settlement, and could not
 withdraw anything — `RpgfMinter` still pays only authors of record with a live
@@ -543,12 +543,12 @@ holds counts, not the pair sets needed to union them.
 
 ## 17. `UsageCounter` scores nothing below the minimum-support floor — real usage, zero score
 
-**Looks wrong because:** an artifact with genuinely settled, genuinely recorded trade shows
+**Looks wrong because:** a clause or assembly with genuinely settled, genuinely recorded trade shows
 `c > 0`, `d > 0` and `score = 0` — which reads like lost accrual, or like the counter
 penalising honest early adopters.
 
 **Is correct because (ruled 2026-07-31):** below `minSellers` (mainnet 3) distinct
-live-staked sellers sit exactly the artifacts one actor can fabricate alone — self-farms,
+live-staked sellers sit exactly the clauses and assemblies one actor can fabricate alone — self-farms,
 fragmentation shards, squatted names, trivial riders — and a floor of 3 makes the minimum
 viable farm three deposits and three cooldowns, with no curation and no judgment. Within an
 open period nothing is lost: counting is never refused, `c` and `d` accrue below the floor,
@@ -590,17 +590,17 @@ is the residual anti-Sybil bite, and in the positive-sum frame that residual is 
 leak, not a hole. Do not "fix" it by adding a protocol-side cost — both variants above
 are declined and the door is closed on the family.
 
-## 19. Usage accrual requires the artifact to hold a live registration deposit — an unregistered leaf key scores nothing
+## 19. Usage accrual requires the clause or assembly to hold a live registration deposit — an unregistered leaf key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
-artifact and its seller is staked — yet still reverts `ArtifactNotRegistered` (direct path)
-or silently skips it (batch path) unless the artifact ALSO holds a live deposit in its own
+clause or assembly and its seller is staked — yet still reverts `ClauseOrAssemblyNotRegistered` (direct path)
+or silently skips it (batch path) unless the clause or assembly ALSO holds a live deposit in its own
 registry. A settled, proven use that earns nothing reads like lost accrual.
 
-**Is correct because (audit 2026-08-01, finding M-2):** the artifact key is otherwise just a
+**Is correct because (audit 2026-08-01, finding M-2):** the clause-or-assembly key is otherwise just a
 merkle-leaf key a self-authored agreement chooses freely, so without this gate a self-dealt
 process could accrue score to ANY `bytes32` and inflate `totalScoreIn` — the shared payout
-denominator — at gas cost, diluting every honest author. The gate is the ARTIFACT-side twin
+denominator — at gas cost, diluting every honest author. The gate is the CLAUSE-OR-ASSEMBLY-SIDE twin
 of the seller-side stake gate: score counts only what a live ETH deposit has priced. It does
 not eliminate the paid replication lever (register N keys for N deposits) — that is the
 accepted, deposit-priced cost the reward's uniform pro-rata already dilutes — it closes the
@@ -609,7 +609,7 @@ skips (see §20).
 
 ## 20. The RPGF accrual never blocks batch settlement — a reverting reward gate does not unwind trade
 
-**Looks wrong because:** `applyBatchAccrual` `continue`s past excluded/unregistered artifacts
+**Looks wrong because:** `applyBatchAccrual` `continue`s past excluded/unregistered clauses or assemblies
 instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
 `BatchAccrualSkipped` and settling anyway. A reward write that can be silently dropped looks
 like lost or manipulable accrual.
@@ -620,7 +620,7 @@ settlement lets one party block every co-batched trader's already-reconciled pay
 unauthenticated griefing vector (a poison claim naming the excluded `figaro-commerce`, which
 rides every agreement; or a seller who unstakes between prove and submit). Tier separation is
 the doctrine: settlement must never be hostage to the reward. A dropped batch's accrual is
-recovered by the next batch that touches the same artifacts (the counter's write is a
+recovered by the next batch that touches the same clauses or assemblies (the counter's write is a
 cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as
 the per-path floor (§17). The sequencer additionally pre-filters poison claims so the catch
 only ever fires on the genuine stake-race.
@@ -666,6 +666,6 @@ the cost of the stateless kernel.
 | 16 | `applyBatchAccrual` has one privileged caller | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
 | 17 | Recorded usage can score zero (`minSellers` floor) | Real settled trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
 | 18 | No per-record fee or burn | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed fee inserts an institution + usage-coupled revenue into an identity-free mechanism |
-| 19 | Usage needs a live artifact registration deposit | A proven, settled use that scores nothing reads like lost accrual | The artifact key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted deposit-priced replication lever |
+| 19 | Usage needs a live clause-or-assembly registration deposit | A proven, settled use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted deposit-priced replication lever |
 | 20 | RPGF accrual never reverts settlement (skip + try/catch) | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind settlement-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
 | 21 | Seller-stake gate is retroactive | A withdrawal makes settled-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-settlement closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |

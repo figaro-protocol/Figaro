@@ -3,9 +3,9 @@
 /**
  * RewardsView — the RPGF minter's runtime surface at `/rewards`. Not an admin
  * panel and not an application form: usage is COUNTED ON CHAIN as it happens
- * (a settled order, the artifact proven present in the agreement both parties
+ * (a settled order, the clause or assembly proven present in the agreement both parties
  * signed), a period's counts stop moving the moment it ends, and the wallet
- * then claims its artifacts' UNIFORM pro-rata share of that period's budget —
+ * then claims its clauses' and assemblies' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
  * marketing telling lives at /rpgf; this page is the doing surface.
  */
@@ -73,15 +73,15 @@ export function RewardsView() {
 
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-3xl" data-testid="rewards-page">
-            <h1 className="text-heading-h1 text-ink-heading mb-3">Claim artifact rewards</h1>
+            <h1 className="text-heading-h1 text-ink-heading mb-3">Claim RPGF rewards</h1>
             <p className="text-base text-ink-body leading-relaxed mb-8">
                 The 600M florins reserved for clause authors and assembly designers of record.
-                Usage is counted on chain as it happens — a settled process, the artifact proven
+                Usage is counted on chain as it happens — a settled process, the clause or assembly proven
                 present in the agreement both parties signed — and buckets into fixed periods.
-                Once a period ends its counts are final, and each author claims their artifacts&apos;
+                Once a period ends its counts are final, and each author claims their clauses&apos; and assemblies&apos;
                 share of that period&apos;s budget: their score over the period&apos;s total, uniform
                 pro rata with no cap. Eligibility is a live ETH stake — you earn only while your
-                artifact&apos;s stake stays live. Nothing is
+                clause&apos;s or assembly&apos;s stake stays live. Nothing is
                 posted, bonded, or disputed; there is no committee and no application.
             </p>
             <p className="text-sm text-ink-muted mb-8">
@@ -121,19 +121,19 @@ export function RewardsView() {
                                     </span>
                                 </div>
                                 <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
-                                    period score across all artifacts:{" "}
+                                    period score across all clauses and assemblies:{" "}
                                     <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
                                     {formatUnits(t.minted, 18)} FLORIN
                                 </p>
                                 {t.accruals.length > 0 && (
                                     <div className="mt-3 mb-3" data-testid={`period-accruals-${t.periodId}`}>
                                         <p className="text-sm text-ink-body mb-1">
-                                            Your artifacts in this period (score{" "}
+                                            Your clauses and assemblies in this period (score{" "}
                                             <span className="font-mono">{t.myScore.toString()}</span>):
                                         </p>
                                         <ul className="text-sm text-ink-muted space-y-1">
                                             {t.accruals.map((a) => (
-                                                <li key={a.artifact} className="font-mono break-all">
+                                                <li key={a.clauseOrAssembly} className="font-mono break-all">
                                                     {a.label} — {(a.c + a.batchC).toString()} settled process
                                                     {a.c + a.batchC === 1n ? "" : "es"},{" "}
                                                     {(a.d + a.batchD).toString()} distinct pair

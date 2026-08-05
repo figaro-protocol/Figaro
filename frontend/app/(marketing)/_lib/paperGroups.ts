@@ -167,7 +167,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process topology as a coordination problem, the closure as a scheduling invariant.",
         papers: [
             { title: "Bookkeeping as Protocol Byproduct: Self-Closing Ledger Periods", href: "/papers/self-closing-ledger-periods", blurb: "A Figaro process as a self-closing ledger period — commitments are journal entries, resolution the closing entry, the conservation law the bookkeeping identity — making a class of record-keeping a protocol byproduct." },
-            { title: "Substrate-Broadening Retroactive Public-Goods Funding", href: "/papers/substrate-broadening-rpgf", blurb: "An allocation that distributes florins to clause authors and assembly designers, scoring artifacts by counterparty diversity over raw volume — counted on chain as each settled process lands, so there is no result to post, bond, or challenge." },
+            { title: "Substrate-Broadening Retroactive Public-Goods Funding", href: "/papers/substrate-broadening-rpgf", blurb: "An allocation that distributes florins to clause authors and assembly designers, scoring clauses and assemblies by counterparty diversity over raw volume — counted on chain as each settled process lands, so there is no result to post, bond, or challenge." },
         ],
     },
     {

@@ -139,7 +139,7 @@ export interface DisclosureCalendar {
  * The LEAF CLASS is derived, never a stored taxonomy: it is the pair
  * (assembly `compositionHash`, `clauseId`) — the record classes of the
  * processes a member runs comes from the assemblies they bind, so the
- * keys here reference artifacts the member already binds/composes.
+ * keys here reference clauses and assemblies the member already binds/composes.
  * Any UI enumerates candidate classes from the member's own live
  * bindings, never from a hardcoded list.
  *

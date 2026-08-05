@@ -2,7 +2,7 @@
 // Certora CVL specification for RpgfMinter — the 600M retroactive florin
 // distribution. This is the operator-approved formal-coverage gap: RpgfMinter
 // mints florins, and its two worst historical bugs (a tranche-overdraw class,
-// commit f9a6d37e, and the pre-2026-07-30 clamp that let a repeated artifact
+// commit f9a6d37e, and the pre-2026-07-30 clamp that let a repeated clause-or-assembly entry
 // mint an entire tranche — see the `_entitlement` doc comment in the .sol)
 // were both caught by audit, never by the Foundry suite. This spec proves the
 // six properties that class of bug would have violated.
@@ -18,7 +18,7 @@
 // Summarization choices, and why:
 //
 //   • `_isAuthor` (INTERNAL to RpgfMinter) is summarized directly to a ghost
-//     boolean per (artifact, account), the same idiom BatchVerifierTokenOps.spec
+//     boolean per (clauseOrAssembly, account), the same idiom BatchVerifierTokenOps.spec
 //     uses for FigaroBatchVerifier's own internal helpers (_hashPositions et
 //     al.): an internal-function summary on the contract UNDER VERIFICATION,
 //     not a mock of an external dependency. This is deliberately NOT a
@@ -29,7 +29,7 @@
 //     test suite's job. What THIS spec must prove is narrower and sharper:
 //     given an arbitrary answer from the eligibility gate, does RpgfMinter's
 //     own claim path do the right thing with it? That is exactly what rule 5
-//     (`ineligibleArtifactCannotBePaid`) checks, and the summary is fully
+//     (`ineligibleClauseOrAssemblyCannotBePaid`) checks, and the summary is fully
 //     behavior-preserving for it: `_isAuthor` has no other observable effect
 //     anywhere in RpgfMinter.sol.
 //
@@ -76,20 +76,20 @@ methods {
 
     // Eligibility gate — internal-function summary on the verified contract
     // itself. See the file header for why this boundary, not the registries.
-    function _isAuthor(bytes32 artifact, address account) internal returns (bool) => summarizeIsAuthor(artifact, account);
+    function _isAuthor(bytes32 clauseOrAssembly, address account) internal returns (bool) => summarizeIsAuthor(clauseOrAssembly, account);
 
     // UsageCounter surface — real contract out of scene; every call wildcard-
     // dispatched to a ghost read.
     function _.periodClosed(uint8 period) external => summarizePeriodClosed(period) expect (bool);
     function _.totalScoreIn(uint8 period) external => summarizeTotalScoreIn(period) expect (uint256);
-    function _.scoreOf(bytes32 artifact, uint8 period) external => summarizeScoreOf(artifact, period) expect (uint256);
+    function _.scoreOf(bytes32 clauseOrAssembly, uint8 period) external => summarizeScoreOf(clauseOrAssembly, period) expect (uint256);
 
     // FlorinToken.mint — no-op summary; see file header for the CEI argument.
     function _.mint(address, uint256) external => NONDET;
 }
 
-function summarizeIsAuthor(bytes32 artifact, address account) returns bool {
-    return g_isAuthor[artifact][account];
+function summarizeIsAuthor(bytes32 clauseOrAssembly, address account) returns bool {
+    return g_isAuthor[clauseOrAssembly][account];
 }
 
 function summarizePeriodClosed(uint8 period) returns bool {
@@ -100,8 +100,8 @@ function summarizeTotalScoreIn(uint8 period) returns uint256 {
     return g_totalScoreIn[period];
 }
 
-function summarizeScoreOf(bytes32 artifact, uint8 period) returns uint256 {
-    return g_scoreOf[artifact][period];
+function summarizeScoreOf(bytes32 clauseOrAssembly, uint8 period) returns uint256 {
+    return g_scoreOf[clauseOrAssembly][period];
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -139,11 +139,11 @@ rule mintedNeverExceedsPeriodBudget(uint8 periodId, method f) {
 // RULE 2: One claim per wallet per period (no double-claim)
 // ═══════════════════════════════════════════════════════════════════
 
-rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, bytes32[] artifacts) {
+rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, bytes32[] clausesOrAssemblies) {
     env e;
     require claimed(periodId, e.msg.sender);
 
-    claim@withrevert(e, periodId, artifacts);
+    claim@withrevert(e, periodId, clausesOrAssemblies);
 
     assert lastReverted,
         "claim must revert if msg.sender already claimed this period";
@@ -153,59 +153,59 @@ rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, bytes32[] artifacts) {
 // RULE 3: No claim while the period is open (periodEnd / periodClosed gating)
 // ═══════════════════════════════════════════════════════════════════
 
-rule cannotClaimWhilePeriodOpen(uint8 periodId, bytes32[] artifacts) {
+rule cannotClaimWhilePeriodOpen(uint8 periodId, bytes32[] clausesOrAssemblies) {
     require !g_periodClosed[periodId];
 
     env e;
-    claim@withrevert(e, periodId, artifacts);
+    claim@withrevert(e, periodId, clausesOrAssemblies);
 
     assert lastReverted,
         "claim must revert while counter.periodClosed(periodId) is false";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 4: A duplicate artifact in one claim call cannot increase the payout
+// RULE 4: A duplicate clause-or-assembly in one claim call cannot increase the payout
 //
 // Matches the contract's ACTUAL mechanism: `_entitlement`'s inner loop
-// reverts with `DuplicateArtifact` the moment any two entries repeat, rather
+// reverts with `DuplicateClauseOrAssembly` the moment any two entries repeat, rather
 // than silently deduplicating or (the pre-2026-07-30 bug) clamping the sum
 // up to the period total. Proved for an arbitrary repeated pair (i, j) at any
 // positions in an arbitrary-length list — not one example list.
 // ═══════════════════════════════════════════════════════════════════
 
-rule duplicateArtifactReverts(uint8 periodId, bytes32[] artifacts, uint256 i, uint256 j) {
-    require i < artifacts.length && j < i && artifacts[i] == artifacts[j];
+rule duplicateClauseOrAssemblyReverts(uint8 periodId, bytes32[] clausesOrAssemblies, uint256 i, uint256 j) {
+    require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i] == clausesOrAssemblies[j];
 
     env e;
-    claim@withrevert(e, periodId, artifacts);
+    claim@withrevert(e, periodId, clausesOrAssemblies);
 
     assert lastReverted,
-        "claim must revert if the artifact list contains any duplicate";
+        "claim must revert if the clause-or-assembly list contains any duplicate";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 5: Eligibility — a withdrawn/non-author artifact receives nothing
+// RULE 5: Eligibility — a withdrawn/non-author clause-or-assembly receives nothing
 //
-// `_isAuthor(artifact, account)` is the live-stake gate: false whenever the
+// `_isAuthor(clauseOrAssembly, account)` is the live-stake gate: false whenever the
 // clause registrar or assembly designer has withdrawn its registration
 // deposit (or the caller was never the author of record at all). Proved
-// against the ghost directly — for ANY (artifact, account) pair the gate
+// against the ghost directly — for ANY (clauseOrAssembly, account) pair the gate
 // would refuse, including one buried anywhere in an arbitrary-length list —
 // `claim` must revert rather than pay. This matches RpgfMinter's actual
-// mechanism (all-or-nothing per call, not a per-artifact skip): a claim
-// naming one ineligible artifact among otherwise-eligible ones still reverts
+// mechanism (all-or-nothing per call, not a per-entry skip): a claim
+// naming one ineligible clause-or-assembly among otherwise-eligible ones still reverts
 // whole, exactly as `NotAuthorOfRecord` is coded.
 // ═══════════════════════════════════════════════════════════════════
 
-rule ineligibleArtifactCannotBePaid(uint8 periodId, bytes32[] artifacts, uint256 i) {
+rule ineligibleClauseOrAssemblyCannotBePaid(uint8 periodId, bytes32[] clausesOrAssemblies, uint256 i) {
     env e;
-    require i < artifacts.length;
-    require !g_isAuthor[artifacts[i]][e.msg.sender];
+    require i < clausesOrAssemblies.length;
+    require !g_isAuthor[clausesOrAssemblies[i]][e.msg.sender];
 
-    claim@withrevert(e, periodId, artifacts);
+    claim@withrevert(e, periodId, clausesOrAssemblies);
 
     assert lastReverted,
-        "claim must revert if any artifact in the list is not msg.sender's live-staked artifact of record";
+        "claim must revert if any clause-or-assembly in the list is not msg.sender's live-staked clause-or-assembly of record";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -239,10 +239,10 @@ rule mintedMonotonic(uint8 periodId, method f) {
 // `test_claimableRejectsDuplicatesToo` guards one example of in Foundry).
 // ═══════════════════════════════════════════════════════════════════
 
-rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] artifacts, uint256 i, uint256 j) {
+rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] clausesOrAssemblies, uint256 i, uint256 j) {
     // Two early-return paths reach the dedupe loop in `_entitlement` only
     // conditionally, and both are legitimate non-revert shapes independent of
-    // the artifact list's contents:
+    // the clause-or-assembly list's contents:
     //   (a) `claimable` itself short-circuits to `return 0` for an
     //       already-claimed wallet BEFORE calling `_entitlement` at all (see
     //       claimableReturnsZeroForAlreadyClaimedWallet);
@@ -257,12 +257,12 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] ar
     // path enforces the same dedupe guard `claim` does.
     require !claimed(periodId, account);
     require g_totalScoreIn[periodId] != 0;
-    require i < artifacts.length && j < i && artifacts[i] == artifacts[j];
+    require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i] == clausesOrAssemblies[j];
 
-    claimable@withrevert(periodId, account, artifacts);
+    claimable@withrevert(periodId, account, clausesOrAssemblies);
 
     assert lastReverted,
-        "claimable must reject the same duplicate-artifact list claim() would reject, for a wallet that has not yet claimed in a non-empty period";
+        "claimable must reject the same duplicate-entry list claim() would reject, for a wallet that has not yet claimed in a non-empty period";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -270,10 +270,10 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] ar
 // claimed the period — the view-side twin of rule 2.
 // ═══════════════════════════════════════════════════════════════════
 
-rule claimableReturnsZeroForAlreadyClaimedWallet(uint8 periodId, address account, bytes32[] artifacts) {
+rule claimableReturnsZeroForAlreadyClaimedWallet(uint8 periodId, address account, bytes32[] clausesOrAssemblies) {
     require claimed(periodId, account);
 
-    uint256 quoted = claimable@withrevert(periodId, account, artifacts);
+    uint256 quoted = claimable@withrevert(periodId, account, clausesOrAssemblies);
     bool reverted = lastReverted;
 
     assert !reverted => quoted == 0,

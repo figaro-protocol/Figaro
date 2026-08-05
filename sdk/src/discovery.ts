@@ -3,7 +3,7 @@
  *
  * The cold-start half of an agent's state. Where `state.ts`/`Topology`
  * reconstructs the processes an agent is ALREADY in, this module reconstructs
- * what EXISTS on the network — the three artifact families a fresh-key agent
+ * what EXISTS on the network — the three registry families a fresh-key agent
  * has never seen: clauses, members, assemblies.
  *
  * It is a PARALLEL family, deliberately not folded into `Topology`: the
@@ -13,14 +13,14 @@
  * getters) so the two read the same way without knowing about each other.
  *
  * Surfacing derives from the LIVE stake (the registries' staked-intent model):
- * an artifact whose deposit has been withdrawn is de-surfaced. The three
+ * an entry whose deposit has been withdrawn is de-surfaced. The three
  * families withdraw differently, and the reducer honours each:
  *   - clauses/assemblies — binding permanent, withdraw terminal ⇒ set-difference.
  *   - members — requesting withdrawal clears the guard and allows re-registration
  *     ⇒ the live state is order-dependent; the most-recent lifecycle event per
  *     address wins. De-surfacing is the REQUEST, not the later ETH release.
  *
- * Every returned artifact is a POINTER (contentURI/metadataURI). Hydrating the
+ * Every returned entry is a POINTER (contentURI/metadataURI). Hydrating the
  * pinned document from IPFS is the consumer's job — the SDK is viem-only.
  */
 
@@ -290,7 +290,7 @@ export class DiscoveryGraph {
         this.applyMemberEvents(events.memberRegistered, events.memberWithdrawn);
     }
 
-    // ── Live views (deposit-withdrawn artifacts filtered out) ────────────────
+    // ── Live views (deposit-withdrawn entries filtered out) ────────────────
 
     /** All live-staked clauses. */
     getClauses(): RegisteredClause[] {

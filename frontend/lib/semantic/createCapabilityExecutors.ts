@@ -42,7 +42,7 @@ export interface CapabilityExecutorDeps {
     /** RPGF usage recording (permissionless; UsageCounter re-verifies every
      *  fact, so a revert is bookkeeping, not failure). Fired after resolve —
      *  count usage when it happens. */
-    recordClauseUsage: (order: Commitment, artifact: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
+    recordClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     submitBuyerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     submitSellerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
@@ -95,7 +95,8 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
 
         // ── RPGF USAGE RECORDING (ruled 2026-07-28): count usage when it
         // happens — the buyer's app, holding every agreement and proof at
-        // the moment of resolve, records each committed artifact's use.
+        // the moment of resolve, records each committed clause's or
+        // assembly's use.
         // Spec-routed and name-free: every section records; a section whose
         // spec declares a `compositionHash` field additionally records
         // ASSEMBLY usage (once per process). Best-effort by design: the
@@ -111,16 +112,16 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 const agreement = agreementHash ? deps.processAgreements.get(agreementHash) : undefined;
                 if (!agreement) {
                     // Loud by doctrine (silent success is the enemy): a missing
-                    // agreement means this order's artifacts go unrecorded.
-                    console.error(`[usage-recording] no hydrated agreement for order ${activeOrders[i].orderHash} (hash ${agreementHash}) — skipping its artifacts`);
+                    // agreement means this order's clauses and assemblies go unrecorded.
+                    console.error(`[usage-recording] no hydrated agreement for order ${activeOrders[i].orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
                     continue;
                 }
                 for (const section of agreement.sections) {
                     attempted++;
                     const { proof } = buildSectionInclusionProof(agreement, section.clause);
 
-                    // CLAUSE leg. Excluded artifacts (the two order-mandatory
-                    // clauses + assembly-provenance) revert ArtifactExcluded by
+                    // CLAUSE leg. Excluded clauses/assemblies (the two order-mandatory
+                    // clauses + assembly-provenance) revert ClauseOrAssemblyExcluded by
                     // design, so this leg failing is routine, not a fault.
                     try {
                         // Only the section FINGERPRINT reaches calldata — never

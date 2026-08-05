@@ -109,7 +109,7 @@ contract Deploy is Script {
         // ── AssemblyRegistry ────────────────────────────────────────
         // Permissionless first-write-wins anchor for designer-built
         // assemblies. Parallel to ClauseRegistry and MembersRegistry —
-        // each artifact family has its own registry per the
+        // each registry family has its own anchor per the
         // separation-of-concerns doctrine. The registry takes no on-chain
         // claims about agreement content (agreements live off-chain on
         // IPFS); per-clause validation runs at the per-clause layer
@@ -338,7 +338,7 @@ contract Deploy is Script {
         // Thirty-minute periods, not seconds or ten minutes: deploy + clause
         // population alone takes over a minute, and RESOLVE-TIME USAGE
         // RECORDING (ruled 2026-07-28: the resolve capability records every
-        // committed artifact) needs accrual OPEN for every value-legs spec in
+        // committed clause or assembly) needs accrual OPEN for every value-legs spec in
         // a full suite run — a 3×10-minute schedule closed the book ~30
         // minutes after deploy and every later recordClauseUsage reverted
         // AccrualClosed (measured, not guessed: the tradelens batch). Thirty
@@ -363,8 +363,8 @@ contract Deploy is Script {
         UsageCounter counter = new UsageCounter(
             core,
             members, // seller-side live-stake gate: usage counts only for live-staked sellers
-            clauseRegistry, // artifact-side gate: a clause earns only while its deposit is live
-            assemblyRegistry, // artifact-side gate: an assembly earns only while its deposit is live
+            clauseRegistry, // registration-side gate: a clause earns only while its deposit is live
+            assemblyRegistry, // registration-side gate: an assembly earns only while its deposit is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,

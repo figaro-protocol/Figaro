@@ -42,7 +42,7 @@ sol! {
         }
 
         struct BatchAccrualCall {
-            bytes32 artifact;
+            bytes32 clauseOrAssembly;
             uint64 c;
             uint64 d;
         }
@@ -76,12 +76,13 @@ sol! {
     interface IUsageCounter {
         function currentPeriod() external view returns (uint8);
         function provenanceClause() external view returns (bytes32);
-        function excludedArtifact(bytes32 artifact) external view returns (bool);
+        function excludedClauseOrAssembly(bytes32 clauseOrAssembly) external view returns (bool);
     }
 }
 
-// The artifact-side and seller-side stake gates the counter applies at
-// settlement (skip for artifacts, whole-batch revert for an unstaked seller).
+// The clause-or-assembly-side and seller-side stake gates the counter applies
+// at settlement (skip for clauses and assemblies, whole-batch revert for an
+// unstaked seller).
 // Reading them HERE is a pre-filter: drop a claim the counter would reject
 // before it enters a proof, so one poison claim cannot cost the whole batch's
 // accrual. Never a source of authority — the counter re-checks all of it.
@@ -151,11 +152,12 @@ pub async fn read_usage_context(
 /// Drop usage claims the `UsageCounter` would reject at settlement, BEFORE they
 /// enter a proof.
 ///
-/// The counter now SKIPS excluded/unregistered artifacts (they never revert),
-/// and the verifier CATCHES a `SellerNotStaked` revert — but a caught revert
-/// drops the WHOLE batch's accrual, not just the offending claim. Filtering here
-/// keeps one poison claim (an excluded/unregistered artifact) or one unstaked
-/// seller from costing every other claim in the batch its accrual. The residual
+/// The counter now SKIPS excluded/unregistered clauses and assemblies (they
+/// never revert), and the verifier CATCHES a `SellerNotStaked` revert — but a
+/// caught revert drops the WHOLE batch's accrual, not just the offending claim.
+/// Filtering here keeps one poison claim (an excluded/unregistered clause or
+/// assembly) or one unstaked seller from costing every other claim in the
+/// batch its accrual. The residual
 /// — a seller who unstakes AFTER this read but before submission — is exactly
 /// what the verifier's try/catch absorbs; this only shrinks how often that
 /// fires.
@@ -202,24 +204,31 @@ pub async fn filter_usage_claims(
     // unverified state.
     for claim in claims {
         let reason: Result<(), String> = async {
-            // Excluded artifacts earn nothing (protocol floor); the counter skips them.
-            match counter.excludedArtifact(claim.artifact).call().await {
-                Ok(r) if r._0 => return Err("artifact is excluded from scoring".to_string()),
+            // Excluded clauses and assemblies earn nothing (protocol floor); the
+            // counter skips them.
+            match counter
+                .excludedClauseOrAssembly(claim.clause_or_assembly)
+                .call()
+                .await
+            {
+                Ok(r) if r._0 => {
+                    return Err("clause or assembly is excluded from scoring".to_string())
+                }
                 Ok(_) => {}
-                Err(e) => return Err(format!("excludedArtifact read failed: {e}")),
+                Err(e) => return Err(format!("excludedClauseOrAssembly read failed: {e}")),
             }
 
-            // Artifact-side stake gate: a LIVE registration deposit in the
-            // artifact's own registry (clause OR assembly, matching the kind).
+            // Registration-side stake gate: a LIVE registration deposit in the
+            // key's own registry (clause OR assembly, matching the kind).
             let live = match claim.kind {
                 UsageClaimKind::Clause { .. } => {
-                    match clauses.depositOf(claim.artifact).call().await {
+                    match clauses.depositOf(claim.clause_or_assembly).call().await {
                         Ok(d) => d.registrar != Address::ZERO && !d.withdrawn,
                         Err(e) => return Err(format!("clause depositOf read failed: {e}")),
                     }
                 }
                 UsageClaimKind::Assembly => {
-                    match assemblies.bindings(claim.artifact).call().await {
+                    match assemblies.bindings(claim.clause_or_assembly).call().await {
                         Ok(b) => {
                             b.author != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
                         }
@@ -228,7 +237,7 @@ pub async fn filter_usage_claims(
                 }
             };
             if !live {
-                return Err("artifact has no live registration deposit".to_string());
+                return Err("clause or assembly has no live registration deposit".to_string());
             }
 
             // Seller-side stake gate: the order's seller of record must be live-staked.
@@ -324,7 +333,7 @@ pub async fn submit_batch(
             .usage_accruals
             .iter()
             .map(|a| IFigaroBatchVerifier::BatchAccrualCall {
-                artifact: a.artifact,
+                clauseOrAssembly: a.clause_or_assembly,
                 c: a.c,
                 d: a.d,
             })
@@ -420,7 +429,7 @@ mod tests {
                 salt: U256::ZERO,
                 deadline: U256::ZERO,
             },
-            artifact: B256::repeat_byte(0xAB),
+            clause_or_assembly: B256::repeat_byte(0xAB),
             kind: UsageClaimKind::Clause {
                 section_hash: B256::ZERO,
             },

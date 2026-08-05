@@ -9,17 +9,17 @@
  * AUTHOR's registration lifecycle — publish (staked intent) → verified
  * in-flight deal blocks → atomic settle unblocks → reclaim + exact refund.
  * `AssemblyRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
- * nothing survives for a runtime spec to consume (the artifact ends
+ * nothing survives for a runtime spec to consume (the assembly ends
  * de-surfaced), and the buyer/seller commit+resolve legs are supporting
  * participants already covered by orders-accept — splitting would duplicate
- * that coverage against an artifact that no longer surfaces.
+ * that coverage against an assembly that no longer surfaces.
  *
  * Fresh binding per run — the probeAssembly nonce, NOT adopt-the-anchored:
  * the once-only withdraw makes an adopted assembly non-re-testable (run 2
  * hits AlreadyWithdrawn with the button already "Stake reclaimed"), and
  * withdrawing the SEED assembly would de-surface the fixture every other
  * spec consumes. That is exactly flake-pattern 16's sibling rule (a spec
- * that leaves its state AND registers content-addressed artifacts mints a
+ * that leaves its state AND registers content-addressed clauses or assemblies mints a
  * per-run nonce) — publishProbeAssembly is the sanctioned shared helper.
  * The slug still comes from the network's answer (the publish receipt);
  * the seller binds it through the real wizard reading the registry; the
@@ -208,7 +208,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await expect(
             withdrawBtn,
             'the disabled reason names the verified in-flight count',
-        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight deal still composes this artifact/, { timeout: 60000 });
+        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight deal still composes this clause or assembly/, { timeout: 60000 });
         // Still disabled after the gate resolved (not just the loading state).
         await expect(withdrawBtn).toBeDisabled();
 

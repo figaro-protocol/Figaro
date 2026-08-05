@@ -396,8 +396,9 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
 #[test]
 fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
     // The batch resolves the order (canonical ops) and carries a valid claim
-    // for it. A crafted poison claim — same artifact + seller (so it clears the
-    // registry pre-filter) but a garbage inclusion proof — would abort the WHOLE
+    // for it. A crafted poison claim — same clause-or-assembly + seller (so it
+    // clears the registry pre-filter) but a garbage inclusion proof — would
+    // abort the WHOLE
     // guest proof and dead-letter the batch, discarding the valid claim and every
     // co-batched trade. The claim filter must isolate it: keep the valid claim,
     // drop only the poison.
@@ -619,16 +620,16 @@ async fn mempool_queues_usage_claims_separately_from_ops() {
 }
 
 #[tokio::test]
-async fn mempool_rejects_a_claim_with_no_artifact() {
+async fn mempool_rejects_a_claim_with_no_clause_or_assembly() {
     let input = build_canonical_batch_input();
     let mut claim = input.usage_claims[0].clone();
-    claim.artifact = B256::ZERO;
+    claim.clause_or_assembly = B256::ZERO;
     let err = mempool()
         .submit_usage_claim(claim)
         .await
         .unwrap_err()
         .to_string();
-    assert!(err.contains("artifact"), "{err}");
+    assert!(err.contains("clause-or-assembly"), "{err}");
 }
 
 /// A batch carrying ONLY usage claims is a real state transition — the usage
@@ -673,7 +674,7 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
         apply_batch_with_state(&claims_only).expect("claims-only batch applies");
 
     assert!(positions.is_empty(), "no value moves — nothing was traded");
-    assert_eq!(events.usage_accruals.len(), 1, "the artifact is credited");
+    assert_eq!(events.usage_accruals.len(), 1, "the clause or assembly is credited");
     assert_ne!(
         pv.prev_state_root, pv.new_state_root,
         "and the root advances, because usage state is under it"
@@ -727,7 +728,7 @@ async fn mempool_at_cap_evicts_the_newcomer() {
         .submit_usage_claim(input.usage_claims[0].clone())
         .await
         .is_ok());
-    other.artifact = B256::repeat_byte(0x42);
+    other.clause_or_assembly = B256::repeat_byte(0x42);
     let err = mp.submit_usage_claim(other).await.unwrap_err();
     assert_eq!(err, SubmitError::Full);
 }

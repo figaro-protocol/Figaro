@@ -439,8 +439,8 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         });
         await publicClient.waitForTransactionReceipt({ hash: registerHash });
 
-        // The counter gates accrual on LIVE artifact registration (the 08-01
-        // audit fix), so it takes both artifact registries. The clause under
+        // The counter gates accrual on LIVE clause-or-assembly registration (the 08-01
+        // audit fix), so it takes both clause-or-assembly registries. The clause under
         // test is already anchored in clauseRegistryAddress above; assemblies
         // play no part in this fixture, so an empty zero-deposit registry
         // satisfies the constructor's nonzero check.
@@ -730,7 +730,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // ── 5b. Claim the RPGF usage for the process this batch settles ──
         // Claims apply against the batch's POST-state, so a claim for an order
-        // resolved by this very batch is credited by it. The artifact set and
+        // resolved by this very batch is credited by it. The clause-or-assembly set and
         // the exclusion list are asked of the CHAIN, never assumed.
         const agreement: Agreement = {
             version: "a1",
@@ -756,7 +756,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         );
         const claims = buildUsageClaims(commitment, agreement, claimContext);
         expect(claims).toHaveLength(1);
-        expect(claims[0].artifact).toBe(clauseKey);
+        expect(claims[0].clause_or_assembly).toBe(clauseKey);
 
         const submitted = await sequencerClient.submitUsageClaim(claims[0]);
         expect(submitted.pending).toBe(1);

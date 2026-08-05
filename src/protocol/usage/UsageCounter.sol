@@ -18,7 +18,7 @@ interface IMemberStake {
     function registered(address member) external view returns (bool);
 }
 
-/// @notice The ClauseRegistry field the artifact-side gate reads — the clause's
+/// @notice The ClauseRegistry field the clause-or-assembly-side gate reads — the clause's
 ///         stake state. A clause earns only while its registration deposit is
 ///         un-withdrawn; the binding survives withdrawal, so `registrar != 0`
 ///         alone is not liveness.
@@ -26,7 +26,7 @@ interface IClauseStake {
     function depositOf(bytes32 idHash) external view returns (address registrar, bool withdrawn);
 }
 
-/// @notice The AssemblyRegistry field the artifact-side gate reads — the
+/// @notice The AssemblyRegistry field the clause-or-assembly-side gate reads — the
 ///         composition's binding. Live iff registered and the deposit is not
 ///         withdrawn.
 interface IAssemblyStake {
@@ -36,7 +36,7 @@ interface IAssemblyStake {
         returns (address author, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
 }
 
-/// @title UsageCounter — verified artifact usage, counted when it happens
+/// @title UsageCounter — verified clause or assembly usage, counted when it happens
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 ///
@@ -53,7 +53,7 @@ interface IAssemblyStake {
 /// @dev    HOW A RECORD IS VERIFIED — nobody is trusted. `recordClauseUsage` proves,
 ///         from data the chain already holds:
 ///           1. the order is real and RESOLVED (`core.orderStatus == 2`), and
-///           2. the artifact was committed in that order's signed agreement
+///           2. the clause or assembly was committed in that order's signed agreement
 ///              (merkle inclusion against `agreementHash`).
 ///         Same check `AttestationCoordinator` performs, with the status gate
 ///         inverted: attestation is evidence DURING an open process, usage is
@@ -70,7 +70,7 @@ interface IAssemblyStake {
 ///         period's trade.
 ///
 /// @dev    NO OWNER, NO ADMIN, NO PAUSE. Recording is permissionless and
-///         idempotent per (artifact, process) — ONCE EVER, in whichever period
+///         idempotent per (clause-or-assembly, process) — ONCE EVER, in whichever period
 ///         the record lands. Nothing here can be revoked, re-weighted, or swept.
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
@@ -86,22 +86,26 @@ contract UsageCounter {
     ///         breadth itself, since `d` counts distinct staked sellers (ruled
     ///         2026-07-31): every unit of the score's dominant term costs one
     ///         live stake. The reward itself is UNIFORM — no tag, no
-    ///         category, no weight: every artifact's score is its real usage
-    ///         alone (`icbrt(c·d²·1e18)`), and the network's own growth, not a
+    ///         category, no weight: every clause or assembly's score is its
+    ///         real usage alone (`icbrt(c·d²·1e18)`), and the network's own
+    ///         growth, not a
     ///         privileged class, is what the 600M pays for.
     IMemberStake public immutable members;
 
-    /// @notice ClauseRegistry / AssemblyRegistry — the ARTIFACT-side stake gate.
-    /// @dev    Usage counts toward the reward only while the artifact's own
-    ///         registration deposit is LIVE (registered and un-withdrawn). This
-    ///         is the artifact-side twin of the seller-side `members` gate: an
-    ///         unregistered `bytes32` is just a self-authored merkle-leaf key, so
-    ///         without this gate a self-dealt process could accrue score to
-    ///         arbitrary keys and inflate `totalScoreIn` at gas cost, diluting
-    ///         every honest author. Neither read is registry PRIOR KNOWLEDGE:
-    ///         both accept ANY live-staked artifact, derived from the live
-    ///         registry, never a hardcoded set. An artifact is a clause OR an
-    ///         assembly; both are consulted because the families are parallel.
+    /// @notice ClauseRegistry / AssemblyRegistry — the CLAUSE-OR-ASSEMBLY-side
+    ///         stake gate.
+    /// @dev    Usage counts toward the reward only while the clause's or
+    ///         assembly's own registration deposit is LIVE (registered and
+    ///         un-withdrawn). This is the clause-or-assembly-side twin of the
+    ///         seller-side `members` gate: an unregistered `bytes32` is just a
+    ///         self-authored merkle-leaf key, so without this gate a self-dealt
+    ///         process could accrue score to arbitrary keys and inflate
+    ///         `totalScoreIn` at gas cost, diluting every honest author. Neither
+    ///         read is registry PRIOR KNOWLEDGE: both accept ANY live-staked
+    ///         key, derived from the live registry, never a hardcoded set. A
+    ///         `clauseOrAssembly` is a clause idHash OR an assembly
+    ///         compositionHash; both registries are consulted because the
+    ///         families are parallel.
     IClauseStake public immutable clauses;
     IAssemblyStake public immutable assemblies;
 
@@ -115,7 +119,7 @@ contract UsageCounter {
     ///         the same trade (the guest's counted set rides the state root),
     ///         and cannot be repointed — no setter exists. What it CAN do is
     ///         exactly what the direct path lets anyone do permissionlessly:
-    ///         present proof that settled trade used an artifact. See
+    ///         present proof that settled trade used a clause or assembly. See
     ///         `DESIGN_DECISIONS.md` § "A proof-gated writer is not an admin".
     ///
     ///         Why a privileged caller at all: the batched path's accrual is
@@ -139,8 +143,8 @@ contract UsageCounter {
     ///         equal an assembly's hash.
     bytes32 public immutable provenanceClause;
 
-    /// @notice Artifacts that earn nothing, set once at deploy and never written
-    ///         again — the two order-mandatory clauses (`figaro-commerce`,
+    /// @notice Clauses and assemblies that earn nothing, set once at deploy and
+    ///         never written again — the two order-mandatory clauses (`figaro-commerce`,
     ///         `figaro-topology`) plus `figaro-assembly-provenance`.
     /// @dev    None of the three carries an adoption signal for its author. The
     ///         mandatory pair rides EVERY order and the provenance clause every
@@ -150,18 +154,20 @@ contract UsageCounter {
     ///         usage is unaffected: `recordAssemblyUsage` credits the
     ///         `compositionHash` — the assembly's designer of record — never the
     ///         provenance clause, so excluding the clause does not touch it.)
-    ///         This is deploy-frozen: WHICH
-    ///         artifacts the reward ignores is a reward decision, not something a
+    ///         This is deploy-frozen: WHICH clauses and assemblies the reward
+    ///         ignores is a reward decision, not something a
     ///         registrar declares about itself — a self-declared exclusion would
     ///         simply never be declared.
-    mapping(bytes32 => bool) public excludedArtifact;
+    mapping(bytes32 => bool) public excludedClauseOrAssembly;
 
-    /// @notice The minimum-support floor (ruled 2026-07-31): an artifact scores
+    /// @notice The minimum-support floor (ruled 2026-07-31): a clause or
+    ///         assembly scores
     ///         ZERO in a period until at least this many DISTINCT LIVE-STAKED
     ///         sellers have carried it there. Counting is unaffected — `c` and
     ///         `d` accrue below the floor and the score springs to its full
     ///         value when the floor is crossed; nothing is lost, only deferred.
-    /// @dev    Why: below the floor sit exactly the artifacts whose usage one
+    /// @dev    Why: below the floor sit exactly the clauses and assemblies
+    ///         whose usage one
     ///         actor can fabricate alone — self-farms, fragmentation shards,
     ///         squatted names, trivial riders. A floor of k makes the minimum
     ///         viable farm k live stakes plus k cooldowns, with no curation and
@@ -182,7 +188,7 @@ contract UsageCounter {
     // ── Accrual ─────────────────────────────────────────────────────
 
     struct Accrual {
-        /// @dev Distinct settled processes that used this artifact.
+        /// @dev Distinct settled processes that used this clause or assembly.
         uint64 c;
         /// @dev Distinct live-staked sellers of record across those processes.
         uint64 d;
@@ -191,7 +197,7 @@ contract UsageCounter {
         uint256 score;
     }
 
-    /// @notice artifact key → period → accrual. The artifact key is the
+    /// @notice clause or assembly key → period → accrual. The clause or assembly key is the
     ///         `ClauseRegistry` idHash for a clause, or the `AssemblyRegistry`
     ///         compositionHash for an assembly — the same identity each family's
     ///         own anchor uses, never a new identifier.
@@ -213,13 +219,13 @@ contract UsageCounter {
     ///         counted on both sides.
     mapping(bytes32 => mapping(uint8 => Accrual)) public batchAccrualOf;
 
-    /// @notice period → summed score of every artifact in it, across BOTH
+    /// @notice period → summed score of every clause or assembly in it, across BOTH
     ///         settlement paths. A consumer paying pro rata divides by this; it
     ///         is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
-    /// @notice artifact → processId → already counted. Idempotence is GLOBAL, not
-    ///         per period: a settled process counts ONCE EVER toward an artifact,
+    /// @notice clause or assembly → processId → already counted. Idempotence is GLOBAL, not
+    ///         per period: a settled process counts ONCE EVER toward a clause or assembly,
     ///         in whichever period it is first recorded.
     /// @dev    Why not per period (ruled 2026-07-30). A resolved order stays
     ///         resolved and its struct is public in the commit event, so anyone
@@ -236,7 +242,7 @@ contract UsageCounter {
     ///         fixed per-period budget schedule assumes.
     mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
 
-    /// @notice artifact → period → seller → has this seller already contributed
+    /// @notice clause or assembly → period → seller → has this seller already contributed
     ///         to `d` in this period. Its only job is the distinct-staked-seller
     ///         count.
     /// @dev    Breadth counted (buyer, seller) PAIRS until 2026-07-31. Pairs are
@@ -257,16 +263,16 @@ contract UsageCounter {
 
     // ── Events ──────────────────────────────────────────────────────
 
-    /// @param artifact  Clause idHash or assembly compositionHash.
+    /// @param clauseOrAssembly  Clause idHash or assembly compositionHash.
     /// @param period    The accrual period the usage landed in.
     /// @param processId The settled process that used it.
     /// @param seller    The recorded order's seller of record (live-staked).
-    /// @param c         The artifact's distinct-process count after this record.
-    /// @param d         The artifact's distinct-staked-seller count after this
+    /// @param c         The clause or assembly's distinct-process count after this record.
+    /// @param d         The clause or assembly's distinct-staked-seller count after this
     ///                  record.
-    /// @param score     The artifact's score after this record.
+    /// @param score     The clause or assembly's score after this record.
     event UsageRecorded(
-        bytes32 indexed artifact,
+        bytes32 indexed clauseOrAssembly,
         uint8 indexed period,
         bytes32 indexed processId,
         address seller,
@@ -275,20 +281,20 @@ contract UsageCounter {
         uint256 score
     );
 
-    /// @notice One artifact's batch-path accrual after a settled batch.
+    /// @notice One clause or assembly's batch-path accrual after a settled batch.
     /// @dev    Deliberately NOT `UsageRecorded`: there is no processId and no
     ///         per-record seller to report, because the batch path proves
     ///         per-process facts off-chain and writes only the totals. An
     ///         indexer summing `UsageRecorded` alone sees the direct path only
     ///         — it must fold both events, and this one REPLACES rather than
     ///         adds (the values are cumulative, not deltas).
-    /// @param artifact Clause idHash or assembly compositionHash.
+    /// @param clauseOrAssembly Clause idHash or assembly compositionHash.
     /// @param period   The accrual period.
     /// @param c        Cumulative distinct settled processes, batch path.
     /// @param d        Cumulative distinct staked sellers in this period, batch
     ///                 path.
     /// @param score    The batch-path score after this write.
-    event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score);
+    event BatchUsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score);
 
     // ── Errors ──────────────────────────────────────────────────────
 
@@ -297,25 +303,25 @@ contract UsageCounter {
     error EmptyPeriods();
     error TooManyPeriods();
     error PeriodsNotAscending();
-    error ArtifactNotRegistered(bytes32 artifact);
+    error ClauseOrAssemblyNotRegistered(bytes32 clauseOrAssembly);
     error AccrualClosed();
     error UnknownOrder();
     error OrderNotResolved();
     error AlreadyCounted();
     error InvalidInclusionProof();
-    error ArtifactExcluded(bytes32 artifact);
+    error ClauseOrAssemblyExcluded(bytes32 clauseOrAssembly);
     error SellerNotStaked(address seller);
     error NotBatchVerifier();
     error PeriodMismatch(uint8 open, uint8 claimed);
     error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed);
-    error AccrualWentBackwards(bytes32 artifact);
+    error AccrualWentBackwards(bytes32 clauseOrAssembly);
 
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _core        FigaroCore — the order-status and domain source.
     /// @param _members     MembersRegistry — the seller-side live-stake gate.
-    /// @param _clauses     ClauseRegistry — the clause-side artifact-stake gate.
-    /// @param _assemblies  AssemblyRegistry — the assembly-side artifact-stake gate.
+    /// @param _clauses     ClauseRegistry — the clause-side stake gate.
+    /// @param _assemblies  AssemblyRegistry — the assembly-side stake gate.
     /// @param _batchVerifier  FigaroBatchVerifier — the proof-gated writer of
     ///                    the batch-path accrual. The verifier needs this
     ///                    contract's address too, so one of the two must be
@@ -325,9 +331,9 @@ contract UsageCounter {
     ///                    prediction is caught by the deploy script's own
     ///                    assertion, never silently tolerated.
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
-    /// @param _excluded    Artifacts that earn nothing — the mandatory clauses.
+    /// @param _excluded    Clauses and assemblies that earn nothing — the mandatory clauses.
     /// @param _minSellers  The minimum-support floor: distinct staked sellers an
-    ///                     artifact needs in a period before it scores. ≥ 1
+    ///                     clause or assembly needs in a period before it scores. ≥ 1
     ///                     (1 disables the floor; mainnet uses 3).
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
     constructor(
@@ -364,7 +370,7 @@ contract UsageCounter {
         provenanceClause = _provenanceClause;
         minSellers = _minSellers;
         for (uint256 i = 0; i < _excluded.length; ++i) {
-            excludedArtifact[_excluded[i]] = true;
+            excludedClauseOrAssembly[_excluded[i]] = true;
         }
         periodEnd = _periodEnd;
     }
@@ -391,24 +397,24 @@ contract UsageCounter {
         return period < periodEnd.length && block.timestamp >= periodEnd[period];
     }
 
-    /// @notice An artifact's TOTAL score for a period — direct-settled trade
+    /// @notice A clause or assembly's TOTAL score for a period — direct-settled trade
     ///         plus batch-settled trade, summed as SCORES. This is the number a
     ///         reward consumer divides by `totalScoreIn`; reading `accrualOf`
-    ///         alone sees only the direct path and under-pays every artifact
+    ///         alone sees only the direct path and under-pays every clause or assembly
     ///         that scaled.
-    function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256) {
-        return accrualOf[artifact][period].score + batchAccrualOf[artifact][period].score;
+    function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
+        return accrualOf[clauseOrAssembly][period].score + batchAccrualOf[clauseOrAssembly][period].score;
     }
 
     // ── Recording (permissionless) ──────────────────────────────────
 
-    /// @notice Record one settled process's use of one artifact. Anyone may
+    /// @notice Record one settled process's use of one clause or assembly. Anyone may
     ///         call; the proof is what is trusted, never the caller. Recording
-    ///         is opt-in and gas-paid by whoever benefits — usually the artifact's
+    ///         is opt-in and gas-paid by whoever benefits — usually the clause or assembly's
     ///         author, since this is how their work is counted.
     ///
     /// @param order       The order's commitment struct, exactly as signed.
-    /// @param artifact    Clause idHash or assembly compositionHash — must be the
+    /// @param clauseOrAssembly    Clause idHash or assembly compositionHash — must be the
     ///                    bytes32 key committed in the agreement's merkle leaf.
     /// @param sectionHash `keccak256` of the clause section's committed bytes —
     ///                    the FINGERPRINT, never the preimage. The merkle leaf
@@ -420,7 +426,7 @@ contract UsageCounter {
     /// @param proof       Merkle proof of the section against `order.agreementHash`.
     function recordClauseUsage(
         CommitmentTypes.Commitment calldata order,
-        bytes32 artifact,
+        bytes32 clauseOrAssembly,
         bytes32 sectionHash,
         bytes32[] calldata proof
     ) external {
@@ -430,21 +436,21 @@ contract UsageCounter {
         //    leaves behind; an open process has not yet added any value.
         (bytes32 orderHash, bytes32 processId) = _requireResolvedOrder(order);
 
-        // 2. The artifact was committed in the agreement both parties signed.
+        // 2. The clause or assembly was committed in the agreement both parties signed.
         //    Leaf shape is AttestationCoordinator's, byte for byte — one leaf
         //    convention across the protocol, double-hashed for leaf/node domain
         //    separation. A wrong `sectionHash` simply fails to open the proof, so
         //    taking the hash is exactly as sound as taking the preimage.
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, sectionHash))));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseOrAssembly, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
-        // 3. ARTIFACT-SIDE STAKE GATE. A clause earns only while its own
+        // 3. CLAUSE-OR-ASSEMBLY-SIDE STAKE GATE. A clause earns only while its own
         //    registration deposit is live. Without it a self-authored agreement
         //    could commit any bytes32 key and accrue score to it, inflating the
         //    shared denominator at gas cost. The seller-side twin is in `_accrue`.
-        if (!_clauseLive(artifact)) revert ArtifactNotRegistered(artifact);
+        if (!_clauseLive(clauseOrAssembly)) revert ClauseOrAssemblyNotRegistered(clauseOrAssembly);
 
-        _accrue(artifact, period, processId, order.seller);
+        _accrue(clauseOrAssembly, period, processId, order.seller);
     }
 
     /// @notice Record one settled process's use of an ASSEMBLY. Same guarantees
@@ -482,23 +488,23 @@ contract UsageCounter {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
-        // ARTIFACT-SIDE STAKE GATE, assembly form — the composition must hold a
+        // CLAUSE-OR-ASSEMBLY-SIDE STAKE GATE, assembly form — the composition must hold a
         // live AssemblyRegistry binding (registered, deposit un-withdrawn).
-        if (!_assemblyLive(compositionHash)) revert ArtifactNotRegistered(compositionHash);
+        if (!_assemblyLive(compositionHash)) revert ClauseOrAssemblyNotRegistered(compositionHash);
 
         _accrue(compositionHash, period, processId, order.seller);
     }
 
     // ── Recording (batch path, proof-gated) ─────────────────────────
 
-    /// @notice One artifact's CUMULATIVE batch-path accrual for a period — not
+    /// @notice One clause or assembly's CUMULATIVE batch-path accrual for a period — not
     ///         a delta. The guest proves the running totals, so the write here
     ///         is an overwrite and this contract keeps NO per-process storage
     ///         for the batch path at all. That is the whole economy of the
-    ///         bridge: cost is O(distinct artifacts in the batch), not
+    ///         bridge: cost is O(distinct clauses and assemblies in the batch), not
     ///         O(records).
     struct BatchAccrual {
-        bytes32 artifact;
+        bytes32 clauseOrAssembly;
         uint64 c;
         uint64 d;
     }
@@ -507,9 +513,9 @@ contract UsageCounter {
     ///
     /// @dev    WHAT THE PROOF ALREADY ESTABLISHED, so this function does not
     ///         re-check it: every credited order is real and RESOLVED in the
-    ///         batch path's state, every artifact was committed in the signed
+    ///         batch path's state, every clause or assembly was committed in the signed
     ///         agreement (merkle inclusion against `agreementHash`), and no
-    ///         (artifact, process) pair is counted twice — the guest's counted
+    ///         (clause-or-assembly, process) pair is counted twice — the guest's counted
     ///         set rides the batch state root, so idempotence holds ACROSS
     ///         batches, not merely within one. `FigaroBatchVerifier` has
     ///         already matched these numbers against `usageAccrualHash`.
@@ -518,7 +524,7 @@ contract UsageCounter {
     ///         three are live chain state this contract owns:
     ///           1. which period is open,
     ///           2. which sellers hold a live MembersRegistry stake,
-    ///           3. which artifacts are excluded from scoring.
+    ///           3. which clauses and assemblies are excluded from scoring.
     ///         The verifier deliberately checks none of them: it owns the
     ///         proof, this contract owns the reward's gates.
     ///
@@ -529,7 +535,7 @@ contract UsageCounter {
     ///                          must be re-proven for the new period.
     /// @param claimedProvenance The provenance clause key the guest proved
     ///                          assembly claims against.
-    /// @param accruals          Per-artifact cumulative `(c, d)`.
+    /// @param accruals          Per-clause-or-assembly cumulative `(c, d)`.
     /// @param sellers           Distinct sellers of record behind them.
     function applyBatchAccrual(
         uint8 period,
@@ -564,22 +570,22 @@ contract UsageCounter {
             // SKIP, never revert — this call runs inside `settleBatch`, so a
             // revert here would take down the whole batch's TOKEN settlement (a
             // reward-tier gate blocking the settlement tier). An excluded or
-            // un-live artifact simply earns nothing: don't write it, don't touch
+            // un-live clause or assembly simply earns nothing: don't write it, don't touch
             // the total, move on. The guest counts without knowing exclusion or
             // registration (both are live chain state it cannot see), so the
             // reward's own gates are applied HERE, and applying them as skips is
             // what keeps trade settling. (Direct path reverts instead — it is a
             // standalone tx with nothing else to unwind.)
-            if (excludedArtifact[a.artifact]) continue;
-            if (!_clauseLive(a.artifact) && !_assemblyLive(a.artifact)) continue;
+            if (excludedClauseOrAssembly[a.clauseOrAssembly]) continue;
+            if (!_clauseLive(a.clauseOrAssembly) && !_assemblyLive(a.clauseOrAssembly)) continue;
 
-            Accrual storage stored = batchAccrualOf[a.artifact][period];
+            Accrual storage stored = batchAccrualOf[a.clauseOrAssembly][period];
             // Cumulative counts can only grow. The state-root check in the
             // verifier already guarantees it; asserting it costs nothing (both
             // fields share a slot already being read) and it can never reject
             // an honest batch, so a guest regression surfaces as a revert
             // rather than as silently destroyed accrual.
-            if (a.c < stored.c || a.d < stored.d) revert AccrualWentBackwards(a.artifact);
+            if (a.c < stored.c || a.d < stored.d) revert AccrualWentBackwards(a.clauseOrAssembly);
 
             uint256 previous = stored.score;
             uint256 updated = _score(a.c, a.d);
@@ -588,7 +594,7 @@ contract UsageCounter {
             stored.score = updated;
             totalScoreIn[period] = totalScoreIn[period] + updated - previous;
 
-            emit BatchUsageRecorded(a.artifact, period, a.c, a.d, updated);
+            emit BatchUsageRecorded(a.clauseOrAssembly, period, a.c, a.d, updated);
         }
     }
 
@@ -605,15 +611,15 @@ contract UsageCounter {
         }
     }
 
-    /// @dev The counting itself, shared by both routes. Idempotent per (artifact,
+    /// @dev The counting itself, shared by both routes. Idempotent per (clause-or-assembly,
     ///      process) — once ever, whatever the period. Every admitted process
     ///      feeds `c`; the first from each staked seller in the period also
     ///      feeds `d`.
-    function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address seller) internal {
-        // An excluded artifact — a mandatory clause on every order, or the
+    function _accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
+        // An excluded clause or assembly — a mandatory clause on every order, or the
         // provenance clause on every assembly-composed process — is protocol
         // floor; counting it would pay for the floor rather than for adoption.
-        if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
+        if (excludedClauseOrAssembly[clauseOrAssembly]) revert ClauseOrAssemblyExcluded(clauseOrAssembly);
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
         // holds a LIVE MembersRegistry stake, read at RECORD time. This gate is
         // RETROACTIVE, not merely prospective: requesting withdrawal de-surfaces
@@ -622,7 +628,7 @@ contract UsageCounter {
         // reads live state, and a resolved order carries no timestamp the chain
         // can gate on. The mitigation is a HABIT, not on-chain state: usage is
         // recorded AT SETTLEMENT (the buyer's app records every committed
-        // artifact right after resolveProcess confirms — createCapabilityExecutors.ts),
+        // clause or assembly right after resolveProcess confirms — createCapabilityExecutors.ts),
         // when the seller is definitionally still staked. A seller who wants to
         // deny a specific author must therefore stay unstaked through the period
         // end, forfeiting their own eligibility and locking their deposit — a
@@ -635,16 +641,16 @@ contract UsageCounter {
         // deposit AND withdrawal cooldown — that carry it.
         if (!members.registered(seller)) revert SellerNotStaked(seller);
         // Once ever, not once per period — see `processCounted`.
-        if (processCounted[artifact][processId]) revert AlreadyCounted();
+        if (processCounted[clauseOrAssembly][processId]) revert AlreadyCounted();
 
-        // Breadth is counted PER PERIOD: a seller who carries the artifact
+        // Breadth is counted PER PERIOD: a seller who carries the clause or assembly
         // again in a later period is new breadth for that period's tally.
-        bool firstSeller = !sellerSeen[artifact][period][seller];
+        bool firstSeller = !sellerSeen[clauseOrAssembly][period][seller];
 
-        processCounted[artifact][processId] = true;
-        if (firstSeller) sellerSeen[artifact][period][seller] = true;
+        processCounted[clauseOrAssembly][processId] = true;
+        if (firstSeller) sellerSeen[clauseOrAssembly][period][seller] = true;
 
-        Accrual storage a = accrualOf[artifact][period];
+        Accrual storage a = accrualOf[clauseOrAssembly][period];
         unchecked {
             a.c += 1;
             if (firstSeller) a.d += 1;
@@ -656,7 +662,7 @@ contract UsageCounter {
         // O(1) maintenance — the running total moves by the delta, never a sum.
         totalScoreIn[period] = totalScoreIn[period] + updated - previous;
 
-        emit UsageRecorded(artifact, period, processId, seller, a.c, a.d, updated);
+        emit UsageRecorded(clauseOrAssembly, period, processId, seller, a.c, a.d, updated);
     }
 
     // ── Scoring ─────────────────────────────────────────────────────
@@ -665,8 +671,8 @@ contract UsageCounter {
     ///         weighted twice as heavily as volume, since the score is
     ///         proportional to `c^(1/3) * d^(2/3)`; ZERO below the
     ///         minimum-support floor (`d < minSellers`). UNIFORM across
-    ///         artifacts: no tag, category, or weight multiplier — every
-    ///         artifact's score is its real usage alone.
+    ///         clauses and assemblies: no tag, category, or weight multiplier — every
+    ///         clause or assembly's score is its real usage alone.
     /// @dev    Value is deliberately not a term: the protocol's cost to move one
     ///         unit equals its cost to move a trillion, and the adoption signal
     ///         is the same per staked seller regardless of quanta. Weighting
@@ -712,19 +718,19 @@ contract UsageCounter {
 
     // ── Internals ───────────────────────────────────────────────────
 
-    /// @dev Whether `artifact` holds a LIVE ClauseRegistry stake — registered
+    /// @dev Whether `clauseOrAssembly` holds a LIVE ClauseRegistry stake — registered
     ///      and its deposit un-withdrawn. The binding survives withdrawal
     ///      (committed agreements reference it forever), so a non-zero registrar
     ///      is not liveness; `!withdrawn` is.
-    function _clauseLive(bytes32 artifact) internal view returns (bool) {
-        (address registrar, bool withdrawn) = clauses.depositOf(artifact);
+    function _clauseLive(bytes32 clauseOrAssembly) internal view returns (bool) {
+        (address registrar, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
         return registrar != address(0) && !withdrawn;
     }
 
-    /// @dev Whether `artifact` holds a LIVE AssemblyRegistry binding —
+    /// @dev Whether `clauseOrAssembly` holds a LIVE AssemblyRegistry binding —
     ///      registered and its deposit un-withdrawn.
-    function _assemblyLive(bytes32 artifact) internal view returns (bool) {
-        (address author, uint64 registeredAt, bool depositWithdrawn,) = assemblies.bindings(artifact);
+    function _assemblyLive(bytes32 clauseOrAssembly) internal view returns (bool) {
+        (address author, uint64 registeredAt, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
         return author != address(0) && registeredAt != 0 && !depositWithdrawn;
     }
 

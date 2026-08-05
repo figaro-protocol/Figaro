@@ -99,8 +99,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const [withdrawing, setWithdrawing] = useState(false);
     const [withdrawError, setWithdrawError] = useState<string | null>(null);
     // The advisory commits==resolves gate for THIS assembly — in-flight deals
-    // composed from it (derived from chain + IPFS by the SDK). Null artifact for
-    // drafts/errors; the hook no-ops. The reclaim affordance reads `.canWithdraw`.
+    // composed from it (derived from chain + IPFS by the SDK). Null (no
+    // assembly) for drafts/errors; the hook no-ops. The reclaim affordance
+    // reads `.canWithdraw`.
     const { gate: withdrawGate } = useWithdrawGate(
         resolved.kind === "published"
             ? { kind: "assembly", template: resolved.assemblyTemplate }

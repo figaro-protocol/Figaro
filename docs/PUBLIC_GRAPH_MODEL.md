@@ -169,7 +169,7 @@ benchmark reasoning but fails one of the three is wrong here.
 This section is load-bearing: it explains why the geo/coordination clauses exist and
 get authored, now that the reward pays **no more for them than for any other clause.**
 The reward mechanism was ratified UNIFORM on 2026-07-29 (owner: memory
-`project_reward_mechanism_ratified_2026_07`): an artifact's score is its **real usage
+`project_reward_mechanism_ratified_2026_07`): a clause's or assembly's score is its **real usage
 alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.** The
 old "substrate-broadening weight" (`UsageCounter.BOOSTED_WEIGHT`/`BASE_WEIGHT`,
 `ClauseRegistry.rpgfTag`/`rpgfTagOf`, the counter's `boostedTag`) is **deleted.**

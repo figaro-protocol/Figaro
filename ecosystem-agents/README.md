@@ -22,7 +22,7 @@ the whole model first.
   user's wallet.
 
 All three are **prompts** (frontmatter + body). They drive `@figaro/sdk` (the SDK), act for
-a user's key, and never touch this repo. Authored artifacts belong to the user (RPGF rewards
+a user's key, and never touch this repo. Authored clauses and assemblies belong to the user (RPGF rewards
 them); forks are first-class.
 
 ## The seam — two worlds, do not blur them
@@ -41,9 +41,9 @@ permission barrier (repo access + a merge) the open world exists to remove.
 ## No UI to satisfy
 
 Registration is the whole act. A UI surfaces clauses and assemblies *from the registry
-events*, so registering makes an artifact discoverable everywhere that reads the registry —
+events*, so registering makes a clause or assembly discoverable everywhere that reads the registry —
 there is no frontend binding to meet. `block` attributes shape how a UI *presents* an
-artifact, never its validity or discoverability. The core is invariant (unless forked); many
+entry, never its validity or discoverability. The core is invariant (unless forked); many
 UIs compete — that is what permissionless and decentralized mean.
 
 ## Running the prompts outside Claude Code

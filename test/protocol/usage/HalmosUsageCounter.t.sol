@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
-import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
+import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @notice Permissive seller-side stake gate — always reports registered.
 /// @dev    The linkage between `UsageCounter` and a LIVE `MembersRegistry` stake
@@ -12,8 +12,8 @@ import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
 ///         property: "the counter admits usage iff the stake is live"). This
 ///         harness's job is the ARITHMETIC on top of that gate, so it is
 ///         deliberately isolated from stake mechanics here rather than
-///         re-derived — a permissive mock, exactly like `MockArtifactStake`
-///         isolates the artifact-side gate in the concrete `UsageCounterTest`.
+///         re-derived — a permissive mock, exactly like `MockClauseOrAssemblyStake`
+///         isolates the clause-or-assembly-side gate in the concrete `UsageCounterTest`.
 contract MockAlwaysMember {
     function registered(address) external pure returns (bool) {
         return true;
@@ -57,8 +57,8 @@ contract UsageCounterHarness is UsageCounter {
         )
     {}
 
-    function accrue(bytes32 artifact, uint8 period, bytes32 processId, address seller) external {
-        _accrue(artifact, period, processId, seller);
+    function accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
+        _accrue(clauseOrAssembly, period, processId, seller);
     }
 }
 
@@ -71,7 +71,7 @@ contract UsageCounterHarness is UsageCounter {
 ///         only ever add, whether a batch overwrite can accidentally become an
 ///         accumulate, whether the two settlement universes (direct,
 ///         proof-gated batch) combine the way `scoreOf` claims, whether a
-///         period boundary is respected exactly, and whether one artifact's
+///         period boundary is respected exactly, and whether one clause or assembly's
 ///         bookkeeping can leak into another's. Five properties, symbolically,
 ///         for ALL inputs in their domain — not the paths a concrete Foundry
 ///         test happened to walk:
@@ -107,8 +107,8 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             claiming the wrong period is
 ///                                             rejected and never disturbs the
 ///                                             other period's slot.
-///           5  cross-artifact isolation    — recording usage for artifact A
-///              (check_crossArtifactIsolation) leaves every field of artifact
+///           5  cross-clause-or-assembly isolation    — recording usage for clause or assembly A
+///              (check_crossClauseOrAssemblyIsolation) leaves every field of clause or assembly
 ///                                             B's bookkeeping byte-for-byte
 ///                                             unchanged, and the shared
 ///                                             `totalScoreIn` moves by EXACTLY
@@ -152,8 +152,8 @@ contract HalmosUsageCounter is Test {
         return new UsageCounterHarness(
             address(0xC0FFEE), // core — unused by `_accrue`/`applyBatchAccrual`
             address(new MockAlwaysMember()), // seller-side gate — isolated, see header
-            address(new MockArtifactStake()), // clause-side artifact gate — live by default
-            address(new MockArtifactStake()), // assembly-side artifact gate — live by default
+            address(new MockClauseOrAssemblyStake()), // clause-side clauseOrAssembly gate — live by default
+            address(new MockClauseOrAssemblyStake()), // assembly-side clauseOrAssembly gate — live by default
             address(this), // batchVerifier — this contract IS the caller below
             PROV,
             new bytes32[](0), // no exclusions — isolate from that gate
@@ -169,7 +169,7 @@ contract HalmosUsageCounter is Test {
     /// makes a repeat a no-op, which is monotone trivially since state is
     /// unchanged on revert).
     function check_directAccrualMonotone(
-        bytes32 artifact,
+        bytes32 clauseOrAssembly,
         uint8 period,
         bytes32 processId1,
         bytes32 processId2,
@@ -178,21 +178,21 @@ contract HalmosUsageCounter is Test {
     ) public {
         UsageCounterHarness counter = _deploy();
 
-        (uint64 c0, uint64 d0, uint256 score0) = counter.accrualOf(artifact, period);
+        (uint64 c0, uint64 d0, uint256 score0) = counter.accrualOf(clauseOrAssembly, period);
         uint256 total0 = counter.totalScoreIn(period);
 
-        address(counter).call(abi.encodeCall(counter.accrue, (artifact, period, processId1, seller1)));
+        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrAssembly, period, processId1, seller1)));
 
-        (uint64 c1, uint64 d1, uint256 score1) = counter.accrualOf(artifact, period);
+        (uint64 c1, uint64 d1, uint256 score1) = counter.accrualOf(clauseOrAssembly, period);
         uint256 total1 = counter.totalScoreIn(period);
         assertGe(c1, c0, "c never goes backwards");
         assertGe(d1, d0, "d never goes backwards");
         assertGe(score1, score0, "score never goes backwards");
         assertGe(total1, total0, "the period total never goes backwards");
 
-        address(counter).call(abi.encodeCall(counter.accrue, (artifact, period, processId2, seller2)));
+        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrAssembly, period, processId2, seller2)));
 
-        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(artifact, period);
+        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(clauseOrAssembly, period);
         uint256 total2 = counter.totalScoreIn(period);
         assertGe(c2, c1, "c never goes backwards (2nd call)");
         assertGe(d2, d1, "d never goes backwards (2nd call)");
@@ -202,13 +202,13 @@ contract HalmosUsageCounter is Test {
 
     // ── 2. Batch accrual REPLACES, never adds ────────────────────────
 
-    /// THE crease: two `applyBatchAccrual` writes for the same artifact, the
+    /// THE crease: two `applyBatchAccrual` writes for the same clause or assembly, the
     /// second carrying a NEW cumulative `(c, d)`. The stored accrual after the
     /// second write is EXACTLY that new value — never `first + second`. An
     /// add-instead-of-replace regression would double every batch's count and
     /// is invisible to `scoreOf`, to any indexer, and to `UsageCounterTest`'s
     /// own concrete fixtures unless they happen to probe this exact sequence.
-    function check_batchAccrualReplacesNeverAdds(bytes32 artifact, address seller, bool grow) public {
+    function check_batchAccrualReplacesNeverAdds(bytes32 clauseOrAssembly, address seller, bool grow) public {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // deterministic: period 0 is open
 
@@ -216,10 +216,10 @@ contract HalmosUsageCounter is Test {
         sellers[0] = seller;
 
         UsageCounter.BatchAccrual[] memory first = new UsageCounter.BatchAccrual[](1);
-        first[0] = UsageCounter.BatchAccrual(artifact, 2, 2);
+        first[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 2, 2);
         counter.applyBatchAccrual(0, PROV, first, sellers);
 
-        (uint64 c1, uint64 d1,) = counter.batchAccrualOf(artifact, 0);
+        (uint64 c1, uint64 d1,) = counter.batchAccrualOf(clauseOrAssembly, 0);
         assertEq(c1, 2);
         assertEq(d1, 2);
 
@@ -230,10 +230,10 @@ contract HalmosUsageCounter is Test {
         uint64 d2Target = grow ? 3 : 2;
 
         UsageCounter.BatchAccrual[] memory second = new UsageCounter.BatchAccrual[](1);
-        second[0] = UsageCounter.BatchAccrual(artifact, c2Target, d2Target);
+        second[0] = UsageCounter.BatchAccrual(clauseOrAssembly, c2Target, d2Target);
         counter.applyBatchAccrual(0, PROV, second, sellers);
 
-        (uint64 c2, uint64 d2, uint256 score2) = counter.batchAccrualOf(artifact, 0);
+        (uint64 c2, uint64 d2, uint256 score2) = counter.batchAccrualOf(clauseOrAssembly, 0);
 
         assertEq(c2, c2Target, "c is the cumulative value just proved, not c1 + c2Target");
         assertEq(d2, d2Target, "d is the cumulative value just proved, not d1 + d2Target");
@@ -250,12 +250,12 @@ contract HalmosUsageCounter is Test {
 
     // ── 3. Score composition ──────────────────────────────────────────
 
-    /// `scoreOf(artifact, period) == accrualOf.score + batchAccrualOf.score`
+    /// `scoreOf(clause-or-assembly, period) == accrualOf.score + batchAccrualOf.score`
     /// for every combination of "has the direct path recorded here" and "has
     /// the batch path recorded here" — the only place the two settlement
     /// universes ever meet is this addition.
     function check_scoreOfIsExactlyDirectPlusBatch(
-        bytes32 artifact,
+        bytes32 clauseOrAssembly,
         address seller,
         bytes32 processId,
         bool doDirect,
@@ -265,21 +265,21 @@ contract HalmosUsageCounter is Test {
         vm.warp(P0_END - 1000);
 
         if (doDirect) {
-            counter.accrue(artifact, 0, processId, seller);
+            counter.accrue(clauseOrAssembly, 0, processId, seller);
         }
         if (doBatch) {
             address[] memory sellers = new address[](1);
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(artifact, 3, 2);
+            accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 3, 2);
             counter.applyBatchAccrual(0, PROV, accr, sellers);
         }
 
-        (,, uint256 directScore) = counter.accrualOf(artifact, 0);
-        (,, uint256 batchScore) = counter.batchAccrualOf(artifact, 0);
+        (,, uint256 directScore) = counter.accrualOf(clauseOrAssembly, 0);
+        (,, uint256 batchScore) = counter.batchAccrualOf(clauseOrAssembly, 0);
 
         assertEq(
-            counter.scoreOf(artifact, 0),
+            counter.scoreOf(clauseOrAssembly, 0),
             directScore + batchScore,
             "the two universes only ever meet by ADDITION"
         );
@@ -315,52 +315,52 @@ contract HalmosUsageCounter is Test {
     /// 4b. A batch write claiming a period other than the one the chain has
     /// open is rejected, and — crucially — the REJECTED write touches nothing,
     /// while a write accepted into the correct period leaves every OTHER
-    /// period's slot for the same artifact exactly as it was.
-    function check_wrongPeriodIsRejected_andOtherPeriodUntouched(bytes32 artifact, address seller) public {
+    /// period's slot for the same clause or assembly exactly as it was.
+    function check_wrongPeriodIsRejected_andOtherPeriodUntouched(bytes32 clauseOrAssembly, address seller) public {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // period 0 is open
 
         address[] memory sellers = new address[](1);
         sellers[0] = seller;
         UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-        accr[0] = UsageCounter.BatchAccrual(artifact, 4, 2);
+        accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 4, 2);
 
         // Claiming period 1 while period 0 is open must revert.
         (bool wrongOk,) =
             address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROV, accr, sellers)));
         assertFalse(wrongOk, "a batch cannot land in a period the chain has not opened");
 
-        (,, uint256 otherBefore) = counter.batchAccrualOf(artifact, 1);
+        (,, uint256 otherBefore) = counter.batchAccrualOf(clauseOrAssembly, 1);
         assertEq(otherBefore, 0, "the rejected write touched nothing");
 
         // The correct period succeeds...
         counter.applyBatchAccrual(0, PROV, accr, sellers);
 
-        // ...and period 1's slot for the SAME artifact is untouched.
-        (,, uint256 otherAfter) = counter.batchAccrualOf(artifact, 1);
+        // ...and period 1's slot for the SAME clause or assembly is untouched.
+        (,, uint256 otherAfter) = counter.batchAccrualOf(clauseOrAssembly, 1);
         assertEq(otherAfter, otherBefore, "recording in period 0 never touches period 1's slot");
     }
 
-    // ── 5. Cross-artifact isolation ───────────────────────────────────
+    // ── 5. Cross-clause-or-assembly isolation ───────────────────────────────────
 
-    /// Recording usage for artifact A — via either settlement path — leaves
-    /// every field of a DIFFERENT artifact B's bookkeeping byte-for-byte
+    /// Recording usage for clause or assembly A — via either settlement path — leaves
+    /// every field of a DIFFERENT clause or assembly B's bookkeeping byte-for-byte
     /// unchanged, and the shared `totalScoreIn` moves by EXACTLY A's own score
     /// delta (never more, which would mean it leaked from B's slot; never
     /// less, which would mean A's own delta was mis-added).
-    function check_crossArtifactIsolation(
-        bytes32 artifactA,
-        bytes32 artifactB,
+    function check_crossClauseOrAssemblyIsolation(
+        bytes32 clauseOrAssemblyA,
+        bytes32 clauseOrAssemblyB,
         address seller,
         bytes32 processId,
         bool viaBatch
     ) public {
-        vm.assume(artifactA != artifactB);
+        vm.assume(clauseOrAssemblyA != clauseOrAssemblyB);
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000);
 
-        (uint64 bc0, uint64 bd0, uint256 bs0) = counter.accrualOf(artifactB, 0);
-        (uint64 bbc0, uint64 bbd0, uint256 bbs0) = counter.batchAccrualOf(artifactB, 0);
+        (uint64 bc0, uint64 bd0, uint256 bs0) = counter.accrualOf(clauseOrAssemblyB, 0);
+        (uint64 bbc0, uint64 bbd0, uint256 bbs0) = counter.batchAccrualOf(clauseOrAssemblyB, 0);
         uint256 total0 = counter.totalScoreIn(0);
 
         uint256 aScoreDelta;
@@ -368,16 +368,16 @@ contract HalmosUsageCounter is Test {
             address[] memory sellers = new address[](1);
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(artifactA, 3, 2);
+            accr[0] = UsageCounter.BatchAccrual(clauseOrAssemblyA, 3, 2);
             counter.applyBatchAccrual(0, PROV, accr, sellers);
-            (,, aScoreDelta) = counter.batchAccrualOf(artifactA, 0); // from zero, so delta == score
+            (,, aScoreDelta) = counter.batchAccrualOf(clauseOrAssemblyA, 0); // from zero, so delta == score
         } else {
-            counter.accrue(artifactA, 0, processId, seller);
-            (,, aScoreDelta) = counter.accrualOf(artifactA, 0);
+            counter.accrue(clauseOrAssemblyA, 0, processId, seller);
+            (,, aScoreDelta) = counter.accrualOf(clauseOrAssemblyA, 0);
         }
 
-        (uint64 bc1, uint64 bd1, uint256 bs1) = counter.accrualOf(artifactB, 0);
-        (uint64 bbc1, uint64 bbd1, uint256 bbs1) = counter.batchAccrualOf(artifactB, 0);
+        (uint64 bc1, uint64 bd1, uint256 bs1) = counter.accrualOf(clauseOrAssemblyB, 0);
+        (uint64 bbc1, uint64 bbd1, uint256 bbs1) = counter.batchAccrualOf(clauseOrAssemblyB, 0);
         uint256 total1 = counter.totalScoreIn(0);
 
         assertEq(bc1, bc0, "B's direct c is untouched by A's record");

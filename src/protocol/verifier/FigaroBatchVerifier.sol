@@ -18,7 +18,7 @@ interface IClauseRegistryAnchor {
 ///         for the same reason the interface is.
 interface IUsageCounter {
     struct BatchAccrual {
-        bytes32 artifact;
+        bytes32 clauseOrAssembly;
         uint64 c;
         uint64 d;
     }
@@ -40,7 +40,8 @@ interface IUsageCounter {
 ///         against the live ClauseRegistry, reconciles net token positions,
 ///         re-emits protocol-compatible attestation events, and advances the
 ///         state root. Registry mutations are NOT batched — they are
-///         once-per-artifact ETH-staked intents that stay on the direct path.
+///         once-per-clause-or-assembly ETH-staked intents that stay on the
+///         direct path.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
 ///         Kernel philosophy: no owner, no fee, no upgrade path. If the program
@@ -61,9 +62,9 @@ interface IUsageCounter {
 ///         trade. Without a bridge the 600M would measure a shrinking
 ///         fraction of real adoption exactly as the protocol scales, so
 ///         this contract carries the accrual across: the guest proves
-///         each artifact's cumulative `(c, d)`, and one write per
-///         artifact per batch lands it. The gates the proof cannot see
-///         (open period, live seller stake, excluded artifacts) are the
+///         each clause or assembly's cumulative `(c, d)`, and one write
+///         per clause or assembly per batch lands it. The gates the proof
+///         cannot see (open period, live seller stake, exclusions) are the
 ///         counter's own and are checked there, not here.
 ///
 ///         Public values (ABI-encoded, 8 × 32-byte words):
@@ -137,8 +138,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         /// @dev The provenance clause key the guest proved assembly
         ///      claims against; the counter matches it to its own.
         bytes32 provenanceClause;
-        /// @dev Per-artifact CUMULATIVE (c, d) after this batch, sorted
-        ///      by artifact in the prover.
+        /// @dev Per-clause-or-assembly CUMULATIVE (c, d) after this batch,
+        ///      sorted by clause-or-assembly key in the prover.
         IUsageCounter.BatchAccrual[] accruals;
         /// @dev Distinct sellers of record behind the accruals, sorted.
         address[] sellers;
@@ -158,7 +159,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ///         proven provenance clause did not match. Settlement is decoupled
     ///         from the reward on purpose: a reward-tier gate must never unwind
     ///         another party's trade. The dropped accrual is recovered by the
-    ///         next batch that touches the same artifacts (the counter's write
+    ///         next batch that touches the same clauses and assemblies (the
+    ///         counter's write
     ///         is a cumulative overwrite), or forgone — conservative under-pay,
     ///         never over-pay.
     /// @param batchId The batch whose accrual was skipped.
@@ -292,7 +294,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
         // ── 7. Carry the RPGF accrual across the settlement crease ─
         //    The numbers are the proof's; the reward's own gates (open
-        //    period, live seller stake, registration, excluded artifacts)
+        //    period, live seller stake, registration, exclusions)
         //    are the counter's and are enforced there. A batch with no usage
         //    claims passes empty arrays and the call is a no-op — which is
         //    what keeps trade settling after accrual closes.
@@ -303,7 +305,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         //    (`PeriodMismatch`), a provenance mismatch — can NEVER unwind the
         //    token settlement executed in step 5. A reward-tier gate must not
         //    block another party's trade. The counter already skips excluded
-        //    and unregistered artifacts internally (it does not revert on
+        //    and unregistered keys internally (it does not revert on
         //    those); this catch covers the whole-batch reverts that remain.
         //    On failure the accrual is dropped wholesale — recovered by the
         //    next batch's cumulative overwrite, or forgone (conservative
@@ -420,7 +422,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     }
 
     /// @dev Pack: period(1) ++ provenanceClause(32)
-    ///            ++ len(accruals)(8) ++ [artifact(32) ++ c(8) ++ d(8)]*
+    ///            ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ c(8) ++ d(8)]*
     ///            ++ len(sellers)(8)  ++ [seller(20)]*
     ///      matching the Rust `compute_usage_accrual_hash`.
     ///
@@ -455,12 +457,12 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
         uint256 offset = 41;
         for (uint256 i = 0; i < accrualCount; i++) {
-            bytes32 artifact = usage.accruals[i].artifact;
+            bytes32 clauseOrAssembly = usage.accruals[i].clauseOrAssembly;
             uint64 c = usage.accruals[i].c;
             uint64 d = usage.accruals[i].d;
             assembly {
                 let dst := add(add(packed, 32), offset)
-                mstore(dst, artifact)
+                mstore(dst, clauseOrAssembly)
                 mstore(add(dst, 32), shl(192, c))
                 mstore(add(dst, 40), shl(192, d))
             }

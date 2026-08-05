@@ -25,9 +25,9 @@ contract StubCounter {
         closed[period] = v;
     }
 
-    function setScore(bytes32 artifact, uint8 period, uint256 s) external {
-        totalScoreIn[period] = totalScoreIn[period] + s - _score[artifact][period];
-        _score[artifact][period] = s;
+    function setScore(bytes32 clauseOrAssembly, uint8 period, uint256 s) external {
+        totalScoreIn[period] = totalScoreIn[period] + s - _score[clauseOrAssembly][period];
+        _score[clauseOrAssembly][period] = s;
     }
 
     function periodClosed(uint8 period) external view returns (bool) {
@@ -37,12 +37,12 @@ contract StubCounter {
     /// @dev `scoreOf`, not `accrualOf`: the minter reads the sum of the direct
     ///      and batch paths, so a stub exposing only the direct accrual would
     ///      let a regression to the old read slip through silently.
-    function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256) {
-        return _score[artifact][period];
+    function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
+        return _score[clauseOrAssembly][period];
     }
 
     /// @dev HOSTILE override: force `totalScoreIn` out of sync with the
-    ///      per-artifact scores — the shape a buggy or malicious accrual would
+    ///      per-clause-or-assembly scores — the shape a buggy or malicious accrual would
     ///      present. With consistent data the minter's budget backstop is
     ///      structurally unreachable, so only an inconsistent stub can make it
     ///      observable; the backstop test is its sole caller.
@@ -130,7 +130,7 @@ contract RpgfMinterTest is Test {
         assertEq(florin.balanceOf(carol), T0); // sole recipient → the whole period budget (no cap)
     }
 
-    function test_multipleArtifactsSumInOneClaim() public {
+    function test_multipleClausesAndAssembliesSumInOneClaim() public {
         // A wallet claims once per period and passes everything it authored.
         vm.prank(alice);
         clauses.registerClause("clause-c", 1, keccak256("c"), "ipfs://c");
@@ -170,7 +170,7 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(A_KEY));
     }
 
-    function test_revertsOnUnknownArtifact() public {
+    function test_revertsOnUnknownClauseOrAssembly() public {
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert();
@@ -179,7 +179,7 @@ contract RpgfMinterTest is Test {
 
     function test_withdrawnAuthorForfeitsTheReward() public {
         // Author-side live-stake gate: you earn RPGF only while your stake is
-        // live. Withdraw and the claim fails — the artifact is no longer yours
+        // live. Withdraw and the claim fails — the clause or assembly is no longer yours
         // of record.
         counter.setScore(A_KEY, 0, 100);
         counter.setClosed(0, true);
@@ -249,10 +249,10 @@ contract RpgfMinterTest is Test {
         assertEq(florin.balanceOf(alice), (T0 * 900) / 1000);
     }
 
-    function test_duplicateArtifactCannotInflateTheShare() public {
+    function test_duplicateClauseOrAssemblyCannotInflateTheShare() public {
         // The case that DISTINGUISHES inflation from correctness: alice owns a
         // 100/1000 minority of the period, so her honest share is a tenth. A
-        // sole-artifact setup cannot detect this — there, 100% is the correct
+        // sole-clause or assembly setup cannot detect this — there, 100% is the correct
         // answer either way, which is why the earlier version of this test
         // passed against a contract that let her take everything.
         counter.setScore(A_KEY, 0, 100);
@@ -265,7 +265,7 @@ contract RpgfMinterTest is Test {
         }
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateArtifact.selector, A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, A_KEY));
         minter.claim(0, dupes);
 
         // And the honest claim still pays exactly the minority share.
@@ -284,7 +284,7 @@ contract RpgfMinterTest is Test {
         bytes32[] memory dupes = new bytes32[](2);
         dupes[0] = A_KEY;
         dupes[1] = A_KEY;
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateArtifact.selector, A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, A_KEY));
         minter.claimable(0, alice, dupes);
     }
 
@@ -313,10 +313,10 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(A_KEY));
     }
 
-    function test_revertsOnEmptyArtifactList() public {
+    function test_revertsOnEmptyClauseOrAssemblyList() public {
         counter.setClosed(0, true);
         vm.prank(alice);
-        vm.expectRevert(RpgfMinter.NoArtifacts.selector);
+        vm.expectRevert(RpgfMinter.NoClausesOrAssemblies.selector);
         minter.claim(0, new bytes32[](0));
     }
 
@@ -354,16 +354,16 @@ contract RpgfMinterTest is Test {
 
     /// The `PeriodBudgetExceeded` backstop is STRUCTURALLY UNREACHABLE while
     /// the counter's data is consistent (duplicate-free lists + one author of
-    /// record per artifact + closed-period totals keep every pro-rata sum
+    /// record per clause or assembly + closed-period totals keep every pro-rata sum
     /// within the budget — the 2026-08-01 audit's finding), so no honest-data
     /// test can reach it and deleting the line would change no other test's
     /// outcome. It is still the LAST line of defense for the fixed pool if the
-    /// accrual ever misreports: feed the minter a counter whose per-artifact
+    /// accrual ever misreports: feed the minter a counter whose per-clause-or-assembly
     /// score exceeds its own period total (share > 1 ⇒ amount > budget) and
     /// the backstop must refuse to over-mint rather than pay it.
     function test_budgetBackstopRefusesOverMintOnInconsistentCounterData() public {
         counter.setScore(A_KEY, 0, 100);
-        counter.forceTotal(0, 10); // hostile: total below the artifact's own score
+        counter.forceTotal(0, 10); // hostile: total below the clauseOrAssembly's own score
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodBudgetExceeded.selector, 0));

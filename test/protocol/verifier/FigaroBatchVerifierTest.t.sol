@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import "src/protocol/verifier/FigaroBatchVerifier.sol";
 import "src/protocol/registries/ClauseRegistry.sol";
-import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
+import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockERC20.sol";
 import {MockERC20FeeOnTransfer} from "src/mocks/MockERC20FeeOnTransfer.sol";
@@ -61,7 +61,7 @@ contract FigaroBatchVerifierTest is Test {
         periods[0] = PERIOD_END;
         bytes32[] memory excluded = new bytes32[](1);
         excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
-        MockArtifactStake stakeGate = new MockArtifactStake();
+        MockClauseOrAssemblyStake stakeGate = new MockClauseOrAssemblyStake();
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counter = new UsageCounter(
             address(core), address(members), address(stakeGate), address(stakeGate), predicted, PROV_KEY, excluded, 1, periods
@@ -120,7 +120,7 @@ contract FigaroBatchVerifierTest is Test {
     function _hashUsage(FigaroBatchVerifier.BatchUsageData memory u) internal pure returns (bytes32) {
         bytes memory packed = abi.encodePacked(u.period, u.provenanceClause, uint64(u.accruals.length));
         for (uint256 i = 0; i < u.accruals.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(u.accruals[i].artifact, u.accruals[i].c, u.accruals[i].d));
+            packed = bytes.concat(packed, abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].c, u.accruals[i].d));
         }
         packed = bytes.concat(packed, abi.encodePacked(uint64(u.sellers.length)));
         for (uint256 i = 0; i < u.sellers.length; i++) {
@@ -138,8 +138,8 @@ contract FigaroBatchVerifierTest is Test {
         return keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0)));
     }
 
-    /// @dev A one-artifact, one-seller accrual for the open period.
-    function _usageFor(bytes32 artifact, uint64 c, uint64 d)
+    /// @dev A one-clause or assembly, one-seller accrual for the open period.
+    function _usageFor(bytes32 clauseOrAssembly, uint64 c, uint64 d)
         internal
         view
         returns (FigaroBatchVerifier.BatchUsageData memory u)
@@ -147,7 +147,7 @@ contract FigaroBatchVerifierTest is Test {
         u.period = counter.currentPeriod();
         u.provenanceClause = PROV_KEY;
         u.accruals = new IUsageCounter.BatchAccrual[](1);
-        u.accruals[0] = IUsageCounter.BatchAccrual(artifact, c, d);
+        u.accruals[0] = IUsageCounter.BatchAccrual(clauseOrAssembly, c, d);
         u.sellers = new address[](1);
         u.sellers[0] = seller;
     }
@@ -678,6 +678,10 @@ contract FigaroBatchVerifierTest is Test {
         u.period = 3;
         u.provenanceClause = keccak256("prov");
         u.accruals = new IUsageCounter.BatchAccrual[](2);
+        // The two seed strings are OPAQUE FIXTURE BYTES, not a name for the
+        // concept: they are keccak preimages the Rust vector was generated from
+        // (`prover/lib/tests/usage.rs`). Changing either side alone breaks the
+        // lock — rename both together and regenerate the vector from Rust.
         u.accruals[0] = IUsageCounter.BatchAccrual(keccak256("artifact-a"), 4, 2);
         u.accruals[1] = IUsageCounter.BatchAccrual(keccak256("artifact-b"), 1, 1);
         u.sellers = new address[](2);

@@ -305,9 +305,9 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 
 // ── UsageCounter ABI ──────────────────────────────────────────────────────
 //
-// Verified artifact usage, counted when it happens. `recordClauseUsage` is
+// Verified clause-or-assembly usage, counted when it happens. `recordClauseUsage` is
 // permissionless: it proves the order is RESOLVED (`core.orderStatus == 2`)
-// and that the artifact is merkle-included in the signed `agreementHash` —
+// and that the clause or assembly is merkle-included in the signed `agreementHash` —
 // the same leaf shape `computeSectionLeaf` builds. It carries only the section
 // FINGERPRINT `sectionHash` (`keccak256` of the committed bytes), never the
 // preimage, so a `private` section's plaintext never touches public calldata.
@@ -319,13 +319,13 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // path. It arrives instead through `applyBatchAccrual`, which only
 // FigaroBatchVerifier may call and only with numbers an SP1 proof committed.
 // Its accrual is kept in a SEPARATE slot (`batchAccrualOf`) and merged by
-// SCORE, never by component — read `scoreOf` for an artifact's real total;
+// SCORE, never by component — read `scoreOf` for a clause or assembly's real total;
 // `accrualOf` alone sees the direct path and under-reports anything that
 // scaled.
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
-    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes32 sectionHash, bytes32[] proof) external`,
+    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrAssembly, bytes32 sectionHash, bytes32[] proof) external`,
     `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32[] proof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
@@ -333,25 +333,25 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function members() view returns (address)",
     "function batchVerifier() view returns (address)",
     "function provenanceClause() view returns (bytes32)",
-    "function excludedArtifact(bytes32 artifact) view returns (bool)",
+    "function excludedClauseOrAssembly(bytes32 clauseOrAssembly) view returns (bool)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",
     "function periodClosed(uint8 period) view returns (bool)",
 
     // ── Accrual ─────────────────────────────────────────────────────
-    "function accrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
-    "function batchAccrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
-    "function scoreOf(bytes32 artifact, uint8 period) view returns (uint256)",
+    "function accrualOf(bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function batchAccrualOf(bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function scoreOf(bytes32 clauseOrAssembly, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
-    "function processCounted(bytes32 artifact, bytes32 processId) view returns (bool)",
-    "function sellerSeen(bytes32 artifact, uint8 period, address seller) view returns (bool)",
+    "function processCounted(bytes32 clauseOrAssembly, bytes32 processId) view returns (bool)",
+    "function sellerSeen(bytes32 clauseOrAssembly, uint8 period, address seller) view returns (bool)",
     "function minSellers() view returns (uint64)",
     "function icbrt(uint256 n) pure returns (uint256)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
-    "event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
+    "event BatchUsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
 
     // ── Errors ──────────────────────────────────────────────────────
     "error ZeroAddress()",
@@ -364,23 +364,23 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error AlreadyCounted()",
     "error InvalidInclusionProof()",
     "error SellerNotStaked(address seller)",
-    "error ArtifactExcluded(bytes32 artifact)",
+    "error ClauseOrAssemblyExcluded(bytes32 clauseOrAssembly)",
     "error NotBatchVerifier()",
     "error PeriodMismatch(uint8 open, uint8 claimed)",
     "error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed)",
-    "error AccrualWentBackwards(bytes32 artifact)",
+    "error AccrualWentBackwards(bytes32 clauseOrAssembly)",
 ]);
 
 /// The batch path's accrual event. An indexer summing adoption must fold BOTH
 /// this and `UsageRecorded` — and fold them differently: `UsageRecorded` is a
-/// per-process increment, while this carries an artifact's CUMULATIVE (c, d)
+/// per-process increment, while this carries a clause or assembly's CUMULATIVE (c, d)
 /// for the period and REPLACES the previous value rather than adding to it.
 export const EV_BATCH_USAGE_RECORDED = parseAbiItem(
-    "event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
+    "event BatchUsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
 );
 
 export const EV_USAGE_RECORDED = parseAbiItem(
-    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
 );
 
 // ── RpgfMinter ABI ────────────────────────────────────────────────────────
@@ -394,8 +394,8 @@ export const EV_USAGE_RECORDED = parseAbiItem(
 // of record with a LIVE stake.
 
 export const RPGF_MINTER_ABI = parseAbi([
-    "function claim(uint8 periodId, bytes32[] artifacts) external",
-    "function claimable(uint8 periodId, address account, bytes32[] artifacts) view returns (uint256)",
+    "function claim(uint8 periodId, bytes32[] clausesOrAssemblies) external",
+    "function claimable(uint8 periodId, address account, bytes32[] clausesOrAssemblies) view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",
     "function periodCount() view returns (uint256)",
     "function minted(uint8 periodId) view returns (uint256)",
@@ -410,9 +410,9 @@ export const RPGF_MINTER_ABI = parseAbi([
     "error AmountsPeriodsMismatch(uint256 amounts, uint256 periods)",
     "error PeriodStillAccruing(uint8 periodId)",
     "error AlreadyClaimed(uint8 periodId, address account)",
-    "error NoArtifacts()",
-    "error DuplicateArtifact(bytes32 artifact)",
-    "error NotAuthorOfRecord(bytes32 artifact, address caller)",
+    "error NoClausesOrAssemblies()",
+    "error DuplicateClauseOrAssembly(bytes32 clauseOrAssembly)",
+    "error NotAuthorOfRecord(bytes32 clauseOrAssembly, address caller)",
     "error NothingToClaim()",
     "error PeriodBudgetExceeded(uint8 periodId)",
 ]);
@@ -428,7 +428,7 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceClause, (bytes32 artifact, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceClause, (bytes32 clauseOrAssembly, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",

@@ -12,7 +12,7 @@
  * — so nothing is invoked from here. The surface is a round-trip:
  *
  *   OUT — the current canvas serialized as the canonical `AssemblyTemplate`
- *         JSON (the exact artifact shape the agent composes and hashes;
+ *         JSON (the exact assembly template shape the agent composes and hashes;
  *         built by the same `buildAssemblyTemplate` walk publish uses), for
  *         the designer to hand their agent as its starting point.
  *   IN  — the agent's template pasted back, parsed + soundness-probed
@@ -49,7 +49,7 @@ interface CompositionAssistProps {
 function serializeDraft(snapshot: DesignSnapshot | null): { json: string | null; error: string | null } {
     if (!snapshot) return { json: null, error: "Add at least one order to the canvas first." };
     try {
-        // The ONE draft→template walk publish uses — so the hand-off artifact
+        // The ONE draft→template walk publish uses — so the hand-off template
         // is byte-identical to what publish would anchor. (It previously
         // rebuilt the walk inline and dropped `assemblyClauses`, silently
         // handing out a template missing the assembly-level terms.)

@@ -299,7 +299,7 @@ export type {
 } from "./sellerCatalogue.js";
 
 // RPGF mirror — the off-chain reference implementation of
-// sdk/src/rpgf/formula.json. UsageCounter counts verified artifact usage on
+// sdk/src/rpgf/formula.json. UsageCounter counts verified clause-or-assembly usage on
 // chain as it happens and RpgfMinter pays from those already-final numbers;
 // this mirrors the arithmetic for display, prediction and verification.
 export {
@@ -321,7 +321,7 @@ export type {
     UsageRecord,
     UsageAccrual,
     UsagePeriodAccrual,
-    ArtifactAccrual,
+    ClauseOrAssemblyAccrual,
     BatchUsageRecord,
     UsageClaimContext,
 } from "./rpgf/index.js";

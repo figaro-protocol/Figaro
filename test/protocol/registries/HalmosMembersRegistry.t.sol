@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
-import {MockArtifactStake} from "test/helpers/MockArtifactStake.sol";
+import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @title HalmosMembersRegistry — the state machine the Sybil bound rests on
 ///
@@ -252,8 +252,8 @@ contract HalmosMembersRegistry is Test {
         UsageCounter counter = new UsageCounter(
             address(0xC0FFEE),
             address(members),
-            address(new MockArtifactStake()),
-            address(new MockArtifactStake()),
+            address(new MockClauseOrAssemblyStake()),
+            address(new MockClauseOrAssemblyStake()),
             verifier,
             keccak256("prov"),
             new bytes32[](0),
@@ -267,7 +267,7 @@ contract HalmosMembersRegistry is Test {
         }
 
         UsageCounter.BatchAccrual[] memory accruals = new UsageCounter.BatchAccrual[](1);
-        accruals[0] = UsageCounter.BatchAccrual(keccak256("artifact"), 1, 1);
+        accruals[0] = UsageCounter.BatchAccrual(keccak256("clauseOrAssembly"), 1, 1);
         address[] memory sellers = new address[](1);
         sellers[0] = ALICE;
 
@@ -282,7 +282,7 @@ contract HalmosMembersRegistry is Test {
         assertEq(admitted, members.registered(ALICE), "admission tracks `registered` exactly");
         assertEq(admitted, !leaves, "and leaving is what turns it off");
 
-        (,, uint256 score) = counter.batchAccrualOf(keccak256("artifact"), 0);
+        (,, uint256 score) = counter.batchAccrualOf(keccak256("clauseOrAssembly"), 0);
         assertEq(score > 0, admitted, "nothing accrues on a refused batch");
     }
 }

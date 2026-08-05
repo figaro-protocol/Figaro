@@ -75,7 +75,7 @@ async fn guest_output_matches_host_apply_batch_exactly() {
     // And it credited the clause for the process it settled — asserted here
     // because "field for field" above is only as strong as the batch it runs
     // on: an empty accrual would make `usage_accrual_hash` agree trivially.
-    assert_eq!(host_events.usage_accruals.len(), 1, "the canonical batch credits one artifact");
+    assert_eq!(host_events.usage_accruals.len(), 1, "the canonical batch credits one clause");
     assert_eq!(host_events.usage_accruals[0].c, 1);
     assert_eq!(host_events.usage_accruals[0].d, 1);
     assert_eq!(host_events.usage_sellers.len(), 1, "one seller to stake-check");

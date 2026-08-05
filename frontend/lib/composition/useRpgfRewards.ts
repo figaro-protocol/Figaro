@@ -7,13 +7,13 @@
  *
  * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` records
  * verified usage as it happens — a settled order plus merkle inclusion of the
- * artifact in the agreement both parties signed — so a period's payout is arithmetic
+ * clause or assembly in the agreement both parties signed — so a period's payout is arithmetic
  * over numbers that are already final. A period's counts stop moving the
- * moment it ends; the minter pays a wallet its artifacts' score over the
+ * moment it ends; the minter pays a wallet its clauses' and assemblies' score over the
  * period's total, UNIFORM pro rata (no cap), to live-staked authors of record.
  * The one act is `claim`.
  *
- * The wallet's artifacts are DISCOVERED from the two registries' own event
+ * The wallet's clauses and assemblies are DISCOVERED from the two registries' own event
  * streams (clauses by registrar, assemblies by author) — the same open-world
  * read the minter's `_isAuthor` performs on chain, never a bundled list.
  */
@@ -24,13 +24,13 @@ import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro/sd
 import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 
-/** One artifact the connected wallet is author of record for, with the
- *  accrual it carried in a given period. `c` = distinct settled processes,
+/** One clause or assembly the connected wallet is author of record for, with
+ *  the accrual it carried in a given period. `c` = distinct settled processes,
  *  `d` = distinct (buyer, seller) pairs, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
-export interface RpgfArtifactAccrual {
-    /** Clause idHash or assembly compositionHash — the artifact key. */
-    artifact: `0x${string}`;
+export interface RpgfClauseOrAssemblyAccrual {
+    /** Clause idHash or assembly compositionHash — the clause-or-assembly key. */
+    clauseOrAssembly: `0x${string}`;
     /** Human label: the clause id, or the truncated hash for an assembly. */
     label: string;
     family: "clause" | "assembly";
@@ -57,11 +57,11 @@ export interface RpgfPeriodState {
     /** True once the matching accrual period has ended: counts are final and
      *  the period is claimable. */
     periodClosed: boolean;
-    /** Every artifact's score in this period — the payout denominator. */
+    /** Every clause's and assembly's score in this period — the payout denominator. */
     totalScore: bigint;
-    /** The connected wallet's artifacts and their accrual in this period. */
-    accruals: RpgfArtifactAccrual[];
-    /** Summed score of those artifacts. */
+    /** The connected wallet's clauses and assemblies and their accrual in this period. */
+    accruals: RpgfClauseOrAssemblyAccrual[];
+    /** Summed score of those clauses and assemblies. */
     myScore: bigint;
     /** What the minter says the wallet can take right now (0 once claimed,
      *  or while the period is still accruing). */
@@ -82,11 +82,11 @@ export function useRpgfRewards() {
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
 
-    /** Every artifact the wallet is author of record for, from the registries'
-     *  event streams. Empty (not an error) when the wallet authored nothing —
-     *  resolved-empty is absence. */
-    const discoverArtifacts = useCallback(async (): Promise<
-        Array<Pick<RpgfArtifactAccrual, "artifact" | "label" | "family">>
+    /** Every clause and assembly the wallet is author of record for, from the
+     *  registries' event streams. Empty (not an error) when the wallet
+     *  authored nothing — resolved-empty is absence. */
+    const discoverClausesAndAssemblies = useCallback(async (): Promise<
+        Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>
     > => {
         if (!publicClient || !account) return [];
         const [clauseEvents, assemblyEvents] = await Promise.all([
@@ -105,20 +105,20 @@ export function useRpgfRewards() {
                 fromBlock: 0n,
             }),
         ]);
-        const out = new Map<string, Pick<RpgfArtifactAccrual, "artifact" | "label" | "family">>();
+        const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>();
         for (const ev of clauseEvents) {
             const clauseId = ev.args.clauseId;
             const version = ev.args.version;
             if (!clauseId || version === undefined) continue;
-            const artifact = computeClauseKey(clauseId, version);
-            out.set(artifact.toLowerCase(), { artifact, label: clauseId, family: "clause" });
+            const clauseOrAssembly = computeClauseKey(clauseId, version);
+            out.set(clauseOrAssembly.toLowerCase(), { clauseOrAssembly, label: clauseId, family: "clause" });
         }
         for (const ev of assemblyEvents) {
-            const artifact = ev.args.compositionHash;
-            if (!artifact) continue;
-            out.set(artifact.toLowerCase(), {
-                artifact,
-                label: `${artifact.slice(0, 10)}…`,
+            const clauseOrAssembly = ev.args.compositionHash;
+            if (!clauseOrAssembly) continue;
+            out.set(clauseOrAssembly.toLowerCase(), {
+                clauseOrAssembly,
+                label: `${clauseOrAssembly.slice(0, 10)}…`,
                 family: "assembly",
             });
         }
@@ -133,9 +133,9 @@ export function useRpgfRewards() {
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
             const [periodCount, mine] = await Promise.all([
                 publicClient.readContract({ ...minterBase, functionName: "periodCount" }),
-                discoverArtifacts(),
+                discoverClausesAndAssemblies(),
             ]);
-            const artifacts = mine.map((m) => m.artifact);
+            const clausesOrAssemblies = mine.map((m) => m.clauseOrAssembly);
             const ids = Array.from({ length: Number(periodCount) }, (_, i) => i);
             const rows = await Promise.all(
                 ids.map(async (periodId) => {
@@ -169,11 +169,11 @@ export function useRpgfRewards() {
                                       args: [periodId, account],
                                   })
                                 : Promise.resolve(false),
-                            account && artifacts.length > 0
+                            account && clausesOrAssemblies.length > 0
                                 ? publicClient.readContract({
                                       ...minterBase,
                                       functionName: "claimable",
-                                      args: [periodId, account, artifacts],
+                                      args: [periodId, account, clausesOrAssemblies],
                                   })
                                 : Promise.resolve(0n),
                             Promise.all(
@@ -187,17 +187,17 @@ export function useRpgfRewards() {
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "accrualOf",
-                                            args: [m.artifact, period],
+                                            args: [m.clauseOrAssembly, period],
                                         }),
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "batchAccrualOf",
-                                            args: [m.artifact, period],
+                                            args: [m.clauseOrAssembly, period],
                                         }),
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "scoreOf",
-                                            args: [m.artifact, period],
+                                            args: [m.clauseOrAssembly, period],
                                         }),
                                     ]);
                                     return { ...m, c, d, batchC, batchD, score };
@@ -226,10 +226,10 @@ export function useRpgfRewards() {
         return () => {
             cancelled = true;
         };
-    }, [minter, counter, publicClient, account, discoverArtifacts, refreshNonce]);
+    }, [minter, counter, publicClient, account, discoverClausesAndAssemblies, refreshNonce]);
 
     /** Claim a closed period: one call per wallet per period, carrying every
-     *  artifact the wallet authored. simulate → write → receipt → refresh, per
+     *  clause or assembly the wallet authored. simulate → write → receipt → refresh, per
      *  the publish-flow pattern — any minter revert (still accruing, already
      *  claimed, not author of record) surfaces BEFORE the wallet prompt. */
     const claim = useCallback(
@@ -237,13 +237,13 @@ export function useRpgfRewards() {
             if (!minter) throw new Error("RPGF minter unconfigured.");
             if (!account) throw new Error("Connect a wallet to claim.");
             const row = periods.find((t) => t.periodId === periodId);
-            const artifacts = row?.accruals.map((a) => a.artifact) ?? [];
-            if (artifacts.length === 0) throw new Error("This wallet authored nothing that accrued in this period.");
+            const clausesOrAssemblies = row?.accruals.map((a) => a.clauseOrAssembly) ?? [];
+            if (clausesOrAssemblies.length === 0) throw new Error("This wallet authored nothing that accrued in this period.");
             const call = {
                 address: minter,
                 abi: RPGF_MINTER_ABI,
                 functionName: "claim" as const,
-                args: [periodId, artifacts] as const,
+                args: [periodId, clausesOrAssemblies] as const,
             };
             if (publicClient) await publicClient.simulateContract({ ...call, account });
             const hash = await writeContractAsync(call);

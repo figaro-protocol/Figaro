@@ -23,8 +23,8 @@ nobody is paid until the buyer resolves, so co-sellers hold a live, bonded inter
 remedying any one seller's fault. That is the kernel and its social mechanism — the
 floor. Everything people touch is built above it:
 
-- **Terms and conditions** — the contract's body — are clauses: composable public
-  artifacts, verified on-chain, tailored by designers.
+- **Terms and conditions** — the contract's body — are clauses: composable,
+  public, verified on-chain, tailored by designers.
 - **Offer and acceptance** are assemblies and checkout — whole deal-shapes anyone
   publishes and anyone reuses; offers FORM by dispatch race or RFQ — market formation
   with zero extra contracts.
@@ -57,13 +57,13 @@ denomination — the moat); community (a displaced community's token, spent in L
 Angeles or Lima, sustains its value at home — no fiat pipeline, a Uniswap hop
 satisfying the regulator); and the social signalling that pick makes visible —
 support you can check, not a company's claim. The commons funds itself through
-retroactive public-goods funding — 600M florins pro-rata to authors whose artifacts
-get used (the 300M DAO treasury funds by human judgment) —
+retroactive public-goods funding — 600M florins pro-rata to authors whose clauses
+and assemblies get used (the 300M DAO treasury funds by human judgment) —
 with its own equilibrium: usage and authorship both require a live ETH stake, a value
 loop — exposure to the growth one's own work produces, not a fee.
 
-And growth is paid for, not hoped for: the 600M rewards whoever's artifacts get
-USED — so anyone contributes permissionlessly (authoring clauses, publishing
+And growth is paid for, not hoped for: the 600M rewards whoever's clauses and
+assemblies get USED — so anyone contributes permissionlessly (authoring clauses, publishing
 assemblies, selling, building tooling, hosting discussion), and anyone may COMPETE:
 their own UI over the same contracts, or their own contracts entirely. A dynamic
 system by construction; evolution is the design.
@@ -181,7 +181,7 @@ An agent acting for wallet `W` may write:
 
 - W's own off-chain metadata (members-registry entries, ENS/`did:web` documents, agent service descriptions).
 - Assemblies where W is `rootBuyer` or seller-of-record.
-- New artifacts W is authoring — new clauses, new assemblies, W's own UI.
+- What W is authoring — new clauses, new assemblies, W's own UI.
 
 An agent may NOT:
 
@@ -191,7 +191,7 @@ An agent may NOT:
 
 ### Where these rules are enforced
 
-Path-level rules → the harness (`.claude/settings.json` `permissions.deny` + `.claude/hooks/kernel-warn.sh`). Ownership-level rules (whose wallet owns which artifact) are invisible to the harness — they live in agent prompts, this file, and review. Kernel anti-patterns → `.claude/skills/figaro-kernel-discipline/SKILL.md`.
+Path-level rules → the harness (`.claude/settings.json` `permissions.deny` + `.claude/hooks/kernel-warn.sh`). Ownership-level rules (whose wallet owns which registry entry) are invisible to the harness — they live in agent prompts, this file, and review. Kernel anti-patterns → `.claude/skills/figaro-kernel-discipline/SKILL.md`.
 
 When in doubt, ask. Cheap question, expensive cleanup.
 
@@ -265,15 +265,15 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 **The separation is explicit; each tier is independently usable — so kernel neutrality does NOT propagate upward.** Name an artifact's tier (`LEXICON.md` grid — the authority; all three on-chain anchors are **protocol** tier) before citing any doctrine at it. Citing a kernel law at a protocol/runtime artifact is the **Folding** error → `LEXICON.md` § "Failure modes" owns it.
 
-### Separation of Concerns — Artifact Families
+### Separation of Concerns — Registry Families
 
-Each protocol artifact family (clauses → `ClauseRegistry`; participants → `MembersRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
+Each protocol registry family (clauses → `ClauseRegistry`; participants → `MembersRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, indexer event stream. Do not nest one inside another, even when an existing primitive could host it.
 
 **The test.** Does the proposed reuse make Layer A reference Layer B's existence? Arrows point one way: assemblies use clauses; clauses don't know assemblies exist. If a proposal inverts an arrow, it is wrong, regardless of how much Solidity it saves.
 
-**The temptation to refuse.** "We already have `ClauseRegistry` — can we register this new artifact under it?" Refuse: "avoiding a new contract" / "minimum new surface" is NOT a valid criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization, not code reuse.
+**The temptation to refuse.** "We already have `ClauseRegistry` — can we register this new kind of entry under it?" Refuse: "avoiding a new contract" / "minimum new surface" is NOT a valid criterion when it costs a layer boundary. Conceptual cleanliness is the protocol-scale optimization, not code reuse.
 
 When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommending an anchoring or registry-reuse choice.
 
@@ -281,7 +281,7 @@ When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommend
 
 The recurring, weeks-costly failure: modeling a concern as a stored value when it is **derived**. Canonical case — fulfilment: no field, no checkbox; the requested modality is a clause, a second co-equal buyer↔courier order IS delivery, coordination variants are separate assemblies, sub-clauses render off-chain from the spec (never a hardcoded tree). Full model → memory `feedback_fulfilment_retired_modality_derived` + `docs/CLAUSES.md`; the vocabulary is mechanically enforced by `scripts/lint-no-closed-world-vocab.sh` (pre-commit).
 
-**The 600M reward is UNIFORM** (ratified 2026-07-29): every artifact's score is its real usage alone — `icbrt(c·d²·1e18)`, no tag, category, weight, per-wallet cap, or quadratic-funding/match round (`MatchPool`, `boostedTag`, `rpgfTag` all deleted); never reintroduce a per-clause multiplier — TradFi "privilege a category" reasoning. **Neutrality is achieved by the STAKE, not by weighting:** Sybil resistance is the two-sided LIVE ETH stake (seller-gated usage in `UsageCounter`; author eligibility in `RpgfMinter._isAuthor`), a VALUE LOOP, not a cost. The 300M DAO treasury funds public goods by discretionary decision. Owner → `project_reward_mechanism_ratified_2026_07`; on-chain surface → `CONTRACTS.md` § RPGF.
+**The 600M reward is UNIFORM** (ratified 2026-07-29): every clause's and assembly's score is its real usage alone — `icbrt(c·d²·1e18)`, no tag, category, weight, per-wallet cap, or quadratic-funding/match round (`MatchPool`, `boostedTag`, `rpgfTag` all deleted); never reintroduce a per-clause multiplier — TradFi "privilege a category" reasoning. **Neutrality is achieved by the STAKE, not by weighting:** Sybil resistance is the two-sided LIVE ETH stake (seller-gated usage in `UsageCounter`; author eligibility in `RpgfMinter._isAuthor`), a VALUE LOOP, not a cost. The 300M DAO treasury funds public goods by discretionary decision. Owner → `project_reward_mechanism_ratified_2026_07`; on-chain surface → `CONTRACTS.md` § RPGF.
 
 ### Dispute resolution
 

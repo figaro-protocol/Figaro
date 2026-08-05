@@ -10,7 +10,7 @@
  *   `computeClauseKey`, a root export)
  * - Geo math: geohash encode/decode, prefix matching, Haversine distance
  * - Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
- *   composed from a clause/assembly artifact, derived from chain + IPFS
+ *   composed from a clause or assembly, derived from chain + IPFS
  */
 
 // ── Attestation filtering ───────────────────────────────────────────────────

@@ -4,8 +4,8 @@
 /// which a batch-settled process never acquires — the two settlement
 /// universes are disjoint. These tests cover what the guest must prove so
 /// batched trade can be credited anyway: that the order really settled, that
-/// the artifact really was in the signed agreement, and that no trade is
-/// counted twice ACROSS batches, not merely within one.
+/// the clause or assembly really was in the signed agreement, and that no
+/// trade is counted twice ACROSS batches, not merely within one.
 ///
 /// The last point is why the counted set rides the state root: a process
 /// resolved in batch N is still RESOLVED in batch N+1's snapshot, so a
@@ -146,10 +146,10 @@ fn batch(
     }
 }
 
-fn clause_claim(order: &Commitment, artifact: B256, section_hash: B256) -> UsageClaim {
+fn clause_claim(order: &Commitment, clause_or_assembly: B256, section_hash: B256) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
-        artifact,
+        clause_or_assembly,
         kind: UsageClaimKind::Clause { section_hash },
         inclusion_proof: vec![],
     }
@@ -159,21 +159,25 @@ fn clause_claim(order: &Commitment, artifact: B256, section_hash: B256) -> Usage
 
 /// A process committed AND resolved by the same batch is creditable by that
 /// batch: claims are applied against the post-state, so scaling does not cost
-/// the artifact a period of delay.
+/// the clause or assembly a period of delay.
 #[test]
 fn credits_a_process_the_same_batch_settled() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let artifact = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order, ops) = settled_order(&buyer, &seller, &artifact, &section, 1);
-    let input = batch(ops, vec![clause_claim(&order, artifact, section)], empty_snapshot());
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
+    let input = batch(
+        ops,
+        vec![clause_claim(&order, clause_or_assembly, section)],
+        empty_snapshot(),
+    );
 
     let (pv, _, events, _) = apply_batch_with_state(&input).expect("batch applies");
 
     assert_eq!(events.usage_accruals.len(), 1);
-    assert_eq!(events.usage_accruals[0].artifact, artifact);
+    assert_eq!(events.usage_accruals[0].clause_or_assembly, clause_or_assembly);
     assert_eq!(events.usage_accruals[0].c, 1, "one distinct settled process");
     assert_eq!(events.usage_accruals[0].d, 1, "one distinct staked seller");
     assert_eq!(events.usage_sellers, vec![SELLER1], "the seller to stake-check");
@@ -197,13 +201,17 @@ fn credits_a_process_the_same_batch_settled() {
 fn rejects_a_claim_against_an_unresolved_order() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let artifact = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order, mut ops) = settled_order(&buyer, &seller, &artifact, &section, 1);
+    let (order, mut ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
     ops.truncate(1); // commit only — no resolve
 
-    let input = batch(ops, vec![clause_claim(&order, artifact, section)], empty_snapshot());
+    let input = batch(
+        ops,
+        vec![clause_claim(&order, clause_or_assembly, section)],
+        empty_snapshot(),
+    );
 
     match apply_batch_with_state(&input).map(|_| ()) {
         Err(KernelError::UsageOrderNotResolved(_)) => {}
@@ -211,11 +219,11 @@ fn rejects_a_claim_against_an_unresolved_order() {
     }
 }
 
-/// The artifact must be a leaf of the agreement both parties SIGNED.
+/// The clause or assembly must be a leaf of the agreement both parties SIGNED.
 /// Claiming a clause that is not in the tree fails the inclusion proof —
 /// the same gate `recordClauseUsage` applies on the direct path.
 #[test]
-fn rejects_an_artifact_that_is_not_in_the_agreement() {
+fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let signed = clause_id_hash("figaro-modalities", 1);
@@ -241,47 +249,69 @@ fn rejects_an_artifact_that_is_not_in_the_agreement() {
 fn a_claim_cannot_be_replayed_in_a_later_batch() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let artifact = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order, ops) = settled_order(&buyer, &seller, &artifact, &section, 1);
-    let first = batch(ops, vec![clause_claim(&order, artifact, section)], empty_snapshot());
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
+    let first = batch(
+        ops,
+        vec![clause_claim(&order, clause_or_assembly, section)],
+        empty_snapshot(),
+    );
     let (_, _, _, post) = apply_batch_with_state(&first).expect("first batch applies");
 
     // Same claim, next batch, against the state the first one produced.
-    let replay = batch(vec![], vec![clause_claim(&order, artifact, section)], post.to_snapshot());
+    let replay = batch(
+        vec![],
+        vec![clause_claim(&order, clause_or_assembly, section)],
+        post.to_snapshot(),
+    );
 
     match apply_batch_with_state(&replay).map(|_| ()) {
-        Err(KernelError::UsageAlreadyCounted { artifact: a, .. }) => assert_eq!(a, artifact),
+        Err(KernelError::UsageAlreadyCounted {
+            clause_or_assembly: a,
+            ..
+        }) => assert_eq!(a, clause_or_assembly),
         other => panic!("expected UsageAlreadyCounted, got {other:?}"),
     }
 }
 
-/// The counted set is keyed by (artifact, process) — so a SECOND artifact
-/// from the same settled process is still creditable. Counting once ever is
-/// per artifact, not per process.
+/// The counted set is keyed by (clause-or-assembly, process) — so a SECOND
+/// clause or assembly from the same settled process is still creditable.
+/// Counting once ever is per clause or assembly, not per process.
 #[test]
-fn a_second_artifact_from_the_same_process_still_counts() {
+fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let first_artifact = clause_id_hash("figaro-modalities", 1);
+    let first_clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order, ops) = settled_order(&buyer, &seller, &first_artifact, &section, 1);
-    let input = batch(ops, vec![clause_claim(&order, first_artifact, section)], empty_snapshot());
+    let (order, ops) = settled_order(&buyer, &seller, &first_clause_or_assembly, &section, 1);
+    let input = batch(
+        ops,
+        vec![clause_claim(&order, first_clause_or_assembly, section)],
+        empty_snapshot(),
+    );
     let (_, _, _, post) = apply_batch_with_state(&input).expect("first batch applies");
 
-    // A different artifact, same process — proved against the SAME agreement,
-    // so it needs its own leaf. Here the agreement has one section, so reuse
-    // the process by claiming the provenance leg instead.
-    let accrued = post.usage_accrual.get(&(first_artifact, PERIOD)).copied();
-    assert_eq!(accrued, Some((1, 1)), "the first artifact is counted once");
+    // A different clause or assembly, same process — proved against the SAME
+    // agreement, so it needs its own leaf. Here the agreement has one section,
+    // so reuse the process by claiming the provenance leg instead.
+    let accrued = post
+        .usage_accrual
+        .get(&(first_clause_or_assembly, PERIOD))
+        .copied();
+    assert_eq!(
+        accrued,
+        Some((1, 1)),
+        "the first clause or assembly is counted once"
+    );
     assert!(
-        post.usage_counted.contains(&(first_artifact, {
+        post.usage_counted.contains(&(first_clause_or_assembly, {
             let domain = domain_separator(CHAIN_ID, CORE);
             typed_data_hash(&domain, &commitment_struct_hash(&order))
         })),
-        "and the (artifact, process) pair is what was recorded"
+        "and the (clause-or-assembly, process) pair is what was recorded"
     );
 }
 
@@ -296,18 +326,18 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
     let buyer2 = make_signing_key(BUYER2_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let artifact = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order_a, ops_a) = settled_order(&buyer, &seller, &artifact, &section, 1);
-    let (order_b, ops_b) = settled_order(&buyer, &seller, &artifact, &section, 2);
-    let (order_c, ops_c) = settled_order(&buyer2, &seller, &artifact, &section, 3);
+    let (order_a, ops_a) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
+    let (order_b, ops_b) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 2);
+    let (order_c, ops_c) = settled_order(&buyer2, &seller, &clause_or_assembly, &section, 3);
 
     let ops: Vec<KernelOp> = ops_a.into_iter().chain(ops_b).chain(ops_c).collect();
     let claims = vec![
-        clause_claim(&order_a, artifact, section),
-        clause_claim(&order_b, artifact, section),
-        clause_claim(&order_c, artifact, section),
+        clause_claim(&order_a, clause_or_assembly, section),
+        clause_claim(&order_b, clause_or_assembly, section),
+        clause_claim(&order_c, clause_or_assembly, section),
     ];
 
     let (_, _, events, _) =
@@ -326,16 +356,16 @@ fn distinct_sellers_raise_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller1 = make_signing_key(SELLER1_KEY);
     let seller2 = make_signing_key(SELLER2_KEY);
-    let artifact = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order_a, ops_a) = settled_order(&buyer, &seller1, &artifact, &section, 1);
-    let (order_b, ops_b) = settled_order(&buyer, &seller2, &artifact, &section, 2);
+    let (order_a, ops_a) = settled_order(&buyer, &seller1, &clause_or_assembly, &section, 1);
+    let (order_b, ops_b) = settled_order(&buyer, &seller2, &clause_or_assembly, &section, 2);
 
     let ops: Vec<KernelOp> = ops_a.into_iter().chain(ops_b).collect();
     let claims = vec![
-        clause_claim(&order_a, artifact, section),
-        clause_claim(&order_b, artifact, section),
+        clause_claim(&order_a, clause_or_assembly, section),
+        clause_claim(&order_b, clause_or_assembly, section),
     ];
 
     let (_, _, events, _) =
@@ -363,7 +393,7 @@ fn credits_an_assembly_through_the_provenance_leaf() {
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
     let claim = UsageClaim {
         order: order.clone(),
-        artifact: composition,
+        clause_or_assembly: composition,
         kind: UsageClaimKind::Assembly,
         inclusion_proof: vec![],
     };
@@ -373,7 +403,7 @@ fn credits_an_assembly_through_the_provenance_leaf() {
 
     assert_eq!(events.usage_accruals.len(), 1);
     assert_eq!(
-        events.usage_accruals[0].artifact, composition,
+        events.usage_accruals[0].clause_or_assembly, composition,
         "the DESIGNER is credited — the compositionHash, never the provenance clause"
     );
     assert_eq!(events.usage_accruals[0].c, 1);
@@ -391,7 +421,7 @@ fn rejects_an_assembly_claim_for_an_uncommitted_composition() {
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
     let claim = UsageClaim {
         order,
-        artifact: keccak256(b"a-different-composition"),
+        clause_or_assembly: keccak256(b"a-different-composition"),
         kind: UsageClaimKind::Assembly,
         inclusion_proof: vec![],
     };
@@ -414,7 +444,7 @@ fn rejects_an_assembly_claim_for_an_uncommitted_composition() {
 fn the_usage_hash_pins_the_split_between_the_two_arrays() {
     let five: Vec<UsageAccrual> = (0..5)
         .map(|_| UsageAccrual {
-            artifact: B256::ZERO,
+            clause_or_assembly: B256::ZERO,
             c: 0,
             d: 0,
         })
@@ -432,7 +462,7 @@ fn the_usage_hash_pins_the_split_between_the_two_arrays() {
 #[test]
 fn the_usage_hash_covers_the_period_and_the_provenance_key() {
     let accruals = vec![UsageAccrual {
-        artifact: keccak256(b"artifact"),
+        clause_or_assembly: keccak256(b"usage-key"),
         c: 2,
         d: 1,
     }];
@@ -463,16 +493,21 @@ fn the_usage_hash_covers_the_period_and_the_provenance_key() {
 /// is asserted verbatim in
 /// `FigaroBatchVerifierTest.test_usageHash_matchesTheRustVector`; if either
 /// layout drifts by a byte, exactly one of the two tests fails and says so.
+///
+/// The `b"artifact-a"` / `b"artifact-b"` literals below are OPAQUE PREIMAGE
+/// BYTES, not a name for anything — they are pinned byte-for-byte to the
+/// Solidity side of the vector. Renaming them here without renaming them
+/// there (and re-deriving the expected hash) breaks the lock.
 #[test]
 fn the_usage_hash_matches_the_solidity_vector() {
     let accruals = vec![
         UsageAccrual {
-            artifact: keccak256(b"artifact-a"),
+            clause_or_assembly: keccak256(b"artifact-a"),
             c: 4,
             d: 2,
         },
         UsageAccrual {
-            artifact: keccak256(b"artifact-b"),
+            clause_or_assembly: keccak256(b"artifact-b"),
             c: 1,
             d: 1,
         },
@@ -514,13 +549,17 @@ fn the_empty_usage_hash_is_the_one_the_verifier_derives() {
 fn crediting_usage_advances_the_state_root() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let artifact = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
     let section = keccak256(b"section-bytes");
 
-    let (order, ops) = settled_order(&buyer, &seller, &artifact, &section, 1);
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
 
     let without = batch(ops.clone(), vec![], empty_snapshot());
-    let with = batch(ops, vec![clause_claim(&order, artifact, section)], empty_snapshot());
+    let with = batch(
+        ops,
+        vec![clause_claim(&order, clause_or_assembly, section)],
+        empty_snapshot(),
+    );
 
     let (pv_without, _, _, _) = apply_batch_with_state(&without).expect("applies");
     let (pv_with, _, _, _) = apply_batch_with_state(&with).expect("applies");

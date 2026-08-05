@@ -605,7 +605,7 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
 ///
 /// ```text
 /// period(1) ++ provenanceClause(32)
-///   ++ len(accruals)(8) ++ [artifact(32) ++ c(8) ++ d(8)]*
+///   ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ c(8) ++ d(8)]*
 ///   ++ len(sellers)(8)  ++ [seller(20)]*
 /// ```
 ///
@@ -625,7 +625,7 @@ pub fn compute_usage_accrual_hash(
     data.extend_from_slice(provenance_clause.as_slice());
     data.extend_from_slice(&(accruals.len() as u64).to_be_bytes());
     for a in accruals {
-        data.extend_from_slice(a.artifact.as_slice());
+        data.extend_from_slice(a.clause_or_assembly.as_slice());
         data.extend_from_slice(&a.c.to_be_bytes());
         data.extend_from_slice(&a.d.to_be_bytes());
     }
@@ -658,17 +658,17 @@ fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
 /// Every claim is proved, never trusted — the same two facts
 /// `UsageCounter.recordClauseUsage` proves on the direct path:
 ///   1. the order is real and RESOLVED in this batch's post-state, and
-///   2. the artifact was committed in the agreement both parties signed
-///      (merkle inclusion against `agreement_hash`).
+///   2. the clause or assembly was committed in the agreement both parties
+///      signed (merkle inclusion against `agreement_hash`).
 ///
 /// Two facts the guest CANNOT prove are declared and anchored on-chain
 /// instead: whether each seller holds a live MembersRegistry stake, and
-/// whether an artifact is excluded from scoring. Both are live chain
+/// whether a clause or assembly is excluded from scoring. Both are live chain
 /// state; the verifier checks them before writing, in the shape
 /// `_checkSpecBindings` already established.
 ///
-/// Returns the touched artifacts' CUMULATIVE `(c, d)` and the distinct
-/// sellers behind them.
+/// Returns the CUMULATIVE `(c, d)` of every clause or assembly touched, and
+/// the distinct sellers behind them.
 fn apply_usage_claims(
     state: &mut KernelState,
     domain: &B256,
@@ -688,15 +688,15 @@ fn apply_usage_claims(
             return Err(KernelError::UsageOrderNotResolved(order_hash));
         }
 
-        // 2. The artifact was committed in the signed agreement. A
+        // 2. The clause or assembly was committed in the signed agreement. A
         //    clause proves its own leaf; an assembly proves the
         //    PROVENANCE leaf whose section content IS the
         //    compositionHash.
         let (leaf_key, section_hash) = match &claim.kind {
-            UsageClaimKind::Clause { section_hash } => (claim.artifact, *section_hash),
+            UsageClaimKind::Clause { section_hash } => (claim.clause_or_assembly, *section_hash),
             UsageClaimKind::Assembly => (
                 *provenance_clause,
-                keccak256(provenance_section_bytes(&claim.artifact)),
+                keccak256(provenance_section_bytes(&claim.clause_or_assembly)),
             ),
         };
         let mut leaf_preimage = [0u8; 64];
@@ -715,9 +715,12 @@ fn apply_usage_claims(
         //    state root, so this holds ACROSS batches, not just within
         //    one. A duplicate is a sequencer fault and fails loudly
         //    rather than being silently dropped.
-        if !state.usage_counted.insert((claim.artifact, process_id)) {
+        if !state
+            .usage_counted
+            .insert((claim.clause_or_assembly, process_id))
+        {
             return Err(KernelError::UsageAlreadyCounted {
-                artifact: claim.artifact,
+                clause_or_assembly: claim.clause_or_assembly,
                 process_id,
             });
         }
@@ -729,26 +732,30 @@ fn apply_usage_claims(
         //    list, so the guest counts and the chain prices.
         let first_seller = state
             .usage_seller_seen
-            .insert((claim.artifact, period, claim.order.seller));
+            .insert((claim.clause_or_assembly, period, claim.order.seller));
 
         let entry = state
             .usage_accrual
-            .entry((claim.artifact, period))
+            .entry((claim.clause_or_assembly, period))
             .or_insert((0, 0));
         entry.0 = entry.0.checked_add(1).ok_or(KernelError::Overflow)?;
         if first_seller {
             entry.1 = entry.1.checked_add(1).ok_or(KernelError::Overflow)?;
         }
 
-        touched.insert(claim.artifact);
+        touched.insert(claim.clause_or_assembly);
         sellers.insert(claim.order.seller);
     }
 
     let accruals = touched
         .into_iter()
-        .map(|artifact| {
-            let (c, d) = state.usage_accrual[&(artifact, period)];
-            UsageAccrual { artifact, c, d }
+        .map(|clause_or_assembly| {
+            let (c, d) = state.usage_accrual[&(clause_or_assembly, period)];
+            UsageAccrual {
+                clause_or_assembly,
+                c,
+                d,
+            }
         })
         .collect();
 

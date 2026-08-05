@@ -3,8 +3,8 @@
 /**
  * withdrawGate — the ADVISORY, off-chain half of the K4 commits==resolves gate.
  *
- * An artifact author (clause registrar / assembly author) must not reclaim
- * their registration stake while deals COMPOSED FROM that artifact are still in
+ * A clause registrar or assembly author must not reclaim their registration
+ * stake while deals COMPOSED FROM that clause or assembly are still in
  * flight. The whole join lives in `@figaro/sdk/derive` (`deriveInFlightOrders`
  * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does
  * ONLY the I/O the SDK deliberately does not: read the kernel event log from
@@ -43,7 +43,7 @@ import { publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 
-export type WithdrawArtifact =
+export type WithdrawClauseOrAssembly =
     | { kind: "clause"; clauseId: string }
     | { kind: "assembly"; template: AssemblyTemplate };
 
@@ -71,33 +71,33 @@ async function resolveInFlightAgreements(coreAddress: `0x${string}`): Promise<In
 }
 
 /**
- * The withdraw gate for one artifact. `null` artifact (or an unconfigured core
- * address) yields `{ gate: null }`. `gate` is `null` while loading or on a
+ * The withdraw gate for one clause or assembly. `null` (or an unconfigured
+ * core address) yields `{ gate: null }`. `gate` is `null` while loading or on a
  * chain-read failure (genuinely unknown chain state — affordance stays
  * disabled); once loaded, only VERIFIED in-flight deals block
  * (`gate.canWithdraw === (gate.inFlightCount === 0)`), and
  * `gate.unverifiedCount > 0` is surfaced as a caveat via
  * `withdrawUnverifiedCaveat`, never blocking.
  */
-export function useWithdrawGate(artifact: WithdrawArtifact | null): {
+export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | null): {
     gate: WithdrawGate | null;
     isLoading: boolean;
 } {
     const [gate, setGate] = useState<WithdrawGate | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // A stable identity for the artifact so the effect re-runs only when the
-    // target changes (an assembly is identified by its composition hash).
-    const artifactKey = useMemo(() => {
-        if (!artifact) return null;
-        return artifact.kind === "clause"
-            ? `clause:${artifact.clauseId}`
-            : `assembly:${templateCompositionHash(artifact.template)}`;
-    }, [artifact]);
+    // A stable identity for the clause or assembly so the effect re-runs only
+    // when the target changes (an assembly is identified by its composition hash).
+    const clauseOrAssemblyKey = useMemo(() => {
+        if (!clauseOrAssembly) return null;
+        return clauseOrAssembly.kind === "clause"
+            ? `clause:${clauseOrAssembly.clauseId}`
+            : `assembly:${templateCompositionHash(clauseOrAssembly.template)}`;
+    }, [clauseOrAssembly]);
 
     useEffect(() => {
         const core = CONTRACTS.core;
-        if (!artifact || !/^0x[0-9a-fA-F]{40}$/.test(core)) {
+        if (!clauseOrAssembly || !/^0x[0-9a-fA-F]{40}$/.test(core)) {
             setGate(null);
             return;
         }
@@ -109,9 +109,9 @@ export function useWithdrawGate(artifact: WithdrawArtifact | null): {
             .then((agreements) => {
                 if (cancelled) return;
                 setGate(
-                    artifact.kind === "clause"
-                        ? deriveClauseWithdrawGate(artifact.clauseId, agreements)
-                        : deriveAssemblyWithdrawGate(artifact.template, agreements),
+                    clauseOrAssembly.kind === "clause"
+                        ? deriveClauseWithdrawGate(clauseOrAssembly.clauseId, agreements)
+                        : deriveAssemblyWithdrawGate(clauseOrAssembly.template, agreements),
                 );
                 setIsLoading(false);
             })
@@ -125,10 +125,10 @@ export function useWithdrawGate(artifact: WithdrawArtifact | null): {
         return () => {
             cancelled = true;
         };
-        // artifactKey captures the meaningful identity; artifact is read fresh
-        // in the closure from the same render that produced the key.
+        // clauseOrAssemblyKey captures the meaningful identity; clauseOrAssembly
+        // is read fresh in the closure from the same render that produced the key.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [artifactKey]);
+    }, [clauseOrAssemblyKey]);
 
     return { gate, isLoading };
 }
@@ -139,9 +139,9 @@ export function useWithdrawGate(artifact: WithdrawArtifact | null): {
  *  means the gate could not be computed (loading / chain-read failure) — the
  *  chain state is genuinely unknown, so also "not safe to reclaim". */
 export function withdrawBlockedReason(gate: WithdrawGate | null): string | null {
-    if (gate === null) return "Checking for in-flight deals composed from this artifact…";
+    if (gate === null) return "Checking for in-flight deals composed from this clause or assembly…";
     if (gate.canWithdraw) return null;
-    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight deal${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this artifact. The stake frees once every composed deal has settled.`;
+    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight deal${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this clause or assembly. The stake frees once every composed deal has settled.`;
 }
 
 /** Informational caveat when unverifiable in-flight deals exist, or null.

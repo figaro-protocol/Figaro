@@ -17,7 +17,7 @@
 #   C. TEST-ID      — `data-testid="…merchant…"` / `…courier…`.
 #
 # ALLOWED (the clause-bound merchant-process / courier-process surface — a
-# distinct, frozen artifact family, item-(c) rename candidate, NOT a party):
+# distinct, frozen registry family, item-(c) rename candidate, NOT a party):
 #   {Merchant,Courier}{Process,Content,Signal,Event,Timeline,Proximity}…,
 #   use{Merchant,Courier}Process, {merchant,courier}-{process,proximity,
 #   action,handoff,transit,hint}, figaro-{merchant,courier}-*.

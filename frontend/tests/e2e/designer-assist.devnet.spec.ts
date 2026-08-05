@@ -4,7 +4,7 @@
  * COMPOSITION-ASSIST — the canvas's hand-off surface to the designer's own
  * agent (punch-list block 9). The world is the public ecosystem seam
  * (`figaro-assembly-designer` runs in the USER's runtime, for the user's
- * wallet); the canvas's job is the round-trip artifact: export the current
+ * wallet); the canvas's job is the round-trip assembly template: export the current
  * draft as the canonical AssemblyTemplate JSON, and import a template back
  * onto the live canvas as ordinary unsaved state.
  *

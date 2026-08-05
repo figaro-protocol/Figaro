@@ -73,7 +73,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await context.grantPermissions(['geolocation']);
         await context.setGeolocation({ latitude: DEVICE.lat, longitude: DEVICE.lon });
 
-        // ── CONSUME the scenario leg's artifact — never re-create it. ──
+        // ── CONSUME the scenario leg's assembly — never re-create it. ──
         const slug = await findTradelensAssembly();
         expect(slug, 'the Tradelens assembly is anchored — run scenario-tradelens first').toBeTruthy();
 
@@ -299,8 +299,8 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
 
         // ── RPGF USAGE RECORDING (count usage when it happens, ruled
         //    2026-07-28): the resolve capability records every committed
-        //    artifact's use on the UsageCounter — one UsageRecorded per
-        //    DISTINCT artifact in the process (duplicates AlreadyCounted by
+        //    clause's or assembly's use on the UsageCounter — one UsageRecorded per
+        //    DISTINCT clause or assembly in the process (duplicates AlreadyCounted by
         //    design), INCLUDING the assembly's compositionHash via the
         //    mechanically-folded provenance section. Verified out-of-band
         //    from the chain, never from the UI. ──
@@ -311,18 +311,18 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             args: { processId }, fromBlock: 0n,
         });
         await expect.poll(async () => (await usageEvents()).length, {
-            timeout: 120000, message: 'the resolve capability records the process artifacts on the UsageCounter',
+            timeout: 120000, message: 'the resolve capability records the process clauses and assemblies on the UsageCounter',
         }).toBeGreaterThanOrEqual(15);
         // The provenance section carries the adopted assembly's own
-        // compositionHash, so the ASSEMBLY artifact itself must be among the
-        // recorded artifacts — the assembly-designer credit leg, previously
+        // compositionHash, so the ASSEMBLY itself must be among the
+        // recorded clauses and assemblies — the assembly-designer credit leg, previously
         // dead end-to-end.
         const adopted = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug);
         expect(adopted?.compositionHash, 'the adopted assembly re-discovers from chain').toBeTruthy();
-        const artifacts = (await usageEvents()).map((e) => (e.args.artifact as string).toLowerCase());
+        const clausesAndAssemblies = (await usageEvents()).map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
         expect(
-            artifacts,
-            "the assembly's compositionHash is a recorded artifact (designer credit)",
+            clausesAndAssemblies,
+            "the assembly's compositionHash is a recorded assembly (designer credit)",
         ).toContain(adopted!.compositionHash!.toLowerCase());
 
         // ── SETTLEMENT: the chain total left the buyer; each value-adder

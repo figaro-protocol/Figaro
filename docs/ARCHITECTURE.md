@@ -21,8 +21,9 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │ anchors; first-write-wins.  Coordinators + verifier read the kernel.           │  ── protocol
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ UsageCounter → RpgfMinter.  Verified usage counted as it happens; the florin   │
-│ pays each artifact UNIFORM pro-rata from a closed accrual period — real usage  │  ── protocol
-│ alone, no category or weight.  Neutrality is the two-sided live ETH stake.     │
+│ pays each clause or assembly UNIFORM pro-rata from a closed accrual period —   │  ── protocol
+│ real usage alone, no category or weight. Neutrality is the two-sided live ETH  │
+│ stake.                                                                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ clause.fields  →  the verified substance                                       │
 │   • fields → ABI-encoded → validated (Layer A, off-chain) →                    │  ── protocol
@@ -51,7 +52,7 @@ Arrows point **up**: the UI reads the registries; the registries don't know the 
   (never nested): `ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`. Permissionless,
   first-write-wins, content-addressed. (`CONTRACTS.md`.)
 - **RPGF (`src/protocol/usage/` → `src/rpgf/`).** RPGF rewards how much a contribution helps
-  the network evolve. `UsageCounter` counts verified artifact usage AS IT HAPPENS — the chain
+  the network evolve. `UsageCounter` counts verified usage of each clause or assembly AS IT HAPPENS — the chain
   cannot look backwards, so the fact is recorded when it occurs rather than reconstructed,
   which is what leaves nothing to post, bond, challenge, or adjudicate. `RpgfMinter` pays each
   tranche pro rata from a closed accrual period. It reads the registries and the kernel and is
@@ -146,7 +147,7 @@ The fifth noun (composition with other on-network contracts) has a contract-side
 and it is the only sanctioned way to give the network a new settlement-adjacent
 capability: **a new capability is a NEW parallel contract composing kernel state — never
 a kernel edit, never a tenant inside an existing registry.** The kernel is frozen and
-takes no position; the artifact families stay parallel; a composer is just another
+takes no position; the registry families stay parallel; a composer is just another
 permissionless contract.
 
 The copyable shape:

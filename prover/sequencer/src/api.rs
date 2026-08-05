@@ -2,7 +2,7 @@
 /// status queries.
 ///
 /// This is a PUBLIC, unauthenticated surface. It holds no keys and grants
-/// no privilege: it only relays signed artifacts into the mempool, where
+/// no privilege: it only relays signed submissions into the mempool, where
 /// admission runs the same EIP-712 recovery and witness gates the proof
 /// enforces, and republishes what it settled. Every failure is a structured
 /// `{ "error": … }` JSON body — never a panic, never a plaintext rejection.
@@ -242,7 +242,7 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
 // the VERIFIER's EIP-712 domain, signatures recover to the named parties,
 // the batch is anchored by its state-root transition), and both parties
 // already hold their own signed copies — so a relay that omits, delays, or
-// forgets an artifact costs nobody their evidence.
+// forgets a record costs nobody their evidence.
 
 fn error_response(route: &'static str, status: StatusCode, error: String) -> Response {
     warn!(route, %status, %error, "read rejected");

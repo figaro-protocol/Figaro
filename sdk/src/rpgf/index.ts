@@ -2,7 +2,7 @@
  * RPGF mirror — the off-chain reference implementation of
  * `sdk/src/rpgf/formula.json`.
  *
- * There is NOTHING TO POST here. `UsageCounter` counts verified artifact usage
+ * There is NOTHING TO POST here. `UsageCounter` counts verified clause-or-assembly usage
  * on chain at the moment it happens, and `RpgfMinter` pays each closed period from
  * those already-final numbers. This module MIRRORS that arithmetic so a reader can
  * display it, predict a claim, or verify that a recorded accrual is exactly what
@@ -29,7 +29,7 @@ import { toSequencerCommitment } from "../agent/sequencer.js";
 import type { Commitment } from "../types.js";
 import formula from "./formula.json" with { type: "json" };
 
-// ── Formula constants — derived from the canonical artifact, never
+// ── Formula constants — derived from the canonical spec, never
 //    restated in code. Every cap, weight and scale lives in formula.json;
 //    this module only executes what the spec declares. ─────────────────
 
@@ -42,7 +42,7 @@ export const RPGF_SCORE_SCALE = BigInt(formula.parameters.scoreScale);
  *  matters, this constant is the reference shape. */
 export const RPGF_PERIOD_COUNT: number = formula.parameters.periodCount;
 /** `UsageCounter.minSellers` — the minimum-support floor (ruled 2026-07-31):
- *  an artifact scores zero in a period until this many DISTINCT STAKED
+ *  a clause or assembly scores zero in a period until this many DISTINCT STAKED
  *  SELLERS carried it there. Reference value; the live one is on chain. */
 export const RPGF_MIN_SELLERS = BigInt(formula.parameters.minSellers);
 
@@ -73,7 +73,7 @@ export function icbrt(n: bigint): bigint {
  *  `UsageCounter._score`. Breadth (distinct STAKED SELLERS) weighs twice as
  *  heavily as volume; below `minSellers` distinct sellers nothing scores
  *  (counting still accrues — the score springs whole at the floor). UNIFORM:
- *  no weight multiplier — every artifact's score is its real usage alone.
+ *  no weight multiplier — every clause or assembly's score is its real usage alone.
  *  `minSellers` defaults to the formula reference; pass the chain's
  *  `UsageCounter.minSellers()` to mirror a specific deployment. */
 export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_SELLERS): bigint {
@@ -83,14 +83,14 @@ export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_S
 
 // ── Usage records (the counter's event stream) ───────────────────────
 
-/** One `UsageCounter.UsageRecorded` log. `c`, `d` and `score` are the artifact's
+/** One `UsageCounter.UsageRecorded` log. `c`, `d` and `score` are the clause-or-assembly's
  *  running values AFTER the record — the mirror recomputes them independently,
  *  so a divergence is visible without a second data source. */
 export interface UsageRecord {
     blockNumber: bigint;
     logIndex: number;
     /** Clause idHash or assembly compositionHash. */
-    artifact: Hex;
+    clauseOrAssembly: Hex;
     period: number;
     processId: Hex;
     /** The recorded order's seller of record (live-staked at record time). */
@@ -100,7 +100,7 @@ export interface UsageRecord {
     score: bigint;
 }
 
-/** One SETTLEMENT PATH's accrual for an artifact in one period —
+/** One SETTLEMENT PATH's accrual for a clause or assembly in one period —
  *  `UsageCounter.accrualOf` or `batchAccrualOf`. */
 export interface UsageAccrual {
     c: bigint;
@@ -109,20 +109,20 @@ export interface UsageAccrual {
 }
 
 /** One batch's `BatchUsageRecorded` log. Unlike `UsageRecord` these are
- *  CUMULATIVE for the artifact-period, not per-process increments: the guest
+ *  CUMULATIVE for the clause-or-assembly-period, not per-process increments: the guest
  *  proves the running totals off-chain and the verifier writes them whole, so
  *  a later record REPLACES an earlier one rather than adding to it. */
 export interface BatchUsageRecord {
     blockNumber: bigint;
     logIndex: number;
-    artifact: Hex;
+    clauseOrAssembly: Hex;
     period: number;
     c: bigint;
     d: bigint;
     score: bigint;
 }
 
-/** An artifact's accrual across BOTH settlement paths.
+/** A clause or assembly's accrual across BOTH settlement paths.
  *
  *  The two are kept apart on purpose. A batch-settled process never acquires
  *  kernel status and a kernel-settled one is never in a batch, so no PROCESS
@@ -131,7 +131,7 @@ export interface BatchUsageRecord {
  *  them. Adding `d` to `d` would therefore pay for breadth nobody had.
  *  Scores are summed; components never are — and the minimum-support floor
  *  applies per path, for the same reason. */
-export interface ArtifactAccrual {
+export interface ClauseOrAssemblyAccrual {
     direct: UsageAccrual;
     batch: UsageAccrual;
     /** `direct.score + batch.score` — mirrors `UsageCounter.scoreOf`, and the
@@ -139,10 +139,10 @@ export interface ArtifactAccrual {
     score: bigint;
 }
 
-/** One period's accrual state — every artifact's merged accrual plus the
+/** One period's accrual state — every clause or assembly's merged accrual plus the
  *  period total, mirroring `totalScoreIn` (which counts both paths). */
 export interface UsagePeriodAccrual {
-    byArtifact: Map<Hex, ArtifactAccrual>;
+    byClauseOrAssembly: Map<Hex, ClauseOrAssemblyAccrual>;
     totalScore: bigint;
 }
 
@@ -151,7 +151,7 @@ function emptyAccrual(): UsageAccrual {
 }
 
 /** Replay the counter's counting rules over a record stream: idempotence per
- *  (artifact, process) — GLOBAL, so a process counts once ever and a later
+ *  (clause or assembly, process) — GLOBAL, so a process counts once ever and a later
  *  period is never paid for an earlier period's trade — then the
  *  distinct-STAKED-SELLER count PER PERIOD (ruled 2026-07-31: breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
@@ -169,26 +169,26 @@ export function computeUsageAccruals(
     );
 
     const periods = new Map<number, UsagePeriodAccrual>();
-    const countedProcesses = new Map<Hex, Set<string>>(); // artifact → processIds (GLOBAL)
-    const sellersSeen = new Map<string, Set<string>>(); // artifact|period → sellers
+    const countedProcesses = new Map<Hex, Set<string>>(); // clauseOrAssembly → processIds (GLOBAL)
+    const sellersSeen = new Map<string, Set<string>>(); // clauseOrAssembly|period → sellers
 
     for (const record of sorted) {
-        const artifact = record.artifact.toLowerCase() as Hex;
-        const scopeKey = `${artifact}|${record.period}`;
+        const clauseOrAssembly = record.clauseOrAssembly.toLowerCase() as Hex;
+        const scopeKey = `${clauseOrAssembly}|${record.period}`;
 
-        const seenProcesses = countedProcesses.get(artifact) ?? new Set<string>();
+        const seenProcesses = countedProcesses.get(clauseOrAssembly) ?? new Set<string>();
         if (seenProcesses.has(record.processId.toLowerCase())) continue; // AlreadyCounted
         const sellers = sellersSeen.get(scopeKey) ?? new Set<string>();
         const seller = record.seller.toLowerCase();
         const firstSeller = !sellers.has(seller);
 
         seenProcesses.add(record.processId.toLowerCase());
-        countedProcesses.set(artifact, seenProcesses);
+        countedProcesses.set(clauseOrAssembly, seenProcesses);
         sellers.add(seller);
         sellersSeen.set(scopeKey, sellers);
 
-        const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, ArtifactAccrual>(), totalScore: 0n };
-        const entry = period.byArtifact.get(artifact) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<Hex, ClauseOrAssemblyAccrual>(), totalScore: 0n };
+        const entry = period.byClauseOrAssembly.get(clauseOrAssembly) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
         const accrual = entry.direct;
         accrual.c += 1n;
         if (firstSeller) accrual.d += 1n;
@@ -196,25 +196,25 @@ export function computeUsageAccruals(
         period.totalScore = period.totalScore + updated - accrual.score;
         accrual.score = updated;
         entry.score = accrual.score + entry.batch.score;
-        period.byArtifact.set(artifact, entry);
+        period.byClauseOrAssembly.set(clauseOrAssembly, entry);
         periods.set(record.period, period);
     }
 
-    // The batch leg. Each record carries the artifact-period's CUMULATIVE
+    // The batch leg. Each record carries the clause-or-assembly-period's CUMULATIVE
     // (c, d), so the last one in log order wins outright — replay order only
     // decides which record is last, never how much accumulates.
     const batchSorted = [...batchRecords].sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
     );
     for (const record of batchSorted) {
-        const artifact = record.artifact.toLowerCase() as Hex;
-        const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, ArtifactAccrual>(), totalScore: 0n };
-        const entry = period.byArtifact.get(artifact) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+        const clauseOrAssembly = record.clauseOrAssembly.toLowerCase() as Hex;
+        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<Hex, ClauseOrAssemblyAccrual>(), totalScore: 0n };
+        const entry = period.byClauseOrAssembly.get(clauseOrAssembly) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
         const updated = usageScore(record.c, record.d, minSellers);
         period.totalScore = period.totalScore + updated - entry.batch.score;
         entry.batch = { c: record.c, d: record.d, score: updated };
         entry.score = entry.direct.score + entry.batch.score;
-        period.byArtifact.set(artifact, entry);
+        period.byClauseOrAssembly.set(clauseOrAssembly, entry);
         periods.set(record.period, period);
     }
     return periods;
@@ -226,16 +226,16 @@ export function computeUsageAccruals(
 export interface RpgfAllocation {
     account: Address;
     amount: bigint;
-    /** The wallet's summed artifact score for the period. */
+    /** The wallet's summed clause-or-assembly score for the period. */
     score: bigint;
 }
 
-/** The payout: a period's accrual plus each artifact's author of record gives
+/** The payout: a period's accrual plus each clause or assembly's author of record gives
  *  every wallet's period entitlement — UNIFORM pro rata,
  *  `floor(periodAmount * score / total)`, with no cap.
  *
- *  `authorOf` maps artifact key → author of record (clause registrar or
- *  assembly author); an artifact with no author is unclaimable and its score
+ *  `authorOf` maps clause-or-assembly key → author of record (clause registrar or
+ *  assembly author); a clause or assembly with no author is unclaimable and its score
  *  still counts toward the denominator, exactly as on chain. Author-of-record
  *  eligibility is gated on a LIVE stake ON CHAIN (`RpgfMinter._isAuthor`); pass
  *  only live authors here to mirror it. */
@@ -247,17 +247,17 @@ export function computeRpgfAllocations(
     if (period.totalScore === 0n) return [];
 
     const walletScores = new Map<Address, bigint>();
-    for (const [artifact, accrual] of period.byArtifact) {
-        const author = authorOf.get(artifact.toLowerCase() as Hex);
+    for (const [clauseOrAssembly, accrual] of period.byClauseOrAssembly) {
+        const author = authorOf.get(clauseOrAssembly.toLowerCase() as Hex);
         if (!author || accrual.score === 0n) continue;
         const key = author.toLowerCase() as Address;
         walletScores.set(key, (walletScores.get(key) ?? 0n) + accrual.score);
     }
 
     // No clamp to `totalScore`: scores are summed per author over DISTINCT
-    // artifacts (`byArtifact` is keyed by artifact), so `score <= totalScore`
+    // clauses or assemblies (`byClauseOrAssembly` is keyed by clause or assembly), so `score <= totalScore`
     // holds structurally. The chain dropped its equivalent clamp on 2026-07-30 —
-    // there it was reachable via a duplicate-stuffed artifact list, and clamping
+    // there it was reachable via a duplicate-stuffed clause-or-assembly list, and clamping
     // silently rounded such a claim UP to the entire period budget instead of
     // rejecting it. Mirror the contract: nothing to clamp, and a violation
     // should surface, not be smoothed over.
@@ -292,7 +292,7 @@ export async function fetchUsageRecords(
             records.push({
                 blockNumber: log.blockNumber ?? 0n,
                 logIndex: log.logIndex ?? 0,
-                artifact: a.artifact as Hex,
+                clauseOrAssembly: a.clauseOrAssembly as Hex,
                 period: Number(a.period),
                 processId: a.processId as Hex,
                 seller: a.seller as Address,
@@ -312,7 +312,7 @@ export async function fetchUsageRecords(
 /** Fetch the BATCH-path record stream over `[0, toBlock]`.
  *
  *  A reader that folds only `fetchUsageRecords` sees the direct path alone and
- *  silently under-reports every artifact whose trade moved to batches — which
+ *  silently under-reports every clause or assembly whose trade moved to batches — which
  *  is the whole failure the bridge exists to close. Pass both streams to
  *  `computeUsageAccruals`. `chunkSize` overrides `DEFAULT_LOG_CHUNK_SIZE` —
  *  see `fetchLogsChunked` (../events.ts). */
@@ -332,7 +332,7 @@ export async function fetchBatchUsageRecords(
             records.push({
                 blockNumber: log.blockNumber ?? 0n,
                 logIndex: log.logIndex ?? 0,
-                artifact: a.artifact as Hex,
+                clauseOrAssembly: a.clauseOrAssembly as Hex,
                 period: Number(a.period),
                 c: a.c as bigint,
                 d: a.d as bigint,
@@ -355,8 +355,8 @@ export interface UsageClaimContext {
      *  proves against. Read from chain, never hardcoded: it is a deploy-time
      *  choice of the counter, not a constant of the protocol. */
     provenanceClause: Hex;
-    /** Artifact keys the counter refuses (`excludedArtifact`). */
-    excludedArtifacts: readonly Hex[];
+    /** Clause-or-assembly keys the counter refuses (`excludedClauseOrAssembly`). */
+    excludedClausesOrAssemblies: readonly Hex[];
 }
 
 /**
@@ -369,7 +369,7 @@ export interface UsageClaimContext {
  *
  *  - the CLAUSE leg emits one claim per agreement section, minus the excluded
  *    ones. Dropping them is mandatory, not an optimisation: an excluded
- *    artifact reverts `applyBatchAccrual` and takes the ENTIRE BATCH with it,
+ *    clause or assembly reverts `applyBatchAccrual` and takes the ENTIRE BATCH with it,
  *    including every other party's settlement.
  *  - the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the
  *    clause leg dropping things. `figaro-assembly-provenance` is itself
@@ -385,17 +385,17 @@ export function buildUsageClaims(
     agreement: Agreement,
     context: UsageClaimContext,
 ): SequencerUsageClaim[] {
-    const excluded = new Set(context.excludedArtifacts.map((a) => a.toLowerCase()));
+    const excluded = new Set(context.excludedClausesOrAssemblies.map((a) => a.toLowerCase()));
     const wireOrder = toSequencerCommitment(order);
     const claims: SequencerUsageClaim[] = [];
 
     // ── Clause leg ──
     for (const section of agreement.sections) {
-        const artifact = computeClauseKey(section.clause, section.version);
-        if (excluded.has(artifact.toLowerCase())) continue;
+        const clauseOrAssembly = computeClauseKey(section.clause, section.version);
+        if (excluded.has(clauseOrAssembly.toLowerCase())) continue;
         claims.push({
             order: wireOrder,
-            artifact,
+            clause_or_assembly: clauseOrAssembly,
             kind: { Clause: { section_hash: sectionDataHash(section) } },
             inclusion_proof: buildSectionInclusionProof(agreement, section.clause).proof,
         });
@@ -410,7 +410,7 @@ export function buildUsageClaims(
         if (typeof compositionHash === "string" && compositionHash.startsWith("0x")) {
             claims.push({
                 order: wireOrder,
-                artifact: compositionHash as Hex,
+                clause_or_assembly: compositionHash as Hex,
                 kind: "Assembly",
                 inclusion_proof: buildSectionInclusionProof(agreement, provenance.clause).proof,
             });
@@ -429,8 +429,8 @@ export function buildUsageClaims(
 /**
  * Read the two chain facts `buildUsageClaims` needs.
  *
- * `excludedArtifact` is a mapping with no enumeration, so exclusion can only be
- * TESTED per candidate — this asks about exactly the artifacts the agreement
+ * `excludedClauseOrAssembly` is a mapping with no enumeration, so exclusion can only be
+ * TESTED per candidate — this asks about exactly the clauses or assemblies the agreement
  * could claim, which is the complete set that matters.
  */
 export async function fetchUsageClaimContext(
@@ -447,18 +447,18 @@ export async function fetchUsageClaimContext(
             functionName: "provenanceClause",
         }) as Promise<Hex>,
         ...candidates.map(
-            (artifact) =>
+            (clauseOrAssembly) =>
                 client.readContract({
                     address: usageCounter,
                     abi: USAGE_COUNTER_ABI,
-                    functionName: "excludedArtifact",
-                    args: [artifact],
+                    functionName: "excludedClauseOrAssembly",
+                    args: [clauseOrAssembly],
                 }) as Promise<boolean>,
         ),
     ]);
 
     return {
         provenanceClause,
-        excludedArtifacts: candidates.filter((_, i) => flags[i]),
+        excludedClausesOrAssemblies: candidates.filter((_, i) => flags[i]),
     };
 }

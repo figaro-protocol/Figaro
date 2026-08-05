@@ -70,7 +70,7 @@ own: no posted payout root, no bond, no referee, gated only by the two-sided liv
 Owner of the funding side: `CONTRACTS.md` § RPGF.
 
 ⚠️ **One precise qualification, since 2026-07-30 (the batch-usage bridge):** batch-settled trade
-is counted by System A's proof, as a PASSENGER. The guest proves each artifact's cumulative
+is counted by System A's proof, as a PASSENGER. The guest proves each clause's or assembly's cumulative
 `(c, d)` inside the batch it is already proving, and `FigaroBatchVerifier` writes it to
 `UsageCounter.applyBatchAccrual`. This does NOT give System B a proof apparatus — there is still
 no RPGF program, no payout root, no bond and no referee; the reward simply rides the settlement
@@ -103,7 +103,7 @@ earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) 
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving
 the article (today `block.design.article`) as the sole grouping word. **RPGF does not read it — and reads no incentive tag at all**:
 the reward was ratified UNIFORM on 2026-07-29 (owner: memory `project_reward_mechanism_ratified_2026_07`),
-scoring every artifact on real usage alone with no category, tag, or weight — the article is purely a
+scoring every clause and assembly on real usage alone with no category, tag, or weight — the article is purely a
 reader-facing grouping that stays off-chain. The guard `lint-no-clause-grouping-synonyms` blocks any re-introduced
 `category`/`family` grouper.
 
@@ -157,7 +157,7 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
    picked two ENTIRE articles, turning a mechanism aimed at one clause into a boost for 14 of 27.
    **Superseded 2026-07-29:** the whole weighting axis was retired when the reward was ratified
    UNIFORM (owner: memory `project_reward_mechanism_ratified_2026_07`) — `rpgfTag`/`rpgfTagOf` and
-   `UsageCounter`'s `boostedTag`/`BOOSTED_WEIGHT`/`BASE_WEIGHT` are deleted; every artifact scores on
+   `UsageCounter`'s `boostedTag`/`BOOSTED_WEIGHT`/`BASE_WEIGHT` are deleted; every clause and assembly scores on
    real usage alone and Sybil-resistance moved to the two-sided live ETH stake. The `family`-vs-`article`
    history is preserved here only for the lesson it teaches.
    **The lesson: a terminology consolidation must sort synonyms (merge) from homonyms (keep, and

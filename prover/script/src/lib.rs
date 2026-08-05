@@ -222,7 +222,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
         // and the inclusion proof is empty.
         usage_claims: vec![UsageClaim {
             order: root,
-            artifact: clause_key,
+            clause_or_assembly: clause_key,
             kind: UsageClaimKind::Clause {
                 section_hash: re_assert_content_ref,
             },

@@ -134,7 +134,7 @@ function seedTemplateBlank() {
 /** The multi-order value-added CHAIN — the externalized P&L the multi-order
  *  e2e runs end-to-end: a root meal agreement (merchant process, delivery
  *  modality) plus courier and supplier sub-agreements. Which clauses compose
- *  which agreement is scenario DATA (a designed artifact this seed reproduces
+ *  which agreement is scenario DATA (a designed assembly this seed reproduces
  *  byte-for-byte), exactly like the seller roster above. Counterparties are
  *  NOT seeded — the lead binds + designates them through the real UI flow. */
 function seedTemplateChain() {

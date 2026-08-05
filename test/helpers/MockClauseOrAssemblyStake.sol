@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-/// @notice Test double for the ARTIFACT-side stake gate `UsageCounter` reads —
-///         it implements both the `ClauseRegistry.depositOf` and the
+/// @notice Test double for the CLAUSE-OR-ASSEMBLY-side stake gate `UsageCounter`
+///         reads — it implements both the `ClauseRegistry.depositOf` and the
 ///         `AssemblyRegistry.bindings` shapes, so one instance can stand in for
-///         either registry (or both). Every artifact is LIVE by default, so a
-///         counting test need not register anything; `kill(artifact)` marks one
-///         un-live to exercise the `ArtifactNotRegistered` gate. This keeps the
-///         counter's counting properties isolated from real registration
-///         mechanics, exactly as `batchVerifier` is a plain EOA in the suite.
-contract MockArtifactStake {
-    /// @dev Artifacts explicitly marked un-live (withdrawn / never registered).
+///         either registry (or both). Every key is LIVE by default, so a
+///         counting test need not register anything; `kill(clauseOrAssembly)`
+///         marks one un-live to exercise the `ClauseOrAssemblyNotRegistered`
+///         gate. This keeps the counter's counting properties isolated from real
+///         registration mechanics, exactly as `batchVerifier` is a plain EOA in
+///         the suite.
+contract MockClauseOrAssemblyStake {
+    /// @dev Clauses and assemblies explicitly marked un-live (withdrawn / never
+    ///      registered).
     mapping(bytes32 => bool) public dead;
 
     address public constant STAKER = address(0x5742E);
 
-    function kill(bytes32 artifact) external {
-        dead[artifact] = true;
+    function kill(bytes32 clauseOrAssembly) external {
+        dead[clauseOrAssembly] = true;
     }
 
     /// @dev `ClauseRegistry.depositOf` shape.
