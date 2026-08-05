@@ -60,6 +60,13 @@ FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|b
 FAIL_MONEY='\bmoney\b'
 ALLOWED_MONEY='hold the money, decide|real money is a common|Historical money names|ordinary money|hold its money|your identity, your money|money judgment|happens with real money, once'
 
+# Forum-jurisdiction drift is BANNED (operator, 2026-08-05 — recurring correction,
+# ~17 instances across sessions): forums and courts rule REGARDLESS of whether the
+# parties composed one in. Composition only fixes the jurisdiction in advance;
+# uncomposed means the parties pick the venue after the fact. The evidence record
+# serves either path. Never "forums rule only if/where/when composed".
+FAIL_FORUM='[Ff]orums? (can |will |may )?rules? only|rules? only (where|when|if)[^.]{0,40}compos'
+
 # Card-rail vocabulary is BANNED on protocol surfaces (operator, 2026-08-04:
 # "chargeback" reached /security via a blind probe's phrasing — defining the
 # mechanism by comparison to platform/card rails is the framing doctrine's
@@ -100,6 +107,13 @@ for file in "$@"; do
     hits=$(grep -niE "$FAIL_MONEY" "$file" | grep -viE "$ALLOWED_MONEY" || true)
     if [[ -n "$hits" ]]; then
         echo "[closed-world] $file — 'money' is BANNED (ruled 2026-08-03): the florin is a TOKEN, never money; say value / token / payment / deposit / stake per context. A genuinely money-the-concept sentence needs a conscious ALLOWED_MONEY entry."
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    hits=$(grep -nE "$FAIL_FORUM" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — forum-jurisdiction drift (ruled 2026-08-05): forums rule REGARDLESS of composition; composing one in only fixes jurisdiction in advance — uncomposed, the parties pick the venue afterward."
         echo "$hits" | head -3 | sed 's/^/    /'
         violations=$((violations + 1))
     fi

@@ -29,12 +29,12 @@ one sentence, done. Everything people touch is built above it:
   equal footing, backed by staked registries.
 - **Mutual assent** is the bilateral EIP-712 signature — no custodian between the
   parties.
-- **Legality** is composition with on-network contracts — arbitration forums ruling on
-  the evidence record, fiscal routing at settlement — legal-entity coordination pushed
-  to the edges; demonstrating compliance is cheap, from the record.
+- **Legality** — arbitration and fiscal routing compose in; where no forum is
+  composed, outside forums still rule on the same evidence record (the parties just
+  pick the venue afterward) — legal-entity coordination pushed to the edges;
+  demonstrating compliance is cheap, from the record.
 
-No admitting authority, custodian, or keeper in the stack — a forum rules only where
-the parties composed it in: self-sovereign
+No admitting authority, custodian, or keeper in the stack: self-sovereign
 wallets on the base chain, the same contract reproducible anywhere on Earth or off it
 (commit and resolve need no synchrony), at pennies of fixed gas — the friction of
 centralized coordination collapsed to a signature. The trail of data is the **data
