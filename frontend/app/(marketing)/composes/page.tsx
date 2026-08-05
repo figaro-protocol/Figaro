@@ -14,7 +14,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Composes — Figaro Protocol",
     description:
-        "What composes with Figaro and the conditions that keep composition safe: the wired surfaces (forum seam, IPFS, XMTP, payout routing), the coordinator pattern's five equilibrium-preserving conditions, and the kernel-vs-author boundary.",
+        "What composes with Figaro and the conditions that keep composition safe: the wired surfaces (forum seam, IPFS, XMTP, the Uniswap swap on-ramp, the Disperse multisender), the coordinator pattern's five equilibrium-preserving conditions, and the kernel-vs-author boundary.",
 };
 
 export default function Composes() {
@@ -31,7 +31,7 @@ export default function Composes() {
 
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Wired today: the dispute-forum seam, IPFS storage, XMTP messaging, emissions-disclosure attestations, and post-settlement payout routing &mdash; each an on-network artifact this repo can point at.
+                    Wired today: the dispute-forum seam, IPFS storage, XMTP messaging, emissions-disclosure attestations, the Uniswap swap on-ramp, and the Disperse multisender &mdash; each an on-network artifact this repo can point at.
                 </p>
                 <ul className="space-y-4">
                     <LabelledListRow label="Forums" uppercase>
@@ -43,8 +43,11 @@ export default function Composes() {
                     <LabelledListRow label="Messaging" uppercase>
                         <strong>XMTP.</strong> Per-order encrypted handoff channels, wired via <code>lib/handoff/</code>.
                     </LabelledListRow>
-                    <LabelledListRow label="Payout routing" uppercase>
-                        Post-settlement batch dispersal through the composed public multisender: one payment, many recipients, one transaction. A wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations), and the self-sovereign fiscal trail falls out as a byproduct. The composed deployment is the canonical ownerless Disperse contract, same address across chains; a local devnet rehearses it with an interface-matching mock. Post-settlement composition is path-blind &mdash; both <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> deliver by ERC-20 transfer to the party&apos;s own address, so routing what you received works the same regardless of which settlement path carried it.
+                    <LabelledListRow label="Token swap" uppercase>
+                        <strong>Uniswap.</strong> A process is denominated in one token, but a buyer may hold another: <code>WitnessSwapAndCommitCoordinator.swapAndCommit</code> swaps through Uniswap&apos;s canonical Permit2 + Universal Router and commits in the same transaction, so the kernel still sees a single-currency commitment. The deployment record wires the canonical contracts wherever they exist; a local devnet wires interface-matching mocks. Direct path only &mdash; the batch path has no funding leg (details under the conditions below).
+                    </LabelledListRow>
+                    <LabelledListRow label="Multisender" uppercase>
+                        <strong>Disperse.</strong> Post-settlement payout routing through the composed public multisender: one payment, many recipients, one transaction. A wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations), and the self-sovereign fiscal trail falls out as a byproduct. The composed deployment is the canonical ownerless Disperse contract, same address across chains; a local devnet rehearses it with an interface-matching mock. Post-settlement composition is path-blind &mdash; both <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> deliver by ERC-20 transfer to the party&apos;s own address, so routing what you received works the same regardless of which settlement path carried it.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>
