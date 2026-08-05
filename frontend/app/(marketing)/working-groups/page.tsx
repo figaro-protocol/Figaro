@@ -86,6 +86,18 @@ export default function WorkingGroups() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Discipline groups: formed around the papers.">
+                <p className="text-base text-ink-body leading-relaxed">
+                    Composability groups form around builder outputs &mdash; assemblies, clauses. A second kind forms around the paper corpus: eight disciplines (Voshmgir &amp; Zargham&rsquo;s cryptoeconomic-systems taxonomy &mdash; Economics and Game Theory, Industrial and Systems Engineering, Computer Science and Cryptography, Philosophy Law and Ethics, Political Science and Governance, Operations Research and Management Science, AI Optimization and Control, Psychology and Decisions Science), each reading the bonded settlement primitive through its own vocabulary. A paper is a discussion starter, not doctrine &mdash; any reader is free to extend it, contest it, or fork it into an implementation of their own, and nobody assigns who does that. That is the same formation rule as a composability group, run against a different kind of output.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed mt-4">
+                    <Link href="/papers" className="underline">
+                        Papers
+                    </Link>{" "}
+                    is the corpus index &mdash; one page per paper, grouped by discipline.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Local &amp; international">
                 <p className="text-base text-ink-body leading-relaxed">
                     Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against <code>frontend/app/(marketing)/_lib/paperGroups.ts</code>. Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.

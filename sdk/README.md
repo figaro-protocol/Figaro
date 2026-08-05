@@ -10,8 +10,13 @@ key-agreement. Three runtime dependencies: `viem`, plus `@noble/curves` +
 ## Install
 
 ```bash
-npm install @figaro/sdk
+npm install @figaro/sdk viem
 ```
+
+`viem` is a **peer dependency**, not a bundled one (`sdk/package.json` declares
+`"peerDependencies": { "viem": "^2.55.1" }`) — install it explicitly alongside
+the SDK, or the first chain call throws a missing-module error rather than a
+Figaro-shaped one.
 
 > **Honest scope:** `@figaro/sdk` is not yet published to the npm registry —
 > publication (with provenance attestation) is a tracked pre-release task.
@@ -825,7 +830,11 @@ signature routes through — buyer sign, seller counter-sign, and the checkout's
 pre-wallet check all call it, so no path signs an agreement whose sections
 violate their specs or whose hash mismatches its recomputed root
 (`validateCommitmentAgreement` is the non-throwing form, returning
-`{ ok, issues }`).
+`{ ok, issues }`). The negative half matters just as much: `buildOrderAgreement`
+itself validates NOTHING — it is pure projection (apply spec defaults, sort,
+hash) — so a caller that builds an agreement and skips `assertAgreementSignable`
+can still produce a signable-looking object with content that violates its own
+clause specs.
 
 ```ts
 import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@figaro/sdk";
@@ -984,6 +993,13 @@ import {
   templateCompositionHash, type AssemblyCheckoutLineItem, type PlannedTemplateOrder,
 } from "@figaro/sdk";
 
+// Hardcoded here for brevity. Building `lineItems` from a fetched
+// `SellerCatalogueMetadata` item has no exported helper — there is no
+// `catalogueItemToLineItem` in the SDK — so do the mapping yourself:
+// `id` → `itemId`, `price` (human decimal) → `unitPrice` (smallest unit, via
+// viem's `parseUnits(item.price, tokenDecimals)` — see `CatalogueItemMetadata.price`'s
+// doc comment), and `clauseValues` copied through UNCHANGED (same
+// `{clauseId: fieldValues}` shape `fillClassSections` reads below).
 const lineItems: AssemblyCheckoutLineItem[] = [
   { itemId: "espresso", name: "Espresso", quantity: 2, unitPrice: "150000000000000000" },
 ];
@@ -1141,6 +1157,22 @@ const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://�
 //   MembersRegistry.updateProfile(metadataURI)
 ```
 
+**Raw call signatures for the two artifact registries** (for `cast send` /
+direct-ABI callers — the exact parameter types are the function's identity, so
+a mistyped one reverts with an opaque selector mismatch, not a friendly error):
+
+```solidity
+// ClauseRegistry.sol:154 — cast selector: registerClause(string,uint64,bytes32,string)
+function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI) external payable
+
+// AssemblyRegistry.sol:148 — cast selector: registerAssembly(bytes32,string)
+function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable
+```
+
+`version` is `uint64`, not the `uint256` a caller might reach for by habit; and
+`registerAssembly` takes no version parameter at all — `compositionHash` alone
+is the identity. Both are `payable`; `msg.value` must equal `registrationDeposit()` exactly.
+
 **All three registries take the same reclaimable ETH deposit.** `MembersRegistry`,
 `ClauseRegistry`, and `AssemblyRegistry` each require a `registrationDeposit` on
 the registering call (`register` / `registerClause` / `registerAssembly`, all
@@ -1178,6 +1210,12 @@ The existence check is `registeredAt != 0`, NOT the bool: after a normal registr
 surfaced state) — it flips to `true` only once the author reclaims the deposit. So a
 freshly registered assembly correctly reads `depositWithdrawn == false`; that false is
 "deposit still held," not "registration failed."
+
+`ClauseRegistry`'s parallel stake struct (`depositOf[idHash]`, surfaced to the SDK as
+`RegisteredClause.registrar`) names the same field `registrar` rather than `author` — the
+two names identify the same concept under each registry's own vocabulary (the
+registering wallet), and `RpgfMinter._isAuthor` treats both as the artifact's author for
+600M reward eligibility.
 
 The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →
 `pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and

@@ -376,7 +376,7 @@ for (const [processId, process] of processes) {
                 </p>
                 <ul className="space-y-3 mb-4">
                     <LabelledListRow label="witnessSwapAndCommitCoordinator" labelWidth="wide">
-                        Off-protocol swap-and-commit: swaps a permit-signed input token into the settlement currency and commits in one transaction, so a party can bond in a token the process isn&apos;t denominated in (direct path only &mdash; on the batch path, swap in your wallet first). Pairs with <code>permit2</code> (the witness-permit layer) and <code>swapRouter</code> (the swap venue) &mdash; devnet mocks; mainnet the canonical Permit2 + Uniswap Universal Router.
+                        Off-protocol swap-and-commit: swaps a permit-signed input token into the settlement currency and commits in one transaction, so a party can bond in a token the process isn&apos;t denominated in (direct path only &mdash; on the batch path, swap in your wallet first). Pairs with <code>permit2</code> (the witness-permit layer) and <code>swapRouter</code> (the swap venue) &mdash; a local devnet wires mocks for both; the deployment record wires the canonical Permit2 + Uniswap Universal Router on any network where they&apos;re deployed.
                     </LabelledListRow>
                     <LabelledListRow label="usageCounter · rpgfMinter" labelWidth="wide">
                         Records settled-trade usage on-chain and pays it out on the RPGF schedule. Mechanics &mdash; the nine-year schedule, the three-seller floor, the live-deposit condition &mdash; are on <Link href="/artifact-rewards" className="underline">/artifact-rewards</Link>.
@@ -388,7 +388,7 @@ for (const [processId, process] of processes) {
                         Holds the DAO&apos;s genesis florin allocation (a multisig / Safe). It never signs kernel commitments &mdash; it buys through a funded operator EOA, because the kernel is ECDSA-only.
                     </LabelledListRow>
                     <LabelledListRow label="multisender" labelWidth="wide">
-                        Composed post-settlement batch dispersal (one payment, many recipients, one transaction). Mainnet composes the canonical ownerless Disperse (<code>0xD152f549545093347A162Dce210e7293f1452150</code>, same address across chains); devnet mirrors it with <code>MockDisperse</code>.
+                        Composed post-settlement batch dispersal (one payment, many recipients, one transaction). Wherever the ownerless Disperse contract (<code>0xD152f549545093347A162Dce210e7293f1452150</code>, same address across chains) is deployed, the deployment record composes it directly; a local devnet mirrors it with <code>MockDisperse</code>.
                     </LabelledListRow>
                 </ul>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">

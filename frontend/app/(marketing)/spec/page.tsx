@@ -110,7 +110,7 @@ function attestViaResolver(
                         title="FigaroBatchVerifier.sol"
                         href={`${GH}/FigaroBatchVerifier.sol`}
                         meta="SP1 proof · open-world content check"
-                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. Devnet wires MockSP1Verifier; mainnet wires Succinct's SP1 gateway + program vkey from env."
+                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. A local devnet wires MockSP1Verifier; the deployment record wires Succinct's SP1 gateway + program vkey from env wherever a network names one."
                     />
                 </ul>
             </MarketingSection>
@@ -249,7 +249,7 @@ function attestViaResolver(
 
             <MarketingSection title="Funding, payout &amp; composition contracts">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists on mainnet (Uniswap&apos;s Permit2 and router, the ownerless Disperse), the devnet stack rehearses the composition with an interface-matching mock and mainnet wires the real one.
+                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists (Uniswap&apos;s Permit2 and router, the ownerless Disperse), a local devnet rehearses the composition with an interface-matching mock, and the deployment record wires the real one wherever it&apos;s deployed.
                 </p>
                 <ul className="space-y-4">
                     <ContractEntry
@@ -262,14 +262,14 @@ function attestViaResolver(
                     <ContractEntry
                         id="Permit2"
                         title="Permit2 (witness SignatureTransfer)"
-                        meta="devnet mock · mainnet canonical"
-                        desc="The permit layer the swap coordinator pulls the input token through — permitWitnessTransferFrom folds the authorized swap route into the digest the owner signed. Mainnet wires Uniswap's canonical Permit2; devnet wires MockWitnessPermit2, whose digest parity with the canonical deployment is proven by the mainnet-fork suite (record key: permit2)."
+                        meta="devnet mock · canonical where deployed"
+                        desc="The permit layer the swap coordinator pulls the input token through — permitWitnessTransferFrom folds the authorized swap route into the digest the owner signed. The deployment record wires Uniswap's canonical Permit2 wherever it's deployed; a local devnet wires MockWitnessPermit2, whose digest parity with the canonical deployment is proven by the mainnet-fork suite (record key: permit2)."
                     />
                     <ContractEntry
                         id="swapRouter"
                         title="swapRouter (Uniswap Universal Router)"
-                        meta="devnet mock · mainnet canonical"
-                        desc="The swap venue the coordinator routes the input token through into the settlement currency. Mainnet wires the real Uniswap Universal Router; devnet wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
+                        meta="devnet mock · canonical where deployed"
+                        desc="The swap venue the coordinator routes the input token through into the settlement currency. The deployment record wires the real Uniswap Universal Router wherever it's deployed; a local devnet wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
                     />
                     <ContractEntry
                         id="UsageCounter"
@@ -289,13 +289,13 @@ function attestViaResolver(
                         id="daoTreasury"
                         title="daoTreasury (multisig)"
                         meta="devnet mock · genesis custody"
-                        desc="Holds the 300M-florin DAO genesis allocation. Mainnet is a canonical Safe at the DAO wallet — config, never code; devnet is MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
+                        desc="Holds the 300M-florin DAO genesis allocation. A canonical deployment wires a Safe at the DAO wallet — config, never code; a local devnet wires MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
                     />
                     <ContractEntry
                         id="multisender"
                         title="multisender (Disperse)"
-                        meta="devnet mock · mainnet canonical"
-                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Mainnet composes the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018); devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
+                        meta="devnet mock · canonical where deployed"
+                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018) exists, the deployment record composes it directly; a local devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">
