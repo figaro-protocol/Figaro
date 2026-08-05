@@ -32,7 +32,7 @@ export default function WorkingGroups() {
                 </p>
                 <div className="space-y-10">
                     {PAPER_GROUPS.map((g) => (
-                        <article key={g.slug} id={g.slug} className="scroll-mt-24">
+                        <article key={g.slug} id={g.slug} className="scroll-mt-24 border-l-2 border-default pl-6">
                             <h3 className="text-heading-h3 text-ink-heading leading-snug">
                                 {g.name}
                             </h3>
