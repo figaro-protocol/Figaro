@@ -78,8 +78,8 @@ export default function Clauses() {
                         <span className="text-ink-body"> &mdash; composition templates wiring clauses into multi-order processes; anchored on AssemblyRegistry.</span>
                     </li>
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
+                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>

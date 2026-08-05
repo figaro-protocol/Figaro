@@ -47,7 +47,6 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/users", changeFrequency: "weekly", priority: 0.9 },
     { path: "/data", changeFrequency: "monthly", priority: 0.8 },
     { path: "/builders", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/builders/composability", changeFrequency: "monthly", priority: 0.7 },
     { path: "/composes", changeFrequency: "monthly", priority: 0.7 },
     { path: "/builders/designer", changeFrequency: "weekly", priority: 0.7 },
     { path: "/builders/clauses", changeFrequency: "weekly", priority: 0.7 },

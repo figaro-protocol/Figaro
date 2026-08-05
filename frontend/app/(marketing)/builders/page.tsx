@@ -102,16 +102,10 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; clauses wired into a multi-order process, anchored on <code>AssemblyRegistry</code>.</span>
                 </li>
                 <li>
-                    <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">
-                        Composability
-                    </Link>
-                    <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
-                </li>
-                <li>
                     <Link href="/composes" className="text-ink-heading font-medium hover:underline">
                         Composes
                     </Link>
-                    <span className="text-ink-body"> &mdash; the external composition catalogue: forums, offset markets, payout routing, and what &ldquo;wired&rdquo; vs &ldquo;architectural slot&rdquo; means today.</span>
+                    <span className="text-ink-body"> &mdash; the single composition page: the wired surfaces (forum seam, storage, messaging, payout routing), the coordinator pattern&rsquo;s five equilibrium-preserving conditions, and the kernel-vs-author boundary.</span>
                 </li>
                 <li>
                     <Link href="/integrate" className="text-ink-heading font-medium hover:underline">

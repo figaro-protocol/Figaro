@@ -27,12 +27,12 @@ describe("Breadcrumb", () => {
             <Breadcrumb
                 items={[
                     { label: "Builders", href: "/builders" },
-                    { label: "Composability" },
+                    { label: "Sharp edges" },
                 ]}
             />,
         );
-        expect(screen.queryByRole("link", { name: "Composability" })).not.toBeInTheDocument();
-        const current = screen.getByText("Composability");
+        expect(screen.queryByRole("link", { name: "Sharp edges" })).not.toBeInTheDocument();
+        const current = screen.getByText("Sharp edges");
         expect(current).toHaveAttribute("aria-current", "page");
     });
 

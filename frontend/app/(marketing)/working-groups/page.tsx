@@ -2,44 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { PAPER_GROUPS } from "@/app/(marketing)/_lib/paperGroups";
+
+/** The taxonomy's own source, cited wherever the eight disciplines are named. */
+const TAXONOMY_URL =
+    "https://research.wu.ac.at/en/publications/foundations-of-cryptoeconomic-systems-6/";
+
+/** Name a group in prose from the data, never by hand — hand-copied names are
+ *  how this page drifted from `paperGroups.ts` in the first place. */
+const groupName = (slug: string) =>
+    PAPER_GROUPS.find((g) => g.slug === slug)?.name ?? slug;
 
 export const metadata: Metadata = {
     title: "Working Groups — Figaro Protocol",
     description:
-        "How work on Figaro organizes itself: composability working groups that self-form around builder outputs — assemblies and clauses — rather than a roster of teams, funded by the protocol's open-world registries and RPGF.",
+        "The working groups are the eight cryptoeconomic disciplines: what each asks of the bonded substrate, the papers that start its discussion, and the one way the work is financed — the 600M retroactive reward, paid for artifacts real settled trade reached for. Nobody is appointed; anyone forms or joins one, anywhere.",
 };
-
-interface CompositionGroup {
-    name: string;
-    tier: string;
-    charter: string;
-    references: { label: string; href: string }[];
-}
-
-const COMPOSITION_GROUPS: CompositionGroup[] = [
-    {
-        name: "Assembly composition",
-        tier: "Tier 1",
-        charter:
-            "Designs assemblies that compose against existing primitives — roles, mechanisms, clauses, and handoff conditions wired into a configuration artifact. No new on-chain code; the assembly is the only authored artifact. Produces reference assemblies for new verticals; iterates on existing ones.",
-        references: [
-            { label: "Composability — Tier 1", href: "/builders/composability" },
-            { label: "Builders — Tier 1 tools", href: "/builders" },
-            { label: "Local Commerce reference", href: "/local-commerce" },
-        ],
-    },
-    {
-        name: "Clause authoring",
-        tier: "Tier 2",
-        charter:
-            "Authors new clauses — content-type design plus the spec/validation work that ships in lockstep across the TypeScript Layer-A validator and its byte-parity Rust mirror in the generic SP1 proof engine (which validates any registered clause in-proof against its anchored spec — no per-clause on-chain validator, by design). Cross-cuts disciplines: the spec and its conformance vectors pull from Computer Science and Cryptography; content definition pulls from whichever discipline the clause's domain belongs to.",
-        references: [
-            { label: "Composability — Tier 2", href: "/builders/composability" },
-            { label: "Clauses — architecture and inventory", href: "/clauses" },
-            { label: "Builders — Tier 2 tools", href: "/builders" },
-        ],
-    },
-];
 
 export default function WorkingGroups() {
     return (
@@ -48,79 +26,112 @@ export default function WorkingGroups() {
                 title="Nobody assigns this work."
                 lead={
                     <>
-                        Work on Figaro funds itself three ways &mdash; a 600M usage-paid reward pool, a 300M DAO-discretionary treasury, and direct contributions (<Link href="/artifact-rewards" className="underline">the mechanics</Link>) &mdash; and the people doing it organize themselves around builder outputs, assemblies and clauses, rather than a roster of teams. Take a clause for measuring greenhouse-gas emissions in a supply chain: the spec-and-conformance work draws from Computer Science and Cryptography, the content definition from Operations Research or Industrial Engineering &mdash; two people who have never met, pulled together by what the artifact needed rather than by an org chart. They register the clause; sellers start reaching for it in real settled trade; RPGF pays them for what it carries, automatically, once three different sellers have used it. That is a working group: not appointed, not headcount-planned, formed by the shape of the artifact.
+                        The working groups are the eight cryptoeconomic disciplines, and nothing else. No one is appointed to one, no one is handed work inside one, and none of them holds a budget: the protocol finances this work in exactly one way &mdash; the 600M-florin retroactive reward, paid to the authors of the clauses and assemblies that real settled trade reached for, with no application to file and no list to get onto (<Link href="/artifact-rewards" className="underline">the mechanics</Link>, including the floor of three separate sellers an artifact must clear before it earns anything). What a group produces is an artifact, and an artifact rarely sits inside one discipline. The emissions clause is the shape of it: it binds the seller to a named accounting methodology in the agreement and files the measured figure as a runtime attestation &mdash; what gets measured and under which methodology is a question for {groupName("operations-research")}, how the spec is written and checked is a question for {groupName("computer-science-cryptography")}. One clause, two groups, nothing between them but the artifact.
                     </>
                 }
             />
 
-            <MarketingSection title="Output-oriented; anyone can start one.">
-                <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Composability working groups organize around concrete builder outputs &mdash; assemblies and clauses &mdash; rather than the disciplinary axis they cross-cut: a clause for GHG measurement pulls spec-and-conformance expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from <Link href="/builders/composability" className="underline">composability</Link>. Any working group can form around any discipline, anywhere, without permission &mdash; implementation work organizes at <Link href="/builders" className="underline">/builders</Link>.
+            <MarketingSection title="The eight groups.">
+                <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-4">
+                    A group is a discipline &mdash; a stable position from which to read the substrate. The list is not the project&rsquo;s: it is the taxonomy set out in Voshmgir, S. &amp; Zargham, M.,{" "}
+                    <a href={TAXONOMY_URL} className="underline" rel="noreferrer">
+                        &ldquo;Foundations of Cryptoeconomic Systems&rdquo;
+                    </a>{" "}
+                    (Working Paper Series 1/2020, Research Institute for Cryptoeconomics, WU Vienna, 2020; §3 and Fig. 2). Eight is the whole list; it cannot grow or shrink without leaving the taxonomy.
                 </p>
-                <div className="space-y-8">
-                    {COMPOSITION_GROUPS.map((g) => (
-                        <article key={g.name}>
-                            <p className="text-xs font-semibold text-ink-muted mb-1">
-                                {g.tier}
-                            </p>
-                            <h3 className="text-heading-h3 text-ink-heading mb-2 leading-snug">
+                <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-4">
+                    Each group carries a definition of what its discipline asks of the bonded substrate, and the papers written from that position so far. The papers are discussion starters, not doctrine &mdash; any reader may extend one, contest it, or fork it into an implementation of their own. A discipline with no papers yet is an open call, not a vacancy.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-8">
+                    Nobody grants membership, because there is nobody to ask: you form or join a group wherever you are, and a group&rsquo;s work becomes visible here through a pull request against <code>frontend/app/(marketing)/_lib/paperGroups.ts</code>, reviewed at merge time like any other. There is no project-wide channel to join, official or otherwise &mdash; one would contradict permissionless formation. Where a group publishes a venue of its own, it appears with the group below.
+                </p>
+                <div className="space-y-10">
+                    {PAPER_GROUPS.map((g) => (
+                        <article key={g.slug} id={g.slug} className="scroll-mt-24">
+                            <h3 className="text-heading-h3 text-ink-heading leading-snug">
                                 {g.name}
                             </h3>
-                            <p className="text-sm text-ink-body leading-relaxed mb-3">
-                                {g.charter}
+                            <p className="text-xs text-ink-muted italic mt-0.5 mb-3">
+                                {g.discipline}
                             </p>
-                            <ul className="space-y-1 text-xs text-ink-muted">
-                                {g.references.map((r) => (
-                                    <li key={r.href}>
-                                        <Link href={r.href} className="underline">
-                                            {r.label}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
+                            <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-3">
+                                {g.definition}
+                            </p>
+                            {g.papers.length > 0 ? (
+                                <ul className="space-y-1 text-sm">
+                                    {g.papers.map((p) => (
+                                        <li key={p.href}>
+                                            {p.href.endsWith(".pdf") ? (
+                                                <a href={p.href} className="text-ink-heading hover:underline">
+                                                    {p.title}
+                                                </a>
+                                            ) : (
+                                                <Link href={p.href} className="text-ink-heading hover:underline">
+                                                    {p.title}
+                                                </Link>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-ink-muted">
+                                    No paper convened yet &mdash; an open call.
+                                </p>
+                            )}
+                            {g.references && g.references.length > 0 && (
+                                <ul className="space-y-1 text-xs text-ink-muted mt-3">
+                                    {g.references.map((r) => (
+                                        <li key={r.href}>
+                                            {r.href.startsWith("/") ? (
+                                                <Link href={r.href} className="underline">
+                                                    {r.label}
+                                                </Link>
+                                            ) : (
+                                                <a href={r.href} className="underline" rel="noreferrer">
+                                                    {r.label}
+                                                </a>
+                                            )}
+                                            {r.note && <span> &mdash; {r.note}</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {g.venue && (
+                                <p className="text-xs text-ink-muted mt-3">
+                                    Venue:{" "}
+                                    <a href={g.venue.href} className="underline" rel="noreferrer">
+                                        {g.venue.label}
+                                    </a>
+                                </p>
+                            )}
                         </article>
                     ))}
                 </div>
-                <p className="text-sm text-ink-muted mt-8">
-                    Tier-3 work (authoring new mechanism contracts above the kernel) is absorbed into the existing Computer Science and Cryptography group (formal verification, adversarial review) and the Economics and Game Theory group (mechanism design). It does not require its own working group at this scale.
+            </MarketingSection>
+
+            <MarketingSection title="No group&rsquo;s question closes inside its own boundary.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-4">
+                    The eight are reading positions, not jurisdictions. In the taxonomy the project adopts they are bound by a single concept &mdash; the allocation of resources, physical, financial and social &mdash; and a cryptoeconomic system is read at three levels at once: micro-foundational (mechanism design), meso-institutional (governance as algorithmic policy-making), and macro-observable (system metrics). Voshmgir and Zargham hold the three to be interdependent, and that they &ldquo;cannot be simply reduced into a single layer.&rdquo;
+                </p>
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-4">
+                    So a question posed inside one group lands in another. The 2&times; bonding ratio is micro-foundational and belongs to {groupName("economics-game-theory")}; what it does to the classification of work along the subordination axis belongs to {groupName("philosophy-law-ethics")}; whether a participant actually performs the comparison correctly at the margin belongs to {groupName("psychology-decisions")}. One ratio, three groups.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    That is why the artifacts &mdash; clauses, assemblies &mdash; are usually co-authored across a boundary, as the emissions clause was. Working across group lines is not a separate kind of group and keeps no separate list: it is simply what the groups do.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Discipline groups: formed around the papers.">
-                <p className="text-base text-ink-body leading-relaxed">
-                    Composability groups form around builder outputs &mdash; assemblies, clauses. A second kind forms around the paper corpus: eight disciplines (Voshmgir &amp; Zargham&rsquo;s cryptoeconomic-systems taxonomy &mdash; Economics and Game Theory, Industrial and Systems Engineering, Computer Science and Cryptography, Philosophy Law and Ethics, Political Science and Governance, Operations Research and Management Science, AI Optimization and Control, Psychology and Decisions Science), each reading the bonded settlement primitive through its own vocabulary. A paper is a discussion starter, not doctrine &mdash; any reader is free to extend it, contest it, or fork it into an implementation of their own, and nobody assigns who does that. That is the same formation rule as a composability group, run against a different kind of output.
-                </p>
-                <p className="text-sm text-ink-muted leading-relaxed mt-4">
-                    <Link href="/papers" className="underline">
+            <MarketingSection title="The corpus.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    <Link href="/papers" className="text-ink-heading font-medium hover:underline">
                         Papers
                     </Link>{" "}
-                    is the corpus index &mdash; one page per paper, grouped by discipline.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Local &amp; international">
-                <p className="text-base text-ink-body leading-relaxed">
-                    Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against <code>frontend/app/(marketing)/_lib/paperGroups.ts</code>. Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Contributing">
-                <p className="text-base text-ink-body leading-relaxed mb-4">
-                    To extend the paper corpus, declare current research, or amend a discipline&apos;s charter, open a pull request against <code>frontend/app/(marketing)/_lib/paperGroups.ts</code> &mdash; reviewed at merge time, with scope discussed on Telegram first. To amend a composability working group&apos;s charter or references, open a pull request against this page.
-                </p>
-                <p className="text-sm text-ink-muted leading-relaxed">
-                    The composability tiers track the composition doctrine on <Link href="/builders/composability" className="underline">composability</Link>; the disciplinary frame they cross-cut is catalogued on <Link href="/papers" className="underline">Papers</Link>. If either upstream taxonomy converges on a different shape, the relevant page will follow.
+                    is the index of the discussion starters &mdash; one page per paper, grouped by the same eight disciplines, each reading in the browser with server-rendered math and exporting to PDF.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="More on the protocol" bottomPad="wide">
                 <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">
-                            Artifact rewards
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the three capital sources and the full 600M reward mechanism: the schedule, the three-seller floor, the live-deposit condition.</span>
-                    </li>
                     <li>
                         <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
                             Protocol
@@ -138,6 +149,12 @@ export default function WorkingGroups() {
                             Specifications
                         </Link>
                         <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, clause, mechanism modules, with source links and verification status.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">
+                            Builders
+                        </Link>
+                        <span className="text-ink-body"> &mdash; where implementation work organizes: clause authoring, contract development, assembly composition, and the tooling around them.</span>
                     </li>
                 </ul>
             </MarketingSection>

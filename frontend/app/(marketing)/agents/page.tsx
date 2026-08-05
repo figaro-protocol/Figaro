@@ -90,8 +90,8 @@ export default function Agents() {
                         <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
                     </li>
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
+                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>

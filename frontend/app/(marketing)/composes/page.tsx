@@ -4,10 +4,17 @@ import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
+// AUDITED + MERGED 2026-08-05: this page absorbed /builders/composability (the
+// split was an author's filing distinction — "catalogue" vs "doctrine" — that no
+// reader could see; operator ruled ONE page). Every surviving claim traces to
+// the reality audit's verified rows; the deleted-apparatus walkthrough, the
+// vendor catalogue with no code behind it, and the page-minted "Tier 1/2/3"
+// taxonomy were cut the same day. The coordinator conditions are FIVE
+// (Prop 7.1, /papers/verified-settlement-kernel), never "three".
 export const metadata: Metadata = {
     title: "Composes — Figaro Protocol",
     description:
-        "What Figaro composes with: forums, offset markets, prediction markets, insurance, lending, payout routing, tax reporting, identity, storage, and messaging — the external compositional surface around the frozen kernel, with a worked carbon-offset walkthrough.",
+        "What composes with Figaro and the conditions that keep composition safe: the wired surfaces (forum seam, IPFS, XMTP, payout routing), the coordinator pattern's five equilibrium-preserving conditions, and the kernel-vs-author boundary.",
 };
 
 export default function Composes() {
@@ -17,118 +24,111 @@ export default function Composes() {
                 title="What composes with Figaro."
                 lead={
                     <>
-                        Figaro composes two ways. <strong>Internally</strong>, clauses assemble
-                        into assemblies and mechanism contracts that extend the protocol
-                        without altering the frozen kernel &mdash; permissionless at every
-                        tier, covered in full on Composability.{" "}
-                        <strong>Externally</strong>, composition happens through primitives
-                        the kernel deliberately does not include &mdash; a dispute forum, an
-                        offset market, a lending facility, and the rest below. This page
-                        catalogues the external half.
+                        <code>FigaroCore</code> takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. Every other question lives above it &mdash; permissionless to add, permissionless to fork, equally bound by the same Nash equilibrium. Composition happens two ways: <strong>internally</strong>, where clauses assemble into <Link href="/assemblies" className="underline">assemblies</Link> and mechanism contracts extend the protocol without touching the frozen kernel; and <strong>externally</strong>, through primitives the kernel deliberately does not include. This page covers what composes today and the conditions that keep any composition safe.
                     </>
                 }
-            >
-                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    This page is the <strong>catalogue</strong> &mdash; what actually composes with Figaro, wired or architectural slot. The <strong>doctrine</strong> &mdash; the rules any composition must obey to stay safe &mdash; is on /builders/composability.
-                </p>
-            </MarketingHero>
+            />
 
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
-                <div className="border-l-2 border-default pl-6 mb-8">
-                    <p className="text-sm text-ink-body leading-relaxed">
-                        <strong>Implementation status.</strong> Currently wired: Kleros evidence export, XMTP messaging, IPFS storage, emissions disclosure attestations. Everything else below is a <strong>compositional surface</strong> &mdash; an architectural slot integrators can build against, with named vendors as illustrative examples rather than current integrations.
-                    </p>
-                </div>
-
-                <p className="text-sm text-ink-body leading-relaxed">
-                    Figaro&apos;s useful compositions are predominantly external: the kernel does not include a dispute forum, a carbon-offset market, a prediction market, an insurance pool, a lending facility, a tax-reporting service, an identity provider, a storage layer, or a messaging fabric. An assembly names which external surfaces it composes with. A concrete walkthrough first, then the surface area.
+                <p className="text-sm text-ink-body leading-relaxed mb-8">
+                    Wired today: the dispute-forum seam, IPFS storage, XMTP messaging, emissions-disclosure attestations, and post-settlement payout routing &mdash; each an on-network artifact this repo can point at.
                 </p>
-            </MarketingSection>
-
-            <MarketingSection title="Architectural example &mdash; carbon offset before settlement">
-                <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the emissions clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits &mdash; any bonded seller whose value-add is retirement.)
-                </p>
-                <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
-                    <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>
-                    <li><strong>Buyer commits a sub-order.</strong> Same <code>processId</code>, non-zero <code>cumulativeValue</code>, offset seller as seller. Buyer bonds <code>2&times;Y</code>; seller bonds 2&times; cumulative value (the <Link href="/papers/asymmetric-bonding" className="underline">N-party bonding equilibrium</Link>).</li>
-                    <li><strong>Wallet handles any token swap.</strong> Multi-token bookkeeping is resolved before the commit; the kernel sees a single-currency sub-order.</li>
-                    <li><strong>Seller delivers.</strong> Burns the offset and posts the burn receipt as an attestation against the sub-order.</li>
-                    <li><strong>Buyer calls <code>resolveProcess</code> once.</strong> Main order and offset sub-order settle atomically. Offset receipt joins the evidence bundle.</li>
-                </ol>
-                <p className="mt-4 text-sm text-ink-muted leading-relaxed">
-                    Result: one settled process whose evidence bundle contains both the commerce record and an offset record verifiable against the burn receipt&apos;s on-chain attestation.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Compositional surfaces.">
                 <ul className="space-y-4">
                     <LabelledListRow label="Forums" uppercase>
-                        <strong>Kleros, SIAC, ICC, courts.</strong> Parties&apos; agreement designates the forum; Figaro exports its evidence bundle there. Kernel does not adjudicate. Kleros wired today; other forums are off-chain referents named in the agreement. See <Link href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</Link>.
-                    </LabelledListRow>
-                    <LabelledListRow label="Offsets" uppercase>
-                        <strong>Any retirement provider that bonds as a seller.</strong> Architectural slot &mdash; the offset purchase is an ordinary bonded sub-order. Walkthrough above.
-                    </LabelledListRow>
-                    <LabelledListRow label="Prediction" uppercase>
-                        <strong>Polymarket, Augur.</strong> Compositional target for outcome-resolution oracles that feed attestations gating a process.
-                    </LabelledListRow>
-                    <LabelledListRow label="Insurance" uppercase>
-                        <strong>Nexus Mutual, Sherlock.</strong> Compositional target for smart-contract-failure cover, or cover on the real-world goods a process carries, priced against Figaro&apos;s evidence bundle. The bond itself is not an insurable position &mdash; a policy on bond forfeiture would hedge away the deterrent.
-                    </LabelledListRow>
-                    <LabelledListRow label="Lending" uppercase>
-                        <strong>Aave, Compound, Morpho.</strong> Compositional target for ordinary treasury borrowing &mdash; a lender is a separate counterparty in a separate process. The bond itself is never financed: it is the party&apos;s own staked deterrent.
-                    </LabelledListRow>
-                    <LabelledListRow label="Payout routing" uppercase>
-                        <strong>Disperse.</strong> Compositional target for post-settlement batch dispersal &mdash; one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations), and the self-sovereign fiscal trail falls out as a byproduct. Canonical ownerless deployment, same address across chains; the devnet stack rehearses it with an interface-matching mock. Expanded below.
-                    </LabelledListRow>
-                    <LabelledListRow label="Tax / reporting" uppercase>
-                        <strong>TaxBit, Koinly, Cryptio.</strong> Compositional target for jurisdictional reports derived from chain state. No reconciliation &mdash; the chain is the primary record.
-                    </LabelledListRow>
-                    <LabelledListRow label="Identity" uppercase>
-                        <strong>DID:web, Polygon ID, Worldcoin.</strong> Compositional target for optional real-world identity attachment when the forum requires it.
+                        The parties&apos; agreement designates the forum &mdash; a clause&apos;s <code>composes</code> block carries the forum&apos;s URL as configuration, never code, so any forum (an on-chain court, an arbitral institution, a national court) sits behind the same seam. Figaro exports its evidence bundle there; the kernel does not adjudicate &mdash; and a forum rules on the same evidence record whether or not it was composed in advance. See <Link href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</Link>.
                     </LabelledListRow>
                     <LabelledListRow label="Storage" uppercase>
-                        <strong>IPFS.</strong> Off-chain agreement documents and large evidence artifacts. <code>agreementHash</code> anchors them on chain. Wired today.
+                        <strong>IPFS.</strong> Off-chain agreement documents and large evidence artifacts. <code>agreementHash</code> anchors them on chain.
                     </LabelledListRow>
                     <LabelledListRow label="Messaging" uppercase>
-                        <strong>XMTP.</strong> Per-order encrypted handoff channels. Wired via <code>lib/handoff/</code>.
+                        <strong>XMTP.</strong> Per-order encrypted handoff channels, wired via <code>lib/handoff/</code>.
+                    </LabelledListRow>
+                    <LabelledListRow label="Payout routing" uppercase>
+                        Post-settlement batch dispersal through the composed public multisender: one payment, many recipients, one transaction. A wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations), and the self-sovereign fiscal trail falls out as a byproduct. The composed deployment is the canonical ownerless Disperse contract, same address across chains; a local devnet rehearses it with an interface-matching mock. Post-settlement composition is path-blind &mdash; both <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> deliver by ERC-20 transfer to the party&apos;s own address, so routing what you received works the same regardless of which settlement path carried it.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Payout routing." sectionId="payout-routing">
-                <p className="text-sm text-ink-body leading-relaxed">
-                    Compositional target for post-settlement batch dispersal through the composed public multisender: one payment, many recipients, one transaction. A wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations) in a single atomic transaction, and the self-sovereign fiscal trail falls out as a byproduct. Canonical ownerless deployment (Disperse), same address across chains; the devnet stack rehearses it with an interface-matching mock. Post-settlement composition is path-blind &mdash; both <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> deliver by ERC-20 transfer to the party&apos;s own address, so routing what you received works the same regardless of which settlement path carried it.
+            <MarketingSection title="Anyone can express anything; the equilibrium does not care.">
+                <p className="text-base text-ink-body leading-relaxed">
+                    Because the kernel only enforces bonded-commitment settlement, the graph above it is unconstrained. A market-liberal graph where every role is priced at auction, a cooperative graph where surplus routes back to contributors via programmatic shares, a mutual-aid graph where bonds are reciprocal rather than monetary &mdash; all use the same kernel. The ideological commitments live in the assembly, not in <code>FigaroCore</code>.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="How composition stays safe.">
-                <p className="text-sm text-ink-body leading-relaxed">
-                    An external mechanism that could override resolution, claw back a bond, or revoke a counterparty mid-process would import an escape hatch the kernel was designed to deny. The coordinator pattern gives three sufficient conditions under which composition preserves the bonding equilibrium: the external reads kernel state and emits its own evidence, but never writes to kernel state, never reverses a resolution, and never controls a bond. Integrators bringing a new external into an assembly should verify the composition against the same conditions. Property-side treatment, with the escape-hatch theorem it rests on: <Link href="/builders/composability" className="underline">Composability</Link>.
+            <MarketingSection title="Five conditions preserve the equilibrium.">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Any internal exit path weakens the Nash equilibrium &mdash; the <Link href="/papers/asymmetric-bonding" className="underline">escape-hatch-weakness theorem</Link>. So compositions live <em>outside</em> the kernel and attach via the coordinator pattern. Proposition 7.1 of the <Link href="/papers/verified-settlement-kernel" className="underline">verified-settlement-kernel paper</Link> gives five sufficient conditions under which a composed mechanism preserves the bonding equilibrium (the condition-by-condition proof sketch is Proposition 5.2 of <Link href="/papers/protocol-extension" className="underline">Protocol Composition</Link>):
                 </p>
+                <ol className="space-y-3 text-base text-ink-body leading-relaxed list-decimal pl-6 mb-4">
+                    <li><strong>No unauthorized kernel-state mutation.</strong> The mechanism reads kernel state freely and writes none of it on its own account. Commitment admits a relay &mdash; the call carries both parties&apos; signatures, which the kernel recovers itself before pulling each bond from the named party. Resolution admits none: it takes no signature and authorizes on the caller&apos;s own address, so no composer can resolve on a buyer&apos;s behalf.</li>
+                    <li><strong>No alternative settlement path.</strong> The mechanism provides no operation that produces value flows equivalent to the kernel&apos;s atomic resolution while bypassing it, and holds no discretion over a live process&apos;s settlement.</li>
+                    <li><strong>No discretionary lock-bypass.</strong> The mechanism custodies no kernel bonds and cannot release bonded funds under conditions different from those resolution enforces.</li>
+                    <li><strong>Agreement-bound content.</strong> Content typed by a registered clause is admitted only against an order whose signed agreement included that clause, verified by merkle inclusion against the <code>agreementHash</code>.</li>
+                    <li><strong>No off-kernel side-payment.</strong> The mechanism commits to no award, on-chain or off, contingent on the kernel&apos;s resolved bond outcome &mdash; a side-payment custodian would re-enter the parties&apos; decision calculus unbonded.</li>
+                </ol>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Those five govern what a composition <em>writes</em> and <em>promises</em>; one more governs what it <strong>reads</strong> &mdash; settlement runs on two disjoint state universes (the direct kernel and the batched, proof-based path), so a composition that gates only on <code>orderStatus</code> is blind to whichever one it isn&apos;t reading. The full read-both recipe, runnable, is on <Link href="/integrate" className="underline">Integrate</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>Getting trade onto that batched path is itself a permissionless composition.</strong> <code>FigaroBatchVerifier.settleBatch</code> has no caller gate, no owner, and no fee, so a sequencer relaying signed operations to it is a relay, never an authority &mdash; the coordinator conditions bind it exactly as they bind any other composition. The relay mechanics, and how to run or submit to one, are on Integrate.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    <strong>One kind of composition does not cross that seam with you: the pre-commit kind.</strong> <code>WitnessSwapAndCommitCoordinator.swapAndCommit</code> lets a party bond in a token the process isn&apos;t denominated in, but only on the direct path &mdash; the batch path has no funding leg, so a party swaps in their own wallet first, then signs the commitment in the process currency.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="What the kernel enforces stays enforced.">
+                <p className="text-base text-ink-body leading-relaxed mb-6">
+                    Across every assembly that composes against the kernel, the same invariants hold. Across every composition authored above the kernel, the boundary of responsibility is the same.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div>
+                        <p className="text-sm font-semibold text-ink-heading mb-2">Enforced by the kernel</p>
+                        <ul className="space-y-2 text-sm text-ink-body leading-relaxed list-disc pl-5">
+                            <li>Asymmetric bonding (2&times; payment / 2&times; cumulative value)</li>
+                            <li>Cumulative upstream bonding across sub-orders</li>
+                            <li>Buyer-dominant atomic resolution</li>
+                            <li>Merkle-bound attestation receipts against the signed agreement</li>
+                            <li>Proof-gated clause-content validation on the batched settlement path (<code>FigaroBatchVerifier</code> &mdash; itself a composition above the frozen kernel)</li>
+                            <li>Token conservation (Foundry + Echidna + Certora + Halmos + TLA&#8314; verified)</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-ink-heading mb-2">Outside the kernel</p>
+                        <ul className="space-y-2 text-sm text-ink-body leading-relaxed list-disc pl-5">
+                            <li>Assembly correctness &mdash; the kernel records the declared structure; it does not verify the workflow is well-formed for its purpose.</li>
+                            <li>Custom mechanism contracts &mdash; new failure modes belong to the contract, not the kernel.</li>
+                            <li>Custom clause content &mdash; the off-chain validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
+                            <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
+                            <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
+                            <li>Presentation at the signing moment &mdash; settlement is UI-independent (the kernel binds the agreement by merkle root and verifies both signatures itself), but what your surface <em>displays</em> beside the wallet prompt is not. A composed surface owes its users an off-origin way to recompute the root before they sign; the recipe is on Integrate.</li>
+                            <li>Reading both settlement paths &mdash; nothing warns a composition that gates on <code>orderStatus</code> that batch-settled trade is invisible to it. Fold the verifier&apos;s events too.</li>
+                        </ul>
+                    </div>
+                </div>
             </MarketingSection>
 
             <MarketingSection title="More on composition" bottomPad="wide">
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary (internal composition).</span>
-                    </li>
-                    <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
+                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; a clause is data, not code &mdash; the generic proof engine validates any registered clause with zero per-clause contracts.</span>
                     </li>
                     <li>
                         <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
-                        <span className="text-ink-body"> &mdash; composition templates; an assembly names which external surfaces above it composes with.</span>
+                        <span className="text-ink-body"> &mdash; composition templates; an assembly names which of the surfaces above it composes with.</span>
+                    </li>
+                    <li>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; the operational tools for composing: Designer, clause registration, contracts, SDK.</span>
                     </li>
                     <li>
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>
-                        <span className="text-ink-body"> &mdash; the contract-by-contract catalogue, including the funding, payout, and composition contracts named above.</span>
+                        <span className="text-ink-body"> &mdash; the contract-by-contract catalogue, including the payout and coordinator contracts named above.</span>
                     </li>
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code> read-path guidance for composition targets that read order state.</span>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code> read-path guidance, the read-both-universes recipe, and the relay mechanics.</span>
                     </li>
                     <li>
                         <Link href="/security#disputes" className="text-ink-heading font-medium hover:underline">Security</Link>

@@ -113,10 +113,10 @@ export default function ArtifactRewards() {
                         <span className="text-ink-body"> &mdash; the spec format, the hash mechanics, and the authoring checklist, beside the live registration form.</span>
                     </li>
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">
-                            Composability
+                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">
+                            Composes
                         </Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
                     </li>
                 </ul>
             </MarketingSection>

@@ -188,7 +188,7 @@ function attestViaResolver(
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-4">
-                    Read-path guidance for integrators, with the fold rule for the two usage streams, is on <Link href="/integrate" className="underline">Integrate</Link>; composition targets that read order state are on <Link href="/builders/composability" className="underline">Composability</Link>.
+                    Read-path guidance for integrators, with the fold rule for the two usage streams, is on <Link href="/integrate" className="underline">Integrate</Link>; composition targets that read order state are on <Link href="/composes" className="underline">Composes</Link>.
                 </p>
             </MarketingSection>
 

@@ -102,7 +102,6 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/builders", label: "Builders" },
             { href: "/builders/designer", label: "Designer" },
             { href: "/builders/clauses", label: "Register a clause" },
-            { href: "/builders/composability", label: "Composability" },
             { href: "/composes", label: "What Figaro composes with" },
             { href: "/clauses", label: "Clauses" },
             { href: "/assemblies", label: "Assemblies" },

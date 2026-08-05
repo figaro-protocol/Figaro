@@ -176,7 +176,7 @@ const direct = await fetchUsageRecords(client, USAGE_COUNTER, toBlock);
 const batch  = await fetchBatchUsageRecords(client, USAGE_COUNTER, toBlock);`}</code>
                 </pre>
                 <p className="text-sm text-ink-muted leading-relaxed">
-                    Contract-by-contract statement of the seam, with the which-function-answers-what table: /spec#settlement-paths. Composition targets that read order state: <Link href="/builders/composability" className="underline">Composability</Link>.
+                    Contract-by-contract statement of the seam, with the which-function-answers-what table: /spec#settlement-paths. Composition targets that read order state: the Composes page.
                 </p>
             </MarketingSection>
 
@@ -432,7 +432,7 @@ for (const [processId, process] of processes) {
 
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    What Figaro composes with &mdash; the external surfaces the kernel deliberately does not include (dispute forums, offset markets, prediction markets, insurance, lending, payout routing, tax reporting, identity, storage, messaging), the wired-vs-architectural-slot status of each, and a worked carbon-offset walkthrough &mdash; is catalogued on its own page: <Link href="/composes" className="underline">/composes</Link>.
+                    What Figaro composes with &mdash; the wired external surfaces (the dispute-forum seam, IPFS storage, XMTP messaging, payout routing) and the coordinator pattern&rsquo;s five equilibrium-preserving conditions &mdash; is on its own page: <Link href="/composes" className="underline">/composes</Link>.
                 </p>
             </MarketingSection>
 
@@ -465,8 +465,8 @@ for (const [processId, process] of processes) {
                         <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
                     </li>
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
+                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>

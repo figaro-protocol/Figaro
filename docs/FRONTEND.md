@@ -12,7 +12,7 @@ CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-r
 
 Audit by `ls app/(marketing)/ app/(app)/ app/(builders)/`. Source of truth is the directory listing, not this paragraph. **This is the ONE route catalogue**, classified by wallet-provider tier (tier definitions + rules: § "Wallet-provider scope per route" below).
 
-**Marketing — `(marketing)/`, no wallet provider:** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/composability`, `/builders/pitfalls` (the canonical footguns page), `/working-groups`, `/glossary`, `/integrate`, `/local-commerce` (worked example), `/papers/<slug>` (the paper corpus), `/physics`, `/protocol`, `/artifact-rewards`, `/clauses`, `/composes`, `/security`, `/spec`, `/status` (pre-launch facts, quoted verbatim from their owning pages), `/users`, `/why`. The `/clauses` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
+**Marketing — `(marketing)/`, no wallet provider:** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/pitfalls` (the canonical footguns page), `/working-groups`, `/glossary`, `/integrate`, `/local-commerce` (worked example), `/papers/<slug>` (the paper corpus), `/physics`, `/protocol`, `/artifact-rewards`, `/clauses`, `/composes` (the single composition page — catalogue + coordinator conditions; absorbed `/builders/composability` 2026-08-05), `/security`, `/spec`, `/users`, `/why`. The `/clauses` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
 
 **URL-depth rule.** Concept pages — pages that explain a protocol object in plain language, for a reader who isn't necessarily about to act — live at the site root (`/clauses`, `/assemblies`, `/composes`, `/security`, …). The authoring tools that DO what a concept page explains live one level down, under `/builders/` (`/builders/clauses`, `/builders/designer`, …). A concept page names its tool with a one-line seam near the top — "This page explains X. To do X, go to [tool]." — and the tool keeps at most one intro paragraph plus a pointer back to the concept page for the full explanation, rather than re-deriving it.
 
@@ -183,7 +183,7 @@ governing wallet-provider load. **The per-tier route lists live in the ONE
 catalogue at § "Routes" above** — do not maintain a second list here.
 
 - **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider.
-- **Reference / read-only (in `(app)/` or `(builders)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
+- **Reference / read-only (in `(app)/` or `(builders)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. The `/builders` hub is a publication page and lives in `(marketing)/`.
 - **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet.
 
 **Rules:**

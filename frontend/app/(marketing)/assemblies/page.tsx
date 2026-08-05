@@ -188,8 +188,8 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                         <span className="text-ink-body"> &mdash; three-role bonded process reference assembly (buyer + merchant + courier).</span>
                     </li>
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
+                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
                         <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
