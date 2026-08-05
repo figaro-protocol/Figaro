@@ -42,8 +42,8 @@ Composability is the network effect: every deal plugs into the chain's other
 contracts — a Kleros ruling, a Uniswap swap, the fiscal multisender — a network, not
 a silo. And all of it is transparent and verifiable — agreements merkle-committed,
 every process's full P&L readable from the record, the equilibrium derived as
-theorems, settlement machine-checked across formal layers and proof-carried in
-batches, the registries public: what a platform asks you to believe, Figaro lets you
+theorems, settlement machine-checked across formal layers, the registries public:
+what a platform asks you to believe, Figaro lets you
 check; what a regulator, tax authority, or court demands, the record demonstrates.
 No admitting authority, custodian, or keeper in the
 stack: self-sovereign wallets on the base chain, the same contract reproducible
@@ -51,19 +51,19 @@ anywhere on Earth or off it (commit and resolve need no synchrony), at pennies o
 fixed gas, proof-batched at scale — the friction of centralized coordination
 collapsed to a signature. The trail of data is the **data
 layer** — the platform allocation inverted: the aggregate map is public, the private
-detail sealed and sellable only on its owner's terms. Four token kinds meet here: coordination (stablecoins, the florin — a pure
-Schelling point); utility (a designer pins their token as an assembly's
+detail sealed and sellable only on its owner's terms. Four token kinds meet here: coordination (stablecoins, and the protocol's own
+florin — a pure Schelling point); utility (a designer pins their token as an assembly's
 denomination — the moat); community (a displaced community's token, spent in Los
 Angeles or Lima, sustains its value at home — no fiat pipeline, a Uniswap hop
 satisfying the regulator); and the social signalling that pick makes visible —
 support you can check, not a company's claim. The commons funds itself through
-retroactive public-goods funding — 600M florins, the protocol's token, pro-rata to
-authors whose artifacts get used (the 300M DAO treasury funds by human judgment) —
+retroactive public-goods funding — 600M florins pro-rata to authors whose artifacts
+get used (the 300M DAO treasury funds by human judgment) —
 with its own equilibrium: usage and authorship both require a live ETH stake, a value
 loop — exposure to the growth one's own work produces, not a fee.
 
 And it is built to GROW: anyone contributes permissionlessly — authoring clauses,
-publishing assemblies, selling, building tooling and discussion — and anyone may
+publishing assemblies, selling, building tooling, hosting discussion — and anyone may
 COMPETE with it: their own UI over the same contracts, or their own contracts
 entirely. A dynamic system; evolution is the design.
 
