@@ -116,11 +116,6 @@ export const PAPER_GROUPS: PaperGroup[] = [
             { title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Coordinator Pattern", href: "/papers/verified-settlement-kernel", formalCore: true, blurb: "A reference implementation of the two-mechanism kernel — ownerless, fee-less, admin-less — with the machine-checked verification methodology, threat model, and coordinator pattern for equilibrium-preserving composition." },
             { title: "Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern", href: "/papers/protocol-extension", formalCore: true, blurb: "How the kernel becomes a protocol: a decision rule for composition, clause design as a verification discipline, the coordinator pattern's sufficient conditions." },
         ],
-        currentWork: [
-            "Adversarial audit of the attestation coordinator's merkle-inclusion gate",
-            "Extending the Certora token-ops inventory to cover batch-verifier fee-on-transfer paths",
-            "TLA⁺ refinement of the cumulative-upstream-bonding mesh beyond 3 depth",
-        ],
         references: [
             { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
             { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" },
