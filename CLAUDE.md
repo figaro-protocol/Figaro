@@ -40,8 +40,12 @@ floor. Everything people touch is built above it:
 
 Composability is the network effect: every deal plugs into the chain's other
 contracts — a Kleros ruling, a Uniswap swap, the fiscal multisender — a network, not
-a silo. And all of it is transparent and verifiable: what a platform asks you to
-believe, Figaro lets you check. No admitting authority, custodian, or keeper in the
+a silo. And all of it is transparent and verifiable — agreements merkle-committed,
+every process's full P&L readable from the record, the equilibrium derived as
+theorems, settlement machine-checked across formal layers and proof-carried in
+batches, the registries public: what a platform asks you to believe, Figaro lets you
+check; what a regulator, tax authority, or court demands, the record demonstrates.
+No admitting authority, custodian, or keeper in the
 stack: self-sovereign wallets on the base chain, the same contract reproducible
 anywhere on Earth or off it (commit and resolve need no synchrony), at pennies of
 fixed gas, proof-batched at scale — the friction of centralized coordination
@@ -57,6 +61,11 @@ retroactive public-goods funding — 600M florins, the protocol's token, pro-rat
 authors whose artifacts get used (the 300M DAO treasury funds by human judgment) —
 with its own equilibrium: usage and authorship both require a live ETH stake, a value
 loop — exposure to the growth one's own work produces, not a fee.
+
+And it is built to GROW: anyone contributes permissionlessly — authoring clauses,
+publishing assemblies, selling, building tooling and discussion — and anyone may
+COMPETE with it: their own UI over the same contracts, or their own contracts
+entirely. A dynamic system; evolution is the design.
 
 **Self-check before any synthesis:** does your draft cover at least six of the seven layers — kernel, clauses,
 assemblies, composition, registries+RPGF, data, agents? Is every sentence
