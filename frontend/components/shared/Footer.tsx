@@ -60,12 +60,6 @@ export function Footer() {
                         >
                             Security
                         </Link>
-                        <Link
-                            href="/status"
-                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
-                        >
-                            Status
-                        </Link>
                     </div>
                     <div className="space-y-1 sm:text-right">
                         <p>Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved.</p>

@@ -1,5 +1,4 @@
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
-import { ReadingPathStrip } from "@/components/marketing/ReadingPathStrip";
 import { Footer } from "@/components/shared/Footer";
 
 // Statically exported (`output: 'export'`). These pages prerender to real
@@ -25,7 +24,6 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         <div className="min-h-screen flex flex-col">
             <MarketingHeader />
             <main id="main-content" className="flex-1">{children}</main>
-            <ReadingPathStrip />
             <Footer />
         </div>
     );
