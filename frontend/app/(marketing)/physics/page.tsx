@@ -50,7 +50,7 @@ export default function Physics() {
                     </p>
                     <p>
                         The fingerprint can&apos;t rebuild the agreement from itself, and it never tries to. It only <em>pins it down</em> &mdash; it makes exactly one version of the outside detail acceptable, so nothing can be swapped underneath it. That is enough. A contract that once had to carry everything became one that carries almost nothing &mdash; and gave up none of its security doing it. A small, fixed boundary holds an unbounded world honest. The longer version is in the{" "}
-                        <Link href="/papers" className="text-ink-heading font-medium hover:underline">
+                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
                             papers
                         </Link>
                         .

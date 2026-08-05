@@ -61,10 +61,10 @@ export default function Protocol() {
                     <span className="text-ink-body"> &mdash; the rule-making lineage: coercion, cognition, crypto. What Figaro contributes to the third.</span>
                 </li>
                 <li>
-                    <Link href="/papers" className="text-ink-heading font-medium hover:underline">
-                        Papers
+                    <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
+                        Working groups
                     </Link>
-                    <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy (&ldquo;Foundations of Cryptoeconomic Systems,&rdquo; Working Paper Series 1/2020, WU Vienna), and the papers along each.</span>
+                    <span className="text-ink-body"> &mdash; the eight discipline groups, each with what it asks of the substrate and the papers written from it.</span>
                 </li>
                 <li>
                     <Link href="/spec" className="text-ink-heading font-medium hover:underline">

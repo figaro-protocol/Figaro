@@ -55,7 +55,7 @@ export function PaperLayout({
             {nav && (
                 <Breadcrumb
                     items={[
-                        { label: "Papers", href: "/papers" },
+                        { label: "Working groups", href: "/working-groups" },
                         { label: nav.discipline.name, href: nav.discipline.anchor },
                         { label: title },
                     ]}

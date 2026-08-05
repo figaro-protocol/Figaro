@@ -124,10 +124,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     },
     {
         section: "Groups",
-        links: [
-            { href: "/working-groups", label: "Groups" },
-            { href: "/papers", label: "Papers" },
-        ],
+        links: [{ href: "/working-groups", label: "Groups" }],
     },
 ];
 

@@ -55,9 +55,10 @@ export interface PaperGroup {
     name: string;
     /** Short methodological gloss (subdiscipline). */
     discipline: string;
-    /** The group's definition — one paragraph: what this discipline asks of
-     *  the Figaro substrate. This is what tells a stranger what is IN the
-     *  group before they join or form around it. */
+    /** One-paragraph introduction of the discipline, derived from the
+     *  Voshmgir & Zargham paper (sourced once, via the page footnote). */
+    intro: string;
+    /** The project-specific paragraph: what this group reads in Figaro. */
     definition: string;
     /** Papers primarily assigned to this discipline. Empty array means
      *  the discipline is an open call — no canonical work convened yet. */
@@ -83,6 +84,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 1,
         name: "Economics and Game Theory",
         discipline: "Mechanism design · institutional economics · monetary theory",
+        intro: "The micro-foundations: mechanism design as reverse game theory — constructing the game so that the desired behavior is what self-interested actors converge on — tempered by the evolution-of-cooperation result that cooperation among selfish actors is a sufficient condition, not a necessary one, so richer theories of human behavior belong here too.",
         definition: "The kernel rests on a game-theoretic argument: asymmetric bonding with a 2× minimum ratio produces a Nash equilibrium, scales itself from two to N parties through cumulative upstream bonding, and makes the subordination axis of the Coasean firm structurally optional — shifting the Coasean transaction-cost threshold inward, so the standing firm is no longer the uniquely efficient unit of production within the domain the primitive covers. This group reads the substrate as economists and game theorists read it — equilibrium analysis, institutional form, monetary design.",
         papers: [
             { title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination", href: "/papers/asymmetric-bonding", formalCore: true, blurb: "Derives the two composing mechanisms and their equilibrium from first principles: asymmetric bonding makes cooperation weakly dominant and scales it along a process chain; buyer dominance with atomic resolution induces a weakest-link subgame." },
@@ -100,6 +102,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 2,
         name: "Industrial and Systems Engineering",
         discipline: "Process modeling · supply-chain coordination",
+        intro: "The system as a designed whole: complex adaptive networks whose collective behavior cannot be inferred from individual actions, and resilient protocol design that accounts for the network's spatial and temporal dynamics.",
         definition: "How bonded commitments compose into multi-party processes with auditable handoffs, lifecycle attestation, and proximity proof. Two worked examples: air service as coordinated resource markets (cascading-delay risk re-architected as unit-level bonded commitments) and permissionless container shipping (an ownerless successor to the failed TradeLens consortium).",
         papers: [
             { title: "Air Service as Coordinated Resource Markets", href: "/papers/air-service-coordination", blurb: "Air service as coordination across resource markets, each an asset-as-wallet; under buyer-dominant atomic resolution the seller cohort compensates directly before any external mechanism engages." },
@@ -111,6 +114,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 3,
         name: "Computer Science and Cryptography",
         discipline: "Cryptographic primitives · adversarial review · formal verification · protocol composition · runtime architecture",
+        intro: "Economic policies embedded in software: protocol and smart-contract code as the rule layer, cryptographic tools combined with economic incentives so that the cost of wrongdoing is disproportionate to its benefit.",
         definition: "Two complementary lenses on the protocol's CS surface. The verified settlement kernel reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Protocol composition reads what stands above the kernel as a research object: clause design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (clause authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
         papers: [
             { title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Coordinator Pattern", href: "/papers/verified-settlement-kernel", formalCore: true, blurb: "A reference implementation of the two-mechanism kernel — ownerless, fee-less, admin-less — with the machine-checked verification methodology, threat model, and coordinator pattern for equilibrium-preserving composition." },
@@ -129,6 +133,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 4,
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
+        intro: "The normative layer: any choice of coordination objective is a subjective choice, so whose values a system encodes, the accountability of its designers, and the ethics of decision algorithms in social systems come before the engineering.",
         definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature. The wallet collapses the Roman res/persona distinction, and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. The platform is not a fact of nature; it is a contingent answer to a coordination problem the bonded primitive answers differently. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
         papers: [
             { title: "On-Chain Evidence, Off-Chain Adjudication", href: "/papers/on-chain-evidence", blurb: "Settlement is on-chain by nature, adjudication off-chain by nature: a layered approach in which the protocol produces evidence existing courts already know how to use." },
@@ -143,6 +148,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 5,
         name: "Political Science, Institutional Economics and Governance",
         discipline: "Political economy · hegemony · sovereign coordination",
+        intro: "The meso-institutional level: who gets to make which decisions, under which circumstances, accountable to whom, and how that changes over time — automation in socioeconomic systems as algorithmic policy-making.",
         definition: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. This group reads the substrate as political theorists — Gramsci, Arendt, post-hegemony; the question of what governance is when the primitive refuses to take positions, and the Arendtian question of whether what the bonded primitive grants is a 'right to have rights' or, more narrowly, a capacity to have commerce.",
         papers: [
             { title: "The Wallet Without a Polity", href: "/papers/wallet-without-polity", blurb: "The primitive's precondition is a cryptographic key, not civil-legal subjecthood; for the displaced and stateless it grants not the right to have rights but a capacity to have commerce." },
@@ -157,6 +163,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 6,
         name: "Operations Research and Management Science",
         discipline: "Resource allocation · accounting · ledger design",
+        intro: "Allocation made operational: physical, financial, and social resources allocated among stakeholders with unique preferences, information, and capabilities — and the coordination and scaling of those allocation decisions.",
         definition: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process topology as a coordination problem, the closure as a scheduling invariant.",
         papers: [
             { title: "Bookkeeping as Protocol Byproduct: Self-Closing Ledger Periods", href: "/papers/self-closing-ledger-periods", blurb: "A Figaro process as a self-closing ledger period — commitments are journal entries, resolution the closing entry, the conservation law the bookkeeping identity — making a class of record-keeping a protocol byproduct." },
@@ -168,6 +175,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 7,
         name: "AI, Optimization and Control Theory",
         discipline: "Agent coordination · allocation · control of the mesh",
+        intro: "Steering and stability: encoding a coordination objective as a cost function and designing for dynamic stability around it, with the multiscale dynamics that link individual decisions to system-level outcomes.",
         definition: "Agent-mediated coordination over bonded commitments. The kernel's actor-neutrality property turns bonded commitments into the missing enforcement layer for mutually-untrusted multi-agent systems: the same equilibrium argument that makes cooperation weakly dominant for human counterparties makes it weakly dominant for autonomous agents, on the same arithmetic. The Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization; the paper develops the control-theory reading.",
         papers: [
             { title: "Actor-Neutral Coordination over Bonded Commitments", href: "/papers/actor-neutral-coordination", blurb: "The kernel reads signatures and bond posture, not entity type, so the equilibrium that makes cooperation dominant for humans extends without modification to autonomous agents. A control-theory reading of the Agent SDK." },
@@ -181,6 +189,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         disciplineIndex: 8,
         name: "Psychology and Decisions Science",
         discipline: "Behavioral game theory · incentive legibility · interface cognition",
+        intro: "How individuals actually decide, given knowledge of the rules and uncertainty about the decisions of others; the security of any incentive system depends on how people respond to incentives — an empirical question, not a theorem.",
         definition: "How participants read a bonded equilibrium under uncertainty; the legibility of incentive structure to non-specialist readers. The bonded mechanism is dominance-solvable at the per-player level — the cognitive operation a participant must perform is a single comparison at the margin, amplified by loss aversion at the kink between cooperation and defection. The Van Huyck coordination-failure result does not transfer; the Grameen peer-pressure dynamics do.",
         papers: [
             { title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/behavioral-game-theory", formalCore: true, blurb: "How the full-rationality equilibrium carries over to real participants: weak dominance at the kink, why the Van Huyck coordination failure does not transfer, and atomic resolution as activated peer pressure." },

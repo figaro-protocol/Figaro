@@ -138,7 +138,7 @@ export default function Security() {
                     The figure above is the whole lifecycle: where each stake sits in every state, who can move it forward, and the two exits that deliberately do not exist.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/papers" className="text-ink-heading font-medium hover:underline">papers</Link>.
+                    The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>.
                 </p>
             </MarketingSection>
 
@@ -357,8 +357,8 @@ export default function Security() {
                         <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
                     </li>
                     <li>
-                        <Link href="/papers" className="text-ink-heading font-medium hover:underline">
-                            Papers
+                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
+                            Working groups
                         </Link>
                         <span className="text-ink-body"> &mdash; the bonding equilibrium, the weakest-link subgame, the social mechanism &mdash; with the formal derivations and the eight-discipline reading.</span>
                     </li>

@@ -52,7 +52,6 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/builders/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/agents", changeFrequency: "weekly", priority: 0.8 },
     { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
-    { path: "/papers", changeFrequency: "weekly", priority: 0.8 },
     { path: "/artifact-rewards", changeFrequency: "monthly", priority: 0.7 },
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/assemblies", changeFrequency: "weekly", priority: 0.7 },
