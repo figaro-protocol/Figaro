@@ -379,7 +379,7 @@ for (const [processId, process] of processes) {
                         Off-protocol swap-and-commit: swaps a permit-signed input token into the settlement currency and commits in one transaction, so a party can bond in a token the process isn&apos;t denominated in (direct path only &mdash; on the batch path, swap in your wallet first). Pairs with <code>permit2</code> (the witness-permit layer) and <code>swapRouter</code> (the swap venue) &mdash; a local devnet wires mocks for both; the deployment record wires the canonical Permit2 + Uniswap Universal Router on any network where they&apos;re deployed.
                     </LabelledListRow>
                     <LabelledListRow label="usageCounter · rpgfMinter" labelWidth="wide">
-                        Records settled-trade usage on-chain and pays it out on the RPGF schedule. Mechanics &mdash; the nine-year schedule, the three-seller floor, the live-deposit condition &mdash; are on <Link href="/artifact-rewards" className="underline">/artifact-rewards</Link>.
+                        Records settled-trade usage on-chain and pays it out on the RPGF schedule. Mechanics &mdash; the nine-year schedule, the three-seller floor, the live-deposit condition &mdash; are on <Link href="/rpgf" className="underline">/rpgf</Link>.
                     </LabelledListRow>
                     <LabelledListRow label="batchVerifier" labelWidth="wide">
                         <code>FigaroBatchVerifier</code> &mdash; the proof-based batch settlement path (SP1 validity proof + the <code>ClauseRegistry</code>-anchored content check). Not a florin minter.

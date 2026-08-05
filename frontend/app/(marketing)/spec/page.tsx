@@ -224,7 +224,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/artifact-rewards" className="underline">Artifact rewards</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 
@@ -299,7 +299,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">
-                    The RPGF reward&apos;s rising-budget schedule and its scoring formula are catalogued once, on <Link href="/artifact-rewards" className="underline">Artifact rewards</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
+                    The RPGF reward&apos;s rising-budget schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">RPGF</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
                 </p>
             </MarketingSection>
 

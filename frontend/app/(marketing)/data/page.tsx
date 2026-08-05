@@ -29,7 +29,7 @@ export default function Data() {
 
             <MarketingSection title="The half that's shared.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    One part of every trade is meant to be public: who moved what, to whom, roughly where, and whether it settled &mdash; a neighborhood&apos;s demand, a seller&apos;s settlement record, a route&apos;s reliability, all readable straight from the chain, by anyone, without asking permission. This is the map a delivery platform used to keep to itself so it alone could match supply to demand. Figaro puts it in the open by construction instead, and the network&apos;s own token pays the people who keep drawing it &mdash; see <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">how that works</Link>.
+                    One part of every trade is meant to be public: who moved what, to whom, roughly where, and whether it settled &mdash; a neighborhood&apos;s demand, a seller&apos;s settlement record, a route&apos;s reliability, all readable straight from the chain, by anyone, without asking permission. This is the map a delivery platform used to keep to itself so it alone could match supply to demand. Figaro puts it in the open by construction instead, and the network&apos;s own token pays the people who keep drawing it &mdash; see <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">how that works</Link>.
                 </p>
             </MarketingSection>
 

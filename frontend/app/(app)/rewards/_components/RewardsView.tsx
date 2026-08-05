@@ -7,7 +7,7 @@
  * signed), a period's counts stop moving the moment it ends, and the wallet
  * then claims its artifacts' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
- * marketing telling lives at /artifact-rewards; this page is the doing surface.
+ * marketing telling lives at /rpgf; this page is the doing surface.
  */
 
 import Link from "next/link";
@@ -85,7 +85,7 @@ export function RewardsView() {
                 posted, bonded, or disputed; there is no committee and no application.
             </p>
             <p className="text-sm text-ink-muted mb-8">
-                <Link href="/artifact-rewards" className="hover:underline text-ink-heading">
+                <Link href="/rpgf" className="hover:underline text-ink-heading">
                     How the reward works &rarr;
                 </Link>
             </p>

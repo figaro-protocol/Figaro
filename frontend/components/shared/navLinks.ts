@@ -4,9 +4,9 @@
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
 //   The four entries: Protocol (the substrate), Builders (affordances),
-//   Users (participation via /discover), Groups (work self-forming around
-//   artifacts; the paper corpus is reached through it — papers are discussion
-//   starters, and the goal is groups forming worldwide, spontaneously). The
+//   Users (participation via /discover), Groups (the working groups; the
+//   paper corpus is reached through it — papers are discussion starters,
+//   and the goal is groups forming worldwide, spontaneously). The
 //   logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
@@ -90,7 +90,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/protocol", label: "Protocol mechanisms" },
             { href: "/why", label: "Why" },
             { href: "/physics", label: "Physics" },
-            { href: "/artifact-rewards", label: "Funding" },
+            { href: "/rpgf", label: "RPGF" },
             { href: "/security", label: "Security" },
             { href: "/consequences", label: "Consequences" },
             { href: "/spec", label: "Specifications" },
