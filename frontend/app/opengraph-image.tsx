@@ -1,8 +1,10 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
-export const alt = "Figaro Protocol — Self-enforcing agreements between strangers";
+// No `runtime = "edge"` here: edge runtime disables static generation, so the
+// static export would emit the <meta og:image> URL but never the image itself
+// (a guaranteed 404 on every deploy — measured 2026-08-05). Default runtime
+// lets `output: 'export'` render the PNG at build time.
+export const alt = "Figaro Protocol — Figaro completes the contract.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -46,36 +48,7 @@ export default async function Image() {
                         maxWidth: 900,
                     }}
                 >
-                    Self-enforcing agreements between strangers
-                </div>
-
-                {/* Divider */}
-                <div
-                    style={{
-                        width: 120,
-                        height: 4,
-                        background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
-                        borderRadius: 2,
-                        marginTop: 40,
-                        marginBottom: 40,
-                    }}
-                />
-
-                {/* Three pillars */}
-                <div
-                    style={{
-                        display: "flex",
-                        gap: 60,
-                        fontSize: 20,
-                        color: "#64748b",
-                        fontWeight: 500,
-                    }}
-                >
-                    <span>Asymmetric Bonding</span>
-                    <span style={{ color: "#475569" }}>·</span>
-                    <span>Nash Equilibrium</span>
-                    <span style={{ color: "#475569" }}>·</span>
-                    <span>No Escape Hatches</span>
+                    Figaro completes the contract.
                 </div>
             </div>
         ),

@@ -28,23 +28,30 @@ export const viewport: Viewport = {
     viewportFit: "cover",
 };
 
+// The link-preview (Open Graph/Twitter) copy derives VERBATIM from home's
+// audited hero + metadata (the frame's synthesis) — when home's copy moves,
+// this block moves with it. metadataBase reuses NEXT_PUBLIC_SITE_URL exactly
+// as `app/sitemap.ts` does (same var, same placeholder fallback): the
+// deploying host names itself; unset builds resolve preview URLs against the
+// stable placeholder instead of a localhost default.
 export const metadata: Metadata = {
-    title: "Figaro Protocol — Your deal stays yours.",
-    description: "Nobody holds your tokens, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://figaro.example"),
+    title: "Figaro Protocol — Figaro completes the contract.",
+    description: "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
     robots: {
         index: false,
         follow: false,
     },
     openGraph: {
-        title: "Figaro Protocol — Your deal stays yours.",
-        description: "Nobody holds your tokens, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
+        title: "Figaro completes the contract.",
+        description: "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
         siteName: "Figaro Protocol",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
-        title: "Figaro Protocol — Your deal stays yours.",
-        description: "Nobody holds your tokens, nobody decides for you, nobody takes a cut. Both sides lock a deposit larger than the deal, so cheating always loses.",
+        title: "Figaro completes the contract.",
+        description: "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
     },
 };
 
