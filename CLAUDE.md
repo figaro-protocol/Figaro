@@ -3,7 +3,49 @@
 ## The whole system — there is nothing else (read before everything below)
 
 Repeated to agents dozens of times; each rebuilds silt on it. **This is the entire
-system. Measure every proposal, file, and name against it.**
+system. Measure every proposal, file, and name against it. THE FRAME COMES FIRST:
+every synthesis — pitch, projection, positioning, audit — starts from the whole
+frame below, never from the kernel** (ratified 2026-08-04;
+probe-validated across five blind audiences 2026-08-05).
+
+### The frame — hold this message through the whole session
+
+**Figaro completes the contract.** Every trade is a contract, and a binding contract
+needs six elements — offer, acceptance, consideration, capacity, legality, mutual
+assent — plus two things every contract implies: a body of terms, and a trail of data.
+Between strangers the element that fails is **consideration** — promising value is
+easy; nothing makes delivering it trustworthy. Figaro fixed consideration with
+mechanism design: the buyer bonds twice the payment, each seller twice the cumulative
+value at their link in the value-added chain, and cooperation becomes every party's
+dominant strategy — settled atomically, by the buyer alone. That is the kernel — the
+floor, one sentence, done. Everything people touch is built above it:
+
+- **Terms and conditions** — the contract's body — are clauses: composable public
+  artifacts, verified on-chain, tailored by designers.
+- **Offer and acceptance** are assemblies and checkout — whole deal-shapes anyone
+  publishes and anyone reuses.
+- **Capacity** is open admission — any signer, human or software agent, on equal
+  footing, backed by staked registries.
+- **Mutual assent** is the bilateral EIP-712 signature — no custodian between the
+  parties.
+- **Legality** is composition with on-network contracts — arbitration forums ruling on
+  the evidence record, fiscal routing at settlement — making demonstrating compliance
+  cheap.
+
+The trail of data is the **data layer** — the platform allocation inverted: the
+aggregate map is public, the private detail sealed and sellable only on its owner's
+terms. The commons funds itself through retroactive public-goods funding: 600M
+florins — the protocol's token — paid pro-rata to authors whose artifacts get used.
+
+**Self-check before any synthesis:** does your draft cover at least six of the seven layers — kernel, clauses,
+assemblies, composition, registries+RPGF, data, agents? Is every sentence
+untransplantable to another project? If either fails, start over.
+
+### Beneath the frame — the kernel, then the five nouns
+
+Two cuts of ONE object, kept distinct: the frame above is the synthesis altitude (what
+you SAY); the kernel and five nouns below are the ontology (what anyone DOES). Never
+collapse one into the other.
 
 **The kernel (`FigaroCore`) is two mechanisms:** asymmetric bonding at commit, and
 buyer dominance with atomic resolution. They make cooperation the Nash equilibrium,
@@ -31,13 +73,11 @@ surface expresses buyer, seller, clause, assembly, or composition — or it is *
 delete**. Ask: *which of the five is this?* If "none," stop — but hold the full model
 first (below); agents keep mislabeling designed surfaces as silt.
 
-**A bonded commitment is a digital contract** (model ratified 2026-07-28): its
-**consideration** = the **payment**; its **security** = the **bonds** (whose Nash
-equilibrium makes performance dominant); its **terms and conditions** = the
-**clauses**. The designer's tailoring — the fields named in `block.design.fills`
-(a pinned consent document, a pinned settlement token, a pinned credential
-register) — adapts the generic clauses to a specific application.
-Consent is a first-class agreement layer, NOT boilerplate.
+**The frame IS the ratified digital-contract model** (2026-07-28: consideration =
+payment; security = bonds, whose Nash equilibrium makes performance dominant; terms =
+clauses). The designer's tailoring — the fields named in `block.design.fills` (a pinned
+consent document, settlement token, credential register) — adapts the generic clauses
+to a specific application. Consent is a first-class agreement layer, NOT boilerplate.
 
 **Agents keep mislabeling these as silt — they are DESIGNED IN:** agents are first-class
 participants (level field with humans; `/agents` ≠ `/users`); use-case pages
@@ -134,7 +174,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.** A stateless, ownerless protocol defining the smallest unit of a secure handshake: **the Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
 
-**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the florin/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). **All four bind the KERNEL ONLY, never the tiers above** — see § "Three-Tier Naming". The frontend is a **reader of network state, never the custodian in the middle**. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
+**The spine** (do not re-derive or duplicate): one object, the boundary, read four ways — **HOLDS** (the chain keeps only a fingerprint; artifacts are *pinned* off-chain, never reconstructed), **COUPLES** (data, identity, compute/agents, law attach through the same boundary), **EMERGES** (meaning lives one level up, in clauses/assemblies/processes), **ADMITS** (anyone who can sign and bond participates). **All four bind the KERNEL ONLY, never the tiers above** — see § "Three-Tier Naming". The frontend reads network state, never custodies. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
@@ -176,7 +216,7 @@ Verify 3× before suggesting any change to kernel invariants. The MAD equilibriu
 
 ### Why the Name
 
-**Protocol = Figaro; its token = the florin** (FLORIN, ƒ) — a common noun: lowercase, plural florins. Figaro is Rossini's factotum: coordinates everything, owns nothing. The metaphor is the thesis, not decoration; no alternatives (no "Uber-killer" / "Stripe but decentralized"). **A token name DENOMINATES, never DESCRIBES** (the rule historical currency naming teaches). Factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` "Appendix: Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
+**Protocol = Figaro; its token = the florin** (FLORIN, ƒ — common noun: lowercase, plural florins). Figaro is Rossini's factotum: coordinates everything, owns nothing; the metaphor is the thesis, not decoration. **A token name DENOMINATES, never DESCRIBES**; factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` "Appendix: Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
 
 ### Framing Discipline
 
@@ -216,15 +256,15 @@ The recurring, weeks-costly failure is modeling a concern as a stored value when
 
 - **The requested modality is a CLAUSE; fulfilment reality is DERIVED.** `figaro-modalities` commits the buyer's request (consume-onsite/pickup/delivery/virtual) at signing; reality reads from topology + clauses — a second co-equal **buyer↔courier order** carrying `figaro-courier-process` IS delivery; one node = on-site/pickup. No stored fulfilment-status field; no node-spawning checkbox — delivery is a second drawn order.
 - **Coordination lives in the process clauses** — `figaro-merchant-process` on the merchant order, `figaro-courier-process` on the courier order — not in a fulfilment field.
-- **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned are distinct assemblies (composed at the assembly level, like proximity), not a stored field. (Dutch-auction pricing abandoned 2026-07-02; pricing is a catalogue concern.)
-- **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
-- **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.design.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
+- **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned are distinct assemblies (composed at the assembly level, like proximity), not a stored field.
+- **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order); the DAG parent edge is value-topology, not dominance.
+- **Clauses are a nestable hierarchy: article → clause → sub-clause** (articles = `block.design.article`, surfaced by the existing grouping component — do not rebuild it). **Sub-clauses live in the clause JSON spec; reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
 Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/CLAUSES.md`.
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and fails on retired `fulfilment` vocabulary (promoted WARN→FAIL 2026-06-11).
 
-**The 600M reward is UNIFORM** (ratified 2026-07-29, `project_reward_mechanism_ratified_2026_07`): every artifact's score is its real usage alone — `icbrt(c·d²·1e18)`, no tag, no category, no weight. The substrate-broadening weight, `boostedTag`, and `rpgfTag` are **deleted**; do not reintroduce a per-clause reward multiplier — that TradFi "privilege a category" reasoning is exactly what the uniform reward closed. **Neutrality is achieved by the STAKE, not by weighting:** Sybil resistance is the two-sided LIVE ETH STAKE (seller-gated usage in `UsageCounter`; author eligibility in `RpgfMinter._isAuthor`, both requiring an un-withdrawn deposit), and the ETH stake is a VALUE LOOP (more trade → more base-currency demand → ETH appreciates for every registry staker), not a cost. There is **no per-wallet cap** and **no quadratic-funding / match round** (`MatchPool` deleted); the 300M DAO treasury funds public goods by discretionary decision. Owner → `project_reward_mechanism_ratified_2026_07`; on-chain surface → `CONTRACTS.md` § RPGF.
+**The 600M reward is UNIFORM** (ratified 2026-07-29): every artifact's score is its real usage alone — `icbrt(c·d²·1e18)`, no tag, category, weight, per-wallet cap, or quadratic-funding/match round (`MatchPool`, `boostedTag`, `rpgfTag` all deleted); never reintroduce a per-clause multiplier — TradFi "privilege a category" reasoning. **Neutrality is achieved by the STAKE, not by weighting:** Sybil resistance is the two-sided LIVE ETH stake (seller-gated usage in `UsageCounter`; author eligibility in `RpgfMinter._isAuthor`), a VALUE LOOP, not a cost. The 300M DAO treasury funds public goods by discretionary decision. Owner → `project_reward_mechanism_ratified_2026_07`; on-chain surface → `CONTRACTS.md` § RPGF.
 
 ### Dispute Resolution — Three Layers
 
@@ -240,23 +280,23 @@ The dispute layer is provider-agnostic; Kleros is one arbitration forum, not the
 
 ### General Coding Discipline
 
-Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which contradict the runtime-infrastructure doctrine in `OPEN_WORLD.md`).
+Adapted from `andrej-karpathy-skills`, minus its YAGNI bullets (they contradict `OPEN_WORLD.md`'s runtime-infrastructure doctrine).
 
 **Open every task by reformulating, then asking.** Before the first substantive action on any non-trivial task — code or not — restate the request in your own words to confirm comprehension, and ask any clarifying questions. Wait for confirmation before starting. Reformulation in your own words is the comprehension check; a verbatim echo is not.
 
 **Clarify before coding.** State assumptions explicitly; if uncertain, ask. When a request has multiple interpretations, present them — never pick one silently. If a simpler approach exists, say so; push back when warranted. If something is unclear, stop, name what's confusing, and ask.
 
-**Surgical changes.** Touch only what the request requires. Don't "improve" adjacent code, comments, or formatting; don't refactor what isn't broken; match existing style even where you'd do it differently. If you spot unrelated dead code, mention it — don't delete it. Remove only the imports/variables/functions that your own change orphaned. Every changed line should trace to the request. The one deliberate exception is the documentation-discipline rule below: a code change that makes a whitelisted doc stale must fix that doc in the same session.
+**Surgical changes.** Touch only what the request requires. Don't "improve" adjacent code, comments, or formatting; don't refactor what isn't broken; match existing style even where you'd do it differently. If you spot unrelated dead code, mention it — don't delete it. Remove only the imports/variables/functions that your own change orphaned. Every changed line should trace to the request. The one deliberate exception: the documentation-discipline rule below (a stale whitelisted doc is fixed in the same session).
 
 **Goal-driven execution.** Convert vague tasks into verifiable success criteria before starting — "fix the bug" becomes "write a failing test that reproduces it, then make it pass". For multi-step work, state a brief plan with a verify step per item; the harnesses in `TESTING.md` are the verification layer.
 
 **Finish a concept across every surface.** A rename or collapse is done only when the old term is gone from **all** of: code identifiers, comments, doc files (`docs/`, CLAUDE.md), tests (incl. describe/it strings + fixtures), CSS (class names, `@layer` names, custom properties), user-facing copy, and **clause IDs** — verified by an *exhaustive* grep that returns empty (minus an enumerated, stated allowlist), shown before the word "done." "It compiles / tests pass" is the compiler's bar, not the finish line. Phasing a concept into "identifiers now, the rest later" is how the same files get re-touched five times — don't.
 
-**Delete dead code; never rename it.** When a feature was removed, its orphaned remnants (consumers with no producer, vestigial plumbing) get **deleted**, not swept into the new vocabulary. Renaming dead code makes it look intentional and deepens the confusion a clarity pass is meant to remove. Before renaming a thing, confirm it's live (has a producer/caller); if it's a corpse, bury it.
+**Delete dead code; never rename it.** Orphaned remnants of a removed feature get **deleted**, never swept into the new vocabulary — renaming a corpse makes it look intentional. Before renaming, confirm it's live (has a producer/caller); if it's a corpse, bury it.
 
-**Never bypass the guards.** Commit with the pre-commit hook **running** — no `git commit --no-verify`. The hook (lint-staged + the whole-tree guards + knip + the semantic open-world gate) is the safety net; a session of `--no-verify` hid a knip-red tree, a clause-count doc drift, and `evmSnapshot`/`evmRevert` specs — none caught until asked. If a mid-work bypass is unavoidable it is a **debt to restore** before the session ends, not a shortcut. "Verify the guards" = run every lint script + knip + clause-counts over the **whole tree** (the per-diff guards never re-check committed files). Detail: `feedback_never_bypass_guards` memory.
+**Never bypass the guards.** Commit with the pre-commit hook **running** — no `git commit --no-verify`; an unavoidable mid-work bypass is a **debt to restore** before the session ends. "Verify the guards" = every lint script + knip + clause-counts over the **whole tree** (per-diff guards never re-check committed files). Detail: `feedback_never_bypass_guards` memory.
 
-**Commit freely; never ask; never push.** Commit at every verified checkpoint (coherent unit, done + guards green), splitting into logical commits when cleaner. Do **NOT** ask "want me to commit?" or leave verified work waiting for a go-ahead. This **OVERRIDES** the harness default ("commit only when the user asks") — the user has no preference about commit *timing*. Hard limit: **NEVER `git push`** — the user's alone. Detail: `feedback_commit_push_preferences` memory.
+**Commit freely; never ask; never push.** Commit at every verified checkpoint without asking — this **OVERRIDES** the harness default ("commit only when the user asks"). Hard limit: **NEVER `git push`** — the user's alone. Detail: `feedback_commit_push_preferences` memory.
 
 ### Before Raising Any Finding
 
@@ -278,7 +318,7 @@ The `(marketing)`/`(app)` split is wallet-scope, not data-freshness; hardcoded/b
 
 ### Documentation Discipline
 
-When a code change makes a doc statement stale, fix the doc in the same session. `scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable drift: broken backticked paths in `CLAUDE.md`; the env-var set in `docs/LOCAL_DEV.md` vs `frontend/.env.local`; the mock inventory in `docs/CONTRACTS.md`; the deploy-script inventory in `docs/LOCAL_DEV.md`.
+When a code change makes a doc statement stale, fix the doc in the same session. `scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable drift (broken backticked paths, the env-var set, the mock and deploy-script inventories).
 
 **Authoritative docs that must stay in sync** (when code changes, update these):
 
@@ -290,9 +330,9 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 **`docs/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 
-**Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `archive-v5/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the punch-list applies to docs.
+**Delete on completion.** When a strategy/plan/audit doc's work is closed, **delete the file** — never move it to `archive-v5/` (legacy v4 docs only), never mark items done in place; git history retrieves.
 
-**One punch-list; no audit-findings docs.** Open work — engineering tasks, audit findings, punch-list items, papers, research — is tracked in exactly one place: the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal — items + their why/how, never a session log). An audit produces punch-list items, not a doc. There are no `AUDIT_FINDINGS_*.md` files and no punch-list docs in `docs/`; closed work is recovered from `git log`. **Open-world turning point = 2026-07-03**: check pre-07-03 punch-list items for closed-world cruft first (`feedback_verify_punchlist_referents` memory). Verification *coverage* (live test counts, harness inventory) lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks and release-gate criteria in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`.
+**One punch-list; no audit-findings docs.** All open work lives in exactly one place — the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal); an audit produces punch-list items, never a doc; closed work is recovered from `git log`. Pre-2026-07-03 items get a closed-world cruft check first (`feedback_verify_punchlist_referents` memory). Verification *coverage* lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks and release-gate criteria in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`.
 
 **No new top-level docs without destination.** Agents creating new files in `docs/` must either edit a whitelisted doc or get explicit user approval to extend the whitelist — there is no auto-allowed new-file pattern. New strategy/plan/notes files require approval before creation — write them as sections in the relevant whitelisted doc, or as backlog items.
 
@@ -304,11 +344,11 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 One test layer per concern. These boundaries are hard; respect them when writing or auditing any test. Commands → `LOCAL_DEV.md`; full harness inventory → `TESTING.md`.
 
-- Layers: **Foundry** (contract behavior — the only home) · **Vitest** (UI logic / validation / pure-client, no chain or browser — sole exception: the SDK's skipIf-gated `integration.test.ts` round-trip, which proves SDK artifacts survive a live chain and asserts no kernel math) · **Playwright `devnet`** (the e2e suite, and the only one) · **Playwright `mobile`** (responsive / CSS chrome jsdom can't test). Per-layer detail → `TESTING.md`.
+- Layers: **Foundry** (contract behavior — the only home) · **Vitest** (UI logic / validation / pure-client, no chain or browser — sole exception: the SDK's skipIf-gated `integration.test.ts` round-trip) · **Playwright `devnet`** (the e2e suite, and the only one) · **Playwright `mobile`** (responsive / CSS chrome jsdom can't test). Per-layer detail → `TESTING.md`.
 
-**e2e means end-to-end: action → reaction, both in the UI** — either end broken (viem-driven action, chain-only assertion, mock-backed reaction) and it is not e2e. Canonical definition → `TESTING.md` § Playwright.
+**e2e means end-to-end: action → reaction, both in the UI** — either end broken and it is not e2e. Canonical definition → `TESTING.md` § Playwright.
 
-**And assert CHAIN FACTS the UI is responsible for producing** — read the state back out-of-band, never from the screen that claims to have written it. **A contract can be provably correct and still be fed nothing**, and that seam is invisible to Foundry, tsc, knip and review alike (four instances, 2026-07-30). Doctrine + the six anti-patterns → `TESTING.md` § "Assert CHAIN FACTS".
+**And assert CHAIN FACTS the UI is responsible for producing** — read state back out-of-band, never from the screen that claims to have written it: **a contract can be provably correct and still be fed nothing**. Doctrine + the six anti-patterns → `TESTING.md` § "Assert CHAIN FACTS".
 
 ---
 
