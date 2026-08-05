@@ -62,10 +62,11 @@ get used (the 300M DAO treasury funds by human judgment) —
 with its own equilibrium: usage and authorship both require a live ETH stake, a value
 loop — exposure to the growth one's own work produces, not a fee.
 
-And it is built to GROW: anyone contributes permissionlessly — authoring clauses,
-publishing assemblies, selling, building tooling, hosting discussion — and anyone may
-COMPETE with it: their own UI over the same contracts, or their own contracts
-entirely. A dynamic system; evolution is the design.
+And growth is paid for, not hoped for: the 600M rewards whoever's artifacts get
+USED — so anyone contributes permissionlessly (authoring clauses, publishing
+assemblies, selling, building tooling, hosting discussion), and anyone may COMPETE:
+their own UI over the same contracts, or their own contracts entirely. A dynamic
+system by construction; evolution is the design.
 
 **Self-check before any synthesis:** does your draft cover at least six of the seven layers — kernel, clauses,
 assemblies, composition, registries+RPGF, data, agents? Is every sentence
