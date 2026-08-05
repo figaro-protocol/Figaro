@@ -7,7 +7,7 @@ import { NAV_LINKS_MARKETING_DRAWER } from "@/components/shared/navLinks";
  * `useWalletConnected` so marketing pages don't pull the wallet provider
  * into their client bundle.
  *
- * Audience CTAs (`BuildButton`, `ReadButton`, the Participate link) live below
+ * Audience CTAs live below
  * the three doorways on the homepage (`/`), not in the header — text
  * doesn't visually cue redirection. The header carries the publication-
  * row nav and the logo only.

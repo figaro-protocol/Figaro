@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { ReadButton } from "@/components/shared/ReadButton";
-import { BuildButton } from "@/components/shared/BuildButton";
 
 export const metadata: Metadata = {
     title: "Figaro Protocol",
@@ -52,47 +50,29 @@ export default function Home() {
                 <p className="text-base text-ink-body leading-relaxed">
                     None of this un-ships a damaged package or makes a liar pleasant to deal with. It makes cheating unprofitable, fixing things profitable, and every step of the deal checkable &mdash; what that covers and what it doesn&apos;t, question by question, is on <Link href="/security" className="hover:underline">Security</Link>.
                 </p>
-            </section>
-
-            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-xl">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="text-center flex flex-col">
-                        <h2 className="text-heading-h3 text-ink-heading">Protocol</h2>
-                        <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
-                            The mathematics, derived step by step. Judge it for yourself.
-                        </p>
-                        <div className="mt-auto">
-                            <ReadButton className="inline-flex min-w-[160px] justify-center" />
-                        </div>
-                    </div>
-                    <div className="text-center flex flex-col">
-                        <h2 className="text-heading-h3 text-ink-heading">Builders</h2>
-                        <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
-                            Terms, deal-shapes, tokens, agents &mdash; build on the substrate, and settle one whole deal end to end.
-                        </p>
-                        <div className="mt-auto">
-                            <BuildButton className="inline-flex min-w-[160px] justify-center" />
-                        </div>
-                    </div>
-                    <div className="text-center flex flex-col">
-                        <h2 className="text-heading-h3 text-ink-heading">Users</h2>
-                        <p className="text-sm text-ink-muted mt-2 mb-5 leading-relaxed">
-                            From nothing to your first deal: the wallet, the tokens, what it costs, what to back up.
-                        </p>
-                        <div className="mt-auto">
-                            <Link
-                                href="/users"
-                                className={
-                                    "inline-flex min-w-[160px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                                    "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                                }
-                                data-testid="participate-button"
-                            >
-                                Participate <span aria-hidden="true">&rarr;</span>
-                            </Link>
-                        </div>
-                    </div>
+                <div className="flex flex-col sm:flex-row gap-4 mt-10">
+                    <Link
+                        href="/protocol"
+                        className={
+                            "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
+                            "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
+                        }
+                        data-testid="cta-protocol"
+                    >
+                        How it works <span aria-hidden="true">&rarr;</span>
+                    </Link>
+                    <Link
+                        href="/why"
+                        className={
+                            "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
+                            "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
+                        }
+                        data-testid="cta-why"
+                    >
+                        Why this exists <span aria-hidden="true">&rarr;</span>
+                    </Link>
                 </div>
             </section>
         </>
