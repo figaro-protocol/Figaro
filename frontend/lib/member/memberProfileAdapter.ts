@@ -41,11 +41,32 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
                 : item.pricingPolicy === 'fixed' ? 'fixed' as const : undefined,
             rateUnit: typeof item.rateUnit === 'string' ? item.rateUnit : undefined,
             rateQuantitySource: typeof item.rateQuantitySource === 'string' ? item.rateQuantitySource : undefined,
-            // Catalogue-sourced clause values (freight class, hazmat, cold-chain, …)
-            // fold onto their own leaves; pass the record through structurally.
+            // Catalogue-sourced clause values (freight class, hazmat, cold-chain,
+            // a data product's license terms, …) fold onto their own leaves;
+            // pass the record through structurally.
             clauseValues: item.clauseValues && typeof item.clauseValues === 'object' && !Array.isArray(item.clauseValues)
                 ? (item.clauseValues as CatalogueItemMetadata['clauseValues'])
                 : undefined,
+            // The data this item sells (data-market listing). Same warning as
+            // the physical measures: drop it here and the buyer surface loses
+            // its data marking and checkout its context.
+            dataSold: (() => {
+                const rc = item.dataSold;
+                if (!rc || typeof rc !== 'object' || Array.isArray(rc)) return undefined;
+                const r2 = rc as Record<string, unknown>;
+                const posture = r2.posture === 'buyer' ? 'buyer' as const
+                    : r2.posture === 'seller' ? 'seller' as const : undefined;
+                return typeof r2.compositionHash === 'string'
+                    && /^0x[0-9a-fA-F]{64}$/.test(r2.compositionHash)
+                    && typeof r2.clauseId === 'string'
+                    && posture
+                    ? {
+                        compositionHash: r2.compositionHash as `0x${string}`,
+                        clauseId: r2.clauseId,
+                        posture,
+                    }
+                    : undefined;
+            })(),
         }))
         .filter((item) => item.name.trim().length > 0);
 }

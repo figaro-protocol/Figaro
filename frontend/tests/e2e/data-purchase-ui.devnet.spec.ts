@@ -3,7 +3,7 @@
  *
  * THE BUYER-SIDE DATA SALE, THROUGH THE UI (value legs). A member who bought
  * aerial surveys monetizes the records it co-produced AS A BUYER: its profile
- * subscribes the survey assembly, offers the flight-record class
+ * subscribes the survey assembly, offers the flight-record data
  * (disclosurePolicy, posture "buyer"), binds the data-stream-subscription
  * reference for delivery, and prices the class as a catalogue DATA-PRODUCT
  * item whose license terms are CATALOGUE-AUTHORED (figaro-data-license
@@ -52,7 +52,7 @@ const LICENSE = {
 const DATA_ITEM_ID = 'flight-records-stream';
 
 /** Seed (idempotently re-assert) the data seller: subscribed to the survey
- *  assembly it BUYS through, offering the flight-record class it co-produced
+ *  assembly it BUYS through, offering the flight-record data it co-produced
  *  as a buyer, bound to the data-stream-subscription reference to deliver,
  *  and pricing the class as a data-product catalogue item. */
 async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }> {
@@ -64,14 +64,14 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
     expect(anchored.some((a) => a.slug === streamSlug),
         'the data-stream-subscription reference is anchored — run populate-test-data').toBe(true);
 
-    // The record class: a clause of the SUBSCRIBED assembly — the survey's
-    // flight record leaf — co-produced by this wallet as the survey's BUYER.
+    // The data sold: a clause of the SUBSCRIBED assembly — the survey's
+    // flight-record leaf — co-produced by this wallet as the survey's BUYER.
     const recordClauseId = 'figaro-geolocation';
     expect(
         survey!.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(recordClauseId)),
         'the survey composes the flight-record clause',
     ).toBe(true);
-    const recordClass = {
+    const dataSold = {
         compositionHash: survey!.compositionHash,
         clauseId: recordClauseId,
         posture: 'buyer' as const,
@@ -88,7 +88,7 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
             price: '2',
             category: 'data',
             available: true,
-            recordClass,
+            dataSold,
             clauseValues: { 'figaro-data-license': { ...LICENSE } },
         }],
     });
@@ -107,7 +107,7 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
                 counterpartyBindings: [],
             }],
             buyerAssemblies: [{ compositionHash: survey!.compositionHash }],
-            disclosurePolicy: [{ ...recordClass, offered: true }],
+            disclosurePolicy: [{ ...dataSold, offered: true }],
         },
     });
     return { recordClauseId };
@@ -116,7 +116,7 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
 test.describe('Buyer-side data sale through the UI (devnet)', () => {
     test.setTimeout(240_000);
 
-    test('a subscribed buyer-posture record class is discovered, ordered, committed, and settled', async ({ page }) => {
+    test('the buyer-side data is discovered, ordered, committed, and settled', async ({ page }) => {
         // Resolve raises a native window.confirm — auto-accept it.
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         const config = readLocalDeploymentConfig();
@@ -153,14 +153,14 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         await waitForConnected(page);
         await expect(
             page.getByTestId('seller-disclosure-policy'),
-            'the records-offered section renders the declared classes',
+            'the data-for-sale section renders the declared offers',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            page.getByTestId(`disclosure-class-${recordClauseId}-buyer`),
-            'the buyer-posture flight-record class is listed',
+            page.getByTestId(`disclosure-data-${recordClauseId}-buyer`),
+            'the buyer-side flight-record data is listed',
         ).toBeVisible();
         await expect(
-            page.getByTestId(`catalogue-item-record-class-${DATA_ITEM_ID}`),
+            page.getByTestId(`catalogue-item-data-sold-${DATA_ITEM_ID}`),
             'the priced item carries its data-product badge',
         ).toBeVisible();
 

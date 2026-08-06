@@ -132,10 +132,10 @@ export interface BuyerAssemblySubscription {
 }
 
 /**
- * WHEN a disclosure-policy entry's record class may be bought/seen.
+ * WHEN a disclosure-policy entry's data may be bought/seen.
  * All fields optional; an absent calendar means "immediately, once
- * offered". The canonical use is the settlement embargo: the record
- * class opens N days after the process it belongs to settles.
+ * offered". The canonical use is the settlement embargo: the data
+ * opens N days after the process it belongs to settles.
  */
 export interface DisclosureCalendar {
     /** Days after the record's process settles before disclosure opens. */
@@ -147,20 +147,20 @@ export interface DisclosureCalendar {
 }
 
 /**
- * One leaf-class row of the member's data-disclosure policy.
+ * One row of the member's data-disclosure policy — one kind of DATA.
  *
- * The LEAF CLASS is derived, never a stored taxonomy: it is the pair
- * (assembly `compositionHash`, `clauseId`) — the record classes of the
- * processes a member trades in come from its own assembly lists: the
- * BINDINGS for the seller side, the buyer's SUBSCRIPTIONS
- * (`buyerAssemblies`) for the buyer side. Any UI enumerates candidate
- * classes from those lists, never from a hardcoded one.
+ * WHAT DATA a row names is derived, never a stored taxonomy: the pair
+ * (assembly `compositionHash`, `clauseId`) — the data of the deals a
+ * member trades in comes from its own assembly lists: the BINDINGS for
+ * the seller side, the buyer's SUBSCRIPTIONS (`buyerAssemblies`) for
+ * the buyer side. Any UI enumerates candidates from those lists, never
+ * from a hardcoded one.
  *
  * Same genus as `acceptedTokens[]`: a self-declared OFFER. It says
- * WHAT class of co-produced record is offered or withheld, to WHOM
+ * WHAT co-produced data is offered or withheld, to WHOM
  * (whitelist), and WHEN (calendar). It never carries prices — a data
  * product is priced as an item in the member's own catalogue
- * (fixed | rate), the item referencing the class via `recordClass`.
+ * (fixed | rate), the item naming the data it sells via `dataSold`.
  *
  * Members hold buyer AND seller postures; `posture` names which side
  * the member co-produced the record on. The buyer half is first-class
@@ -172,11 +172,11 @@ export interface DisclosurePolicyEntry {
      *  co-produced records this row governs. */
     compositionHash: `0x${string}`;
     /** Clause id of the record's leaf section within that assembly's
-     *  agreements (the clause-section half of the leaf class). */
+     *  agreements (the clause-section half of the pair). */
     clauseId: string;
     /** Which posture the member held when co-producing the record. */
     posture: "buyer" | "seller";
-    /** Toggle: is this class of co-produced record offered for
+    /** Toggle: is this co-produced data offered for
      *  sale/disclosure at all. `false` is an explicit withholding —
      *  distinct from the entry being absent. */
     offered: boolean;
@@ -255,14 +255,14 @@ export interface MemberProfileMetadata {
      * The buyer's assembly subscriptions — which registered assemblies
      * this member buys through and monetizes records from. Independent
      * of `assemblyBindings` (the seller's list). Buyer-posture
-     * `disclosurePolicy` entries derive their candidate record classes
+     * `disclosurePolicy` entries derive their candidate data
      * from this list; seller-posture entries derive from the bindings.
      */
     buyerAssemblies?: BuyerAssemblySubscription[];
     /**
      * Data-disclosure policy — the member's self-declared terms for the
      * records they CO-PRODUCE inside bonded processes, one entry per
-     * leaf class (assembly compositionHash × clauseId × posture). See
+     * (assembly compositionHash × clauseId × posture). See
      * `DisclosurePolicyEntry` for the entry semantics.
      *
      * Default (field absent) is the paper-contract default: each party

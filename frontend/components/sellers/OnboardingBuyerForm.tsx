@@ -20,8 +20,8 @@ import { DisclosurePolicyEditor } from "@/components/sellers/DisclosurePolicyEdi
  * The buyer step of the member wizard. The member SUBSCRIBES the
  * assemblies they buy through — their own list, independent of the
  * seller bindings, because a wallet does not buy through the assemblies
- * it sells through — and toggles which classes of the records those
- * deals co-produce are offered for sale. Subscribing is the buyer's
+ * it sells through — and toggles which of the data those deals
+ * co-produce is offered for sale. Subscribing is the buyer's
  * verb; BINDING stays the seller's.
  *
  * Optional: a member who only sells ships with no subscriptions.
@@ -29,7 +29,7 @@ import { DisclosurePolicyEditor } from "@/components/sellers/DisclosurePolicyEdi
  * member's own catalogue.
  */
 
-/** Restrict the buyer-posture policy to record classes of the
+/** Restrict the buyer-posture policy to the data of the
  *  assemblies currently subscribed — unsubscribing drops its rows from
  *  the saved policy (local editor state keeps them, so re-subscribing
  *  within the session restores the configuration). */
@@ -155,7 +155,7 @@ export function OnboardingBuyerForm({
                     Subscribe the assemblies you buy through. Every deal
                     co-produces records, and the records from your side of a
                     purchase are yours — subscribing an assembly surfaces its
-                    record classes below, where you choose which ones you offer
+                    data below, where you choose what you offer
                     for sale, to whom, and from when. This step is optional: a
                     member who only sells simply leaves it empty.
                 </p>
@@ -228,7 +228,7 @@ export function OnboardingBuyerForm({
             {subscribed.size > 0 && (
                 <Card className="p-6 text-sm text-ink-body space-y-2">
                     <p>
-                        Price what you offered: list each record class as an item in{" "}
+                        Price what you offered: list that data as items in{" "}
                         <Link href="/members/catalogue" className="text-ink-heading font-medium hover:underline">
                             your catalogue
                         </Link>

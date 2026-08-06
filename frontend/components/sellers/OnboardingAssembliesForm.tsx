@@ -70,7 +70,7 @@ function buildBindings(
         .map((c) => buildBinding(wallet, c, counterpartiesBySlug.get(c.slug) ?? []));
 }
 
-/** Restrict the disclosure policy to leaf classes of the assemblies
+/** Restrict the disclosure policy to the data of the assemblies
  *  currently selected — un-binding an assembly drops its rows from the
  *  saved policy (the local editor state keeps them, so re-checking the
  *  assembly within the session restores the configuration). */

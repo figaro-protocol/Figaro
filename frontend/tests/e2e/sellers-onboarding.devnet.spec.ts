@@ -5,8 +5,8 @@
  * register through the real 7-step wizard: identity → catalogue → assemblies →
  * buyer → agents → review → publish, ending anchored on `MembersRegistry`,
  * pinned to IPFS, and surfacing on `/s/view` and `/discover`. The buyer step
- * subscribes an assembly the wallet buys through and offers one of its record
- * classes — the pinned document must carry BOTH halves.
+ * subscribes an assembly the wallet buys through and offers some of its data
+ * — the pinned document must carry BOTH halves.
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
@@ -114,7 +114,7 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await expect(page).toHaveURL(/\/members\/buyer/);
 
     // Step 5 — Buyer: subscribe an assembly the wallet buys through, then
-    // offer one of its record classes for sale. Subscribing is the buyer's
+    // offer some of its data for sale. Subscribing is the buyer's
     // verb (a profile declaration), distinct from the seller BINDING above.
     const buyerRow = page.getByTestId(`buyer-assembly-row-${assemblySlug}`);
     await buyerRow.waitFor({ state: 'visible', timeout: 30_000 });
@@ -123,7 +123,7 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
         await buyerCheckbox.check();
     }
     // The disclosure editor renders one buyer-posture row per clause once the
-    // subscribed assembly's template loads; offer the first class.
+    // subscribed assembly's template loads; offer the first row.
     const offerBox = page
         .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-buyer-offer"]`)
         .first();
@@ -229,7 +229,7 @@ test.describe("seller registration wizard (devnet)", () => {
             expect(buyerSubs.length, "the buyer's assembly subscription is in the pinned profile").toBeGreaterThanOrEqual(1);
             const policy = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean; compositionHash: string }>;
             const buyerEntry = policy.find((e) => e.posture === "buyer" && e.offered === true);
-            expect(buyerEntry, "an offered buyer-posture record class is in the pinned profile").toBeTruthy();
+            expect(buyerEntry, "offered buyer-side data is in the pinned profile").toBeTruthy();
             expect(
                 buyerSubs.some((s) => s.compositionHash === buyerEntry!.compositionHash),
                 "the offered buyer class derives from a subscribed assembly",

@@ -3,7 +3,7 @@ import { MemberEditBuyer } from "@/components/sellers/MemberEditBuyer";
 
 export const metadata: Metadata = {
     title: "Edit buyer side — Figaro Protocol",
-    description: "Subscribe the assemblies the wallet buys through and choose which record classes it offers for sale. Re-pins the profile JSON, then dispatches MembersRegistry.updateProfile.",
+    description: "Subscribe the assemblies the wallet buys through and choose which of its data it offers for sale. Re-pins the profile JSON, then dispatches MembersRegistry.updateProfile.",
 };
 
 export default function EditBuyerPage() {

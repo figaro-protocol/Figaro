@@ -1092,7 +1092,7 @@ registration at all.
     self-declared terms for the records they co-produce inside bonded processes
     (the voluntary data market), each
     `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`. The
-    leaf class is DERIVED, never a stored taxonomy: `compositionHash` (the
+    data a row names is DERIVED, never a stored taxonomy: `compositionHash` (the
     `AssemblyRegistry` key of an assembly the member binds) × `clauseId` (the
     record's leaf section) name clauses the member already composes.
     `posture: "buyer" | "seller"` says which side the member co-produced the
@@ -1116,7 +1116,7 @@ registration at all.
   Each item requires `id`, `name`, `price`, `available`; optional are
   `description`, `category`, `image`, `recordClass` (marks a DATA-PRODUCT
   item: `{ compositionHash, clauseId, posture }` referencing one of the
-  member's own declared disclosure classes — the policy declares the terms,
+  member's own declared data offers — the policy declares the terms,
   this item is the price), physical measures (`massGrams`,
   `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
   (`pricingPolicy: "fixed" | "rate"`, `rateUnit`, `rateQuantitySource`), and

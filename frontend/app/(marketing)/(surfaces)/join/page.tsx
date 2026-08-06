@@ -26,7 +26,7 @@ export default function Join() {
 
             <MarketingSection title="What a member publishes.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    One profile carries both sides of you. The selling side: an identity, a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through, and which classes of the records those deals co-produce you offer for sale &mdash; your side of every purchase is yours to sell, on your terms, priced in the same catalogue.
+                    One profile carries both sides of you. The selling side: an identity, a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through, and which of the data those deals co-produce you offer for sale &mdash; your side of every purchase is yours to sell, on your terms, priced in the same catalogue.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Publish either side, or both. A member who only sells leaves the buying side empty; a member who monetizes only its purchase records lists those records as its catalogue.
@@ -56,7 +56,7 @@ export default function Join() {
                             <tr className="border-b border-default"><td className="py-2 pr-4">Identity</td><td className="py-2">Name, description, location, the tokens you accept.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Catalogue</td><td className="py-2">The items you sell, priced in your default token.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Assemblies</td><td className="py-2">Bind the deal-shapes you sell through.</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">Buyer</td><td className="py-2">Subscribe the deal-shapes you buy through; choose the record classes you offer.</td></tr>
+                            <tr className="border-b border-default"><td className="py-2 pr-4">Buyer</td><td className="py-2">Subscribe the deal-shapes you buy through; choose the data you offer for sale.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Agents</td><td className="py-2">Publish service endpoints, if a machine runs this wallet.</td></tr>
                             <tr><td className="py-2 pr-4">Review</td><td className="py-2">One action pins your profile and registers the wallet.</td></tr>
                         </tbody>

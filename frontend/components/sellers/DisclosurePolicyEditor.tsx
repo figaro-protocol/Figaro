@@ -11,19 +11,19 @@ import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
  * DisclosurePolicyEditor — the member's data-disclosure declaration,
  * edited beside the assembly bindings it derives from.
  *
- * Leaf classes are DERIVED, never a stored taxonomy: each row is the
+ * WHAT DATA each row names is DERIVED, never a stored taxonomy: the
  * pair (assembly compositionHash, clauseId) enumerated from the
  * assemblies the member is binding right now (the `choices` prop is
  * the live-registry selection), crossed with the two postures a member
  * holds — records co-produced AS A SELLER and AS A BUYER. The buyer
  * half is first-class: the same offer structure, the same terms.
  *
- * Checking a row declares the class offered (an entry with
+ * Checking a row declares that data offered (an entry with
  * `offered: true` on the profile). Unchecking removes the entry —
  * the paper-contract default: each party holds its own copy; absence
  * of a policy is not a policy of openness. Prices never live here —
  * a data product is priced as an item in the member's own catalogue
- * (fixed | rate), the item referencing the class via `recordClass`.
+ * (fixed | rate), the item naming the data it sells via `dataSold`.
  */
 
 const ALL_POSTURES = ["seller", "buyer"] as const;
@@ -43,15 +43,15 @@ function findEntry(
 }
 
 export interface DisclosurePolicyEditorProps {
-    /** The assemblies whose record classes this mount governs — the
+    /** The assemblies whose data this mount governs — the
      *  seller step passes its selected BINDINGS, the buyer step its
      *  selected SUBSCRIPTIONS; both from the on-chain registry. */
     choices: AssemblyChoice[];
     entries: DisclosurePolicyEntry[];
     onChange: (next: DisclosurePolicyEntry[]) => void;
     /** Which side's rows this mount edits. The seller assemblies step
-     *  passes ["seller"], the buyer step ["buyer"] — each side's classes
-     *  derive from its own assembly list, so the two are never
+     *  passes ["seller"], the buyer step ["buyer"] — each side's data
+     *  derives from its own assembly list, so the two are never
      *  interleaved on one step. */
     postures?: readonly ("buyer" | "seller")[];
 }
@@ -84,9 +84,9 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
                     Optional. Every bonded process co-produces records — one per
-                    clause, per order. The record classes below derive from the
-                    assemblies you just bound. Checking a class offers it for
-                    sale or disclosure; a whitelist narrows who may buy or see
+                    clause, per order. The rows below are the data those
+                    assemblies’ deals produce. Checking a row offers that data
+                    for sale or disclosure; a whitelist narrows who may buy or see
                     it, and an embargo delays it until N days after settlement.
                 </p>
                 <p>
@@ -140,7 +140,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
     );
 }
 
-/** One leaf-class × posture row: the offer toggle, and (when offered)
+/** One data × posture row: the offer toggle, and (when offered)
  *  the whitelist + settlement-embargo refinements. */
 function PolicyLeafRow({
     slug,

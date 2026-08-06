@@ -27,12 +27,12 @@ interface CartItem {
      *  the checkout fold lands them on the matching clause leaves. Keyed by
      *  clauseId → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
-    /** DATA-PRODUCT context: the record class this item sells
+    /** Data-market context: the data this item sells
      *  (assembly compositionHash × clauseId × the posture the seller
      *  co-produced on), copied from the catalogue item so checkout can
      *  show what is being licensed. The license TERMS ride `clauseValues`
      *  like any catalogue-authored clause. */
-    recordClass?: {
+    dataSold?: {
         compositionHash: `0x${string}`;
         clauseId: string;
         posture: "buyer" | "seller";

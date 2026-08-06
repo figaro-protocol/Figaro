@@ -44,7 +44,7 @@ export interface SellerCatalogue {
     /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
     agentServices?: MemberAgentServices;
     /** The member's data-disclosure policy (voluntary data market) —
-     *  which co-produced record classes are offered, to whom, when.
+     *  which co-produced data is offered, to whom, when.
      *  Absent = the paper-contract default: each party holds its own
      *  copy; nothing is offered. */
     disclosurePolicy?: DisclosurePolicyEntry[];

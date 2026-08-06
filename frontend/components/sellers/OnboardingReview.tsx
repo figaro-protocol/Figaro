@@ -397,9 +397,8 @@ export function OnboardingReview() {
                 </div>
                 {(profile?.disclosurePolicy?.length ?? 0) > 0 ? (
                     <p className="text-sm text-ink-body" data-testid="review-disclosure-policy">
-                        {profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "seller").length} seller-side
-                        and {profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "buyer").length} buyer-side
-                        record classes offered for sale or disclosure.
+                        Data offered for sale: {profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "seller").length} from the selling side,
+                        {" "}{profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "buyer").length} from the buying side.
                     </p>
                 ) : (
                     <p className="text-sm text-ink-faint">

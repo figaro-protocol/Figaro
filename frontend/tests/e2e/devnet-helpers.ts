@@ -148,7 +148,7 @@ export interface SeedMemberProfile {
     /** The buyer's assembly SUBSCRIPTIONS — the deal-shapes this member buys
      *  through and monetizes records from (independent of the bindings). */
     buyerAssemblies?: Array<{ compositionHash: `0x${string}` }>;
-    /** The member's data-disclosure policy — offered record classes
+    /** The member's data-disclosure policy — the data offered
      *  (assembly compositionHash × clauseId × posture). */
     disclosurePolicy?: Array<{
         compositionHash: `0x${string}`;

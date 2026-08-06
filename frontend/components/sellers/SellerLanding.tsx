@@ -219,7 +219,7 @@ function ManageList({
         { label: "Identity", description: "Name, description, tokens, location.", href: "/members/edit/identity" },
         { label: "Catalogue", description: "Items.", href: "/members/edit/catalogue" },
         { label: "Assemblies", description: "Bindings.", href: "/members/edit/assemblies" },
-        { label: "Buyer", description: "Assemblies you buy through; record classes you sell.", href: "/members/edit/buyer" },
+        { label: "Buyer", description: "Assemblies you buy through; the data you sell.", href: "/members/edit/buyer" },
         { label: "Agents", description: "Service endpoints.", href: "/members/edit/agents" },
     ];
     return (

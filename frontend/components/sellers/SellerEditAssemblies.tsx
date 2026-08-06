@@ -137,7 +137,7 @@ export function SellerEditAssemblies() {
         // seller stays registered, just with no assembly-scoped
         // discovery). The hook's merge keeps the field present-but-
         // empty rather than stripping it. The disclosure policy rides
-        // along (its leaf classes derive from the bindings) — but an
+        // along (its data derives from the bindings) — but an
         // EMPTY policy clears the field instead of pinning `[]`: the
         // no-policy state is the field's ABSENCE (the paper-contract
         // default), and a member who never declared one must

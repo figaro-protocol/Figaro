@@ -120,7 +120,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             widthMm: catalogueItem.widthMm,
             heightMm: catalogueItem.heightMm,
             clauseValues: catalogueItem.clauseValues,
-            recordClass: catalogueItem.recordClass,
+            dataSold: catalogueItem.dataSold,
         });
     };
 
@@ -196,7 +196,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                     if (offered.length === 0) return null;
                                     return (
                                         <span>
-                                            Data: {offered.length} record class{offered.length === 1 ? "" : "es"} offered
+                                            Data for sale: {offered.length} offer{offered.length === 1 ? "" : "s"}
                                         </span>
                                     );
                                 })()}
@@ -208,10 +208,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     </div>
                 </header>
 
-                {/* Records offered — the member's declared disclosure classes,
-                    class by class: what record, which side they co-produced it
-                    on, who may buy, and when it opens. The PRICED form of a
-                    class is a catalogue item below carrying its recordClass. */}
+                {/* Data for sale — the member's declared offers: what data, which
+                    side they co-produced it on, who may buy, and when it
+                    opens. The PRICED form is a catalogue item carrying dataSold. */}
                 {(() => {
                     const offered = sellerCatalogue.disclosurePolicy?.filter((e) => e.offered) ?? [];
                     if (offered.length === 0) return null;
@@ -220,7 +219,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                             className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3"
                             data-testid="seller-disclosure-policy"
                         >
-                            <p className="text-xs font-semibold text-neutral-500">Records offered</p>
+                            <p className="text-xs font-semibold text-neutral-500">Data for sale</p>
                             <ul className="space-y-2 text-sm text-neutral-700">
                                 {offered.map((entry) => {
                                     const title = getClauseSpec(entry.clauseId)?.title ?? entry.clauseId;
@@ -229,10 +228,10 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                         <li
                                             key={`${entry.compositionHash}-${entry.clauseId}-${entry.posture}`}
                                             className="flex flex-wrap items-baseline gap-x-2"
-                                            data-testid={`disclosure-class-${entry.clauseId}-${entry.posture}`}
+                                            data-testid={`disclosure-data-${entry.clauseId}-${entry.posture}`}
                                         >
                                             <span className="font-medium text-black">{title}</span>
-                                            <span className="text-neutral-500">records, co-produced as {entry.posture}</span>
+                                            <span className="text-neutral-500">data · as {entry.posture}</span>
                                             <span className="text-neutral-500">
                                                 · {entry.whitelist?.length
                                                     ? `${entry.whitelist.length} wallet${entry.whitelist.length === 1 ? "" : "s"} whitelisted`
@@ -251,7 +250,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                 })}
                             </ul>
                             <p className="text-xs text-neutral-500">
-                                Priced classes appear in the catalogue below as data-product items.
+                                Priced data appears in the catalogue below.
                             </p>
                         </section>
                     );
@@ -293,13 +292,12 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-black mb-1">{catalogueItem.name}</h3>
                                                             <p className="text-sm text-neutral-500 mb-2">{catalogueItem.description}</p>
-                                                            {catalogueItem.recordClass && (
+                                                            {catalogueItem.dataSold && (
                                                                 <p
                                                                     className="text-[11px] text-neutral-500 mb-2"
-                                                                    data-testid={`catalogue-item-record-class-${catalogueItem.id}`}
+                                                                    data-testid={`catalogue-item-data-sold-${catalogueItem.id}`}
                                                                 >
-                                                                    Data product · {getClauseSpec(catalogueItem.recordClass.clauseId)?.title ?? catalogueItem.recordClass.clauseId} records,
-                                                                    co-produced as {catalogueItem.recordClass.posture}
+                                                                    Data for sale · {getClauseSpec(catalogueItem.dataSold.clauseId)?.title ?? catalogueItem.dataSold.clauseId} · as {catalogueItem.dataSold.posture}
                                                                 </p>
                                                             )}
                                                             {(catalogueItem.massGrams || catalogueItem.volumeMl) && (
