@@ -1,5 +1,5 @@
 /**
- * lib/seller/useMembersRegistry.ts
+ * lib/member/useMembersRegistry.ts
  *
  * Hooks for writing to the MembersRegistry contract — register, updateProfile,
  * requestWithdrawal/withdraw — and for reading event-derived member state.

@@ -24,7 +24,7 @@ import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
-import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
+import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
 import { planSubOrderSellers, readDenominationPin, resolveSubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { deriveAgreementGroups, deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
@@ -46,9 +46,9 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
-import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
-import { displayNameForAddress } from "@/lib/seller/sellerListing";
-import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
+import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies";
+import { displayNameForAddress } from "@/lib/member/memberListing";
+import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import type { FieldSpec } from "@figaro/sdk/clauses";
@@ -74,7 +74,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { compose } = useCompositionActions();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
-    const sellerCatalogue = useMemo(
+    const memberCatalogue = useMemo(
         () => sellerCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
         [sellerCatalogues, sellerAddressLower],
     );
@@ -83,7 +83,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { items } = useCartStore();
     const connectInjected = useConnectInjected();
 
-    const { assemblies: boundAssemblies } = useSellerBoundAssemblies(sellerAddressTyped);
+    const { assemblies: boundAssemblies } = useMemberBoundAssemblies(sellerAddressTyped);
 
     // The buyer's options ARE the seller's bound assemblies — each is one
     // option, labelled by the assembly's own name and keyed by its slug.
@@ -119,7 +119,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const denominationPin = pickedAssembly
         ? readDenominationPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
         : undefined;
-    const sellerDefault = sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    const sellerDefault = memberCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
     const currency = denominationPin ?? paymentPick ?? sellerDefault;
     // Price conversion, unit of account → the process denomination: catalogue
@@ -148,7 +148,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const toCurrency = (amount: bigint) => (priceRate ? inputForOutput(amount, priceRate) : amount);
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
-        ?? (currency ? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
+        ?? (currency ? memberCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
         ?? "";
     const {
         decimals: tokenDecimals,
@@ -226,9 +226,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Permit2 + venue) is configured. Resolved-empty = the path is absent.
     const fundingCandidates = useMemo(
         () => (swapFundingContracts && currency
-            ? (sellerCatalogue?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
+            ? (memberCatalogue?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
             : []),
-        [swapFundingContracts, currency, sellerCatalogue],
+        [swapFundingContracts, currency, memberCatalogue],
     );
     const [fundingToken, setFundingToken] = useState<`0x${string}` | null>(null);
     // The one-time Permit2 authorization for the chosen funding token (the
@@ -275,7 +275,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         );
     }
 
-    if (!sellerCatalogue) {
+    if (!memberCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
                 <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
@@ -378,7 +378,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
     const kitBreakdown = deriveKitBreakdown({
         pickedAssembly,
-        leadAddress: sellerCatalogue.address as `0x${string}`,
+        leadAddress: memberCatalogue.address as `0x${string}`,
         sellerCatalogues,
         pricedCatalogues,
         cartTotal,
@@ -405,18 +405,18 @@ export function CheckoutView({ sellerAddress }: Props) {
     // buyer-chosen terms; they stay out of the review.
     const agreementGroups = deriveAgreementGroups({
         pickedAssembly,
-        leadAddress: sellerCatalogue.address as `0x${string}`,
+        leadAddress: memberCatalogue.address as `0x${string}`,
         sellerCatalogues,
     });
 
-    const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
+    const cartUnitSystem = memberCatalogue.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {
-        const catalogueItem = sellerCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
+        const catalogueItem = memberCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
         if (!catalogueItem?.massGrams) return sum;
         return sum + catalogueItem.massGrams * cartItem.quantity;
     }, 0);
     const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
-        const catalogueItem = sellerCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
+        const catalogueItem = memberCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
         if (!catalogueItem?.volumeMl) return sum;
         return sum + catalogueItem.volumeMl * cartItem.quantity;
     }, 0);
@@ -445,7 +445,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         };
         return {
             buyer,
-            leadSellerAddress: sellerCatalogue.address as `0x${string}`,
+            leadSellerAddress: memberCatalogue.address as `0x${string}`,
             currency,
             payment: cartTotal,
             lineItems: cartItems.map((item) => ({
@@ -506,7 +506,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             setCheckoutError("Choose how you'd like to order before placing it.");
             return;
         }
-        const leadSellerAddress = sellerCatalogue.address as `0x${string}`;
+        const leadSellerAddress = memberCatalogue.address as `0x${string}`;
         // Every order commits against a published, profile-bound assembly — no
         // synthesized fallback. `orderReady` already guarantees this; assert it
         // for the type. The kernel sees a linear commit chain; the parent edges
@@ -618,13 +618,13 @@ export function CheckoutView({ sellerAddress }: Props) {
         <div data-testid="checkout-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-2xl space-y-6">
             <div>
                 <Link href={`/s/view?seller=${sellerAddressLower}`} className="text-sm text-neutral-500 hover:text-black">
-                    ← Back to {sellerCatalogue.name}
+                    ← Back to {memberCatalogue.name}
                 </Link>
             </div>
 
             <header className="space-y-1">
                 <p className="text-xs font-semibold text-neutral-500">Checkout</p>
-                <h1 className="text-2xl font-bold text-black">Order from {sellerCatalogue.name}</h1>
+                <h1 className="text-2xl font-bold text-black">Order from {memberCatalogue.name}</h1>
             </header>
 
             <section
@@ -635,7 +635,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     <p className="text-sm text-neutral-500">
                         Your cart is empty.{" "}
                         <Link href={`/s/view?seller=${sellerAddressLower}`} className="underline text-black hover:text-neutral-600">
-                            Browse {sellerCatalogue.name}&apos;s catalogue
+                            Browse {memberCatalogue.name}&apos;s catalogue
                         </Link>{" "}
                         to add items.
                     </p>
@@ -666,11 +666,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                             convert at the venue rate. A designer's denomination
                             pin replaces the pick entirely; a single-entry array
                             offers no choice. */}
-                        {!denominationPin && currency && (sellerCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
+                        {!denominationPin && currency && (memberCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
                             <div className="border-t border-neutral-200 pt-3 space-y-1" data-testid="payment-token-picker">
                                 <p className="text-xs font-semibold text-neutral-500">Pay in</p>
                                 <div className="flex flex-wrap gap-3 text-sm">
-                                    {sellerCatalogue!.acceptedTokens!.map((t) => (
+                                    {memberCatalogue!.acceptedTokens!.map((t) => (
                                         <label key={t.address} className="flex items-center gap-1.5 cursor-pointer">
                                             <input
                                                 type="radio"

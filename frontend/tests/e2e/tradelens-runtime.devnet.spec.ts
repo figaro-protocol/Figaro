@@ -112,7 +112,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
 
         // ── CHECKOUT: sign the six orders, relay to the shipper. ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SHIPPER.address}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

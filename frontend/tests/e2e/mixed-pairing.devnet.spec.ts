@@ -219,7 +219,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             // ── CHECKOUT + RACE: the agent's reply arrives over HTTP with no
             //    tab anywhere; the human counter-signs on /sign. ──
             await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
-            await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+            await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
             const addBtn = page.locator('[data-testid^="btn-add-"]').first();
             await addBtn.waitFor({ state: 'visible', timeout: 20000 });

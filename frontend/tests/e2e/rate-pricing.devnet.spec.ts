@@ -252,7 +252,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
 
         // The hauler's public page reads the item as a rate, not a price.
         await gotoAsWallet(page, BUYER, `/s/view?seller=${HAULER}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await expect(
             page.getByText(`/ km`).first(),
             "the hauler's item displays as a rate per unit",
@@ -262,7 +262,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
         //    hauled leg LIVE: rate × ceil(km between the committed endpoints),
         //    shown before anything is signed. ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${LEAD}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

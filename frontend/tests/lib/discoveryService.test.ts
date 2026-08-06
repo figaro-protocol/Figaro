@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     createDiscoveryService,
-} from '@/lib/seller/discoveryService';
+} from '@/lib/member/discoveryService';
 
 const getActiveMembersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
@@ -54,7 +54,7 @@ describe('discoveryService', () => {
         expect(result.catalogues).toHaveLength(0);
     });
 
-    it('maps a SellerCatalogueMetadata document into a discovery restaurant', async () => {
+    it('maps a MemberCatalogueMetadata document into a discovery restaurant', async () => {
         getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',

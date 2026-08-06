@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SellerEditAgents } from "@/components/sellers/SellerEditAgents";
+import { MemberEditAgents } from "@/components/members/MemberEditAgents";
 
 export const metadata: Metadata = {
     title: "Edit agent endpoints — Figaro Protocol",
@@ -17,7 +17,7 @@ export default function EditAgentsPage() {
                     Optional ERC-8004-compatible endpoints for cross-protocol discoverability. Figaro doesn&apos;t depend on ERC-8004 — these are pure interop. Saving re-pins the profile and dispatches <code>updateProfile</code>; clearing every field strips the <code>services</code> object from the profile entirely.
                 </p>
             </div>
-            <SellerEditAgents />
+            <MemberEditAgents />
         </section>
     );
 }

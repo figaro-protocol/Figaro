@@ -7,7 +7,7 @@ import { ReactNode } from "react";
  * container + max-width that the prior /sellers/onboard layout
  * carried before the directory restructure.
  */
-export default function SellersLayout({ children }: { children: ReactNode }) {
+export default function MembersLayout({ children }: { children: ReactNode }) {
     return (
         <section className="container mx-auto px-6 pt-16 pb-24 max-w-2xl">
             {children}

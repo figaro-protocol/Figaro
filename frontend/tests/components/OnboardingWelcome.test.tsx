@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { OnboardingWelcome } from "@/components/sellers/OnboardingWelcome";
+import { OnboardingWelcome } from "@/components/members/OnboardingWelcome";
 
 // Audit workstream A (finding 10): the seller's welcome must narrate the
 // bonded-commitment WHY — what Figaro is and the seller's own 2× bond

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { OnboardingShell } from "@/components/sellers/OnboardingShell";
-import { OnboardingProfileForm } from "@/components/sellers/OnboardingProfileForm";
+import { OnboardingShell } from "@/components/members/OnboardingShell";
+import { OnboardingProfileForm } from "@/components/members/OnboardingProfileForm";
 
 export const metadata: Metadata = { title: "Identity — Seller onboarding" };
 

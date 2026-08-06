@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { validateCatalogueClauseValues } from "@/lib/seller/catalogueClauseValues";
+import { validateCatalogueClauseValues } from "@/lib/member/catalogueClauseValues";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
-import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
 afterEach(() => {

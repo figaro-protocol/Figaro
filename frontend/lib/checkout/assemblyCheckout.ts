@@ -49,8 +49,8 @@ import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
-import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
-import type { SellerCatalogue } from "@/lib/seller/types";
+import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import type { MemberCatalogue } from "@/lib/member/types";
 
 /** The signing capabilities the algorithm drives — provided by `useCheckout`,
  *  which backs them with the order* commitment flow. */
@@ -112,7 +112,7 @@ export interface AssemblyCheckoutParams {
     assembly: BoundAssembly;
     /** Contributor pricing context (each sub-order is priced LIVE from its
      *  own seller's catalogue). */
-    sellerCatalogues: SellerCatalogue[];
+    sellerCatalogues: MemberCatalogue[];
     tokenDecimals: number;
     /** The buyer's checkout-time counterparty choices, keyed by template
      *  node id — fills sub-orders the adopting seller's profile leaves

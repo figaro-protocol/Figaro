@@ -21,7 +21,7 @@ import { specDeclaresField, specCatalogueFills, specProfileFills, type SpecSourc
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
-import type { CatalogueItemMetadata } from "./sellerCatalogue.js";
+import type { CatalogueItemMetadata } from "./memberCatalogue.js";
 
 /** An order's clause fields — the same map the agreement commits. */
 type ClauseFields = Record<string, Record<string, unknown>>;

@@ -51,7 +51,7 @@ import {
     confirmAgreementPreviews,
     DELIVERY_CLAUSES,
     DELIVERY_DEVICE,
-    discoverSellers,
+    discoverMembers,
     ensureDeliveryAssembly,
     fillDeliveryCheckout,
     readLocalDeploymentConfig,
@@ -124,7 +124,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         //    sellers (the relay smoke's device-unique seller) legitimately
         //    live on the persisted devnet. ──
         const anvilAddrs = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
-        const sellers = await discoverSellers();
+        const sellers = await discoverMembers();
         const courier = sellers.find(
             (s) => anvilAddrs.has(s.address.toLowerCase())
                 && s.address.toLowerCase() !== MERCHANT.toLowerCase() && s.assemblyBindings.length > 0,
@@ -142,7 +142,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
 
         // ── CHECKOUT: the unbound path. The picker is the NEW coverage. ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

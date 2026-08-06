@@ -5,8 +5,8 @@
  * points `MembersRegistry.metadataURI` at: name, branding, location,
  * accepted-token list, default pricing token, assembly bindings, agent
  * endpoints, and the URI of the volatile catalogue document. Item lists
- * live in the catalogue (`sellerCatalogue.ts` — what a member OFFERS, hence
- * the seller noun there) so item edits re-pin one
+ * live in the catalogue (`memberCatalogue.ts` — the member's price list:
+ * goods, services, and data) so item edits re-pin one
  * small JSON instead of the whole identity envelope.
  *
  * Token acceptance is an identity declaration: each token signals which

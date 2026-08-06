@@ -190,7 +190,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         } else {
             await page.goto(`/s/view?seller=${SELLER.address}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         }
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30_000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30_000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20_000 });

@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { SellerDetailView } from "./_components/SellerDetailView";
+import { MemberDetailView } from "./_components/MemberDetailView";
 
 /**
  * /s/view?seller=<address> — browse a seller's catalogue and place a bonded
@@ -12,7 +12,7 @@ import { SellerDetailView } from "./_components/SellerDetailView";
  * param read client-side; the page prerenders to a static shell and hydrates
  * against chain + IPFS. See `docs/FRONTEND.md` § "Static export".
  */
-function SellerViewContent() {
+function MemberViewContent() {
     const searchParams = useSearchParams();
     const seller = searchParams.get("seller");
 
@@ -24,7 +24,7 @@ function SellerViewContent() {
         );
     }
 
-    return <SellerDetailView sellerAddress={seller} />;
+    return <MemberDetailView sellerAddress={seller} />;
 }
 
 export default function SellerPage() {
@@ -36,7 +36,7 @@ export default function SellerPage() {
                 </div>
             }
         >
-            <SellerViewContent />
+            <MemberViewContent />
         </Suspense>
     );
 }

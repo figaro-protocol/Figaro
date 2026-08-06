@@ -14,7 +14,7 @@
 import { useReadContract } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
-import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import { formatToken } from "@/lib/shared/utils";
 
 function FundingTokenOption({

@@ -11,7 +11,7 @@ import { useWalletConnected } from "@/hooks/useWalletConnected";
  * Same publication nav row as the marketing chrome — HeaderShell's default
  * `NAV_LINKS` (Protocol / Builders / Discover) — PLUS the `<ConnectWallet>`,
  * because authoring and publishing an assembly needs a wallet. But it has
- * NO `(app)` second nav row (Orders / Sellers): the designer is a
+ * NO `(app)` second nav row (Orders / Members): the designer is a
  * Builders-section surface, not the runtime dashboard. This is the third
  * thin HeaderShell wrapper alongside `Header` (app, two-row) and
  * `MarketingHeader` (publication, no wallet).

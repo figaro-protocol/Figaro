@@ -1,9 +1,9 @@
 /**
  * documentParse.ts — strict validation primitives for the seller-family
- * off-chain document parsers (`memberProfile.ts`, `sellerCatalogue.ts`).
+ * off-chain document parsers (`memberProfile.ts`, `memberCatalogue.ts`).
  *
  * These are the SDK-local copies of the `as*` primitives (the frontend
- * keeps its own `frontend/lib/seller/parseHelpers.ts` for its non-seller
+ * keeps its own `frontend/lib/member/parseHelpers.ts` for its non-seller
  * parsers). The SDK is a standalone package whose only runtime dependency
  * is `viem`, so it cannot import the frontend leaf; address validity is
  * checked with viem's `isAddress` in the same non-strict mode the frontend

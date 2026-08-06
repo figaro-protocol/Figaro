@@ -1,5 +1,5 @@
 /**
- * lib/seller/useAsyncMemberResource.ts
+ * lib/member/useAsyncMemberResource.ts
  *
  * Generic shape for "member address → resolved metadataURI → fetched
  * resource" hooks (e.g. useMemberBranding → resolved branding). Each caller

@@ -19,17 +19,14 @@ export default function Join() {
                 title="Members."
                 lead={
                     <>
-                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent, on the same footing. Membership is permissionless: no application, no approval, no one to say yes.
+                        Membership gives a wallet acces to the Figaro ecosystem. A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Membership is permissionless: no application, no approval, no one to say yes. You just need to stake some ETH.
                     </>
                 }
             />
 
             <MarketingSection title="What a member publishes.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    One profile carries both sides of you. The selling side: an identity, a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through, and which of the data those deals co-produce you offer for sale &mdash; your side of every purchase is yours to sell, on your terms, priced in the same catalogue.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    Publish either side, or both. A member who only sells leaves the buying side empty; a member who monetizes only its purchase records lists those records as its catalogue.
+                    One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through. Both profiles allow the wallet to participate in data markets. The data the deals the wallets participate in co-produce data you offer for sale &mdash; your side of every purchase is yours to sell, on your terms, at your price.
                 </p>
             </MarketingSection>
 
@@ -51,6 +48,9 @@ export default function Join() {
                                 <th className="py-2 font-semibold">What you do</th>
                             </tr>
                         </thead>
+                        <p className="text-base text-ink-body leading-relaxed">
+                            You need a wallet. 
+                        </p>
                         <tbody className="text-ink-body">
                             <tr className="border-b border-default"><td className="py-2 pr-4">Welcome</td><td className="py-2">See what membership is.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Identity</td><td className="py-2">Name, description, location, the tokens you accept.</td></tr>
@@ -63,7 +63,7 @@ export default function Join() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-10">
-                    Registering posts a reclaimable ETH deposit &mdash; staked intent, not a fee. The live deposit keeps you surfaced; you reclaim the exact amount when you leave, after a cooldown, and leaving de-lists you at once. Nobody can seize it, and nobody&apos;s permission is needed to reclaim it.
+                    Registering requires a reclaimable ETH deposit &mdash; to participate in the ecosystem. This is not a fee. The live deposit keeps you surfaced in the UI; you reclaim the exact amount when you leave, after a cooldown, and leaving de-lists you at once. Nobody can seize it, and nobody&apos;s permission is needed to reclaim it.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Link

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SellerEditCatalogue } from "@/components/sellers/SellerEditCatalogue";
+import { MemberEditCatalogue } from "@/components/members/MemberEditCatalogue";
 
 export const metadata: Metadata = {
     title: "Edit catalogue — Figaro Protocol",
@@ -17,7 +17,7 @@ export default function EditCataloguePage() {
                     Add, remove, or update items. Saving pins a new catalogue document, then a new profile document pointing at it, then dispatches <code>updateProfile</code>. Two pins, one transaction. Deposit and lock period are unaffected.
                 </p>
             </div>
-            <SellerEditCatalogue />
+            <MemberEditCatalogue />
         </section>
     );
 }

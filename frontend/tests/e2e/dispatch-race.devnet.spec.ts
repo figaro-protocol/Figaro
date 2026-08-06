@@ -181,7 +181,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         // ── CHECKOUT: cart → the unbound node → RACE (never the picker). ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

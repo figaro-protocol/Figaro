@@ -1,9 +1,9 @@
-import type { CatalogueService } from "@/lib/seller/catalogueService";
-import { DEFAULT_CATALOGUE_SERVICE } from "@/lib/seller/catalogueService";
+import type { CatalogueService } from "@/lib/member/catalogueService";
+import { DEFAULT_CATALOGUE_SERVICE } from "@/lib/member/catalogueService";
 import type { CoordinationMessagingService } from "@/lib/handoff/coordinationMessagingService";
 import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/handoff/coordinationMessagingService";
-import type { DiscoveryService } from "@/lib/seller/discoveryService";
-import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/seller/discoveryService";
+import type { DiscoveryService } from "@/lib/member/discoveryService";
+import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/member/discoveryService";
 import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
 import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/handoff/handoffPersistenceService";
 import type { IpfsService } from "@/lib/shared/ipfsService";

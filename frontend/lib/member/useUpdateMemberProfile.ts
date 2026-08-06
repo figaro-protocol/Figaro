@@ -1,5 +1,5 @@
 /**
- * lib/seller/useUpdateMemberProfile.ts
+ * lib/member/useUpdateMemberProfile.ts
  *
  * Shared edit-side write path for the four member-managed
  * surfaces (profile / catalogue-link / assemblies / agents).

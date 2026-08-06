@@ -288,7 +288,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         await page.getByTestId('settings-save').click();
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}`);
         await sellerPage.waitForTimeout(5000); // XMTP identity publication latency
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

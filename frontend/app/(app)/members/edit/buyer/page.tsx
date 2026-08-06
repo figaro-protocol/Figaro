@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MemberEditBuyer } from "@/components/sellers/MemberEditBuyer";
+import { MemberEditBuyer } from "@/components/members/MemberEditBuyer";
 
 export const metadata: Metadata = {
     title: "Edit buyer side — Figaro Protocol",

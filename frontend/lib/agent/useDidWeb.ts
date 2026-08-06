@@ -70,7 +70,7 @@ export function useDidDocument(did: string | undefined) {
  * `{ document, consistent, error, isLoading }` — `consistent` means the
  * document names this wallet, NOT that the wallet controls the DID (the binding
  * is attacker-forgeable; see the module header). Consumed by
- * `SellerAgentIdentity`.
+ * `MemberAgentIdentity`.
  */
 export function useDidConsistency(
     did: string | undefined,

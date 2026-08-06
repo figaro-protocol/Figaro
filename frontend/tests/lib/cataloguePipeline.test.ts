@@ -1,17 +1,17 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
-    fetchSellerCatalogue,
+    fetchMemberCatalogue,
     invalidateCatalogueCache,
     clearCatalogueCache,
-} from "@/lib/seller/catalogueFetcher";
-import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
-import { createCatalogueService } from "@/lib/seller/catalogueService";
-import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
-import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+} from "@/lib/member/catalogueFetcher";
+import { publishMemberCatalogue } from "@/lib/member/cataloguePublisher";
+import { createCatalogueService } from "@/lib/member/catalogueService";
+import { parseMemberCatalogueDocument } from "@/lib/member/memberCatalogueMetadataParser";
+import type { MemberCatalogueMetadata } from "@/lib/member/memberCatalogueMetadata";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
+const VALID_MERCHANT_DOC: MemberCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
     items: [
         {
@@ -38,7 +38,7 @@ describe("catalogueFetcher", () => {
     });
 
     it("returns null for empty URI", async () => {
-        expect(await fetchSellerCatalogue("")).toBeNull();
+        expect(await fetchMemberCatalogue("")).toBeNull();
     });
 
     it("fetches and parses a valid metadata document", async () => {
@@ -48,7 +48,7 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        const result = await fetchSellerCatalogue("ipfs://QmTest");
+        const result = await fetchMemberCatalogue("ipfs://QmTest");
         expect(result).not.toBeNull();
         expect(result!.subjectAddress).toBe("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
         expect(result!.items).toHaveLength(1);
@@ -61,7 +61,7 @@ describe("catalogueFetcher", () => {
             status: 404,
         } as Response);
 
-        expect(await fetchSellerCatalogue("ipfs://QmNotFound")).toBeNull();
+        expect(await fetchMemberCatalogue("ipfs://QmNotFound")).toBeNull();
     });
 
     it("returns null for invalid JSON", async () => {
@@ -71,7 +71,7 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify({ invalid: true })),
         } as Response);
 
-        expect(await fetchSellerCatalogue("ipfs://QmBad")).toBeNull();
+        expect(await fetchMemberCatalogue("ipfs://QmBad")).toBeNull();
     });
 
     it("caches results and does not refetch", async () => {
@@ -81,8 +81,8 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        await fetchSellerCatalogue("ipfs://QmCached");
-        await fetchSellerCatalogue("ipfs://QmCached");
+        await fetchMemberCatalogue("ipfs://QmCached");
+        await fetchMemberCatalogue("ipfs://QmCached");
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
@@ -94,9 +94,9 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        await fetchSellerCatalogue("ipfs://QmInv");
+        await fetchMemberCatalogue("ipfs://QmInv");
         invalidateCatalogueCache("ipfs://QmInv");
-        await fetchSellerCatalogue("ipfs://QmInv");
+        await fetchMemberCatalogue("ipfs://QmInv");
 
         expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
@@ -108,11 +108,11 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        await fetchSellerCatalogue("ipfs://QmA");
-        await fetchSellerCatalogue("ipfs://QmB");
+        await fetchMemberCatalogue("ipfs://QmA");
+        await fetchMemberCatalogue("ipfs://QmB");
         clearCatalogueCache();
-        await fetchSellerCatalogue("ipfs://QmA");
-        await fetchSellerCatalogue("ipfs://QmB");
+        await fetchMemberCatalogue("ipfs://QmA");
+        await fetchMemberCatalogue("ipfs://QmB");
 
         expect(fetchSpy).toHaveBeenCalledTimes(4);
     });
@@ -120,7 +120,7 @@ describe("catalogueFetcher", () => {
     it("returns null on network error", async () => {
         vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
 
-        expect(await fetchSellerCatalogue("ipfs://QmErr")).toBeNull();
+        expect(await fetchMemberCatalogue("ipfs://QmErr")).toBeNull();
     });
 });
 
@@ -145,7 +145,7 @@ describe("cataloguePublisher", () => {
         vi.clearAllMocks();
     });
 
-    describe("publishSellerCatalogue", () => {
+    describe("publishMemberCatalogue", () => {
         it("lets catalogue services publish through an injected evidence transport", async () => {
             const evidenceTransport = {
                 pinJSON: vi.fn().mockResolvedValue("QmInjectedMerchant123"),
@@ -153,7 +153,7 @@ describe("cataloguePublisher", () => {
             };
             const service = createCatalogueService({ evidenceTransport: evidenceTransport as never });
 
-            const result = await service.publishSellerCatalogue(VALID_MERCHANT_DOC);
+            const result = await service.publishMemberCatalogue(VALID_MERCHANT_DOC);
 
             expect(evidenceTransport.pinJSON).toHaveBeenCalledWith(VALID_MERCHANT_DOC);
             expect(evidenceTransport.buildURI).toHaveBeenCalledWith("QmInjectedMerchant123");
@@ -164,21 +164,21 @@ describe("cataloguePublisher", () => {
         });
 
         it("validates, pins, and returns a correct IPFS URI", async () => {
-            const result = await publishSellerCatalogue(VALID_MERCHANT_DOC);
+            const result = await publishMemberCatalogue(VALID_MERCHANT_DOC);
 
             expect(result.cid).toBe("QmPublished123");
             expect(result.uri).toBe("ipfs://QmPublished123");
         });
 
         it("rejects invalid merchant documents before pinning", async () => {
-            const bad = { ...VALID_MERCHANT_DOC, items: undefined } as unknown as SellerCatalogueMetadata;
+            const bad = { ...VALID_MERCHANT_DOC, items: undefined } as unknown as MemberCatalogueMetadata;
 
-            await expect(publishSellerCatalogue(bad)).rejects.toThrow();
+            await expect(publishMemberCatalogue(bad)).rejects.toThrow();
         });
 
         it("accepts documents with empty menu (parser allows it)", async () => {
             const emptyMenu = { ...VALID_MERCHANT_DOC, items: [] };
-            const result = await publishSellerCatalogue(emptyMenu);
+            const result = await publishMemberCatalogue(emptyMenu);
 
             expect(result.cid).toBe("QmPublished123");
             expect(result.uri).toBe("ipfs://QmPublished123");
@@ -191,10 +191,10 @@ describe("cataloguePublisher", () => {
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
                 text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
-            await fetchSellerCatalogue("ipfs://QmPublished123");
+            await fetchMemberCatalogue("ipfs://QmPublished123");
 
             // Publish should clear the cache for the new URI
-            await publishSellerCatalogue(VALID_MERCHANT_DOC);
+            await publishMemberCatalogue(VALID_MERCHANT_DOC);
 
             // Next fetch should hit the network again
             vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
@@ -202,14 +202,14 @@ describe("cataloguePublisher", () => {
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
                 text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
-            await fetchSellerCatalogue("ipfs://QmPublished123");
+            await fetchMemberCatalogue("ipfs://QmPublished123");
         });
     });
 });
 
 // ── catalogue shape sanity ────────────────────────────────────────────────────
 
-describe("SellerCatalogueMetadata shape", () => {
+describe("MemberCatalogueMetadata shape", () => {
     it("carries only subjectAddress, items, and version after the clause split", () => {
         const cat = VALID_MERCHANT_DOC;
 
@@ -233,7 +233,7 @@ describe("catalogue parser — physical dims + clauseValues survive the round-tr
     const subjectAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
     it("carries lengthMm/widthMm/heightMm through a parse (P1 dimensions floor)", () => {
-        const parsed = parseSellerCatalogueDocument({
+        const parsed = parseMemberCatalogueDocument({
             subjectAddress,
             version: "1",
             items: [{
@@ -248,7 +248,7 @@ describe("catalogue parser — physical dims + clauseValues survive the round-tr
         const clauseValues = {
             "figaro-hazmat": { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
         };
-        const parsed = parseSellerCatalogueDocument({
+        const parsed = parseMemberCatalogueDocument({
             subjectAddress,
             version: "1",
             items: [{ id: "i1", name: "Drum", price: "1", available: true, clauseValues }],

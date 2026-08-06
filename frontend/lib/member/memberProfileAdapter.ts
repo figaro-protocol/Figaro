@@ -1,12 +1,12 @@
 /**
- * lib/seller/memberProfileAdapter.ts
+ * lib/member/memberProfileAdapter.ts
  *
  * Catalogue-items reader for the separately-pinned catalogue document at
  * `profile.catalogueURI`. Profile parsing is delegated to the canonical
  * strict parser in `memberProfileMetadata.ts`.
  */
 
-import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
 
 /**
  * Parse catalogue items from a catalogue document (`items`). Returns null if
@@ -31,7 +31,7 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
             // Physical measures fold onto the cargo leaf at checkout (mass/volume
             // sum × quantity; packaged dimensions written for a single parcel).
             // Drop any one here and it silently vanishes from the committed leaf —
-            // keep this symmetric with the canonical parser (sellerCatalogueMetadataParser).
+            // keep this symmetric with the canonical parser (memberCatalogueMetadataParser).
             massGrams: typeof item.massGrams === 'number' ? item.massGrams : undefined,
             volumeMl: typeof item.volumeMl === 'number' ? item.volumeMl : undefined,
             lengthMm: typeof item.lengthMm === 'number' ? item.lengthMm : undefined,

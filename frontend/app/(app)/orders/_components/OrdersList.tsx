@@ -43,9 +43,9 @@ import {
     awaitsCounterpartySignature,
     awaitsMyBroadcast,
 } from "@/lib/checkout/orderPendingSellerSignature";
-import { useSellerListings } from "@/lib/seller/useSellerListings";
-import { displayNameForAddress } from "@/lib/seller/sellerListing";
-import type { Listing } from "@/lib/seller/sellerListing";
+import { useMemberListings } from "@/lib/member/useMemberListings";
+import { displayNameForAddress } from "@/lib/member/memberListing";
+import type { Listing } from "@/lib/member/memberListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMounted } from "@/hooks/useMounted";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
@@ -283,7 +283,7 @@ export function OrdersList() {
     const chainId = useChainId();
     const buyer = useWalletProcessRows("buyer");
     const seller = useWalletProcessRows("seller");
-    const { listings } = useSellerListings();
+    const { listings } = useMemberListings();
     const isMock = isE2EMockSession();
 
     // Merge buyer + seller rows — the wallet sees every order it's on, deduped

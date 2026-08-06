@@ -102,7 +102,7 @@ export {
 export { reconstruct, Topology } from "./state.js";
 export type { CoreEvents } from "./state.js";
 
-// Discovery — the cold-start catalogue (clauses, sellers, assemblies)
+// Discovery — the cold-start catalogue (clauses, members, assemblies)
 export {
     computeClauseKey,
     parseClauseRegistryLogs,
@@ -290,14 +290,14 @@ export type {
     AgentServiceInfo,
 } from "./memberProfile.js";
 
-// Seller catalogue document — the volatile item list pinned to
+// Member catalogue document — the volatile item list pinned to
 // MemberProfileMetadata.catalogueURI. Types + strict parser.
-export { parseSellerCatalogueDocument } from "./sellerCatalogue.js";
+export { parseMemberCatalogueDocument } from "./memberCatalogue.js";
 export type {
     UnitSystem,
     CatalogueItemMetadata,
-    SellerCatalogueMetadata,
-} from "./sellerCatalogue.js";
+    MemberCatalogueMetadata,
+} from "./memberCatalogue.js";
 
 // RPGF mirror — the off-chain reference implementation of
 // sdk/src/rpgf/formula.json. UsageCounter counts verified clause-or-assembly usage on

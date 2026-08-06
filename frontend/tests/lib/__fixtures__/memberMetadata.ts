@@ -1,5 +1,5 @@
 /**
- * Synthetic example payloads for `SellerCatalogueMetadata` and
+ * Synthetic example payloads for `MemberCatalogueMetadata` and
  * `MemberProfileMetadata`. Test-only — production code does not consume
  * these. Moved out of `lib/shared/` so the runtime bundle no longer carries
  * fixture data.

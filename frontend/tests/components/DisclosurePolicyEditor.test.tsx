@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import { DisclosurePolicyEditor } from "@/components/sellers/DisclosurePolicyEditor";
+import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 
-// Posture scoping (operator instruction 2026-08-06): each side's record
-// classes derive from its OWN assembly list — the seller assemblies step
+// Posture scoping (operator instruction 2026-08-06): each side's data
+// derives from its OWN assembly list — the seller assemblies step
 // mounts the editor with ["seller"], the buyer step with ["buyer"], and
 // the two are never interleaved on one step.
 

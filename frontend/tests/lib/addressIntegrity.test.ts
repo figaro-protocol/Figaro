@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyTokenError } from "@/components/sellers/TokenAddressInput";
+import { classifyTokenError } from "@/components/members/TokenAddressInput";
 import { addressIntegrity, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
 
 // USDC mainnet — known checksum address.

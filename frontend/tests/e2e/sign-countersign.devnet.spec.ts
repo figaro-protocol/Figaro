@@ -63,7 +63,7 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
 
         // ── Buyer (anvil[0], the fixture's DEFAULT) — cart → checkout → sign → relay ──
         await page.goto(`/s/view?seller=${SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

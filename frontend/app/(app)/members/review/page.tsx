@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { OnboardingShell } from "@/components/sellers/OnboardingShell";
-import { OnboardingReview } from "@/components/sellers/OnboardingReview";
+import { OnboardingShell } from "@/components/members/OnboardingShell";
+import { OnboardingReview } from "@/components/members/OnboardingReview";
 
 export const metadata: Metadata = { title: "Review — Seller onboarding" };
 

@@ -1,5 +1,5 @@
 /**
- * lib/seller/geocode.ts
+ * lib/member/geocode.ts
  *
  * Free-form address-text → lat/lon resolution, straight from the
  * browser to a Nominatim-compatible geocoder — OpenStreetMap's public

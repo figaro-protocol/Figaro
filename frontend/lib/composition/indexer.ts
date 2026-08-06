@@ -185,7 +185,7 @@ interface TrackRecordAttestations {
  * it is the raw settlement/coordination history the public graph exposes
  * (PUBLIC_GRAPH_MODEL.md §"Reputation derivation").
  */
-export interface SellerTrackRecord {
+export interface MemberTrackRecord {
     operatingSinceBlock: bigint | null;
     operatingSinceTimestamp: bigint | null;
     completedProcesses: number;
@@ -213,7 +213,7 @@ export async function getSellerTrackRecord(
     client: PublicClient,
     chainId: number,
     seller: string,
-): Promise<SellerTrackRecord> {
+): Promise<MemberTrackRecord> {
     const [sellerOrders, buyerOrders, resolved, registrations, attestations] =
         await Promise.all([
             getOrderCommittedBySeller(client, chainId, seller),

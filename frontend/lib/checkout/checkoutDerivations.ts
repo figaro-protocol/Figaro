@@ -14,7 +14,7 @@ import {
     resolveSubOrderPricing,
     type SubOrderPricing,
 } from "@figaro/sdk";
-import { displayNameForAddress } from "@/lib/seller/sellerListing";
+import { displayNameForAddress } from "@/lib/member/memberListing";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import {
     clauseCatalogueFills,

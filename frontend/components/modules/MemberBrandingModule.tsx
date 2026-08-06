@@ -1,5 +1,5 @@
 /**
- * components/modules/MemberBrandingModule.tsx — SellerLogo, the seller's
+ * components/modules/MemberBrandingModule.tsx — MemberLogo, the seller's
  * logo rendered from IPFS/HTTP with initials/emoji/neutral fallbacks.
  */
 "use client";
@@ -9,12 +9,12 @@ import { useMemberBranding } from "@/lib/member/useMemberBranding";
 import { resolveImageUri } from "@/lib/shared/ipfsService";
 
 /**
- * SellerLogo — renders the seller's logo from IPFS/HTTP, with two
+ * MemberLogo — renders the seller's logo from IPFS/HTTP, with two
  * possible fallbacks: an initials block (when `fallbackName` is supplied)
  * coloured by the seller's accent, or a plain emoji (backward-compatible
  * default for consumers that don't pass a name).
  */
-interface SellerLogoProps {
+interface MemberLogoProps {
     sellerAddress: `0x${string}` | undefined;
     /** The seller's OWN glyph, when they set one. Absent ⇒ a neutral placeholder
      *  (never a coined default). */
@@ -29,13 +29,13 @@ interface SellerLogoProps {
     size?: number;
 }
 
-export function SellerLogo({
+export function MemberLogo({
     sellerAddress,
     fallbackEmoji,
     fallbackName,
     className,
     size = 48,
-}: SellerLogoProps) {
+}: MemberLogoProps) {
     const { branding, isLoading } = useMemberBranding(sellerAddress);
     // IPFS-only: a raw http(s) branding locator is attacker-authorable and
     // hotlinking it deanonymizes the viewer (finding 3). Non-IPFS logos resolve

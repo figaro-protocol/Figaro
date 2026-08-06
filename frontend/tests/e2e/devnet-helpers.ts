@@ -120,7 +120,7 @@ const MEMBERS_REGISTRY_REGISTER_ABI = parseAbi([
     'event MemberWithdrawalRequested(address indexed member, uint256 amount, uint256 releaseAt)',
 ]);
 
-const SELLER_REGISTRATION_DEPOSIT = parseEther('0.001');
+const MEMBER_REGISTRATION_DEPOSIT = parseEther('0.001');
 
 /** Minimal profile shape for `seedRegisteredMember`. Mirrors the required
  *  + most-common fields of `MemberProfileMetadata` so callers can author
@@ -174,7 +174,7 @@ export interface SeededSeller {
  * inline seeder (which inlines this for the catalogue+merchant case); the
  * helper here is the generic "any registered seller" seed, used by
  * Phase 4 C4 to set up the `/members/edit/*` UI tests (those routes
- * require a real IPFS-pinned profile so `SellerEditProfile` can mount
+ * require a real IPFS-pinned profile so `MemberEditProfile` can mount
  * the form).
  *
  * Requires Kubo running at NEXT_PUBLIC_IPFS_API_URL (default
@@ -194,7 +194,7 @@ export async function seedRegisteredMember(opts: {
 
     const seller = privateKeyToAccount(opts.walletKey);
 
-    // Pin the profile JSON. Frontend's SellerEditProfile.tsx fetches this
+    // Pin the profile JSON. Frontend's MemberEditProfile.tsx fetches this
     // URI via gateway and parses with `tryParseMemberProfileDocument`, so
     // the shape must satisfy that parser. Required field: `name`.
     const profileDoc = {
@@ -247,7 +247,7 @@ export async function seedRegisteredMember(opts: {
             abi: MEMBERS_REGISTRY_REGISTER_ABI,
             functionName: 'register',
             args: [profileURI],
-            value: SELLER_REGISTRATION_DEPOSIT,
+            value: MEMBER_REGISTRATION_DEPOSIT,
         });
         await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
     }
@@ -315,10 +315,10 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
 // on-chain `assemblyBindings`. NO roster, NO hardcoded addresses/names/keys — a
 // spec that takes seller identity from a TS file is not testing mainnet usage.
 // (This mirrors what the indexer / `discoveryService` does; it additionally keeps
-// the `assemblyBindings` that the buyer-facing `SellerCatalogue` projection drops.)
+// the `assemblyBindings` that the buyer-facing `MemberCatalogue` projection drops.)
 
 /** MembersRegistry registration events — carry the profile metadataURI. Internal
- *  to discovery; read by `discoverSellers`. */
+ *  to discovery; read by `discoverMembers`. */
 const MEMBER_REGISTERED_EVENT_ABI = parseAbi([
     'event MemberRegistered(address indexed member, string metadataURI)',
     'event MemberProfileUpdated(address indexed member, string metadataURI)',
@@ -329,7 +329,7 @@ const MEMBER_REGISTERED_EVENT_ABI = parseAbi([
     'event MemberWithdrawalRequested(address indexed member, uint256 amount, uint256 releaseAt)',
 ]);
 
-export interface DiscoveredSeller {
+export interface DiscoveredMember {
     address: `0x${string}`;
     name: string;
     /** The seller's home geohash (profile.location.geohash), discovered from IPFS. */
@@ -348,7 +348,7 @@ export interface DiscoveredSeller {
  *  is the most recent `MemberProfileUpdated` post-dating the surviving
  *  registration (mirrors `lib/kernel/indexer.ts`; `updateProfile` is a
  *  by-design MembersRegistry surface). */
-export async function discoverSellers(): Promise<DiscoveredSeller[]> {
+export async function discoverMembers(): Promise<DiscoveredMember[]> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
     const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as `0x${string}`;
@@ -380,7 +380,7 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
         updatesByAddr.set(a, list);
     }
     const registeredCount = new Map<string, number>();
-    const out: DiscoveredSeller[] = [];
+    const out: DiscoveredMember[] = [];
     for (const ev of events) {
         const address = (ev.args as { member: `0x${string}` }).member;
         const key = address.toLowerCase();
@@ -400,7 +400,7 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
         let profile: {
             name?: string;
             location?: { geohash?: string };
-            assemblyBindings?: DiscoveredSeller['assemblyBindings'];
+            assemblyBindings?: DiscoveredMember['assemblyBindings'];
         };
         try {
             profile = await (await fetch(resolveIpfsURI(uri))).json();
@@ -446,12 +446,12 @@ export async function latestMemberProfileURI(member: `0x${string}`): Promise<str
  *  (chain events → IPFS). Empty when unregistered or unresolvable. */
 export async function memberProfileBindings(
     seller: `0x${string}`,
-): Promise<DiscoveredSeller['assemblyBindings']> {
+): Promise<DiscoveredMember['assemblyBindings']> {
     const uri = await latestMemberProfileURI(seller);
     if (!uri) return [];
     try {
         const doc = await (await fetch(resolveIpfsURI(uri))).json() as {
-            assemblyBindings?: DiscoveredSeller['assemblyBindings'];
+            assemblyBindings?: DiscoveredMember['assemblyBindings'];
         };
         return doc.assemblyBindings ?? [];
     } catch {

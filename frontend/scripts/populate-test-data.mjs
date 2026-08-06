@@ -251,7 +251,7 @@ async function main() {
         const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.addressIndex });
         const sellerClient = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // The canonical catalogue-document shape (`SellerCatalogueMetadata`):
+        // The canonical catalogue-document shape (`MemberCatalogueMetadata`):
         // the items key is `items` (a `menu` key parses to an EMPTY catalogue —
         // the item list every read projects from, incl. sub-order pricing);
         // `category` only when authored (never a coined default).

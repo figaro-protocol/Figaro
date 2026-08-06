@@ -1,11 +1,11 @@
 /**
- * lib/seller/memberProfileMetadata.ts
+ * lib/member/memberProfileMetadata.ts
  *
  * The member PROFILE document shape (types + strict/lenient parsers +
  * the agent-service projection) is owned by `@figaro/sdk` — Layer-A,
  * published across the public seam so an integrator reading
  * `MembersRegistry.metadataURI` learns the shape from the SDK. This module
- * is the frontend's re-export shim; existing `@/lib/seller/...` call sites
+ * is the frontend's re-export shim; existing `@/lib/member/...` call sites
  * keep working. Add nothing here — extend the SDK module.
  */
 

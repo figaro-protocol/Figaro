@@ -38,12 +38,12 @@ import {
     parseMemberProfileDocument,
     type MemberProfileMetadata,
 } from "@/lib/member/memberProfileMetadata";
-import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
+import { publishMemberCatalogue } from "@/lib/member/cataloguePublisher";
 import type {
     CatalogueItemMetadata,
-    SellerCatalogueMetadata,
+    MemberCatalogueMetadata,
     UnitSystem,
-} from "@/lib/seller/sellerCatalogueMetadata";
+} from "@/lib/member/memberCatalogueMetadata";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 
@@ -113,13 +113,13 @@ export function usePublishMemberProfile() {
         // (a) Pin the catalogue document, unless a cached URI was passed.
         let catalogueURI = input.cachedCatalogueURI;
         if (!catalogueURI) {
-            const catalogue: SellerCatalogueMetadata = {
+            const catalogue: MemberCatalogueMetadata = {
                 subjectAddress: input.wallet,
                 items: input.items,
                 version: "1.0.0",
                 unitSystem: input.unitSystem,
             };
-            const cataloguePin = await publishSellerCatalogue(catalogue);
+            const cataloguePin = await publishMemberCatalogue(catalogue);
             catalogueURI = cataloguePin.uri;
         }
 

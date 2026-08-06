@@ -163,7 +163,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // designer-publish does); gotoAsWallet's switch-to-default is a no-op that
         // leaves wagmi unconnected — reserve the switch for the non-default seller.
         await page.goto(`/s/view?seller=${SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

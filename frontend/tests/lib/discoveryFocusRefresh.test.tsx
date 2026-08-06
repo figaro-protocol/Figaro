@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import type { DiscoveryService } from "@/lib/seller/discoveryService";
-import type { SellerCatalogue } from "@/lib/seller/types";
+import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
+import type { DiscoveryService } from "@/lib/member/discoveryService";
+import type { MemberCatalogue } from "@/lib/member/types";
 
 const usePublicClientMock = vi.fn();
 const useChainIdMock = vi.fn();
@@ -22,7 +22,7 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
 
 const publicClient = { transport: { type: "http" } };
 
-function cat(name: string): SellerCatalogue {
+function cat(name: string): MemberCatalogue {
     return {
         name,
         description: "",

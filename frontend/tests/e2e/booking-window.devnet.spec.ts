@@ -237,7 +237,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
 
         // The provider's public page reads the item as a rate, not a price.
         await gotoAsWallet(page, BUYER, `/s/view?seller=${PROVIDER}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await expect(
             page.getByText(`/ hour`).first(),
             "the provider's item displays as a rate per hour",
@@ -246,7 +246,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
         // ── CHECKOUT: the buyer orders from the lead. The booked leg derives
         //    LIVE: rate × ceil(hours between the committed window bounds). ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${LEAD}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

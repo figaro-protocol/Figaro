@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SellerDiscovery } from "./_components/SellerDiscovery";
+import { MemberDiscovery } from "./_components/MemberDiscovery";
 
 export const metadata: Metadata = {
     title: "Discover sellers — Figaro Protocol",
@@ -32,7 +32,7 @@ export default function DiscoverPage() {
                 New to this? <Link href="/join" className="underline hover:text-black">See what membership is</Link>, or read{" "}
                 <Link href="/local-commerce" className="underline hover:text-black">one deal, lived</Link> end to end.
             </p>
-            <SellerDiscovery />
+            <MemberDiscovery />
         </section>
     );
 }

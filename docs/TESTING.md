@@ -169,7 +169,7 @@ derived, never a stored count).
 
 - **Component tier** (`tests/components/`) — React Testing Library:
   `Header`, `MobileNav`, `CapabilityRail`, `OnboardingWelcome`,
-  `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
+  `MemberTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`, …
 - **Lib tier** (`tests/lib/`) — pure-client unit tests: commitment
   preparation + stores, clause-spec source, discovery +

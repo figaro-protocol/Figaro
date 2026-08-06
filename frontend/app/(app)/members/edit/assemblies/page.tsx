@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SellerEditAssemblies } from "@/components/sellers/SellerEditAssemblies";
+import { MemberEditAssemblies } from "@/components/members/MemberEditAssemblies";
 
 export const metadata: Metadata = {
     title: "Edit assemblies — Figaro Protocol",
@@ -17,7 +17,7 @@ export default function EditAssembliesPage() {
                     Toggle which assemblies your wallet participates in. Saving re-pins the profile JSON with the updated bindings and dispatches <code>updateProfile</code>. A seller with no bindings is still on-chain registered — the assemblies just don&apos;t surface to assembly-scoped discovery.
                 </p>
             </div>
-            <SellerEditAssemblies />
+            <MemberEditAssemblies />
         </section>
     );
 }

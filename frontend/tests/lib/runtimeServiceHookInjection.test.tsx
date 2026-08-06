@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
-import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
+import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
-import type { SellerCatalogue } from "@/lib/seller/types";
-import type { DiscoveryService } from "@/lib/seller/discoveryService";
+import type { MemberCatalogue } from "@/lib/member/types";
+import type { DiscoveryService } from "@/lib/member/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 
@@ -53,13 +53,13 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     usePublishedAssemblies: () => ({ data: [], isLoading: false }),
 }));
 
-vi.mock("@/lib/seller/catalogueService", () => ({
+vi.mock("@/lib/member/catalogueService", () => ({
     DEFAULT_CATALOGUE_SERVICE: {
-        fetchSellerCatalogue: (...args: unknown[]) => defaultFetchSellerCatalogueMock(...args),
+        fetchMemberCatalogue: (...args: unknown[]) => defaultFetchSellerCatalogueMock(...args),
     },
 }));
 
-vi.mock("@/lib/seller/discoveryService", () => ({
+vi.mock("@/lib/member/discoveryService", () => ({
     DEFAULT_DISCOVERY_SERVICE: {
         listFallbackRestaurants: (...args: unknown[]) => defaultListFallbackRestaurantsMock(...args),
         isRegistryConfigured: (...args: unknown[]) => defaultIsRegistryConfiguredMock(...args),
@@ -107,7 +107,7 @@ const publicClient = {
     getBlockNumber: (...args: unknown[]) => getBlockNumberMock(...args),
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
-const fallbackRestaurant: SellerCatalogue = {
+const fallbackRestaurant: MemberCatalogue = {
     name: "Fallback Merchant",
     description: "Fallback catalogue",
     specialty: "Test",
@@ -117,7 +117,7 @@ const fallbackRestaurant: SellerCatalogue = {
     acceptedTokens: [],
 };
 
-const injectedRestaurant: SellerCatalogue = {
+const injectedRestaurant: MemberCatalogue = {
     name: "Injected Merchant",
     description: "Injected discovery result",
     specialty: "Italian",

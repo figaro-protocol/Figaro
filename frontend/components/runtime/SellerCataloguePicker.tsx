@@ -26,8 +26,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { isAddress } from "viem";
-import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
+import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 
 export interface SellerSelection {
@@ -52,19 +52,19 @@ export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
     const [selectedItemId, setSelectedItemId] = useState("");
 
     const validSeller = isAddress(selectedSellerAddress) ? (selectedSellerAddress as `0x${string}`) : undefined;
-    const { catalogues: sellerCatalogues, isLoading } = useRegisteredCatalogues();
+    const { catalogues: memberCatalogues, isLoading } = useRegisteredCatalogues();
 
-    const sellerCatalogue = useMemo(
-        () => (validSeller ? sellerCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
-        [validSeller, sellerCatalogues],
+    const memberCatalogue = useMemo(
+        () => (validSeller ? memberCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
+        [validSeller, memberCatalogues],
     );
     // The seller's published catalogue is the selectable set — `category` is a
     // free-form seller label, never a closed tag the picker may branch on (the
     // coordination context comes from the order's coordination clause, not from
     // an item's category string).
     const catalogueItems = useMemo(
-        () => sellerCatalogue?.items ?? [],
-        [sellerCatalogue],
+        () => memberCatalogue?.items ?? [],
+        [memberCatalogue],
     );
     const selectedItem = catalogueItems.find((i) => i.id === selectedItemId);
 

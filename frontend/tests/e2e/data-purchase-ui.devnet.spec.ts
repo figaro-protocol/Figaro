@@ -149,7 +149,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
 
         // ── DISCOVERY: the records-offered section and the data-product badge ──
         await page.goto(`/s/view?seller=${DATA_SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(
             page.getByTestId('seller-disclosure-policy'),

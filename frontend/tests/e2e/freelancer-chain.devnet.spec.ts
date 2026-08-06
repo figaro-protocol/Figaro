@@ -146,7 +146,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
 
         // ── CHECKOUT: the client signs the three-order chain. ──
         await page.goto(`/s/view?seller=${lead.address}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

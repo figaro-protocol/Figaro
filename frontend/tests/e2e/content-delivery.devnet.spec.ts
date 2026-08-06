@@ -199,7 +199,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });

@@ -1,5 +1,5 @@
 /**
- * lib/seller/profileFetcher.ts
+ * lib/member/profileFetcher.ts
  *
  * Fetches the MemberProfileMetadata document from a member's on-chain
  * metadataURI (pointer → IPFS/HTTP → parsed profile) — the ONE cached

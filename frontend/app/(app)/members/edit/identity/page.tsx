@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SellerEditProfile } from "@/components/sellers/SellerEditProfile";
+import { MemberEditProfile } from "@/components/members/MemberEditProfile";
 
 export const metadata: Metadata = {
     title: "Edit profile — Figaro Protocol",
@@ -17,7 +17,7 @@ export default function EditProfilePage() {
                     Update identity, branding, accepted tokens, default-pricing token, location. On save, a new profile JSON is pinned to IPFS and the on-chain metadataURI is updated via <code>updateProfile</code>. Deposit and lock period are unaffected.
                 </p>
             </div>
-            <SellerEditProfile />
+            <MemberEditProfile />
         </section>
     );
 }

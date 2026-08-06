@@ -29,8 +29,8 @@ import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
-import { useSellerListings } from "@/lib/seller/useSellerListings";
-import { findListingByAddress } from "@/lib/seller/sellerListing";
+import { useMemberListings } from "@/lib/member/useMemberListings";
+import { findListingByAddress } from "@/lib/member/memberListing";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual, ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -52,7 +52,7 @@ interface Props {
 export function OrderTimelineView({ processId }: Props) {
     const { address } = useAccount();
     const workspace = useSemanticProcessWorkspace({ processId });
-    const { listings } = useSellerListings();
+    const { listings } = useMemberListings();
     const resolveCapacity = useProcessResolveCapacity(processId as `0x${string}`);
 
     const processModel = workspace.processModel;
@@ -76,8 +76,8 @@ export function OrderTimelineView({ processId }: Props) {
     const allOrders = processModel?.orders ?? [];
     const isResolved = allOrders.length > 0 && allOrders.every((order) => order.state !== "Active");
 
-    const sellerListing = rootOrder ? findListingByAddress(listings, rootOrder.seller) : undefined;
-    const sellerDisplayName = sellerListing?.name ?? (rootOrder ? truncateHex(rootOrder.seller) : "the seller");
+    const memberListing = rootOrder ? findListingByAddress(listings, rootOrder.seller) : undefined;
+    const sellerDisplayName = memberListing?.name ?? (rootOrder ? truncateHex(rootOrder.seller) : "the seller");
     const buyerListing = rootOrder ? findListingByAddress(listings, rootOrder.buyer) : undefined;
     const buyerDisplayName = buyerListing?.name ?? (rootOrder ? truncateHex(rootOrder.buyer) : "the buyer");
 

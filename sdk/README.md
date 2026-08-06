@@ -994,7 +994,7 @@ import {
 } from "@figaro/sdk";
 
 // Hardcoded here for brevity. Building `lineItems` from a fetched
-// `SellerCatalogueMetadata` item has no exported helper — there is no
+// `MemberCatalogueMetadata` item has no exported helper — there is no
 // `catalogueItemToLineItem` in the SDK — so do the mapping yourself:
 // `id` → `itemId`, `price` (human decimal) → `unitPrice` (smallest unit, via
 // viem's `parseUnits(item.price, tokenDecimals)` — see `CatalogueItemMetadata.price`'s
@@ -1018,7 +1018,7 @@ await reconstructOrdersFromTemplate(template, {
           fillCommerceSection(planned.clauses, payment, specs, lineItems),
           lineItems, specs,
         ),
-        profileValuesFor(seller, sellerCatalogues), specs,
+        profileValuesFor(seller, memberCatalogues), specs,
       ),
       templateCompositionHash(template), specs,
     );
@@ -1111,7 +1111,7 @@ registration at all.
     buy through the assemblies it sells through); subscribing is the buyer's
     verb, binding stays the seller's. Buyer-posture `disclosurePolicy` entries
     derive their candidate classes from this list.
-- **Catalogue** (`SellerCatalogueMetadata`) — the volatile item list pinned at
+- **Catalogue** (`MemberCatalogueMetadata`) — the volatile item list pinned at
   `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version`.
   Each item requires `id`, `name`, `price`, `available`; optional are
   `description`, `category`, `image`, `recordClass` (marks a DATA-PRODUCT
@@ -1128,10 +1128,10 @@ import {
   reconstructDiscovery,
   parseMemberProfileDocument,       // throws on malformed input
   tryParseMemberProfileDocument,    // returns null on malformed input
-  parseSellerCatalogueDocument,
+  parseMemberCatalogueDocument,
   projectAgentServices,             // pull ERC-8004 agent endpoints from a profile
 } from "@figaro/sdk";
-import type { MemberProfileMetadata, SellerCatalogueMetadata } from "@figaro/sdk";
+import type { MemberProfileMetadata, MemberCatalogueMetadata } from "@figaro/sdk";
 
 // 1. Discovery hands you the metadataURI for each registered seller.
 const graph = reconstructDiscovery(events);
@@ -1148,7 +1148,7 @@ const { isAgent, services } = projectAgentServices(profileJson);
 // 3. Follow catalogueURI to the item list.
 if (profile.catalogueURI) {
   const catJson = await (await fetch(gateway(profile.catalogueURI))).json();
-  const catalogue: SellerCatalogueMetadata = parseSellerCatalogueDocument(catJson);
+  const catalogue: MemberCatalogueMetadata = parseMemberCatalogueDocument(catJson);
 }
 ```
 
@@ -1228,7 +1228,7 @@ two names identify the same concept under each registry's own vocabulary (the
 registering wallet), and `RpgfMinter._isAuthor` treats both as the clause-or-assembly's author for
 600M reward eligibility.
 
-The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →
+The catalogue follows the same shape: `parseMemberCatalogueDocument(cat)` →
 `pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and
 `updateProfile`. First-write-wins binding means the wallet→profile edge is
 permanent; `updateProfile` swaps only the pointer.

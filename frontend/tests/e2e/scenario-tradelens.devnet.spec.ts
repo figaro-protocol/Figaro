@@ -207,7 +207,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
 
         // ── CHECKOUT: the importer-of-record signs the whole chain. ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SHIPPER.address}&e2e=devnet`);
-        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });
