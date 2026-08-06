@@ -19,14 +19,14 @@ export default function Join() {
                 title="Members."
                 lead={
                     <>
-                        Membership gives a wallet acces to the Figaro ecosystem. A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Membership is permissionless: no application, no approval, no one to say yes. You just need to stake some ETH.
+                        Membership gives a wallet access to the Figaro ecosystem. A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Membership is permissionless: no application, no approval, no one to say yes. You just need to stake some ETH.
                     </>
                 }
             />
 
             <MarketingSection title="What a member publishes.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through. Both profiles allow the wallet to participate in data markets. The data the deals the wallets participate in co-produce data you offer for sale &mdash; your side of every purchase is yours to sell, on your terms, at your price.
+                    One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through. Both profiles allow the wallet to participate in data markets. The deals the wallet participates in co-produce data you can offer for sale &mdash; your side of every purchase is yours to sell, on your terms, at your price.
                 </p>
             </MarketingSection>
 
