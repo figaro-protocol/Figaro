@@ -155,7 +155,7 @@ export function OnboardingReview() {
 
     function handleContinue() {
         clear();
-        router.replace("/members");
+        router.replace("/members/manage");
     }
 
     if (!mounted) {

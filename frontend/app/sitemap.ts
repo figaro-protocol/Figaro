@@ -43,7 +43,7 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/builders/pitfalls", changeFrequency: "weekly", priority: 0.8 },
     { path: "/glossary", changeFrequency: "monthly", priority: 0.7 },
     { path: "/consequences", changeFrequency: "monthly", priority: 0.7 },
-    { path: "/join", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/members", changeFrequency: "weekly", priority: 0.9 },
     { path: "/data", changeFrequency: "monthly", priority: 0.8 },
     { path: "/builders", changeFrequency: "weekly", priority: 0.9 },
     { path: "/composes", changeFrequency: "monthly", priority: 0.7 },
@@ -54,7 +54,6 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/rpgf", changeFrequency: "monthly", priority: 0.7 },
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/assemblies", changeFrequency: "weekly", priority: 0.7 },
-    { path: "/members", changeFrequency: "weekly", priority: 0.7 },
     { path: "/discover", changeFrequency: "weekly", priority: 0.6 },
 ];
 

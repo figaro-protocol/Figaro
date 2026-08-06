@@ -56,11 +56,11 @@ export function MemberEditProfile() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/members");
+            router.replace("/members/manage");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/members");
+            router.replace("/members/manage");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -117,7 +117,7 @@ export function MemberEditProfile() {
     // router.push navigation. /sellers reads fresh on mount regardless.
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/members");
+            router.push("/members/manage");
         }
     }, [updater.isSuccess, router]);
 
@@ -171,7 +171,7 @@ export function MemberEditProfile() {
         <OnboardingProfileForm
             onSave={handleSave}
             submitLabel="Save changes"
-            backHref="/members"
+            backHref="/members/manage"
             backLabel="← Cancel"
             submitInFlight={updater.isPending || updater.isConfirming}
             externalError={

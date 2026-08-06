@@ -120,7 +120,7 @@ const TERMS: Term[] = [
         term: "Wallet",
         definition:
             "An app that holds your digital tokens and signs for you — like a banking app, except no bank runs it, and you alone hold the key.",
-        readMore: <Link href="/join" className="hover:underline">Join</Link>,
+        readMore: <Link href="/members" className="hover:underline">Members</Link>,
     },
 ];
 

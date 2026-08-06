@@ -47,11 +47,11 @@ export function MemberEditBuyer() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/members");
+            router.replace("/members/manage");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/members");
+            router.replace("/members/manage");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -86,7 +86,7 @@ export function MemberEditBuyer() {
 
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/members");
+            router.push("/members/manage");
         }
     }, [updater.isSuccess, router]);
 
@@ -138,7 +138,7 @@ export function MemberEditBuyer() {
         <OnboardingBuyerForm
             onSave={handleSave}
             submitLabel="Save changes"
-            backHref="/members"
+            backHref="/members/manage"
             backLabel="← Cancel"
             submitInFlight={updater.isPending || updater.isConfirming}
             externalError={

@@ -69,11 +69,11 @@ export function MemberEditCatalogue() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/members");
+            router.replace("/members/manage");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/members");
+            router.replace("/members/manage");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -163,7 +163,7 @@ export function MemberEditCatalogue() {
     // Redirect back to /sellers on a confirmed update.
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/members");
+            router.push("/members/manage");
         }
     }, [updater.isSuccess, router]);
 
@@ -243,7 +243,7 @@ export function MemberEditCatalogue() {
             <OnboardingCatalogueForm
                 onSave={handleSave}
                 submitLabel="Save changes"
-                backHref="/members"
+                backHref="/members/manage"
                 backLabel="← Cancel"
                 submitInFlight={isSaving}
                 externalError={externalError}

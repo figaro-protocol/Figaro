@@ -32,7 +32,7 @@ export function Header() {
     // The App row lists surfaces for a REGISTERED member with a live stake;
     // the registration surfaces address a wallet that may hold none yet, so
     // /members/* renders without it (operator rule 2026-08-06).
-    const onRegistration = pathname === "/members" || pathname.startsWith("/members/");
+    const onRegistration = pathname.startsWith("/members/") && !pathname.startsWith("/members/manage");
     return (
         <HeaderShell
             right={

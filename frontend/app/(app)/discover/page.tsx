@@ -29,7 +29,7 @@ export default function DiscoverPage() {
                 locks theirs to accept.
             </p>
             <p className="text-sm text-gray-500 mb-10">
-                New to this? <Link href="/join" className="underline hover:text-black">See what membership is</Link>, or read{" "}
+                New to this? <Link href="/members" className="underline hover:text-black">See what membership is</Link>, or read{" "}
                 <Link href="/local-commerce" className="underline hover:text-black">one deal, lived</Link> end to end.
             </p>
             <MemberDiscovery />

@@ -32,7 +32,7 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
     { href: "/kernel", label: "Kernel" },
     { href: "/builders", label: "Builders" },
-    { href: "/join", label: "Join" },
+    { href: "/members", label: "Join" },
     { href: "/working-groups", label: "Groups" },
 ];
 
@@ -50,11 +50,11 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
     // The buyer's start-order verb — the wallet browses bonded sellers and opens
     // the chosen seller's assembly runtime, where a commitment begins. NOT
-    // interchangeable with `/members`, which is the wallet's own registration
+    // interchangeable with `/members/manage`, which is the wallet's own registration
     // surface (register a wallet in MembersRegistry, or manage that entry). Both
     // read a registry; they serve opposite roles, so both are listed.
     { href: "/discover", label: "Discover" },
-    { href: "/members", label: "Members" },
+    { href: "/members/manage", label: "Members" },
     { href: "/audit", label: "Audit" },
     // The RPGF distribution's runtime surface (read your accrual, claim a
     // closed tranche) — a protocol surface (the composed UsageCounter +
@@ -113,10 +113,10 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "Join",
         links: [
-            { href: "/join", label: "Join" },
+            { href: "/members", label: "Join" },
             { href: "/data", label: "Your records" },
             { href: "/discover", label: "Discover sellers" },
-            { href: "/members", label: "Members" },
+            { href: "/members/manage", label: "Manage membership" },
             { href: "/agents", label: "Agents" },
             { href: "/glossary", label: "Glossary" },
         ],
@@ -139,7 +139,7 @@ export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = [
     // The app tier, announced on marketing mobile exactly as the footer's App
     // column announces it on desktop — DERIVED (filtered spread), never a
     // hand-copy. Routes the marketing map already lists (e.g. /discover,
-    // /members under Users) are not repeated here.
+    // /members/manage under Users) are not repeated here.
     { isSectionHeader: true, label: "App", href: "" },
     ...NAV_LINKS_APP_PRIMARY.filter(
         (link) => !MARKETING_MAP.some((g) => g.links.some((l) => l.href === link.href)),

@@ -85,7 +85,7 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
             profile: { name: 'Withdraw Spec Seller' },
         });
 
-        await gotoAsWallet(page, SELLER_ADDR, '/members?e2e=devnet');
+        await gotoAsWallet(page, SELLER_ADDR, '/members/manage?e2e=devnet');
 
         // The idle row's text proves the dashboard (not the welcome view) is up.
         await page.getByText('Leave the registry').first().waitFor({ timeout: 30000 });

@@ -49,9 +49,8 @@ const SELLER = {
 };
 
 async function waitForMembersReady(page: import("@playwright/test").Page) {
-    // /members redirects an UNREGISTERED wallet straight to the Identity step
-    // (no doorway — operator rule 2026-08-06); a registered wallet renders
-    // the dashboard.
+    // /members/manage redirects an UNREGISTERED wallet straight to the
+    // Identity step; a registered wallet renders the dashboard.
     await page.waitForFunction(
         () => {
             const bodyText = document.body.textContent || "";
@@ -66,7 +65,7 @@ async function waitForMembersReady(page: import("@playwright/test").Page) {
 /** Walk the registration wizard as the member's wallet and register
  *  on-chain, binding EXACTLY the given assembly. */
 async function onboardViaWizard(page: import("@playwright/test").Page, assemblySlug: string) {
-    await gotoAsWallet(page, SELLER.address, "/members");
+    await gotoAsWallet(page, SELLER.address, "/members/manage");
     await waitForMembersReady(page);
     await page.goto("/members/identity", { waitUntil: "domcontentloaded" });
 
@@ -155,7 +154,7 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
-    await page.waitForURL(/\/members$/, { timeout: 15_000 });
+    await page.waitForURL(/\/members\/manage$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
     // BOTH calls visible on the dashboard (user rule 2026-06-12): the
     // profile view/edit above, and the onboarding wizard entry.
@@ -299,7 +298,7 @@ test.describe("seller registration wizard (devnet)", () => {
         // ── /sellers dashboard carries BOTH calls (user rule 2026-06-12):
         // the profile view/edit, and the onboarding-wizard entry. Runs on
         // every pass, including the conformant-skip path.
-        await gotoAsWallet(page, SELLER.address, "/members?e2e=devnet");
+        await gotoAsWallet(page, SELLER.address, "/members/manage?e2e=devnet");
         await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId("link-onboarding-wizard")).toBeVisible();
     });
