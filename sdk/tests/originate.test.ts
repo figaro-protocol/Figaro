@@ -30,7 +30,7 @@ const template: AssemblyTemplate = {
 const overrides = { "figaro-commerce": { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
 function offerParams() {
-    return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, overrides };
+    return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides };
 }
 
 // A conforming operator policy for the root offer above (payment 1000, CURRENCY).

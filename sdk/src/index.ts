@@ -126,6 +126,7 @@ export {
     buildDomain,
     generateSalt,
     computeDeadline,
+    readChainTimestamp,
     fetchCumulativeValue,
     buildCommitment,
     buildCommitmentSafe,

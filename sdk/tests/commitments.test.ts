@@ -44,23 +44,14 @@ describe("generateSalt", () => {
 });
 
 describe("computeDeadline", () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date("2025-06-01T00:00:00Z"));
-    });
-
-    it("defaults to 1 hour from now", () => {
-        const dl = computeDeadline();
-        const now = BigInt(Math.floor(Date.now() / 1000));
-        expect(dl).toBe(now + 3600n);
-        vi.useRealTimers();
+    // CHAIN time in, deadline out — there is deliberately no machine-clock
+    // path (operator rule 2026-08-06: the kernel judges block.timestamp).
+    it("adds the default 1-hour TTL to the chain's clock", () => {
+        expect(computeDeadline(1_750_000_000n)).toBe(1_750_000_000n + 3600n);
     });
 
     it("accepts custom TTL", () => {
-        const dl = computeDeadline(300);
-        const now = BigInt(Math.floor(Date.now() / 1000));
-        expect(dl).toBe(now + 300n);
-        vi.useRealTimers();
+        expect(computeDeadline(1_750_000_000n, 300)).toBe(1_750_000_300n);
     });
 });
 
@@ -99,7 +90,7 @@ describe("buildCommitment", () => {
         expect(typedData.message).toBe(commitment);
     });
 
-    it("auto-generates salt and deadline when omitted", () => {
+    it("auto-generates salt when omitted; deadline is the caller's chain time", () => {
         const { commitment } = buildCommitment(
             {
                 processId: "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
@@ -109,12 +100,13 @@ describe("buildCommitment", () => {
                 payment: 1000n,
                 expectedCumulativeValue: 1000n,
                 agreementHash: AGREEMENT,
+                deadline: 1_900_000_000n,
             },
             domain,
         );
 
         expect(commitment.salt > 0n).toBe(true);
-        expect(commitment.deadline > 0n).toBe(true);
+        expect(commitment.deadline).toBe(1_900_000_000n);
     });
 
     it("builds sub-order commitment with processId and expectedCumulativeValue", () => {

@@ -38,7 +38,7 @@ const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURREN
  *  identical between the two legs by design. */
 async function draftFor(candidate: Address, payment: bigint): Promise<CommitmentPayload> {
     const offer = await buildBuyerOffer(buyerW, {
-        template, seller: candidate, currency: CURRENCY, payment, chainId: CHAIN, core: CORE,
+        template, seller: candidate, currency: CURRENCY, payment, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
         overrides: { "figaro-commerce": { currency: CURRENCY, payment: payment.toString() } },
     });
     const { buyerSig: _stripped, ...draft } = offer;
@@ -53,7 +53,7 @@ describe("validateDraft", () => {
 
     it("rejects a payload carrying a buyer signature — that is an offer, not a draft", async () => {
         const offer = await buildBuyerOffer(buyerW, {
-            template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE,
+            template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
         });
         const check = validateDraft(offer, COURIER_A.address);
         expect(check.ok).toBe(false);
@@ -177,7 +177,7 @@ const CEILING = 1000n;
 function requestFor(candidate: Address): CommitmentPayload {
     return buildQuoteRequest({
         template, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
-        ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED,
+        ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
         overrides: {
             "figaro-commerce": {
                 currency: CURRENCY,

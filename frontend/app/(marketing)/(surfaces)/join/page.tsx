@@ -49,7 +49,7 @@ export default function Join() {
                             </tr>
                         </thead>
                         <p className="text-base text-ink-body leading-relaxed">
-                            You need a wallet. 
+                            You need a wallet.
                         </p>
                         <tbody className="text-ink-body">
                             <tr className="border-b border-default"><td className="py-2 pr-4">Welcome</td><td className="py-2">See what membership is.</td></tr>

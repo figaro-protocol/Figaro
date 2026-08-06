@@ -244,7 +244,8 @@ export interface BuildQuoteRequestParams {
      *  non-price terms of the job). */
     overrides?: Record<string, Record<string, unknown>>;
     salt?: bigint;
-    deadline?: bigint;
+    /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
+    deadline: bigint;
 }
 
 /**

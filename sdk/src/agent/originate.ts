@@ -75,7 +75,8 @@ export interface BuildOfferParams extends InstantiateParams {
     chainId: number;
     core: Address;
     salt?: bigint;
-    deadline?: bigint;
+    /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
+    deadline: bigint;
 }
 
 /**
@@ -387,7 +388,8 @@ export interface BuildChainParams {
     nodes: ChainNodeSpec[];
     /** Optional deterministic salt per node (testing). */
     salt?: (nodeId: string) => bigint | undefined;
-    deadline?: bigint;
+    /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
+    deadline: bigint;
 }
 
 /** A buyer-signed offer for one node, in commit order. */

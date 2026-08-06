@@ -257,11 +257,28 @@ export function generateSalt(): bigint {
 const DEFAULT_TTL_SECONDS = 3600;
 
 /**
- * Compute a deadline timestamp (seconds since epoch).
+ * The CHAIN's clock — `block.timestamp` of the latest block. Protocol time
+ * variables MUST come from here, never from the machine clock (operator rule
+ * 2026-08-06): the kernel's DeadlineExpired guard compares against
+ * `block.timestamp`, so a wall-clock deadline silently expires — or silently
+ * over-lives — whenever the device clock and the chain disagree (a skewed
+ * device on mainnet; a time-traveled devnet).
+ */
+export async function readChainTimestamp(client: {
+    getBlock(args?: { blockTag?: "latest" }): Promise<{ timestamp: bigint }>;
+}): Promise<bigint> {
+    return (await client.getBlock({ blockTag: "latest" })).timestamp;
+}
+
+/**
+ * Compute a deadline timestamp (seconds since epoch) from CHAIN time.
+ * @param nowSeconds The chain's current `block.timestamp` — read it with
+ *        `readChainTimestamp(client)`. Required: there is deliberately no
+ *        wall-clock fallback.
  * @param ttlSeconds How long the commitment remains valid. Default: 1 hour.
  */
-export function computeDeadline(ttlSeconds: number = DEFAULT_TTL_SECONDS): bigint {
-    return BigInt(Math.floor(Date.now() / 1000) + ttlSeconds);
+export function computeDeadline(nowSeconds: bigint, ttlSeconds: number = DEFAULT_TTL_SECONDS): bigint {
+    return nowSeconds + BigInt(ttlSeconds);
 }
 
 // ── Cumulative value fetcher ────────────────────────────────────────────────
@@ -304,8 +321,10 @@ export interface CommitmentParams {
     agreementHash: Hex;
     /** Override random salt. Useful for deterministic testing. */
     salt?: bigint;
-    /** Override deadline. Default: now + 1 hour. */
-    deadline?: bigint;
+    /** Deadline in CHAIN time — `computeDeadline(await readChainTimestamp(client))`.
+     *  REQUIRED: there is deliberately no machine-clock default (operator rule
+     *  2026-08-06 — the kernel checks `block.timestamp`, not your clock). */
+    deadline: bigint;
 }
 
 /**
@@ -322,7 +341,7 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
         expectedCumulativeValue: params.expectedCumulativeValue,
         agreementHash: params.agreementHash,
         salt: params.salt ?? generateSalt(),
-        deadline: params.deadline ?? computeDeadline(),
+        deadline: params.deadline,
     };
 
     const typedData = {

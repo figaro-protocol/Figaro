@@ -32,7 +32,7 @@ const nodes: ChainNodeSpec[] = [
     { nodeId: "order-1", seller: S1.address, payment: 500n },
     { nodeId: "order-2", seller: S2.address, payment: 300n },
 ];
-const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n };
+const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n, deadline: 1_900_000_000n };
 
 // A chain-tolerant operator policy: no requireRootShape (sub-orders carry the
 // running cumulative value), the chain's currency, cap above the 1800 total.

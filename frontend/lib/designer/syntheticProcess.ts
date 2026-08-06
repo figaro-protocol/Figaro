@@ -125,6 +125,9 @@ export function buildSyntheticOrder(params: {
         sellerBond: 0n,
         buyerBond: 0n,
         salt: params.salt,
+        // Wall clock is ALLOWED here — the synthetic process is an offline
+        // designer preview that is never signed or broadcast; no kernel clock
+        // ever judges it (the chain-time rule binds real commitments only).
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     };
 
