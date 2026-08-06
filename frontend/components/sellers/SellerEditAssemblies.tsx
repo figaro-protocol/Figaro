@@ -3,7 +3,7 @@
 /**
  * SellerEditAssemblies — re-uses the wizard's assemblies form to
  * edit the registered seller's `assemblyBindings`. Routes from
- * the `/sellers` manage-list "Assemblies" row.
+ * the `/members` manage-list "Assemblies" row.
  *
  * One-pin save sequence: re-pin the profile JSON with the updated
  * assemblyBindings array, dispatch MembersRegistry.updateProfile.
@@ -56,11 +56,11 @@ export function SellerEditAssemblies() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/sellers");
+            router.replace("/members");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/sellers");
+            router.replace("/members");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -96,7 +96,7 @@ export function SellerEditAssemblies() {
 
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/sellers");
+            router.push("/members");
         }
     }, [updater.isSuccess, router]);
 
@@ -153,7 +153,7 @@ export function SellerEditAssemblies() {
         <OnboardingAssembliesForm
             onSave={handleSave}
             submitLabel="Save changes"
-            backHref="/sellers"
+            backHref="/members"
             backLabel="← Cancel"
             submitInFlight={updater.isPending || updater.isConfirming}
             externalError={

@@ -62,9 +62,9 @@ async function waitForSellersReady(page: import("@playwright/test").Page) {
 /** Walk the registration wizard 1→6 as the seller's wallet and register
  *  on-chain, binding EXACTLY the given assembly. */
 async function onboardViaWizard(page: import("@playwright/test").Page, assemblySlug: string) {
-    await gotoAsWallet(page, SELLER.address, "/sellers");
+    await gotoAsWallet(page, SELLER.address, "/members");
     await waitForSellersReady(page);
-    await page.goto("/sellers/identity", { waitUntil: "domcontentloaded" });
+    await page.goto("/members/identity", { waitUntil: "domcontentloaded" });
 
     // Step 2 — Identity
     await expect(page.locator("#profile-name")).toBeVisible({ timeout: 30_000 });
@@ -239,7 +239,7 @@ test.describe("seller registration wizard (devnet)", () => {
         // ── /sellers dashboard carries BOTH calls (user rule 2026-06-12):
         // the profile view/edit, and the onboarding-wizard entry. Runs on
         // every pass, including the conformant-skip path.
-        await gotoAsWallet(page, SELLER.address, "/sellers?e2e=devnet");
+        await gotoAsWallet(page, SELLER.address, "/members?e2e=devnet");
         await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId("link-onboarding-wizard")).toBeVisible();
     });

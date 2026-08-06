@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SellerLanding — single entry point for `/sellers`. Conditionally
+ * SellerLanding — single entry point for `/members`. Conditionally
  * renders one of two views based on registration state:
  *
  *   - Connected, registered → RegisteredCard (dashboard).
@@ -179,7 +179,7 @@ function RegisteredCard({
                 this profile in place. */}
             <p className="text-sm text-ink-faint">
                 <Link
-                    href="/sellers/identity"
+                    href="/members/identity"
                     className="underline hover:text-ink-heading"
                     data-testid="link-onboarding-wizard"
                 >
@@ -216,10 +216,10 @@ function ManageList({
     profile: MemberProfileMetadata | null;
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
-        { label: "Identity", description: "Name, description, tokens, location.", href: "/sellers/edit/identity" },
-        { label: "Catalogue", description: "Items.", href: "/sellers/edit/catalogue" },
-        { label: "Assemblies", description: "Bindings.", href: "/sellers/edit/assemblies" },
-        { label: "Agents", description: "Service endpoints.", href: "/sellers/edit/agents" },
+        { label: "Identity", description: "Name, description, tokens, location.", href: "/members/edit/identity" },
+        { label: "Catalogue", description: "Items.", href: "/members/edit/catalogue" },
+        { label: "Assemblies", description: "Bindings.", href: "/members/edit/assemblies" },
+        { label: "Agents", description: "Service endpoints.", href: "/members/edit/agents" },
     ];
     return (
         <ul className="border-t border-default text-sm">

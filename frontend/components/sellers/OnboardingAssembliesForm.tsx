@@ -196,7 +196,7 @@ export function OnboardingAssembliesForm({
             });
             return;
         }
-        router.push("/sellers/agents");
+        router.push("/members/agents");
     }
 
     if (!mounted) {
@@ -209,7 +209,7 @@ export function OnboardingAssembliesForm({
                 <p className="text-sm text-ink-body">
                     Connect a wallet to load your assembly bindings draft.
                 </p>
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button variant="outline">← Back</Button>
                 </Link>
             </Card>
@@ -325,7 +325,7 @@ export function OnboardingAssembliesForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/sellers/catalogue"}
+                    href={backHref ?? "/members/catalogue"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

@@ -89,7 +89,7 @@ async function onboardSeller(page: Page, opts: {
     product: { name: string; price: string; rate?: { unit: string; source: string } };
     designate?: { clauseId: string; counterparty: Hex };
 }) {
-    await gotoAsWallet(page, opts.wallet, '/sellers/identity?e2e=devnet');
+    await gotoAsWallet(page, opts.wallet, '/members/identity?e2e=devnet');
     await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
     await page.locator('#profile-name').fill(opts.name);
     await page.locator('#profile-specialty').fill(opts.specialty);

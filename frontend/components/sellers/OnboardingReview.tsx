@@ -152,7 +152,7 @@ export function OnboardingReview() {
 
     function handleContinue() {
         clear();
-        router.replace("/sellers");
+        router.replace("/members");
     }
 
     if (!mounted) {
@@ -163,7 +163,7 @@ export function OnboardingReview() {
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-ink-body">Connect a wallet to publish your registration.</p>
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button variant="outline">← Back to identity</Button>
                 </Link>
             </Card>
@@ -174,7 +174,7 @@ export function OnboardingReview() {
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-red-600" role="alert">{error}</p>
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button variant="outline">← Back to fill missing fields</Button>
                 </Link>
             </Card>
@@ -242,7 +242,7 @@ export function OnboardingReview() {
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Preview · pending publish</h2>
                     <Link
-                        href="/sellers/identity"
+                        href="/members/identity"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
                         Edit identity →
@@ -286,7 +286,7 @@ export function OnboardingReview() {
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Catalogue ({items.length} item{items.length === 1 ? "" : "s"})</h2>
                     <Link
-                        href="/sellers/catalogue"
+                        href="/members/catalogue"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
                         Edit catalogue →
@@ -311,7 +311,7 @@ export function OnboardingReview() {
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Accepted tokens</h2>
                     <Link
-                        href="/sellers/identity#profile-section-accepted-tokens"
+                        href="/members/identity#profile-section-accepted-tokens"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
                         Edit tokens →
@@ -331,7 +331,7 @@ export function OnboardingReview() {
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Assemblies ({bindings.length})</h2>
                     <Link
-                        href="/sellers/assemblies"
+                        href="/members/assemblies"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
                         Edit assemblies →
@@ -353,7 +353,7 @@ export function OnboardingReview() {
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Data disclosure</h2>
                     <Link
-                        href="/sellers/assemblies"
+                        href="/members/assemblies"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
                         Edit disclosure →
@@ -378,7 +378,7 @@ export function OnboardingReview() {
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Agent endpoints</h2>
                     <Link
-                        href="/sellers/agents"
+                        href="/members/agents"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
                         Edit agents →
@@ -445,7 +445,7 @@ export function OnboardingReview() {
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href="/sellers/agents"
+                    href="/members/agents"
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     ← Back to wizard

@@ -160,7 +160,7 @@ export interface SeededSeller {
  * on `MembersRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
  * inline seeder (which inlines this for the catalogue+merchant case); the
  * helper here is the generic "any registered seller" seed, used by
- * Phase 4 C4 to set up the `/sellers/edit/*` UI tests (those routes
+ * Phase 4 C4 to set up the `/members/edit/*` UI tests (those routes
  * require a real IPFS-pinned profile so `SellerEditProfile` can mount
  * the form).
  *

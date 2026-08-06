@@ -92,7 +92,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
-                    <Link href="/sellers" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
+                    <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
                         Register as a seller
                     </Link>
                     <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">

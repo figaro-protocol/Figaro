@@ -244,8 +244,8 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
                 && designated(DELIVERY_CLAUSES.courier, SUPPLIER_D);
         };
         if (!isConformant(await memberProfileBindings(LEAD.address))) {
-            await gotoAsWallet(page, LEAD.address, '/sellers');
-            await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+            await gotoAsWallet(page, LEAD.address, '/members');
+            await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
             await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
             await page.locator('#profile-name').fill(LEAD.name);
             await page.locator('#profile-specialty').fill(LEAD.specialty);
@@ -291,7 +291,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         // Each counterparty pins the assembly it participates in (even-surfacing).
         const ensureBound = async (seller: Hex, label: string) => {
             if ((await memberProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug)) return;
-            await gotoAsWallet(page, seller, '/sellers/edit/assemblies?e2e=devnet');
+            await gotoAsWallet(page, seller, '/members/edit/assemblies?e2e=devnet');
             const r = page.getByTestId(`seller-assembly-row-${kitSlug}`);
             await r.waitFor({ state: 'visible', timeout: 30000 });
             await r.locator('input[type="checkbox"]').first().check();

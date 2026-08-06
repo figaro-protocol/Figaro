@@ -163,8 +163,8 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
 
         // ── BIND: the seller onboards through the REAL wizard and binds
         //    exactly this assembly. ──
-        await gotoAsWallet(page, SELLER, '/sellers');
-        await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+        await gotoAsWallet(page, SELLER, '/members');
+        await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
         await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
         await page.locator('#profile-name').fill('Digital Deliverables Studio');
         await page.locator('#profile-specialty').fill('digital production work');

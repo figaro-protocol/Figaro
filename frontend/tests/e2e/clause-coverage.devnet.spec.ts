@@ -527,8 +527,8 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    item (plus the rung's catalogue-authored clause values) and
             //    EXACTLY this rung's assembly bound (earlier rungs' bindings are
             //    unchecked so checkout is unambiguous). Rows are slug-keyed. ──
-            await gotoAsWallet(page, SELLER, '/sellers');
-            await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+            await gotoAsWallet(page, SELLER, '/members');
+            await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
             await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
             await page.locator('#profile-name').fill('Coverage Seller');
             await page.locator('#profile-specialty').fill('per-clause coverage');

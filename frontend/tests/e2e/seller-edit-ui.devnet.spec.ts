@@ -2,7 +2,7 @@
  * seller-edit-ui.devnet.spec.ts
  *
  * Phase 4 C4a-d of the e2e remediation plan: UI coverage of the four
- * `/sellers/edit/<route>` surfaces. The `MembersRegistry.updateProfile`
+ * `/members/edit/<route>` surfaces. The `MembersRegistry.updateProfile`
  * contract path lives in Foundry (MembersRegistryTest — the viem-tier
  * Playwright spec was retired as a misfiled contract test); this spec
  * drives the path through the UI forms so the round-trip
@@ -136,7 +136,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
     // IPFS pin + register + form mount + tx + receipt + IPFS re-pin add up.
     test.setTimeout(180_000);
 
-    test('/sellers/edit/identity — change name, submit, MemberProfileUpdated emits', async ({ page }) => {
+    test('/members/edit/identity — change name, submit, MemberProfileUpdated emits', async ({ page }) => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
         const seeded = await seedRegisteredMember({
@@ -150,7 +150,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         });
         expect(seeded.address.toLowerCase()).toBe(seller.toLowerCase());
 
-        await page.goto('/sellers/edit/identity?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/members/edit/identity?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // Wallet auto-connects via ?e2e=devnet. The form mounts once the
         // existing-profile IPFS fetch + onboarding-state seed complete —
@@ -168,7 +168,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await expect(page).toHaveURL(/\/sellers$/, { timeout: 30_000 });
     });
 
-    test('/sellers/edit/catalogue — Delete-catalogue affordance dispatches updateProfile', async ({ page }) => {
+    test('/members/edit/catalogue — Delete-catalogue affordance dispatches updateProfile', async ({ page }) => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
@@ -196,7 +196,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             },
         });
 
-        await page.goto('/sellers/edit/catalogue?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/members/edit/catalogue?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // Form mounts when the catalogue load resolves. The Delete
         // affordance is at the bottom — its first state is a muted link.
@@ -214,7 +214,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await expect(page).toHaveURL(/\/sellers$/, { timeout: 30_000 });
     });
 
-    test('/sellers/edit/agents — set MCP endpoint, submit, MemberProfileUpdated emits', async ({ page }) => {
+    test('/members/edit/agents — set MCP endpoint, submit, MemberProfileUpdated emits', async ({ page }) => {
         const consoleErrors: string[] = [];
         page.on('console', (m) => {
             if (m.type() === 'error') consoleErrors.push(m.text());
@@ -230,7 +230,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             },
         });
 
-        await page.goto('/sellers/edit/agents?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/members/edit/agents?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         await expect(page.locator('#agent-mcp')).toBeVisible({ timeout: 30000 });
         const mcpUrl = 'https://agent.example.com/mcp';
@@ -249,7 +249,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         expect(loopErrors, `Expected no Maximum-update-depth warnings; saw: ${loopErrors.join(' | ')}`).toEqual([]);
     });
 
-    test('/sellers/edit/assemblies — toggle published assembly on, submit, MemberProfileUpdated emits', async ({ page }) => {
+    test('/members/edit/assemblies — toggle published assembly on, submit, MemberProfileUpdated emits', async ({ page }) => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
@@ -281,7 +281,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             },
         });
 
-        await page.goto('/sellers/edit/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/members/edit/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // The assembly row carries `seller-assembly-row-<slug>` testid.
         const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);

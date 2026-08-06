@@ -3,7 +3,7 @@
 /**
  * SellerEditCatalogue — re-uses the wizard's catalogue form to
  * edit a registered seller's pinned catalogue. Routes from the
- * `/sellers` manage-list "Catalogue" row.
+ * `/members` manage-list "Catalogue" row.
  *
  * Two-pin save sequence:
  *   1. Pin the new catalogue JSON via `publishSellerCatalogue`,
@@ -20,8 +20,8 @@
  * catalogue is a degenerate state.
  *
  * Wallet-not-connected and wallet-not-registered both redirect to
- * `/sellers`, matching the redirect-on-miss pattern at
- * `/sellers` and `/sellers/edit/identity`.
+ * `/members`, matching the redirect-on-miss pattern at
+ * `/members` and `/members/edit/identity`.
  */
 
 import { useEffect, useState } from "react";
@@ -69,11 +69,11 @@ export function SellerEditCatalogue() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/sellers");
+            router.replace("/members");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/sellers");
+            router.replace("/members");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -159,7 +159,7 @@ export function SellerEditCatalogue() {
     // Redirect back to /sellers on a confirmed update.
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/sellers");
+            router.push("/members");
         }
     }, [updater.isSuccess, router]);
 
@@ -239,7 +239,7 @@ export function SellerEditCatalogue() {
             <OnboardingCatalogueForm
                 onSave={handleSave}
                 submitLabel="Save changes"
-                backHref="/sellers"
+                backHref="/members"
                 backLabel="← Cancel"
                 submitInFlight={isSaving}
                 externalError={externalError}

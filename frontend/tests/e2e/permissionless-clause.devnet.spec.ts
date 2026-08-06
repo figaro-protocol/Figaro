@@ -192,8 +192,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // ── BIND: onboard anvil[14] as a seller through the REAL wizard, binding
         //    the novel assembly. (No code knows this clause; the seller binds the
         //    assembly the same way it would any other.) ──
-        await gotoAsWallet(page, SELLER, '/sellers');
-        await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+        await gotoAsWallet(page, SELLER, '/members');
+        await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
         await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
         await page.locator('#profile-name').fill('Probe Seller');
         await page.locator('#profile-specialty').fill('acceptance probe');

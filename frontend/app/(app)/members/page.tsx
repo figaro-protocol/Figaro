@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SellerLanding } from "@/components/sellers/SellerLanding";
 
 export const metadata: Metadata = {
-    title: "Sellers — Figaro Protocol",
+    title: "Members — Figaro Protocol",
     description: "Register a wallet in MembersRegistry, or manage your existing registration. Unregistered wallets see the onboarding wizard; registered wallets see their profile view/edit dashboard with the wizard still one click away.",
 };
 

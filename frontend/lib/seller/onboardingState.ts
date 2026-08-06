@@ -2,7 +2,7 @@
  * lib/sellers/onboardingState.ts
  *
  * Wallet-scoped localStorage state for the multi-screen seller
- * onboarding flow at `/sellers/*`. The state survives page
+ * onboarding flow at `/members/*`. The state survives page
  * reloads (B7 — "items don't persist" was the user's complaint about the
  * old single-form catalogue builder) and unblocks per-step authoring.
  *
@@ -202,7 +202,7 @@ export interface OnboardingStep {
     number: number;
     /** Human-readable label. */
     label: string;
-    /** Sub-route under `/sellers/`. Empty string for the welcome screen. */
+    /** Sub-route under `/members/`. Empty string for the welcome screen. */
     path: string;
     /**
      * When true, the seller may ship without filling this step. The

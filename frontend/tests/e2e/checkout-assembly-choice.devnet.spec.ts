@@ -54,7 +54,7 @@ const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)'
 /** Walk the registration wizard as the seller's wallet, binding EXACTLY the
  *  given assemblies (clears any prior bindings first — update-mode repair). */
 async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
-    await gotoAsWallet(page, SELLER.address, '/sellers');
+    await gotoAsWallet(page, SELLER.address, '/members');
     await page.waitForFunction(
         () => {
             const bodyText = document.body.textContent || '';
@@ -65,7 +65,7 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
         null,
         { timeout: 60_000 },
     );
-    await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+    await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
 
     // Step 2 — Identity
     await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30_000 });

@@ -49,7 +49,7 @@ export default function Users() {
                         <p className="text-base text-ink-body leading-relaxed mt-2 mb-4">
                             Register an identity, declare a catalogue, set accepted tokens. As a seller you run a wallet that represents your real-world asset or service &mdash; a kitchen, a vehicle, your labour. Buyers find you through the registry; the wallet takes the seller role on every deal that comes through. Accepting an order means locking a stake of your own: twice the value the deal carries by the time it reaches you &mdash; your own work plus everything added upstream of it, so a courier at the end of a chain stakes against the whole meal, not just the ride. It comes back, with your payment, when the buyer confirms.
                         </p>
-                        <Link href="/sellers" className="text-ink-heading font-medium hover:underline">
+                        <Link href="/members" className="text-ink-heading font-medium hover:underline">
                             Seller onboarding &rarr;
                         </Link>
                     </div>

@@ -106,8 +106,8 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         // ── BIND: onboard the dedicated seller through the real wizard — one
         //    catalogue item, EXACTLY this run's assembly bound (a prior run's
         //    binding is unchecked; its assembly is withdrawn → de-surfaced). ──
-        await gotoAsWallet(page, SELLER, '/sellers');
-        await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+        await gotoAsWallet(page, SELLER, '/members');
+        await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
         await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
         await page.locator('#profile-name').fill('Withdraw Gate Seller');
         await page.locator('#profile-specialty').fill('withdraw-gate coverage');

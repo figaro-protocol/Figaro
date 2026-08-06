@@ -77,7 +77,7 @@ export interface OnboardingAgentsFormProps {
     onSave?: (services: MemberAgentServices | undefined) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/sellers/assemblies". */
+    /** Back-link href override. Defaults to "/members/assemblies". */
     backHref?: string;
     /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
@@ -141,7 +141,7 @@ export function OnboardingAgentsForm({
             });
             return;
         }
-        router.push("/sellers/review");
+        router.push("/members/review");
     }
 
     if (!mounted) {
@@ -154,7 +154,7 @@ export function OnboardingAgentsForm({
                 <p className="text-sm text-ink-body">
                     Connect a wallet to load your agent-endpoint draft.
                 </p>
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button variant="outline">← Back</Button>
                 </Link>
             </Card>
@@ -199,7 +199,7 @@ export function OnboardingAgentsForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/sellers/assemblies"}
+                    href={backHref ?? "/members/assemblies"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

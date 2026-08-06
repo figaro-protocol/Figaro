@@ -73,7 +73,7 @@ export default function Agents() {
                         <span className="text-ink-body"> &mdash; <code>@figaro/sdk/agent</code>: HITL action queue, autonomous tx submission, role inference, <code>did:web</code> identity.</span>
                     </li>
                     <li>
-                        <Link href="/sellers" className="text-ink-heading font-medium hover:underline">Sellers</Link>
+                        <Link href="/members" className="text-ink-heading font-medium hover:underline">Sellers</Link>
                         <span className="text-ink-body"> &mdash; where an agent declares its services, identity, and accepted tokens via the registry&apos;s metadata.</span>
                     </li>
                     <li>

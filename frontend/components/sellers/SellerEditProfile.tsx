@@ -3,7 +3,7 @@
 /**
  * SellerEditProfile — re-uses the wizard's profile form to edit a
  * registered seller's on-chain profile metadata. Routes from the
- * `/sellers` manage-list "Identity" row.
+ * `/members` manage-list "Identity" row.
  *
  * Lifecycle:
  *   1. Fetch the wallet's current on-chain metadataURI (from the
@@ -14,11 +14,11 @@
  *   3. Render the form with `onSave` that calls
  *      `useUpdateMemberProfile.save(...)` — pin merged JSON,
  *      dispatch `updateProfile`.
- *   4. On success, redirect back to `/sellers`.
+ *   4. On success, redirect back to `/members`.
  *
  * Wallet-not-connected and wallet-not-registered cases redirect
- * to `/sellers` (mirrors the redirect-on-miss pattern at
- * `/sellers` itself).
+ * to `/members` (mirrors the redirect-on-miss pattern at
+ * `/members` itself).
  */
 
 import { useEffect, useState } from "react";
@@ -56,11 +56,11 @@ export function SellerEditProfile() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/sellers");
+            router.replace("/members");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/sellers");
+            router.replace("/members");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -117,7 +117,7 @@ export function SellerEditProfile() {
     // router.push navigation. /sellers reads fresh on mount regardless.
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/sellers");
+            router.push("/members");
         }
     }, [updater.isSuccess, router]);
 
@@ -171,7 +171,7 @@ export function SellerEditProfile() {
         <OnboardingProfileForm
             onSave={handleSave}
             submitLabel="Save changes"
-            backHref="/sellers"
+            backHref="/members"
             backLabel="← Cancel"
             submitInFlight={updater.isPending || updater.isConfirming}
             externalError={

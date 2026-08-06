@@ -82,7 +82,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         //    Aurora's undesignated binding, the two couriers, funding. ──
         const deliverySlug = await ensureDeliveryAssembly(page);
         if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
-            await gotoAsWallet(page, MERCHANT, '/sellers/edit/assemblies?e2e=devnet');
+            await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();

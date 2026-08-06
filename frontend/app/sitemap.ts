@@ -23,8 +23,8 @@ type Entry = {
 //     `/builders/designer/view?slug=`): the id is an open-world value unknowable
 //     at build time, so there is no enumerable URL set to publish.
 //   - `/builders/designer/new`: a per-instance authoring form, not a document.
-//   - The `/sellers/{identity,catalogue,assemblies,agents,review}` and
-//     `/sellers/edit/*` steps: interior states of the `/sellers` enrolment
+//   - The `/members/{identity,catalogue,assemblies,agents,review}` and
+//     `/members/edit/*` steps: interior states of the `/members` enrolment
 //     wizard, entered from it and meaningless as landings.
 //   - Wallet-personal surfaces (`/orders`, `/rewards`, `/settings`, `/sign`,
 //     `/audit`): what they render is scoped to the connected wallet, so the
@@ -55,7 +55,7 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/assemblies", changeFrequency: "weekly", priority: 0.7 },
     { path: "/integrate", changeFrequency: "weekly", priority: 0.7 },
-    { path: "/sellers", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/members", changeFrequency: "weekly", priority: 0.7 },
     { path: "/discover", changeFrequency: "weekly", priority: 0.6 },
 ];
 

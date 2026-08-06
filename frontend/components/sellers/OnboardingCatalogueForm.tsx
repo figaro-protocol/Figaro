@@ -186,7 +186,7 @@ export interface OnboardingCatalogueFormProps {
     onSave?: (items: CatalogueItemMetadata[], unitSystem: UnitSystem) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/sellers/identity". */
+    /** Back-link href override. Defaults to "/members/identity". */
     backHref?: string;
     /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
@@ -324,7 +324,7 @@ export function OnboardingCatalogueForm({
             });
             return;
         }
-        router.push("/sellers/assemblies");
+        router.push("/members/assemblies");
     }
 
     if (!mounted) {
@@ -337,7 +337,7 @@ export function OnboardingCatalogueForm({
                 <p className="text-sm text-ink-body">
                     Connect a wallet to load your catalogue draft.
                 </p>
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button variant="outline">← Back to profile</Button>
                 </Link>
             </Card>
@@ -350,7 +350,7 @@ export function OnboardingCatalogueForm({
                 <p className="text-sm text-ink-body">
                     Your catalogue is priced in your profile&apos;s default token. Go back to step 2 and set it before adding items.
                 </p>
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button variant="outline">← Set default token</Button>
                 </Link>
             </Card>
@@ -464,7 +464,7 @@ export function OnboardingCatalogueForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/sellers/identity"}
+                    href={backHref ?? "/members/identity"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

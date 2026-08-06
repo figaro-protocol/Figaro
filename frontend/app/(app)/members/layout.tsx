@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 
 /**
- * Shared layout for `/sellers` and all its sub-routes (the wizard
+ * Shared layout for `/members` and all its sub-routes (the wizard
  * steps at /sellers/identity, /catalogue, /assemblies, /agents,
  * /review, and the edit surfaces at /sellers/edit/*). Provides the
  * container + max-width that the prior /sellers/onboard layout

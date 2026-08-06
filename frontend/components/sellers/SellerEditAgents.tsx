@@ -3,7 +3,7 @@
 /**
  * SellerEditAgents — re-uses the wizard's agents form to edit
  * the registered seller's ERC-8004 service endpoints. Routes
- * from the `/sellers` manage-list "Agents" row.
+ * from the `/members` manage-list "Agents" row.
  *
  * One-pin save sequence: re-pin profile JSON with updated
  * `services` field, dispatch MembersRegistry.updateProfile.
@@ -57,11 +57,11 @@ export function SellerEditAgents() {
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected) {
-            router.replace("/sellers");
+            router.replace("/members");
             return;
         }
         if (!registryLoading && !registryData) {
-            router.replace("/sellers");
+            router.replace("/members");
         }
     }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
@@ -94,7 +94,7 @@ export function SellerEditAgents() {
 
     useEffect(() => {
         if (updater.isSuccess) {
-            router.push("/sellers");
+            router.push("/members");
         }
     }, [updater.isSuccess, router]);
 
@@ -141,7 +141,7 @@ export function SellerEditAgents() {
         <OnboardingAgentsForm
             onSave={handleSave}
             submitLabel="Save changes"
-            backHref="/sellers"
+            backHref="/members"
             backLabel="← Cancel"
             submitInFlight={updater.isPending || updater.isConfirming}
             externalError={

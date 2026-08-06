@@ -228,8 +228,8 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
 
         // ── BIND: onboard the dedicated seller, unbind-all then bind THIS
         //    run's assembly (self-contained on the persisted devnet). ──
-        await gotoAsWallet(page, SELLER, '/sellers');
-        await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+        await gotoAsWallet(page, SELLER, '/members');
+        await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
         await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
         await page.locator('#profile-name').fill('Clause Authoring Seller');
         await page.locator('#profile-specialty').fill('clause-authoring coverage');

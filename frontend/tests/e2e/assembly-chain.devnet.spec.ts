@@ -172,8 +172,8 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const conformant = isConformant(await memberProfileBindings(LEAD.address));
 
         if (!conformant) {
-            await gotoAsWallet(page, LEAD.address, '/sellers');
-            await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+            await gotoAsWallet(page, LEAD.address, '/members');
+            await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
             await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
             await page.locator('#profile-name').fill(LEAD.name);
             await page.locator('#profile-specialty').fill(LEAD.specialty);
@@ -231,7 +231,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    in. Verified out-of-band from the registry events + IPFS. ──
         const ensureBound = async (seller: Hex, label: string) => {
             if ((await memberProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug)) return;
-            await gotoAsWallet(page, seller, '/sellers/edit/assemblies?e2e=devnet');
+            await gotoAsWallet(page, seller, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${chainSlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();

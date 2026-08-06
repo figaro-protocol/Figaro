@@ -51,7 +51,7 @@ export function OnboardingWelcome() {
             </Card>
 
             <div className="flex items-center justify-end">
-                <Link href="/sellers/identity">
+                <Link href="/members/identity">
                     <Button>Begin →</Button>
                 </Link>
             </div>

@@ -160,7 +160,7 @@ export interface OnboardingProfileFormProps {
     /**
      * When provided, the form's submit button calls this callback
      * with the assembled draft instead of routing to the next wizard
-     * step. Used by the edit-identity page (`/sellers/edit/identity`)
+     * step. Used by the edit-identity page (`/members/edit/identity`)
      * to wire submit through `MembersRegistry.updateProfile` rather
      * than the wizard flow's `register`.
      *
@@ -172,7 +172,7 @@ export interface OnboardingProfileFormProps {
     onSave?: (draft: OnboardingProfileDraft) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/sellers". */
+    /** Back-link href override. Defaults to "/members". */
     backHref?: string;
     /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
@@ -383,7 +383,7 @@ export function OnboardingProfileForm({
                     // we swallow here so React's unhandled-rejection logger stays quiet.
                 });
             } else {
-                router.push("/sellers/catalogue");
+                router.push("/members/catalogue");
             }
             return;
         }
@@ -729,7 +729,7 @@ export function OnboardingProfileForm({
                 )}
                 <div className="flex items-center justify-between">
                     <Link
-                        href={backHref ?? "/sellers"}
+                        href={backHref ?? "/members"}
                         className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                     >
                         {backLabel ?? "← Back"}
