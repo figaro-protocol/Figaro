@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.."
 #   status/page.tsx   — every verbatim quote carries a per-quote source
 #                       attribution link; N quotes from one page = N links.
 #   glossary/page.tsx — a reference page; each entry links its term's owner.
-ALLOWLIST='\(marketing\)/status/page\.tsx|\(marketing\)/glossary/page\.tsx'
+ALLOWLIST='\(marketing\)/\(explain\)/glossary/page\.tsx'
 
 violations=0
 while IFS= read -r file; do

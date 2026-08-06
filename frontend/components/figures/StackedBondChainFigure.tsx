@@ -11,7 +11,7 @@ export interface StackedBondChainFigureProps {
     svgProps?: SVGProps<SVGSVGElement>;
 }
 
-// The /local-commerce worked example (frontend/app/(marketing)/local-commerce/page.tsx):
+// The /local-commerce worked example (frontend/app/(marketing)/(surfaces)/local-commerce/page.tsx):
 // "8.40 to the kitchen, 2.10 to the courier, 0.30 to the farm". Reused verbatim so
 // the site keeps one consistent worked example. Order is load-bearing, not
 // editorial: the page states the courier's stake rides on "food and delivery

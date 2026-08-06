@@ -19,7 +19,7 @@ export interface LayeredDefenseFigureProps {
  * the on-chain record from outside the deal and cannot reach in.
  *
  * Source of truth: the ranked list at /security#layers ("What stands
- * behind a deal?", frontend/app/(marketing)/security/page.tsx) — chain,
+ * behind a deal?", frontend/app/(marketing)/(explain)/security/page.tsx) — chain,
  * lockbox+record, other sellers, arbitration, ordinary courts — cross-
  * checked against the canonical stack in
  * ~/.claude/projects/-Users-adaliana-Figaro/memory/reference_layered_security_stack.md
