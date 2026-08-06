@@ -107,7 +107,6 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/assemblies", label: "Assemblies" },
             { href: "/local-commerce", label: "Local Commerce reference" },
             { href: "/builders/pitfalls", label: "Sharp edges" },
-            { href: "/integrate", label: "Integrate" },
             { href: "/papers/florin-schelling-point-token", label: "florin token" },
         ],
     },

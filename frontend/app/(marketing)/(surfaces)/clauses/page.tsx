@@ -56,7 +56,7 @@ export default function Clauses() {
 
             <MarketingSection title="Where to look">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
-                    <li><strong>SDK module:</strong> <code>@figaro/sdk/clauses</code> &mdash; meta-clause validator, <code>validateContent</code>, and the generic <code>encodeContentFromSpec</code>. The canonical source of the spec format. See <Link href="/integrate" className="underline">Integrate</Link>.</li>
+                    <li><strong>SDK module:</strong> <code>@figaro/sdk/clauses</code> &mdash; meta-clause validator, <code>validateContent</code>, and the generic <code>encodeContentFromSpec</code>. The canonical source of the spec format. See the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>.</li>
                     <li><strong>Registration path:</strong> <code>ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)</code> &mdash; permissionless, first-write-wins, immutable. No per-clause validator to deploy; the generic proof engine validates it in-proof against the anchored spec, so registration alone makes the clause attestable and settleable. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Kernel side:</strong> attestation receipts are bound to the signed <code>agreementHash</code> via merkle inclusion proof, with no on-chain content validation; the rationale is on <Link href="/kernel" className="underline">Kernel</Link>.</li>
                     <li><strong>Academic frame:</strong> <Link href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</Link> (how a clause&apos;s record lands in a forum that has its own jurisdiction) and the Philosophy, Law and Ethics group on <Link href="/working-groups" className="underline">Working groups</Link>.</li>
@@ -82,7 +82,7 @@ export default function Clauses() {
                         <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
-                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
+                        <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README</a>
                         <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders.</span>
                     </li>
                 </ul>

@@ -49,12 +49,14 @@ const SELLER = {
 };
 
 async function waitForMembersReady(page: import("@playwright/test").Page) {
+    // /members redirects an UNREGISTERED wallet straight to the Identity step
+    // (no doorway — operator rule 2026-08-06); a registered wallet renders
+    // the dashboard.
     await page.waitForFunction(
         () => {
             const bodyText = document.body.textContent || "";
-            if (bodyText.includes("Loading…")) return false;
-            return bodyText.includes("Register as a member.")
-                || bodyText.includes("View public profile");
+            return bodyText.includes("View public profile")
+                || window.location.pathname.startsWith("/members/identity");
         },
         null,
         { timeout: 60_000 },

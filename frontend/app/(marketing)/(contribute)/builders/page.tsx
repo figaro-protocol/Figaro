@@ -32,7 +32,7 @@ export default function BuildersPage() {
                 This page orients &mdash; it doesn&apos;t specify.{" "}
                 <Link href="/clauses" className="text-ink-heading font-medium hover:underline">/clauses</Link> and{" "}
                 <Link href="/composes" className="text-ink-heading font-medium hover:underline">/composes</Link> teach
-                the composition surface itself; <Link href="/integrate" className="text-ink-heading font-medium hover:underline">/integrate</Link> is
+                the composition surface itself; the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README</a> is
                 the how-to. <Link href="/spec" className="text-ink-heading font-medium hover:underline">/spec</Link> and{" "}
                 /security are
                 the adversarial reference &mdash; dense by design, every guarantee there stated beside its caveat.
@@ -108,10 +108,10 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; the single composition page: the wired surfaces (forum seam, storage, messaging, payout routing), the coordinator pattern&rsquo;s five equilibrium-preserving conditions, and the kernel-vs-author boundary.</span>
                 </li>
                 <li>
-                    <Link href="/integrate" className="text-ink-heading font-medium hover:underline">
-                        Integrate
-                    </Link>
-                    <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders, the two-settlement-path read recipe.</span>
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">
+                        SDK README
+                    </a>
+                    <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders, the two-settlement-path read recipe. In the public repository.</span>
                 </li>
                 <li>
                     <Link href="/spec" className="text-ink-heading font-medium hover:underline">

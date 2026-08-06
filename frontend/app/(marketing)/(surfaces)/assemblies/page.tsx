@@ -159,7 +159,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                     identity (slug, author, content hash) renders regardless.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: this inventory derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/integrate" className="underline">Integrate</Link> for the deployment record.
+                    For agents: this inventory derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
                 </p>
                 <AssemblyInventory />
             </MarketingSection>

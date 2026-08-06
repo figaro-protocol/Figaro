@@ -188,7 +188,7 @@ function attestViaResolver(
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-4">
-                    Read-path guidance for integrators, with the fold rule for the two usage streams, is on <Link href="/integrate" className="underline">Integrate</Link>; composition targets that read order state are on <Link href="/composes" className="underline">Composes</Link>.
+                    Read-path guidance for integrators, with the fold rule for the two usage streams, is in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>; composition targets that read order state are on <Link href="/composes" className="underline">Composes</Link>.
                 </p>
             </MarketingSection>
 
@@ -200,7 +200,7 @@ function attestViaResolver(
                     <strong>A relay, not an authority.</strong> <code>FigaroBatchVerifier.settleBatch</code> is <code>external</code> with no caller gate, no owner, no fee and no upgrade path &mdash; so a sequencer is one relay among any number, and running your own needs nobody&apos;s permission. It holds no keys of yours and confers no privilege: its own signer pays gas and has no protocol role. Its admission checks call the <em>same</em> kernel functions the proof runs (EIP-712 recovery; the attestation witness gates), so it can reject earlier than the proof and can never accept more. Its honest powers are exactly <strong>censor and delay</strong> &mdash; never forge, never alter a signed struct, never settle what you did not sign, never touch a bond. The fallback is always direct <code>FigaroCore</code> submission with the same artifacts.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Four endpoints and no other read surface, because settled state is read from the chain: <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro/sdk/agent</code>) emits &mdash; the request/response and error tables, with the run-your-own recipe, are on <Link href="/integrate" className="underline">Integrate</Link>.
+                    Four endpoints and no other read surface, because settled state is read from the chain: <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro/sdk/agent</code>) emits &mdash; the request/response and error tables, with the run-your-own recipe, are in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
                     No public sequencer endpoint is published yet; the address is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
@@ -320,7 +320,7 @@ function attestViaResolver(
                     </table>
                 </div>
                 <p className="text-xs text-ink-muted mt-4">
-                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is on Integrate.
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is in the SDK README.
                 </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}

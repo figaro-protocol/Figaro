@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -35,54 +36,55 @@ import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { formatEther } from "viem";
-// The doorway (operator rule 2026-08-06): /join owns everything about
-// membership, so nothing is repeated here — the wizard starts at Identity.
-function RegistrationDoorway() {
-    return (
-        <div className="space-y-6">
-            <h1 className="text-heading-h1 text-ink-heading">Register as a member.</h1>
-            <p className="text-base text-ink-body leading-relaxed">
-                What membership is &mdash; both sides of a profile, agents
-                included, the steps, the deposit &mdash; is on{" "}
-                <Link href="/join" className="text-ink-heading font-medium hover:underline">Join</Link>.
-            </p>
-            <Link href="/members/identity">
-                <Button data-testid="btn-begin-registration">Begin &rarr;</Button>
-            </Link>
-        </div>
-    );
-}
+
 
 export function MemberLanding() {
+    const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
     const { data: profileData, isLoading: profileLoading, refetch } = useMemberProfile(address);
     const { data: deposit } = useRegistrationDeposit();
+    const { pending } = useWithdrawalStatus(address);
 
-    if (!mounted) {
+    // NO doorway page (operator rule 2026-08-06): the reader arrives from
+    // /join already sold — an unregistered wallet goes STRAIGHT to Identity.
+    // The one exception is a wallet that LEFT but is still owed its deposit:
+    // redirecting it would strand the ETH behind a screen it can't reach, so
+    // the claim surface renders here instead.
+    const owedDeposit = Boolean(pending && pending > 0n);
+    const unregistered = mounted && !profileLoading && (!isConnected || !profileData);
+    useEffect(() => {
+        if (unregistered && !owedDeposit) {
+            router.replace("/members/identity");
+        }
+    }, [unregistered, owedDeposit, router]);
+
+    if (!mounted || (unregistered && !owedDeposit)) {
+        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+    }
+    if (profileLoading && isConnected) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    // Anonymous wallet, or wallet whose registry-read is still in flight
-    // → the doorway (Begin routes into the wizard, whose first form
-    // prompts an anonymous user to connect).
-    if (!isConnected || profileLoading) {
-        return <RegistrationDoorway />;
-    }
-
-    // Connected but not registered → the doorway. A wallet
-    // that has LEFT is unregistered but may still be owed its deposit, so the
-    // claim surface renders here too — otherwise leaving would strand the ETH
-    // behind a screen the wallet can no longer reach.
-    if (!profileData) {
+    if (unregistered && owedDeposit) {
         return (
             <>
                 <PendingDepositNotice address={address} />
-                <RegistrationDoorway />
+                <p className="text-base text-ink-body leading-relaxed">
+                    To register again,{" "}
+                    <Link href="/members/identity" className="text-ink-heading font-medium hover:underline">
+                        start with Identity
+                    </Link>.
+                </p>
             </>
         );
     }
 
+    // TS can't derive it from the composed guards above: past them, the
+    // wallet is connected and registered.
+    if (!profileData) {
+        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+    }
     const [metadataURI, registeredBlock] = profileData;
     return (
         <RegisteredCard

@@ -30,7 +30,7 @@ export function OnboardingStepIndicator({
 
     return (
         <ol
-            className="flex flex-wrap items-center gap-2 gap-y-3 text-xs"
+            className="flex items-center gap-1.5 text-xs"
             aria-label="Onboarding progress"
         >
             {ONBOARDING_STEPS.map((step, index) => {
@@ -45,9 +45,12 @@ export function OnboardingStepIndicator({
                         : "border border-default text-ink-faint",
                 );
 
+                // One line on EVERY viewport (operator rule 2026-08-06): on
+                // small screens only the current step keeps its label — the
+                // rest show as numbered circles.
                 const labelClasses = cn(
                     "whitespace-nowrap",
-                    isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint",
+                    isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint hidden sm:inline",
                 );
 
                 const href = `/members${step.path ? `/${step.path}` : ""}`;
@@ -61,7 +64,7 @@ export function OnboardingStepIndicator({
                 return (
                     <li
                         key={step.id}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-1.5"
                         aria-current={isCurrent ? "step" : undefined}
                     >
                         {isPast ? (
@@ -75,7 +78,7 @@ export function OnboardingStepIndicator({
                             <span
                                 aria-hidden="true"
                                 className={cn(
-                                    "w-6 h-px",
+                                    "w-3 sm:w-5 h-px",
                                     isPast ? "bg-ink-heading" : "bg-default",
                                 )}
                             />

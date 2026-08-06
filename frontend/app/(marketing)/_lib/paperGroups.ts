@@ -181,7 +181,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             { title: "Actor-Neutral Coordination over Bonded Commitments", href: "/papers/actor-neutral-coordination", blurb: "The kernel reads signatures and bond posture, not entity type, so the equilibrium that makes cooperation dominant for humans extends without modification to autonomous agents. A control-theory reading of the Agent SDK." },
         ],
         references: [
-            { label: "SDK — agent surface", href: "/integrate", note: "FigaroContext, ActionQueue, proposer" },
+            { label: "SDK — agent surface", href: "https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md", note: "FigaroContext, ActionQueue, proposer" },
         ],
     },
     {

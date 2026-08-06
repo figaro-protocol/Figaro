@@ -69,7 +69,7 @@ export default function Agents() {
             <MarketingSection title="Where to go from here">
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/integrate" className="text-ink-heading font-medium hover:underline">The SDK</Link>
+                        <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">The SDK</a>
                         <span className="text-ink-body"> &mdash; <code>@figaro/sdk/agent</code>: HITL action queue, autonomous tx submission, role inference, <code>did:web</code> identity.</span>
                     </li>
                     <li>

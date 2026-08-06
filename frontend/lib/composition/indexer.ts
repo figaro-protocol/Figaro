@@ -119,7 +119,7 @@ export async function getBatchAttestationsByOrder(
 
 /** `BatchSettled` logs from the verifier. The event item comes off the SDK's
  *  `BATCH_VERIFIER_ABI` rather than a new `EV_*` constant — the same pattern
- *  /integrate documents for outside integrators. */
+ *  the SDK README documents for outside integrators. */
 export async function getAllBatchSettled(client: PublicClient, chainId: number): Promise<IndexedLog[]> {
     const verifier = getBatchVerifier();
     if (!verifier) return [];
