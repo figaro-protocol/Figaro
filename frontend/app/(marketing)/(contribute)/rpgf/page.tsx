@@ -56,40 +56,6 @@ export default function Rpgf() {
                 <RpgfValueLoopFigure />
             </MarketingSection>
 
-            <MarketingSection title="More for builders" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/rewards" className="text-ink-heading font-medium hover:underline">
-                            Rewards
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the live distribution surface: record a settled deal against the clauses and assemblies it used, read the running tallies, and claim a round once its period has closed.</span>
-                    </li>
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">
-                            Builders
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
-                    </li>
-                    <li>
-                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">
-                            Clauses
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the plain-language introduction, the validation architecture, and the reference clauses.</span>
-                    </li>
-                    <li>
-                        <Link href="/builders/clauses" className="text-ink-heading font-medium hover:underline">
-                            Register a clause
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the spec format, the hash mechanics, and the authoring checklist, beside the live registration form.</span>
-                    </li>
-                    <li>
-                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">
-                            Composes
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern&rsquo;s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

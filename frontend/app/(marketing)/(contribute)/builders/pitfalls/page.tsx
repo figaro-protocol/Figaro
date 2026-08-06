@@ -84,26 +84,6 @@ export default function Pitfalls() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="More for builders" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles and where to start.</span>
-                    </li>
-                    <li>
-                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
-                    </li>
-                    <li>
-                        <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>
-                        <span className="text-ink-body"> &mdash; the canonical on-chain surface, including the two-settlement-path read table these traps draw from.</span>
-                    </li>
-                    <li>
-                        <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
-                        <span className="text-ink-body"> &mdash; every protocol guarantee stated beside its caveat.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

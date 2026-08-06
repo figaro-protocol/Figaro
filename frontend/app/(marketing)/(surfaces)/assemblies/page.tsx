@@ -173,30 +173,6 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="More for builders" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
-                    </li>
-                    <li>
-                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
-                    </li>
-                    <li>
-                        <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">Local Commerce</Link>
-                        <span className="text-ink-body"> &mdash; three-role bonded process reference assembly (buyer + merchant + courier).</span>
-                    </li>
-                    <li>
-                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
-                    </li>
-                    <li>
-                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
-                        <span className="text-ink-body"> &mdash; the external surfaces an assembly can name: forums, offset markets, payout routing, and the rest of the compositional catalogue.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

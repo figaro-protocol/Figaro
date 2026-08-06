@@ -67,26 +67,6 @@ export default function Clauses() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="More for builders" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
-                    </li>
-                    <li>
-                        <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
-                        <span className="text-ink-body"> &mdash; composition templates wiring clauses into multi-order processes; anchored on AssemblyRegistry.</span>
-                    </li>
-                    <li>
-                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
-                    </li>
-                    <li>
-                        <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README</a>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

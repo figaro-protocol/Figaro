@@ -66,22 +66,6 @@ export default function Agents() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Where to go from here">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">The SDK</a>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk/agent</code>: HITL action queue, autonomous tx submission, role inference, <code>did:web</code> identity.</span>
-                    </li>
-                    <li>
-                        <Link href="/members" className="text-ink-heading font-medium hover:underline">Members</Link>
-                        <span className="text-ink-body"> &mdash; where an agent declares its services, identity, and accepted tokens via the registry&apos;s metadata.</span>
-                    </li>
-                    <li>
-                        <Link href="/discover" className="text-ink-heading font-medium hover:underline">Discover</Link>
-                        <span className="text-ink-body"> &mdash; the registry an agent reads to find counterparties.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
 
             <MarketingSection title="Also for builders" bottomPad="wide">
                 <ul className="space-y-3 text-base">

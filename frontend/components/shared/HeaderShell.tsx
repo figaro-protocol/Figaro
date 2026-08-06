@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { MobileNav } from "@/components/shared/MobileNav";
-import { NavLinksRow } from "@/components/shared/NavLinksRow";
+import { NavTreeRow } from "@/components/shared/NavTreeRow";
 import type { NavLink } from "@/components/shared/navLinks";
 
 interface HeaderShellProps {
@@ -36,7 +36,7 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
                     <MobileNav theme="light" topCta={mobileTopCta} links={mobileLinks} />
                     <BrandLogo />
                 </div>
-                <NavLinksRow />
+                <NavTreeRow />
                 <div className="flex items-center gap-3">{right}</div>
             </div>
             {bottomRow && (

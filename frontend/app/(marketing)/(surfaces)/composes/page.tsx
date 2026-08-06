@@ -111,34 +111,6 @@ export default function Composes() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="More on composition" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; a clause is data, not code &mdash; the generic proof engine validates any registered clause with zero per-clause contracts.</span>
-                    </li>
-                    <li>
-                        <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
-                        <span className="text-ink-body"> &mdash; composition templates; an assembly names which of the surfaces above it composes with.</span>
-                    </li>
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the operational tools for composing: Designer, clause registration, contracts, SDK.</span>
-                    </li>
-                    <li>
-                        <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>
-                        <span className="text-ink-body"> &mdash; the contract-by-contract catalogue, including the payout and coordinator contracts named above.</span>
-                    </li>
-                    <li>
-                        <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README</a>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code> read-path guidance, the read-both-universes recipe, and the relay mechanics.</span>
-                    </li>
-                    <li>
-                        <Link href="/security#disputes" className="text-ink-heading font-medium hover:underline">Security</Link>
-                        <span className="text-ink-body"> &mdash; what a forum can and cannot do with the on-chain record.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

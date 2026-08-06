@@ -118,33 +118,6 @@ export default function LocalCommercePage() {
                 </p>
             </section>
 
-            <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Where to go from here
-                </h2>
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading font-medium hover:underline">
-                            Look at the registry
-                        </Link>
-                        <span className="text-ink-body"> &mdash; it opens as an empty room until sellers enroll. Browse who has enrolled so far and place a bonded order &mdash; or be the first name in it.</span>
-                    </li>
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; compose your own deal shapes: clauses, assemblies, tokens, agents.</span>
-                    </li>
-                    <li>
-                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
-                    </li>
-                    <li>
-                        <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">
-                            Source
-                        </a>
-                        <span className="text-ink-body"> &mdash; the protocol is open; read the code the deal ran on.</span>
-                    </li>
-                </ul>
-            </section>
         </>
     );
 }

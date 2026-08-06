@@ -65,29 +65,6 @@ export default function Kernel() {
             <p className="text-base text-ink-body leading-relaxed">
                 That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. Everything else Figaro does is built on those two facts and changes neither.
             </p>
-            <h2 className="text-base font-semibold text-ink-heading mt-12 mb-4">
-                More on the protocol
-            </h2>
-            <ul className="space-y-3 text-base">
-                <li>
-                    <Link href="/why" className="text-ink-heading font-medium hover:underline">
-                        Why
-                    </Link>
-                    <span className="text-ink-body"> &mdash; the rule-making lineage: coercion, cognition, crypto. What Figaro contributes to the third.</span>
-                </li>
-                <li>
-                    <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
-                        Working groups
-                    </Link>
-                    <span className="text-ink-body"> &mdash; the eight discipline groups, each with what it asks of the substrate and the papers written from it.</span>
-                </li>
-                <li>
-                    <Link href="/spec" className="text-ink-heading font-medium hover:underline">
-                        Specifications
-                    </Link>
-                    <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, clause, mechanism modules, with source links and verification status.</span>
-                </li>
-            </ul>
         </section>
     );
 }

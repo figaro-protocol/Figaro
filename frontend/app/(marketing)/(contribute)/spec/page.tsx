@@ -338,34 +338,6 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="More on the protocol" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
-                            Kernel
-                        </Link>
-                        <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
-                    </li>
-                    <li>
-                        <Link href="/why" className="text-ink-heading font-medium hover:underline">
-                            Why
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the rule-making lineage: coercion, cognition, crypto. What Figaro contributes to the third.</span>
-                    </li>
-                    <li>
-                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
-                            Working groups
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the eight discipline groups, each with what it asks of the substrate and the papers written from it.</span>
-                    </li>
-                    <li>
-                        <Link href="/audit" className="text-ink-heading font-medium hover:underline">
-                            Audit
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the live verification surface: verify any deal yourself &mdash; a process&apos;s record and its hashes, readable by anyone, no wallet required.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

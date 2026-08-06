@@ -127,10 +127,7 @@ export default function Security() {
 
             <MarketingSection title="What if the counterparty doesn't deliver?" sectionId="counterparty">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The bond architecture answers this before it becomes a recourse problem. Each party posts more than they could gain by defecting. The buyer locks twice the payment; the seller locks twice the cumulative value flowing through them. The arithmetic makes cooperation the strategy that weakly dominates defection for both parties &mdash; a result called the bonding equilibrium. Cooperation is the unique strategy profile surviving iterated elimination of weakly dominated strategies, derivable from the 2:1 ratio alone, with no reliance on reputation, repeated interaction, or external enforcement. In plain terms: whatever the other side does, honoring the deal always leaves you better off than cheating does.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    In practice this means shortfalls are put right <em>before</em> settlement, not compensated after it. Nothing resolves until the buyer resolves, and the buyer resolves only once the agreed terms are met &mdash; so a missed or defective delivery is normally remade, resent, or otherwise remedied first. There is no refund path and no unilateral unwind; the buyer&apos;s sole lever is to withhold the close, which keeps every stake locked until the work is set right.
+                    Each party has more locked than they could gain by walking away &mdash; the mechanism, worked through with the numbers, is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>. What matters for this question: whatever the other side does, honoring the deal leaves them better off than cheating, and a shortfall is put right <em>before</em> settlement &mdash; there is no refund path; the buyer&apos;s lever is to withhold the close until the work is set right.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>.
@@ -343,40 +340,6 @@ export default function Security() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="More on the protocol" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
-                            Kernel
-                        </Link>
-                        <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
-                    </li>
-                    <li>
-                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
-                            Working groups
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the bonding equilibrium, the weakest-link subgame, the social mechanism &mdash; with the formal derivations and the eight-discipline reading.</span>
-                    </li>
-                    <li>
-                        <Link href="/spec" className="text-ink-heading font-medium hover:underline">
-                            Specifications
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the on-chain contract surface, with source links and verification status.</span>
-                    </li>
-                    <li>
-                        <Link href="/why" className="text-ink-heading font-medium hover:underline">
-                            Why
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the rule-making lineage Figaro sits in: coercion, cognition, crypto.</span>
-                    </li>
-                    <li>
-                        <Link href="/consequences" className="text-ink-heading font-medium hover:underline">
-                            Consequences
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the larger question this page doesn&apos;t answer: what does it do to the world, if it works.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }

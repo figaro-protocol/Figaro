@@ -88,34 +88,6 @@ export default function WorkingGroups() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="More on the protocol" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
-                            Kernel
-                        </Link>
-                        <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
-                    </li>
-                    <li>
-                        <Link href="/why" className="text-ink-heading font-medium hover:underline">
-                            Why
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the rule-making lineage: coercion, cognition, crypto. What Figaro contributes to the third.</span>
-                    </li>
-                    <li>
-                        <Link href="/spec" className="text-ink-heading font-medium hover:underline">
-                            Specifications
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the on-chain contract surface: kernel, attestation, clause, mechanism modules, with source links and verification status.</span>
-                    </li>
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">
-                            Builders
-                        </Link>
-                        <span className="text-ink-body"> &mdash; where implementation work organizes: clause authoring, contract development, assembly composition, and the tooling around them.</span>
-                    </li>
-                </ul>
-            </MarketingSection>
         </>
     );
 }
