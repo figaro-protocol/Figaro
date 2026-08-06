@@ -179,8 +179,8 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         // The buyer's transaction particulars: a virtual deal, an access
         // window, encrypted delivery of the access credential.
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowStart"]').first().fill('2026-09-01T09:00:00Z');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowEnd"]').first().fill('2026-10-01T09:00:00Z');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowStart"]').first().fill('2026-09-01T09:00');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowEnd"]').first().fill('2026-10-01T09:00');
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-content-handoff-contentHandoff-encrypted-transfer"]').first().check();
 
         const place = page.getByTestId('btn-place-order');
