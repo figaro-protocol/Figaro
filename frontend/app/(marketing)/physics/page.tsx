@@ -21,7 +21,7 @@ export default function Physics() {
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
                         People meet Figaro through three plain promises &mdash; skin in the game, one-way progress,{" "}
-                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
+                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
                             sovereign settlement
                         </Link>
                         . Underneath, those aren&apos;t policies someone chose. They are what three physical facts of the contract feel like from the outside.

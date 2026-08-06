@@ -23,7 +23,7 @@ export default function Why() {
                 <div className="border-l-2 border-default pl-6 mt-6">
                     <p className="text-sm text-ink-body leading-relaxed">
                         <strong>Reading this page.</strong> The mechanism &mdash; bonded stakes, buyer-only resolution, no platform in the middle &mdash; is shown on{" "}
-                        <Link href="/protocol" className="hover:underline">/protocol</Link>{" "}
+                        <Link href="/kernel" className="hover:underline">/kernel</Link>{" "}
                         and lived through on /local-commerce. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, start there instead, or see{" "}
                         <Link href="/security" className="hover:underline">/security</Link>{" "}
                         for what the design protects against, and what it does not.
@@ -79,8 +79,8 @@ export default function Why() {
             <MarketingSection title="Read next" bottomPad="wide">
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
-                            Protocol
+                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
+                            Kernel
                         </Link>
                         <span className="text-ink-body"> &mdash; the mechanism: bonded stakes, buyer-only resolution, atomic settlement.</span>
                     </li>

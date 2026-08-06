@@ -31,7 +31,7 @@ export function OnboardingWelcome() {
                     <p>
                         No admin, arbitrator, or timeout can seize or release that bond. Only the buyer
                         resolves the order, and when they do, your bond returns along with your payment.{" "}
-                        <Link href="/protocol" className="underline underline-offset-2 hover:text-ink-heading transition-colors">
+                        <Link href="/kernel" className="underline underline-offset-2 hover:text-ink-heading transition-colors">
                             How the bond works →
                         </Link>
                     </p>

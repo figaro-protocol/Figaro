@@ -17,7 +17,7 @@ describe("OnboardingWelcome — bonded-commitment framing", () => {
     it("links to /protocol for how the bond works, and still shows Prerequisites", () => {
         render(<OnboardingWelcome />);
         const link = screen.getByRole("link", { name: /how the bond works/i });
-        expect(link).toHaveAttribute("href", "/protocol");
+        expect(link).toHaveAttribute("href", "/kernel");
         expect(screen.getByText("Prerequisites")).toBeInTheDocument();
     });
 });

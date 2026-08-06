@@ -27,7 +27,7 @@ export default function Specifications() {
 
             <MarketingSection title="Inheritance">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
-                    This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/protocol" className="underline">Protocol</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
+                    This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/kernel" className="underline">Kernel</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
                 </p>
                 <p className="text-sm text-ink-muted">
                     Off-chain composition lives at <Link href="/builders" className="underline">/builders</Link>; the stack as a whole is summarised on <Link href="/" className="underline">the home page</Link>.
@@ -341,8 +341,8 @@ function attestViaResolver(
             <MarketingSection title="More on the protocol" bottomPad="wide">
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
-                            Protocol
+                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
+                            Kernel
                         </Link>
                         <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
                     </li>

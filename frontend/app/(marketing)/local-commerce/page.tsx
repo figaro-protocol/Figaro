@@ -114,7 +114,7 @@ export default function LocalCommercePage() {
                     Under the hood
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Everything above has an exact, inspectable form: the kernel contract that holds the stakes, the registries the participants enrolled in, the clauses their agreement composed, and the event flow the evening left behind. The full catalogue is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">the spec page</Link>; the mechanism itself is told in ten minutes on <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>.
+                    Everything above has an exact, inspectable form: the kernel contract that holds the stakes, the registries the participants enrolled in, the clauses their agreement composed, and the event flow the evening left behind. The full catalogue is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">the spec page</Link>; the mechanism itself is told in ten minutes on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>.
                 </p>
             </section>
 

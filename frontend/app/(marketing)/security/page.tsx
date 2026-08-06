@@ -351,8 +351,8 @@ export default function Security() {
             <MarketingSection title="More on the protocol" bottomPad="wide">
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">
-                            Protocol
+                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
+                            Kernel
                         </Link>
                         <span className="text-ink-body"> &mdash; how the mechanism works: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
                     </li>

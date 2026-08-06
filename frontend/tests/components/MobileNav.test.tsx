@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 describe("MobileNav", () => {
     const links = [
         { label: "Home", href: "/" },
-        { label: "Protocol", href: "/protocol" },
+        { label: "Kernel", href: "/kernel" },
     ];
 
     it("applies active class to current route", () => {

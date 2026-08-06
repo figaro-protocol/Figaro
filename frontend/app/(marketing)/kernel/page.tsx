@@ -7,7 +7,7 @@ export const metadata: Metadata = {
         "How a Figaro deal works: both sides lock a stake larger than the deal, so cheating always loses; the buyer closes it out; every step is recorded permanently.",
 };
 
-export default function Protocol() {
+export default function Kernel() {
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
             <h1 className="text-heading-h1 text-ink-heading mb-3">

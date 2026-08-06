@@ -3,7 +3,7 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The four entries: Protocol (the substrate), Builders (affordances),
+//   The four entries: Kernel (the substrate), Builders (affordances),
 //   Users (participation via /discover), Groups (the working groups; the
 //   paper corpus is reached through it — papers are discussion starters,
 //   and the goal is groups forming worldwide, spontaneously). The
@@ -30,7 +30,7 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-    { href: "/protocol", label: "Protocol" },
+    { href: "/kernel", label: "Kernel" },
     { href: "/builders", label: "Builders" },
     { href: "/users", label: "Users" },
     { href: "/working-groups", label: "Groups" },
@@ -87,7 +87,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "Protocol",
         links: [
-            { href: "/protocol", label: "Protocol mechanisms" },
+            { href: "/kernel", label: "Kernel mechanisms" },
             { href: "/why", label: "Why" },
             { href: "/physics", label: "Physics" },
             { href: "/rpgf", label: "RPGF" },

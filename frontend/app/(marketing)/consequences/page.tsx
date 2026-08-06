@@ -52,7 +52,7 @@ export default function Consequences() {
                     FigaroCore is an immutable, ownerless coordination primitive. Once deployed to a public network it cannot be patched, paused, governed, or recalled. The question this page answers is not &ldquo;does the code have bugs&rdquo; &mdash; that is a verification question, treated on Security. The question here is: is it responsible to release infrastructure that, if it works, reorganizes economic life at a scale no one who releases it can later walk back?
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    What it does, mechanically: two strangers lock collateral &mdash; the buyer twice the payment, the seller twice the cumulative value flowing through them. Cooperation weakly dominates defection for both, from the arithmetic alone. The buyer resolves; bonds return; payment flows. No owner, no fee, no admin, no escape hatch. The derivation is on <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>; the formal proofs are in the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>. This page assumes both and asks what follows from them.
+                    What it does, mechanically: two strangers lock collateral &mdash; the buyer twice the payment, the seller twice the cumulative value flowing through them. Cooperation weakly dominates defection for both, from the arithmetic alone. The buyer resolves; bonds return; payment flows. No owner, no fee, no admin, no escape hatch. The derivation is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>; the formal proofs are in the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>. This page assumes both and asks what follows from them.
                 </p>
             </MarketingSection>
 
@@ -229,7 +229,7 @@ export default function Consequences() {
                 </p>
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>
+                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>
                         <span className="text-ink-body"> &mdash; the mechanism itself: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
                     </li>
                     <li>

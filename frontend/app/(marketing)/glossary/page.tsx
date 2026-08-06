@@ -36,14 +36,14 @@ const TERMS: Term[] = [
         term: "Bonded commitment",
         definition:
             "One deal secured by the lockbox mechanism: both sides post a stake bigger than the deal is worth, so honoring it always beats cheating. This is the base unit everything else in the protocol is built from.",
-        readMore: <Link href="/protocol" className="hover:underline">Protocol</Link>,
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
         id: "buyer",
         term: "Buyer",
         definition:
             "The party who pays for a deal and is the only one who can close it out — releasing every locked stake once satisfied. Any wallet can be a buyer.",
-        readMore: <Link href="/protocol" className="hover:underline">Protocol</Link>,
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
         id: "clause",
@@ -92,7 +92,7 @@ const TERMS: Term[] = [
         term: "Seller",
         definition:
             "A value-adder in a deal — a wallet that adds something (a good, a service, a delivery step) and posts its own stake against the value it adds. Any wallet can be a seller, and a chain of deals can have several.",
-        readMore: <Link href="/protocol" className="hover:underline">Protocol</Link>,
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
         id: "settlement",
@@ -106,14 +106,14 @@ const TERMS: Term[] = [
         term: "Stablecoin-class token",
         definition:
             "A token designed to hold a steady price against a reference currency — the kind of ERC-20 most deals on Figaro settle in, so an amount worth about a dollar today is still worth about the same next week.",
-        readMore: <Link href="/protocol" className="hover:underline">Protocol</Link>,
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
         id: "stake",
         term: "Stake / bond",
         definition:
             "The extra tokens each side locks beyond what the deal is worth — twice the payment for the buyer, twice the cumulative value for the seller. It comes home intact every time the deal closes honestly; it stays locked, benefiting no one, if a side walks away.",
-        readMore: <Link href="/protocol" className="hover:underline">Protocol</Link>,
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
         id: "wallet",

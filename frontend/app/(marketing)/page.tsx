@@ -52,13 +52,13 @@ export default function Home() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 mt-10">
                     <Link
-                        href="/protocol"
+                        href="/kernel"
                         className={
                             "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
                             "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
                         }
-                        data-testid="cta-protocol"
+                        data-testid="cta-kernel"
                     >
                         How it works <span aria-hidden="true">&rarr;</span>
                     </Link>

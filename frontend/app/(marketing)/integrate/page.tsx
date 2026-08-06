@@ -22,7 +22,7 @@ export default function Integrate() {
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    Kernel context lives at <Link href="/protocol" className="underline">Protocol</Link>; contract catalogue at /spec; clause architecture at /clauses; composition tools at <Link href="/builders" className="underline">/builders</Link>.
+                    Kernel context lives at <Link href="/kernel" className="underline">Kernel</Link>; contract catalogue at /spec; clause architecture at /clauses; composition tools at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingHero>
 
@@ -445,7 +445,7 @@ for (const [processId, process] of processes) {
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">
                     Related:&nbsp;
-                    <Link href="/protocol" className="underline">Protocol</Link>{" "}(kernel invariants);&nbsp;
+                    <Link href="/kernel" className="underline">Kernel</Link>{" "}(kernel invariants);&nbsp;
                     <Link href="/working-groups" className="underline">Working groups</Link>{" "}(academic frame);&nbsp;
                     Builders (composition tools);&nbsp;
                     <Link href="/local-commerce" className="underline">Local Commerce</Link>{" "}(reference assembly);&nbsp;

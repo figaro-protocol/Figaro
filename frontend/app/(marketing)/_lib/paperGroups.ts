@@ -93,7 +93,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             { title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through Bonded Settlement", href: "/papers/self-authenticating-data-sales", blurb: "A dataset sold on ordinary terms suffers Arrow's information paradox; merkle-committed agreements dissolve it economically rather than cryptographically — self-authenticating provenance answers the valuation horn, atomic resolution answers the appropriation horn, and the stream is the repeated game that sustains honest data production." },
         ],
         references: [
-            { label: "Protocol — two mechanisms", href: "/protocol", note: "two-mechanism + contract-law overview" },
+            { label: "Protocol — two mechanisms", href: "/kernel", note: "two-mechanism + contract-law overview" },
             { label: "RPGF", href: "/rpgf", note: "the reward formula for clause authors AND assembly designers" },
         ],
     },
