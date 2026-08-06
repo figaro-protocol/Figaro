@@ -152,6 +152,10 @@ export function SellerEditCatalogue() {
                 defaultTokenAddress: existingProfile.defaultTokenAddress,
             },
             catalogue: { items: existingCatalogue.items, unitSystem: existingCatalogue.unitSystem },
+            // Feed the record-class select's options — the member's
+            // declared disclosure classes; read-only here (the policy is
+            // edited on the assemblies / buyer surfaces).
+            disclosurePolicy: existingProfile.disclosurePolicy ?? [],
         });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, existingCatalogue, update]);

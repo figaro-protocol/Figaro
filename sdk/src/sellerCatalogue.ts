@@ -110,6 +110,20 @@ export interface CatalogueItemMetadata {
      * clause's registered spec (Layer A) before publish.
      */
     clauseValues?: Record<string, Record<string, unknown>>;
+    /**
+     * The record class this item SELLS, when the item is a data product —
+     * one of the member's own disclosure-policy classes (assembly
+     * compositionHash × clauseId × the posture the member traded on).
+     * The disclosure policy on the profile declares the TERMS (offered,
+     * to whom, from when); this reference is where that class gets its
+     * PRICE, through the ordinary price fields above. Absent for every
+     * non-data item.
+     */
+    recordClass?: {
+        compositionHash: `0x${string}`;
+        clauseId: string;
+        posture: "buyer" | "seller";
+    };
 }
 
 /**
@@ -175,6 +189,26 @@ function parseItem(value: unknown, path: string): CatalogueItemMetadata {
         rateUnit: asOptionalString(record.rateUnit, `${path}.rateUnit`),
         rateQuantitySource: asOptionalString(record.rateQuantitySource, `${path}.rateQuantitySource`),
         clauseValues: parseClauseValues(record.clauseValues, `${path}.clauseValues`),
+        recordClass: parseOptionalRecordClass(record.recordClass, `${path}.recordClass`),
+    };
+}
+
+const RECORD_CLASS_POSTURES = new Set<"buyer" | "seller">(["buyer", "seller"]);
+
+function parseOptionalRecordClass(
+    value: unknown,
+    path: string,
+): CatalogueItemMetadata["recordClass"] {
+    if (value === undefined) return undefined;
+    const record = asRecord(value, path);
+    const compositionHash = record.compositionHash;
+    if (typeof compositionHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(compositionHash)) {
+        throw new Error(`${path}.compositionHash must be a 32-byte hex hash.`);
+    }
+    return {
+        compositionHash: compositionHash as `0x${string}`,
+        clauseId: asString(record.clauseId, `${path}.clauseId`),
+        posture: asEnum(record.posture, RECORD_CLASS_POSTURES, `${path}.posture`),
     };
 }
 

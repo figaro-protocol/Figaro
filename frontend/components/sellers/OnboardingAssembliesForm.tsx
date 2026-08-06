@@ -124,7 +124,11 @@ export function OnboardingAssembliesForm({
     const [counterpartiesBySlug, setCounterpartiesBySlug] = useState<
         Map<string, CounterpartyBinding[]>
     >(new Map());
+    // This step edits SELLER-posture disclosure entries only (classes
+    // derive from the bindings). Buyer-posture entries belong to the
+    // buyer step and are carried through every write untouched.
     const [policyEntries, setPolicyEntries] = useState<DisclosurePolicyEntry[]>([]);
+    const [otherPostureEntries, setOtherPostureEntries] = useState<DisclosurePolicyEntry[]>([]);
     const [hydrated, setHydrated] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -139,7 +143,9 @@ export function OnboardingAssembliesForm({
             }
         }
         setCounterpartiesBySlug(cps);
-        setPolicyEntries(state.disclosurePolicy ?? []);
+        const allEntries = state.disclosurePolicy ?? [];
+        setPolicyEntries(allEntries.filter((e) => e.posture === "seller"));
+        setOtherPostureEntries(allEntries.filter((e) => e.posture !== "seller"));
         setHydrated(true);
     }, [hydrated, loaded, state.assemblies, state.disclosurePolicy]);
 
@@ -147,9 +153,12 @@ export function OnboardingAssembliesForm({
         if (!hydrated || !isConnected || !address) return;
         update({
             assemblies: buildBindings(address, selected, choices, counterpartiesBySlug),
-            disclosurePolicy: activePolicy(policyEntries, selected, choices),
+            disclosurePolicy: [
+                ...otherPostureEntries,
+                ...activePolicy(policyEntries, selected, choices),
+            ],
         });
-    }, [selected, counterpartiesBySlug, policyEntries, hydrated, isConnected, address, choices, update]);
+    }, [selected, counterpartiesBySlug, policyEntries, otherPostureEntries, hydrated, isConnected, address, choices, update]);
 
     function toggle(slug: string) {
         setSelected((prev) => {
@@ -190,13 +199,13 @@ export function OnboardingAssembliesForm({
             if (!address) return;
             onSave(
                 buildBindings(address, selected, choices, counterpartiesBySlug),
-                activePolicy(policyEntries, selected, choices),
+                [...otherPostureEntries, ...activePolicy(policyEntries, selected, choices)],
             ).catch(() => {
                 // Caller surfaces the error via `externalError`.
             });
             return;
         }
-        router.push("/members/agents");
+        router.push("/members/buyer");
     }
 
     if (!mounted) {
@@ -311,12 +320,15 @@ export function OnboardingAssembliesForm({
                 })}
             </div>
 
-            {/* Data-disclosure policy — leaf classes derive from the
-                assemblies selected above; nothing here is required. */}
+            {/* SELLER-side data-disclosure — classes derive from the
+                bindings selected above; nothing here is required. The
+                buyer side has its own step, deriving from its own
+                subscriptions. */}
             <DisclosurePolicyEditor
                 choices={choices.filter((c) => selected.has(c.slug))}
                 entries={policyEntries}
                 onChange={setPolicyEntries}
+                postures={["seller"]}
             />
 
             {(submitError ?? externalError) && (

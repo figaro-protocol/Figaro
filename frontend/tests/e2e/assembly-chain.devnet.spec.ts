@@ -181,12 +181,12 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await page.getByRole('button', { name: /\+ MOCK$/ }).click();
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/sellers\/catalogue/);
+            await expect(page).toHaveURL(/\/members\/catalogue/);
 
             await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
             await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/sellers\/assemblies/);
+            await expect(page).toHaveURL(/\/members\/assemblies/);
 
             // Bind BOTH: the single-order assembly (so checkout offers a CHOICE —
             // the multi-binding method picker) and the chain assembly.
@@ -207,9 +207,9 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await counterparties.getByTestId(`counterparty-${SUPPLIER_CLAUSE}-input-0`).fill(SUPPLIER);
 
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/sellers\/agents/);
+            await expect(page).toHaveURL(/\/members\/agents/);
             await page.getByRole('button', { name: /^Next/ }).click();
-            await page.waitForURL(/\/sellers\/review/, { timeout: 30000 });
+            await page.waitForURL(/\/members\/review/, { timeout: 30000 });
             await page.getByTestId('review-confirm-publish').click();
             await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i }))
                 .toBeVisible({ timeout: 60000 });

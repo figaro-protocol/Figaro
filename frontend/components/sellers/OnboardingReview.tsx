@@ -19,7 +19,7 @@ import { type MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
 
 /**
- * Step 6 — review and publish.
+ * Final step — review and publish.
  *
  * Renders the wallet's pre-publish profile in /m/<address>-style
  * chrome: name, branding, specialty, description, location, catalogue
@@ -32,8 +32,8 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
  * (a) pin catalogue to IPFS (cached on retry), (b) pin profile JSON
  * with the catalogue URI embedded, (c) dispatch
  * `MembersRegistry.register(profileURI)` (first-time) or
- * `updateProfile(profileURI)` (returning seller). On success the
- * router redirects to /sellers — the registered-dashboard view
+ * `updateProfile(profileURI)` (returning member). On success the
+ * router redirects to /members — the registered-dashboard view
  * lives there.
  */
 
@@ -69,8 +69,11 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         defaultTokenAddress: state.profile.defaultTokenAddress,
         profileClauseValues: state.profile.profileClauseValues,
         assemblyBindings: state.assemblies,
-        // Absence is the paper-contract default — an empty policy pins
-        // NO field, never `[]`.
+        // Absence is each optional list's no-declaration state — an
+        // empty list pins NO field, never `[]`.
+        buyerAssemblies: state.buyerAssemblies && state.buyerAssemblies.length > 0
+            ? state.buyerAssemblies
+            : undefined,
         disclosurePolicy: state.disclosurePolicy && state.disclosurePolicy.length > 0
             ? state.disclosurePolicy
             : undefined,
@@ -233,6 +236,7 @@ export function OnboardingReview() {
     const items = state.catalogue?.items ?? [];
     const acceptedTokens = profile?.acceptedTokens ?? [];
     const bindings = profile?.assemblyBindings ?? [];
+    const subscriptions = profile?.buyerAssemblies ?? [];
     const hasServices = profile?.services && Object.values(profile.services).some(Boolean);
 
     return (
@@ -348,22 +352,54 @@ export function OnboardingReview() {
                 )}
             </Card>
 
+            {/* Buyer side */}
+            <Card className="p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-heading-h2 text-ink-heading">Buyer ({subscriptions.length} subscription{subscriptions.length === 1 ? "" : "s"})</h2>
+                    <Link
+                        href="/members/buyer"
+                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                    >
+                        Edit buyer side →
+                    </Link>
+                </div>
+                {subscriptions.length > 0 ? (
+                    <ul className="space-y-1 text-sm text-ink-body" data-testid="review-buyer-subscriptions">
+                        {subscriptions.map((s) => (
+                            <li key={s.compositionHash} className="font-mono text-xs">{s.compositionHash}</li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-ink-faint">
+                        No subscriptions — this member sells only.
+                    </p>
+                )}
+            </Card>
+
             {/* Data disclosure */}
             <Card className="p-6 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Data disclosure</h2>
-                    <Link
-                        href="/members/assemblies"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
-                    >
-                        Edit disclosure →
-                    </Link>
+                    <span className="flex items-center gap-3">
+                        <Link
+                            href="/members/assemblies"
+                            className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        >
+                            Edit seller side →
+                        </Link>
+                        <Link
+                            href="/members/buyer"
+                            className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        >
+                            Edit buyer side →
+                        </Link>
+                    </span>
                 </div>
                 {(profile?.disclosurePolicy?.length ?? 0) > 0 ? (
                     <p className="text-sm text-ink-body" data-testid="review-disclosure-policy">
-                        {profile!.disclosurePolicy!.filter((e) => e.offered).length} record
-                        class{profile!.disclosurePolicy!.filter((e) => e.offered).length === 1 ? "" : "es"} offered
-                        for sale or disclosure.
+                        {profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "seller").length} seller-side
+                        and {profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "buyer").length} buyer-side
+                        record classes offered for sale or disclosure.
                     </p>
                 ) : (
                     <p className="text-sm text-ink-faint">

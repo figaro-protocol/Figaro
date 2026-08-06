@@ -1,10 +1,12 @@
 /**
  * sellers-onboarding.devnet.spec.ts
  *
- * SELLER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
- * register as a seller through the real 6-step wizard: identity → catalogue →
- * assemblies → agents → review → publish, ending anchored on `MembersRegistry`,
- * pinned to IPFS, and surfacing on `/s/view` and `/discover`.
+ * MEMBER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
+ * register through the real 7-step wizard: identity → catalogue → assemblies →
+ * buyer → agents → review → publish, ending anchored on `MembersRegistry`,
+ * pinned to IPFS, and surfacing on `/s/view` and `/discover`. The buyer step
+ * subscribes an assembly the wallet buys through and offers one of its record
+ * classes — the pinned document must carry BOTH halves.
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
@@ -51,7 +53,7 @@ async function waitForSellersReady(page: import("@playwright/test").Page) {
         () => {
             const bodyText = document.body.textContent || "";
             if (bodyText.includes("Loading…")) return false;
-            return bodyText.includes("Register as a seller.")
+            return bodyText.includes("Register as a member.")
                 || bodyText.includes("View public profile");
         },
         null,
@@ -78,13 +80,13 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await page.getByRole("button", { name: /\+ MOCKP$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalogue/);
 
     // Step 3 — Catalogue: one product
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
     await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/assemblies/);
+    await expect(page).toHaveURL(/\/members\/assemblies/);
 
     // Step 4 — Assemblies: MANDATORY (user rule 2026-06-12 — a profile
     // without bindings cannot be ordered from). An update-mode run hydrates
@@ -103,25 +105,46 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await expect(
         page.getByRole("alert").filter({ hasText: /bind at least one published assembly/i }),
     ).toBeVisible();
-    await expect(page).toHaveURL(/\/sellers\/assemblies/);
+    await expect(page).toHaveURL(/\/members\/assemblies/);
     // Then bind the single-order seed assembly, by slug from shape discovery.
     const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
     await assemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
     await assemblyRow.locator('input[type="checkbox"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/agents/);
+    await expect(page).toHaveURL(/\/members\/buyer/);
 
-    // Step 5 — Agents: skip
+    // Step 5 — Buyer: subscribe an assembly the wallet buys through, then
+    // offer one of its record classes for sale. Subscribing is the buyer's
+    // verb (a profile declaration), distinct from the seller BINDING above.
+    const buyerRow = page.getByTestId(`buyer-assembly-row-${assemblySlug}`);
+    await buyerRow.waitFor({ state: 'visible', timeout: 30_000 });
+    const buyerCheckbox = buyerRow.locator('input[type="checkbox"]').first();
+    if (!(await buyerCheckbox.isChecked())) {
+        await buyerCheckbox.check();
+    }
+    // The disclosure editor renders one buyer-posture row per clause once the
+    // subscribed assembly's template loads; offer the first class.
+    const offerBox = page
+        .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-buyer-offer"]`)
+        .first();
+    await offerBox.waitFor({ state: 'visible', timeout: 30_000 });
+    if (!(await offerBox.isChecked())) {
+        await offerBox.check();
+    }
     await page.getByRole("button", { name: /^Next/ }).click();
-    await page.waitForURL(/\/sellers\/review/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/members\/agents/);
 
-    // Step 6 — Review + publish (pin catalogue + profile → register tx)
+    // Step 6 — Agents: skip
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
+
+    // Step 7 — Review + publish (pin catalogue + profile → register tx)
     await expect(page.getByText(SELLER.name)).toBeVisible();
     await page.getByTestId("review-confirm-publish").click();
     await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
-    await page.waitForURL(/\/sellers$/, { timeout: 15_000 });
+    await page.waitForURL(/\/members$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
     // BOTH calls visible on the dashboard (user rule 2026-06-12): the
     // profile view/edit above, and the onboarding wizard entry.
@@ -175,9 +198,16 @@ test.describe("seller registration wizard (devnet)", () => {
             // an older single-token profile gets repaired in update mode).
             const acceptedTokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
             const permitToken = (config.permitTokenAddress ?? "").toLowerCase();
+            // The buyer half is part of the premise now: at least one
+            // subscription and one offered buyer-posture class. An older
+            // seller-only profile gets repaired in update mode.
+            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ compositionHash: string }>;
+            const buyerOffered = ((doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean }>)
+                .some((e) => e.posture === "buyer" && e.offered === true);
             conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug
                 && !!permitToken
-                && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken);
+                && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
+                && buyerSubs.length >= 1 && buyerOffered;
         }
         if (!uriBefore || !conformant) {
             await onboardViaWizard(page, singleOrderSlug!);
@@ -189,6 +219,22 @@ test.describe("seller registration wizard (devnet)", () => {
 
         // ── Pinned in IPFS — proof of persistence ───────────────────────────
         await assertPinnedInIpfs(profileURI!.slice("ipfs://".length));
+
+        // ── The buyer half landed in the pinned document — read OUT-OF-BAND
+        // from IPFS, never from the screen that claims to have written it.
+        {
+            const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
+            const doc = await (await fetch(`${gateway}/ipfs/${profileURI!.slice("ipfs://".length)}`)).json();
+            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ compositionHash: string }>;
+            expect(buyerSubs.length, "the buyer's assembly subscription is in the pinned profile").toBeGreaterThanOrEqual(1);
+            const policy = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean; compositionHash: string }>;
+            const buyerEntry = policy.find((e) => e.posture === "buyer" && e.offered === true);
+            expect(buyerEntry, "an offered buyer-posture record class is in the pinned profile").toBeTruthy();
+            expect(
+                buyerSubs.some((s) => s.compositionHash === buyerEntry!.compositionHash),
+                "the offered buyer class derives from a subscribed assembly",
+            ).toBe(true);
+        }
 
         // ── Surfaces where a buyer finds it: its page + /discover ───────────
         await page.goto(`/s/view?seller=${SELLER.address}&e2e=devnet`, { waitUntil: "domcontentloaded" });

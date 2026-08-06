@@ -168,7 +168,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.getByRole('button', { name: /\+ MOCK$/ }).click();
         await page.locator('input[name="defaultTokenAddress"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalogue/);
 
         // The item + its physical facts. The dim/mass/volume inputs are the P1 floor
         // fields (`item-<uid>-{name,price,mass,volume,length,width,height}`).
@@ -180,15 +180,15 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.locator('[id^="item-"][id$="-width"]').first().fill(String(WIDTH_MM));
         await page.locator('[id^="item-"][id$="-height"]').first().fill(String(HEIGHT_MM));
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/assemblies/);
+        await expect(page).toHaveURL(/\/members\/assemblies/);
 
         const myRow = page.getByTestId(`seller-assembly-row-${slug}`);
         await myRow.waitFor({ state: 'visible', timeout: 30000 });
         await myRow.locator('input[type="checkbox"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/agents/);
+        await expect(page).toHaveURL(/\/members\/agents/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await page.waitForURL(/\/sellers\/review/, { timeout: 30000 });
+        await page.waitForURL(/\/members\/review/, { timeout: 30000 });
         await page.getByTestId('review-confirm-publish').click();
         await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
 

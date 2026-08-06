@@ -107,7 +107,7 @@ async function onboardSeller(page: Page, opts: {
     await page.getByRole('button', { name: /\+ MOCK$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalogue/);
 
     await page.locator('[id^="item-"][id$="-name"]').first().fill(opts.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(opts.product.price);
@@ -122,7 +122,7 @@ async function onboardSeller(page: Page, opts: {
             .selectOption(opts.product.rate.source);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/assemblies/);
+    await expect(page).toHaveURL(/\/members\/assemblies/);
 
     const row = page.getByTestId(`seller-assembly-row-${opts.assemblySlug}`);
     await row.waitFor({ state: 'visible', timeout: 30000 });
@@ -135,9 +135,9 @@ async function onboardSeller(page: Page, opts: {
             .fill(opts.designate.counterparty);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/agents/);
+    await expect(page).toHaveURL(/\/members\/agents/);
     await page.getByRole('button', { name: /^Next/ }).click();
-    await page.waitForURL(/\/sellers\/review/, { timeout: 30000 });
+    await page.waitForURL(/\/members\/review/, { timeout: 30000 });
     await page.getByTestId('review-confirm-publish').click();
     await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60000 });

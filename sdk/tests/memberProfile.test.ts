@@ -195,6 +195,52 @@ describe("member profile metadata parser", () => {
         });
     });
 
+    describe("buyerAssemblies (buyer-side subscriptions)", () => {
+        const HASH = `0x${"cd".repeat(32)}`;
+
+        it("parses a subscription list and round-trips it", () => {
+            const doc = {
+                name: "Bob Pizza",
+                buyerAssemblies: [{ compositionHash: HASH }],
+            };
+            const first = parseMemberProfileDocument(doc);
+
+            expect(first.buyerAssemblies).toHaveLength(1);
+            expect(first.buyerAssemblies?.[0]?.compositionHash).toBe(HASH);
+
+            const second = parseMemberProfileDocument(first);
+            expect(second).toEqual(first);
+        });
+
+        it("absent stays absent — subscriptions are independent of bindings", () => {
+            const result = parseMemberProfileDocument({
+                name: "Bob",
+                assemblyBindings: [{
+                    bindingId: "b-1",
+                    subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                    assemblySlug: "aerial-survey",
+                }],
+            });
+
+            expect(result.buyerAssemblies).toBeUndefined();
+            expect(result.assemblyBindings).toHaveLength(1);
+        });
+
+        it("throws on a malformed compositionHash", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                buyerAssemblies: [{ compositionHash: "0x1234" }],
+            })).toThrow(/buyerAssemblies\[0\]\.compositionHash must be a 32-byte hex hash/);
+        });
+
+        it("throws when the field is not an array", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                buyerAssemblies: { compositionHash: HASH },
+            })).toThrow(/buyerAssemblies must be an array/);
+        });
+    });
+
     describe("tryParseMemberProfileDocument (lenient)", () => {
         it("returns null on a missing name", () => {
             expect(tryParseMemberProfileDocument({})).toBeNull();

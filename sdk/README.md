@@ -1100,13 +1100,24 @@ registration at all.
     toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
     (absent = any counterparty, once offered); `calendar` says when
     (`{ embargoDaysAfterSettlement?, notBefore?, notAfter? }`). Prices never
-    appear here — data products are priced in the catalogue (fixed | rate) or
-    via RFQ. Field absent = the paper-contract default: each party holds its own
+    appear here — a data product is priced as an item in the member's own
+    catalogue (fixed | rate), the item referencing the class via `recordClass`.
+    Field absent = the paper-contract default: each party holds its own
     copy; absence of a policy is NOT a policy of openness.
+  - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
+    assembly SUBSCRIPTIONS, `{ compositionHash }` each: which registered
+    assemblies this member buys through and monetizes records from.
+    Independent of `assemblyBindings` (the seller's list — a wallet does not
+    buy through the assemblies it sells through); subscribing is the buyer's
+    verb, binding stays the seller's. Buyer-posture `disclosurePolicy` entries
+    derive their candidate classes from this list.
 - **Catalogue** (`SellerCatalogueMetadata`) — the volatile item list pinned at
   `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version`.
   Each item requires `id`, `name`, `price`, `available`; optional are
-  `description`, `category`, `image`, physical measures (`massGrams`,
+  `description`, `category`, `image`, `recordClass` (marks a DATA-PRODUCT
+  item: `{ compositionHash, clauseId, posture }` referencing one of the
+  member's own declared disclosure classes — the policy declares the terms,
+  this item is the price), physical measures (`massGrams`,
   `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
   (`pricingPolicy: "fixed" | "rate"`, `rateUnit`, `rateQuantitySource`), and
   the catalogue-sourced `clauseValues` map. Split off the profile so an item

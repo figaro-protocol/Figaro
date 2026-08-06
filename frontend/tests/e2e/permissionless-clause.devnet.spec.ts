@@ -201,21 +201,21 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByRole('button', { name: /\+ MOCK$/ }).click();
         await page.locator('input[name="defaultTokenAddress"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalogue/);
 
         await page.locator('[id^="item-"][id$="-name"]').first().fill('Probe item');
         await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/assemblies/);
+        await expect(page).toHaveURL(/\/members\/assemblies/);
 
         // Bind MY novel assembly (by its unique name), not whatever is first.
         const myRow = page.locator('[data-testid^="seller-assembly-row-"]').filter({ hasText: assemblyName });
         await myRow.first().waitFor({ state: 'visible', timeout: 30000 });
         await myRow.first().locator('input[type="checkbox"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/sellers\/agents/);
+        await expect(page).toHaveURL(/\/members\/agents/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await page.waitForURL(/\/sellers\/review/, { timeout: 30000 });
+        await page.waitForURL(/\/members\/review/, { timeout: 30000 });
         await page.getByTestId('review-confirm-publish').click();
         await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
 

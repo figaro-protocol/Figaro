@@ -15,7 +15,7 @@ export default function SellersPage() {
                 <Link href="/discover" className="underline">/discover</Link>.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-6">
-                Register a wallet here and it becomes a seller on the network &mdash; a kitchen, a tailor, a courier, anyone with something to offer &mdash; discoverable by any buyer, with no application and no one to say yes. Registering sets up your listing, ready the moment a buyer orders.
+                Register a wallet here and it becomes a member of the network &mdash; a kitchen, a tailor, a courier, anyone with something to offer &mdash; discoverable by anyone, with no application and no one to say yes. A member publishes both sides of itself: what it sells, and what it offers from the records of the deals it buys through. Registering sets up your listing, ready the moment a buyer orders.
             </p>
             <p className="text-sm text-ink-faint leading-relaxed mb-6">
                 For agents: the seller listing derives from the live <code>MembersRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/integrate" className="underline">Integrate</Link> for the deployment record.

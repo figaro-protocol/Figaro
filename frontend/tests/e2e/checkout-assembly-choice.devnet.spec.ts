@@ -75,13 +75,13 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     await page.getByRole('button', { name: /\+ MOCK$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalogue/);
 
     // Step 3 — Catalogue: one product
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/assemblies/);
+    await expect(page).toHaveURL(/\/members\/assemblies/);
 
     // Step 4 — Assemblies: clear hydrated bindings, then bind BOTH target
     // assemblies. The multi-order chain binds WITHOUT counterparty
@@ -99,11 +99,11 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
         await row.locator('input[type="checkbox"]').first().check();
     }
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/sellers\/agents/);
+    await expect(page).toHaveURL(/\/members\/agents/);
 
     // Step 5 — Agents: skip
     await page.getByRole('button', { name: /^Next/ }).click();
-    await page.waitForURL(/\/sellers\/review/, { timeout: 30_000 });
+    await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
 
     // Step 6 — Review + publish (pin catalogue + profile → register tx)
     await expect(page.getByText(SELLER.name)).toBeVisible();
@@ -111,7 +111,7 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
     await page.getByRole('button', { name: /Continue to dashboard/ }).click();
-    await page.waitForURL(/\/sellers$/, { timeout: 15_000 });
+    await page.waitForURL(/\/members$/, { timeout: 15_000 });
 }
 
 // Wizard + IPFS pins + two sign gates + commit + event polls.

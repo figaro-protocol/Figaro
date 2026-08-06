@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
     AssemblyBindingRecord,
+    BuyerAssemblySubscription,
     DisclosurePolicyEntry,
     MemberAgentServices,
     MemberAssetReferences,
@@ -69,11 +70,17 @@ interface OnboardingState {
     walletAddress?: `0x${string}`;
     profile?: OnboardingProfileDraft;
     catalogue?: OnboardingCatalogueDraft;
-    /** Per-assembly bindings declared on screen 5. */
+    /** Per-assembly bindings declared on the seller assemblies step. */
     assemblies?: AssemblyBindingRecord[];
-    /** Data-disclosure policy declared alongside the assembly bindings —
-     *  leaf classes (compositionHash × clauseId × posture) derive from
-     *  the bound assemblies, so the editor lives on the same step. */
+    /** The buyer's assembly subscriptions, declared on the buyer step —
+     *  which deal-shapes this wallet buys through and monetizes records
+     *  from. Independent of `assemblies` (the seller's bindings). */
+    buyerAssemblies?: BuyerAssemblySubscription[];
+    /** Data-disclosure policy. One list; each entry carries the posture
+     *  the member traded on. Seller-posture entries are edited on the
+     *  assemblies step (classes derive from the bound assemblies);
+     *  buyer-posture entries on the buyer step (classes derive from the
+     *  subscriptions). */
     disclosurePolicy?: DisclosurePolicyEntry[];
     /** Agent endpoints declared on screen 6 (advanced; optional). */
     services?: MemberAgentServices;
@@ -197,7 +204,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 
 export interface OnboardingStep {
     /** Stable id used in URLs and step-indicator keys. */
-    id: "welcome" | "profile" | "catalogue" | "assemblies" | "agents" | "review";
+    id: "welcome" | "profile" | "catalogue" | "assemblies" | "buyer" | "agents" | "review";
     /** 1-based step number for the visible indicator. */
     number: number;
     /** Human-readable label. */
@@ -218,7 +225,10 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "profile", number: 2, label: "Identity", path: "identity", optional: false },
     { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
     { id: "assemblies", number: 4, label: "Assemblies", path: "assemblies", optional: false },
-    { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
-    { id: "review", number: 6, label: "Review", path: "review", optional: false },
+    // The buyer page sits BEFORE agents so the agents step delegates
+    // control of the member's whole profile — seller and buyer alike.
+    { id: "buyer", number: 5, label: "Buyer", path: "buyer", optional: true },
+    { id: "agents", number: 6, label: "Agents", path: "agents", optional: true },
+    { id: "review", number: 7, label: "Review", path: "review", optional: false },
 ];
 

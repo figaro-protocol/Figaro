@@ -46,10 +46,10 @@ function WelcomeView() {
     return (
         <OnboardingShell
             stepId="welcome"
-            title="Register as a seller."
+            title="Register as a member."
             description={
                 <p>
-                    As a seller you register a wallet that represents your real-world asset or service. Register a wallet in <code>MembersRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet and you get it back when you leave, after a cooldown — Sybil-resistance, not a fee.
+                    A member registers a wallet that represents its real-world asset or service. Register the wallet in <code>MembersRegistry</code> and pin a profile + catalogue to IPFS — what you sell, and what you offer from the records of the deals you buy through. Seven steps. The deposit is 0.001 ETH on devnet and you get it back when you leave, after a cooldown — Sybil-resistance, not a fee.
                 </p>
             }
         >
@@ -219,6 +219,7 @@ function ManageList({
         { label: "Identity", description: "Name, description, tokens, location.", href: "/members/edit/identity" },
         { label: "Catalogue", description: "Items.", href: "/members/edit/catalogue" },
         { label: "Assemblies", description: "Bindings.", href: "/members/edit/assemblies" },
+        { label: "Buyer", description: "Assemblies you buy through; record classes you sell.", href: "/members/edit/buyer" },
         { label: "Agents", description: "Service endpoints.", href: "/members/edit/agents" },
     ];
     return (

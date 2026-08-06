@@ -119,6 +119,19 @@ export interface AssemblyBindingRecord {
 }
 
 /**
+ * One buyer-side assembly SUBSCRIPTION — the deal-shape this member buys
+ * through and monetizes records from. Subscribing is the buyer's verb;
+ * BINDING (`AssemblyBindingRecord`) stays the seller's, and the two lists
+ * are independent: a wallet does not buy through the assemblies it sells
+ * through. Deliberately minimal — no counterparty bindings, no role
+ * machinery; those belong to seller binding.
+ */
+export interface BuyerAssemblySubscription {
+    /** `AssemblyRegistry` compositionHash of the subscribed assembly. */
+    compositionHash: `0x${string}`;
+}
+
+/**
  * WHEN a disclosure-policy entry's record class may be bought/seen.
  * All fields optional; an absent calendar means "immediately, once
  * offered". The canonical use is the settlement embargo: the record
@@ -138,16 +151,16 @@ export interface DisclosureCalendar {
  *
  * The LEAF CLASS is derived, never a stored taxonomy: it is the pair
  * (assembly `compositionHash`, `clauseId`) — the record classes of the
- * processes a member runs comes from the assemblies they bind, so the
- * keys here reference clauses and assemblies the member already binds/composes.
- * Any UI enumerates candidate classes from the member's own live
- * bindings, never from a hardcoded list.
+ * processes a member trades in come from its own assembly lists: the
+ * BINDINGS for the seller side, the buyer's SUBSCRIPTIONS
+ * (`buyerAssemblies`) for the buyer side. Any UI enumerates candidate
+ * classes from those lists, never from a hardcoded one.
  *
  * Same genus as `acceptedTokens[]`: a self-declared OFFER. It says
  * WHAT class of co-produced record is offered or withheld, to WHOM
- * (whitelist), and WHEN (calendar). It never carries prices — pricing
- * is the catalogue's job (fixed | rate) plus RFQ for the unlisted
- * tail.
+ * (whitelist), and WHEN (calendar). It never carries prices — a data
+ * product is priced as an item in the member's own catalogue
+ * (fixed | rate), the item referencing the class via `recordClass`.
  *
  * Members hold buyer AND seller postures; `posture` names which side
  * the member co-produced the record on. The buyer half is first-class
@@ -238,6 +251,14 @@ export interface MemberProfileMetadata {
      * `AssemblyBindingRecord` above for the shape.
      */
     assemblyBindings?: AssemblyBindingRecord[];
+    /**
+     * The buyer's assembly subscriptions — which registered assemblies
+     * this member buys through and monetizes records from. Independent
+     * of `assemblyBindings` (the seller's list). Buyer-posture
+     * `disclosurePolicy` entries derive their candidate record classes
+     * from this list; seller-posture entries derive from the bindings.
+     */
+    buyerAssemblies?: BuyerAssemblySubscription[];
     /**
      * Data-disclosure policy — the member's self-declared terms for the
      * records they CO-PRODUCE inside bonded processes, one entry per
@@ -438,6 +459,19 @@ function parseAssemblyBindings(value: unknown, path: string): AssemblyBindingRec
     );
 }
 
+function parseBuyerAssemblies(value: unknown, path: string): BuyerAssemblySubscription[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) => {
+        const record = asRecord(entry, `${path}[${index}]`);
+        return {
+            compositionHash: asCompositionHash(record.compositionHash, `${path}[${index}].compositionHash`),
+        };
+    });
+}
+
 // ── Parsers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -465,6 +499,7 @@ export function parseMemberProfileDocument(
         defaultTokenAddress: asOptionalAddress(record.defaultTokenAddress, `${sourceLabel}.defaultTokenAddress`),
         profileClauseValues: parseProfileClauseValues(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
         assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
+        buyerAssemblies: parseBuyerAssemblies(record.buyerAssemblies, `${sourceLabel}.buyerAssemblies`),
         disclosurePolicy: parseDisclosurePolicy(record.disclosurePolicy, `${sourceLabel}.disclosurePolicy`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
         catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),

@@ -284,6 +284,7 @@ export type {
     MemberAssetReferences,
     CounterpartyBinding,
     AssemblyBindingRecord,
+    BuyerAssemblySubscription,
     DisclosureCalendar,
     DisclosurePolicyEntry,
     AgentServiceInfo,

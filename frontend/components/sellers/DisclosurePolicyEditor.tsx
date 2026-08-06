@@ -22,10 +22,11 @@ import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
  * `offered: true` on the profile). Unchecking removes the entry —
  * the paper-contract default: each party holds its own copy; absence
  * of a policy is not a policy of openness. Prices never live here —
- * data products are priced in the catalogue (fixed | rate) or via RFQ.
+ * a data product is priced as an item in the member's own catalogue
+ * (fixed | rate), the item referencing the class via `recordClass`.
  */
 
-const POSTURES = ["seller", "buyer"] as const;
+const ALL_POSTURES = ["seller", "buyer"] as const;
 
 function findEntry(
     entries: DisclosurePolicyEntry[],
@@ -42,14 +43,20 @@ function findEntry(
 }
 
 export interface DisclosurePolicyEditorProps {
-    /** The assemblies currently selected on the bindings step — the
-     *  member's own live bindings, from the on-chain registry. */
+    /** The assemblies whose record classes this mount governs — the
+     *  seller step passes its selected BINDINGS, the buyer step its
+     *  selected SUBSCRIPTIONS; both from the on-chain registry. */
     choices: AssemblyChoice[];
     entries: DisclosurePolicyEntry[];
     onChange: (next: DisclosurePolicyEntry[]) => void;
+    /** Which side's rows this mount edits. The seller assemblies step
+     *  passes ["seller"], the buyer step ["buyer"] — each side's classes
+     *  derive from its own assembly list, so the two are never
+     *  interleaved on one step. */
+    postures?: readonly ("buyer" | "seller")[];
 }
 
-export function DisclosurePolicyEditor({ choices, entries, onChange }: DisclosurePolicyEditorProps) {
+export function DisclosurePolicyEditor({ choices, entries, onChange, postures = ALL_POSTURES }: DisclosurePolicyEditorProps) {
     if (choices.length === 0) return null;
 
     function upsert(entry: DisclosurePolicyEntry) {
@@ -85,10 +92,10 @@ export function DisclosurePolicyEditor({ choices, entries, onChange }: Disclosur
                 <p>
                     You hold both postures — records you co-produce as a seller
                     and records you co-produce as a buyer are equally yours to
-                    offer. Prices never live here: list data products in your
-                    catalogue, or answer requests-for-quote for the rest. Leave
-                    everything unchecked for the default: each party simply
-                    holds its own copy, and nothing is offered.
+                    offer. Prices never live here: a data product is priced as
+                    an item in your own catalogue, like anything else you sell.
+                    Leave everything unchecked for the default: each party
+                    simply holds its own copy, and nothing is offered.
                 </p>
             </Card>
             {choices.map((choice) => (
@@ -105,7 +112,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange }: Disclosur
                                 <span className="text-xs font-semibold text-ink-heading">
                                     {getClauseSpec(clauseId)?.title ?? clauseId}
                                 </span>
-                                {POSTURES.map((posture) => (
+                                {postures.map((posture) => (
                                     <PolicyLeafRow
                                         key={posture}
                                         slug={choice.slug}

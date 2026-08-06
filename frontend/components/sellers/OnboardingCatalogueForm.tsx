@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
+import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import { parseCatalogueCsv } from "@/lib/seller/parseCatalogueCsv";
 import type {
     CatalogueItemMetadata,
@@ -80,6 +81,24 @@ interface FormItem {
     pricingPolicy: "fixed" | "rate";
     rateUnit: string;
     rateQuantitySource: string;
+    /** Encoded record-class reference for a DATA-PRODUCT item —
+     *  `compositionHash|clauseId|posture` of one of the member's own
+     *  declared disclosure classes, "" for an ordinary item. The
+     *  disclosure policy declares the TERMS; this item is the PRICE. */
+    recordClassKey: string;
+}
+
+/** Encode a record class as a stable select-option key. */
+function recordClassKeyOf(rc: NonNullable<CatalogueItemMetadata["recordClass"]>): string {
+    return [rc.compositionHash, rc.clauseId, rc.posture].join("|");
+}
+
+function recordClassFromKey(key: string): CatalogueItemMetadata["recordClass"] {
+    const [compositionHash, clauseId, posture] = key.split("|");
+    if (!compositionHash || !clauseId || (posture !== "buyer" && posture !== "seller")) {
+        return undefined;
+    }
+    return { compositionHash: compositionHash as `0x${string}`, clauseId, posture };
 }
 
 function uid(): string {
@@ -104,6 +123,7 @@ function emptyItem(): FormItem {
         pricingPolicy: "fixed",
         rateUnit: "",
         rateQuantitySource: "checkout-quantity",
+        recordClassKey: "",
     };
 }
 
@@ -125,6 +145,7 @@ function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem
         pricingPolicy: item.pricingPolicy ?? "fixed",
         rateUnit: item.rateUnit ?? "",
         rateQuantitySource: item.rateQuantitySource ?? "checkout-quantity",
+        recordClassKey: item.recordClass ? recordClassKeyOf(item.recordClass) : "",
     };
 }
 
@@ -145,6 +166,7 @@ function clauseValuesForSave(
 
 function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
     const clauseValues = clauseValuesForSave(form.clauseValues);
+    const recordClass = form.recordClassKey ? recordClassFromKey(form.recordClassKey) : undefined;
     return {
         id: form.id,
         name: form.name.trim(),
@@ -159,6 +181,7 @@ function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
         widthMm: parseInputToMm(form.width, unitSystem),
         heightMm: parseInputToMm(form.height, unitSystem),
         ...(clauseValues && { clauseValues }),
+        ...(recordClass && { recordClass }),
         ...(form.pricingPolicy === "rate"
             ? {
                 pricingPolicy: "rate" as const,
@@ -249,6 +272,15 @@ export function OnboardingCatalogueForm({
         const validItems = items.filter(isItemComplete).map((it) => toItem(it, unitSystem));
         update({ catalogue: { items: validItems, unitSystem } });
     }, [items, unitSystem, hydrated, isConnected, update]);
+
+    // Data-product options: the member's declared disclosure classes
+    // (offered entries, both postures) — an item referencing one is the
+    // PRICED form of that offer. Empty until the member declares some
+    // on the assemblies (seller side) or buyer step.
+    const recordClassOptions = useMemo(
+        () => (state.disclosurePolicy ?? []).filter((e) => e.offered),
+        [state.disclosurePolicy],
+    );
 
     // Pricing-token symbol for the per-item price label.
     const defaultTokenSymbol = useMemo(() => {
@@ -410,6 +442,7 @@ export function OnboardingCatalogueForm({
                         priceSymbol={defaultTokenSymbol}
                         unitSystem={unitSystem}
                         catalogueClauses={catalogueClauses}
+                        recordClassOptions={recordClassOptions}
                         onChange={(key, value) => setItemField(index, key, value)}
                         onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
                     />
@@ -485,11 +518,14 @@ interface ItemRowProps {
     /** Catalogue-sourced clauses to author on this item (freight class, hazmat,
      *  cold-chain, …), derived live from the registry by the parent. */
     catalogueClauses: readonly { clauseId: string; version: number }[];
+    /** The member's declared disclosure classes (offered entries) — the
+     *  options a data-product item can reference for its price. */
+    recordClassOptions: readonly DisclosurePolicyEntry[];
     onChange: <K extends keyof FormItem>(key: K, value: FormItem[K]) => void;
     onRemove?: () => void;
 }
 
-function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, onChange, onRemove }: ItemRowProps) {
+function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, recordClassOptions, onChange, onRemove }: ItemRowProps) {
     const idPrefix = `item-${item.id}`;
     return (
         <Card className="p-5 space-y-4">
@@ -555,6 +591,41 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, onCha
                     label="Upload item image"
                 />
             </FormField>
+
+            {/* Data product: reference one of the member's declared
+                disclosure classes — the policy declared the terms, this
+                item is where the class gets its price. Ordinary items
+                leave it at "Not a data product". */}
+            {(recordClassOptions.length > 0 || item.recordClassKey) && (
+                <FormField label="Record class (data product)" inputId={`${idPrefix}-record-class`}>
+                    <select
+                        id={`${idPrefix}-record-class`}
+                        value={item.recordClassKey}
+                        onChange={(e) => onChange("recordClassKey", e.target.value)}
+                        className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                        data-testid={`${idPrefix}-record-class`}
+                    >
+                        <option value="">Not a data product</option>
+                        {recordClassOptions.map((rc) => {
+                            const key = [rc.compositionHash, rc.clauseId, rc.posture].join("|");
+                            const title = getClauseSpec(rc.clauseId)?.title ?? rc.clauseId;
+                            return (
+                                <option key={key} value={key}>
+                                    {title} — as {rc.posture} ({rc.compositionHash.slice(0, 10)}…)
+                                </option>
+                            );
+                        })}
+                        {item.recordClassKey &&
+                            !recordClassOptions.some(
+                                (rc) => [rc.compositionHash, rc.clauseId, rc.posture].join("|") === item.recordClassKey,
+                            ) && (
+                            <option value={item.recordClassKey}>
+                                (no longer declared) {item.recordClassKey.split("|")[1]}
+                            </option>
+                        )}
+                    </select>
+                </FormField>
+            )}
 
             {/* Pricing policy: fixed (the price IS the item price) or a RATE per
                 unit — the payment resolves at checkout as rate × quantity, the

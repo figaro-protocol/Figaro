@@ -15,6 +15,7 @@ export type {
     MemberAssetReferences,
     CounterpartyBinding,
     AssemblyBindingRecord,
+    BuyerAssemblySubscription,
     DisclosurePolicyEntry,
     AgentServiceInfo,
 } from "@figaro/sdk";

@@ -77,7 +77,7 @@ export interface OnboardingAgentsFormProps {
     onSave?: (services: MemberAgentServices | undefined) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
-    /** Back-link href override. Defaults to "/members/assemblies". */
+    /** Back-link href override. Defaults to "/members/buyer". */
     backHref?: string;
     /** Back-link label override. Defaults to "← Back". */
     backLabel?: string;
@@ -199,7 +199,7 @@ export function OnboardingAgentsForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/members/assemblies"}
+                    href={backHref ?? "/members/buyer"}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}
