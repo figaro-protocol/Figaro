@@ -10,9 +10,10 @@
 # "coming soon", a roadmap) regressed onto four pages after being ripped from
 # home; this guard closes the loop, like lint-no-eyebrows.sh did for eyebrows.
 #
-# Scope: .tsx under frontend/app/(marketing) and frontend/app/(builders),
-# EXCLUDING (marketing)/papers/ — the academic corpus may legitimately analyze
-# launches and roadmaps of other systems.
+# Scope: .tsx under ALL of frontend/app — (marketing), (builders), AND (app);
+# a seventh instance was found on the (app) tier the same day the guard landed
+# scoped narrower. EXCLUDES (marketing)/papers/ only — the academic corpus may
+# legitimately analyze launches and roadmaps of other systems.
 #
 # "devnet" is NOT banned (it names the local developer network — a technical
 # referent, not a stage). Audit-status honesty ("pending external audit") is
@@ -36,7 +37,7 @@ for file in "$@"; do
     [[ "$file" == *.tsx ]] || continue
     case "$file" in
         *"app/(marketing)/papers/"*) continue ;;
-        *"app/(marketing)/"* | *"app/(builders)/"*) ;;
+        *"app/(marketing)/"* | *"app/(builders)/"* | *"app/(app)/"*) ;;
         *) continue ;;
     esac
 
