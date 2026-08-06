@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 
 // VALIDATED IN CHAT 2026-08-05 (operator copy pass): the page is the RPGF
 // page — restored to its original route (/rpgf, born 2026-05-22) after two
@@ -52,6 +53,7 @@ export default function Rpgf() {
                     <li>A deal counts only when the seller who delivered it holds a live deposit too. Your registration deposit stays live, or your work comes off the shelf and stops earning.</li>
                     <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the contract itself.</li>
                 </ul>
+                <RpgfValueLoopFigure />
             </MarketingSection>
 
             <MarketingSection title="More for builders" bottomPad="wide">

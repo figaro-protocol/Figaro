@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { DisciplineIntersectionFigure } from "@/components/figures/DisciplineIntersectionFigure";
 import { PAPER_GROUPS } from "@/app/(marketing)/_lib/paperGroups";
 
 /** The taxonomy's source — cited ONCE, in the page footnote. */
@@ -30,6 +31,7 @@ export default function WorkingGroups() {
                 <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-8">
                     The eight disciplines are not ours. They are the taxonomy set out by Voshmgir &amp; Zargham<sup>1</sup>, which argues that cryptoeconomic systems are irreducibly multi-disciplinary objects and enumerates the disciplines a full account of one must pass through. The project adopts that list rather than inventing its own, so that a reader arriving from any one of the eight finds the substrate addressed in that discipline&rsquo;s own vocabulary, and so that the depth of coverage under each is measured against a list the project did not draw.
                 </p>
+                <DisciplineIntersectionFigure labels={PAPER_GROUPS.map((g) => g.name)} className="mb-10" />
                 <div className="space-y-10">
                     {PAPER_GROUPS.map((g) => (
                         <article key={g.slug} id={g.slug} className="scroll-mt-24 border-l-2 border-default pl-6">
