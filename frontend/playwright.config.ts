@@ -75,8 +75,12 @@ export default defineConfig({
                 // next.config.mjs production test-flag guard (finding 4): the
                 // suite legitimately needs ?e2e=mock in a prod build; a real
                 // deploy never sets this escape.
-                ? `FIGARO_ALLOW_TEST_HELPERS=1 NEXT_DISTDIR=.next-e2e npm run build && SERVE_DIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run serve:export`
-                : `NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
+                // The dist dir is WIPED first, every run: rebuilding into an existing
+                // .next-e2e after source renames corrupts it (PageNotFoundError:
+                // /_document — three occurrences on 2026-08-06), and the build is
+                // full-cost either way.
+                ? `rm -rf .next-e2e && FIGARO_ALLOW_TEST_HELPERS=1 NEXT_DISTDIR=.next-e2e npm run build && SERVE_DIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run serve:export`
+                : `rm -rf .next-e2e && NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,
         // prod mode runs a full `next build` (~90 s) before the server answers.
