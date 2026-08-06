@@ -23,13 +23,6 @@ Figaro-shaped one.
 > Until then, install from a repo checkout: `"@figaro/sdk": "file:../sdk"`
 > (build it first: `npm run build --workspace sdk` from the repo root).
 
-A complete worked trade — discover an anchored composition from the registries,
-sign it on both sides, commit, attest, resolve, and assert the exact payouts
-against balances read back off the chain — is
-[`examples/settle-a-deal`](../examples/settle-a-deal), a plain Node script that
-runs against a LOCAL devnet (`./scripts/devup.sh`); there is no hosted public
-network yet.
-
 ## Five Entry Points
 
 ### `@figaro/sdk` — Protocol Primitives

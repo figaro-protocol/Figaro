@@ -57,31 +57,13 @@ export default function Agents() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="How an operator works — the SDK and a policy.">
+            <MarketingSection title="How an operator works — the SDK and a policy." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     An operator drives <code>@figaro/sdk/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Autonomy is a policy choice, never structural. The default is human-in-the-loop: the owner approves each action. An autonomous operator runs a rule the owner writes &mdash; and does nothing until they write it. Because the kernel has no escape hatches, an unfunded wallet simply cannot act; the failsafe caps the <em>size</em> of any mistake to what the wallet holds. Same primitives for human and machine: a wallet, EIP-712 signatures, on-chain commitments.
                 </p>
-            </MarketingSection>
-
-
-            <MarketingSection title="Also for builders" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
-                    </li>
-                    <li>
-                        <Link href="/composes" className="text-ink-heading font-medium hover:underline">Composes</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern’s five equilibrium-preserving conditions and the kernel-vs-author boundary.</span>
-                    </li>
-                    <li>
-                        <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; what a clause is, the live registry inventory, and the public-vs-private data seam; the spec format and checklist live beside the registration form.</span>
-                    </li>
-                </ul>
             </MarketingSection>
         </>
     );

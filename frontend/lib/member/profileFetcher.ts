@@ -15,7 +15,7 @@
 
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { tryParseMemberProfileDocument } from "@/lib/member/memberProfileMetadata";
-import { createUriFetcher } from "@/lib/shared/uriFetcher";
+import { createUriFetcher } from "@/lib/member/uriFetcher";
 
 const profileFetcher = createUriFetcher<MemberProfileMetadata>({
     parse: (doc) => tryParseMemberProfileDocument(doc),

@@ -14,7 +14,7 @@
 
 import type { MemberBrandingMetadata } from "@/lib/member/memberBrandingMetadata";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
-import { createUriFetcher } from "@/lib/shared/uriFetcher";
+import { createUriFetcher } from "@/lib/member/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

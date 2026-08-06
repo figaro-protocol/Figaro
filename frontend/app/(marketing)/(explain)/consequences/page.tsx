@@ -52,7 +52,7 @@ export default function Consequences() {
                     FigaroCore is an immutable, ownerless coordination primitive. Once deployed to a public network it cannot be patched, paused, governed, or recalled. The question this page answers is not &ldquo;does the code have bugs&rdquo; &mdash; that is a verification question, treated on Security. The question here is: is it responsible to release infrastructure that, if it works, reorganizes economic life at a scale no one who releases it can later walk back?
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    What it does, mechanically: two strangers lock collateral &mdash; the buyer twice the payment, the seller twice the cumulative value flowing through them. Cooperation weakly dominates defection for both, from the arithmetic alone. The buyer resolves; bonds return; payment flows. No owner, no fee, no admin, no escape hatch. The derivation is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>; the formal proofs are in the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>. This page assumes both and asks what follows from them.
+                    What it does, mechanically, is derived on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>: both sides lock a stake larger than the deal, cooperation becomes the cheapest option for each, and the buyer&apos;s confirmation settles everything at once &mdash; no owner, no fee, no admin, no escape hatch. The formal proofs are in the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>. This page assumes both and asks what follows from them.
                 </p>
             </MarketingSection>
 
@@ -224,27 +224,9 @@ export default function Consequences() {
                     <li><strong className="text-ink-heading font-medium">Acknowledge what the mechanism does not do.</strong> The mechanism does not make people honest &mdash; it makes honesty the cheapest option. It does not ensure fairness &mdash; it ensures settlement. It does not protect against irrationality &mdash; it assumes rationality. These boundaries should be stated clearly wherever the protocol is presented, including here.</li>
                     <li><strong className="text-ink-heading font-medium">Revisit this analysis.</strong> The original version of this document is dated April 2026; the operator reaffirmed its conclusions on 2026-08-03, ahead of any public-network deployment, while rebuilding the details that had drifted from the shipped system. The assumptions it records should keep being tested against reality as the protocol operates, and revised &mdash; with a successor kernel if the assumptions themselves turn out to need correcting &mdash; if evidence contradicts them.</li>
                 </ol>
-                <p className="text-base text-ink-body leading-relaxed mb-8">
-                    A companion question &mdash; can I, personally, be robbed by this mechanism &mdash; is answered plainly on Security. This page answers the larger one: what does it do to the world, if it works.
+                <p className="text-base text-ink-body leading-relaxed">
+                    A companion question &mdash; can I, personally, be robbed by this mechanism &mdash; is answered plainly on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. This page answers the larger one: what does it do to the world, if it works.
                 </p>
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>
-                        <span className="text-ink-body"> &mdash; the mechanism itself: bonded commitments, buyer dominance, twice-the-deal collateral, atomic settlement.</span>
-                    </li>
-                    <li>
-                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">Working groups</Link>
-                        <span className="text-ink-body"> &mdash; the formal derivations, and the eight-discipline reading of the papers this page draws on.</span>
-                    </li>
-                    <li>
-                        <Link href="/why" className="text-ink-heading font-medium hover:underline">Why</Link>
-                        <span className="text-ink-body"> &mdash; the rule-making lineage Figaro sits in: coercion, cognition, crypto.</span>
-                    </li>
-                    <li>
-                        <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
-                        <span className="text-ink-body"> &mdash; can this mechanism rob you? Plain-language answers, caveats included.</span>
-                    </li>
-                </ul>
             </MarketingSection>
         </>
     );

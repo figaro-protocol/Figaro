@@ -44,7 +44,7 @@ export default function Assemblies() {
 
             <MarketingSection title="How one is composed.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every assembly carries two mandatory clauses automatically &mdash; capital flow (committed at buy time) and topology. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
+                    Every assembly carries three mandatory clauses automatically &mdash; capital flow (committed at buy time), topology, and assembly provenance, the record of which assembly a process instantiates that credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
                 </p>
             </MarketingSection>
 
@@ -152,7 +152,7 @@ deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
 templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</code></pre>
             </MarketingSection>
 
-            <MarketingSection title="Registered assemblies.">
+            <MarketingSection title="Registered assemblies." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Each row is one assembly, sorted by registration block (most recent
                     first). Assembly templates fetch lazily from IPFS &mdash; the on-chain
@@ -162,15 +162,6 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                     For agents: this inventory derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
                 </p>
                 <AssemblyInventory />
-            </MarketingSection>
-
-            <MarketingSection title="Where to publish">
-                <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
-                    <li><strong>Designer:</strong> compose an assembly on the canvas at <Link href="/builders/designer" className="underline">/builders/designer</Link>, then publish to <code>AssemblyRegistry</code> in one transaction. The publish flow pins the assembly template to IPFS, simulates the registration, and confirms the receipt before declaring success.</li>
-                    <li><strong>Worked reference:</strong> the local-commerce reference at /local-commerce &mdash; merchant root order, courier sub-order, handoff certifications, GHG disclosures, jurisdiction anchoring.</li>
-                    <li><strong>Clause set:</strong> the clauses an assembly may compose are listed at /clauses.</li>
-                    <li><strong>Contract:</strong> <code>src/protocol/registries/AssemblyRegistry.sol</code> &mdash; permissionless, first-write-wins, immutable. See <Link href="/spec" className="underline">/spec</Link>.</li>
-                </ul>
             </MarketingSection>
 
         </>

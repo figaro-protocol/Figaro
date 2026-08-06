@@ -41,30 +41,17 @@ export default function Clauses() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Registered clauses, by article.">
+            <MarketingSection title="Registered clauses, by article." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see Integrate for the deployment record.
+                    For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     There is no static roster of clauses &mdash; the count is derived, never stored. The canonical spec source for the reference set is the <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/</code> directory</a> in the repository; on chain, discover every registered clause (reference or third-party) the same way this inventory does &mdash; by reading the <code>ClauseRegistry</code>&apos;s <code>ClauseRegistered</code> event stream.
                 </p>
                 <ClauseInventory />
-            </MarketingSection>
-
-            <MarketingSection title="Where to look">
-                <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
-                    <li><strong>SDK module:</strong> <code>@figaro/sdk/clauses</code> &mdash; meta-clause validator, <code>validateContent</code>, and the generic <code>encodeContentFromSpec</code>. The canonical source of the spec format. See the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>.</li>
-                    <li><strong>Registration path:</strong> <code>ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)</code> &mdash; permissionless, first-write-wins, immutable. No per-clause validator to deploy; the generic proof engine validates it in-proof against the anchored spec, so registration alone makes the clause attestable and settleable. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>
-                    <li><strong>Kernel side:</strong> attestation receipts are bound to the signed <code>agreementHash</code> via merkle inclusion proof, with no on-chain content validation; the rationale is on <Link href="/kernel" className="underline">Kernel</Link>.</li>
-                    <li><strong>Academic frame:</strong> <Link href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</Link> (how a clause&apos;s record lands in a forum that has its own jurisdiction) and the Philosophy, Law and Ethics group on <Link href="/working-groups" className="underline">Working groups</Link>.</li>
-                    <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a> &mdash; the reference clauses, the SDK, and the contracts.</li>
-                </ul>
-                <p className="mt-6 text-sm text-ink-muted">
-                    Composition tools and the assembly designer: <Link href="/builders" className="underline">/builders</Link>.
-                </p>
             </MarketingSection>
 
         </>

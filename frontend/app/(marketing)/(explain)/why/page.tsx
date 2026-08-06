@@ -51,7 +51,7 @@ export default function Why() {
                     Figaro is none of these. It is cryptoeconomics applied to value-added processes &mdash; trade. As a primitive it takes no position on where value flows or under what conditions; the participants in each process decide. If you would rather see the mechanism walked through as one evening&apos;s dinner, that lived version is at <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">local commerce</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The full argument for what kind of rule this is &mdash; why an immutable, ownerless kernel sits closer to a constitution&apos;s entrenched layer than to an enacted law, and what a federal court has already recognized about artifacts like it &mdash; is developed at length in the paper <Link href="/papers/code-is-constitution" className="text-ink-heading font-medium hover:underline">Code Is Constitution</Link>. Read it as a paper, not a page.
+                    The full argument for what kind of rule this is &mdash; why an immutable, ownerless kernel sits closer to a constitution&apos;s entrenched layer than to an enacted law, and what a federal court has already recognized about immutable, ownerless code like it &mdash; is developed at length in the paper <Link href="/papers/code-is-constitution" className="text-ink-heading font-medium hover:underline">Code Is Constitution</Link>. Read it as a paper, not a page.
                 </p>
             </MarketingSection>
 
@@ -64,7 +64,7 @@ export default function Why() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The current moment.">
+            <MarketingSection title="The current moment." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Since 2001 the Edelman Trust Barometer has tracked steady decline in the trust the public places in its institutions. The decline is not bounded to any one country or sector; it is structural. The institutions that carry the cognitive apparatus &mdash; media, government, business, civil society &mdash; show diminishing capacity to sustain the belief the apparatus needs.
                 </p>
@@ -74,41 +74,6 @@ export default function Why() {
                 <p className="text-base text-ink-body leading-relaxed">
                     Figaro is one contribution to a substrate that captures less well: economic rules that are common knowledge, enforced by mathematics, owned by no one. Clarity is a partial defense. It is the defense the third era makes available.
                 </p>
-            </MarketingSection>
-
-            <MarketingSection title="Read next" bottomPad="wide">
-                <ul className="space-y-3 text-base">
-                    <li>
-                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
-                            Kernel
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the mechanism: bonded stakes, buyer-only resolution, atomic settlement.</span>
-                    </li>
-                    <li>
-                        <Link href="/physics" className="text-ink-heading font-medium hover:underline">
-                            Physics
-                        </Link>
-                        <span className="text-ink-body"> &mdash; the structural read: the few facts the core obeys, and why trust moves to the boundary.</span>
-                    </li>
-                    <li>
-                        <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">
-                            Local commerce
-                        </Link>
-                        <span className="text-ink-body"> &mdash; one deal, lived: a delivered meal, three strangers, no platform.</span>
-                    </li>
-                    <li>
-                        <Link href="/consequences" className="text-ink-heading font-medium hover:underline">
-                            Consequences
-                        </Link>
-                        <span className="text-ink-body"> &mdash; what this does to the world, if it works.</span>
-                    </li>
-                    <li>
-                        <Link href="/data" className="text-ink-heading font-medium hover:underline">
-                            Data
-                        </Link>
-                        <span className="text-ink-body"> &mdash; your records, your terms.</span>
-                    </li>
-                </ul>
             </MarketingSection>
         </>
     );

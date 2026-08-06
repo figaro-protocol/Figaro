@@ -1,5 +1,5 @@
 /**
- * lib/shared/uriFetcher.ts
+ * lib/member/uriFetcher.ts
  *
  * Generic fetch+parse+cache helper for IPFS / HTTP content-addressed
  * documents. Two lib modules (`catalogueFetcher`, `memberBranding`)

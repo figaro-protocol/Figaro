@@ -78,7 +78,7 @@ const TERMS: Term[] = [
         term: "Kernel",
         definition:
             "FigaroCore — the small program that holds every bonded commitment and settles a deal the instant its buyer confirms. It has no owner, no admin, no pause button, and no upgrade key.",
-        readMore: <Link href="/security#custody" className="hover:underline">Security</Link>,
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
         id: "process",

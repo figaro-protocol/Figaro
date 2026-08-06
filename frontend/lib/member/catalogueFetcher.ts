@@ -6,12 +6,12 @@
  *
  * This is the read path. The write path (pin + updateProfile) lives in
  * `cataloguePublisher.ts`. Backed by the generic `createUriFetcher`
- * pipeline in `lib/shared/uriFetcher.ts`.
+ * pipeline in `lib/member/uriFetcher.ts`.
  */
 
 import type { MemberCatalogueMetadata } from "@/lib/member/memberCatalogueMetadata";
 import { parseMemberCatalogueDocument } from "@/lib/member/memberCatalogueMetadataParser";
-import { createUriFetcher } from "@/lib/shared/uriFetcher";
+import { createUriFetcher } from "@/lib/member/uriFetcher";
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 

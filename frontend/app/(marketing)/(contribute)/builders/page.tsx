@@ -41,7 +41,7 @@ export default function BuildersPage() {
                 Most platforms you build on belong to a company. It can change the rules, deprecate your work, or take a cut &mdash; and you have no say, because the platform is theirs.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Figaro is structurally different. Its core &mdash; the part that holds the funds and settles the deal &mdash; is finished, frozen, and owned by no one. It cannot be changed, paused, or pointed at new rules; not by a company, not by the people who wrote it. There is nothing to be locked out of, because there is no one to do the locking.
+                Figaro is structurally different. Its core &mdash; the part that holds the funds and settles the deal &mdash; is finished, frozen, and owned by no one (<Link href="/kernel" className="text-ink-heading font-medium hover:underline">how, on Kernel</Link>). There is nothing to be locked out of, because there is no one to do the locking.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-12 mb-4">
                 Five builders, one substrate.
@@ -81,8 +81,11 @@ export default function BuildersPage() {
                     </dd>
                 </div>
             </dl>
+            <p className="text-base text-ink-body leading-relaxed mb-5">
+                Be clear-eyed about one thing: Figaro is a working protocol, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>.
+            </p>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about one thing: Figaro is a working protocol, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward pays out once a year for nine years, weighted toward later years once the evidence is deepest &mdash; full schedule at <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">RPGF</Link>. To watch it settle end to end, point the tooling at a network: clone <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">the repository</a>, run <code>./scripts/devup.sh</code> to bring up Anvil, IPFS, and the deployed protocol stack, then drive a commit and a resolve against the kernel directly using the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README&apos;s</a> <code>commit</code>/<code>resolveProcess</code> walkthrough. The worked, narrated demonstration runs against that same network and is the last entry under <em>Do it now</em> below (the Playwright e2e suite, <code>cd frontend &amp;&amp; npm run test:e2e:devnet</code>, does the same through the browser).
+                To watch it settle end to end, point the tooling at a network: clone <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">the repository</a>, run <code>./scripts/devup.sh</code> to bring up Anvil, IPFS, and the deployed protocol stack, then drive a commit and a resolve against the kernel directly using the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">SDK README&apos;s</a> <code>commit</code>/<code>resolveProcess</code> walkthrough &mdash; or let the Playwright e2e suite (<code>cd frontend &amp;&amp; npm run test:e2e:devnet</code>) drive the same run through the browser.
             </p>
 
             <h2 className="text-base font-semibold text-ink-heading mb-4">
@@ -136,12 +139,6 @@ export default function BuildersPage() {
                         Register a clause
                     </Link>
                     <span className="text-ink-body"> &mdash; paste a spec, validate it against the live off-chain check, and anchor it on the <code>ClauseRegistry</code>.</span>
-                </li>
-                <li>
-                    <a href="https://github.com/figaro-protocol/Figaro/tree/main/examples/settle-a-deal" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">
-                        Settle a whole deal, end to end
-                    </a>
-                    <span className="text-ink-body"> &mdash; <code>examples/settle-a-deal</code>: one narrated run that discovers an anchored composition from the registries, fills it, signs it on both sides, commits, attests, resolves, and asserts the exact payouts against balances it reads back off the chain. Nothing about the trade is hardcoded &mdash; take the registries away and it discovers nothing. It needs the repository, <code>npm install</code>, and the local network from <code>./scripts/devup.sh</code> above; it exits non-zero if a single assertion fails, and every run is a fresh process, so run it as often as you like.</span>
                 </li>
             </ul>
 
