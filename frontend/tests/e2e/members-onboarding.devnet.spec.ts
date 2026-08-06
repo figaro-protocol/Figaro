@@ -2,8 +2,8 @@
  * members-onboarding.devnet.spec.ts
  *
  * MEMBER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
- * register through the real 7-step wizard: identity → catalogue → assemblies →
- * buyer → agents → review → publish, ending anchored on `MembersRegistry`,
+ * register through the real six-step wizard (no welcome — /join owns the
+ * pitch): identity → catalogue → assemblies → buyer → agents → review → publish, ending anchored on `MembersRegistry`,
  * pinned to IPFS, and surfacing on `/s/view` and `/discover`. The buyer step
  * subscribes an assembly the wallet buys through and offers some of its data
  * — the pinned document must carry BOTH halves.
@@ -61,14 +61,14 @@ async function waitForMembersReady(page: import("@playwright/test").Page) {
     );
 }
 
-/** Walk the registration wizard 1→6 as the seller's wallet and register
+/** Walk the registration wizard as the member's wallet and register
  *  on-chain, binding EXACTLY the given assembly. */
 async function onboardViaWizard(page: import("@playwright/test").Page, assemblySlug: string) {
     await gotoAsWallet(page, SELLER.address, "/members");
     await waitForMembersReady(page);
     await page.goto("/members/identity", { waitUntil: "domcontentloaded" });
 
-    // Step 2 — Identity
+    // Identity
     await expect(page.locator("#profile-name")).toBeVisible({ timeout: 30_000 });
     await page.locator("#profile-name").fill(SELLER.name);
     await page.locator("#profile-specialty").fill(SELLER.specialty);
@@ -82,13 +82,13 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalogue/);
 
-    // Step 3 — Catalogue: one product
+    // Catalogue: one product
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/assemblies/);
 
-    // Step 4 — Assemblies: MANDATORY (user rule 2026-06-12 — a profile
+    // Assemblies: MANDATORY (user rule 2026-06-12 — a profile
     // without bindings cannot be ordered from). An update-mode run hydrates
     // the wallet's prior bindings — clear them first: this scenario's premise
     // is EXACTLY ONE single-order binding (the bilateral flow orders-accept
@@ -122,7 +122,7 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
 
-    // Step 5 — Buyer: subscribe an assembly the wallet buys through, then
+    // Buyer: subscribe an assembly the wallet buys through, then
     // offer some of its data for sale. Subscribing is the buyer's
     // verb (a profile declaration), distinct from the seller BINDING above.
     const buyerRow = page.getByTestId(`buyer-assembly-row-${assemblySlug}`);
@@ -143,11 +143,11 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/agents/);
 
-    // Step 6 — Agents: skip
+    // Agents: skip
     await page.getByRole("button", { name: /^Next/ }).click();
     await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
 
-    // Step 7 — Review + publish (pin catalogue + profile → register tx)
+    // Review + publish (pin catalogue + profile → register tx)
     await expect(page.getByText(SELLER.name)).toBeVisible();
     await page.getByTestId("review-confirm-publish").click();
     await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i }))

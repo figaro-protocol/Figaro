@@ -6,15 +6,11 @@
  *
  *   - Connected, registered → RegisteredCard (dashboard).
  *   - Anything else (anonymous OR connected-unregistered) →
- *     OnboardingWelcome inline, wrapped in OnboardingShell so the
- *     step indicator runs across the top consistently with the
- *     downstream wizard sub-routes.
+ *     the registration doorway (a link to /join and Begin — nothing the
+ *     /join page already says is repeated here).
  *
- * Replaces the prior two-page redirect ping-pong between /sellers
- * (dashboard) and /sellers/onboard (welcome). Wizard sub-routes
- * (/sellers/identity, /sellers/catalogue, etc.) are still
- * separate pages — only the welcome / dashboard split is collapsed
- * here.
+ * Wizard sub-routes (/members/identity, /members/catalogue, etc.) are
+ * separate pages; only the doorway / dashboard split is collapsed here.
  */
 
 import { useEffect, useState } from "react";
@@ -39,22 +35,21 @@ import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { formatEther } from "viem";
-import { OnboardingWelcome } from "@/components/members/OnboardingWelcome";
-import { OnboardingShell } from "@/components/members/OnboardingShell";
-
-function WelcomeView() {
+// The doorway (operator rule 2026-08-06): /join owns everything about
+// membership, so nothing is repeated here — the wizard starts at Identity.
+function RegistrationDoorway() {
     return (
-        <OnboardingShell
-            stepId="welcome"
-            title="Register as a member."
-            description={
-                <p>
-                    A member registers a wallet that represents its real-world asset or service. Register the wallet in <code>MembersRegistry</code> and pin a profile + catalogue to IPFS — what you sell, and what you offer from the records of the deals you buy through. Seven steps. The deposit is 0.001 ETH on devnet and you get it back when you leave, after a cooldown — Sybil-resistance, not a fee.
-                </p>
-            }
-        >
-            <OnboardingWelcome />
-        </OnboardingShell>
+        <div className="space-y-6">
+            <h1 className="text-heading-h1 text-ink-heading">Register as a member.</h1>
+            <p className="text-base text-ink-body leading-relaxed">
+                What membership is &mdash; both sides of a profile, agents
+                included, the steps, the deposit &mdash; is on{" "}
+                <Link href="/join" className="text-ink-heading font-medium hover:underline">Join</Link>.
+            </p>
+            <Link href="/members/identity">
+                <Button data-testid="btn-begin-registration">Begin &rarr;</Button>
+            </Link>
+        </div>
     );
 }
 
@@ -69,14 +64,13 @@ export function MemberLanding() {
     }
 
     // Anonymous wallet, or wallet whose registry-read is still in flight
-    // → render the welcome content. The welcome screen has its own
-    // connect-wallet prompt for anonymous users and a connected-wallet
-    // "Begin" CTA otherwise.
+    // → the doorway (Begin routes into the wizard, whose first form
+    // prompts an anonymous user to connect).
     if (!isConnected || profileLoading) {
-        return <WelcomeView />;
+        return <RegistrationDoorway />;
     }
 
-    // Connected but not registered → show the welcome flow inline. A wallet
+    // Connected but not registered → the doorway. A wallet
     // that has LEFT is unregistered but may still be owed its deposit, so the
     // claim surface renders here too — otherwise leaving would strand the ETH
     // behind a screen the wallet can no longer reach.
@@ -84,7 +78,7 @@ export function MemberLanding() {
         return (
             <>
                 <PendingDepositNotice address={address} />
-                <WelcomeView />
+                <RegistrationDoorway />
             </>
         );
     }
@@ -338,7 +332,7 @@ function WithdrawRow({
 
     // Hold the receipt visible after success — let the seller dismiss
     // it explicitly. Only then does the parent refetch (which causes the
-    // dashboard → welcome transition, removing this row from the DOM).
+    // dashboard → doorway transition, removing this row from the DOM).
     useEffect(() => {
         if (isSuccess && hash && !receiptHash) {
             setReceiptHash(hash);

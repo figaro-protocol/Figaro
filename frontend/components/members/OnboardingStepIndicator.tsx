@@ -30,7 +30,7 @@ export function OnboardingStepIndicator({
 
     return (
         <ol
-            className="flex items-center gap-2 text-xs"
+            className="flex flex-wrap items-center gap-2 gap-y-3 text-xs"
             aria-label="Onboarding progress"
         >
             {ONBOARDING_STEPS.map((step, index) => {

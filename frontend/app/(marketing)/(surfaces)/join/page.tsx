@@ -52,7 +52,6 @@ export default function Join() {
                             </tr>
                         </thead>
                         <tbody className="text-ink-body">
-                            <tr className="border-b border-default"><td className="py-2 pr-4">Welcome</td><td className="py-2">See what membership is.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Identity</td><td className="py-2">Name, description, location, the tokens you accept.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Catalogue</td><td className="py-2">The items you sell, priced in your default token.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Assemblies</td><td className="py-2">Bind the deal-shapes you sell through.</td></tr>

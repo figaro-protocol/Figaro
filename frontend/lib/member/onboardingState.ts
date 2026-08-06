@@ -204,12 +204,12 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 
 export interface OnboardingStep {
     /** Stable id used in URLs and step-indicator keys. */
-    id: "welcome" | "profile" | "catalogue" | "assemblies" | "buyer" | "agents" | "review";
+    id: "profile" | "catalogue" | "assemblies" | "buyer" | "agents" | "review";
     /** 1-based step number for the visible indicator. */
     number: number;
     /** Human-readable label. */
     label: string;
-    /** Sub-route under `/members/`. Empty string for the welcome screen. */
+    /** Sub-route under `/members/`. Always non-empty — the wizard opens on Identity. */
     path: string;
     /**
      * When true, the seller may ship without filling this step. The
@@ -220,15 +220,16 @@ export interface OnboardingStep {
     optional: boolean;
 }
 
+// No welcome step (operator rule 2026-08-06): /join owns the membership
+// pitch, so the wizard opens directly on Identity.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
-    { id: "welcome", number: 1, label: "Welcome", path: "", optional: false },
-    { id: "profile", number: 2, label: "Identity", path: "identity", optional: false },
-    { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
-    { id: "assemblies", number: 4, label: "Assemblies", path: "assemblies", optional: false },
+    { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },
+    { id: "catalogue", number: 2, label: "Catalogue", path: "catalogue", optional: false },
+    { id: "assemblies", number: 3, label: "Assemblies", path: "assemblies", optional: false },
     // The buyer page sits BEFORE agents so the agents step delegates
     // control of the member's whole profile — seller and buyer alike.
-    { id: "buyer", number: 5, label: "Buyer", path: "buyer", optional: true },
-    { id: "agents", number: 6, label: "Agents", path: "agents", optional: true },
-    { id: "review", number: 7, label: "Review", path: "review", optional: false },
+    { id: "buyer", number: 4, label: "Buyer", path: "buyer", optional: true },
+    { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
+    { id: "review", number: 6, label: "Review", path: "review", optional: false },
 ];
 

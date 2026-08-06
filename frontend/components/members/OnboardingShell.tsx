@@ -18,7 +18,7 @@ interface OnboardingShellProps {
  * an optional lead paragraph, and the step body.
  *
  * Wallet-not-connected case: each step decides whether to render its
- * own connect-wallet prompt (the welcome screen does not require a
+ * own connect-wallet prompt (the doorway does not require a
  * wallet; later screens do). The shell does not gate.
  */
 export function OnboardingShell({

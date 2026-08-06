@@ -4,6 +4,7 @@ import { ConnectWallet } from "@/components/shared/ConnectWallet";
 import { YourTurnBadge } from "@/components/shared/YourTurnBadge";
 import { HeaderShell } from "@/components/shared/HeaderShell";
 import { NavLinksRow } from "@/components/shared/NavLinksRow";
+import { usePathname } from "next/navigation";
 import { NAV_LINKS_APP_PRIMARY, NAV_LINKS_APP_DRAWER } from "@/components/shared/navLinks";
 import { useWalletConnected } from "@/hooks/useWalletConnected";
 
@@ -27,6 +28,11 @@ import { useWalletConnected } from "@/hooks/useWalletConnected";
  */
 export function Header() {
     const walletConnected = useWalletConnected();
+    const pathname = usePathname();
+    // The App row lists surfaces for a REGISTERED member with a live stake;
+    // the registration surfaces address a wallet that may hold none yet, so
+    // /members/* renders without it (operator rule 2026-08-06).
+    const onRegistration = pathname === "/members" || pathname.startsWith("/members/");
     return (
         <HeaderShell
             right={
@@ -36,7 +42,7 @@ export function Header() {
                 </>
             }
             mobileLinks={NAV_LINKS_APP_DRAWER}
-            bottomRow={
+            bottomRow={onRegistration ? undefined : (
                 <div className="hidden md:flex items-center gap-4">
                     <span className="text-[11px] font-semibold text-neutral-500" data-testid="app-tier-label">
                         Figaro App
@@ -47,7 +53,7 @@ export function Header() {
                         variant="secondary"
                     />
                 </div>
-            }
+            )}
         />
     );
 }

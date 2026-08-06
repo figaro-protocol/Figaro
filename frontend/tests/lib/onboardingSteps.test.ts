@@ -6,9 +6,8 @@ import { ONBOARDING_STEPS } from "@/lib/member/onboardingState";
 // step delegates control of the member's WHOLE profile — seller and
 // buyer alike.
 describe("ONBOARDING_STEPS — member wizard order", () => {
-    it("runs welcome → identity → catalogue → assemblies → buyer → agents → review", () => {
+    it("runs identity → catalogue → assemblies → buyer → agents → review (no welcome — /join owns the pitch)", () => {
         expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual([
-            "welcome",
             "profile",
             "catalogue",
             "assemblies",
@@ -19,7 +18,7 @@ describe("ONBOARDING_STEPS — member wizard order", () => {
     });
 
     it("numbers the steps contiguously for the indicator", () => {
-        expect(ONBOARDING_STEPS.map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+        expect(ONBOARDING_STEPS.map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6]);
     });
 
     it("keeps the buyer step optional — a member who only sells skips it", () => {
