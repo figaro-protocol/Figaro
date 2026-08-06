@@ -4,7 +4,7 @@
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
 //   The four entries: Kernel (the substrate), Builders (affordances),
-//   Users (participation via /discover), Groups (the working groups; the
+//   Join (membership), Groups (the working groups; the
 //   paper corpus is reached through it — papers are discussion starters,
 //   and the goal is groups forming worldwide, spontaneously). The
 //   logo links home; no "Home" item here.
@@ -32,7 +32,7 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
     { href: "/kernel", label: "Kernel" },
     { href: "/builders", label: "Builders" },
-    { href: "/users", label: "Users" },
+    { href: "/join", label: "Join" },
     { href: "/working-groups", label: "Groups" },
 ];
 
@@ -112,9 +112,9 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         ],
     },
     {
-        section: "Users",
+        section: "Join",
         links: [
-            { href: "/users", label: "Users" },
+            { href: "/join", label: "Join" },
             { href: "/data", label: "Your records" },
             { href: "/discover", label: "Discover sellers" },
             { href: "/members", label: "Members" },
