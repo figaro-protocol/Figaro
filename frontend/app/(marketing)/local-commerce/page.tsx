@@ -127,7 +127,7 @@ export default function LocalCommercePage() {
                         <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading font-medium hover:underline">
                             Look at the registry
                         </Link>
-                        <span className="text-ink-body"> &mdash; before launch it opens as an empty room. Browse who has enrolled so far and place a bonded order &mdash; or be the first name in it.</span>
+                        <span className="text-ink-body"> &mdash; it opens as an empty room until sellers enroll. Browse who has enrolled so far and place a bonded order &mdash; or be the first name in it.</span>
                     </li>
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>

@@ -32,7 +32,7 @@ export default function Users() {
 
             <MarketingSection title="Two paths.">
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    The network is early &mdash; pre-launch &mdash; and the registry fills as sellers join. What follows is how each side works once you are on it.
+                    The registry fills as sellers join. What follows is how each side works once you are on it.
                 </p>
                 <div className="space-y-10">
                     <div>

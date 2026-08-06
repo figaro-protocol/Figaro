@@ -320,7 +320,7 @@ function attestViaResolver(
                     </table>
                 </div>
                 <p className="text-xs text-ink-muted mt-4">
-                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table when it goes live; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is on Integrate.
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is on Integrate.
                 </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}

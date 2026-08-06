@@ -16,9 +16,6 @@ export default function Protocol() {
             <p className="text-body-lead text-ink-muted italic mb-8">
                 Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine.
             </p>
-            <p className="text-sm text-ink-muted italic mb-8">
-                The network is pre-launch: what follows describes how a deal works, not a marketplace running today.
-            </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The short version is a lockbox: both sides put in a stake, more than the deal is worth. The lockbox is a small program that runs in the open, owned by no one, that holds the stakes and follows one fixed rule. Here is the exact version. Say the deal is worth ten tokens, in any ERC20 (a standard kind of digital token) the participants accept &mdash; often a stablecoin, a token designed to hold a steady price. The number here differs from other worked examples on this site; only the 2&times; ratio is ever fixed, never the number. The buyer locks twenty &mdash; the ten they owe, and ten more of their own as a stake. The seller locks twenty too, all of it stake. Forty is now held, and until the deal is done, neither side can reach any of it.
             </p>
