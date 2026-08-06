@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
+import { LabelledListRow } from "@/components/shared/LabelledListRow";
 
 export const metadata: Metadata = {
     title: "Security — Figaro Protocol",
@@ -323,21 +324,23 @@ export default function Security() {
             </MarketingSection>
 
             <MarketingSection title="What else you should know." sectionId="compatibility">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
+                <p className="text-base text-ink-body leading-relaxed mb-6">
                     Four operational facts that aren&apos;t vulnerabilities but are worth knowing before you commit to the protocol.
                 </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading font-medium">A trade here is still an ordinary trade, tax- and law-wise.</strong> A trade settled through Figaro is an ordinary sale or purchase in your jurisdiction &mdash; the same income, sales-tax/VAT, and consumer-law treatment as any direct trade. Using a protocol changes none of your obligations, and the runtime already carries the fiscal limb that helps you meet them: at settlement, a paid seller can split its own receipts onward to earmarked recipients in one transaction, through a composed public multisender &mdash; a tax set-aside, savings, a welfare or mutual-aid contribution, each an address and a share, with the fiscal trail (which address got which share of which receipt) falling out of the chain record as a byproduct. Figaro is a protocol, not an adviser or a regulated intermediary; nothing on this site is legal or tax advice.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading font-medium">Gas ceilings per process.</strong> Two separate gas constraints govern a process. <em>Resolution</em> settles every order in a single transaction, so its per-call gas cost gates the per-process size: at Ethereum mainnet&apos;s 30M block gas limit, roughly 1,240 orders (~23k gas per order, measured all-in on transaction receipts &mdash; 23,000 &times; 1,240 &asymp; 28.5M, under the 30M ceiling). <em>Commit</em> is the other constraint &mdash; each commit is its own transaction (~144k gas for a sub-order, ~235k for the process root), so a single block can land about 200 commits (144,000 &times; 200 &asymp; 28.8M, likewise under the ceiling) and a 1,200-order process needs roughly 6 blocks to assemble before it can resolve. In dollar terms: at typical mainnet gas prices, a single commit or resolution costs cents to a few dollars &mdash; the exact figure moves with the network&apos;s own gas price at the time, not with anything Figaro sets or charges. Both gas numbers above are chain-specific; a chain with a higher block gas limit raises both proportionally. Large coordinations should compose across processes &mdash; the kernel supports this structurally &mdash; rather than push a single process toward either ceiling.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you intend to pay with &mdash; the common standard for tokens on Ethereum &mdash; takes a percentage on transfer, FigaroCore refuses the commit. This is intentional: the bond arithmetic depends on the kernel receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    <strong className="text-ink-heading font-medium">Single settlement currency per process.</strong> A process cannot mix ERC-20s &mdash; the 2:1 bond ratio is a same-unit comparison, and an oracle or DEX dependency would reintroduce a trusted actor. Multi-token behavior is achievable through composition (parallel processes in different currencies), not within one process.
-                </p>
+                <ul className="space-y-6">
+                    <LabelledListRow label="Tax and law" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">A trade here is still an ordinary trade.</strong> The same income, sales-tax/VAT, and consumer-law treatment as any direct trade in your jurisdiction &mdash; using a protocol changes none of your obligations. The runtime carries the fiscal limb that helps you meet them: at settlement, a paid seller splits its own receipts onward to earmarked recipients (a tax set-aside, savings, a mutual-aid contribution) in one transaction through the composed public multisender, and the fiscal trail falls out of the chain record as a byproduct. Figaro is a protocol, not an adviser; nothing on this site is legal or tax advice.
+                    </LabelledListRow>
+                    <LabelledListRow label="Gas ceilings" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">Two separate gas constraints govern a process.</strong> <em>Resolution</em> settles every order in one transaction, so it gates process size: at Ethereum mainnet&apos;s 30M block gas limit, roughly 1,240 orders (~23k gas per order; 23,000 &times; 1,240 &asymp; 28.5M). <em>Commit</em> is per-transaction (~144k gas for a sub-order, ~235k for the process root), so a block lands about 200 commits and a 1,200-order process needs roughly 6 blocks to assemble. A single commit or resolution costs cents to a few dollars at typical mainnet prices &mdash; the figure moves with the network&apos;s gas price, not with anything Figaro sets or charges. Both numbers are chain-specific and rise with a chain&apos;s block gas limit. Large coordinations compose across processes rather than pushing one process toward either ceiling.
+                    </LabelledListRow>
+                    <LabelledListRow label="Fee-on-transfer" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you pay with takes a percentage on transfer, FigaroCore refuses the commit &mdash; the bond arithmetic depends on the kernel receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.
+                    </LabelledListRow>
+                    <LabelledListRow label="One currency" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">Single settlement currency per process.</strong> A process cannot mix ERC-20s &mdash; the 2:1 bond ratio is a same-unit comparison, and an oracle or DEX dependency would reintroduce a trusted actor. Multi-token behavior composes as parallel processes in different currencies, never within one.
+                    </LabelledListRow>
+                </ul>
             </MarketingSection>
 
         </>

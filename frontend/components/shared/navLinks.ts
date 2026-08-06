@@ -20,8 +20,8 @@
 //   section.
 //
 // - `NAV_LINKS_MARKETING_DRAWER` is the marketing mobile drawer, derived from
-//   `MARKETING_MAP` (which the footer renders as columns). Same grouped shape
-//   as the (app) drawer.
+//   `MARKETING_MAP` (which `NavTreeRow` renders as desktop disclosure
+//   submenus). Same grouped shape as the (app) drawer.
 export interface NavLink {
     href: string;
     label: string;
@@ -79,9 +79,9 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 /**
  * The marketing map — the canonical section→pages structure of the `(marketing)`
  * tier, grouped under the four publication doorways (each group's first entry
- * IS its doorway). ONE source, two renderings: `Footer` lays each group out as a
- * column; `NAV_LINKS_MARKETING_DRAWER` flattens it with section headers. Add a
- * marketing page here and both surfaces carry it.
+ * IS its doorway). ONE source, two renderings: `NavTreeRow` opens each group as
+ * a desktop disclosure submenu; `NAV_LINKS_MARKETING_DRAWER` flattens it with
+ * section headers. Add a marketing page here and both surfaces carry it.
  */
 export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
@@ -114,7 +114,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "Join",
         links: [
             { href: "/members", label: "Join" },
-            { href: "/data", label: "Your records" },
+            { href: "/data", label: "Data" },
             { href: "/discover", label: "Discover sellers" },
             { href: "/members/manage", label: "Manage membership" },
             { href: "/agents", label: "Agents" },
