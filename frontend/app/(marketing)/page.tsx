@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
 
 export const metadata: Metadata = {
     title: "Figaro Protocol",
@@ -35,6 +36,13 @@ export default function Home() {
                     Figaro answers differently: deals rarely need an enforcer at all &mdash; both sides stake tokens worth more than cheating could gain &mdash; the market&apos;s map is public, your details are yours to keep or to sell, the people in each deal decide the split, and the network pays whoever builds the parts everyone shares.
                 </p>
             </MarketingHero>
+
+            {/* The whole stack, drawn once — HOME owns this figure (operator
+                rule 2026-08-06); /spec's "the stack as a whole is summarised
+                on the home page" points here. Additive: no home beat moved. */}
+            <section className="container mx-auto px-6 pb-4 max-w-3xl">
+                <SystemLayersFigure />
+            </section>
 
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">When a deal goes wrong</h2>

@@ -58,7 +58,7 @@ FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|b
 # platform world), enumerated below; papers are file-exempt (Howey/MiCA quotes,
 # citation titles, Bitcoin-as-money analysis — swept + sanctioned 2026-08-03).
 FAIL_MONEY='\bmoney\b'
-ALLOWED_MONEY='hold the money, decide|real money is a common|Historical money names|ordinary money|hold its money|your identity, your money|money judgment|happens with real money, once'
+ALLOWED_MONEY='hold the money, decide|real money is a common|Historical money names|your identity, your money|money judgment'
 
 # Forum-jurisdiction drift is BANNED (operator, 2026-08-05 — recurring correction,
 # ~17 instances across sessions): forums and courts rule REGARDLESS of whether the
