@@ -40,6 +40,9 @@ export default function Join() {
             </MarketingSection>
 
             <MarketingSection title="Joining." bottomPad="wide">
+                <p className="text-base text-ink-body leading-relaxed mb-6">
+                    You need a wallet.
+                </p>
                 <div className="overflow-x-auto mb-6">
                     <table className="w-full max-w-2xl text-sm text-left">
                         <thead>
@@ -48,9 +51,6 @@ export default function Join() {
                                 <th className="py-2 font-semibold">What you do</th>
                             </tr>
                         </thead>
-                        <p className="text-base text-ink-body leading-relaxed">
-                            You need a wallet.
-                        </p>
                         <tbody className="text-ink-body">
                             <tr className="border-b border-default"><td className="py-2 pr-4">Welcome</td><td className="py-2">See what membership is.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Identity</td><td className="py-2">Name, description, location, the tokens you accept.</td></tr>
