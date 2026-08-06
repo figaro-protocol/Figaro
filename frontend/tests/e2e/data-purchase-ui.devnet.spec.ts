@@ -50,6 +50,14 @@ const LICENSE = {
     redistribution: 'prohibited',
 } as const;
 const DATA_ITEM_ID = 'flight-records-stream';
+// The SELLER-posture copy of the same deals — the member also sells the
+// records it co-produced as the surveys' SELLER, as a one-time snapshot.
+const LICENSE_SELLER = {
+    licenseScope: 'Aerial-survey archive, one-time snapshot',
+    access: 'snapshot',
+    redistribution: 'prohibited',
+} as const;
+const DATA_ITEM_SELLER = 'survey-archive-snapshot';
 
 /** Seed (idempotently re-assert) the data seller: subscribed to the survey
  *  assembly it BUYS through, offering the flight-record data it co-produced
@@ -76,6 +84,11 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
         clauseId: recordClauseId,
         posture: 'buyer' as const,
     };
+    const dataSoldSeller = {
+        compositionHash: survey!.compositionHash,
+        clauseId: recordClauseId,
+        posture: 'seller' as const,
+    };
 
     const { uri: catalogueURI } = await pinJSONToIPFS({
         subjectAddress: DATA_SELLER,
@@ -90,6 +103,15 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
             available: true,
             dataSold,
             clauseValues: { 'figaro-data-license': { ...LICENSE } },
+        }, {
+            id: DATA_ITEM_SELLER,
+            name: 'Survey archive — snapshot',
+            description: 'The survey records this wallet co-produced as a seller, licensed as a one-time snapshot.',
+            price: '3',
+            category: 'data',
+            available: true,
+            dataSold: dataSoldSeller,
+            clauseValues: { 'figaro-data-license': { ...LICENSE_SELLER } },
         }],
     });
     await seedRegisteredMember({
@@ -107,16 +129,16 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
                 counterpartyBindings: [],
             }],
             buyerAssemblies: [{ compositionHash: survey!.compositionHash }],
-            disclosurePolicy: [{ ...dataSold, offered: true }],
+            disclosurePolicy: [{ ...dataSold, offered: true }, { ...dataSoldSeller, offered: true }],
         },
     });
     return { recordClauseId };
 }
 
 test.describe('Buyer-side data sale through the UI (devnet)', () => {
-    test.setTimeout(240_000);
+    test.setTimeout(420_000);
 
-    test('the buyer-side data is discovered, ordered, committed, and settled', async ({ page }) => {
+    test('both market sides sell: buyer-posture and seller-posture data are discovered, ordered, committed, and settled', async ({ page }) => {
         // Resolve raises a native window.confirm — auto-accept it.
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         const config = readLocalDeploymentConfig();
@@ -250,5 +272,84 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         expect(buyerBefore - buyerFinal, 'buyer net paid exactly the record price').toBe(payment);
         expect(sellerFinal - sellerBefore, 'the record owner net earned exactly the record price').toBe(payment);
         expect(coreFinal, 'escrow returned to baseline').toBe(coreBefore);
+
+        // ═══ LEG 2 — the SELLER-posture copy through the SAME UI: both market
+        // sides sell. Fresh balance baselines; the cart still carries leg 1's
+        // item (checkout does not clear it), so remove it first. ═══
+        await page.goto(`/s/view?seller=${DATA_SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId(`disclosure-data-${recordClauseId}-seller`),
+            'the seller-side data offer is listed',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.getByTestId(`catalogue-item-data-sold-${DATA_ITEM_SELLER}`),
+            'the seller-posture item carries its data marking',
+        ).toBeVisible();
+        const removeLeg1 = page.getByRole('button', { name: 'Remove one Flight records — live stream' });
+        if (await removeLeg1.isVisible().catch(() => false)) {
+            await removeLeg1.click();
+        }
+        await page.getByTestId(`btn-add-${DATA_ITEM_SELLER}`).click();
+        await page.getByTestId('btn-review-order').click();
+        await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        await expect(
+            page.locator('[data-testid^="checkout-field-"][data-testid*="figaro-data-license"]'),
+            'seller-posture license terms are folded from the item too',
+        ).toHaveCount(0);
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowStart"]').first().fill('2026-09-01T09:00');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowEnd"]').first().fill('2026-10-01T09:00');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-content-handoff-contentHandoff-encrypted-transfer"]').first().check();
+        const place2 = page.getByTestId('btn-place-order');
+        await expect(place2).toHaveText(/Place order/, { timeout: 20000 });
+        await place2.click();
+        const preview2 = page.getByTestId('agreement-preview-modal');
+        await preview2.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(preview2, 'the seller-posture folded scope is in the agreement')
+            .toContainText(LICENSE_SELLER.licenseScope);
+        await page.getByTestId('preview-confirm').click();
+        await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
+        await page.getByTestId('send-commitment-xmtp').click();
+        await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
+
+        await gotoAsWallet(page, DATA_SELLER, '/orders?e2e=devnet');
+        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await page.getByTestId('btn-accept-order').first().click();
+        const sellerPreview2 = page.getByTestId('agreement-preview-modal');
+        await sellerPreview2.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(sellerPreview2).toContainText(LICENSE_SELLER.licenseScope);
+        await page.getByTestId('preview-confirm').click();
+
+        await expect.poll(async () => (await queryCommitted()).length, {
+            timeout: 60000, message: 'the second OrderCommitted lands on-chain',
+        }).toBe(committedBefore.length + 2);
+        const afterLeg2 = await queryCommitted();
+        const event2 = afterLeg2[afterLeg2.length - 1];
+        expect(event2.args.seller?.toLowerCase()).toBe(DATA_SELLER.toLowerCase());
+        const processId2 = event2.args.processId!;
+        const resolved2Before = (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: DATA_BUYER }, fromBlock: 0n,
+        })).length;
+        await gotoAsWallet(page, DATA_BUYER, `/orders/view?process=${processId2}&e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const resolveBtn2 = page.getByTestId('capability-execute-resolve-process');
+        await resolveBtn2.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(resolveBtn2).toBeEnabled({ timeout: 30000 });
+        await resolveBtn2.click();
+        await expect.poll(async () => (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: DATA_BUYER }, fromBlock: 0n,
+        })).length, { timeout: 60000, message: 'the second ProcessResolved lands on-chain' }).toBe(resolved2Before + 1);
+
+        const payment2 = event2.args.payment!;
+        const [buyerEnd, sellerEnd, coreEnd] = await Promise.all([
+            balanceOf(DATA_BUYER), balanceOf(DATA_SELLER), balanceOf(core),
+        ]);
+        expect(buyerFinal - buyerEnd, 'buyer net paid exactly the seller-posture record price').toBe(payment2);
+        expect(sellerEnd - sellerFinal, 'the record owner net earned it — both market sides sell').toBe(payment2);
+        expect(coreEnd, 'escrow returned to baseline again').toBe(coreFinal);
     });
 });

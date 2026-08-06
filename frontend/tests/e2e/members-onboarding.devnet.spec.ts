@@ -110,6 +110,15 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
     await assemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
     await assemblyRow.locator('input[type="checkbox"]').first().check();
+    // SELLER-side data: offer the first row derived from the binding — BOTH
+    // market sides declare through the same editor, each on its own step.
+    const sellerOfferBox = page
+        .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-seller-offer"]`)
+        .first();
+    await sellerOfferBox.waitFor({ state: 'visible', timeout: 30_000 });
+    if (!(await sellerOfferBox.isChecked())) {
+        await sellerOfferBox.check();
+    }
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
 
@@ -202,12 +211,13 @@ test.describe("seller registration wizard (devnet)", () => {
             // subscription and one offered buyer-posture class. An older
             // seller-only profile gets repaired in update mode.
             const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ compositionHash: string }>;
-            const buyerOffered = ((doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean }>)
-                .some((e) => e.posture === "buyer" && e.offered === true);
+            const policyEntries = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean }>;
+            const buyerOffered = policyEntries.some((e) => e.posture === "buyer" && e.offered === true);
+            const sellerOffered = policyEntries.some((e) => e.posture === "seller" && e.offered === true);
             conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug
                 && !!permitToken
                 && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
-                && buyerSubs.length >= 1 && buyerOffered;
+                && buyerSubs.length >= 1 && buyerOffered && sellerOffered;
         }
         if (!uriBefore || !conformant) {
             await onboardViaWizard(page, singleOrderSlug!);
@@ -230,6 +240,8 @@ test.describe("seller registration wizard (devnet)", () => {
             const policy = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean; compositionHash: string }>;
             const buyerEntry = policy.find((e) => e.posture === "buyer" && e.offered === true);
             expect(buyerEntry, "offered buyer-side data is in the pinned profile").toBeTruthy();
+            const sellerEntry = policy.find((e) => e.posture === "seller" && e.offered === true);
+            expect(sellerEntry, "offered seller-side data is in the pinned profile — both market sides declare").toBeTruthy();
             expect(
                 buyerSubs.some((s) => s.compositionHash === buyerEntry!.compositionHash),
                 "the offered buyer class derives from a subscribed assembly",
