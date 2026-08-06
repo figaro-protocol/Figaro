@@ -30,6 +30,7 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 
@@ -119,6 +120,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
             widthMm: catalogueItem.widthMm,
             heightMm: catalogueItem.heightMm,
             clauseValues: catalogueItem.clauseValues,
+            recordClass: catalogueItem.recordClass,
         });
     };
 
@@ -185,15 +187,16 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                     </span>
                                 )}
                                 {(() => {
-                                    // Data-disclosure declaration — same grammar as the
-                                    // accepted-token chip. Absent policy renders nothing:
+                                    // Data-disclosure declaration — summary chip; the
+                                    // class-by-class list renders as its own section
+                                    // below the hero. Absent policy renders nothing:
                                     // the default (each party holds its own copy) is not a
                                     // declaration to display.
                                     const offered = sellerCatalogue.disclosurePolicy?.filter((e) => e.offered) ?? [];
                                     if (offered.length === 0) return null;
                                     return (
-                                        <span data-testid="seller-disclosure-policy">
-                                            Data disclosure: {offered.length} record class{offered.length === 1 ? "" : "es"} offered
+                                        <span>
+                                            Data: {offered.length} record class{offered.length === 1 ? "" : "es"} offered
                                         </span>
                                     );
                                 })()}
@@ -204,6 +207,55 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         </div>
                     </div>
                 </header>
+
+                {/* Records offered — the member's declared disclosure classes,
+                    class by class: what record, which side they co-produced it
+                    on, who may buy, and when it opens. The PRICED form of a
+                    class is a catalogue item below carrying its recordClass. */}
+                {(() => {
+                    const offered = sellerCatalogue.disclosurePolicy?.filter((e) => e.offered) ?? [];
+                    if (offered.length === 0) return null;
+                    return (
+                        <section
+                            className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3"
+                            data-testid="seller-disclosure-policy"
+                        >
+                            <p className="text-xs font-semibold text-neutral-500">Records offered</p>
+                            <ul className="space-y-2 text-sm text-neutral-700">
+                                {offered.map((entry) => {
+                                    const title = getClauseSpec(entry.clauseId)?.title ?? entry.clauseId;
+                                    const embargo = entry.calendar?.embargoDaysAfterSettlement;
+                                    return (
+                                        <li
+                                            key={`${entry.compositionHash}-${entry.clauseId}-${entry.posture}`}
+                                            className="flex flex-wrap items-baseline gap-x-2"
+                                            data-testid={`disclosure-class-${entry.clauseId}-${entry.posture}`}
+                                        >
+                                            <span className="font-medium text-black">{title}</span>
+                                            <span className="text-neutral-500">records, co-produced as {entry.posture}</span>
+                                            <span className="text-neutral-500">
+                                                · {entry.whitelist?.length
+                                                    ? `${entry.whitelist.length} wallet${entry.whitelist.length === 1 ? "" : "s"} whitelisted`
+                                                    : "any counterparty"}
+                                            </span>
+                                            <span className="text-neutral-500">
+                                                · {embargo
+                                                    ? `opens ${embargo} day${embargo === 1 ? "" : "s"} after settlement`
+                                                    : "available on settlement"}
+                                            </span>
+                                            <code className="text-[11px] text-neutral-400 font-mono">
+                                                {entry.compositionHash.slice(0, 10)}…
+                                            </code>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <p className="text-xs text-neutral-500">
+                                Priced classes appear in the catalogue below as data-product items.
+                            </p>
+                        </section>
+                    );
+                })()}
 
                 {/* Seller track record — public-graph-derived settlement
                     + coordination history, recomputed from on-chain events. */}
@@ -241,6 +293,15 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-black mb-1">{catalogueItem.name}</h3>
                                                             <p className="text-sm text-neutral-500 mb-2">{catalogueItem.description}</p>
+                                                            {catalogueItem.recordClass && (
+                                                                <p
+                                                                    className="text-[11px] text-neutral-500 mb-2"
+                                                                    data-testid={`catalogue-item-record-class-${catalogueItem.id}`}
+                                                                >
+                                                                    Data product · {getClauseSpec(catalogueItem.recordClass.clauseId)?.title ?? catalogueItem.recordClass.clauseId} records,
+                                                                    co-produced as {catalogueItem.recordClass.posture}
+                                                                </p>
+                                                            )}
                                                             {(catalogueItem.massGrams || catalogueItem.volumeMl) && (
                                                                 <p
                                                                     className="text-[11px] text-neutral-500 mb-2 flex flex-wrap gap-x-2"

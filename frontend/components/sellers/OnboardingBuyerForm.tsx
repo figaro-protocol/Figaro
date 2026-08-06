@@ -226,12 +226,23 @@ export function OnboardingBuyerForm({
             />
 
             {subscribed.size > 0 && (
-                <Card className="p-6 text-sm text-ink-body">
-                    Price what you offered: list each record class as an item in{" "}
-                    <Link href="/members/catalogue" className="text-ink-heading font-medium hover:underline">
-                        your catalogue
-                    </Link>
-                    {" "}— fixed or rate, in the tokens you accept.
+                <Card className="p-6 text-sm text-ink-body space-y-2">
+                    <p>
+                        Price what you offered: list each record class as an item in{" "}
+                        <Link href="/members/catalogue" className="text-ink-heading font-medium hover:underline">
+                            your catalogue
+                        </Link>
+                        {" "}— fixed or rate, in the tokens you accept. The item&apos;s
+                        license terms (scope, access, redistribution, source
+                        processes) are authored on the item and ride into the
+                        agreement both parties sign.
+                    </p>
+                    <p>
+                        To make those items orderable, bind a data-sale assembly on
+                        the assemblies step — one whose composition carries the
+                        data-license and content-handoff terms, like the anchored
+                        data-stream subscription reference.
+                    </p>
                 </Card>
             )}
 

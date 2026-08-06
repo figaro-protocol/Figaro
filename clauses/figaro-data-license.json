@@ -2,7 +2,7 @@
     "clauseId": "figaro-data-license",
     "version": 1,
     "title": "Data license",
-    "description": "The terms of a DATA SALE \u2014 a bonded order whose value-added IS access to records (a dataset, a stream, the books behind settled processes). Composes alongside figaro-commerce (the sale itself) and figaro-content-handoff (the delivery \u2014 encrypted-transfer for counterparty-private data); the seller's offer, price, whitelist, and calendar are catalogue and profile concerns, never fields here. Licensed records are self-authenticating when sourceProcesses is set: each disclosed leaf travels with its merkle inclusion proof against that process's on-chain agreementHash, so the licensee verifies provenance against the chain rather than the licensor's word \u2014 and the 2\u00d7 bond replaces pre-inspection, which is what makes pricing data possible without first revealing it. Redistribution cannot be prevented on-chain; the term creates timestamped, co-signed EVIDENCE for the outer recourse layers (co-seller pressure, arbitration forums, ordinary courts), the same posture as every off-chain obligation. The sustainable product is the stream, not the snapshot: a stream licensee who breaches loses the continuing stream. Compose figaro-schedule alongside for time-bounded access windows and figaro-geolocation for territory \u2014 those are their clauses' concerns, never fields here.",
+    "description": "The terms of a DATA SALE \u2014 a bonded order whose value-added IS access to records (a dataset, a stream, the books behind settled processes). Composes alongside figaro-commerce (the sale itself) and figaro-content-handoff (the delivery \u2014 encrypted-transfer for counterparty-private data). The license terms are CATALOGUE-AUTHORED (checkout.catalogueFills): the record's owner writes them on the data-product item \u2014 the item whose recordClass names the disclosure class being sold \u2014 and checkout folds them into the agreement both parties sign; the offer toggle, whitelist, and calendar stay profile concerns (the disclosure policy), and price stays the item's own price field, never a field here. Licensed records are self-authenticating when sourceProcesses is set: each disclosed leaf travels with its merkle inclusion proof against that process's on-chain agreementHash, so the licensee verifies provenance against the chain rather than the licensor's word \u2014 and the 2\u00d7 bond replaces pre-inspection, which is what makes pricing data possible without first revealing it. Redistribution cannot be prevented on-chain; the term creates timestamped, co-signed EVIDENCE for the outer recourse layers (co-seller pressure, arbitration forums, ordinary courts), the same posture as every off-chain obligation. The sustainable product is the stream, not the snapshot: a stream licensee who breaches loses the continuing stream. Compose figaro-schedule alongside for time-bounded access windows and figaro-geolocation for territory \u2014 those are their clauses' concerns, never fields here.",
     "fields": [
         {
             "name": "licenseScope",
@@ -72,7 +72,13 @@
             "composes": null
         },
         "checkout": {
-            "catalogueFills": [],
+            "catalogueFills": [
+                "licenseScope",
+                "purpose",
+                "access",
+                "redistribution",
+                "sourceProcesses"
+            ],
             "profileFills": []
         },
         "runtime": {
