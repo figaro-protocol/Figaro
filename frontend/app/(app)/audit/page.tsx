@@ -17,6 +17,7 @@ import type { Metadata } from "next";
  */
 
 import { HashVerifier } from "./_components/HashVerifier";
+import { ProcessAuditOpen } from "./_components/ProcessAuditOpen";
 
 export const metadata: Metadata = {
     title: "Audit — Figaro Protocol",
@@ -32,11 +33,14 @@ export default function AuditPage() {
                 </h1>
                 <p className="text-sm text-ink-body max-w-2xl">
                     Paste content or a hash from an audit bundle to verify against
-                    chain. For process-bound audit (financials, audit-bundle PDF,
-                    and verifier scoped to the process), open <code>/audit/view?process=…</code>{" "}
-                    directly.
+                    chain. For process-bound audit &mdash; the timeline, financials,
+                    clause evidence, and the audit-bundle PDF &mdash; paste a process ID
+                    below and open its full record. No wallet, no account: anyone
+                    holding a process ID can read any deal&apos;s record.
                 </p>
             </header>
+
+            <ProcessAuditOpen />
 
             <HashVerifier />
         </div>

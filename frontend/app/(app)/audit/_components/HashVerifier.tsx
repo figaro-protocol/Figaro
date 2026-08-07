@@ -331,8 +331,8 @@ function SearchMode() {
             {hash.trim() && hits.length === 0 && (
                 <div className="rounded border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-600" data-testid="verify-search-no-hits">
                     No match in locally-loaded orders + agreements. Try modes A or B
-                    with the hash&apos;s source content, or open the relevant
-                    process audit at /audit/view?process=… first.
+                    with the hash&apos;s source content, or open the relevant process
+                    audit first with the process-ID field above.
                 </div>
             )}
             {hits.length > 0 && (
