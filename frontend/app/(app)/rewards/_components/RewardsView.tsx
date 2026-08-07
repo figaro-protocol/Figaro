@@ -103,6 +103,25 @@ export function RewardsView() {
                     </p>
                 )}
 
+                {rewards.available && rewards.readState === "loading" && (
+                    <p className="text-base text-ink-muted" data-testid="rewards-loading">
+                        Reading periods and your accrual from the chain&hellip;
+                    </p>
+                )}
+                {rewards.available && rewards.readState === "error" && (
+                    <p className="text-base text-ink-body" data-testid="rewards-read-error">
+                        The chain read failed &mdash; this page could not reach the network your
+                        wallet is connected to. Check your RPC endpoint and network, then reload.
+                        <span className="block mt-2 text-sm text-ink-muted font-mono break-all">{rewards.readError}</span>
+                    </p>
+                )}
+                {rewards.available && rewards.readState === "ready" && rewards.periods.length === 0 && (
+                    <p className="text-base text-ink-muted" data-testid="rewards-no-periods">
+                        No reward periods exist on this network yet. Usage starts counting the
+                        moment a period opens; author a clause or an assembly and the deals that
+                        carry it accrue to this wallet here.
+                    </p>
+                )}
                 <div className="space-y-6">
                     {rewards.periods.map((t) => {
                         const status = periodStatus(t);

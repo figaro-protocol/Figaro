@@ -78,6 +78,8 @@ export function useRpgfRewards() {
     const { writeContractAsync } = useWriteContract();
 
     const [periods, setPeriods] = useState<RpgfPeriodState[]>([]);
+    const [readState, setReadState] = useState<"loading" | "ready" | "error">("loading");
+    const [readError, setReadError] = useState("");
     const [refreshNonce, setRefreshNonce] = useState(0);
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
@@ -128,6 +130,7 @@ export function useRpgfRewards() {
     useEffect(() => {
         if (!minter || !counter || !publicClient) return;
         let cancelled = false;
+        setReadState("loading");
         (async () => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
@@ -220,8 +223,14 @@ export function useRpgfRewards() {
             );
             if (cancelled) return;
             setPeriods(rows);
-        })().catch(() => {
-            /* resolved-empty: the page renders the unavailable state */
+            setReadState("ready");
+        })().catch((e) => {
+            if (cancelled) return;
+            // A failed READ is never resolved-empty: silence here left a
+            // connected wallet staring at a blank page. Say what broke.
+            setPeriods([]);
+            setReadState("error");
+            setReadError(e instanceof Error ? e.message : String(e));
         });
         return () => {
             cancelled = true;
@@ -257,6 +266,8 @@ export function useRpgfRewards() {
     return {
         available: !!minter && !!counter,
         account,
+        readState,
+        readError,
         periods,
         claim,
         refresh,
