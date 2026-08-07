@@ -3,11 +3,11 @@
 #
 # The marketing nav is DERIVED from the route-group structure (operator
 # ruling 2026-08-07), one group per protocol object:
-#   (deal) -> /kernel        (section "The Deal")
-#   (compose) -> /clauses    (section "Clauses & Assemblies")
+#   (deal) -> /kernel                       (section "The Deal")
+#   (compose)+(rewards)+(spec) -> /clauses  (section "Builders" — the three
+#                                            ruled sections survive as inert
+#                                            subheadings inside the panel)
 #   (participants) -> /members
-#   (rewards) -> /rpgf
-#   (spec) -> /spec
 #   (research) -> /why
 # plus MARKET, the one all-bridge section carrying the (app) tier's
 # e-commerce tools (/discover, /orders, /audit). (reference) is footer
@@ -30,9 +30,9 @@ const SUFFIX = " — Figaro Protocol";
 const DOORWAYS = {
     "(deal)": "/kernel",
     "(compose)": "/clauses",
+    "(rewards)": "/clauses",
+    "(spec)": "/clauses",
     "(participants)": "/members",
-    "(rewards)": "/rpgf",
-    "(spec)": "/spec",
     "(research)": "/why",
 };
 const SKIP_GROUPS = new Set(["(reference)"]);

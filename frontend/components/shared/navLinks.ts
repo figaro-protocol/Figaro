@@ -31,10 +31,8 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
     { href: "/kernel", label: "The Deal" },
     { href: "/discover", label: "Market" },
-    { href: "/clauses", label: "Clauses & Assemblies" },
+    { href: "/clauses", label: "Builders" },
     { href: "/members", label: "Participants" },
-    { href: "/rpgf", label: "Rewards" },
-    { href: "/spec", label: "Specifications" },
     { href: "/why", label: "Research" },
 ];
 
@@ -79,13 +77,13 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — the ruled site tree (operator, 2026-08-07): one group
- * per protocol object, DERIVED from the route-group structure — `(deal)` →
- * The Deal, `(compose)` → Clauses & Assemblies, `(participants)` →
- * Participants, `(rewards)` → Rewards, `(spec)` → Specifications,
- * `(research)` → Research — plus Market, the one all-bridge group carrying
- * the app tier's e-commerce tools. Each group's first entry IS its doorway;
- * entry ORDER within a group is the ruled reading order, not alphabetical.
+ * The marketing map — the ruled site tree (operator, 2026-08-07), five nav
+ * entries: The Deal `(deal)`, Market (the all-bridge group carrying the app
+ * tier's e-commerce tools), Builders (`(compose)` + `(rewards)` + `(spec)`,
+ * their ruled sections surviving as inert subheadings inside the panel),
+ * Participants `(participants)`, Research `(research)`. Each group's first
+ * PAGE entry is its doorway; entry ORDER within a group is the ruled
+ * reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
  * `(reference)` (FAQ, Glossary) is footer chrome, never nav; papers are
  * reached through Working Groups; /local-commerce is DEMOTED — linked from
@@ -113,11 +111,18 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         ],
     },
     {
-        section: "Clauses & Assemblies",
+        section: "Builders",
         links: [
+            { isSectionHeader: true, label: "Clauses & Assemblies", href: "" },
             { href: "/clauses", label: "Clauses" },
             { href: "/assemblies", label: "Assemblies" },
             { href: "/composition", label: "Composition" },
+            { isSectionHeader: true, label: "Rewards", href: "" },
+            { href: "/rpgf", label: "RPGF" },
+            { isSectionHeader: true, label: "Specifications", href: "" },
+            { href: "/spec", label: "Specifications" },
+            { href: "/pitfalls", label: "Sharp edges" },
+            { href: "/security", label: "Security" },
         ],
     },
     {
@@ -125,18 +130,6 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         links: [
             { href: "/members", label: "Members" },
             { href: "/agents", label: "Agents" },
-        ],
-    },
-    {
-        section: "Rewards",
-        links: [{ href: "/rpgf", label: "RPGF" }],
-    },
-    {
-        section: "Specifications",
-        links: [
-            { href: "/spec", label: "Specifications" },
-            { href: "/pitfalls", label: "Sharp edges" },
-            { href: "/security", label: "Security" },
         ],
     },
     {

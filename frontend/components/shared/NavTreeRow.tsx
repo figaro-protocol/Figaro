@@ -71,16 +71,25 @@ export function NavTreeRow() {
                                 data-testid={`nav-tree-panel-${slug}`}
                                 className="absolute left-0 top-full mt-2 min-w-56 rounded border border-default bg-canvas shadow-lg py-2 z-50"
                             >
-                                {group.links.map((item) => (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        onClick={() => setOpen(null)}
-                                        className="block px-4 py-1.5 text-sm text-ink-body hover:bg-subtle-hover hover:text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black"
-                                    >
-                                        {item.label}
-                                    </Link>
-                                ))}
+                                {group.links.map((item, i) =>
+                                    item.isSectionHeader ? (
+                                        <div
+                                            key={`h-${item.label}`}
+                                            className={`px-4 ${i === 0 ? "pt-1" : "pt-3"} pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-muted`}
+                                        >
+                                            {item.label}
+                                        </div>
+                                    ) : (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            onClick={() => setOpen(null)}
+                                            className="block px-4 py-1.5 text-sm text-ink-body hover:bg-subtle-hover hover:text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black"
+                                        >
+                                            {item.label}
+                                        </Link>
+                                    ),
+                                )}
                             </div>
                         )}
                     </div>
