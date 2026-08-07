@@ -64,7 +64,7 @@ test.describe('Designer save-draft (devnet)', () => {
 
         await saveBtn.click();
         // handleSaveDraft preserves the ?e2e= flag, so the redirect carries a query.
-        await page.waitForURL(/\/builders\/designer(\?|$)/, { timeout: 15000 });
+        await page.waitForURL(/\/assemblies\/designer(\?|$)/, { timeout: 15000 });
 
         // localStorage: exactly the one draft we saved, keyed by an
         // auto-assigned `asm-draft-<random>` handle (no derived-from-name slug).

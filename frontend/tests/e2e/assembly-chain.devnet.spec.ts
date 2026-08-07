@@ -207,7 +207,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await counterparties.getByTestId(`counterparty-${SUPPLIER_CLAUSE}-input-0`).fill(SUPPLIER);
 
             await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/buyer/);
+            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/agents/);
+            await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/endpoints/);
             await page.getByRole('button', { name: /^Next/ }).click();
             await page.waitForURL(/\/members\/review/, { timeout: 30000 });
             await page.getByTestId('review-confirm-publish').click();

@@ -64,7 +64,7 @@ async function saveDraft(page: Page): Promise<string> {
     await expect(page.getByTestId('designer-save')).toBeEnabled({ timeout: 5000 });
     await page.getByTestId('designer-save').click();
     // Save lands on the hub, preserving ?e2e=devnet in the query.
-    await page.waitForURL(/\/builders\/designer(\?|$)/, { timeout: 15000 });
+    await page.waitForURL(/\/assemblies\/designer(\?|$)/, { timeout: 15000 });
     const row = page.locator('[data-testid^="draft-row-"]').first();
     await row.waitFor({ state: 'visible', timeout: 15000 });
     const testId = await row.getAttribute('data-testid');

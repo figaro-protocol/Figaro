@@ -116,7 +116,7 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
             </Card>
             <div className="flex flex-wrap items-center gap-4">
                 <Button type="submit" data-testid="endpoints-save">
-                    {nextHref ? "Save & continue" : "Save"}
+                    {nextHref ? "Next \u2192" : "Save"}
                 </Button>
                 {nextHref && (
                     <Link href={nextHref} className="text-sm text-ink-muted hover:underline">

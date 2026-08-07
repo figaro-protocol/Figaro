@@ -128,7 +128,11 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await myRow.waitFor({ state: 'visible', timeout: 30000 });
         await myRow.locator('input[type="checkbox"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/members\/buyer/);
+        await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/agents/);
+        await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/members\/endpoints/);
         await page.getByRole('button', { name: /^Next/ }).click();
         await page.waitForURL(/\/members\/review/, { timeout: 30000 });
         await page.getByTestId('review-confirm-publish').click();

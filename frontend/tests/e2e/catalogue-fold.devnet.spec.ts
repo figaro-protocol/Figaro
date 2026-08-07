@@ -127,7 +127,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 
-        await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        await page.waitForURL(/\/assemblies\/designer\/view\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
 
@@ -186,7 +186,11 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await myRow.waitFor({ state: 'visible', timeout: 30000 });
         await myRow.locator('input[type="checkbox"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/members\/buyer/);
+        await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/agents/);
+        await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/members\/endpoints/);
         await page.getByRole('button', { name: /^Next/ }).click();
         await page.waitForURL(/\/members\/review/, { timeout: 30000 });
         await page.getByTestId('review-confirm-publish').click();

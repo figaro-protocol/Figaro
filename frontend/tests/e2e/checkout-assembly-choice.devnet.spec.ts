@@ -99,9 +99,17 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
         await row.locator('input[type="checkbox"]').first().check();
     }
     await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/buyer/);
+
+    // Step 4 — Buyer: skip
+    await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/agents/);
 
     // Step 5 — Agents: skip
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/endpoints/);
+
+    // Step 6 — Endpoints: skip
     await page.getByRole('button', { name: /^Next/ }).click();
     await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
 

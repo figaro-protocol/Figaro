@@ -49,7 +49,7 @@ import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies";
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
-import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 
@@ -830,7 +830,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (
                                                         <div className="mt-1 mb-2 ml-3 space-y-2">
-                                                            {getClauseSpec(clauseId)?.fields.map((field) => (
+                                                            {getClauseSpec(clauseId)?.fields.filter(
+                                                                (field) => !clauseDesignFills(clauseId).includes(field.name),
+                                                            ).map((field) => (
                                                                 <FieldControl
                                                                     key={field.name}
                                                                     field={field}

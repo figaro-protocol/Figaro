@@ -175,11 +175,14 @@ export function deriveAgreementGroups(args: {
                 clauseId,
                 values: clauseValueSummary(fields),
                 data: fields as Record<string, unknown>,
-                fillable: clauseDesignFills(clauseId).length === 0
+                // Design fills are FIELD-level, not clause-level: a clause the
+                // designer tailored (a pinned geocoder, a consent document) can
+                // still carry transaction particulars the buyer authors here —
+                // it is fillable iff at least one field is NOT designer-owned.
+                fillable: specFields.some((f) => !clauseDesignFills(clauseId).includes(f.name))
                     && !clauseIsProcessLog(clauseId)
                     && clauseCatalogueFills(clauseId).length === 0
-                    && clauseProfileFills(clauseId).length === 0
-                    && specFields.length > 0,
+                    && clauseProfileFills(clauseId).length === 0,
             };
         }),
     }];
@@ -224,12 +227,11 @@ export function deriveAgreementGroups(args: {
                         // ARE fillable — the composition surface collects
                         // only its block.runtime.fields runtime params, never its
                         // content.
-                        fillable: clauseDesignFills(clauseId).length === 0
+                        fillable: specFields.some((f) =>
+                            !clauseDesignFills(clauseId).includes(f.name) && !mechanicalFields.has(f.name))
                             && !clauseIsProcessLog(clauseId)
                             && clauseCatalogueFills(clauseId).length === 0
-                            && clauseProfileFills(clauseId).length === 0
-                            && specFields.length > 0
-                            && !specFields.every((f) => mechanicalFields.has(f.name)),
+                            && clauseProfileFills(clauseId).length === 0,
                     };
                 }),
         };

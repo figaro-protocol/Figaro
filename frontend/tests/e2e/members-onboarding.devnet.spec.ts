@@ -146,6 +146,10 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
 
     // Agents: skip
     await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/endpoints/);
+
+    // Endpoints: skip (device config, optional)
+    await page.getByRole("button", { name: /^Next/ }).click();
     await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
 
     // Review + publish (pin catalogue + profile → register tx)
