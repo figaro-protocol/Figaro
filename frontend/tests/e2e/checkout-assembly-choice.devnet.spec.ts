@@ -59,7 +59,7 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
         () => {
             const bodyText = document.body.textContent || '';
             if (bodyText.includes('Loading…')) return false;
-            return bodyText.includes('Register as a seller.')
+            return bodyText.includes('Your identity')
                 || bodyText.includes('View public profile');
         },
         null,

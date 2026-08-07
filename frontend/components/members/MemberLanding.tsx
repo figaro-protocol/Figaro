@@ -44,7 +44,7 @@ export function MemberLanding() {
     const { address, isConnected } = useAccount();
     const { data: profileData, isLoading: profileLoading, refetch } = useMemberProfile(address);
     const { data: deposit } = useRegistrationDeposit();
-    const { pending } = useWithdrawalStatus(address);
+    const { pending, isLoading: withdrawalLoading, refetch: refetchWithdrawal } = useWithdrawalStatus(address);
 
     // NO doorway page (operator rule 2026-08-06): the reader arrives from
     // /join already sold — an unregistered wallet goes STRAIGHT to Identity.
@@ -53,13 +53,18 @@ export function MemberLanding() {
     // the claim surface renders here instead.
     const owedDeposit = Boolean(pending && pending > 0n);
     const unregistered = mounted && !profileLoading && (!isConnected || !profileData);
+    // The redirect decision NEEDS the withdrawal status loaded: while it is
+    // in flight, owedDeposit reads false and the race bounces a wallet that
+    // IS owed its deposit into the wizard — the exact stranded-ETH case the
+    // owedDeposit exception exists to prevent (caught by e2e 2026-08-07).
+    const depositKnown = !isConnected || !withdrawalLoading;
     useEffect(() => {
-        if (unregistered && !owedDeposit) {
+        if (unregistered && depositKnown && !owedDeposit) {
             router.replace("/members/identity");
         }
-    }, [unregistered, owedDeposit, router]);
+    }, [unregistered, depositKnown, owedDeposit, router]);
 
-    if (!mounted || (unregistered && !owedDeposit)) {
+    if (!mounted || (unregistered && (!depositKnown || !owedDeposit))) {
         return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
     }
     if (profileLoading && isConnected) {
@@ -92,7 +97,7 @@ export function MemberLanding() {
             metadataURI={metadataURI}
             registeredBlock={registeredBlock}
             deposit={deposit}
-            onWithdrawn={() => refetch()}
+            onWithdrawn={() => { refetchWithdrawal(); void refetch(); }}
         />
     );
 }
