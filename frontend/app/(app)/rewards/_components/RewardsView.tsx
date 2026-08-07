@@ -22,11 +22,13 @@ import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfR
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
-/** The period's phase, DERIVED from chain state — never stored. */
-function periodStatus(t: RpgfPeriodState): string {
+/** The period's phase, DERIVED from chain state — never stored. Periods are
+ *  consecutive windows: exactly ONE accrues at a time (the first unclosed
+ *  one); later windows have not opened yet. */
+function periodStatus(t: RpgfPeriodState, currentId: number): string {
     if (t.claimed) return "claimed";
-    if (!t.periodClosed) return "accruing";
-    return "claimable";
+    if (t.periodClosed) return "claimable";
+    return t.periodId === currentId ? "accruing" : "upcoming";
 }
 
 export function RewardsView() {
@@ -124,7 +126,8 @@ export function RewardsView() {
                 )}
                 <div className="space-y-6">
                     {rewards.periods.map((t) => {
-                        const status = periodStatus(t);
+                        const currentId = rewards.periods.find((p) => !p.periodClosed)?.periodId ?? -1;
+                        const status = periodStatus(t, currentId);
                         return (
                             <div
                                 key={t.periodId}
@@ -163,7 +166,7 @@ export function RewardsView() {
                                         </ul>
                                     </div>
                                 )}
-                                {account && t.accruals.length === 0 && (
+                                {account && t.accruals.length === 0 && status !== "upcoming" && (
                                     <p className="text-sm text-ink-muted mb-3" data-testid={`period-no-accrual-${t.periodId}`}>
                                         Nothing you authored has carried trade in this period yet.
                                     </p>
@@ -174,9 +177,14 @@ export function RewardsView() {
                                     </p>
                                 )}
                                 <div className="flex flex-wrap gap-3">
-                                    {!t.periodClosed && (
+                                    {status === "accruing" && (
                                         <p className="text-sm text-ink-muted" data-testid={`period-accruing-${t.periodId}`}>
                                             Still accruing — this period opens for claims when it ends.
+                                        </p>
+                                    )}
+                                    {status === "upcoming" && (
+                                        <p className="text-sm text-ink-muted" data-testid={`period-upcoming-${t.periodId}`}>
+                                            Not open yet — accrual starts here when the period before it ends.
                                         </p>
                                     )}
                                     {t.periodClosed && !t.claimed && (
