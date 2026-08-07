@@ -240,6 +240,29 @@ is the delivery-of-the-frontend half:
    frontend exists. Copy edits go through `figaro-marketing-copy` /
    `figaro-builders-docs` at execution time.
 
+### Task 12: GitHub Publication (the "GitHub remote/CI item" Task 11 sequences after)
+
+Pre-push decisions are the operator's alone (whether `CLAUDE.md` + `.claude/` ship
+publicly; full history vs fresh-genesis commit; the commit-identity email). The tasks:
+
+1. **Fix every fictitious `github.com/figaro-protocol/Figaro` URL.** The org/repo does
+   not exist; the URL ships today in `frontend/components/shared/Footer.tsx`,
+   `(spec)/spec/page.tsx` (the `GH` constant + inline links), `(spec)/pitfalls/page.tsx`,
+   `_lib/paperGroups.ts` (per-paper resource links), `frontend/tests/components/ContractEntry.test.tsx`,
+   `sdk/package.json` (`repository`/`bugs`/`homepage`), and `CHANGELOG.md`. Either create
+   the org/repo under exactly that name (making the URLs true) or sweep all of them to the
+   real target — an exhaustive grep for `figaro-protocol/Figaro` must match only live URLs
+   before push.
+2. **`SECURITY.md` — a vulnerability-disclosure channel.** The 2026-08-07 site probe
+   found `/security` gives no way to report a finding; GitHub's standard security-policy
+   file is the answer, and `/security` links it.
+3. **CI: the guard suite as a GitHub Action.** Lint scripts, knip, Foundry tests, Vitest —
+   the same gate that runs in pre-commit, so external PRs meet the same bar. Also the
+   precondition for Task 11's reproducible-build CID proof.
+4. **Repo metadata at creation.** Description, topics, default branch `main`; issues on.
+   Recorded check (2026-08-07): `.git` is 247M, no tracked secrets/`.env`/keys/broadcast
+   artifacts, `LICENSE` + root `README.md` present — no large-file surgery needed.
+
 ## Validation Commands
 
 Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
