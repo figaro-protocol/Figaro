@@ -45,6 +45,7 @@ function chunkPairs(nodes: TreeNode[]): TreeNode[] {
     return parents;
 }
 
+/** @public Reusable multi-tree primitive; pages draw several instances side by side. */
 export function MerkleTreeFigure({
     leaves,
     rootLabel = "root — the fingerprint",

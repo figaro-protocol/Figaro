@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": [
     "tests/e2e/fixtures/inject-ethereum-multi.js",
-    "lib/agent/useDidWeb.ts"
+    "lib/agent/useDidWeb.ts",
+    "components/figures/MerkleTreeFigure.tsx"
   ]
 }
