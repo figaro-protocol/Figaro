@@ -199,7 +199,7 @@ export default function Faq() {
 
             <MarketingSection title="Has the code been audited?" sectionId="verification">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (six independent tools targeting the same kernel), the external-audit posture, and how to verify any deal yourself are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. Results will be published there when they exist.
+                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (five independent benches), the external-audit posture, and how to verify any deal yourself are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. Results will be published there when they exist.
                 </p>
             </MarketingSection>
 
