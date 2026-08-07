@@ -12,8 +12,10 @@
 # plus MARKET, the one all-bridge section carrying the (app) tier's
 # e-commerce tools (/discover, /orders, /audit). (reference) is footer
 # chrome and carries no nav entries; papers/ are reached through Working
-# Groups; /local-commerce is DEMOTED — a worked example linked from
-# /kernel, never a nav entry. Labels are each page's own metadata.title
+# Groups. /local-commerce and /faq are nav-visible under The Deal
+# (operator, 2026-08-07) on the standing condition that sitewide copy
+# stays demoted — the meal is one worked example, never THE model.
+# Labels are each page's own metadata.title
 # minus the " — Figaro Protocol" suffix. Entry ORDER within a group is the
 # ruled reading order (owned by navLinks.ts), so this guard checks set
 # equality, labels, and doorway-first — not alphabetical order.
@@ -36,7 +38,7 @@ const DOORWAYS = {
     "(research)": "/why",
 };
 const SKIP_GROUPS = new Set(["(reference)"]);
-const EXCLUDE_ROUTES = new Set(["/local-commerce"]);
+const EXCLUDE_ROUTES = new Set([]);
 const MARKET = {
     doorway: "/discover",
     pages: [

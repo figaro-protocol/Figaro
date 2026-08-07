@@ -17,10 +17,11 @@ export default function Assemblies() {
                 title="The shape of a deal, drawn once, reused by anyone."
                 lead={
                     <>
-                        A delivered meal has a shape: a buyer, a kitchen, a courier, and
-                        the terms binding the three. Somebody drew that shape once, and now
-                        any kitchen in any town can serve dinner through it without drawing
-                        it again. An assembly is that drawing &mdash; a composition template
+                        Every kind of deal has a shape: the parties it takes and the terms
+                        binding them &mdash; a delivered meal, a freight leg across an ocean,
+                        a data sale, a certified repair. Somebody draws a shape once, and
+                        anyone who fits it can trade through it without drawing it again.
+                        An assembly is that drawing &mdash; a composition template
                         that wires clauses into a multi-order process. Each one registers on{" "}
                         <code>AssemblyRegistry</code> under its <strong>composition hash</strong>
                         {" "}&mdash; the hash IS the identity &mdash; with an IPFS pointer to its
@@ -38,7 +39,7 @@ export default function Assemblies() {
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. Somebody draws the shape once (a meal with a kitchen, a supplier, and a courier, say), and every seller who fits that shape can offer it without redoing the design work. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. Somebody draws the shape once, and every seller who fits that shape can offer it without redoing the design work. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
                 </p>
             </MarketingSection>
 

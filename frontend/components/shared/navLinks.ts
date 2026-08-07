@@ -80,9 +80,11 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  * PAGE entry is its doorway; entry ORDER within a group is the ruled
  * reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
- * `(reference)` (FAQ, Glossary) is footer chrome, never nav; papers are
- * reached through Working Groups; /local-commerce is DEMOTED — linked from
- * /kernel as a worked example, never a nav entry. Tools (Register a clause,
+ * `(reference)` (Glossary) is footer chrome, never nav; papers are
+ * reached through Working Groups. /local-commerce and /faq are nav-visible
+ * under The Deal (operator, 2026-08-07) on the standing condition that the
+ * rest of the site stays demoted — the meal is one worked example among
+ * many, never THE model. Tools (Register a clause,
  * Designer, Claim, Join) are buttons on their object's page, never nav
  * slots. `scripts/lint-nav-structure.sh` enforces all of this.
  * ONE source, two renderings: `NavTreeRow` (desktop disclosure submenus) and
@@ -93,8 +95,10 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "The Deal",
         links: [
             { href: "/kernel", label: "How it works" },
+            { href: "/local-commerce", label: "Local Commerce" },
             { href: "/invariants", label: "Invariants" },
             { href: "/data", label: "Data" },
+            { href: "/faq", label: "FAQ" },
         ],
     },
     {
