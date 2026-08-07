@@ -71,7 +71,7 @@ const TERMS: Term[] = [
         term: "Gas",
         definition:
             "The network's own running charge for every step on Ethereum, paid in ETH — a small amount alongside whatever token a deal itself settles in. The price moves with the network's demand, not with anything Figaro sets or charges.",
-        readMore: <Link href="/security#compatibility" className="hover:underline">Security</Link>,
+        readMore: <Link href="/faq#compatibility" className="hover:underline">FAQ</Link>,
     },
     {
         id: "kernel",
@@ -85,7 +85,7 @@ const TERMS: Term[] = [
         term: "Process",
         definition:
             "The whole bonded deal one buyer opens — one buyer, one or more sellers chained together — settling together, atomically, or not at all.",
-        readMore: <Link href="/security#multi-party" className="hover:underline">Security</Link>,
+        readMore: <Link href="/faq#multi-party" className="hover:underline">FAQ</Link>,
     },
     {
         id: "seller",
@@ -99,7 +99,7 @@ const TERMS: Term[] = [
         term: "Settlement",
         definition:
             "The moment a deal closes: the buyer signs the resolution, and every stake and payment in the process moves at once, in a single transaction — all of it, or none of it.",
-        readMore: <Link href="/security#custody" className="hover:underline">Security</Link>,
+        readMore: <Link href="/faq#custody" className="hover:underline">FAQ</Link>,
     },
     {
         id: "stablecoin-class",

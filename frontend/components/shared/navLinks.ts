@@ -96,6 +96,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         links: [
             { href: "/kernel", label: "How it works" },
             { href: "/consequences", label: "Consequences" },
+            { href: "/faq", label: "FAQ" },
             { href: "/glossary", label: "Glossary" },
             { href: "/physics", label: "Physics" },
             { href: "/security", label: "Security" },

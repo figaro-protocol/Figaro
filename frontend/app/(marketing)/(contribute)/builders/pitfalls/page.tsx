@@ -61,13 +61,13 @@ export default function Pitfalls() {
                     <LabelledListRow label="Fee-on-transfer tokens" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">FigaroCore refuses the commit.</strong> A fee-on-transfer ERC-20 breaks the bond arithmetic, which depends on the kernel receiving exactly what was committed &mdash; pay in a non-rebasing, non-fee-on-transfer token.
                         <div className="mt-2 text-sm">
-                            <Link href="/security#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Security, &ldquo;What else you should know&rdquo;</Link>
+                            <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;What else you should know&rdquo;</Link>
                         </div>
                     </LabelledListRow>
                     <LabelledListRow label="One currency per process" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">A process cannot mix ERC-20s.</strong> The 2:1 bond ratio is a same-unit comparison, so the kernel refuses any oracle or DEX dependency that would compare across tokens &mdash; mix currencies by composing parallel processes, never within one.
                         <div className="mt-2 text-sm">
-                            <Link href="/security#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Security, &ldquo;What else you should know&rdquo;</Link>
+                            <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;What else you should know&rdquo;</Link>
                         </div>
                     </LabelledListRow>
                 </ul>

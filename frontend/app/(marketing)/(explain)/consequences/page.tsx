@@ -225,7 +225,7 @@ export default function Consequences() {
                     <li><strong className="text-ink-heading font-medium">Revisit this analysis.</strong> The original version of this document is dated April 2026; the operator reaffirmed its conclusions on 2026-08-03, ahead of any public-network deployment, while rebuilding the details that had drifted from the shipped system. The assumptions it records should keep being tested against reality as the protocol operates, and revised &mdash; with a successor kernel if the assumptions themselves turn out to need correcting &mdash; if evidence contradicts them.</li>
                 </ol>
                 <p className="text-base text-ink-body leading-relaxed">
-                    A companion question &mdash; can I, personally, be robbed by this mechanism &mdash; is answered plainly on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. This page answers the larger one: what does it do to the world, if it works.
+                    A companion question &mdash; can I, personally, be robbed by this mechanism &mdash; is answered plainly on <Link href="/faq" className="text-ink-heading font-medium hover:underline">the FAQ</Link>. This page answers the larger one: what does it do to the world, if it works.
                 </p>
             </MarketingSection>
         </>

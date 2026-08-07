@@ -164,7 +164,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 </section>
             )}
 
-            {/* Consent terms — the /security framing, verbatim register:
+            {/* Consent terms — the /faq framing, verbatim register:
                 consent is an AGREEMENT concern (the assembly composes a
                 consent clause and affixes its documents to the deal);
                 the signature over the agreementHash IS the recorded

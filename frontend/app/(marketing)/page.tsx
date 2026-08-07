@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 // object, "the blockchain" the substrate, "record" what a process leaves —
 // never blur the referents. The cents claim is COORDINATION friction
 // (lawyer/accountant/platform), not gas alone. The unhappy path lives on
-// /security (the FAQ owns it); home points, never carries it.
+// /faq (the FAQ owns it); home points, never carries it.
 export default function Home() {
     return (
         <>

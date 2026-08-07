@@ -147,7 +147,7 @@ export default function BuildersPage() {
             </h2>
             <ul className="space-y-3 text-base">
                 <li>
-                    <Link href="/security#builders-registries" className="text-ink-heading font-medium hover:underline">
+                    <Link href="/faq#builders-registries" className="text-ink-heading font-medium hover:underline">
                         Security
                     </Link>
                     <span className="text-ink-body"> &mdash; first-write-wins registry binding, merkle-bound attestations, three-tier anti-spam posture, and what an immutable v1 means for how you ship &mdash; every guarantee stated beside its caveat.</span>

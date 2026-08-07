@@ -165,7 +165,7 @@ const RUNGS: ClauseRung[] = [
         // repeater (pin → keccak anchor, the ONLY fill path — no paste-hex);
         // the parties' EIP-712 signatures over the agreement root ARE the
         // acceptance. The preview modal tells the signer exactly that, in the
-        // /security page's register (EDPB Guidelines 02/2025).
+        // /faq page's register (EDPB Guidelines 02/2025).
         clauseId: 'figaro-consent',
         design: async (page) => {
             await page.getByTestId('drawer-field-figaro-consent-documents-add').click();

@@ -18,14 +18,14 @@ export interface LayeredDefenseFigureProps {
  * buyer's own resolveProcess signature moves them); layers 4–5 act on
  * the on-chain record from outside the deal and cannot reach in.
  *
- * Source of truth: the ranked list at /security#layers ("What stands
- * behind a deal?", frontend/app/(marketing)/(explain)/security/page.tsx) — chain,
+ * Source of truth: the ranked list at /faq#layers ("What stands
+ * behind a deal?", frontend/app/(marketing)/(explain)/faq/page.tsx) — chain,
  * lockbox+record, other sellers, arbitration, ordinary courts — cross-
  * checked against the canonical stack in
  * ~/.claude/projects/-Users-adaliana-Figaro/memory/reference_layered_security_stack.md
  * (blockchain → FigaroCore+evidence → social/co-seller layer →
  * arbitration → law). Wording ("lockbox", "the record", "reach into the
- * lockbox", "the losing party's other assets") is /security's own.
+ * lockbox", "the losing party's other assets") is /faq's own.
  */
 export function LayeredDefenseFigure({
     idPrefix = "layered-defense",

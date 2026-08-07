@@ -53,7 +53,7 @@ export default function Data() {
 
             <MarketingSection title="Erasure, honestly." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
-                    What you publish, you can erase: unpinning stops your node serving it and lets the network garbage-collect it. But a fingerprint on-chain is permanent by design &mdash; the whole point is that nothing can be swapped in underneath it. Any copy another node already pinned before you unpinned is beyond your recall. Erasing your own record is real. Erasing everyone else&apos;s copy of it is not something anyone can promise, on Figaro or off it. The honest limits are stated in full at <Link href="/security" className="text-ink-heading font-medium hover:underline">security</Link>.
+                    What you publish, you can erase: unpinning stops your node serving it and lets the network garbage-collect it. But a fingerprint on-chain is permanent by design &mdash; the whole point is that nothing can be swapped in underneath it. Any copy another node already pinned before you unpinned is beyond your recall. Erasing your own record is real. Erasing everyone else&apos;s copy of it is not something anyone can promise, on Figaro or off it. The honest limits are stated in full on <Link href="/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
                 </p>
             </MarketingSection>
         </>
