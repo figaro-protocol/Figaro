@@ -29,7 +29,7 @@ export {   activeChain,  };
 // environment — the static export has no server to proxy through (the former
 // dev `/rpc` rewrite is gone), and the browser reaches a CORS-permissive local
 // Anvil / a public gateway directly. NEXT_PUBLIC_RPC_URL is only the DEFAULT —
-// the user's runtime override (their own provider key, /settings) wins, so a
+// the user's runtime override (their own provider key, member endpoints) wins, so a
 // hosted deploy never bills every visitor's reads to the operator's key.
 // wagmi's config is created once at module load, so an override change
 // applies on the next reload.
@@ -56,7 +56,7 @@ export const config = createConfig({
         // chain, so wagmi's default batching (which uses multicall3) could cause
         // readContract calls to fail with "Cannot decode zero data".
         //
-        // Read-cost precedence: an EXPLICIT /settings RPC override is the
+        // Read-cost precedence: an EXPLICIT user RPC override is the
         // user's deliberate pick and wins outright; otherwise a CONNECTED
         // wallet's own EIP-1193 provider serves reads first (the wallet's
         // infrastructure, not the operator's endpoint), with the http default

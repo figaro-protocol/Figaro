@@ -50,6 +50,7 @@ describe("clauseSpecSource — catalogue-authored fills (derive, not hardcode)",
         expect(clauseCatalogueFills("figaro-geolocation")).toEqual([]);
         expect(listCatalogueSourcedClauses().map((c) => c.clauseId).sort()).toEqual([
             "figaro-cold-chain",
+            "figaro-data-license",
             "figaro-freight-class",
             "figaro-hazmat",
         ]);

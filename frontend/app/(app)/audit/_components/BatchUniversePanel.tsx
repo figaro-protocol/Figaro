@@ -54,7 +54,7 @@ function StatusNotice({ batch }: { batch: VerifiedBatchProcess }) {
                 publishes direct-path trade as events, but the batch path publishes
                 no per-order data on chain, so reading it needs a relay. Settling a
                 batch is permissionless, so you can point at any relay, or run your
-                own, in <span className="font-mono">/settings</span>.
+                own, in <span className="font-mono">/members/edit/endpoints</span>.
             </p>
         );
     }

@@ -26,7 +26,7 @@ type Entry = {
 //   - The `/members/{identity,catalogue,assemblies,agents,review}` and
 //     `/members/edit/*` steps: interior states of the `/members` enrolment
 //     wizard, entered from it and meaningless as landings.
-//   - Wallet-personal surfaces (`/orders`, `/rewards`, `/settings`, `/sign`,
+//   - Wallet-personal surfaces (`/orders`, `/rewards`, `/sign`,
 //     `/audit`): what they render is scoped to the connected wallet, so the
 //     crawlable URL carries no content.
 //   - `/evidence-display`: a deliberate orphan — the iframe target for a

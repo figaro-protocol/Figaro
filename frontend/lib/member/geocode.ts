@@ -3,7 +3,7 @@
  *
  * Free-form address-text → lat/lon resolution, straight from the
  * browser to a Nominatim-compatible geocoder — OpenStreetMap's public
- * instance by default, the user's own via the /settings override
+ * instance by default (disclosed at the input), the user's own via the userEndpoints override
  * (`lib/shared/userEndpoints`). There is no server in between: the
  * former `/api/geocode` proxy was retired (no-PP/ToS ruling,
  * 2026-07-09) so the typed address travels from the user's browser to
@@ -51,7 +51,7 @@ export type GeocodeOutcome =
 const DEFAULT_GEOCODER_URL = "https://nominatim.openstreetmap.org/search";
 
 /** The Nominatim-compatible search endpoint at call time — the user's
- *  /settings override, else OpenStreetMap's public instance. */
+ *  userEndpoints override, else OpenStreetMap's public instance. */
 function activeGeocoderUrl(): string {
     return readUserEndpoints().geocodeUrl ?? DEFAULT_GEOCODER_URL;
 }

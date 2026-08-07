@@ -3,7 +3,7 @@
  * (the wire protocol in `@figaro/sdk/handoff`) actually runs over.
  *
  * Three implementations:
- *   - Real: XMTP DM via @xmtp/browser-sdk (opt-in on /settings)
+ *   - Real: XMTP DM via @xmtp/browser-sdk (devnet opt-in via stored transport; the picker is gone — the network channel is a testnet-planning decision)
  *   - Null: inert links-only floor (the default outside test mode)
  *   - Mock: in-memory message bus for e2e tests
  */
@@ -72,7 +72,7 @@ export async function getCoordinationChannel(
     // `links-only` (the share/receive URI flow — no push transport, no
     // broker). Return an inert channel so callers keep working and the XMTP
     // chunk is NEVER loaded or initialized unless the wallet opted in on
-    // /settings. (Applies on reload — the channel is a cached singleton.)
+    // the stored transport preference. (Applies on reload — cached singleton.)
     if (readUserTransport() !== "xmtp") {
         return sharedCreate(key, async () => {
             const { createNullChannel } = await import("./nullChannel");

@@ -15,6 +15,15 @@
             "description": "The encoding standard the origin/destination codes are written in \u2014 an OPEN axis like every standards field (emissions' methodology, cold-chain's monitoring standard): any non-empty declaration is valid; frontends enhance the standards they know. Known examples: geohash (the built frontend's default), h3, s2, olc (Plus Codes) for cell grids; iso3166-1, iso3166-2, unlocode for jurisdiction-grade locality (digital-delivery territories, service jurisdictions)."
         },
         {
+            "name": "geocoder",
+            "type": "string",
+            "required": false,
+            "minLength": 1,
+            "maxLength": 256,
+            "label": "Geocoder",
+            "description": "A Nominatim-compatible geocoding endpoint the parties resolve typed locations through when producing the origin/destination codes \u2014 a DESIGN fill: the designer pins it when tailoring the assembly, so every party to the deal resolves through the SAME service instead of whatever each client happened to configure. Optional because jurisdiction-grade standards (iso3166-1/-2, unlocode) need no geocoder at all; cell-grid standards (geohash, h3, s2, olc) typically name one. An OPEN axis like the standard itself: any https endpoint speaking the declared standard's resolution is valid."
+        },
+        {
             "name": "origin",
             "type": "string",
             "required": true,
@@ -43,7 +52,9 @@
             "article": "coordination",
             "scope": "agreement",
             "nestsUnder": null,
-            "fills": [],
+            "fills": [
+                "geocoder"
+            ],
             "composes": null
         },
         "checkout": {

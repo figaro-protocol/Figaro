@@ -20,7 +20,7 @@ const STORAGE_KEY = "figaro.user-transport";
 export type CoordinationTransport = "links-only" | "xmtp";
 
 /** The floor: share/receive links, no push transport. */
-export const DEFAULT_TRANSPORT: CoordinationTransport = "links-only";
+const DEFAULT_TRANSPORT: CoordinationTransport = "links-only";
 
 function sanitize(value: unknown): CoordinationTransport {
     return value === "xmtp" ? "xmtp" : DEFAULT_TRANSPORT;
@@ -31,6 +31,8 @@ export function readUserTransport(): CoordinationTransport {
     return sanitize(raw.transport);
 }
 
+/** @public The picker died with /settings (four-SoC ruling); the testnet
+ *  channel rationalization (punchlist) is this writer's next caller. */
 export function writeUserTransport(next: CoordinationTransport): void {
     writeJsonStorage(STORAGE_KEY, { transport: sanitize(next) });
 }

@@ -217,6 +217,7 @@ function ManageList({
         { label: "Assemblies", description: "Bindings.", href: "/members/edit/assemblies" },
         { label: "Buyer", description: "Assemblies you buy through; the data you sell.", href: "/members/edit/buyer" },
         { label: "Agents", description: "Service endpoints.", href: "/members/edit/agents" },
+        { label: "Endpoints", description: "Your own IPFS node, RPC, verifier relay — this browser only.", href: "/members/edit/endpoints" },
     ];
     return (
         <ul className="border-t border-default text-sm">

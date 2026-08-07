@@ -141,7 +141,7 @@ export function OnboardingAgentsForm({
             });
             return;
         }
-        router.push("/members/review");
+        router.push("/members/endpoints");
     }
 
     if (!mounted) {

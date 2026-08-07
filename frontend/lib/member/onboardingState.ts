@@ -204,7 +204,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 
 export interface OnboardingStep {
     /** Stable id used in URLs and step-indicator keys. */
-    id: "profile" | "catalogue" | "assemblies" | "buyer" | "agents" | "review";
+    id: "profile" | "catalogue" | "assemblies" | "buyer" | "agents" | "endpoints" | "review";
     /** 1-based step number for the visible indicator. */
     number: number;
     /** Human-readable label. */
@@ -230,6 +230,9 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     // control of the member's whole profile — seller and buyer alike.
     { id: "buyer", number: 4, label: "Buyer", path: "buyer", optional: true },
     { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
-    { id: "review", number: 6, label: "Review", path: "review", optional: false },
+    // The member's OWN infrastructure — device configuration, never part of
+    // the pinned profile, which is why Review does not list it.
+    { id: "endpoints", number: 6, label: "Endpoints", path: "endpoints", optional: true },
+    { id: "review", number: 7, label: "Review", path: "review", optional: false },
 ];
 

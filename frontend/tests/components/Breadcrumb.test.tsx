@@ -18,7 +18,7 @@ describe("Breadcrumb", () => {
                 ]}
             />,
         );
-        expect(screen.getByRole("link", { name: "Builders" })).toHaveAttribute("href", "/builders");
+        expect(screen.getByRole("link", { name: "Specifications" })).toHaveAttribute("href", "/spec");
         expect(screen.getByRole("link", { name: "Designer" })).toHaveAttribute("href", "/assemblies/designer");
     });
 

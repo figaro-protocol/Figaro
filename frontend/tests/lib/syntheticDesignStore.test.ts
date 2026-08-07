@@ -207,9 +207,11 @@ describe("design fills are the composition's identity — the disclosure regime"
     it("a clause with NO design fills contributes no values — its identity is fill-blind", () => {
         // The complement of the rule: values on a clause that declares no
         // design fills are stripped by the build, so they cannot move identity.
-        const fillless = getClauseSpec("figaro-geolocation");
+        // figaro-geolocation left this fixture role when it gained its
+        // designer-filled geocoder; figaro-dimweight declares no fills.
+        const fillless = getClauseSpec("figaro-dimweight");
         expect(fillless, "the fixture clause is loaded").toBeTruthy();
-        expect(clauseDesignFills("figaro-geolocation")).toHaveLength(0);
+        expect(clauseDesignFills("figaro-dimweight")).toHaveLength(0);
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         const base: DesignSnapshot = {
@@ -219,12 +221,12 @@ describe("design fills are the composition's identity — the disclosure regime"
             nextOrderIndex: session.nextOrderIndex,
             nextSellerIndex: session.nextSellerIndex,
             orders: [root.order],
-            clausesByOrderId: { [root.order.orderHash]: { "figaro-geolocation": {} } },
+            clausesByOrderId: { [root.order.orderHash]: { "figaro-dimweight": {} } },
             createdAt: 1, updatedAt: 1,
         };
         const withStrayValues: DesignSnapshot = {
             ...base,
-            clausesByOrderId: { [root.order.orderHash]: { "figaro-geolocation": { origin: "u4pruy" } } },
+            clausesByOrderId: { [root.order.orderHash]: { "figaro-dimweight": { unit: "cm-kg" } } },
         };
         expect(snapshotCompositionIdentity(withStrayValues).compositionHash)
             .toBe(snapshotCompositionIdentity(base).compositionHash);

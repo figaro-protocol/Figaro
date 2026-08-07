@@ -53,16 +53,13 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     // surface (register a wallet in MembersRegistry, or manage that entry). Both
     // read a registry; they serve opposite roles, so both are listed.
     { href: "/discover", label: "Discover" },
-    { href: "/members/manage", label: "Members" },
+    { href: "/members/manage", label: "Manage membership" },
     { href: "/audit", label: "Audit" },
     // The RPGF distribution's runtime surface (read your accrual, claim a
     // closed tranche) — a protocol surface (the composed UsageCounter +
     // RpgfMinter), not a product feature; claiming is permissionless network
     // participation.
     { href: "/rewards", label: "Rewards" },
-    // The wallet's own runtime infrastructure (RPC provider, IPFS node) —
-    // actor-neutral, no operator service in the middle.
-    { href: "/settings", label: "Your endpoints" },
 ];
 
 // The drawer's App section IS the primary row restated for mobile, so it SPREADS
