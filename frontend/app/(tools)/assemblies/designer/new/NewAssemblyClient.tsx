@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * NewAssemblyClient — thin wrapper that maps /builders/designer/new query
+ * NewAssemblyClient — thin wrapper that maps /assemblies/designer/new query
  * params onto the shared <DesignerCanvas>. All canvas state, autosave,
  * drawer, and prose-sheet logic lives in DesignerCanvas.
  *
  * Query params:
  *   - ?draft=<slug>  — open a named draft (transitional; the canonical
- *                      entry is /builders/designer/edit?slug=<slug>).
+ *                      entry is /assemblies/designer/edit?slug=<slug>).
  *   - ?fresh=1       — clear the autosaved current-session and start blank.
  *   - (none)         — resume the autosaved current-session if present.
  */
@@ -34,7 +34,7 @@ export function NewAssemblyClient() {
     // doesn't re-trigger the seed and clobber in-progress work.
     useEffect(() => {
         if (draftParam || freshParam) {
-            router.replace("/builders/designer/new", { scroll: false });
+            router.replace("/assemblies/designer/new", { scroll: false });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

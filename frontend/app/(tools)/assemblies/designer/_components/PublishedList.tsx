@@ -47,7 +47,7 @@ export function PublishedList() {
             try {
                 const outcome = forkPublishedAssembly(choice.slug, choice.assemblyTemplate);
                 if (!outcome) return;
-                router.push(`/builders/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
+                router.push(`/assemblies/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {
                 const message = extractErrorMessage(err, "Loading the published assemblies failed.");
                 window.alert(`Fork failed: ${message}`);
@@ -122,7 +122,7 @@ export function PublishedList() {
                             {forking === choice.slug ? "Forking…" : "Fork"}
                         </button>
                         <Link
-                            href={`/builders/designer/view?slug=${encodeURIComponent(choice.slug)}`}
+                            href={`/assemblies/designer/view?slug=${encodeURIComponent(choice.slug)}`}
                             className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
                             data-testid={`published-inspect-${choice.slug}`}
                         >

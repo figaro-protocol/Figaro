@@ -19,7 +19,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
  *    (`tests/e2e/devnet-helpers.ts` `waitForConnected`).
  *  - connected: the truncated address + a Disconnect button.
  *
- * The header (`Header`, `BuilderHeader`) and `WalletGate` are the only
+ * The header (`Header`, `ToolsHeader`) and `WalletGate` are the only
  * sanctioned placements (per `WalletGate`'s own doc comment) — mount this
  * nowhere else.
  */

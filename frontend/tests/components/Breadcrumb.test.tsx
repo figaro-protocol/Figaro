@@ -13,13 +13,13 @@ describe("Breadcrumb", () => {
             <Breadcrumb
                 items={[
                     { label: "Specifications", href: "/spec" },
-                    { label: "Designer", href: "/builders/designer" },
+                    { label: "Designer", href: "/assemblies/designer" },
                     { label: "New assembly" },
                 ]}
             />,
         );
         expect(screen.getByRole("link", { name: "Builders" })).toHaveAttribute("href", "/builders");
-        expect(screen.getByRole("link", { name: "Designer" })).toHaveAttribute("href", "/builders/designer");
+        expect(screen.getByRole("link", { name: "Designer" })).toHaveAttribute("href", "/assemblies/designer");
     });
 
     it("renders the crumb with no href as plain current-page text, not a link (well-formed input)", () => {

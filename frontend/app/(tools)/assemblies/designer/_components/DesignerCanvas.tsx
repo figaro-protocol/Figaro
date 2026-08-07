@@ -2,8 +2,8 @@
 
 /**
  * DesignerCanvas — the shared composition canvas (the TopologyCanvas of
- * orders + the per-order AgreementDrawer) used by /builders/designer/new
- * and /builders/designer/edit?slug=<slug>. Both pages render this component
+ * orders + the per-order AgreementDrawer) used by /assemblies/designer/new
+ * and /assemblies/designer/edit?slug=<slug>. Both pages render this component
  * with different `seed` props; everything else (state, handlers,
  * autosave, drawer, toolbar) is identical.
  *
@@ -519,7 +519,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         // list where the newly-saved draft appears under "Your drafts".
         // Preserve a ?e2e= mode flag so a test run stays in devnet/mock mode.
         const e2e = searchParams.get("e2e");
-        router.push(e2e ? `/builders/designer?e2e=${encodeURIComponent(e2e)}` : "/builders/designer");
+        router.push(e2e ? `/assemblies/designer?e2e=${encodeURIComponent(e2e)}` : "/assemblies/designer");
     }, [buildSnapshot, router, searchParams, slug]);
 
     // The designer "Review" button only NAVIGATES to the review page; the
@@ -546,7 +546,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         // Preserve a ?e2e= mode flag — the review page must stay in
         // devnet/mock mode across this canvas redirect.
         const e2e = searchParams.get("e2e");
-        const reviewPath = `/builders/designer/view?slug=${encodeURIComponent(result.snapshot.slug)}&intent=publish`;
+        const reviewPath = `/assemblies/designer/view?slug=${encodeURIComponent(result.snapshot.slug)}&intent=publish`;
         router.push(e2e ? `${reviewPath}&e2e=${encodeURIComponent(e2e)}` : reviewPath);
     }, [buildSnapshot, router, searchParams, slug]);
 
@@ -590,13 +590,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     <p className="text-sm text-ink-body mb-6">{seedError}</p>
                     <div className="flex gap-3 justify-center">
                         <Link
-                            href="/builders/designer"
+                            href="/assemblies/designer"
                             className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
                         >
                             ← Back to assemblies
                         </Link>
                         <Link
-                            href="/builders/designer/new?fresh=1"
+                            href="/assemblies/designer/new?fresh=1"
                             className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
                         >
                             Start a blank assembly
@@ -614,7 +614,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 className="h-[48px] shrink-0 px-6 border-b border-default bg-paper flex items-center gap-3 overflow-hidden"
             >
                 <Link
-                    href="/builders/designer"
+                    href="/assemblies/designer"
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong shrink-0"
                 >
                     ← Assemblies

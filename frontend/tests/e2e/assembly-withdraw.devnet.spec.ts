@@ -196,7 +196,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         //    reason naming the ONE verified in-flight deal — the buyer's
         //    unresolved process, verified through this context's witnessed
         //    agreement. ──
-        await gotoAsWallet(page, AUTHOR, `/builders/designer/view?slug=${slug}&e2e=devnet`);
+        await gotoAsWallet(page, AUTHOR, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
         await page.getByTestId('assembly-view-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const withdrawBtn = page.getByTestId('view-withdraw-button');
@@ -241,7 +241,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         //    (party-private, never witnessed here) → the caveat strip renders
         //    iff such deals exist — informational, never blocking. Determined
         //    out of band from the same chain state the gate reads. ──
-        await gotoAsWallet(page, AUTHOR, `/builders/designer/view?slug=${slug}&e2e=devnet`);
+        await gotoAsWallet(page, AUTHOR, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
         await page.getByTestId('assembly-view-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const reclaimBtn = page.getByTestId('view-withdraw-button');

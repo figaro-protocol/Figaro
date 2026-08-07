@@ -273,7 +273,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         // one paint before router.push completes, which reads as
         // "shoots me through another page". Letting the component unmount
         // on route change is sufficient cleanup.
-        router.push("/builders/designer");
+        router.push("/assemblies/designer");
     }, [router]);
 
     const handleWithdraw = useCallback(async () => {
@@ -297,7 +297,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         try {
             const outcome = forkPublishedAssembly(slug, resolved.assemblyTemplate);
             if (!outcome) return;
-            router.push(`/builders/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
+            router.push(`/assemblies/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
             window.alert(`Fork failed: ${extractErrorMessage(err, "unknown error")}`);
         } finally {
@@ -322,7 +322,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <h1 className="text-heading-h2 text-ink-heading">Assembly not found</h1>
                 <p className="text-sm text-ink-body max-w-2xl">{resolved.message}</p>
                 <Link
-                    href="/builders/designer"
+                    href="/assemblies/designer"
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
                 >
                     ← Back to assemblies
@@ -359,9 +359,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </dl>
                 <div className="flex items-center gap-3 pt-2">
                     <Link
-                        href={`/builders/designer/view?slug=${encodeURIComponent(receipt.slug)}&just-published=1`}
+                        href={`/assemblies/designer/view?slug=${encodeURIComponent(receipt.slug)}&just-published=1`}
                         className="text-sm text-ink-faint hover:text-ink-heading underline"
-                        title={`Opens the public read-only view at /builders/designer/view?slug=${receipt.slug}`}
+                        title={`Opens the public read-only view at /assemblies/designer/view?slug=${receipt.slug}`}
                     >
                         Open public read-only view →
                     </Link>
@@ -407,7 +407,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const actionButton = inReviewMode ? (
         <div className="ml-auto flex items-center gap-2">
             <Link
-                href={`/builders/designer/edit?slug=${encodeURIComponent(slug)}`}
+                href={`/assemblies/designer/edit?slug=${encodeURIComponent(slug)}`}
                 className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-heading"
                 data-testid="review-back-to-editor"
             >
@@ -429,7 +429,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </div>
     ) : resolved.kind === "draft" ? (
         <Link
-            href={`/builders/designer/edit?slug=${encodeURIComponent(slug)}`}
+            href={`/assemblies/designer/edit?slug=${encodeURIComponent(slug)}`}
             className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold"
             data-testid="view-edit-button"
         >
@@ -503,7 +503,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 className="px-8 py-4 border-b border-default bg-paper flex items-center gap-3 flex-wrap shrink-0"
             >
                 <Link
-                    href="/builders/designer"
+                    href="/assemblies/designer"
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
                 >
                     ← Assemblies

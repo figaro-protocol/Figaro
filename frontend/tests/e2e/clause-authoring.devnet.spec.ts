@@ -1,6 +1,6 @@
 /**
  * clause-authoring.devnet.spec.ts — the clause-side registration lifecycle,
- * end to end through the UI: the /clauses CTA routes to /builders/clauses,
+ * end to end through the UI: the /clauses CTA routes to /clauses/register,
  * where the author pastes a spec, watches the Layer-A validation pass,
  * registers (pin + anchor + deposit), sees the clause appear in the live
  * /clauses inventory under its article, composes it into a committed order,
@@ -77,7 +77,7 @@ const AUTHOR = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 4 }).address as
 // assembly-withdraw; both unbind-all first).
 const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address as Hex;
 
-test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory reaction, commits==resolves reclaim (devnet)', () => {
+test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory reaction, commits==resolves reclaim (devnet)', () => {
     test.setTimeout(360_000);
 
     test('author registers a clause through the UI, a composed deal blocks the reclaim, settlement frees it, the registry refunds the deposit', async ({ page }) => {
@@ -106,11 +106,11 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         //    authoring surface. ──
         await gotoAsWallet(page, AUTHOR, '/clauses?e2e=devnet');
         // Two links carry this name (the in-prose CTA + the shared footer
-        // column) — both route to /builders/clauses; drive the first (the
+        // column) — both route to /clauses/register; drive the first (the
         // prose CTA, earlier in DOM order).
         const cta = page.getByRole('link', { name: 'Register a clause' }).first();
         await cta.waitFor({ state: 'visible', timeout: 30000 });
-        await expect(cta).toHaveAttribute('href', '/builders/clauses');
+        await expect(cta).toHaveAttribute('href', '/clauses/register');
         await cta.click();
         await page.waitForURL(/\/builders\/clauses/, { timeout: 15000 });
 
@@ -192,7 +192,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
@@ -217,7 +217,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
-        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
         await waitForConnected(page);
@@ -309,11 +309,11 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         expect(sellerBefore - sellerMid, 'seller balance decreased by the seller bond').toBe(sellerBond);
         expect(coreMid - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
-        // ── GATE, BLOCKED: back on /builders/clauses as the author — the
+        // ── GATE, BLOCKED: back on /clauses/register as the author — the
         //    reclaim row for THIS run's idHash shows the button disabled,
         //    reason naming the ONE verified in-flight deal (the clause gate
         //    counts committed-unresolved ORDERS composing the clause). ──
-        await gotoAsWallet(page, AUTHOR, '/builders/clauses?e2e=devnet');
+        await gotoAsWallet(page, AUTHOR, '/clauses/register?e2e=devnet');
         await waitForConnected(page);
         const reclaimRow = page.getByTestId(`clause-reclaim-row-${idHash}`);
         await reclaimRow.waitFor({ state: 'visible', timeout: 60000 });
@@ -358,7 +358,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         //    orders exist — informational, never blocking. Determined out of
         //    band from the same chain state the gate reads (the clause gate
         //    counts ORDERS, so the condition is per-order). ──
-        await gotoAsWallet(page, AUTHOR, '/builders/clauses?e2e=devnet');
+        await gotoAsWallet(page, AUTHOR, '/clauses/register?e2e=devnet');
         await waitForConnected(page);
         const rowAfter = page.getByTestId(`clause-reclaim-row-${idHash}`);
         await rowAfter.waitFor({ state: 'visible', timeout: 60000 });

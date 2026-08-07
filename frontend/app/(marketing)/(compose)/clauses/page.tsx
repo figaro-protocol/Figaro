@@ -40,7 +40,7 @@ export default function Clauses() {
 
             <MarketingSection title="Add your own.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Anyone who meets those requirements can register a clause &mdash; no permission, no gatekeeper: <Link href="/builders/clauses" className="underline">Register a clause</Link>. A registered clause that gets used earns from the protocol&apos;s retroactive public-goods funding &mdash; the reward follows real usage alone; see <Link href="/rpgf" className="underline">RPGF</Link>.
+                    Anyone who meets those requirements can register a clause &mdash; no permission, no gatekeeper: <Link href="/clauses/register" className="underline">Register a clause</Link>. A registered clause that gets used earns from the protocol&apos;s retroactive public-goods funding &mdash; the reward follows real usage alone; see <Link href="/rpgf" className="underline">RPGF</Link>.
                 </p>
             </MarketingSection>
 

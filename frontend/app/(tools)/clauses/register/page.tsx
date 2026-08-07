@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * /builders/clauses — the wallet-scoped clause authoring surface, the
- * clause-side mirror of /builders/designer (assembly authoring). Two halves:
+ * /clauses/register — the wallet-scoped clause authoring surface, the
+ * clause-side mirror of /assemblies/designer (assembly authoring). Two halves:
  *
  *  1. Register a clause — paste a spec, validate through the generic Layer-A
  *     surface (`@figaro/sdk/clauses`, the same gate that runs at sign-time),

@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { NewAssemblyClient } from "./NewAssemblyClient";
 
 /**
- * /builders/designer/new — topology-canvas designer for fresh assemblies.
+ * /assemblies/designer/new — topology-canvas designer for fresh assemblies.
  *
  * Server component — exports static metadata; renders the client
  * NewAssemblyClient (which carries all the React state, autosave,

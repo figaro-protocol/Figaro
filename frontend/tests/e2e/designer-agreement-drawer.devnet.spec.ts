@@ -7,7 +7,7 @@
  * composes it onto the selected order, and the composition must survive the
  * save + reload round-trip — through the UI on both ends:
  *
- *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
+ *   1. /assemblies/designer/new?fresh=1 — blank canvas, one root order.
  *   2. Open the drawer → registry tab → compose figaro-geolocation (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
  *   3. A clause with NO designer fills exposes NO field editors in the drawer
@@ -17,7 +17,7 @@
  *      `block.design.fills` (figaro-consent) DOES expose editors for exactly
  *      those fields — the designer's tailoring affix.
  *   4. Save; discover the assigned draft handle from the hub's drafts list and
- *      reload via /builders/designer/edit?slug=<slug> — the geolocation checkbox is
+ *      reload via /assemblies/designer/edit?slug=<slug> — the geolocation checkbox is
  *      STILL CHECKED.
  *   5. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
@@ -75,7 +75,7 @@ async function saveDraft(page: Page): Promise<string> {
 
 /** Reopen the saved draft in the editor. */
 async function reopenDraft(page: Page, slug: string) {
-    await page.goto(`/builders/designer/edit?slug=${slug}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/assemblies/designer/edit?slug=${slug}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
     await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
 }
 
@@ -83,7 +83,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
     test.setTimeout(180_000);
 
     test('toggling the geo clause persists through save and reload — both directions; editors gate on design.fills', async ({ page }) => {
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
@@ -132,7 +132,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
     });
 
     test('an enum design fill renders its spec labels, and changing its value moves the composition identity', async ({ page }) => {
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
 
         // The canvas states its composition identity as soon as there is a

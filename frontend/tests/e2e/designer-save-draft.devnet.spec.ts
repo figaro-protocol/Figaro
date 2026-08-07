@@ -10,12 +10,12 @@
  * asserts both round-trip into localStorage and surface in the drafts list.
  *
  * What this exercises:
- *   - Navigate to /builders/designer/new?fresh=1 (blank seed = one root order).
+ *   - Navigate to /assemblies/designer/new?fresh=1 (blank seed = one root order).
  *   - Wait for the canvas to hydrate (`designer-saved-hint` = first autosave).
  *   - Type an editorial name into `designer-name-input`.
  *   - Click `designer-save` — enabled whenever the canvas holds ≥1 order
  *     (`canPublish`), no name gate (the name is optional) → handleSaveDraft →
- *     saveNamedDraft → /builders/designer.
+ *     saveNamedDraft → /assemblies/designer.
  *   - Assert: the drafts index holds the auto-assigned handle; the per-handle
  *     snapshot persists the editorial name + the blank composition; DraftsList
  *     shows `draft-row-<handle>` carrying the name.
@@ -37,7 +37,7 @@ test.describe('Designer save-draft (devnet)', () => {
             } catch { /* noop */ }
         });
 
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
 
         // The canvas autosaves once hydrated; `designer-saved-hint` renders only

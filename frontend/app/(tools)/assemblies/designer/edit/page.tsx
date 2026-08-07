@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { EditAssemblyClient } from "./EditAssemblyClient";
 
 /**
- * /builders/designer/edit?slug=<slug> — topology canvas for editing a saved
+ * /assemblies/designer/edit?slug=<slug> — topology canvas for editing a saved
  * draft.
  *
  * The slug must resolve to a localStorage draft; the client renders a

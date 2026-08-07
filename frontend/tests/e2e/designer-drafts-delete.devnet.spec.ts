@@ -42,7 +42,7 @@ test.describe('Designer DraftsList delete (devnet)', () => {
             } catch { /* noop */ }
         }, { kept: keptSlug, doomed: doomedSlug });
 
-        await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('drafts-list').waitFor({ timeout: 15000 });
 
         // Both rows render.

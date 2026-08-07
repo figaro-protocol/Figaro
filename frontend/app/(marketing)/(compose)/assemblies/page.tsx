@@ -32,7 +32,7 @@ export default function Assemblies() {
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    This page explains assemblies. To compose an assembly, go to <Link href="/builders/designer" className="underline">/builders/designer</Link>.
+                    This page explains assemblies. To compose an assembly, go to <Link href="/assemblies/designer" className="underline">/assemblies/designer</Link>.
                 </p>
             </MarketingHero>
 

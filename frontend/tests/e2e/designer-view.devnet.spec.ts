@@ -2,7 +2,7 @@
  * designer-view.devnet.spec.ts
  *
  * Phase 5 A9: the read-only assembly inspector at
- * /builders/designer/view (`ViewAssemblyClient`). No devnet spec
+ * /assemblies/designer/view (`ViewAssemblyClient`). No devnet spec
  * covered the on-chain read-only resolution path before.
  *
  * `ViewAssemblyClient` resolves a slug from a localStorage draft first,
@@ -35,7 +35,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // The publish flow deleted the local draft, so /view/<slug> resolves from
         // chain. `just-published=1` rides out the AssemblyRegistered indexer race.
         await page.goto(
-            `/builders/designer/view?slug=${slug}&just-published=1&e2e=devnet`,
+            `/assemblies/designer/view?slug=${slug}&just-published=1&e2e=devnet`,
             { waitUntil: 'domcontentloaded' },
         );
 
@@ -53,7 +53,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         const missingSlug = `a9-missing-${Date.now()}`;
 
         await page.goto(
-            `/builders/designer/view?slug=${missingSlug}&e2e=devnet`,
+            `/assemblies/designer/view?slug=${missingSlug}&e2e=devnet`,
             { waitUntil: 'domcontentloaded' },
         );
 

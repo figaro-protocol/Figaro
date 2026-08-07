@@ -1,7 +1,7 @@
 /**
  * published-list-ui.devnet.spec.ts
  *
- * Phase 5 item A8: the `PublishedList` surface on /builders/designer.
+ * Phase 5 item A8: the `PublishedList` surface on /assemblies/designer.
  * No devnet spec touched its two row actions before.
  *
  * The spec publishes a real assembly through the canvas (the only way
@@ -10,8 +10,8 @@
  * would test fork/inspect against a shape the designer never emits),
  * then exercises both `PublishedList` controls:
  *
- *   - Inspect (`published-inspect-<slug>`) → /builders/designer/view?slug=<slug>
- *   - Fork    (`published-fork-<slug>`)    → /builders/designer/edit?slug=<forkSlug>
+ *   - Inspect (`published-inspect-<slug>`) → /assemblies/designer/view?slug=<slug>
+ *   - Fork    (`published-fork-<slug>`)    → /assemblies/designer/edit?slug=<forkSlug>
  *
  * Additive UI-tier coverage — the contract path is already covered by
  * assembly-registry.devnet.spec.ts; the publish flow by
@@ -37,7 +37,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         const { slug } = await publishProbeAssembly(page);
 
         // ── The row appears on the designer index ────────────────────
-        await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId(`published-row-${slug}`).waitFor({ timeout: 30000 });
 
         // Fork is disabled until the assemblyTemplate fetch resolves
@@ -45,13 +45,13 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         // the IPFS-pinned assemblyTemplate was fetched and parsed.
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
-        // ── Inspect → /builders/designer/view?slug=<slug> ─────────────────
+        // ── Inspect → /assemblies/designer/view?slug=<slug> ─────────────────
         await page.getByTestId(`published-inspect-${slug}`).click();
-        await page.waitForURL(new RegExp(`/builders/designer/view\\?slug=${slug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/view\\?slug=${slug}`), { timeout: 15000 });
         await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
 
-        // ── Back to the index, Fork → /builders/designer/edit?slug=<forkSlug> ──
-        await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        // ── Back to the index, Fork → /assemblies/designer/edit?slug=<forkSlug> ──
+        await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
         // forkPublishedAssembly() prompts for the new slug via window.prompt —
@@ -61,7 +61,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         page.once('dialog', (dialog) => { void dialog.accept(forkSlug); });
         await page.getByTestId(`published-fork-${slug}`).click();
 
-        await page.waitForURL(new RegExp(`/builders/designer/edit\\?slug=${forkSlug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/edit\\?slug=${forkSlug}`), { timeout: 15000 });
         // The forked draft hydrated into an editable canvas — not just a URL change.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });

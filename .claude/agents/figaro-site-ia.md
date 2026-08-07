@@ -20,7 +20,7 @@ The deeper challenge: the project is a paradigm shift. Visitors arrive without p
 - **The frame** — the head of `CLAUDE.md` (§ "The frame — hold this message all session") plus `docs/VISION.md` — what the project IS, in full. Without this, IA recommendations risk treating Figaro as a typical web3 project. (Do NOT read `archive-v5/` — archives are not active files.)
 - **`CLAUDE.md`** — for the protocol-vs-runtime tier distinction; IA respects tier boundaries.
 - **`docs/FRONTEND.md`** — the route catalogue; the authoritative inventory, not this file.
-- `frontend/app/(marketing)/`, `frontend/app/(app)/`, and `frontend/app/(builders)/` — the actual route structure (three route groups, not two).
+- `frontend/app/(marketing)/`, `frontend/app/(app)/`, and `frontend/app/(tools)/` — the actual route structure (three route groups, not two).
 
 Run `find frontend/app -name 'page.tsx' -type f | sort` to enumerate the current surface.
 
@@ -40,7 +40,7 @@ These are the constraints the project's framing imposes on IA decisions. Differe
 | **Many short horizontal pages, not long vertical scrolls** | Figaro is a paradigm shift; long vertical pages overwhelm readers and force massive repetition. Default to many short single-concept pages with lateral navigation between them. The hero → "what this means" → mechanism → boundary → "what this is not" → PDF-download vertical template is the web2 default and is wrong by default. When recommending IA, prefer lateral nav primitives (tabs, prev/next, card grids) over scroll-deep pages. |
 | **Tier-respecting navigation** | Marketing pages live under `(marketing)/`; transactional surfaces under `(app)/`. The route-group split is structural — don't merge them in nav. Per `frontend/app/(app)/layout.tsx` (wagmi-loaded) vs `frontend/app/(marketing)/layout.tsx` (no wagmi). |
 | **Cross-link transactional surfaces** | The `(app)` surfaces must be mutually aware (initiator → counter-party sign; discovery → checkout; process detail → audit/evidence). Enumerate the live set with `ls "frontend/app/(app)/"` — the directory listing is the source of truth, never a remembered route list. |
-| **Breadcrumbs on depth ≥ 2** | e.g. `/builders/designer/new`, `/audit/view` — visitor needs to know where they are. Enumerate the live depth-≥2 set with `find frontend/app -name 'page.tsx' -type f`, never a remembered list. |
+| **Breadcrumbs on depth ≥ 2** | e.g. `/assemblies/designer/new`, `/audit/view` — visitor needs to know where they are. Enumerate the live depth-≥2 set with `find frontend/app -name 'page.tsx' -type f`, never a remembered list. |
 | **No segment routers** | Per `CLAUDE.md` § "Read this first" — don't ask "are you a buyer / seller / developer?" The protocol is actor-neutral. |
 | **No badges next to names** | No "Reference Archetype" labels in nav. |
 

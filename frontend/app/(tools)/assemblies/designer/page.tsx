@@ -28,7 +28,7 @@ export default function DesignerLanding() {
                 </p>
                 <div className="mt-8">
                     <Link
-                        href="/builders/designer/new?fresh=1"
+                        href="/assemblies/designer/new?fresh=1"
                         className="inline-flex rounded-tile border border-ink-heading bg-ink-heading text-paper px-5 py-2.5 text-sm font-semibold hover:bg-ink-primary"
                     >
                         Start a blank assembly

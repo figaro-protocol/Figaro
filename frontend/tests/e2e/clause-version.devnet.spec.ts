@@ -43,7 +43,7 @@ test.describe('clause version axis (devnet)', () => {
         await registerProbeClause(clauseId, makeProbeSpec(clauseId, `Version probe v1 ${nonce}`, 1), 1);
         await registerProbeClause(clauseId, makeProbeSpec(clauseId, `Version probe v2 ${nonce}`, 2), 2);
 
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNode.click();
@@ -68,7 +68,7 @@ test.describe('clause version axis (devnet)', () => {
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
-        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
         await page.waitForFunction(

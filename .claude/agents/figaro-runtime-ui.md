@@ -28,7 +28,7 @@ Then sample these to learn current patterns (use `Read` with offset/limit; do no
 - An attestation form component (search for one that calls `useFigaroActions` or `useOrderCommitmentFlow`).
 - A page in `frontend/app/(app)/` — `app` route-group conventions.
 - A page in `frontend/app/(marketing)/` — marketing-page conventions (no wagmi).
-- A page in `frontend/app/(builders)/` — the third route group (builder tooling, e.g. the assembly designer).
+- A page in `frontend/app/(tools)/` — the third route group (builder tooling, e.g. the assembly designer).
 
 State explicitly which files you read and what conventions you extracted before writing anything.
 

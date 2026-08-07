@@ -5,7 +5,7 @@
  *
  * Reads from `useRegisteredClausesByWallet(address)` which filters the
  * `ClauseRegistered` event log by registrar. For most wallets the list is
- * empty; the empty state points at `/builders/clauses` (the clause authoring
+ * empty; the empty state points at `/clauses/register` (the clause authoring
  * surface — paste a spec and register it) and at the marketing /clauses page
  * so users can see what clauses exist protocol-wide. For the deployer wallet
  * (which registers the bundled specs through the deploy script), the list
@@ -48,7 +48,7 @@ export function ClausesList() {
         return (
             <p className="text-sm text-ink-muted" data-testid="clauses-empty">
                 You haven&apos;t registered any clauses yet.{" "}
-                <Link href="/builders/clauses" className="underline">
+                <Link href="/clauses/register" className="underline">
                     Register a clause
                 </Link>{" "}
                 — paste a spec and anchor it on the <code>ClauseRegistry</code> — or browse the{" "}

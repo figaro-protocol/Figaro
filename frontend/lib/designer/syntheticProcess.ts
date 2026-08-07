@@ -1,7 +1,7 @@
 /**
  * Synthetic process helpers for the designer canvas.
  *
- * Builds in-memory orders + their agreements for the /builders/designer/new
+ * Builds in-memory orders + their agreements for the /assemblies/designer/new
  * canvas. Persists each synthetic agreement through the normal agreementStore
  * (localStorage) so that the existing topology derivation and lens summaries
  * pick them up without any code path changes.

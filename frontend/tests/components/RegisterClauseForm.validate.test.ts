@@ -6,7 +6,7 @@
  * and that the RAW document (incl. optional `block`) survives to the pin.
  */
 import { describe, expect, it } from "vitest";
-import { validate } from "@/app/(builders)/builders/clauses/_components/RegisterClauseForm";
+import { validate } from "@/app/(tools)/clauses/register/_components/RegisterClauseForm";
 
 const WELL_FORMED = {
     clauseId: "figaro-my-clause",

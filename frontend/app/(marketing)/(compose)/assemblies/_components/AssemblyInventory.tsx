@@ -57,7 +57,7 @@ export function AssemblyInventory() {
                     >
                         <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
                             <Link
-                                href={`/builders/designer/view?slug=${encodeURIComponent(choice.slug)}`}
+                                href={`/assemblies/designer/view?slug=${encodeURIComponent(choice.slug)}`}
                                 className="text-sm font-semibold text-ink-heading hover:underline"
                                 data-testid={`assembly-view-${choice.slug}`}
                             >

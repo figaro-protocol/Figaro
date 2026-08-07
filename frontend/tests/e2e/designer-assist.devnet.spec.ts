@@ -33,7 +33,7 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a template, compo
         });
 
         // ── COMPOSE: root + one sub-order; select a clause on the sub. ──
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 

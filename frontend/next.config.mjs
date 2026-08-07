@@ -61,7 +61,7 @@
 //     it client-side from a query param behind a Suspense boundary:
 //       /orders/view?process=<id>   /audit/view?process=<id>
 //       /s/view?seller=<addr>       /s/checkout?seller=<addr>
-//       /builders/designer/{view,edit}?slug=<slug>
+//       /assemblies/designer/{view,edit}?slug=<slug>
 
 const nextConfig = {
     reactStrictMode: true,

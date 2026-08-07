@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Providers } from "../providers";
-import { BuilderHeader } from "@/components/shared/BuilderHeader";
+import { ToolsHeader } from "@/components/shared/ToolsHeader";
 import { Footer } from "@/components/shared/Footer";
 
 // Statically exported (`output: 'export'`) — same as the (app) and
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
  * Layout for the builder/authoring tier (the assembly designer).
  *
  * It mounts the full `<Providers>` stack like `(app)` — authoring publishes
- * on-chain, so it needs the wallet — but uses the one-row `<BuilderHeader>`
+ * on-chain, so it needs the wallet — but uses the one-row `<ToolsHeader>`
  * (publication nav + ConnectWallet, NO Orders/Members row) and the
  * shared `<Footer>`, so the designer reads as a Builders-section page with
  * the same chrome as the home nav (Protocol / Builders / Discover), not as
@@ -38,7 +38,7 @@ export default function BuildersLayout({ children }: { children: React.ReactNode
     return (
         <Providers>
             <div className="min-h-screen flex flex-col">
-                <BuilderHeader />
+                <ToolsHeader />
                 <main id="main-content" className="flex-1 min-h-0 flex flex-col">{children}</main>
                 <Footer />
             </div>

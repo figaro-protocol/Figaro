@@ -106,7 +106,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
@@ -135,7 +135,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         // slug; re-run → the registry refuses the identical composition
         // (first-write-wins) and its refusal NAMES the anchored slug. Either
         // way the slug comes from the network's answer.
-        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
         await waitForConnected(page);

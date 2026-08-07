@@ -19,7 +19,7 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
 
 1. **WHO acts — name the role + its surface.** Party = buyer/seller at the kernel;
    the runtime roles are DISTINCT surfaces & projections — DESIGNER composes
-   (`/builders/designer`), SELLER binds published assemblies (profile array), BUYER
+   (`/assemblies/designer`), SELLER binds published assemblies (profile array), BUYER
    selects + fills at checkout, the order's SELLER attests at runtime, SPECTATOR
    reads. Say which role and where. *Tell:* "the buyer does X", "the user", a
    singular "participant", roles merged ("buyer composes"). The subtle collapse:

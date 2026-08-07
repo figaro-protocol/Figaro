@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ViewAssemblyClient } from "./ViewAssemblyClient";
 
 /**
- * /builders/designer/view?slug=<slug> — read-only inspect of an assembly.
+ * /assemblies/designer/view?slug=<slug> — read-only inspect of an assembly.
  *
  * The slug resolves at the client to either a localStorage draft or an
  * on-chain published assembly (via AssemblyRegistered events + IPFS). It is
