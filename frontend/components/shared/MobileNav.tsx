@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Menu from "@/components/icons/Menu";
 import X from "@/components/icons/X";
 import Link from "next/link";
@@ -110,7 +111,11 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
                 )}
             </button>
 
-            {isOpen && (
+            {/* The drawer PORTALS to <body>: the sticky header's
+                backdrop-blur makes the header a containing block for fixed
+                descendants, so an in-place drawer's h-full resolves to the
+                header's own height (~82px) — full content, collapsed box. */}
+            {isOpen && createPortal(
                 <>
                     {/* Backdrop */}
                     <div
@@ -192,7 +197,8 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
                             </ul>
                         </nav>
                     </div>
-                </>
+                </>,
+                document.body,
             )}
         </>
     );
