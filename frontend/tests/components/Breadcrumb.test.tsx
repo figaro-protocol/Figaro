@@ -12,7 +12,7 @@ describe("Breadcrumb", () => {
         render(
             <Breadcrumb
                 items={[
-                    { label: "Builders", href: "/builders" },
+                    { label: "Specifications", href: "/spec" },
                     { label: "Designer", href: "/builders/designer" },
                     { label: "New assembly" },
                 ]}
@@ -26,7 +26,7 @@ describe("Breadcrumb", () => {
         render(
             <Breadcrumb
                 items={[
-                    { label: "Builders", href: "/builders" },
+                    { label: "Specifications", href: "/spec" },
                     { label: "Sharp edges" },
                 ]}
             />,

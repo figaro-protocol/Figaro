@@ -14,7 +14,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // (the paper/frontend seam stays). Operational read/attach guidance lives in
 // the SDK README, not here.
 export const metadata: Metadata = {
-    title: "Composes — Figaro Protocol",
+    title: "Composition — Figaro Protocol",
     description:
         "What composes with Figaro — an open category, not a catalogue.",
 };

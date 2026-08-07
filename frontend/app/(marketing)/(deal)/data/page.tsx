@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
-    title: "Your records, your terms — Figaro Protocol",
+    title: "Data — Figaro Protocol",
     description:
         "The protocol never holds your private trade records — only a fingerprint. The public half of every trade is a shared map anyone can read. And opening your own books to a buyer is an ordinary bonded sale, on your terms, arriving provable.",
 };

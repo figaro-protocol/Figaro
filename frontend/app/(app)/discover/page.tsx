@@ -3,7 +3,7 @@ import Link from "next/link";
 import { MemberDiscovery } from "./_components/MemberDiscovery";
 
 export const metadata: Metadata = {
-    title: "Discover sellers — Figaro Protocol",
+    title: "Discover members — Figaro Protocol",
     description:
         "Browse bonded sellers across the Figaro ecosystem. Filter by your location, search by name, pick an assembly. Click a seller to open their assembly's runtime and start a bonded commitment.",
 };

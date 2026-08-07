@@ -25,6 +25,9 @@ export default function Kernel() {
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The short version is a lockbox: both sides put in a stake, more than the deal is worth, held by a small program that runs in the open, owned by no one, following one fixed rule. Say the deal is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a stake. The seller locks twenty too, all of it stake. Forty is held, and until the deal is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
             </p>
+            <p className="text-sm text-ink-muted leading-relaxed mb-5">
+                One deal, lived end to end &mdash; ordered, made, carried, settled &mdash; is on <Link href="/local-commerce" className="hover:underline">Local Commerce</Link>: one worked example among the unbounded kinds a deal can take.
+            </p>
             <LockedFundsStateFigure className="my-8" />
             <p className="text-base text-ink-body leading-relaxed mb-4">
                 Why twice the value, and not the payment plus a small margin? Because the size of the stake is the whole mechanism. At twice the value there is no amount that is clever to steal:

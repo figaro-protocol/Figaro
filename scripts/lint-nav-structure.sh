@@ -1,16 +1,22 @@
 #!/bin/bash
-# lint-nav-structure.sh — MARKETING_MAP must equal the (marketing) route tree.
+# lint-nav-structure.sh — MARKETING_MAP must equal the ruled route tree.
 #
-# The marketing nav is DERIVED from the route-group structure, never curated:
-#   (explain) -> doorway /kernel     (section "Kernel")
-#   (contribute) -> doorway /builders (section "Builders")
-#   (surfaces) -> doorway /members    (section "Join")
-#   working-groups/ -> doorway /working-groups (section "Groups")
-# papers/ and the root page carry no nav entries. Labels are each page's own
-# metadata.title minus the " — Figaro Protocol" suffix. This guard re-derives
-# the expected map from the tree and fails on any disagreement — a page
-# added, removed, or retitled must be reflected in navLinks.ts, and nothing
-# outside the (marketing) tier may appear there.
+# The marketing nav is DERIVED from the route-group structure (operator
+# ruling 2026-08-07), one group per protocol object:
+#   (deal) -> /kernel        (section "The Deal")
+#   (compose) -> /clauses    (section "Clauses & Assemblies")
+#   (participants) -> /members
+#   (rewards) -> /rpgf
+#   (spec) -> /spec
+#   (research) -> /why
+# plus MARKET, the one all-bridge section carrying the (app) tier's
+# e-commerce tools (/discover, /orders, /audit). (reference) is footer
+# chrome and carries no nav entries; papers/ are reached through Working
+# Groups; /local-commerce is DEMOTED — a worked example linked from
+# /kernel, never a nav entry. Labels are each page's own metadata.title
+# minus the " — Figaro Protocol" suffix. Entry ORDER within a group is the
+# ruled reading order (owned by navLinks.ts), so this guard checks set
+# equality, labels, and doorway-first — not alphabetical order.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -22,17 +28,31 @@ const ROOT = "frontend/app/(marketing)";
 const NAV = "frontend/components/shared/navLinks.ts";
 const SUFFIX = " — Figaro Protocol";
 const DOORWAYS = {
-    "(explain)": "/kernel",
-    "(contribute)": "/builders",
-    "(surfaces)": "/members",
-    "working-groups": "/working-groups",
+    "(deal)": "/kernel",
+    "(compose)": "/clauses",
+    "(participants)": "/members",
+    "(rewards)": "/rpgf",
+    "(spec)": "/spec",
+    "(research)": "/why",
 };
-// Sanctioned tier bridges: routes OUTSIDE (marketing) that one doorway's
-// group carries so the tier's tools stay reachable from the publication nav.
-// Labels still derive from each page's own metadata.title.
-const BRIDGES = {
-    "/builders/clauses": { doorway: "/builders", file: "frontend/app/(builders)/builders/clauses/page.tsx" },
-    "/builders/designer": { doorway: "/builders", file: "frontend/app/(builders)/builders/designer/page.tsx" },
+const SKIP_GROUPS = new Set(["(reference)"]);
+const EXCLUDE_ROUTES = new Set(["/local-commerce"]);
+const MARKET = {
+    doorway: "/discover",
+    pages: [
+        ["/discover", "frontend/app/(app)/discover/page.tsx"],
+        ["/orders", "frontend/app/(app)/orders/page.tsx"],
+        ["/audit", "frontend/app/(app)/audit/page.tsx"],
+    ],
+};
+
+const titleOf = (file) => {
+    const m = fs.readFileSync(file, "utf8").match(/title:\s*"([^"]+)"/);
+    if (!m) {
+        console.error(`[nav-structure:FAIL] ${file} — no literal metadata.title; the nav label derives from it.`);
+        process.exit(1);
+    }
+    return m[1].endsWith(SUFFIX) ? m[1].slice(0, -SUFFIX.length) : m[1];
 };
 
 const pages = [];
@@ -50,30 +70,17 @@ for (const page of pages) {
     if (rel === "" || rel.startsWith("papers")) continue;
     const segments = rel.split(path.sep);
     const top = segments[0];
+    if (SKIP_GROUPS.has(top)) continue;
     const doorway = DOORWAYS[top];
     if (!doorway) {
-        console.error(`[nav-structure:FAIL] ${page} — route dir "${top}" has no doorway mapping; add it to lint-nav-structure.sh AND the nav, or regroup the page.`);
+        console.error(`[nav-structure:FAIL] ${page} — route dir "${top}" has no doorway mapping; add it here AND to the nav, or regroup the page.`);
         process.exit(1);
     }
     const route = "/" + segments.filter((s) => !s.startsWith("(")).join("/");
-    const src = fs.readFileSync(page, "utf8");
-    const m = src.match(/title:\s*"([^"]+)"/);
-    if (!m) {
-        console.error(`[nav-structure:FAIL] ${page} — no literal metadata.title; the nav label derives from it.`);
-        process.exit(1);
-    }
-    expected.get(doorway).set(route, m[1].endsWith(SUFFIX) ? m[1].slice(0, -SUFFIX.length) : m[1]);
+    if (EXCLUDE_ROUTES.has(route)) continue;
+    expected.get(doorway).set(route, titleOf(page));
 }
-
-for (const [route, bridge] of Object.entries(BRIDGES)) {
-    const src = fs.readFileSync(bridge.file, "utf8");
-    const m = src.match(/title:\s*"([^"]+)"/);
-    if (!m) {
-        console.error(`[nav-structure:FAIL] ${bridge.file} — bridge page has no literal metadata.title.`);
-        process.exit(1);
-    }
-    expected.get(bridge.doorway).set(route, m[1].endsWith(SUFFIX) ? m[1].slice(0, -SUFFIX.length) : m[1]);
-}
+expected.set(MARKET.doorway, new Map(MARKET.pages.map(([route, file]) => [route, titleOf(file)])));
 
 const navSrc = fs.readFileSync(NAV, "utf8");
 const start = navSrc.indexOf("export const MARKETING_MAP");
@@ -98,7 +105,7 @@ for (const group of groups) {
     seenDoorways.add(doorway);
     const want = expected.get(doorway);
     for (const { href, label } of group.links) {
-        if (!want.has(href)) fail(`section "${group.section}" lists ${href}, which is not a page of its route group (or not in the (marketing) tier).`);
+        if (!want.has(href)) fail(`section "${group.section}" lists ${href}, which is not a page of its route group (or is excluded from nav).`);
         else if (want.get(href) !== label) fail(`${href} — label "${label}" ≠ page title "${want.get(href)}".`);
     }
     for (const href of want.keys()) {
@@ -110,5 +117,5 @@ for (const doorway of expected.keys()) {
 }
 
 if (failed) process.exit(1);
-console.log("[nav-structure] clean — MARKETING_MAP equals the (marketing) route tree");
+console.log("[nav-structure] clean — MARKETING_MAP equals the ruled route tree");
 EOF

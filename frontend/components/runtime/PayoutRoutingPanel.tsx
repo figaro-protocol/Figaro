@@ -76,7 +76,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
                 through the public multisender this deployment composes with. Your
                 wallet, your receipts — the batch is atomic and the split becomes
                 part of your own on-chain record.{" "}
-                <Link href="/composes#payout-routing" className="underline">What is this for?</Link>
+                <Link href="/composition#payout-routing" className="underline">What is this for?</Link>
             </p>
             <div className="space-y-2">
                 {legs.map((leg, i) => (

@@ -62,9 +62,9 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
 
-        await drawer.getByRole('link', { name: 'Builders' }).click();
+        await drawer.getByRole('link', { name: 'Clauses', exact: true }).click();
 
-        await expect(page).toHaveURL(/\/builders$/);
+        await expect(page).toHaveURL(/\/clauses$/);
         // useEffect on pathname change closes the drawer
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });

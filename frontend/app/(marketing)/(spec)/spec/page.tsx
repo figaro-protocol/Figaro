@@ -32,7 +32,7 @@ export default function Specifications() {
                 </p>
                 <SystemLayersFigure className="my-8" />
                 <p className="text-sm text-ink-muted">
-                    Off-chain composition lives at <Link href="/builders" className="underline">/builders</Link>.
+                    Off-chain composition lives on the Clauses and Assemblies surfaces (linked below).
                 </p>
             </MarketingSection>
 
@@ -190,7 +190,7 @@ function attestViaResolver(
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-4">
-                    Read-path guidance for integrators, with the fold rule for the two usage streams, is in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>; composition targets that read order state are on <Link href="/composes" className="underline">Composes</Link>.
+                    Read-path guidance for integrators, with the fold rule for the two usage streams, is in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>; composition targets that read order state are on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
             </MarketingSection>
 
@@ -336,7 +336,7 @@ function attestViaResolver(
                     Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are shown on <Link href="/kernel" className="underline">Kernel</Link>; the academic frame for why the kernel is narrow is on <Link href="/working-groups" className="underline">Papers</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
                     for the clause validation architecture and the anchoring doctrine, and the{" "}
-                    <Link href="/builders" className="underline">Builders</Link> surface for composition tools. The external half &mdash; forums, offset markets, payout routing, and the rest of the compositional surface named above (<code>witnessSwapAndCommitCoordinator</code>, <code>multisender</code>, and the funding contracts) &mdash; is catalogued on <Link href="/composes" className="underline">Composes</Link>.
+                    <Link href="/clauses" className="underline">Clauses</Link> and <Link href="/assemblies" className="underline">Assemblies</Link> surfaces for composition tools. The external half &mdash; forums, offset markets, payout routing, and the rest of the compositional surface named above (<code>witnessSwapAndCommitCoordinator</code>, <code>multisender</code>, and the funding contracts) &mdash; is catalogued on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
             </MarketingSection>
 

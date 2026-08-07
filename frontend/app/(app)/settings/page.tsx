@@ -18,7 +18,7 @@ import { SettingsForm } from "./_components/SettingsForm";
  * you land on. The route slug stays `/settings`.
  */
 export const metadata: Metadata = {
-    title: "Endpoints — Figaro Protocol",
+    title: "Your endpoints — Figaro Protocol",
     description:
         "Point this frontend at your own RPC and IPFS endpoints, and choose how a pending commitment reaches the other party — share-links-only or XMTP. Overrides live in this browser and never leave your device.",
 };

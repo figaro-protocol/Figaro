@@ -57,7 +57,7 @@ const TERMS: Term[] = [
         term: "Composition",
         definition:
             "Attaching an outside system — a dispute forum, a payout router, a swap venue, another on-chain contract — to a deal without changing the kernel that secures it. Internal composition extends the protocol itself (new clauses, new assemblies); external composition reaches things the kernel deliberately leaves out.",
-        readMore: <Link href="/composes" className="hover:underline">Composes</Link>,
+        readMore: <Link href="/composition" className="hover:underline">Composition</Link>,
     },
     {
         id: "florin",

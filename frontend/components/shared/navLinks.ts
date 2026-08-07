@@ -3,11 +3,10 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The four entries: Kernel (the substrate), Builders (affordances),
-//   Join (membership), Groups (the working groups; the
-//   paper corpus is reached through it — papers are discussion starters,
-//   and the goal is groups forming worldwide, spontaneously). The
-//   logo links home; no "Home" item here.
+//   The seven entries are the ruled protocol-object sections: The Deal,
+//   Market, Clauses & Assemblies, Participants, Rewards, Specifications,
+//   Research (papers are reached through Working Groups — discussion
+//   starters). The logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
 //   entry MUST be a protocol surface (a role-bound tool, clause family,
@@ -30,10 +29,13 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-    { href: "/kernel", label: "Kernel" },
-    { href: "/builders", label: "Builders" },
-    { href: "/members", label: "Join" },
-    { href: "/working-groups", label: "Groups" },
+    { href: "/kernel", label: "The Deal" },
+    { href: "/discover", label: "Market" },
+    { href: "/clauses", label: "Clauses & Assemblies" },
+    { href: "/members", label: "Participants" },
+    { href: "/rpgf", label: "Rewards" },
+    { href: "/spec", label: "Specifications" },
+    { href: "/why", label: "Research" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The
@@ -63,7 +65,7 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/rewards", label: "Rewards" },
     // The wallet's own runtime infrastructure (RPC provider, IPFS node) —
     // actor-neutral, no operator service in the middle.
-    { href: "/settings", label: "Endpoints" },
+    { href: "/settings", label: "Your endpoints" },
 ];
 
 // The drawer's App section IS the primary row restated for mobile, so it SPREADS
@@ -77,61 +79,73 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — DERIVED from the `(marketing)` route-group structure,
- * never hand-curated: each doorway's group is exactly one route group's
- * pages — `(explain)` → Kernel, `(contribute)` → Builders, `(surfaces)` →
- * Join, `working-groups/` → Groups (papers are reached through Groups, so
- * they carry no nav entries). Each group's first entry IS its doorway; every
- * other entry follows alphabetically; each label is its page's own
- * `metadata.title` minus the site suffix. Only `(marketing)` routes may
- * appear — cross-tier links belong to their own tier's nav.
- * `scripts/lint-nav-structure.sh` enforces all of this against the tree.
- * ONE source, two renderings: `NavTreeRow` opens each group as a desktop
- * disclosure submenu; `NAV_LINKS_MARKETING_DRAWER` flattens it with section
- * headers.
+ * The marketing map — the ruled site tree (operator, 2026-08-07): one group
+ * per protocol object, DERIVED from the route-group structure — `(deal)` →
+ * The Deal, `(compose)` → Clauses & Assemblies, `(participants)` →
+ * Participants, `(rewards)` → Rewards, `(spec)` → Specifications,
+ * `(research)` → Research — plus Market, the one all-bridge group carrying
+ * the app tier's e-commerce tools. Each group's first entry IS its doorway;
+ * entry ORDER within a group is the ruled reading order, not alphabetical.
+ * Labels derive from each page's own `metadata.title` minus the site suffix.
+ * `(reference)` (FAQ, Glossary) is footer chrome, never nav; papers are
+ * reached through Working Groups; /local-commerce is DEMOTED — linked from
+ * /kernel as a worked example, never a nav entry. Tools (Register a clause,
+ * Designer, Claim, Join) are buttons on their object's page, never nav
+ * slots. `scripts/lint-nav-structure.sh` enforces all of this.
+ * ONE source, two renderings: `NavTreeRow` (desktop disclosure submenus) and
+ * `NAV_LINKS_MARKETING_DRAWER` (mobile, flattened with section headers).
  */
 export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
-        section: "Kernel",
+        section: "The Deal",
         links: [
             { href: "/kernel", label: "How it works" },
-            { href: "/consequences", label: "Consequences" },
-            { href: "/faq", label: "FAQ" },
-            { href: "/glossary", label: "Glossary" },
             { href: "/physics", label: "Physics" },
-            { href: "/security", label: "Security" },
-            { href: "/why", label: "Why" },
+            { href: "/data", label: "Data" },
         ],
     },
     {
-        section: "Builders",
+        section: "Market",
         links: [
-            { href: "/builders", label: "Builders" },
-            // The two (builders)-tier tools ride in this group as explicit
-            // TIER BRIDGES — the one sanctioned exception to routes-of-the-
-            // group-only; the guard's BRIDGES map is the same authority.
-            { href: "/builders/clauses", label: "Register a clause" },
-            { href: "/builders/designer", label: "Designer" },
-            { href: "/builders/pitfalls", label: "Sharp edges" },
-            { href: "/rpgf", label: "RPGF" },
-            { href: "/spec", label: "Specifications" },
+            { href: "/discover", label: "Discover members" },
+            { href: "/orders", label: "Your orders" },
+            { href: "/audit", label: "Audit" },
         ],
     },
     {
-        section: "Join",
+        section: "Clauses & Assemblies",
+        links: [
+            { href: "/clauses", label: "Clauses" },
+            { href: "/assemblies", label: "Assemblies" },
+            { href: "/composition", label: "Composition" },
+        ],
+    },
+    {
+        section: "Participants",
         links: [
             { href: "/members", label: "Members" },
             { href: "/agents", label: "Agents" },
-            { href: "/assemblies", label: "Assemblies" },
-            { href: "/clauses", label: "Clauses" },
-            { href: "/composes", label: "Composes" },
-            { href: "/data", label: "Your records, your terms" },
-            { href: "/local-commerce", label: "Local Commerce" },
         ],
     },
     {
-        section: "Groups",
-        links: [{ href: "/working-groups", label: "Working Groups" }],
+        section: "Rewards",
+        links: [{ href: "/rpgf", label: "RPGF" }],
+    },
+    {
+        section: "Specifications",
+        links: [
+            { href: "/spec", label: "Specifications" },
+            { href: "/pitfalls", label: "Sharp edges" },
+            { href: "/security", label: "Security" },
+        ],
+    },
+    {
+        section: "Research",
+        links: [
+            { href: "/why", label: "Why" },
+            { href: "/working-groups", label: "Working Groups" },
+            { href: "/consequences", label: "Consequences" },
+        ],
     },
 ];
 
