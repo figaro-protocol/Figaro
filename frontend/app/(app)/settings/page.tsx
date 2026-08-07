@@ -25,9 +25,9 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
     return (
-        <div className="max-w-2xl space-y-6">
+        <div className="container mx-auto px-6 pt-16 pb-24 max-w-2xl space-y-6">
             <header className="space-y-2">
-                <h1 className="text-heading-h1 text-ink-heading">Endpoints</h1>
+                <h1 className="text-heading-h1 text-ink-heading">Your endpoints</h1>
                 <p className="text-sm text-ink-body">
                     The network services this frontend reads and writes through are
                     yours, not an operator&apos;s: chain reads go through your own RPC

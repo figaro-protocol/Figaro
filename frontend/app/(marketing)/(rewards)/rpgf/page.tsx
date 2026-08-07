@@ -54,6 +54,9 @@ export default function Rpgf() {
                     <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the contract itself.</li>
                 </ul>
                 <RpgfValueLoopFigure />
+                <p className="text-base text-ink-body leading-relaxed mt-6">
+                    An author reads their accrual and claims a closed period&apos;s share at <Link href="/rewards" className="text-ink-heading font-medium hover:underline">Claim rewards</Link> &mdash; connected wallet required, permission from no one.
+                </p>
             </MarketingSection>
 
         </>

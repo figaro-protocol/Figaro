@@ -8,11 +8,10 @@
 //   Research (papers are reached through Working Groups — discussion
 //   starters). The logo links home; no "Home" item here.
 //
-// - `NAV_LINKS_APP_PRIMARY` is the (app) second row, desktop only. Each
-//   entry MUST be a protocol surface (a role-bound tool, clause family,
-//   or registry), not a product feature. Adding ad-hoc product nav here
-//   regresses the protocol-publication discipline (see
-//   `feedback_protocol_not_product_ui.md`).
+// - `NAV_LINKS_APP_PRIMARY` feeds ONLY the mobile drawer's App section
+//   (no desktop row exists); entries whose routes the marketing map
+//   already lists are filtered out at the drawer. Each entry MUST be a
+//   protocol surface, not a product feature.
 //
 // - `NAV_LINKS_APP_DRAWER` is the (app) mobile drawer — combined
 //   publication + reference + transactional surfaces, grouped by

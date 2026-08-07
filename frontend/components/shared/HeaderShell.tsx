@@ -18,8 +18,7 @@ interface HeaderShellProps {
      *  transactional surfaces. */
     mobileLinks?: NavLink[];
     /** Optional second row rendered under the main row (inside the same
-     *  sticky `<header>`). (app) tier passes a `<NavLinksRow>` fed
-     *  `NAV_LINKS_APP_PRIMARY`; marketing tier omits it. */
+     *  sticky `<header>`). No current tier passes one. */
     bottomRow?: ReactNode;
 }
 
