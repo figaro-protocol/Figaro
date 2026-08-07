@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 // static export would emit the <meta og:image> URL but never the image itself
 // (a guaranteed 404 on every deploy — measured 2026-08-05). Default runtime
 // lets `output: 'export'` render the PNG at build time.
-export const alt = "Figaro Protocol — Figaro completes the contract.";
+export const alt = "Figaro Protocol — The Figaro Ecosystem";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -48,7 +48,7 @@ export default async function Image() {
                         maxWidth: 900,
                     }}
                 >
-                    Figaro completes the contract.
+                    The Figaro Ecosystem
                 </div>
             </div>
         ),

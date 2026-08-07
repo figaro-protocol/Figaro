@@ -1,63 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
+import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 
 export const metadata: Metadata = {
     title: "Figaro Protocol",
     description:
-        "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
+        "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
 };
 
-// AUDITED 2026-08-05: home derives from the frame's synthesis, probe-refined
-// across layman/techie/academic (the epoch-claim close cut — 3/3 flagged it;
-// everything through "parts everyone shares" earns belief at all three
-// altitudes). The section below it answers the ONE question all three blind
-// probes named as their must-answer-or-leave: the unhappy path. Its copy
-// follows remedy-before-resolve (never hostage framing), the five-layer
-// stack (forums rule regardless of composition), and the deterrent-not-prize
-// stake truth. ONE body link per target; no stage vocabulary; a beat that
-// grows past its owner's summary is forking the owner and belongs there.
+// Copy constraints the code can't show: "process" always means the economic
+// object, "the blockchain" the substrate, "record" what a process leaves —
+// never blur the referents. The cents claim is COORDINATION friction
+// (lawyer/accountant/platform), not gas alone. The unhappy path lives on
+// /security (the FAQ owns it); home points, never carries it.
 export default function Home() {
     return (
         <>
             <MarketingHero
-                title="Figaro completes the contract."
+                title="The Figaro Ecosystem"
                 lead={
                     <>
-                        From guilds to banks to platforms, every economic system has fought over the same two questions: who enforces a deal, and who keeps the profit.
+                        From guilds to banks to platforms, every economic system has fought over the same two questions: who enforces a deal, and who keeps the profit. Figaro&apos;s answer: both sides stake tokens worth more than cheating could gain &mdash; so no one needs to stand in the middle.
                     </>
                 }
-            >
-                <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    The apps we use today answer by standing in the middle &mdash; taking a cut of every sale and keeping everyone&apos;s data.
+            />
+
+            <section className="container mx-auto px-6 pb-12 max-w-3xl">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Every deal on Figaro runs as a value-added process: each hand adds value on its way from first supplier to final buyer &mdash; a single meal, or a freight route across an ocean &mdash; and the whole process settles as one.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    What it leaves behind is a record, and the record, like the data inside it, is public and private at once. In aggregate it joins a public map of the market &mdash; the same for everyone who reads it. Its detail stays in your hands, under your control: sealed, shown when you choose, sold only if you choose. The blockchain holds nothing but a fingerprint of each agreement &mdash; the detail was never on the chain, which is why that control is real.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    That record doubles as your paperwork: to a legal, regulatory, or fiscal demand &mdash; a regulator, a tax authority, a court &mdash; you demonstrate from the record instead of asking anyone to take your word. The venue still rules; it just rules on evidence.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    And Figaro is never a finished catalogue: the terms of a deal are open parts anyone can write, improve, and be paid for as others use them &mdash; so new kinds of deals appear without waiting for anyone&apos;s approval. Your keys, your signatures, your data, the same rules in math for everyone: what a platform asks you to believe, Figaro lets you check.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Figaro answers differently: deals rarely need an enforcer at all &mdash; both sides stake tokens worth more than cheating could gain &mdash; the market&apos;s map is public, your details are yours to keep or to sell, the people in each deal decide the split, and the network pays whoever builds the parts everyone shares.
+                    The two questions every system fought over finally have answers: the deal enforces itself, and the profit stays with the hands that made it. The coordination that once needed institutions &mdash; a lawyer for the terms, an accountant for the books, a platform for the trust &mdash; is carried by a blockchain instead: securing a whole deal on Ethereum costs a few cents, and batched settlement cuts that to a sixth.
                 </p>
-            </MarketingHero>
-
-            {/* The whole stack, drawn once — HOME owns this figure (operator
-                rule 2026-08-06); /spec's "the stack as a whole is summarised
-                on the home page" points here. Additive: no home beat moved. */}
-            <section className="container mx-auto px-6 pb-4 max-w-3xl">
-                <SystemLayersFigure />
             </section>
 
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
-                <h2 className="text-heading-h2 text-ink-heading mb-6">When a deal goes wrong</h2>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading">If it can be fixed, fixing it is what pays.</strong> Nobody in a deal is paid until the buyer confirms &mdash; so a wrong order, a missing half, a late delivery leaves every seller&apos;s stake locked beside yours, and the cheapest way out, for all of them, is to put it right: remade, resent, adjusted, whatever the terms say.
+                <h2 className="text-heading-h2 text-ink-heading mb-6">How a deal holds together</h2>
+                <p className="text-base text-ink-body leading-relaxed mb-8">
+                    Beneath the words the machinery is small. Each agreement in a deal becomes a merkle tree: the clauses are its leaves, the root is the fingerprint the blockchain keeps &mdash; and the readers above it see only what the owner shows them. When a deal goes wrong, the same machinery is what puts it right &mdash; what that covers and what it doesn&apos;t, question by question, is on <Link href="/security" className="hover:underline">Security</Link>.
                 </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading">You are never gambling against a stranger&apos;s upside.</strong> A stake is a deterrent, not a prize &mdash; the other side can never win yours. A seller who won&apos;t make it right is never paid at all and loses double what the deal was worth &mdash; locked away for good, benefiting no one; a seller who makes it right is paid the moment you confirm. That is why putting it right, not standing off, is the winning move on both sides.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading">If you genuinely disagree,</strong> the deal has already written its own record &mdash; every step, timestamped, permanent. The terms can name an arbitrator in advance, which settles the venue before anything happens; and any ordinary court can rule from the same record if none was named. The record is the referee&apos;s evidence; the stakes are what make ignoring a ruling expensive.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    None of this un-ships a damaged package or makes a liar pleasant to deal with. It makes cheating unprofitable, fixing things profitable, and every step of the deal checkable &mdash; what that covers and what it doesn&apos;t, question by question, is on <Link href="/security" className="hover:underline">Security</Link>.
-                </p>
+                <MerkleForestFigure />
                 <div className="flex flex-col sm:flex-row gap-4 mt-10">
                     <Link
                         href="/kernel"

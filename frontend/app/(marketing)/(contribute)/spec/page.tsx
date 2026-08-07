@@ -4,6 +4,7 @@ import { ContractEntry } from "@/components/shared/ContractEntry";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
+import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
 
 export const metadata: Metadata = {
     title: "Specifications — Figaro Protocol",
@@ -29,8 +30,9 @@ export default function Specifications() {
                 <p className="text-base text-ink-body leading-relaxed mb-3">
                     This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/kernel" className="underline">Kernel</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
                 </p>
+                <SystemLayersFigure className="my-8" />
                 <p className="text-sm text-ink-muted">
-                    Off-chain composition lives at <Link href="/builders" className="underline">/builders</Link>; the stack as a whole is summarised on <Link href="/" className="underline">the home page</Link>.
+                    Off-chain composition lives at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
             </MarketingSection>
 

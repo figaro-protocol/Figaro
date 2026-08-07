@@ -36,22 +36,22 @@ export const viewport: Viewport = {
 // stable placeholder instead of a localhost default.
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://figaro.example"),
-    title: "Figaro Protocol — Figaro completes the contract.",
-    description: "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
+    title: "Figaro Protocol — The Figaro Ecosystem",
+    description: "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
     robots: {
         index: false,
         follow: false,
     },
     openGraph: {
-        title: "Figaro completes the contract.",
-        description: "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
+        title: "The Figaro Ecosystem",
+        description: "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
         siteName: "Figaro Protocol",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
-        title: "Figaro completes the contract.",
-        description: "From guilds to banks to platforms, every economic system has fought over who enforces a deal and who keeps the profit. Figaro answers differently: deals rarely need an enforcer at all, the market's map is public, your details are yours, the people in each deal decide the split.",
+        title: "The Figaro Ecosystem",
+        description: "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
     },
 };
 
