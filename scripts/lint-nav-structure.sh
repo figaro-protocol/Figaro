@@ -27,6 +27,13 @@ const DOORWAYS = {
     "(surfaces)": "/members",
     "working-groups": "/working-groups",
 };
+// Sanctioned tier bridges: routes OUTSIDE (marketing) that one doorway's
+// group carries so the tier's tools stay reachable from the publication nav.
+// Labels still derive from each page's own metadata.title.
+const BRIDGES = {
+    "/builders/clauses": { doorway: "/builders", file: "frontend/app/(builders)/builders/clauses/page.tsx" },
+    "/builders/designer": { doorway: "/builders", file: "frontend/app/(builders)/builders/designer/page.tsx" },
+};
 
 const pages = [];
 (function walk(dir) {
@@ -56,6 +63,16 @@ for (const page of pages) {
         process.exit(1);
     }
     expected.get(doorway).set(route, m[1].endsWith(SUFFIX) ? m[1].slice(0, -SUFFIX.length) : m[1]);
+}
+
+for (const [route, bridge] of Object.entries(BRIDGES)) {
+    const src = fs.readFileSync(bridge.file, "utf8");
+    const m = src.match(/title:\s*"([^"]+)"/);
+    if (!m) {
+        console.error(`[nav-structure:FAIL] ${bridge.file} — bridge page has no literal metadata.title.`);
+        process.exit(1);
+    }
+    expected.get(bridge.doorway).set(route, m[1].endsWith(SUFFIX) ? m[1].slice(0, -SUFFIX.length) : m[1]);
 }
 
 const navSrc = fs.readFileSync(NAV, "utf8");

@@ -107,6 +107,11 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "Builders",
         links: [
             { href: "/builders", label: "Builders" },
+            // The two (builders)-tier tools ride in this group as explicit
+            // TIER BRIDGES — the one sanctioned exception to routes-of-the-
+            // group-only; the guard's BRIDGES map is the same authority.
+            { href: "/builders/clauses", label: "Register a clause" },
+            { href: "/builders/designer", label: "Designer" },
             { href: "/builders/pitfalls", label: "Sharp edges" },
             { href: "/rpgf", label: "RPGF" },
             { href: "/spec", label: "Specifications" },
