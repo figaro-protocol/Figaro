@@ -5,6 +5,7 @@ import { YourTurnBadge } from "@/components/shared/YourTurnBadge";
 import { HeaderShell } from "@/components/shared/HeaderShell";
 import { NAV_LINKS_APP_DRAWER } from "@/components/shared/navLinks";
 import { useWalletConnected } from "@/hooks/useWalletConnected";
+import { usePathname } from "next/navigation";
 
 /**
  * Wagmi-aware header for `(app)` routes. Same shell chrome as
@@ -22,13 +23,19 @@ import { useWalletConnected } from "@/hooks/useWalletConnected";
  */
 export function Header() {
     const walletConnected = useWalletConnected();
+    const pathname = usePathname();
+    // /audit is the spectator surface — anyone verifies with no wallet and
+    // no account; the header offers no wallet affordance there.
+    const onSpectator = pathname.startsWith("/audit");
     return (
         <HeaderShell
             right={
-                <>
-                    {walletConnected && <YourTurnBadge theme="light" />}
-                    <ConnectWallet />
-                </>
+                onSpectator ? undefined : (
+                    <>
+                        {walletConnected && <YourTurnBadge theme="light" />}
+                        <ConnectWallet />
+                    </>
+                )
             }
             mobileLinks={NAV_LINKS_APP_DRAWER}
         />

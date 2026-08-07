@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useAccount, useDisconnect } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
@@ -39,13 +38,6 @@ export function ConnectWallet() {
                 >
                     {truncateHex(address)}
                 </span>
-                <Link
-                    href="/settings"
-                    className="text-sm text-ink-muted hover:text-ink-heading hover:underline"
-                    data-testid="wallet-endpoints-link"
-                >
-                    Your endpoints
-                </Link>
                 <Button
                     type="button"
                     variant="outline"
