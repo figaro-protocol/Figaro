@@ -48,67 +48,31 @@ export default function Faq() {
 
             <MarketingSection bottomPad="default">
                 <nav aria-label="Jump to a question" data-testid="faq-jump-index">
-                    <div className="mb-6">
-                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                    <div className="mb-8">
+                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
                             Before you trade
                         </h2>
-                        <div className="overflow-x-auto -mx-6 px-6 mb-4">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-default text-left font-semibold text-ink-heading">
-                                        <th scope="col" className="py-2 pr-4">Scenario</th>
-                                        <th scope="col" className="py-2 pr-4">What happens</th>
-                                        <th scope="col" className="py-2">Where to read</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
-                                    <tr>
-                                        <td className="py-2 pr-4 text-ink-body">Wrong item, or a defective delivery</td>
-                                        <td className="py-2 pr-4 text-ink-body">Remade, resent, or otherwise fixed before the deal closes &mdash; no refund button, only a fix-first close.</td>
-                                        <td className="py-2"><Link href="#counterparty" className="text-ink-heading font-medium hover:underline">Counterparty doesn&apos;t deliver</Link></td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 pr-4 text-ink-body">Seller vanishes without delivering</td>
-                                        <td className="py-2 pr-4 text-ink-body">Every stake stays locked; a counterparty who simply forfeits loses twice what you lose.</td>
-                                        <td className="py-2"><Link href="#counterparty" className="text-ink-heading font-medium hover:underline">Counterparty doesn&apos;t deliver</Link></td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 pr-4 text-ink-body">Buyer never confirms, even after delivery</td>
-                                        <td className="py-2 pr-4 text-ink-body">Nothing leaves the lockbox until the buyer signs the close &mdash; that is the rule, not a malfunction.</td>
-                                        <td className="py-2"><Link href="#layers" className="text-ink-heading font-medium hover:underline">What stands behind a deal</Link></td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 pr-4 text-ink-body">Genuine disagreement over the terms</td>
-                                        <td className="py-2 pr-4 text-ink-body">Three layers in order &mdash; bond economics, then co-seller pressure, then an off-chain forum or court reading the on-chain record.</td>
-                                        <td className="py-2"><Link href="#disputes" className="text-ink-heading font-medium hover:underline">You genuinely disagree</Link></td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 pr-4 text-ink-body">You lose your wallet keys</td>
-                                        <td className="py-2 pr-4 text-ink-body">Recovery is your wallet&apos;s job, not the protocol&apos;s &mdash; set it up (e.g. EIP-7702) before you ever commit.</td>
-                                        <td className="py-2"><Link href="#keys" className="text-ink-heading font-medium hover:underline">If you lose your keys</Link></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
                             {BEFORE_YOU_TRADE.map((item) => (
                                 <li key={item.id}>
-                                    <Link href={`#${item.id}`} className="text-ink-heading hover:underline">
-                                        {item.title}
+                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
+                                        <span>{item.title}</span>
+                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
                                     </Link>
                                 </li>
                             ))}
                         </ul>
                     </div>
                     <div>
-                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
                             Deeper questions
                         </h2>
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
                             {DEEPER_QUESTIONS.map((item) => (
                                 <li key={item.id}>
-                                    <Link href={`#${item.id}`} className="text-ink-heading hover:underline">
-                                        {item.title}
+                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
+                                        <span>{item.title}</span>
+                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
                                     </Link>
                                 </li>
                             ))}
