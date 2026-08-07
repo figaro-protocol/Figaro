@@ -70,7 +70,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     });
 
     // Wayfinding is comprehension. The marketing tier's desktop nav is the
-    // three-doorway publication row; on mobile that row was the ONLY way in, so
+    // section-doorway publication row; on mobile that row was the ONLY way in, so
     // every page behind a doorway was reachable only by scrolling to the footer.
     // The drawer now carries the whole marketing map — a stranger's first visit
     // is usually a phone, so this is the entry path that has to work.

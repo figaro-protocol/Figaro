@@ -12,7 +12,7 @@ import { NAV_LINKS_MARKETING_DRAWER } from "@/components/shared/navLinks";
  * doesn't visually cue redirection. The header carries the publication-
  * row nav and the logo only.
  *
- * Desktop nav stays the three-doorway publication row; the MOBILE drawer gets
+ * Desktop nav stays the section-doorway publication row; the MOBILE drawer gets
  * the full grouped map (`NAV_LINKS_MARKETING_DRAWER`), because on mobile the
  * row was the only way in and everything behind a doorway was footer-only.
  */

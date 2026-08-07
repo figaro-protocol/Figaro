@@ -149,7 +149,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     },
 ];
 
-// The marketing mobile drawer. The desktop marketing nav is the four-doorway
+// The marketing mobile drawer. The desktop marketing nav is the section-doorway
 // publication row; on mobile that row was the ONLY way in, leaving every page
 // behind a doorway reachable only by scrolling to the footer. Grouped like
 // `NAV_LINKS_APP_DRAWER` so the whole map is one tap away.
