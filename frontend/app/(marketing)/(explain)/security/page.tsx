@@ -49,14 +49,6 @@ export default function Security() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Verify it yourself" sectionId="verify">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong>You do not have to take any of this on faith.</strong> <Link href="/audit" className="text-ink-heading font-medium hover:underline">Verify any deal yourself at /audit</Link> &mdash; paste a process ID and get back the on-chain record and a per-order signature check, no wallet or account needed.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    The same legibility extends to every live deal. A process&apos;s full record &mdash; its timeline, financials, clause evidence, and the hashes that bind them to the signed agreements &mdash; is readable by anyone who holds the process ID, connected wallet or none. What that record can and cannot tell you about the <em>moment you signed</em> is a separate question, answered on the <Link href="/faq#signing" className="text-ink-heading font-medium hover:underline">FAQ</Link>.
-                </p>
-            </MarketingSection>
         </>
     );
 }
