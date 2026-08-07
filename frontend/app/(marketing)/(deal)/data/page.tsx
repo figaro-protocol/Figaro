@@ -23,7 +23,7 @@ export default function Data() {
 
             <MarketingSection title="What the chain keeps.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Settling a trade produces a fingerprint on-chain &mdash; a hash of the agreement, timestamped and permanent &mdash; never the agreement itself. The terms, the proof of delivery, the books each side kept: none of it is handed to the protocol to be secured, because none of it needs to be. The fingerprint is enough to prove, later, that a specific record matches a specific settled trade. It proves nothing about what the record says, and it was never meant to. See <Link href="/physics" className="text-ink-heading font-medium hover:underline">physics</Link> for why a boundary this thin can hold an unbounded world honest.
+                    Settling a trade produces a fingerprint on-chain &mdash; a hash of the agreement, timestamped and permanent &mdash; never the agreement itself. The terms, the proof of delivery, the books each side kept: none of it is handed to the protocol to be secured, because none of it needs to be. The fingerprint is enough to prove, later, that a specific record matches a specific settled trade. It proves nothing about what the record says, and it was never meant to. See <Link href="/invariants" className="text-ink-heading font-medium hover:underline">physics</Link> for why a boundary this thin can hold an unbounded world honest.
                 </p>
             </MarketingSection>
 

@@ -44,9 +44,6 @@ export function Header() {
             mobileLinks={NAV_LINKS_APP_DRAWER}
             bottomRow={onRegistration ? undefined : (
                 <div className="hidden md:flex items-center gap-4">
-                    <span className="text-[11px] font-semibold text-neutral-500" data-testid="app-tier-label">
-                        Figaro App
-                    </span>
                     <NavLinksRow
                         links={NAV_LINKS_APP_PRIMARY}
                         testId="desktop-nav-app"

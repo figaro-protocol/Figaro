@@ -79,8 +79,7 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 /**
  * The marketing map — the ruled site tree (operator, 2026-08-07), five nav
  * entries: The Deal `(deal)`, Market (the all-bridge group carrying the app
- * tier's e-commerce tools), Builders (`(compose)` + `(rewards)` + `(spec)`,
- * their ruled sections surviving as inert subheadings inside the panel),
+ * tier's e-commerce tools), Builders (`(compose)` + `(rewards)` + `(spec)`, one flat list of pages),
  * Participants `(participants)`, Research `(research)`. Each group's first
  * PAGE entry is its doorway; entry ORDER within a group is the ruled
  * reading order, not alphabetical.
@@ -98,7 +97,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "The Deal",
         links: [
             { href: "/kernel", label: "How it works" },
-            { href: "/physics", label: "Physics" },
+            { href: "/invariants", label: "Invariants" },
             { href: "/data", label: "Data" },
         ],
     },
@@ -113,13 +112,10 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "Builders",
         links: [
-            { isSectionHeader: true, label: "Clauses & Assemblies", href: "" },
             { href: "/clauses", label: "Clauses" },
             { href: "/assemblies", label: "Assemblies" },
             { href: "/composition", label: "Composition" },
-            { isSectionHeader: true, label: "Rewards", href: "" },
             { href: "/rpgf", label: "RPGF" },
-            { isSectionHeader: true, label: "Specifications", href: "" },
             { href: "/spec", label: "Specifications" },
             { href: "/pitfalls", label: "Sharp edges" },
             { href: "/security", label: "Security" },

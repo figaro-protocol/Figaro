@@ -78,11 +78,11 @@ export function MemberDiscovery() {
                         <span className="text-gray-700">Requesting location…</span>
                     ) : location.status === "denied" || location.status === "error" || location.status === "unsupported" ? (
                         <span className="text-gray-700">
-                            {location.error ?? "Location unavailable."} You can still browse all sellers.
+                            {location.error ?? "Location unavailable."} You can still browse all members.
                         </span>
                     ) : (
                         <span className="text-gray-700">
-                            Showing all sellers. Filter by your location?
+                            Showing all members. Filter by your location?
                         </span>
                     )}
                 </div>
@@ -103,8 +103,8 @@ export function MemberDiscovery() {
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search sellers…"
-                    aria-label="Search sellers"
+                    placeholder="Search members…"
+                    aria-label="Search members"
                     className="w-full max-w-md rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                 />
             </section>
@@ -145,8 +145,8 @@ export function MemberDiscovery() {
 
             <p className="text-xs text-gray-500">
                 {isLoading
-                    ? "Loading sellers…"
-                    : `${filtered.length} ${filtered.length === 1 ? "seller" : "sellers"} shown of ${allListings.length} total.`}
+                    ? "Loading members…"
+                    : `${filtered.length} ${filtered.length === 1 ? "member" : "members"} shown of ${allListings.length} total.`}
             </p>
 
             {/* Listing grid */}
@@ -167,7 +167,7 @@ export function MemberDiscovery() {
                             This registry opens with the network.
                         </p>
                         <p className="text-sm text-gray-500 max-w-md mx-auto">
-                            Every seller listed here is a wallet that registered itself &mdash;
+                            Every member listed here is a wallet that registered itself &mdash;
                             an identity, a catalogue, accepted tokens; no application, no
                             approval, no one to say yes. You can be the first.
                         </p>

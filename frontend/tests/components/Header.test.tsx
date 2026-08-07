@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Header } from "@/components/shared/Header";
-import { NAV_LINKS } from "@/components/shared/navLinks";
+import { MARKETING_MAP } from "@/components/shared/navLinks";
 
 // Mock YourTurnBadge to test conditional rendering
 vi.mock("@/components/shared/YourTurnBadge", () => ({
@@ -20,12 +20,12 @@ describe("Header", () => {
         useWalletConnectedMock.mockReset();
     });
 
-    it("renders logo and all nav links", () => {
+    it("renders the logo and one inert disclosure button per nav section", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
         expect(screen.getByText("Figaro Protocol")).toBeInTheDocument();
-        for (const link of NAV_LINKS) {
-            expect(screen.getByRole("link", { name: link.label })).toHaveAttribute("href", link.href);
+        for (const group of MARKETING_MAP) {
+            expect(screen.getByRole("button", { name: group.section })).toHaveAttribute("aria-expanded", "false");
         }
     });
 
@@ -46,11 +46,5 @@ describe("Header", () => {
         render(<Header />);
         const logo = screen.getByText("Figaro Protocol");
         expect(logo.closest("a")).toBeTruthy();
-    });
-
-    it("names the app-tier layer crossing with a 'Figaro App' label next to the secondary nav row", () => {
-        useWalletConnectedMock.mockReturnValue(false);
-        render(<Header />);
-        expect(screen.getByTestId("app-tier-label")).toHaveTextContent("Figaro App");
     });
 });

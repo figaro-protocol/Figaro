@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
-    title: "Physics — Figaro Protocol",
+    title: "Invariants — Figaro Protocol",
     description:
         "The Figaro core is a small contract that obeys a few physical facts — nothing is kept, the deal only moves forward, the rule is local. Those facts are why its state can leave the chain, why anything can compose against it, and why trust moves from the platform in the middle to the boundary at the edge.",
 };

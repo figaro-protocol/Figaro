@@ -84,7 +84,7 @@ The hardest IA problem for Figaro: **what should a first-time visitor read, in w
 Propose a default reading path. Each step is 1 page. The path should:
 
 1. Frame what Figaro is (1 page — likely the homepage).
-2. Explain the mechanism in plain words (1 page — `/physics` or `/why`).
+2. Explain the mechanism in plain words (1 page — `/invariants` or `/why`).
 3. Surface a worked example (1 page — `/local-commerce` or similar use-case page).
 4. Show the math is real (1 page — `/papers`).
 5. Surface what to do next (1 page — `/builders`).

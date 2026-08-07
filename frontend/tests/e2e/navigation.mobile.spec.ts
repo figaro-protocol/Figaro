@@ -84,7 +84,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         // A page from BEHIND each doorway — the ones the 3-link drawer stranded.
         for (const [label, href] of [
-            ['Physics', '/physics'],
+            ['Physics', '/invariants'],
             ['Papers', '/papers'],
             ['Clauses', '/clauses'],
             ['Agents', '/agents'],
@@ -100,7 +100,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         // And it navigates, closing behind itself.
         await drawer.getByRole('link', { name: 'Physics' }).click();
-        await expect(page).toHaveURL(/\/physics$/);
+        await expect(page).toHaveURL(/\/invariants$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
 
