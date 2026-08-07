@@ -45,7 +45,8 @@
       "bash scripts/lint-no-network-fallbacks.sh",
       "bash scripts/lint-window-globals.sh",
       "bash scripts/lint-runtime-tests-from-chain.sh",
-      "bash scripts/lint-duplicate-links.sh"
+      "bash scripts/lint-duplicate-links.sh",
+      "bash scripts/lint-nav-structure.sh"
     ],
     "sdk/src/**/*.ts": [
       "bash scripts/lint-no-clause-names.sh"

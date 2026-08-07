@@ -11,7 +11,7 @@ export interface MerkleForestFigureProps {
 // boundary and color alone says public or private; the tree converges to an
 // unlabeled point whose single line lands in a block — the chain holds the
 // fingerprint, never the data.
-const CONSUMERS = ["public", "private", "personal", "administrative", "…"] as const;
+const READERS = ["public", "private", "personal", "administrative", "…"] as const;
 
 const CX = [50, 130, 210, 290] as const;
 const DATA_PRIVATE = [false, true, false, true] as const;
@@ -23,11 +23,11 @@ export function MerkleForestFigure({ className }: MerkleForestFigureProps) {
     return (
         <figure className={cn("w-full max-w-xl mx-auto", className)}>
             <div className="relative rounded border border-default px-3 pt-5 pb-2.5 mb-3">
-                <span aria-hidden="true" className="absolute top-1 right-2.5 text-[10px] text-ink-muted">consumers</span>
-                <ul className="flex flex-wrap justify-center gap-1.5" aria-label="The data's consumers">
-                    {CONSUMERS.map((consumer) => (
-                        <li key={consumer} className="rounded border border-default px-3 py-1 text-xs text-ink-heading">
-                            {consumer}
+                <span aria-hidden="true" className="absolute top-1 right-2.5 text-[10px] text-ink-muted">readers</span>
+                <ul className="flex flex-wrap justify-center gap-1.5" aria-label="The data's readers">
+                    {READERS.map((reader) => (
+                        <li key={reader} className="rounded border border-default px-3 py-1 text-xs text-ink-heading">
+                            {reader}
                         </li>
                     ))}
                 </ul>

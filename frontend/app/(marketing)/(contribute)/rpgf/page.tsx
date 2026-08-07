@@ -9,7 +9,7 @@ import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 // renames buried it. Hero + one terms section + closer. Every claim traces
 // to src/rpgf/RpgfMinter.sol + src/protocol/usage/UsageCounter.sol.
 export const metadata: Metadata = {
-    title: "Retroactive public goods funding — Figaro Protocol",
+    title: "RPGF — Figaro Protocol",
     description:
         "600 million florins reserved for the people who write the clauses and compose the assemblies that grow the network's usage, paid by a published formula anyone can check — the schedule, the two counters, the three-seller floor, the live-deposit condition.",
 };

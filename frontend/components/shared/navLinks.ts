@@ -77,53 +77,55 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — the canonical section→pages structure of the `(marketing)`
- * tier, grouped under the four publication doorways (each group's first entry
- * IS its doorway). ONE source, two renderings: `NavTreeRow` opens each group as
- * a desktop disclosure submenu; `NAV_LINKS_MARKETING_DRAWER` flattens it with
- * section headers. Add a marketing page here and both surfaces carry it.
+ * The marketing map — DERIVED from the `(marketing)` route-group structure,
+ * never hand-curated: each doorway's group is exactly one route group's
+ * pages — `(explain)` → Kernel, `(contribute)` → Builders, `(surfaces)` →
+ * Join, `working-groups/` → Groups (papers are reached through Groups, so
+ * they carry no nav entries). Each group's first entry IS its doorway; every
+ * other entry follows alphabetically; each label is its page's own
+ * `metadata.title` minus the site suffix. Only `(marketing)` routes may
+ * appear — cross-tier links belong to their own tier's nav.
+ * `scripts/lint-nav-structure.sh` enforces all of this against the tree.
+ * ONE source, two renderings: `NavTreeRow` opens each group as a desktop
+ * disclosure submenu; `NAV_LINKS_MARKETING_DRAWER` flattens it with section
+ * headers.
  */
 export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
-        section: "Protocol",
+        section: "Kernel",
         links: [
-            { href: "/kernel", label: "Kernel mechanisms" },
-            { href: "/why", label: "Why" },
-            { href: "/physics", label: "Physics" },
-            { href: "/rpgf", label: "RPGF" },
-            { href: "/security", label: "Security" },
+            { href: "/kernel", label: "How it works" },
             { href: "/consequences", label: "Consequences" },
-            { href: "/spec", label: "Specifications" },
+            { href: "/glossary", label: "Glossary" },
+            { href: "/physics", label: "Physics" },
+            { href: "/security", label: "Security" },
+            { href: "/why", label: "Why" },
         ],
     },
     {
         section: "Builders",
         links: [
             { href: "/builders", label: "Builders" },
-            { href: "/builders/designer", label: "Designer" },
-            { href: "/builders/clauses", label: "Register a clause" },
-            { href: "/composes", label: "What Figaro composes with" },
-            { href: "/clauses", label: "Clauses" },
-            { href: "/assemblies", label: "Assemblies" },
-            { href: "/local-commerce", label: "Local Commerce reference" },
             { href: "/builders/pitfalls", label: "Sharp edges" },
-            { href: "/papers/florin-schelling-point-token", label: "florin token" },
+            { href: "/rpgf", label: "RPGF" },
+            { href: "/spec", label: "Specifications" },
         ],
     },
     {
         section: "Join",
         links: [
-            { href: "/members", label: "Join" },
-            { href: "/data", label: "Data" },
-            { href: "/discover", label: "Discover sellers" },
-            { href: "/members/manage", label: "Manage membership" },
+            { href: "/members", label: "Members" },
             { href: "/agents", label: "Agents" },
-            { href: "/glossary", label: "Glossary" },
+            { href: "/assemblies", label: "Assemblies" },
+            { href: "/clauses", label: "Clauses" },
+            { href: "/composes", label: "Composes" },
+            { href: "/data", label: "Your records, your terms" },
+            { href: "/local-commerce", label: "Local Commerce" },
         ],
     },
     {
         section: "Groups",
-        links: [{ href: "/working-groups", label: "Groups" }],
+        links: [{ href: "/working-groups", label: "Working Groups" }],
     },
 ];
 

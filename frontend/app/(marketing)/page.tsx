@@ -47,11 +47,11 @@ export default function Home() {
             <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">How a deal holds together</h2>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Beneath the words the machinery is small. Each agreement in a deal becomes a merkle tree: the clauses are its leaves, the root is the fingerprint the blockchain keeps &mdash; and the readers above it see only what the owner shows them.
+                    Beneath the words the machinery is small. Each agreement in a deal becomes a merkle tree: the clauses are its leaves, the root is the fingerprint the blockchain keeps. Anyone reading the record sees only the clauses the owner chooses to reveal.
                 </p>
                 <MerkleForestFigure />
                 <p className="text-base text-ink-body leading-relaxed mt-8">
-                    That is the entire machinery &mdash; the same for a single meal as for a freight route across an ocean: the terms and the data kept where you control them, one fingerprint where nobody can rewrite it.
+                    The same machinery serves a single meal and a freight route across an ocean: the terms and the data stay where you control them, and one fingerprint sits where nobody can rewrite it.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
                     <Link
