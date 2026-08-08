@@ -8,6 +8,7 @@ import { formatToken } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ContentImage } from "@/components/shared/ContentImage";
+import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/member/onboardingState";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -193,29 +194,24 @@ export function OnboardingReview() {
     if (receipt) {
         return (
             <div className="space-y-6">
-                <Card className="p-6 space-y-4">
-                    <h2 className="text-heading-h2 text-ink-heading">
-                        {isRegistered ? "Profile updated" : "Registered."}
-                    </h2>
-                    <p className="text-sm text-ink-body">
-                        {isRegistered
-                            ? "Your profile has been re-pinned to IPFS and the new metadataURI is on-chain."
-                            : "Your wallet is now registered on this network. You get the deposit back when you leave the registry, after a cooldown."}
-                    </p>
-                    <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">
-                        <div>
-                            <dt className="text-ink-faint">Transaction</dt>
-                            <dd className="font-mono break-all">{receipt.hash}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-ink-faint">Profile URI</dt>
-                            <dd className="font-mono break-all">{receipt.profileURI}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-ink-faint">Catalogue URI</dt>
-                            <dd className="font-mono break-all">{receipt.catalogueURI}</dd>
-                        </div>
-                    </dl>
+                <Card className="p-6">
+                    <TransactionReceipt
+                        className="space-y-4"
+                        heading={isRegistered ? "Profile updated" : "Registered."}
+                        headingAs="h2"
+                        headingClassName="text-heading-h2 text-ink-heading"
+                        prose={
+                            isRegistered
+                                ? "Your profile has been re-pinned to IPFS and the new metadataURI is on-chain."
+                                : "Your wallet is now registered on this network. You get the deposit back when you leave the registry, after a cooldown."
+                        }
+                        proseClassName="text-sm text-ink-body"
+                        rows={[
+                            { label: "Transaction", value: receipt.hash },
+                            { label: "Profile URI", value: receipt.profileURI },
+                            { label: "Catalogue URI", value: receipt.catalogueURI },
+                        ]}
+                    />
                 </Card>
                 <div className="flex items-center justify-end gap-3">
                     {address && (

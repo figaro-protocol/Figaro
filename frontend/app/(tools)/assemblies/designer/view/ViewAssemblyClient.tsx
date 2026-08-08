@@ -30,6 +30,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
+import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
 import {
     deleteNamedDraft,
@@ -337,44 +338,45 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // persistent record of the tx hash + IPFS URI.
     if (receipt) {
         return (
-            <div
+            <TransactionReceipt
+                testId="assembly-publish-receipt"
                 className="min-h-screen bg-canvas p-8 flex flex-col items-start gap-6 max-w-2xl mx-auto"
-                data-testid="assembly-publish-receipt"
-            >
-                <h1 className="text-heading-h2 text-ink-heading">Published.</h1>
-                <p className="text-sm text-ink-body">
-                    The slug <code data-testid="receipt-slug">{receipt.slug}</code> is now anchored on
-                    the AssemblyRegistry. The assemblyTemplate is pinned to IPFS;
-                    the slug binding is irreversible.
-                </p>
-                <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default w-full">
-                    <div>
-                        <dt className="text-ink-faint">Transaction</dt>
-                        <dd className="font-mono break-all">{receipt.hash}</dd>
+                heading="Published."
+                headingAs="h1"
+                headingClassName="text-heading-h2 text-ink-heading"
+                prose={
+                    <>
+                        The slug <code data-testid="receipt-slug">{receipt.slug}</code> is now anchored on
+                        the AssemblyRegistry. The assemblyTemplate is pinned to IPFS;
+                        the slug binding is irreversible.
+                    </>
+                }
+                proseClassName="text-sm text-ink-body"
+                rows={[
+                    { label: "Transaction", value: receipt.hash },
+                    { label: "IPFS URI", value: receipt.ipfsURI },
+                ]}
+                rowsClassName="text-xs text-ink-body space-y-2 pt-2 border-t border-default w-full"
+                actions={
+                    <div className="flex items-center gap-3 pt-2">
+                        <Link
+                            href={`/assemblies/designer/view?slug=${encodeURIComponent(receipt.slug)}&just-published=1`}
+                            className="text-sm text-ink-faint hover:text-ink-heading underline"
+                            title={`Opens the public read-only view at /assemblies/designer/view?slug=${receipt.slug}`}
+                        >
+                            Open public read-only view →
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={handleContinueAfterPublish}
+                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
+                            data-testid="receipt-continue"
+                        >
+                            Continue to assemblies
+                        </button>
                     </div>
-                    <div>
-                        <dt className="text-ink-faint">IPFS URI</dt>
-                        <dd className="font-mono break-all">{receipt.ipfsURI}</dd>
-                    </div>
-                </dl>
-                <div className="flex items-center gap-3 pt-2">
-                    <Link
-                        href={`/assemblies/designer/view?slug=${encodeURIComponent(receipt.slug)}&just-published=1`}
-                        className="text-sm text-ink-faint hover:text-ink-heading underline"
-                        title={`Opens the public read-only view at /assemblies/designer/view?slug=${receipt.slug}`}
-                    >
-                        Open public read-only view →
-                    </Link>
-                    <button
-                        type="button"
-                        onClick={handleContinueAfterPublish}
-                        className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
-                        data-testid="receipt-continue"
-                    >
-                        Continue to assemblies
-                    </button>
-                </div>
-            </div>
+                }
+            />
         );
     }
 

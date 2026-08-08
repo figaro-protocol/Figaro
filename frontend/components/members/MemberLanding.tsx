@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
 import {
     useMemberProfile,
@@ -393,30 +394,35 @@ function WithdrawRow({
     // ── Receipt state: success, awaiting seller dismissal ──
     if (receiptHash) {
         return (
-            <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
-                <p>
-                    <span className="font-semibold text-ink-heading">You have left the registry.</span>
-                    {" "}You are de-listed from discovery straight away. Your
-                    {" "}{deposit !== undefined ? formatEther(deposit) : "…"} ETH
-                    {" "}deposit is claimable
-                    {cooldown !== undefined && cooldown > 0n
-                        ? " once the cooldown has passed — come back to this page for it."
-                        : " now — come back to this page for it."}
-                </p>
-                <p className="text-xs text-ink-faint font-mono break-all">
-                    Tx: {receiptHash}
-                </p>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        setReceiptHash(null);
-                        onWithdrawn();
-                    }}
-                >
-                    Continue
-                </Button>
-            </li>
+            <TransactionReceipt
+                as="li"
+                className="py-3 border-b border-default space-y-2 text-sm text-ink-body"
+                prose={
+                    <>
+                        <span className="font-semibold text-ink-heading">You have left the registry.</span>
+                        {" "}You are de-listed from discovery straight away. Your
+                        {" "}{deposit !== undefined ? formatEther(deposit) : "…"} ETH
+                        {" "}deposit is claimable
+                        {cooldown !== undefined && cooldown > 0n
+                            ? " once the cooldown has passed — come back to this page for it."
+                            : " now — come back to this page for it."}
+                    </>
+                }
+                rows={[{ label: "Tx:", value: receiptHash }]}
+                rowsLayout="inline"
+                actions={
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setReceiptHash(null);
+                            onWithdrawn();
+                        }}
+                    >
+                        Continue
+                    </Button>
+                }
+            />
         );
     }
 

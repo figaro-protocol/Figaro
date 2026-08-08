@@ -20,6 +20,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
 import { parseClauseSpec, type SpecParseError } from "@figaro/sdk/clauses";
 import { WalletGate } from "@/components/runtime/WalletGate";
+import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
 import {
     useRegisterClause,
@@ -77,42 +78,38 @@ export function RegisterClauseForm() {
     // Receipt state: registration confirmed on-chain.
     if (receipt) {
         return (
-            <div
+            <TransactionReceipt
+                testId="clause-register-receipt"
                 className="rounded-lg border border-default bg-paper p-6 space-y-4"
-                data-testid="clause-register-receipt"
-            >
-                <h3 className="text-base font-semibold text-ink-heading">Registered.</h3>
-                <p className="text-sm text-ink-body">
-                    <code data-testid="receipt-clause-id">{receipt.clauseId}</code> (version {receipt.version}) is now anchored on the <code>ClauseRegistry</code>. It appears in the live{" "}
-                    <Link href="/clauses" className="underline">clauses inventory</Link>{" "}
-                    grouped by its <code>block.design.article</code>.
-                </p>
-                <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">
-                    <div>
-                        <dt className="text-ink-faint">Clause key (idHash)</dt>
-                        <dd className="font-mono break-all">{receipt.idHash}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-ink-faint">Transaction</dt>
-                        <dd className="font-mono break-all">{receipt.hash}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-ink-faint">Spec URI</dt>
-                        <dd className="font-mono break-all">{receipt.contentURI}</dd>
-                    </div>
-                </dl>
-                <button
-                    type="button"
-                    onClick={() => {
-                        setReceipt(null);
-                        setSpecText("");
-                    }}
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-heading"
-                    data-testid="clause-register-again"
-                >
-                    Register another
-                </button>
-            </div>
+                heading="Registered."
+                headingClassName="text-base font-semibold text-ink-heading"
+                prose={
+                    <>
+                        <code data-testid="receipt-clause-id">{receipt.clauseId}</code> (version {receipt.version}) is now anchored on the <code>ClauseRegistry</code>. It appears in the live{" "}
+                        <Link href="/clauses" className="underline">clauses inventory</Link>{" "}
+                        grouped by its <code>block.design.article</code>.
+                    </>
+                }
+                proseClassName="text-sm text-ink-body"
+                rows={[
+                    { label: "Clause key (idHash)", value: receipt.idHash },
+                    { label: "Transaction", value: receipt.hash },
+                    { label: "Spec URI", value: receipt.contentURI },
+                ]}
+                actions={
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setReceipt(null);
+                            setSpecText("");
+                        }}
+                        className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-heading"
+                        data-testid="clause-register-again"
+                    >
+                        Register another
+                    </button>
+                }
+            />
         );
     }
 
