@@ -12,15 +12,15 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { toError } from "@/lib/shared/errors";
+import { hexEqual, isValidAddress } from "@/lib/shared/evm";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { parseAssemblyRegistryLogs } from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
+import { createUseWithdrawStake } from "@/lib/protocol/useWithdrawStake";
 import {
     deriveAssemblySlug,
     templateCompositionHash,
@@ -34,7 +34,8 @@ import {
 // the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
 
 export function getAssemblyRegistry(): `0x${string}` | null {
-    return CONTRACTS.assemblyRegistry || null;
+    const a = CONTRACTS.assemblyRegistry;
+    return isValidAddress(a) ? a : null;
 }
 
 export interface PublishOutcome {
@@ -96,30 +97,23 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
     return toError(err);
 }
 
-/** Map an `AssemblyRegistry.withdrawDeposit` revert into a human-readable
- *  Error. The commits==resolves gate is off-chain/advisory (the chain carries
- *  no composition provenance), so these are the on-chain guards only:
- *  author-only, once-only, must-exist. */
-function translateWithdrawRevert(err: unknown): Error {
-    if (err instanceof BaseError) {
-        const revert = err.walk(
-            (e) => e instanceof ContractFunctionRevertedError,
-        ) as ContractFunctionRevertedError | undefined;
-        const name = revert?.data?.errorName;
-        if (name === "AlreadyWithdrawn") {
-            return new Error("This assembly's registration stake has already been reclaimed.");
-        }
-        if (name === "NotAuthor") {
-            return new Error("Only the assembly's author can reclaim its registration stake.");
-        }
-        if (name === "NotRegistered") {
-            return new Error("No registration binding exists for this composition.");
-        }
-        if (name === "TransferFailed") {
-            return new Error("The stake refund transfer failed. No state changed — retry.");
-        }
+/** Map an `AssemblyRegistry.withdrawDeposit` revert's errorName to a
+ *  human-readable message. The commits==resolves gate is off-chain/advisory
+ *  (the chain carries no composition provenance), so these are the on-chain
+ *  guards only: author-only, once-only, must-exist. */
+function assemblyWithdrawRevertMessage(errorName: string | undefined): string | null {
+    switch (errorName) {
+        case "AlreadyWithdrawn":
+            return "This assembly's registration stake has already been reclaimed.";
+        case "NotAuthor":
+            return "Only the assembly's author can reclaim its registration stake.";
+        case "NotRegistered":
+            return "No registration binding exists for this composition.";
+        case "TransferFailed":
+            return "The stake refund transfer failed. No state changed — retry.";
+        default:
+            return null;
     }
-    return toError(err);
 }
 
 /**
@@ -131,44 +125,12 @@ function translateWithdrawRevert(err: unknown): Error {
  * surface a typed revert before opening the wallet, sends, then waits for a
  * `success` receipt. Throws on any failure.
  */
-export function useWithdrawAssembly() {
-    const client = usePublicClient();
-    const { address } = useAccount();
-    const { writeContractAsync, isPending } = useWriteContract();
-
-    async function withdraw(compositionHash: `0x${string}`): Promise<`0x${string}`> {
-        const registry = getAssemblyRegistry();
-        if (!registry) {
-            throw new Error("AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).");
-        }
-        if (!client) throw new Error("No public client available to submit the withdrawal.");
-        if (!address) throw new Error("Connect a wallet before reclaiming the stake.");
-
-        try {
-            await client.simulateContract({
-                address: registry,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                functionName: "withdrawDeposit",
-                args: [compositionHash],
-                account: address,
-            });
-        } catch (err) {
-            throw translateWithdrawRevert(err);
-        }
-
-        const txHash = await writeContractAsync({
-            address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI,
-            functionName: "withdrawDeposit",
-            args: [compositionHash],
-        });
-
-        await verifyTxSuccess(client, txHash, "The stake was not reclaimed.");
-        return txHash;
-    }
-
-    return { withdraw, isPending };
-}
+export const useWithdrawAssembly = createUseWithdrawStake({
+    getRegistry: getAssemblyRegistry,
+    abi: ASSEMBLY_REGISTRY_ABI,
+    notConfiguredMessage: "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
+    revertMessage: assemblyWithdrawRevertMessage,
+});
 
 /**
  * Reads `AssemblyRegistered` events from the registry, optionally filtered
@@ -299,7 +261,7 @@ export async function fetchAssemblyTemplate(
         const template = safeJsonParse<AssemblyTemplate>(await response.text());
         if (!template) return null;
         const recomputed = templateCompositionHash(template);
-        if (recomputed.toLowerCase() !== expectedCompositionHash.toLowerCase()) {
+        if (!hexEqual(recomputed, expectedCompositionHash)) {
             console.warn(
                 `[fetchAssemblyTemplate] integrity failure at ${contentURI}: document composition hashes to ${recomputed}, chain anchors ${expectedCompositionHash} — dropping`,
             );

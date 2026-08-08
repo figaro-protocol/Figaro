@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 /**
  * DisclosurePolicyEditor — the member's data-disclosure declaration,
@@ -32,7 +33,7 @@ function findEntry(
     entries: DisclosurePolicyEntry[],
     compositionHash: `0x${string}`,
     clauseId: string,
-    posture: "buyer" | "seller",
+    posture: PartyRole,
 ): DisclosurePolicyEntry | undefined {
     return entries.find(
         (e) =>
@@ -53,7 +54,7 @@ export interface DisclosurePolicyEditorProps {
      *  passes ["seller"], the buyer step ["buyer"] — each side's data
      *  derives from its own assembly list, so the two are never
      *  interleaved on one step. */
-    postures?: readonly ("buyer" | "seller")[];
+    postures?: readonly PartyRole[];
 }
 
 export function DisclosurePolicyEditor({ choices, entries, onChange, postures = ALL_POSTURES }: DisclosurePolicyEditorProps) {
@@ -69,7 +70,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
         onChange([...rest, entry]);
     }
 
-    function remove(compositionHash: `0x${string}`, clauseId: string, posture: "buyer" | "seller") {
+    function remove(compositionHash: `0x${string}`, clauseId: string, posture: PartyRole) {
         onChange(entries.filter(
             (e) =>
                 !(e.compositionHash === compositionHash &&
@@ -152,7 +153,7 @@ function PolicyLeafRow({
 }: {
     slug: string;
     clauseId: string;
-    posture: "buyer" | "seller";
+    posture: PartyRole;
     entry: DisclosurePolicyEntry | undefined;
     onOffer: (offered: boolean) => void;
     onUpdate: (entry: DisclosurePolicyEntry) => void;

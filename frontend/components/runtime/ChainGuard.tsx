@@ -11,13 +11,13 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { AlertTriangle } from "lucide-react";
 import { showWarning } from "@/components/ui/toast";
 import { useEffect, useState } from "react";
-import { activeChain } from "@/lib/shared/chains";
+import { activeChain, DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 
-const DEV_CHAIN_IDS = process.env.NODE_ENV === "production" ? [] : [31337, 1337];
+const DEV_CHAIN_IDS = process.env.NODE_ENV === "production" ? [] : [DEVNET_CHAIN_ID, 1337];
 const SUPPORTED_CHAIN_IDS = [activeChain.id, ...DEV_CHAIN_IDS];
 const CHAIN_NAMES: Record<number, string> = { [activeChain.id]: activeChain.name };
 if (process.env.NODE_ENV !== "production") {
-    CHAIN_NAMES[31337] = "Figaro Development";
+    CHAIN_NAMES[DEVNET_CHAIN_ID] = "Figaro Development";
     CHAIN_NAMES[1337] = "Figaro Development";
 }
 

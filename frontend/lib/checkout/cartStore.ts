@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 /** A line in the buyer's cart — items selected from a seller's catalogue.
  *  Internal to the store; consumers receive it structurally via `useCartStore`
@@ -35,7 +36,7 @@ interface CartItem {
     dataSold?: {
         compositionHash: `0x${string}`;
         clauseId: string;
-        posture: "buyer" | "seller";
+        posture: PartyRole;
     };
 }
 

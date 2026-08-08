@@ -49,6 +49,7 @@ import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
+import { hexEqual } from "@/lib/shared/evm";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import type { MemberCatalogue } from "@/lib/member/types";
 
@@ -177,7 +178,7 @@ export async function executeAssemblyCheckout(
     // before any signature rather than let the signed struct contradict the
     // signed term.
     const pin = readDenominationPin(template.assemblyClauses ?? {}, specs);
-    if (pin && pin.toLowerCase() !== currency.toLowerCase()) {
+    if (pin && !hexEqual(pin, currency)) {
         throw new Error(
             `this assembly is denominated by design (${pin}); the commitment currency ${currency} contradicts the pinned term`,
         );

@@ -23,7 +23,7 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { calculateBonds } from "@figaro/sdk";
 import { formatToken } from "@/lib/shared/utils";
@@ -50,6 +50,7 @@ import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMounted } from "@/hooks/useMounted";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenApproval from "@/hooks/useTokenApproval";
+import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 
 // ── Your-turn card: an incoming order awaiting my counter-signature ──
 function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
@@ -75,22 +76,9 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const pendingAccept = useRef(false);
-    useEffect(() => {
-        if (isApproveSuccess && pendingAccept.current) {
-            pendingAccept.current = false;
-            onAccept();
-        }
-    }, [isApproveSuccess, onAccept]);
+    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
     const isApproving = isApprovePending || isApproveConfirming;
-    const handleAccept = () => {
-        if (needsApproval(sellerBond)) {
-            pendingAccept.current = true;
-            approve(sellerBond * 10n);
-        } else {
-            onAccept();
-        }
-    };
+    const handleAccept = () => runWithApproval(sellerBond, onAccept);
 
     return (
         <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4" data-testid="order-your-turn-card">
@@ -153,22 +141,9 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const pendingSubmit = useRef(false);
-    useEffect(() => {
-        if (isApproveSuccess && pendingSubmit.current) {
-            pendingSubmit.current = false;
-            onSubmit();
-        }
-    }, [isApproveSuccess, onSubmit]);
+    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
     const isApproving = isApprovePending || isApproveConfirming;
-    const handleSubmit = () => {
-        if (needsApproval(sellerBond)) {
-            pendingSubmit.current = true;
-            approve(sellerBond * 10n);
-        } else {
-            onSubmit();
-        }
-    };
+    const handleSubmit = () => runWithApproval(sellerBond, onSubmit);
 
     return (
         <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4" data-testid="order-ready-to-submit-card">

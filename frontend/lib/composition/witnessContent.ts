@@ -32,7 +32,7 @@ import {
     type IpfsService,
 } from "@/lib/shared/ipfsService";
 import { clauseIdForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { hexEqual } from "@/lib/shared/evm";
+import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
 
 // CIDv1 prefix for [raw codec 0x55, keccak-256 multihash 0x1b, length 32],
 // multibase base16 ("f"). Appending the fingerprint's hex yields the full CID.
@@ -67,7 +67,7 @@ function base32Lower(bytes: Uint8Array): string {
 /** The base32 form of the same CID (`bafkrwi…`) — what Kubo's block/put
  *  reports, compared verbatim to detect a node that ignored the multihash. */
 function witnessContentCidBase32(contentRef: Hex): string {
-    return "b" + base32Lower(hexToBytes(`0x01551b20${contentRef.slice(2)}` as Hex));
+    return "b" + base32Lower(hexToBytes(`0x${KECCAK_RAW_CID_PREFIX.slice(1)}${contentRef.slice(2)}` as Hex));
 }
 
 export interface PublishWitnessContentParams {
@@ -89,7 +89,7 @@ export interface PublishWitnessContentParams {
  */
 export async function publishWitnessContent(params: PublishWitnessContentParams): Promise<void> {
     const { stage, content } = params;
-    if (!content || content === "0x") return; // nothing to learn from empty content
+    if (isEmptyHex(content)) return; // nothing to learn from empty content
     const clauseId = clauseIdForHash(params.clauseId) ?? params.clauseId;
     const spec = getClauseSpec(clauseId);
     if (!spec) {

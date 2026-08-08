@@ -243,7 +243,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                     : "available on settlement"}
                                             </span>
                                             <code className="text-[11px] text-neutral-400 font-mono">
-                                                {entry.compositionHash.slice(0, 10)}…
+                                                {truncateHex(entry.compositionHash, { head: 10, tail: 0 })}
                                             </code>
                                         </li>
                                     );

@@ -32,6 +32,7 @@ import {
     volumeUnitLabel,
 } from "@/lib/member/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec, listCatalogueSourcedClauses } from "@/lib/shared/clauseSpecSource";
@@ -611,7 +612,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                             const title = getClauseSpec(rc.clauseId)?.title ?? rc.clauseId;
                             return (
                                 <option key={key} value={key}>
-                                    {title} — as {rc.posture} ({rc.compositionHash.slice(0, 10)}…)
+                                    {title} — as {rc.posture} ({truncateHex(rc.compositionHash, { head: 10, tail: 0 })})
                                 </option>
                             );
                         })}

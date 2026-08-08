@@ -30,6 +30,7 @@ import {
     getSwapRouter,
     getWitnessSwapAndCommitCoordinator,
 } from "@/lib/composition/contracts";
+import { bytesToHex } from "@/lib/shared/evm";
 
 /** The devnet swap venue's surface (MockUniversalRouter). */
 const SWAP_VENUE_ABI = parseAbi([
@@ -95,9 +96,7 @@ async function quoteInputForBond(
 function randomPermitNonce(): bigint {
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
-    return BigInt(
-        `0x${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`,
-    );
+    return BigInt(`0x${bytesToHex(bytes)}`);
 }
 
 export interface QuoteFundingLegArgs {

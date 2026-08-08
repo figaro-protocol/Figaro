@@ -2,7 +2,7 @@ import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/sdk";
 import { sectionByField } from "@figaro/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
-import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole, ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro/sdk";
@@ -116,7 +116,7 @@ function roleCapabilities(
             const ladder = clauseLadderField(clauseId);
             if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
             const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
-            const parties: Array<"seller" | "buyer"> = ["seller"];
+            const parties: Array<PartyRole> = ["seller"];
 
             for (const party of parties) {
                 if (party === "seller" ? !isSeller : !isBuyer) continue;

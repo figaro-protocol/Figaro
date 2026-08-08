@@ -42,6 +42,7 @@ import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 /** The stage the declaring clause's completion evidence files at. */
 const COMPLETION_STAGE = 1;
@@ -54,7 +55,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
     const attestationActions = useAttestationCoordinatorActions();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    const role: "buyer" | "seller" | null =
+    const role: PartyRole | null =
         address && hexEqual(address, seller) ? "seller"
         : address && hexEqual(address, buyer) ? "buyer"
         : null;
@@ -125,14 +126,14 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
             if (!spec) return;
             const expected = keccak256(
                 encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, { stage: COMPLETION_STAGE }),
-            ).toLowerCase();
+            );
             const checkAnchor = async () => {
                 if (!publicClient || cancelled) return;
                 const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
                 if (cancelled) return;
                 const verified = logs.some((log) => {
                     const record = parseAttestationLog(log);
-                    return record !== null && record.contentRef.toLowerCase() === expected;
+                    return record !== null && hexEqual(record.contentRef, expected);
                 });
                 setAnchored(verified ? "verified" : "missing");
                 if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);

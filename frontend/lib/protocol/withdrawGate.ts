@@ -42,6 +42,7 @@ import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/ass
 import { publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
+import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =
     | { kind: "clause"; clauseId: string }
@@ -97,7 +98,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
 
     useEffect(() => {
         const core = CONTRACTS.core;
-        if (!clauseOrAssembly || !/^0x[0-9a-fA-F]{40}$/.test(core)) {
+        if (!clauseOrAssembly || !isValidAddress(core)) {
             setGate(null);
             return;
         }

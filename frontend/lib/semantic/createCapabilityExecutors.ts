@@ -19,6 +19,7 @@ import { encodeContentFromSpec, validateContent } from "@figaro/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import type { SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
 /** The attestation submitter's argument shape (both parties share it). */
@@ -78,7 +79,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // resolveProcess recomputes each order's hash from hashStruct(commitment),
         // so the SIGNED commitment is required — restore the root's processId 0
         // (the event/store carries the derived processId).
-        const chainId = deps.publicClient?.chain?.id ?? 31337;
+        const chainId = deps.publicClient?.chain?.id ?? DEVNET_CHAIN_ID;
         const commitments = activeOrders.map((order) => restoreSignedProcessId({
             processId: order.processId as Hex,
             buyer: order.buyer as Hex,

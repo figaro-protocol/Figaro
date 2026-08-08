@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { activeChain } from "@/lib/shared/chains";
+import { activeChain, DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import type { Hex } from "viem";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
@@ -13,6 +13,7 @@ import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { keccak256 } from "viem";
 import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro/sdk";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
 
@@ -73,11 +74,11 @@ export function useAttestationCoordinatorActions() {
         }
         // Reconstruct the target Commitment from its OrderCommitted event — the
         // indexer is the source, no commitment store.
-        const chainId = publicClient.chain?.id ?? 31337;
+        const chainId = publicClient.chain?.id ?? DEVNET_CHAIN_ID;
         const log = (await getAllOrderCommitted(publicClient, chainId))
             .find((l) => getStringArg(l, "orderHash") === orderHash);
         if (!log) {
-            const message = `Unable to reconstruct commitment for ${orderHash.slice(0, 10)}…`;
+            const message = `Unable to reconstruct commitment for ${truncateHex(orderHash, { head: 10, tail: 0 })}`;
             setError(message);
             throw new Error(message);
         }
@@ -110,7 +111,7 @@ export function useAttestationCoordinatorActions() {
     const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
         const agreement = await fetchAgreement(targetAgreementHash);
         if (!agreement) {
-            const message = `Agreement assemblyTemplate unavailable for ${targetAgreementHash.slice(0, 10)}… — `
+            const message = `Agreement assemblyTemplate unavailable for ${truncateHex(targetAgreementHash, { head: 10, tail: 0 })} — `
                 + `cannot generate inclusion proof`;
             setError(message);
             throw new Error(message);
@@ -119,7 +120,7 @@ export function useAttestationCoordinatorActions() {
         // hardcoded literal — find its section by matching the on-chain id.
         const section = agreement.sections.find((s) => hexEqual(computeClauseKey(s.clause, s.version), clauseId));
         if (!section) {
-            const message = `Clause ${clauseId.slice(0, 10)}… not committed in the signed agreement`;
+            const message = `Clause ${truncateHex(clauseId, { head: 10, tail: 0 })} not committed in the signed agreement`;
             setError(message);
             throw new Error(message);
         }

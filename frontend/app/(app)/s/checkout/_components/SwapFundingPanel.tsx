@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import { formatToken } from "@/lib/shared/utils";
+import { hexEqual } from "@/lib/shared/evm";
 
 function FundingTokenOption({
     token,
@@ -100,7 +101,7 @@ export function SwapFundingPanel({
                         token={t}
                         party={party}
                         decimals={decimals}
-                        selected={!!fundingToken && fundingToken.toLowerCase() === t.address.toLowerCase()}
+                        selected={hexEqual(fundingToken, t.address)}
                         onSelect={() => onSelect(t.address as `0x${string}`)}
                     />
                 ))}

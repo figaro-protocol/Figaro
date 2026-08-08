@@ -9,6 +9,8 @@
 // parameter (getEnvVar(key)) is NOT replaced and returns undefined in the
 // browser. Always use process.env.NEXT_PUBLIC_... directly.
 
+import { isValidAddress } from "@/lib/shared/evm";
+
 // The frontend imports these from here (the allowlisted core-ABI home). The
 // other core ABIs (FLORIN_TOKEN_ABI) are equally canonical but currently imported
 // straight from `@figaro/sdk` by their few consumers — they re-enter this
@@ -50,7 +52,7 @@ export const CONTRACTS: ChainConfig = {
 /** The MembersRegistry address if it's a well-formed address, else null. */
 export function getMembersRegistry(): `0x${string}` | null {
     const a = CONTRACTS.membersRegistry;
-    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a : null;
+    return isValidAddress(a) ? a : null;
 }
 
 // Runtime validation helper.

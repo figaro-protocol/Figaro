@@ -22,6 +22,7 @@ import type { Order } from "@/lib/kernel/store";
 import { OrderState } from "@/lib/kernel/store";
 import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 // ── Template DSL (declared data) ───────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 export type ValueRef =
     | { const: string }
     | { orderHash: true }
-    | { party: "seller" | "buyer" }
+    | { party: PartyRole }
     | { payment: true }                                   // smallest-unit amount (exact + verifiable)
     | { resolvedDate: true }                              // ISO date of settlement, or "—"
     | { leafField: { byField: string; field: string } }  // leaf declaring `byField` → its `field`

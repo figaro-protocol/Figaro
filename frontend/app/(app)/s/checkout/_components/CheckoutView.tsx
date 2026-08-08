@@ -17,7 +17,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
@@ -37,6 +37,7 @@ import { useCompositionActions } from "@/lib/composition/useCompositionActions";
 import { inputForOutput, readVenueRate, resolveSwapFundingContracts, type VenueRate } from "@/lib/composition/swapFunding";
 import { SwapFundingPanel } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
+import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
@@ -215,7 +216,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const balance = tokenBalance ?? 0n;
     const isApproving = isApprovePending || isApproveConfirming;
-    const pendingCheckout = useRef(false);
+    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     // Swap-funded bond leg (buyer side): the ON-RAMP into the process
     // denomination — a buyer short of the picked/pinned token funds from
@@ -252,15 +253,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     // commit walk makes, so the shown figure equals what commits.
     const [subOrderQuantities, setSubOrderQuantities] = useState<Record<string, number>>({});
     useEffect(() => { setSellerSelection(null); }, [selectedSlug]);
-
-    // Auto-chain: when approval confirms, proceed to commit signing.
-    useEffect(() => {
-        if (pendingCheckout.current && isApproveSuccess) {
-            pendingCheckout.current = false;
-            void executeCheckout();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isApproveSuccess]);
 
     // No post-place redirect: in the bilateral relay the buyer signs + shares,
     // then stays on the share panel; each order commits when its seller
@@ -593,16 +585,10 @@ export function CheckoutView({ sellerAddress }: Props) {
             return;
         }
         setCheckoutError(null);
-        if (needsApproval(lockedTotal)) {
-            try {
-                pendingCheckout.current = true;
-                approve(lockedTotal * 10n);
-            } catch {
-                pendingCheckout.current = false;
-                setCheckoutError("Payment authorization failed. Please try again.");
-            }
-        } else {
-            void executeCheckout();
+        try {
+            runWithApproval(lockedTotal, () => void executeCheckout());
+        } catch {
+            setCheckoutError("Payment authorization failed. Please try again.");
         }
     };
 

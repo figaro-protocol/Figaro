@@ -26,6 +26,7 @@ import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills } from "@/lib/shared/clauseSpecSource";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
@@ -476,7 +477,7 @@ function ClauseControl({
                     className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
                     title={spec?.description}
                 >
-                    {spec?.title ?? clause.clauseId ?? `${clause.idHash.slice(0, 10)}…`}
+                    {spec?.title ?? clause.clauseId ?? truncateHex(clause.idHash, { head: 10, tail: 0 })}
                     {clause.version > 1 ? <span className="ml-1 font-mono text-[10px] text-ink-muted">v{clause.version}</span> : null}
                 </span>
             </label>

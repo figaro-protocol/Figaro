@@ -34,7 +34,7 @@ import { useOnboardingState } from "@/lib/member/onboardingState";
 import { useUpdateMemberProfile } from "@/lib/member/useUpdateMemberProfile";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { fetchMemberCatalogue } from "@/lib/member/catalogueFetcher";
-import { extractErrorMessage } from "@/lib/shared/errors";
+import { extractErrorMessage, toError } from "@/lib/shared/errors";
 import type {
     MemberCatalogueMetadata,
     UnitSystem,
@@ -220,7 +220,7 @@ export function MemberEditCatalogue() {
             const result = await publishMemberCatalogue(newCatalogue);
             newCatalogueURI = result.uri;
         } catch (err) {
-            const e = err instanceof Error ? err : new Error(String(err));
+            const e = toError(err);
             setSaveError(`Couldn't pin catalogue: ${e.message}`);
             setPinningCatalogue(false);
             throw e;

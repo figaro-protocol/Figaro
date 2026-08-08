@@ -27,6 +27,8 @@ import { publicClient } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { toError } from "@/lib/shared/errors";
+import { isValidAddress } from "@/lib/shared/evm";
+import { createUseWithdrawStake } from "@/lib/protocol/useWithdrawStake";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
@@ -34,7 +36,7 @@ import { toError } from "@/lib/shared/errors";
  *  hooks below are the only callers. */
 function getClauseRegistry(): `0x${string}` | null {
     const a = CONTRACTS.clauseRegistry;
-    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a : null;
+    return isValidAddress(a) ? a : null;
 }
 
 export interface RegisteredClauseEvent {
@@ -242,7 +244,7 @@ export function clauseRegisterRevertMessage(
 /** Map a decoded `withdrawDeposit` error name to a human-readable message, or
  *  null when unrecognized. The commits==resolves gate is off-chain/advisory
  *  (`useWithdrawGate`), so these are the on-chain guards only: registrar-only,
- *  once-only, must-exist. Mirrors assembly `translateWithdrawRevert`. */
+ *  once-only, must-exist. Mirrors assembly `assemblyWithdrawRevertMessage`. */
 export function clauseWithdrawRevertMessage(errorName: string | undefined): string | null {
     switch (errorName) {
         case "AlreadyWithdrawn":
@@ -271,20 +273,6 @@ function translateClauseRegisterRevert(err: unknown, clauseId: string): Error {
             revert?.data?.args,
             clauseId,
         );
-        if (message) return new Error(message);
-    }
-    return toError(err);
-}
-
-/** Extract the decoded revert from a viem error and route it through the pure
- *  withdraw-message mapper; falls through to the original error. Internal —
- *  the pure `clauseWithdrawRevertMessage` above is the unit-tested surface. */
-function translateClauseWithdrawRevert(err: unknown): Error {
-    if (err instanceof BaseError) {
-        const revert = err.walk(
-            (e) => e instanceof ContractFunctionRevertedError,
-        ) as ContractFunctionRevertedError | undefined;
-        const message = clauseWithdrawRevertMessage(revert?.data?.errorName);
         if (message) return new Error(message);
     }
     return toError(err);
@@ -393,41 +381,9 @@ export function useRegisterClause() {
  * opening the wallet, sends, then waits for a `success` receipt. Throws on any
  * failure.
  */
-export function useWithdrawClause() {
-    const client = usePublicClient();
-    const { address } = useAccount();
-    const { writeContractAsync, isPending } = useWriteContract();
-
-    async function withdraw(idHash: `0x${string}`): Promise<`0x${string}`> {
-        const registry = getClauseRegistry();
-        if (!registry) {
-            throw new Error("ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
-        }
-        if (!client) throw new Error("No public client available to submit the withdrawal.");
-        if (!address) throw new Error("Connect a wallet before reclaiming the stake.");
-
-        try {
-            await client.simulateContract({
-                address: registry,
-                abi: CLAUSE_REGISTRY_ABI,
-                functionName: "withdrawDeposit",
-                args: [idHash],
-                account: address,
-            });
-        } catch (err) {
-            throw translateClauseWithdrawRevert(err);
-        }
-
-        const txHash = await writeContractAsync({
-            address: registry,
-            abi: CLAUSE_REGISTRY_ABI,
-            functionName: "withdrawDeposit",
-            args: [idHash],
-        });
-
-        await verifyTxSuccess(client, txHash, "The stake was not reclaimed.");
-        return txHash;
-    }
-
-    return { withdraw, isPending };
-}
+export const useWithdrawClause = createUseWithdrawStake({
+    getRegistry: getClauseRegistry,
+    abi: CLAUSE_REGISTRY_ABI,
+    notConfiguredMessage: "ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).",
+    revertMessage: clauseWithdrawRevertMessage,
+});

@@ -2,6 +2,7 @@
  *  taxonomy for truth class, mechanism risk, scope, and roles. */
 
 import type { FieldSpec } from "@figaro/sdk/clauses";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 type TruthClass =
     | "protocol-enforced"
@@ -97,7 +98,7 @@ export interface SubmitClauseAttestationCapabilityAction {
     /** WHICH party attests. Ladders surface seller-side; witness stages
      *  surface to BOTH parties — who must witness is never engine policy
      *  (sufficiency is derived at read time against the committed policy). */
-    party: "seller" | "buyer";
+    party: PartyRole;
 }
 
 

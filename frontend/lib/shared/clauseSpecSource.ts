@@ -21,6 +21,8 @@ import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseB
 import { computeClauseKey } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { truncateHex } from "@/lib/shared/formatHex";
+import { hexEqual } from "@/lib/shared/evm";
 
 /** A clause spec plus its frontend-parsed `block` slice. The SDK `ClauseSpec` is
  *  content-only (`fields`/`stages`); the `block` binding is pure presentation the
@@ -108,7 +110,7 @@ export async function loadClauseSpec(
     const raw = await activeFetcher(uri);
     if (expectedContentHash) {
         const recomputed = canonicalContentHash(raw);
-        if (recomputed.toLowerCase() !== expectedContentHash.toLowerCase()) {
+        if (!hexEqual(recomputed, expectedContentHash)) {
             const detail = `spec at ${uri} hashes to ${recomputed}, chain anchors ${expectedContentHash}`;
             SPEC_LOAD_ERRORS.set(clauseId, `integrity failure: ${detail}`);
             throw new Error(`Clause spec integrity failure: ${detail}`);
@@ -439,7 +441,7 @@ export function describeAttestation(
     // version) or an already-readable id (use it directly — highest loaded) —
     // process-log groups now carry the readable id.
     const spec = clauseSpecForHash(clauseIdHash) ?? getClauseSpec(clauseIdHash);
-    if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
+    if (!spec) return { clauseTitle: truncateHex(clauseIdHash, { head: 10, tail: 0 }), eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     // A DECLARED witness stage (spec.stages[stage]) is not a ladder ordinal —
     // labelling it through the committed enum would misread (e.g. a cold-chain
     // record at stage 1 is not "refrigerated"). The witness's display name is
@@ -512,7 +514,7 @@ export function describeClause(clauseId: string, data: Record<string, unknown> |
     if (!spec) {
         return {
             clauseId,
-            title: `${clauseId.slice(0, 10)}…`,
+            title: truncateHex(clauseId, { head: 10, tail: 0 }),
             fields: Object.entries(d)
                 .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
                 .filter((f) => f.values.length > 0),
@@ -543,7 +545,7 @@ export function describeWitness(
     if (!spec || !stageFields) {
         return {
             clauseId,
-            title: spec?.title ?? `${clauseId.slice(0, 10)}…`,
+            title: spec?.title ?? truncateHex(clauseId, { head: 10, tail: 0 }),
             fields: Object.entries(d)
                 .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
                 .filter((f) => f.values.length > 0),

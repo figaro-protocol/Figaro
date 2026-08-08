@@ -13,9 +13,9 @@
  * the chain itself.
  */
 
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, isValidAddress } from "@/lib/shared/evm";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
-import { isValidAddress } from "@/lib/shared/evm";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 
 /** A quick-add token suggestion — the identity subset of the seller's
@@ -43,7 +43,7 @@ const localTokens: () => CommonToken[] = () => {
     if (mock) out.push({ address: mock, symbol: "MOCK", name: "Mock ERC-20 (devnet)" });
     const permit = normalizeAddress(process.env.NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS);
     if (permit) out.push({ address: permit, symbol: "MOCKP", name: "Mock Permit token (devnet)" });
-    const florin = normalizeAddress(process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS);
+    const florin = normalizeAddress(CONTRACTS.florinToken);
     if (florin) out.push({ address: florin, symbol: "FLORIN", name: "Florin" });
     return out;
 };

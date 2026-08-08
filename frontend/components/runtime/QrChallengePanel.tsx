@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { hexEqual } from "@/lib/shared/evm";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
 interface QrOrderIdentity {
@@ -67,8 +68,8 @@ export function QrChallengePanel({ processId, orderHash, clauseId }: Interaction
 
     const decoded = scanned.trim() ? tryDecodeIdentity(scanned.trim()) : null;
     const matches = decoded !== null
-        && decoded.processId.toLowerCase() === processId.toLowerCase()
-        && decoded.orderHash.toLowerCase() === orderHash.toLowerCase();
+        && hexEqual(decoded.processId, processId)
+        && hexEqual(decoded.orderHash, orderHash);
     const clauseTitle = getClauseSpec(clauseId)?.title ?? clauseId;
 
     return (

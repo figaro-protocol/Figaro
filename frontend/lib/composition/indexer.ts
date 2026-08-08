@@ -79,8 +79,7 @@ export function parseAttestationLog(log: IndexedAttestationLog): AttestationReco
 /** Attestation logs filtered by orderHash (hex case never matters). */
 export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {
     const all = await getAllAttestations(client, chainId);
-    const wanted = orderHash.toLowerCase();
-    return all.filter((log) => getStringArg(log, "orderHash")?.toLowerCase() === wanted);
+    return all.filter((log) => hexEqual(getStringArg(log, "orderHash"), orderHash));
 }
 
 // ── FigaroBatchVerifier — the SECOND settlement universe ─────────────────────
@@ -113,8 +112,7 @@ export async function getBatchAttestationsByOrder(
     orderHash: string,
 ): Promise<IndexedLog[]> {
     const all = await getAllBatchAttestations(client, chainId);
-    const wanted = orderHash.toLowerCase();
-    return all.filter((log) => getStringArg(log, "orderHash")?.toLowerCase() === wanted);
+    return all.filter((log) => hexEqual(getStringArg(log, "orderHash"), orderHash));
 }
 
 /** `BatchSettled` logs from the verifier. The event item comes off the SDK's
