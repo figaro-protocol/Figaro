@@ -1,3 +1,7 @@
+// `next/constants` has no ESM export map entry in this Next version, so the
+// phase is matched by its documented literal value.
+const PHASE_PRODUCTION_BUILD = 'phase-production-build';
+
 /** @type {import('next').NextConfig} */
 
 // BUILD-TIME SAFETY GATE (security audit 2026-07-22, finding 4).
@@ -14,16 +18,18 @@
 // The Playwright e2e harness legitimately runs a production build WITH these flags;
 // it opts in explicitly via `FIGARO_ALLOW_TEST_HELPERS=1`. A real deploy build
 // never sets that escape, so a stray test flag aborts the build.
-{
+// The gate binds to the PRODUCTION-BUILD PHASE only: `next build` is the sole
+// invocation that compiles env flags into a bundle. Other config loads in a
+// production NODE_ENV (`next lint`, `next start`) inline nothing and pass.
+function assertNoTestFlagsInProductionBuild() {
     const TEST_FLAGS = [
         'NEXT_PUBLIC_ENABLE_TEST_HELPERS',
         'NEXT_PUBLIC_USE_TEST_SIGNER',
         'NEXT_PUBLIC_TEST_PRIVATE_KEY',
         'NEXT_PUBLIC_DEV_ADDRESS',
     ];
-    const isProd = process.env.NODE_ENV === 'production';
     const allowed = process.env.FIGARO_ALLOW_TEST_HELPERS === '1';
-    if (isProd && !allowed) {
+    if (!allowed) {
         const leaked = TEST_FLAGS.filter((f) => {
             const v = process.env[f];
             return v !== undefined && v !== '' && v !== '0' && v !== 'false';
@@ -107,4 +113,12 @@ const nextConfig = {
     },
 };
 
-export default nextConfig;
+export default function config(phase) {
+    // `next lint` loads the config under the production-build phase too, but
+    // compiles nothing into a bundle — the gate must not block it.
+    const invokedAsLint = process.argv.includes('lint');
+    if (phase === PHASE_PRODUCTION_BUILD && !invokedAsLint) {
+        assertNoTestFlagsInProductionBuild();
+    }
+    return nextConfig;
+}
