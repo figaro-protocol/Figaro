@@ -7,6 +7,7 @@
  */
 
 import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
+import { isBytes32Hex } from "@/lib/shared/evm";
 
 /**
  * Parse catalogue items from a catalogue document (`items`). Returns null if
@@ -57,7 +58,7 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
                 const posture = r2.posture === 'buyer' ? 'buyer' as const
                     : r2.posture === 'seller' ? 'seller' as const : undefined;
                 return typeof r2.compositionHash === 'string'
-                    && /^0x[0-9a-fA-F]{64}$/.test(r2.compositionHash)
+                    && isBytes32Hex(r2.compositionHash)
                     && typeof r2.clauseId === 'string'
                     && posture
                     ? {

@@ -16,7 +16,7 @@
 
 import { useAccount, useWriteContract } from "wagmi";
 import { USAGE_COUNTER_ABI, type Commitment } from "@figaro/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { getUsageCounter } from "@/lib/kernel/contracts";
 import { activeChain } from "@/lib/shared/chains";
 
 export function useUsageRecorder() {
@@ -29,29 +29,37 @@ export function useUsageRecorder() {
         clauseOrAssembly: `0x${string}`,
         sectionHash: `0x${string}`,
         proof: readonly `0x${string}`[],
-    ): Promise<`0x${string}`> =>
-        writeContractAsync({
-            address: CONTRACTS.usageCounter as `0x${string}`,
+    ): Promise<`0x${string}`> => {
+        const usageCounter = getUsageCounter();
+        // Fail loudly here — never let a malformed NEXT_PUBLIC_USAGE_COUNTER
+        // reach writeContractAsync with a garbage address.
+        if (!usageCounter) throw new Error("UsageCounter address not configured (NEXT_PUBLIC_USAGE_COUNTER).");
+        return writeContractAsync({
+            address: usageCounter,
             abi: USAGE_COUNTER_ABI,
             functionName: "recordClauseUsage",
             args: [order, clauseOrAssembly, sectionHash, [...proof]],
             account,
             chain: chainConfig,
         });
+    };
 
     const recordAssemblyUsage = async (
         order: Commitment,
         compositionHash: `0x${string}`,
         proof: readonly `0x${string}`[],
-    ): Promise<`0x${string}`> =>
-        writeContractAsync({
-            address: CONTRACTS.usageCounter as `0x${string}`,
+    ): Promise<`0x${string}`> => {
+        const usageCounter = getUsageCounter();
+        if (!usageCounter) throw new Error("UsageCounter address not configured (NEXT_PUBLIC_USAGE_COUNTER).");
+        return writeContractAsync({
+            address: usageCounter,
             abi: USAGE_COUNTER_ABI,
             functionName: "recordAssemblyUsage",
             args: [order, compositionHash, [...proof]],
             account,
             chain: chainConfig,
         });
+    };
 
     return { recordClauseUsage, recordAssemblyUsage };
 }

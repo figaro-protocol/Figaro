@@ -12,6 +12,7 @@
  * not registry state.
  */
 import { useCallback, useState, useEffect } from "react";
+import type { Abi } from "viem";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
@@ -127,7 +128,21 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
 // own `isSuccess` flag fires on receipt-fetched, which is true even when
 // the transaction reverted.
 
-export function useRegisterMember() {
+interface MembersRegistryWriteConfig {
+    functionName: "register" | "updateProfile" | "requestWithdrawal" | "withdraw";
+    args?: readonly unknown[];
+    value?: bigint;
+    failureMessage: string;
+}
+
+/**
+ * Internal — the wagmi scaffold + guard-triple + simulate → write → verify
+ * sequence shared by the four MembersRegistry write hooks below. Each public
+ * hook wraps `run` with its own argument shape and failure message; the
+ * reactive `isPending`/`isConfirming`/`isSuccess`/`error`/`hash` state and the
+ * simulate-before-write discipline live here once.
+ */
+function useMembersRegistryWrite() {
     const client = usePublicClient();
     const { address: account } = useAccount();
     const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
@@ -138,62 +153,58 @@ export function useRegisterMember() {
     } = useWaitForTransactionReceipt({ hash });
     const isSuccess = receiptFetched && receipt?.status === "success";
 
-    async function register(metadataURI: string, value?: bigint) {
+    async function run(config: MembersRegistryWriteConfig): Promise<`0x${string}`> {
         if (!registry) throw new Error("MembersRegistry address not configured");
         if (!client) throw new Error("No public client available");
         if (!account) throw new Error("Wallet not connected");
+        const abi = MEMBERS_REGISTRY_ABI as Abi;
+        const { functionName, args = [], value, failureMessage } = config;
         await client.simulateContract({
             address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
-            functionName: "register",
-            args: [metadataURI],
-            value: value ?? 0n,
+            abi,
+            functionName,
+            args,
+            value,
             account,
         });
         const txHash = await writeContractAsync({
             address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
+            abi,
+            functionName,
+            args,
+            value,
+        });
+        await verifyTxSuccess(client, txHash, failureMessage);
+        return txHash;
+    }
+
+    return { isPending, isConfirming, isSuccess, error, hash, run };
+}
+
+export function useRegisterMember() {
+    const { isPending, isConfirming, isSuccess, error, hash, run } = useMembersRegistryWrite();
+
+    async function register(metadataURI: string, value?: bigint) {
+        return run({
             functionName: "register",
             args: [metadataURI],
             value: value ?? 0n,
+            failureMessage: "The member was not registered.",
         });
-        await verifyTxSuccess(client, txHash, "The member was not registered.");
-        return txHash;
     }
 
     return { register, isPending, isConfirming, isSuccess, error, hash };
 }
 
 export function useUpdateProfile() {
-    const client = usePublicClient();
-    const { address: account } = useAccount();
-    const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
-    const {
-        isLoading: isConfirming,
-        isSuccess: receiptFetched,
-        data: receipt,
-    } = useWaitForTransactionReceipt({ hash });
-    const isSuccess = receiptFetched && receipt?.status === "success";
+    const { isPending, isConfirming, isSuccess, error, hash, run } = useMembersRegistryWrite();
 
     async function updateProfile(metadataURI: string) {
-        if (!registry) throw new Error("MembersRegistry address not configured");
-        if (!client) throw new Error("No public client available");
-        if (!account) throw new Error("Wallet not connected");
-        await client.simulateContract({
-            address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
+        return run({
             functionName: "updateProfile",
             args: [metadataURI],
-            account,
+            failureMessage: "The profile was not updated.",
         });
-        const txHash = await writeContractAsync({
-            address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
-            functionName: "updateProfile",
-            args: [metadataURI],
-        });
-        await verifyTxSuccess(client, txHash, "The profile was not updated.");
-        return txHash;
     }
 
     return { updateProfile, isPending, isConfirming, isSuccess, error, hash };
@@ -206,33 +217,13 @@ export function useUpdateProfile() {
  * eligibility and the step profile erasure should follow, not the later claim.
  */
 export function useRequestWithdrawal() {
-    const client = usePublicClient();
-    const { address: account } = useAccount();
-    const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
-    const {
-        isLoading: isConfirming,
-        isSuccess: receiptFetched,
-        data: receipt,
-    } = useWaitForTransactionReceipt({ hash });
-    const isSuccess = receiptFetched && receipt?.status === "success";
+    const { isPending, isConfirming, isSuccess, error, hash, run } = useMembersRegistryWrite();
 
     async function requestWithdrawal() {
-        if (!registry) throw new Error("MembersRegistry address not configured");
-        if (!client) throw new Error("No public client available");
-        if (!account) throw new Error("Wallet not connected");
-        await client.simulateContract({
-            address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
+        return run({
             functionName: "requestWithdrawal",
-            account,
+            failureMessage: "The withdrawal was not requested.",
         });
-        const txHash = await writeContractAsync({
-            address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
-            functionName: "requestWithdrawal",
-        });
-        await verifyTxSuccess(client, txHash, "The withdrawal was not requested.");
-        return txHash;
     }
 
     return { requestWithdrawal, isPending, isConfirming, isSuccess, error, hash };
@@ -289,33 +280,13 @@ export function useWithdrawalCooldown() {
 
 /** Step 2 of leaving: claim the ETH, once the cooldown has elapsed. */
 export function useWithdrawDeposit() {
-    const client = usePublicClient();
-    const { address: account } = useAccount();
-    const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
-    const {
-        isLoading: isConfirming,
-        isSuccess: receiptFetched,
-        data: receipt,
-    } = useWaitForTransactionReceipt({ hash });
-    const isSuccess = receiptFetched && receipt?.status === "success";
+    const { isPending, isConfirming, isSuccess, error, hash, run } = useMembersRegistryWrite();
 
     async function withdraw() {
-        if (!registry) throw new Error("MembersRegistry address not configured");
-        if (!client) throw new Error("No public client available");
-        if (!account) throw new Error("Wallet not connected");
-        await client.simulateContract({
-            address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
+        return run({
             functionName: "withdraw",
-            account,
+            failureMessage: "The deposit was not withdrawn.",
         });
-        const txHash = await writeContractAsync({
-            address: registry,
-            abi: MEMBERS_REGISTRY_ABI,
-            functionName: "withdraw",
-        });
-        await verifyTxSuccess(client, txHash, "The deposit was not withdrawn.");
-        return txHash;
     }
 
     return { withdraw, isPending, isConfirming, isSuccess, error, hash };

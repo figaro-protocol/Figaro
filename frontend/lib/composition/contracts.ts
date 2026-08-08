@@ -11,6 +11,7 @@
  * the terminal needs none of this bundled.
  */
 import { isValidAddress } from "@/lib/shared/evm";
+import { getUsageCounter as getKernelUsageCounter } from "@/lib/kernel/contracts";
 
 const COMPOSITION_CONTRACTS = {
     attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
@@ -18,7 +19,6 @@ const COMPOSITION_CONTRACTS = {
     permit2: (process.env.NEXT_PUBLIC_PERMIT2 || "") as `0x${string}`,
     swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
-    usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
     batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
     multisender: (process.env.NEXT_PUBLIC_MULTISENDER || "") as `0x${string}`,
 };
@@ -65,9 +65,12 @@ export function getRpgfMinter(): `0x${string}` | null {
 /** The UsageCounter — verified clause and assembly usage, counted on chain as it
  *  happens. The minter pays from its periods; this resolver is what the
  *  rewards surface reads accrual (c, d, score) and period-closure from.
- *  Resolved-empty: null = accrual is unreadable on this network. */
+ *  Resolved-empty: null = accrual is unreadable on this network. Delegates to
+ *  the kernel's validated accessor (the canonical env parse for
+ *  `NEXT_PUBLIC_USAGE_COUNTER`) rather than re-reading the env itself — one
+ *  source, one behavior for a malformed address. */
 export function getUsageCounter(): `0x${string}` | null {
-    return resolveAddress(COMPOSITION_CONTRACTS.usageCounter);
+    return getKernelUsageCounter();
 }
 
 /** The FigaroBatchVerifier — the SECOND settlement universe. It shares no state

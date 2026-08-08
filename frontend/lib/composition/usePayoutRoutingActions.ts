@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Hex } from "viem";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 import { activeChain } from "@/lib/shared/chains";
 import { getMultisender } from "@/lib/composition/contracts";
@@ -28,8 +29,7 @@ export function usePayoutRoutingActions() {
 
     const waitForSuccess = async (hash: Hex, label: string) => {
         if (!publicClient) return;
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (receipt.status !== "success") throw new Error(`${label} reverted on-chain.`);
+        await verifyTxSuccess(publicClient, hash, `${label} reverted on-chain.`);
     };
 
     /** Route `legs` of `token` through the multisender in one atomic batch.

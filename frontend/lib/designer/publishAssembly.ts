@@ -26,7 +26,8 @@
  */
 
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import type { Abi } from "viem";
+import { publishTail } from "@/lib/protocol/publishTail";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { serializeAssemblyTemplate } from "@figaro/sdk";
@@ -101,33 +102,22 @@ export function usePublishAssembly() {
 
         // Simulate before opening the wallet — catches composition collision /
         // wrong-deposit reverts so the user sees a typed error instead of
-        // a silent on-chain revert post-submission.
-        try {
-            await client.simulateContract({
-                address: registry,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                functionName: "registerAssembly",
-                args: [compositionHash, ipfs.uri],
-                value: deposit,
-                account: address,
-            });
-        } catch (err) {
-            throw translatePublishRevert(err, slug);
-        }
-
-        const txHash = await writeContractAsync({
+        // a silent on-chain revert post-submission. Waits for the receipt
+        // and verifies it didn't revert on-chain: `writeContractAsync` only
+        // confirms wallet submission, so without that wait the UI could
+        // declare success on a transaction the chain ultimately rejected.
+        const txHash = await publishTail({
+            client,
+            writeContractAsync,
             address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI,
+            abi: ASSEMBLY_REGISTRY_ABI as Abi,
             functionName: "registerAssembly",
             args: [compositionHash, ipfs.uri],
             value: deposit,
+            account: address,
+            translateRevert: (err) => translatePublishRevert(err, slug),
+            failureMessage: "The composition binding was not created.",
         });
-
-        // Wait for the transaction to be mined and verify it didn't revert
-        // on-chain. `writeContractAsync` only confirms wallet submission;
-        // without this wait the UI could declare success on a transaction
-        // that the chain ultimately rejected.
-        await verifyTxSuccess(client, txHash, "The composition binding was not created.");
 
         return { hash: txHash, ipfsURI: ipfs.uri, slug };
     }

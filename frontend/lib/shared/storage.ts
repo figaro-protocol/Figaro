@@ -1,4 +1,4 @@
-function isBrowserStorageAvailable(): boolean {
+export function isBrowserStorageAvailable(): boolean {
     return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 

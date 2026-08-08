@@ -16,6 +16,7 @@
  */
 
 import type { Order } from "@/lib/kernel/store";
+import { isBrowserStorageAvailable, readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const CURRENT_KEY = "figaro:designer:current";
 const DRAFT_PREFIX = "figaro:designer:drafts:";
@@ -142,10 +143,6 @@ interface SerializedSnapshot extends Omit<DesignSnapshot, "orders"> {
     orders: SerializedOrder[];
 }
 
-function canStore(): boolean {
-    return typeof window !== "undefined" && !!window.localStorage;
-}
-
 function serializeSnapshot(snap: DesignSnapshot): SerializedSnapshot {
     return { ...snap, orders: snap.orders.map(serializeOrder) };
 }
@@ -155,28 +152,15 @@ function deserializeSnapshot(s: SerializedSnapshot): DesignSnapshot {
 }
 
 function readJson<T>(key: string): T | null {
-    if (!canStore()) return null;
-    try {
-        const raw = window.localStorage.getItem(key);
-        if (!raw) return null;
-        return JSON.parse(raw) as T;
-    } catch {
-        return null;
-    }
+    return readJsonStorage<T | null>(key, null);
 }
 
 function writeJson(key: string, value: unknown): void {
-    if (!canStore()) return;
-    try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-        // Storage quota exceeded or serialization failed — silently drop;
-        // designer remains functional in-memory.
-    }
+    writeJsonStorage(key, value);
 }
 
 function removeKey(key: string): void {
-    if (!canStore()) return;
+    if (!isBrowserStorageAvailable()) return;
     try {
         window.localStorage.removeItem(key);
     } catch {

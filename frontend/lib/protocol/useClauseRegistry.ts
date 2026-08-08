@@ -18,8 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
-import { BaseError, ContractFunctionRevertedError, type Log } from "viem";
+import { BaseError, ContractFunctionRevertedError, type Abi, type Log } from "viem";
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
@@ -29,6 +28,7 @@ import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { toError } from "@/lib/shared/errors";
 import { isValidAddress } from "@/lib/shared/evm";
 import { createUseWithdrawStake } from "@/lib/protocol/useWithdrawStake";
+import { publishTail } from "@/lib/protocol/publishTail";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
@@ -343,28 +343,18 @@ export function useRegisterClause() {
             functionName: "registrationDeposit",
         });
 
-        try {
-            await client.simulateContract({
-                address: registry,
-                abi: CLAUSE_REGISTRY_ABI,
-                functionName: "registerClause",
-                args: [clauseId, BigInt(version), contentHash, uri],
-                value: deposit,
-                account: address,
-            });
-        } catch (err) {
-            throw translateClauseRegisterRevert(err, clauseId);
-        }
-
-        const txHash = await writeContractAsync({
+        const txHash = await publishTail({
+            client,
+            writeContractAsync,
             address: registry,
-            abi: CLAUSE_REGISTRY_ABI,
+            abi: CLAUSE_REGISTRY_ABI as Abi,
             functionName: "registerClause",
             args: [clauseId, BigInt(version), contentHash, uri],
             value: deposit,
+            account: address,
+            translateRevert: (err) => translateClauseRegisterRevert(err, clauseId),
+            failureMessage: "The clause was not registered.",
         });
-
-        await verifyTxSuccess(client, txHash, "The clause was not registered.");
         return { hash: txHash, clauseId, version, idHash, contentURI: uri };
     }
 

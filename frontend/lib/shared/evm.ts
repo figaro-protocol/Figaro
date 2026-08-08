@@ -50,6 +50,16 @@ export function isValidAddress(addr: string): addr is `0x${string}` {
     return isAddress(addr, { strict: false });
 }
 
+/**
+ * True iff `hex` is a 0x-prefixed 32-byte hex string — the shape shared by a
+ * `contentRef`/`compositionHash` fingerprint, a process ID, or any other
+ * keccak-sized digest. Format-only, like `isValidAddress`'s 20-byte sibling;
+ * returns a type predicate so callers can narrow to the typed hex form.
+ */
+export function isBytes32Hex(hex: string): hex is `0x${string}` {
+    return /^0x[0-9a-fA-F]{64}$/.test(hex);
+}
+
 export type AddressIntegrity =
     /** Empty string. */
     | "empty"

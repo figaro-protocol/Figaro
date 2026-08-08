@@ -20,6 +20,8 @@ import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
+import { isBytes32Hex } from "@/lib/shared/evm";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import type { SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
 /** The attestation submitter's argument shape (both parties share it). */
@@ -58,13 +60,10 @@ export interface CapabilityExecutorDeps {
 export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
     const waitForTransactionConfirmation = async (txHash?: Hex) => {
         if (deps.isE2EMock || !deps.publicClient || !txHash) return;
-        const receipt = await deps.publicClient.waitForTransactionReceipt({ hash: txHash });
         // A mined-but-reverted tx must surface as a failure, not flow on as
         // success — otherwise the capability sticks in its in-flight state
         // with no error (the publish-flow rule: receipt + status check).
-        if (receipt.status !== "success") {
-            throw new Error("Transaction reverted on-chain.");
-        }
+        await verifyTxSuccess(deps.publicClient, txHash, "The capability's transaction did not complete.");
     };
 
     const resolveActiveProcess = async (targetProcessId: string) => {
@@ -149,7 +148,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                     // assembly-composed process — dead end-to-end, silently.
                     const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
                     if (assemblyRecorded || composition === undefined) continue;
-                    if (typeof composition !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(composition)) {
+                    if (typeof composition !== "string" || !isBytes32Hex(composition)) {
                         // Loud: a committed compositionHash that fails the
                         // shape check means the assembly leg silently dies.
                         console.error(`[usage-recording] ${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);

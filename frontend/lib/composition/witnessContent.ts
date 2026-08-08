@@ -32,7 +32,7 @@ import {
     type IpfsService,
 } from "@/lib/shared/ipfsService";
 import { clauseIdForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
+import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 // CIDv1 prefix for [raw codec 0x55, keccak-256 multihash 0x1b, length 32],
 // multibase base16 ("f"). Appending the fingerprint's hex yields the full CID.
@@ -126,7 +126,7 @@ export async function fetchWitnessContent(
     contentRef: Hex | string,
     options: CappedFetchOptions = {},
 ): Promise<Hex | null> {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(contentRef)) return null;
+    if (!isBytes32Hex(contentRef)) return null;
     const url = resolveContentUri(`ipfs://${witnessContentCid(contentRef as Hex)}`);
     if (!url) return null;
     try {
@@ -150,7 +150,7 @@ export async function unpinWitnessContent(
     contentRef: Hex | string,
     ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
 ): Promise<void> {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(contentRef)) return;
+    if (!isBytes32Hex(contentRef)) return;
     try {
         await ipfs.unpin(witnessContentCid(contentRef as Hex));
     } catch (err) {

@@ -31,7 +31,8 @@
  */
 
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import type { Abi } from "viem";
+import { publishTail } from "@/lib/protocol/publishTail";
 import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
@@ -151,24 +152,21 @@ export function usePublishMemberProfile() {
             functionName: "registered",
             args: [input.wallet],
         })) as boolean;
+        // Simulate → write → verify (`publishTail`, the shared registry-publish
+        // tail): a mined-but-reverted tx must surface, not flow on as success —
+        // `writeContractAsync` only confirms broadcast.
         let txHash: `0x${string}`;
         if (alreadyRegistered) {
-            try {
-                await client.simulateContract({
-                    address: registry,
-                    abi: MEMBERS_REGISTRY_ABI,
-                    functionName: "updateProfile",
-                    args: [profileURI],
-                    account: input.wallet,
-                });
-            } catch (err) {
-                throw translatePublishRevert(err);
-            }
-            txHash = await writeContractAsync({
+            txHash = await publishTail({
+                client,
+                writeContractAsync,
                 address: registry,
-                abi: MEMBERS_REGISTRY_ABI,
+                abi: MEMBERS_REGISTRY_ABI as Abi,
                 functionName: "updateProfile",
                 args: [profileURI],
+                account: input.wallet,
+                translateRevert: translatePublishRevert,
+                failureMessage: "The profile was not published.",
             });
         } else {
             const deposit = (await client.readContract({
@@ -176,32 +174,19 @@ export function usePublishMemberProfile() {
                 abi: MEMBERS_REGISTRY_ABI,
                 functionName: "registrationDeposit",
             })) as bigint;
-            try {
-                await client.simulateContract({
-                    address: registry,
-                    abi: MEMBERS_REGISTRY_ABI,
-                    functionName: "register",
-                    args: [profileURI],
-                    value: deposit,
-                    account: input.wallet,
-                });
-            } catch (err) {
-                throw translatePublishRevert(err);
-            }
-            txHash = await writeContractAsync({
+            txHash = await publishTail({
+                client,
+                writeContractAsync,
                 address: registry,
-                abi: MEMBERS_REGISTRY_ABI,
+                abi: MEMBERS_REGISTRY_ABI as Abi,
                 functionName: "register",
                 args: [profileURI],
                 value: deposit,
+                account: input.wallet,
+                translateRevert: translatePublishRevert,
+                failureMessage: "The profile was not published.",
             });
         }
-
-        // (g) Wait for the receipt + verify status. `writeContractAsync`
-        //     resolves once the tx is broadcast; without an explicit
-        //     wait the UI could declare success on a tx that the chain
-        //     ultimately reverted.
-        await verifyTxSuccess(client, txHash, "The profile was not published.");
 
         return { hash: txHash, profileURI, catalogueURI };
     }

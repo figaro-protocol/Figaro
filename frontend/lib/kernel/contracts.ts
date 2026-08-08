@@ -55,6 +55,18 @@ export function getMembersRegistry(): `0x${string}` | null {
     return isValidAddress(a) ? a : null;
 }
 
+/** The UsageCounter address if it's a well-formed address, else null. The
+ *  canonical parse of `NEXT_PUBLIC_USAGE_COUNTER` — `lib/composition/contracts.ts`'s
+ *  `getUsageCounter()` delegates here (composition may import from kernel; the
+ *  reverse never happens) instead of re-reading the env itself, and
+ *  `useUsageRecorder` consumes this validated path so a malformed env var
+ *  resolves null and fails loudly at the call site, never reaching a
+ *  contract call with a garbage address. */
+export function getUsageCounter(): `0x${string}` | null {
+    const a = CONTRACTS.usageCounter;
+    return isValidAddress(a) ? a : null;
+}
+
 // Runtime validation helper.
 export function getMissingContractEnv(): string[] {
     const missing: string[] = [];

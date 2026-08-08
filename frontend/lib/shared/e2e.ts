@@ -1,3 +1,5 @@
+import { TEST_HELPERS_ENABLED } from "@/lib/shared/testHelpers";
+
 export type E2EMode = "mock" | "devnet" | null;
 
 const E2E_MODE_STORAGE_KEY = "figaro:e2e-mode";
@@ -27,12 +29,15 @@ export function getE2EModeFromSearchParams(search: string | URLSearchParams): E2
  */
 export function getE2EModeSession(): E2EMode {
     if (typeof window === "undefined") return null;
-    // Same build-time opt-in as TEST_HELPERS_ENABLED (lib/shared/testHelpers.ts)
-    // — parsed inline because lib/shared must not import lib/kernel.
-    if (process.env.NODE_ENV === "production") {
-        const v = String(process.env.NEXT_PUBLIC_ENABLE_TEST_HELPERS ?? "").toLowerCase();
-        if (v !== "1" && v !== "true") return null;
-    }
+    // Same-layer sibling: testHelpers.ts is lib/shared/, not lib/kernel/, so
+    // importing it carries no cross-layer weight. Scoped to the production
+    // branch only — TEST_HELPERS_ENABLED's own URL fallback is a MODULE-INIT-
+    // TIME read of window.location.search, which would go stale across a
+    // client-side navigation that adds ?e2e= after the first load; the
+    // production branch never reaches that fallback (it resolves purely from
+    // the build-time env var), so consulting it here is safe, and the live
+    // urlMode/sessionStorage read below stays the sole source outside production.
+    if (process.env.NODE_ENV === "production" && !TEST_HELPERS_ENABLED) return null;
 
     const urlMode = getE2EModeFromSearchParams(window.location.search);
     if (urlMode) {

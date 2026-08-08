@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { isBytes32Hex } from "@/lib/shared/evm";
 
 /** The spectator's front door to the full process audit: paste a process ID,
  *  open `/audit/view?process=<id>` — no wallet, no account, anyone's deal. */
@@ -10,7 +11,7 @@ export function ProcessAuditOpen() {
     const router = useRouter();
     const [processId, setProcessId] = useState("");
     const trimmed = processId.trim();
-    const valid = /^0x[0-9a-fA-F]{64}$/.test(trimmed);
+    const valid = isBytes32Hex(trimmed);
 
     return (
         <form
