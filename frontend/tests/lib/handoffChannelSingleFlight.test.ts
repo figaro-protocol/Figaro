@@ -13,7 +13,7 @@ vi.mock("@/lib/shared/e2e", () => ({
     isE2EMockSession: () => false,
     isE2EDevnetSession: () => false,
 }));
-vi.mock("@/lib/shared/userTransport", () => ({
+vi.mock("@/lib/handoff/userTransport", () => ({
     readUserTransport: () => "xmtp",
 }));
 

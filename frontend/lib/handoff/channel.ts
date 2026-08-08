@@ -10,7 +10,7 @@
 
 import type { HandoffChannel } from "@figaro/sdk/handoff";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
-import { readUserTransport } from "@/lib/shared/userTransport";
+import { readUserTransport } from "@/lib/handoff/userTransport";
 
 /** Cached channel instances keyed by address. */
 const channelCache = new Map<string, HandoffChannel>();
