@@ -18,7 +18,7 @@ export default function CorridorsWithoutAHegemonPaper() {
         <PaperLayout slug="corridors-without-a-hegemon"
             title="Corridors Without a Hegemon"
             subtitle="Bonded Settlement as Common Infrastructure Beneath Rival Trade Corridors"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="weaponized interdependence, hegemony, Belt and Road Initiative, IMEC, infrastructure power, cooperation under anarchy, ownerless settlement"

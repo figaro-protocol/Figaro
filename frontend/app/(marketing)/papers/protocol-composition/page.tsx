@@ -46,7 +46,7 @@ export default function ProtocolExtensionPaper() {
         <PaperLayout slug="protocol-composition"
             title="Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern"
             subtitle="Composing Onto a Frozen Kernel Without Weakening Its Equilibrium"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="protocol composition, clause design, coordinator pattern, invariant-preserving composition, content-addressed identity"

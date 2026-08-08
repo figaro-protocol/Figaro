@@ -17,7 +17,7 @@ export default function FlorinSchellingPointTokenPaper() {
         <PaperLayout slug="florin-schelling-point-token"
             title="The Florin: A Schelling-Point Token"
             subtitle="for the Figaro Coordination Ecosystem"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="cryptoeconomics, Schelling point, focal-point coordination, token design, coordination token, supply integrity, decoupled emission"

@@ -19,7 +19,7 @@ export default function ActorNeutralCoordinationPaper() {
         <PaperLayout slug="actor-neutral-coordination"
             title="Actor-Neutral Coordination over Bonded Commitments"
             subtitle="An AI-and-Control-Theory Reading"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="multi-agent coordination, bonded commitment, control theory, actor-neutrality, autonomous agents, AI agent design, human-in-the-loop"

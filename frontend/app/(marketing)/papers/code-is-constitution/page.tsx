@@ -16,7 +16,7 @@ export default function CodeIsConstitutionPaper() {
         <PaperLayout slug="code-is-constitution"
             title="Code Is Constitution"
             subtitle="The Entrenched Layer Beneath Enactment"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="July 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="constitutional political economy, code is law, lex cryptographia, credible neutrality, legality, lex mercatoria, decentralized protocols, entrenchment"

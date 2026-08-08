@@ -20,7 +20,7 @@ export default function TransactionScopedInstitutionsPaper() {
         <PaperLayout slug="transaction-scoped-institutions"
             title="From Firms to Transaction-Scoped Institutions"
             subtitle="A Coasean Re-Examination Under Costless Bilateral Enforcement"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="transaction cost economics, theory of the firm, subordination, coordination economics, two-sided markets, organizational substrate, institutional economics"

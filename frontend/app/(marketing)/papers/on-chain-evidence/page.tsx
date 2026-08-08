@@ -19,7 +19,7 @@ export default function OnChainEvidencePaper() {
         <PaperLayout slug="on-chain-evidence"
             title="On-Chain Evidence, Off-Chain Adjudication"
             subtitle="A Layered Approach to Smart-Contract Dispute Resolution"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="electronic evidence, smart-contract law, dispute resolution, blockchain evidence, eIDAS, UNCITRAL, jurisdictional flexibility"

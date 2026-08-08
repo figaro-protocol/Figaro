@@ -18,7 +18,7 @@ export default function WalletLegalSubjectPaper() {
         <PaperLayout slug="wallet-legal-subject"
             title="The Wallet as Legal Subject"
             subtitle="Subordination, Property, and the Dissolution of the Employee–Contractor Line"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="labor law, employee classification, gig economy, private government, subordination, legal subject, self-sovereign identity"

@@ -40,7 +40,7 @@ export default function AsymmetricBondingPaper() {
         <PaperLayout slug="asymmetric-bonding"
             title="Asymmetric Bonding and Buyer Dominance"
             subtitle="Two Composing Mechanisms for Self-Enforcing N-Party Coordination"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="mechanism design, Nash equilibrium, asymmetric bonding, multi-party coordination, process chains, peer enforcement"

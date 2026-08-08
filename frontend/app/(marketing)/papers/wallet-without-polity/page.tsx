@@ -19,7 +19,7 @@ export default function WalletWithoutPolityPaper() {
         <PaperLayout slug="wallet-without-polity"
             title="The Wallet Without a Polity"
             subtitle="Displaced and Stateless Subjects under a Bonded Settlement Primitive"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="statelessness, refugee economies, displaced populations, the wallet as legal subject, Arendt, humanitarian economics, commerce-without-jurisdiction"

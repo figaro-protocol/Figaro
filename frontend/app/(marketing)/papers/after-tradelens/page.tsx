@@ -67,7 +67,7 @@ export default function AfterTradeLensPaper() {
         <PaperLayout slug="after-tradelens"
             title="After TradeLens"
             subtitle="A Permissionless Bonded Replacement"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="container shipping, supply-chain coordination, bills of lading, Incoterms, MLETR, transferable records, process modeling"

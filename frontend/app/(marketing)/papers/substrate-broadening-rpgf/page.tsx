@@ -39,7 +39,7 @@ export default function SubstrateBroadeningRpgfPaper() {
         <PaperLayout slug="substrate-broadening-rpgf"
             title="Substrate-Broadening Retroactive Public-Goods Funding"
             subtitle="Allocating a Fixed Reserve on Adoption Counted as It Happens"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="July 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="retroactive public goods funding, mechanism design, resource allocation, verified usage accounting, permissionless recording, deterministic allocation, clause authoring, assembly design, coordination protocols"

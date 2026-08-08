@@ -28,7 +28,7 @@ export default function VerifiedSettlementKernelPaper() {
         <PaperLayout slug="verified-settlement-kernel"
             title="A Verified Settlement Kernel"
             subtitle="Formal Verification, Threat Model, and the Coordinator Pattern"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="smart contracts, formal verification, model checking, symbolic execution, property-based fuzzing, EIP-712, settlement layer, coordinator pattern"

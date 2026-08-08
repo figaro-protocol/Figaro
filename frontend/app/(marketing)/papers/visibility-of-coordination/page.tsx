@@ -20,7 +20,7 @@ export default function VisibilityOfCoordinationPaper() {
         <PaperLayout slug="visibility-of-coordination"
             title="The Visibility of Coordination"
             subtitle="A Gramscian Reading of the Platform Economy and Its Successor"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="cultural hegemony, Gramsci, platform economy, political economy of infrastructure, coordination substrate, paradigm shift"

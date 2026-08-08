@@ -19,7 +19,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
         <PaperLayout slug="self-closing-ledger-periods"
             title="Bookkeeping as Protocol Byproduct"
             subtitle="Self-Closing Ledger Periods in the Figaro Settlement Primitive"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="bookkeeping, accounting, auditing, double-entry, triple-entry, smart contracts, verifiable records, Pacioli, e-invoicing, EN 16931"

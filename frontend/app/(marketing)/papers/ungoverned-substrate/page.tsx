@@ -17,7 +17,7 @@ export default function UngovernedSubstratePaper() {
         <PaperLayout slug="ungoverned-substrate"
             title="The Ungoverned Substrate"
             subtitle="Network States, Blockchain Governance, and the Option Both Programs Presuppose Away"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="network state, blockchain governance, lex cryptographica, ungoverned substrate, decentralized autonomous organization, governance at the graph"

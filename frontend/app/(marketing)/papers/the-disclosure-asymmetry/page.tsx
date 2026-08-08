@@ -19,7 +19,7 @@ export default function DisclosureAsymmetryPaper() {
         <PaperLayout slug="the-disclosure-asymmetry"
             title="The Disclosure Asymmetry"
             subtitle="Cryptoeconomic Mechanism Design and the Engineering of Consent"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="mechanism design, engineering of consent, manufacture of consent, disclosure, common knowledge, legitimacy, platform capitalism, surveillance capitalism, trust"

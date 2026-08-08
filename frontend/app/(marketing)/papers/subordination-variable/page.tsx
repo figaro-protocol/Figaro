@@ -20,7 +20,7 @@ export default function SubordinationVariablePaper() {
         <PaperLayout slug="subordination-variable"
             title="The Subordination Variable"
             subtitle="Why a Single Coordination Substrate Admits Both the Associated-Producer and the Frictionless-Market Reading"
-            author="Alessandro Daliana"
+            author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
             keywords="political economy, subordination, coordination rent, associated production, classical liberalism, frame collapse, conditionality of the left/right partition"
