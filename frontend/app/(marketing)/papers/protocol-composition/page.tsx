@@ -43,7 +43,7 @@ const CATALOGUE: [string, string][] = [
 
 export default function ProtocolExtensionPaper() {
     return (
-        <PaperLayout slug="protocol-extension"
+        <PaperLayout slug="protocol-composition"
             title="Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern"
             subtitle="Composing Onto a Frozen Kernel Without Weakening Its Equilibrium"
             author="Alessandro Daliana"
