@@ -1,9 +1,9 @@
 /// Parity tests: verify the Rust kernel produces identical outputs
 /// to the Solidity kernel for the same inputs.
 ///
-/// The expected values are extracted from Foundry's ParityVectors test
-/// (test/ParityVectors.t.sol) run with --via-ir -vvvv. The kernel is
-/// frozen, so these vectors never move.
+/// The expected values are extracted from Foundry's EIP-712 parity test
+/// (test/kernel/Eip712ParityTest.t.sol) run with --via-ir -vvvv. The kernel
+/// is frozen, so these vectors never move.
 use alloy_primitives::{address, b256, Address, B256, U256, keccak256};
 use k256::ecdsa::SigningKey;
 

@@ -40,7 +40,7 @@ export default function Security() {
                 <ul className="space-y-2 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">Foundry</strong>: the unit + integration suite &mdash; 299 test and invariant functions.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Halmos</strong>: 32 symbolic-execution properties, proved exhaustively.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Certora</strong>: 37 formal rules across five CVL specs &mdash; the kernel, attestation, batch token operations, the florin token, and the RPGF minter.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Certora</strong>: 37 formal rules across six CVL specs &mdash; the kernel, its own token operations, attestation, batch token operations, the florin token, and the RPGF minter.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">TLA+</strong>: model-checking of four protocol state machines &mdash; the kernel, the florin token, the two settlement paths, and the swap/commit coordinator.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Echidna</strong>: 15 property-based fuzzing targets on the kernel and the florin token.</li>
                 </ul>
