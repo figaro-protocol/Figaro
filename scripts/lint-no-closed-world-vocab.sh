@@ -49,6 +49,12 @@ FAIL_DOCTRINE='>[[:space:]]*1(\.[0-9]+)?[x×]|1[[:space:]]*\+[[:space:]]*(ε|eps
 # ("bond-financing"), never a credit instrument ("bond-default" — bonds forfeit, they
 # cannot default), never measured by capital efficiency, never "bonds are capital".
 FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|bonds are capital'
+# Payoffs are TRANSFERS ONLY (operator ruling 2026-08-08): no cost variable and no
+# valuation variable exists in the mechanism's game — the seller's node is +P vs −2G
+# on tokens alone; V ≥ P / v ≥ c are market-existence economics, never proof inputs.
+# "Costless performance" (and any c=0-as-proof-scope framing) is the residue of
+# importing per-transaction cost accounting into a coordination mechanism.
+FAIL_COSTLESS='[Cc]ostless[- ]performance|proved at.*c *= *0|claimed only.*c *= *0'
 # "money" is BANNED (operator ruling 2026-08-03): nothing in this system IS money —
 # the florin is a TOKEN and a SCHELLING POINT; what moves is tokens/value/payments.
 # The word drags readers into the old economic paradigm, and it is just plain wrong
@@ -100,6 +106,13 @@ for file in "$@"; do
     hits=$(grep -nE "$FAIL_DETERRENT" "$file" || true)
     if [[ -n "$hits" ]]; then
         echo "[closed-world] $file — bonds-as-assets drift: bonds are DETERRENTS, not assets (ruled 2026-07-24) — never bond-financing / bond-default / capital-efficiency / 'bonds are capital'"
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    hits=$(grep -nE "$FAIL_COSTLESS" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — cost-accounting drift: payoffs are TRANSFERS ONLY (ruled 2026-08-08) — the seller's node is +P vs −2G on tokens alone; never 'costless performance' or c=0-as-proof-scope"
         echo "$hits" | head -3 | sed 's/^/    /'
         violations=$((violations + 1))
     fi
