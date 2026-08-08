@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/member/onboardingState";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
  * Step 6 of the onboarding wizard. Collects ERC-8004-compatible
@@ -67,7 +68,7 @@ const FIELDS: FieldDef[] = [
     },
 ];
 
-export interface OnboardingAgentsFormProps {
+export interface OnboardingAgentsFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(services)` instead of routing to the wizard's done
@@ -75,16 +76,6 @@ export interface OnboardingAgentsFormProps {
      * updated `services` field and dispatches `updateProfile`.
      */
     onSave?: (services: MemberAgentServices | undefined) => Promise<void>;
-    /** Submit-button label override. Defaults to "Next →". */
-    submitLabel?: string;
-    /** Back-link href override. Defaults to "/members/buyer". */
-    backHref?: string;
-    /** Back-link label override. Defaults to "← Back". */
-    backLabel?: string;
-    /** Whether the submit is currently in flight. Suppresses double-submission. */
-    submitInFlight?: boolean;
-    /** External error from `onSave`. */
-    externalError?: string | null;
 }
 
 export function OnboardingAgentsForm({

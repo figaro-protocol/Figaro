@@ -19,6 +19,7 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import { ProfileClauseValues, type ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
+import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/member/onboardingState";
 import type {
@@ -156,7 +157,7 @@ function toDraft(form: FormState): OnboardingProfileDraft {
     };
 }
 
-export interface OnboardingProfileFormProps {
+export interface OnboardingProfileFormProps extends OnboardingStepChromeProps {
     /**
      * When provided, the form's submit button calls this callback
      * with the assembled draft instead of routing to the next wizard
@@ -170,16 +171,6 @@ export interface OnboardingProfileFormProps {
      * post-success navigation.
      */
     onSave?: (draft: OnboardingProfileDraft) => Promise<void>;
-    /** Submit-button label override. Defaults to "Next →". */
-    submitLabel?: string;
-    /** Back-link href override. Defaults to "/members". */
-    backHref?: string;
-    /** Back-link label override. Defaults to "← Back". */
-    backLabel?: string;
-    /** Whether the submit is currently in flight. Suppresses double-submission. */
-    submitInFlight?: boolean;
-    /** External error from `onSave` to render alongside the form's own validation summary. */
-    externalError?: string | null;
 }
 
 export function OnboardingProfileForm({

@@ -22,6 +22,7 @@ import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
+import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
@@ -628,22 +629,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 ) : (
                     <>
                         {/* Read-only line items — the buyer's selection, edited on browse. */}
-                        <ul className="space-y-2 text-sm">
-                            {cartItems.map((item) => (
-                                <li
-                                    key={item.catalogueItemId}
-                                    className="flex items-baseline justify-between gap-2"
-                                    data-testid={`cart-line-${item.catalogueItemId}`}
-                                >
-                                    <span className="flex-1 min-w-0 text-black font-medium truncate">
-                                        {item.name} <span className="text-neutral-400">× {item.quantity}</span>
-                                    </span>
-                                    <span className="text-neutral-900 font-semibold tabular-nums shrink-0">
-                                        {(parseFloat(item.price || "0") * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
+                        <CartLineList items={cartItems} tokenSymbol={tokenSymbol} emphasizePrice />
 
                         {/* THE PAYMENT TOKEN — the buyer's pick from the seller's
                             accepted array (the social layer). The pick IS the

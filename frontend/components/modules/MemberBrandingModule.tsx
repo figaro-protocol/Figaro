@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { useMemberBranding } from "@/lib/member/useMemberBranding";
 import { resolveImageUri } from "@/lib/shared/ipfsService";
 
@@ -74,30 +75,18 @@ export function MemberLogo({
         );
     }
 
-    // Initials fallback — preferred when a name is supplied. Matches the
-    // discover-card InitialsAvatar pattern.
+    // Initials fallback — preferred when a name is supplied. Shares
+    // components/shared/InitialsAvatar with the discover-card listing.
     if (fallbackName) {
-        const initials = fallbackName.slice(0, 2).toUpperCase();
-        const accent = "#6b7280";
         return (
-            <span
+            <InitialsAvatar
+                name={fallbackName}
+                size={size}
+                radius={6}
+                fontSize={Math.max(10, Math.floor(size * 0.32))}
                 className={className}
-                style={{
-                    backgroundColor: accent,
-                    color: "#ffffff",
-                    fontWeight: 600,
-                    fontSize: `${Math.max(10, Math.floor(size * 0.32))}px`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: size,
-                    height: size,
-                    borderRadius: 6,
-                }}
-                aria-hidden="true"
-            >
-                {initials}
-            </span>
+                aria-hidden
+            />
         );
     }
 

@@ -15,6 +15,7 @@ import type {
 import { type AssemblyChoice, useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
+import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The buyer step of the member wizard. The member SUBSCRIBES the
@@ -44,7 +45,7 @@ function buildSubscriptions(subscribedHashes: Set<string>): BuyerAssemblySubscri
     return [...subscribedHashes].map((h) => ({ compositionHash: h as `0x${string}` }));
 }
 
-export interface OnboardingBuyerFormProps {
+export interface OnboardingBuyerFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(subscriptions, disclosurePolicy)` instead of routing to
@@ -56,11 +57,6 @@ export interface OnboardingBuyerFormProps {
         subscriptions: BuyerAssemblySubscription[],
         disclosurePolicy: DisclosurePolicyEntry[],
     ) => Promise<void>;
-    submitLabel?: string;
-    backHref?: string;
-    backLabel?: string;
-    submitInFlight?: boolean;
-    externalError?: string | null;
 }
 
 export function OnboardingBuyerForm({

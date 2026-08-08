@@ -33,8 +33,8 @@ import {
     type AddresseeBlock,
 } from "@/lib/handoff/addressDetail";
 import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
-import { getAttestationsByOrder, parseAttestationLog } from "@/lib/composition/indexer";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
+import { attestationAnchorMatches, type AnchorVerificationState } from "@/components/runtime/handoffAnchorState";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
@@ -60,7 +60,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
     const [blob, setBlob] = useState<string | null>(null);
     const [requested, setRequested] = useState(false);
     const [detail, setDetail] = useState<AddresseeBlock | null>(null);
-    const [anchored, setAnchored] = useState<"unknown" | "verified" | "missing">("unknown");
+    const [anchored, setAnchored] = useState<AnchorVerificationState>("unknown");
     const [sent, setSent] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -119,12 +119,8 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         const expected = addressDetailAnchorRef(blob);
         const checkAnchor = async () => {
             if (!publicClient || cancelled) return;
-            const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
+            const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
             if (cancelled) return;
-            const verified = logs.some((log) => {
-                const record = parseAttestationLog(log);
-                return record !== null && hexEqual(record.contentRef, expected);
-            });
             setAnchored(verified ? "verified" : "missing");
             if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
         };

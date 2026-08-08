@@ -1,15 +1,10 @@
-import type { SVGProps } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/shared/utils";
+import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 
-export interface RpgfValueLoopFigureProps {
-    /** Base id for the accessible <title>/<desc> pair and the arrow marker.
-     *  Override when embedding more than one instance on the same page. */
-    idPrefix?: string;
-    /** Merged onto the outer <figure>. */
-    className?: string;
-    svgProps?: SVGProps<SVGSVGElement>;
-}
+/** Same fields as every content figure; `idPrefix` also seeds this figure's
+ *  arrow-marker id. */
+export type RpgfValueLoopFigureProps = BaseFigureProps;
 
 // The deposit rationale, drawn. Source of truth for the mechanic:
 // docs/PUBLIC_GRAPH_MODEL.md § "Neutrality comes from the stake, not from the

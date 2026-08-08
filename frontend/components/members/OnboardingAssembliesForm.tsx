@@ -23,6 +23,7 @@ import {
 } from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
+import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
  * Step 5 of the onboarding wizard. Seller picks which published
@@ -85,7 +86,7 @@ function activePolicy(
     return entries.filter((e) => selectedHashes.has(e.compositionHash));
 }
 
-export interface OnboardingAssembliesFormProps {
+export interface OnboardingAssembliesFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(bindings, disclosurePolicy)` instead of routing to the
@@ -97,11 +98,6 @@ export interface OnboardingAssembliesFormProps {
         bindings: AssemblyBindingRecord[],
         disclosurePolicy: DisclosurePolicyEntry[],
     ) => Promise<void>;
-    submitLabel?: string;
-    backHref?: string;
-    backLabel?: string;
-    submitInFlight?: boolean;
-    externalError?: string | null;
 }
 
 export function OnboardingAssembliesForm({

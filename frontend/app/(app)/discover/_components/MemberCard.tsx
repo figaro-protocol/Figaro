@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ContentImage } from "@/components/shared/ContentImage";
+import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import {
     type Listing,
     listingClickThroughHref,
@@ -10,17 +11,6 @@ import { useMemberTrackRecord } from "@/lib/member/useMemberTrackRecord";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
-}
-
-function InitialsAvatar({ listing }: { listing: Listing }) {
-    return (
-        <div
-            className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-xs font-semibold text-white"
-            style={{ backgroundColor: "#6b7280" }}
-        >
-            {listing.name.slice(0, 2).toUpperCase()}
-        </div>
-    );
 }
 
 interface MemberCardProps {
@@ -59,10 +49,10 @@ export function MemberCard({
                         src={listing.logoURI}
                         alt={`${listing.name} logo`}
                         className="w-10 h-10 rounded object-cover shrink-0"
-                        fallback={<InitialsAvatar listing={listing} />}
+                        fallback={<InitialsAvatar name={listing.name} className="shrink-0" />}
                     />
                 ) : (
-                    <InitialsAvatar listing={listing} />
+                    <InitialsAvatar name={listing.name} className="shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
                     <h3 className="text-base font-semibold text-black truncate group-hover:underline">

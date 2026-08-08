@@ -12,6 +12,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
+import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/member/onboardingState";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
@@ -197,7 +198,7 @@ function isItemComplete(form: FormItem): boolean {
     return Boolean(form.name.trim()) && Boolean(form.price.trim());
 }
 
-export interface OnboardingCatalogueFormProps {
+export interface OnboardingCatalogueFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(items, unitSystem)` instead of routing to the next
@@ -208,16 +209,6 @@ export interface OnboardingCatalogueFormProps {
      * (caller surfaces the error via `externalError`).
      */
     onSave?: (items: CatalogueItemMetadata[], unitSystem: UnitSystem) => Promise<void>;
-    /** Submit-button label override. Defaults to "Next →". */
-    submitLabel?: string;
-    /** Back-link href override. Defaults to "/members/identity". */
-    backHref?: string;
-    /** Back-link label override. Defaults to "← Back". */
-    backLabel?: string;
-    /** Whether the submit is currently in flight. Suppresses double-submission. */
-    submitInFlight?: boolean;
-    /** External error from `onSave` to render below the form. */
-    externalError?: string | null;
 }
 
 export function OnboardingCatalogueForm({

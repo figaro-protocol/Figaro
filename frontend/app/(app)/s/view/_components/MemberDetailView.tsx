@@ -18,7 +18,9 @@
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
+import { CartLineList } from "@/components/runtime/CartLineList";
 import { ContentImage } from "@/components/shared/ContentImage";
+import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { MemberLogo } from "@/components/modules/MemberBrandingModule";
 import { MemberAgentIdentity } from "@/components/members/MemberAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
@@ -139,7 +141,6 @@ export function MemberDetailView({ sellerAddress }: Props) {
     // bond math, method choice, and commit all live on the checkout surface.
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     const cartCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
-    const cartSubtotal = cartItems.reduce((sum, it) => sum + parseFloat(it.price || "0") * it.quantity, 0);
     const cartUnitSystem = memberCatalogue.unitSystem ?? "metric";
 
     // `category` is optional on a catalogue item; items without one group under
@@ -284,9 +285,13 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                             alt={catalogueItem.name}
                                                             className="w-12 h-12 rounded object-cover text-3xl flex items-center justify-center"
                                                             fallback={
-                                                                <div className="w-12 h-12 rounded shrink-0 bg-neutral-100 border border-neutral-200 flex items-center justify-center text-xs font-semibold text-neutral-600" aria-hidden="true">
-                                                                    {catalogueItem.name.slice(0, 2).toUpperCase()}
-                                                                </div>
+                                                                <InitialsAvatar
+                                                                    name={catalogueItem.name}
+                                                                    tone="neutral"
+                                                                    size={48}
+                                                                    className="shrink-0"
+                                                                    aria-hidden
+                                                                />
                                                             }
                                                         />
                                                         <div className="flex-1">
@@ -371,28 +376,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                             </p>
                         ) : (
                             <>
-                                <ul className="space-y-2 text-sm">
-                                    {cartItems.map((item) => (
-                                        <li
-                                            key={item.catalogueItemId}
-                                            className="flex items-baseline justify-between gap-2"
-                                            data-testid={`cart-line-${item.catalogueItemId}`}
-                                        >
-                                            <span className="flex-1 min-w-0 text-black font-medium truncate">
-                                                {item.name} <span className="text-neutral-400">× {item.quantity}</span>
-                                            </span>
-                                            <span className="text-neutral-900 tabular-nums shrink-0">
-                                                {(parseFloat(item.price || "0") * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <div className="flex justify-between border-t border-neutral-200 pt-3 text-sm font-semibold">
-                                    <span className="text-black">Subtotal</span>
-                                    <span className="text-black tabular-nums" data-testid="cart-subtotal">
-                                        {cartSubtotal.toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                    </span>
-                                </div>
+                                <CartLineList items={cartItems} tokenSymbol={tokenSymbol} showSubtotal />
                                 <Link href={`/s/checkout?seller=${sellerAddressLower}`} className="block">
                                     <Button className="w-full" data-testid="btn-review-order">
                                         Review order ({cartCount})

@@ -1,15 +1,7 @@
-import type { SVGProps } from "react";
 import { cn } from "@/lib/shared/utils";
+import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 
-export interface LockedFundsStateFigureProps {
-    /** Base id for the accessible <title>/<desc> pair. Override when embedding
-     *  more than one instance on the same page to avoid id collisions. */
-    idPrefix?: string;
-    /** Merged onto the outer <figure>. Default width is a sensible content-figure
-     *  measure (`max-w-xl mx-auto`); override to fit a specific page's rail. */
-    className?: string;
-    svgProps?: SVGProps<SVGSVGElement>;
-}
+export type LockedFundsStateFigureProps = BaseFigureProps;
 
 /**
  * The locked-funds state machine, derived read-only from the kernel

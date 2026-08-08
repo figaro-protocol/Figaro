@@ -1,16 +1,10 @@
-import type { SVGProps } from "react";
 import { cn } from "@/lib/shared/utils";
+import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 
-export interface DisciplineIntersectionFigureProps {
+export interface DisciplineIntersectionFigureProps extends BaseFigureProps {
     /** One circle per discipline. Pass the live catalogue
      *  (`PAPER_GROUPS.map((g) => g.name)`), never a copied list. */
     labels: string[];
-    /** Base id for the accessible <title>/<desc> pair. Override when embedding
-     *  more than one instance on the same page to avoid id collisions. */
-    idPrefix?: string;
-    /** Merged onto the outer <figure>. */
-    className?: string;
-    svgProps?: SVGProps<SVGSVGElement>;
 }
 
 const CX = 330;

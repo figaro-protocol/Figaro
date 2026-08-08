@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { unpinAgreement } from "@/lib/kernel/agreementFetch";
+import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 
 /**
  * Controller-erasure for a process's committed-agreement pins.
@@ -18,33 +18,19 @@ import { unpinAgreement } from "@/lib/kernel/agreementFetch";
  * the evidence-bundle "Unpin from IPFS" affordance it sits beside.
  */
 export function AgreementPinErasure({ agreementHashes }: { agreementHashes: string[] }) {
-    const [status, setStatus] = useState<"idle" | "erasing" | "done">("idle");
-
-    const handleUnpin = useCallback(async () => {
-        setStatus("erasing");
-        await Promise.all(agreementHashes.map((h) => unpinAgreement(h)));
-        setStatus("done");
-    }, [agreementHashes]);
-
-    if (agreementHashes.length === 0) return null;
-
     return (
-        <div className="mt-4" data-testid="agreement-pin-erasure">
-            {status === "done" ? (
-                <p className="text-xs text-ink-muted" data-testid="agreement-pin-erasure-done">
+        <PinErasureControl
+            hashes={agreementHashes}
+            testidPrefix="agreement-pin-erasure"
+            unpinOne={unpinAgreement}
+            buttonLabel="Unpin agreement copies from IPFS"
+            erasingLabel="Unpinning…"
+            doneLabel={
+                <>
                     Agreement copies unpinned from your IPFS node. Content addressing means a
                     counterparty node or a gateway may still hold them.
-                </p>
-            ) : (
-                <button
-                    onClick={() => void handleUnpin()}
-                    disabled={status === "erasing"}
-                    data-testid="agreement-pin-erasure-button"
-                    className="text-xs text-neutral-500 hover:text-neutral-700 underline disabled:opacity-50"
-                >
-                    {status === "erasing" ? "Unpinning…" : "Unpin agreement copies from IPFS"}
-                </button>
-            )}
-        </div>
+                </>
+            }
+        />
     );
 }

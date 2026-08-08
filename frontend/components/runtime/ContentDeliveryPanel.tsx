@@ -35,8 +35,8 @@ import {
     type DeliveredContent,
 } from "@/lib/handoff/contentDelivery";
 import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
-import { getAttestationsByOrder, parseAttestationLog } from "@/lib/composition/indexer";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
+import { attestationAnchorMatches, type AnchorVerificationState } from "@/components/runtime/handoffAnchorState";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
@@ -67,7 +67,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
     const [blob, setBlob] = useState<string | null>(null);
     const [requested, setRequested] = useState(false);
     const [received, setReceived] = useState<DeliveredContent | null>(null);
-    const [anchored, setAnchored] = useState<"unknown" | "verified" | "missing">("unknown");
+    const [anchored, setAnchored] = useState<AnchorVerificationState>("unknown");
     const [sent, setSent] = useState<`0x${string}` | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -129,12 +129,8 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
             );
             const checkAnchor = async () => {
                 if (!publicClient || cancelled) return;
-                const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
+                const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
                 if (cancelled) return;
-                const verified = logs.some((log) => {
-                    const record = parseAttestationLog(log);
-                    return record !== null && hexEqual(record.contentRef, expected);
-                });
                 setAnchored(verified ? "verified" : "missing");
                 if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
             };
