@@ -28,6 +28,14 @@ export interface MemberRegisteredEvent {
     metadataURI: string;
     blockNumber?: number;
     transactionHash?: string;
+    /** True when the caller's withdrawal-aware fold (`getActiveMembers` /
+     *  `getMemberState` in `lib/protocol/membersRegistryIndexer.ts`) has
+     *  determined this seller is no longer current — a `MemberRegistered`
+     *  followed by a `MemberWithdrawalRequested` at or after it. This
+     *  extractor trusts the caller's fold rather than re-deriving it from
+     *  raw events, so every row for a given seller must carry the same
+     *  value. */
+    withdrawn?: boolean;
 }
 
 export interface MembersRegistryDocument extends ExtractedDocument {
@@ -84,6 +92,20 @@ export function extractMembersRegistry(
     // Most recent registration wins (handles withdraw + re-register).
     const sorted = [...sellerEvents].sort((a, b) => (b.blockNumber ?? 0) - (a.blockNumber ?? 0));
     const latest = sorted[0];
+
+    if (latest.withdrawn) {
+        return {
+            ...base,
+            registered: false,
+            metadataURI: latest.metadataURI,
+            registeredAtBlock: latest.blockNumber,
+            registrationTransactionHash: latest.transactionHash,
+            notice:
+                "Seller registered in MembersRegistry but has since WITHDRAWN " +
+                "(MemberWithdrawalRequested at or after the registration) and is no longer current. " +
+                "Audit-significant: the seller de-surfaced after this order's registration record was created.",
+        };
+    }
 
     return {
         ...base,

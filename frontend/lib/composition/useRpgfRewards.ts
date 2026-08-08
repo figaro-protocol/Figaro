@@ -23,6 +23,8 @@ import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro/sdk";
 import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 /** One clause or assembly the connected wallet is author of record for, with
  *  the accrual it carried in a given period. `c` = distinct settled processes,
@@ -120,7 +122,7 @@ export function useRpgfRewards() {
             if (!clauseOrAssembly) continue;
             out.set(clauseOrAssembly.toLowerCase(), {
                 clauseOrAssembly,
-                label: `${clauseOrAssembly.slice(0, 10)}…`,
+                label: truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
                 family: "assembly",
             });
         }
@@ -256,7 +258,7 @@ export function useRpgfRewards() {
             };
             if (publicClient) await publicClient.simulateContract({ ...call, account });
             const hash = await writeContractAsync(call);
-            if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+            if (publicClient) await verifyTxSuccess(publicClient, hash, "The reward was not claimed.");
             refresh();
             return hash;
         },

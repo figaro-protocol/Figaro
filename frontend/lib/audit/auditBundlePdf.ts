@@ -13,7 +13,7 @@
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/sdk";
-import { getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
+import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import {
     getAttestationsByOrder,
     parseAttestationLog,
@@ -66,12 +66,25 @@ export async function buildAuditBundlePdfBlob(
     if (publicClient) {
         try {
             // SDK-decoded rows; project to the audit extractor's shape.
-            const rows = await getAllMemberRegistered(publicClient, chainId);
+            // `getActiveMembers` already folds MemberRegistered +
+            // MemberProfileUpdated + MemberWithdrawalRequested (the same
+            // fold `getMemberState` uses for a single address) — a seller
+            // absent from it has withdrawn since its most recent
+            // registration. Consuming that fold here (rather than
+            // re-deriving withdrawal from raw events) is what makes the
+            // extractor's `registered:` verdict agree with every other
+            // withdrawal-aware surface.
+            const [rows, active] = await Promise.all([
+                getAllMemberRegistered(publicClient, chainId),
+                getActiveMembers(publicClient, chainId),
+            ]);
+            const activeSellers = new Set(active.map((m) => m.address));
             memberRegisteredAll = rows.map((row) => ({
                 seller: row.member,
                 metadataURI: row.metadataURI,
                 blockNumber: row.blockNumber,
                 transactionHash: row.transactionHash ?? undefined,
+                withdrawn: !activeSellers.has(row.member.toLowerCase()),
             }));
         } catch {
             // Non-fatal — the extractor reports registered=false and the

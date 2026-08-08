@@ -29,8 +29,6 @@ import {
     useWithdrawalStatus,
     useWithdrawalCooldown,
 } from "@/lib/member/useMembersRegistry";
-import { getMembersRegistry } from "@/lib/kernel/contracts";
-import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
@@ -352,25 +350,6 @@ function WithdrawRow({
         setSubmitError(null);
         if (!client || !address) {
             setSubmitError("No public client / wallet — reload and retry.");
-            return;
-        }
-        const registry = getMembersRegistry();
-        if (!registry) {
-            setSubmitError("MembersRegistry not configured.");
-            return;
-        }
-        // Pre-flight simulate — surfaces a typed revert (e.g. NotRegistered)
-        // before opening the wallet, so the seller doesn't waste a signature on
-        // a tx that will fail.
-        try {
-            await client.simulateContract({
-                address: registry,
-                abi: MEMBERS_REGISTRY_ABI,
-                functionName: "requestWithdrawal",
-                account: address,
-            });
-        } catch (e: unknown) {
-            setSubmitError(extractErrorMessage(e, String(e)));
             return;
         }
         try {

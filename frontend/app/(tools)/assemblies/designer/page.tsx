@@ -16,7 +16,7 @@ export default function DesignerLanding() {
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
                 <Breadcrumb
                     items={[
-                        { label: "Builders", href: "/builders" },
+                        { label: "Assemblies", href: "/assemblies" },
                         { label: "Designer" },
                     ]}
                 />

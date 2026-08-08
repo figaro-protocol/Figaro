@@ -34,7 +34,7 @@ export default function ClauseAuthoring() {
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
                 <Breadcrumb
                     items={[
-                        { label: "Builders", href: "/builders" },
+                        { label: "Clauses", href: "/clauses" },
                         { label: "Register a clause" },
                     ]}
                 />
