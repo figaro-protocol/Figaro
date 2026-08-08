@@ -326,6 +326,9 @@ export default function SubstrateBroadeningRpgfPaper() {
                 <PaperRun title="Single denomination per process.">
                     The counting layer reads a process&rsquo;s parties and its resolution from chain state directly; it takes no position on the currency a process settles in, and it compares no values across currencies, because value never enters the score. The mechanism therefore inherits, and does not relax, the kernel&rsquo;s single-denomination-per-process boundary: it scores the shape of coordination, not the units it moved.
                 </PaperRun>
+                <PaperRun title="The rule optimizes nothing, and that is the design.">
+                    This mechanism has no social-welfare objective, and none is withheld for later. A welfare criterion over authors would rank kinds of contribution; a ranking justifies weights; and a weight is the curatorial judgment Section 6 declines &mdash; privileging a class of work in advance of the evidence. Neutrality here is not achieved by choosing the right objective but by refusing to hold one: the reward is uniform, and the two-sided live stake, not a weighting, carries what the score cannot. The constants are calibrations of that refusal, and are published as such &mdash; <Math>{"\\theta"}</Math> expresses a judgment about breadth over depth, the minimum-support floor <Math>{"d_{\\min}"}</Math> the smallest support one actor cannot fabricate alone, and the deposit and the cooldown a point on the <Math>{"C(\\varphi)"}</Math> curve any reader can recompute.
+                </PaperRun>
             </PaperSection>
 
             <PaperSection title="12. Conclusion">
