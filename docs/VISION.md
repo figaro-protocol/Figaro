@@ -18,16 +18,17 @@ The concrete organizational unit this produces is the
 **transaction-scoped institution**: a temporary assembly of directly bonded
 contributors formed around a single process and dissolved at settlement.
 
-The mechanism is simple: both parties lock collateral on-chain — exactly 2×
-payment each (1× is unsafe because the seller breaks even by defecting; 3× is
-wasteful because it adds capital burden without improving the equilibrium).
-Only the buyer can trigger resolution — not as a power asymmetry, but as a
-coordination property that prevents deadlock (the buyer is also locked at 2×,
-so griefing is self-destructive). If either party defects, both lose. This
-creates a Nash equilibrium where cooperation weakly dominates defection —
-the all-cooperate profile is the unique one surviving iterated elimination
-of weakly dominated strategies — not as a hopeful social outcome, but as a
-mathematical certainty.
+The mechanism is simple: both parties lock collateral on-chain — the buyer 2×
+the payment, each seller 2× the value the process has accumulated at its own
+link. The doubling answers retention: value passes off-chain, so a defector
+keeps what is in its hands, and a bond equal to that value would be exactly
+offset by the taking. Only the buyer can trigger resolution — not as a power
+asymmetry, but as a coordination property that prevents deadlock (the buyer is
+locked too, so extraction is self-destructive). The equilibrium follows in two
+composing steps: after performance, resolving is unconditionally strictly
+better for the buyer; given that, performance is each seller's strict best
+response. Not a hopeful social outcome — a comparison of two known amounts that
+either party can make for itself.
 
 In legal terms, this is a **self-executing bilateral performance bond** — a
 known legal instrument, with one innovation: the counterparty is the surety.
@@ -95,8 +96,9 @@ reach without weakening its guarantees:
 Every value chain is visible as a DAG. A buyer's cart can settle as a single
 root process that distributes tokens downstream to every contributor, or each
 item can decompose into direct token flows to every value-adder in the DAG.
-Cumulative bonding at each node creates geometric coordination pressure — later
-sellers have exponentially more at stake. This replaces management hierarchies
+Cumulative bonding at each node creates coordination pressure that never
+slackens with depth — later sellers have strictly more at stake, their bonds
+keyed to everything accumulated through their own link. This replaces management hierarchies
 with economic self-organization.
 
 **Token denomination** — The choice of settlement token is a coordination
@@ -124,12 +126,15 @@ submit disclosure references. All anchored to settlement — you cannot game the
 disclosure without breaking the bond. Opt-in, but tamper-proof once committed.
 
 **Cross-process links (templates, cascades)** — Public trade network graph.
-Templates encode reusable value-added process patterns. Settlement cascades
-propagate resolution across linked processes. These are not auxiliary
+Templates encode reusable value-added process patterns. A settlement cascade
+is the parties' own sequencing of resolutions across linked processes — each
+process resolved by its own buyer, the links carried in the signed agreements
+and read off-chain. These are not auxiliary
 infrastructure — they are the primary mechanism by which value distributes
 through processs. A template defines how a buyer's payment decomposes into
-flows reaching every contributor; a cascade ensures that when a root process
-resolves, every sub-process in the DAG settles accordingly. These form the
+flows reaching every contributor; when a process resolves, every order in it
+settles together — and separate processes each resolve on their own buyer's
+call, never across. These form the
 bones of an inter-institution economy where provenance is verifiable across
 process boundaries.
 
@@ -214,10 +219,11 @@ record only as immutable, as the chain that holds them.
 
 **Layer 1: Economic — Primary Nash Equilibrium (MAD via asymmetric bonding),
 plus the evidence record** — Both parties lock collateral at exactly 2× the
-transaction value. Defection destroys more capital than it could capture.
-Cooperation weakly dominates defection, and the all-cooperate profile is the
-unique one surviving iterated elimination of weakly dominated strategies —
-not a social aspiration, a mathematical fact. This handles the vast majority
+transaction value. Credit a defector with everything it retains off-chain and
+it is still out of pocket — the seller at best at −G, the withholding buyer at
+−P. So after performance, resolving is unconditionally strictly better for the
+buyer, and given that, performance is each seller's strict best response —
+not a social aspiration, a comparison of two known amounts. This handles the vast majority
 of bilateral interactions. The enforcement is ex-ante (capital locked before
 work begins), not ex-post (courts invoked after breach). Asymmetric bonding
 replaces trust, reputation, credit history, and most forms of contractual
@@ -239,13 +245,16 @@ is faulty, every co-seller's cheapest move is to help fix the fault, because
 that is the only path back to settlement. The pressure is the backing behind
 the remedy — the atomic-resolution rule is buyer dominance's forcing
 function, inducing a weakest-link subgame among sellers with endogenous peer
-pressure of magnitude P_i + 2G_i on every co-seller. The empirical parallel
-is Grameen Bank's group lending model, which reduced default rates from ~20%
-(individual lending) to ~2% (group accountability). Figaro reproduces that
-structure without requiring repeated interaction or social relationships —
-the bond geometry plus atomic resolution does it. The buyer does not need to
-manage the sellers. This replaces management hierarchies, quality control
-departments, and supervisory authority.
+exposure of magnitude P_i + 2G_i on a co-seller that has already performed, and
+a floor of P_i + G_i on one that has not — it still holds what is in its hands.
+The parallel is Grameen Bank's group lending model, and the claim is scoped:
+Figaro reproduces the *coordination-pressure component* of that peer-enforcement
+equilibrium — the interest each participant holds in the others' performance —
+without repeated interaction, local information, an exogenous punishment
+technology, or joint-liability contracting. The peer *selection* and peer
+*monitoring* results of that literature it does not reproduce. The buyer does
+not need to manage the sellers. This replaces management hierarchies, quality
+control departments, and supervisory authority.
 
 **Layer 3: Arbitration** — A standing layer, not a transition aid. For the
 edge cases Layers 1 and 2 do not resolve, the parties can bring the dispute
@@ -517,16 +526,17 @@ protocol design. The project would not exist without that collaboration.
 Figaro's bonding mechanism descends from the **Safe Remote Purchase**
 contract in the Solidity documentation (chriseth / the Solidity team, first
 imported 2015) — a minimal escrow where buyer and seller each lock 2×
-payment, creating mutual assured destruction that makes cooperation dominant.
+payment, creating mutual assured destruction that makes performance each
+party's own better move.
 The mechanism itself predates Ethereum: Satoshi proposed the one-sided
 hostage escrow on Bitcointalk in August 2010 ("takes the profit out of
 cheating"), and in the same thread aceat64 and ribuck stated the two-sided
 double-deposit form; NashX ran it live (2013) and BitHalo (Zimbeck, 2014)
 gave it a whitepaper and implementation. Figaro generalizes the insight from
-a 2-party escrow into an N-party coordination protocol: cumulative upstream
-bonding scales the equilibrium across processes, atomic resolution binds the
-DAG into a single game, and the augmentation layers turn the bare mechanism
-into composable institutions.
+a 2-party escrow into an N-party coordination protocol: cumulative bonding at
+each link — its own payment included — scales the equilibrium along the
+process, atomic resolution binds every order into a single game, and the
+augmentation layers turn the bare mechanism into composable institutions.
 
 The intellectual debt is real and worth stating: without the double-deposit
 lineage that culminated in the Safe Remote Purchase primitive, the rest of

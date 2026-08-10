@@ -8,18 +8,22 @@
 
 Figaro is a coordination protocol that enables sovereign economic coordination
 through two composing mechanisms: asymmetric bonding and buyer dominance.
-Asymmetric bonding (each party locks 2× their respective stake) produces a
-Nash equilibrium where cooperation weakly dominates defection for both parties —
-the unique profile surviving iterated elimination of weakly dominated strategies — and
-scales the bilateral primitive from 2-party to N-party service chains
-(downstream sellers bond against cumulative
-upstream value, creating a mesh of independently secured edges). Buyer
-dominance — only the buyer can trigger resolution, and resolution is atomic
-across all orders in the process — operates on the already-scaled mesh to
-enforce inter-seller coordination, cooperation, and communication. Atomic
-resolution is the forcing function: it induces a weakest-link subgame among
-sellers, reproducing Grameen joint-liability peer enforcement at kernel
-granularity without repeated interaction or local information.
+Asymmetric bonding — the buyer locks 2× the payment, each seller 2× the value
+the process has accumulated through its own link — produces the equilibrium in
+two composing steps: after performance, resolving is unconditionally strictly
+better for the buyer (`0` against `−P`, a comparison needing no assumption
+whatever about the seller); given that, performance is each seller's strict
+best response (`+P` against at best `−G`, crediting the seller with everything
+it retains off-chain). The same schedule scales the bilateral primitive from
+2-party to N-party process chains: each seller bonds against the cumulative
+value at its link, its own payment included, creating a mesh of independently
+secured edges. Buyer dominance — only the buyer can trigger resolution, and
+resolution is atomic across all orders in the process — operates on the
+already-scaled mesh to enforce inter-seller coordination. Atomic resolution is
+the forcing function: it induces a weakest-link subgame among sellers,
+reproducing the coordination-pressure component of Grameen joint-liability peer
+enforcement at kernel granularity without repeated interaction or local
+information.
 
 The two mechanisms compose; neither substitutes the other. Bonding alone
 yields independently bonded edges that can't multi-party coordinate;
@@ -34,7 +38,8 @@ co-resident); remedy-first coordination among co-dependent sellers (atomic
 resolution as buyer dominance's forcing function — nobody is paid until the
 buyer resolves, so co-sellers help fix faults); arbitration; and traditional
 legal systems — the last two standing layers that consume the on-chain
-evidence from outside. This paper presents the game-theoretic foundations, the
+evidence from outside, ruling while the process stands open and holding no
+power to resolve it. This paper presents the game-theoretic foundations, the
 N-party scaling model, the enforcement architecture, and a security analysis
 of the protocol.
 
@@ -63,16 +68,25 @@ Figaro achieves multi-party coordination through two composing mechanisms:
 
 **Mechanism 1 — Asymmetric bonding (the bilateral equilibrium + scaling):**
 
-1. **Both parties lock collateral on-chain** (buyer 2P, seller 2G)
-2. **The 2× ratio creates the Nash equilibrium** — cooperation weakly dominates defection for both (the unique profile surviving iterated elimination of weakly dominated strategies), at the minimum viable multiplier
-3. **Each seller bonds against cumulative upstream value**, creating a mesh of independently secured edges that scales from 2-party to N-party DAGs
+1. **Both parties lock collateral on-chain** — buyer 2P, seller 2G, where G is the
+   cumulative value at that seller's link, its own payment included
+2. **The doubled schedule is what makes defection cost.** Value passes off-chain,
+   so a defector keeps what is in its hands; credit it with all of that and it is
+   still out of pocket — the seller at best at −G, the withholding buyer at −P
+   (see *What the Doubling Does*)
+3. **Each seller bonds against the cumulative value at its own link**, creating a
+   mesh of independently secured edges that scales from 2-party to N-party
+   process chains
 
 **Mechanism 2 — Buyer dominance (inter-seller coordination on the mesh):**
 
 4. **Only the buyer can unlock funds** by calling `resolveProcess()`
 5. **Resolution is atomic** across all orders in the process — all or nothing
-6. **Sellers must coordinate among themselves** to satisfy the buyer (weakest-link subgame; endogenous peer pressure of magnitude P_i + 2G_i on every co-seller)
-7. **Buyer accountability** through locked capital + self-destructive griefing economics
+6. **Sellers must coordinate among themselves** to satisfy the buyer (weakest-link
+   subgame; endogenous peer exposure of P_i + 2G_i on a co-seller that has already
+   performed, and a floor of P_i + G_i on one that has not)
+7. **Buyer accountability** through locked capital: an extracting buyer holds the
+   delivery and still stands at −P against the 0 that closing would give it
 
 **Key Insight**: Bond lockup creates the bilateral equilibrium and scales the mesh; buyer dominance enforces coordination across the mesh. Either mechanism alone is insufficient — bonding without buyer dominance gives a mesh that can't multi-party coordinate; buyer dominance without bonding is worthless. Together they replace external enforcement.
 
@@ -82,7 +96,7 @@ Figaro is **NOT DeFi**. It is not a financial protocol for trading, lending, or 
 
 #### 1. The Coasean Collapse (Death of the Firm)
 Nobel laureate Ronald Coase theorized that firms exist because the transaction costs of vetting, trusting, and contracting external partners are too high.
-*   **The Shift**: Figaro prices the cost of trust at $2x$ — the bond each party locks. Trust is not eliminated; it is made unnecessary. A rational actor who prefers $2x$ return over $0x$ will cooperate. The Penalty is pre-paid; the "lawsuit" is resolved before work begins.
+*   **The Shift**: Figaro prices the cost of trust at $2x$ — the bond each party locks. Trust is not eliminated; it is made unnecessary. A seller that performs earns its payment and takes its bond back; one that walks off with the value at its link is credited that value and still stands at best at $-G$. The deterrent is pre-paid; the "lawsuit" is settled before work begins.
 *   **The Result**: The standing firm is no longer the compulsory unit of organization. Each process can assemble a transaction-scoped institution of autonomous agents (human or AI) coordinating via economic pheromones (RFQs, public graph signals), then dissolve at settlement. The **Bond** acts as the immune system, isolating defectors instantly without management overhead.
 
 #### 2. Universal Rule of Law (Space-Grade Institutions)
@@ -112,7 +126,7 @@ invariants.
 
 | Law | Properties it projects | One-sentence statement |
 |---|---|---|
-| **Skin in the Game** | Asymmetric bonding (bilateral 2× + cumulative upstream bonding) | Both parties prove they have more to lose than to gain by defecting. The bond is the proof. |
+| **Skin in the Game** | Asymmetric bonding (bilateral 2× + bonding against the cumulative value at the link) | Both parties prove they have more to lose than to gain by defecting — counting what a defector keeps, not just what the chain holds. The bond is the proof. |
 | **One-Way Progress** | Monotonic cumulative-value accumulator + Atomic resolution | The deal only moves forward. Value accumulates; it never reverses. Settlement is all-or-nothing. |
 | **Sovereign Settlement** | Buyer dominance + No escape hatches | No boss, no bank, no platform sits in the middle. Resolution is between the parties, enforced by code. |
 
@@ -123,9 +137,10 @@ Each law maps to a contract invariant:
 - **Sovereign Settlement** → `resolveProcess` requires `msg.sender == rootBuyer`; no owner, no fee, no admin function, no timeout
 
 The emotional experience these laws produce: **the end of anxiety.** The
-mathematical certainty that cooperation is dominant eliminates the "leap of
-faith" that characterizes every traditional exchange between strangers. The
-mechanism produces the certainty; the certainty produces the calm.
+certainty that performance and resolution are each party's own best move — a
+comparison of two known amounts, not a hope about the other side — eliminates
+the "leap of faith" that characterizes every traditional exchange between
+strangers. The mechanism produces the certainty; the certainty produces the calm.
 
 
 ---
@@ -158,55 +173,166 @@ Where:
 
 ### Nash Equilibrium Analysis
 
-**Game Setup**:
-- Players: Buyer (B), Seller (S)
-- Strategies: {Cooperate, Defect}
-- Payoffs defined by bond distribution
+#### The boundary comes first
 
-**Payoff Matrix** (Buyer perspective, Seller perspective):
+The kernel holds bonds, the accumulator, and the record of what was committed.
+It does not hold the goods. Value, performance, and the parties' knowledge of
+both pass off-chain, and no kernel operation can observe or undo them. Every
+payoff below therefore has two parts: **what the kernel moves** (the bond
+deposited at `commit`, the payout made at `resolveProcess`) and **what the party
+retains off-chain**, credited at the value the parties themselves signed — `P`
+for the exchange at an edge, at most `G` for everything accumulated at a link.
+The second part is always a *credit* and never a debit: a party is counted for
+what is in its hands and never charged for what is not. An analysis that omits
+the retention term is an analysis of a different mechanism, and it is the
+omission that has historically made the doubling look arbitrary.
 
-|              | Buyer Cooperates | Buyer Defects |
-|--------------|------------------|---------------|
-| **Seller Cooperates** | (-P, +P) ✓ | (-2P, -2G) |
-| **Seller Defects** | (-2P, -2G) | (-2P, -2G) |
+**Game setup**:
+- Players: buyer (B) and seller (S), from the state in which both bonds are locked
+- Moves: the seller performs or holds out; the buyer resolves or withholds.
+  Resolving *is* the buyer's acceptance — the kernel holds no test of performance
+  of its own and admits no report of delivery
+- Resolution is the only terminal move. Withholding is not terminal, and no clock
+  runs from the bonded state, so every comparison below is between *doing* and
+  *never doing*
 
-**Analysis**:
-- **Mutual Cooperation**: Buyer pays P, Seller earns P → **Pareto optimal**
-- **Seller Defects**: Both lose bonds → (-2P, -2G) → **Worse for both**
-- **Buyer Defects**: Same outcome → **Buyer hurts self**
+**Outcomes** `(u_b, u_s)` — locked position plus the assented value of what each
+party holds:
 
-**Dominant Strategy**: Cooperation **weakly** dominates defection for both parties, and
-(Cooperate, Cooperate) is the **unique profile surviving iterated elimination of weakly
-dominated strategies** (IEWDS).
+|                        | resolution occurs | no resolution |
+|------------------------|-------------------|---------------|
+| **performance occurs** | `(0, +P)`         | `(−P, −2G)`   |
+| **no performance**     | `(−P, ≤ P + G)`   | `(−2P, ≤ −G)` |
 
-Read the matrix carefully — the dominance is weak, not strict, and the distinction is the
-honest statement of what the bonds buy:
+This is a table of *outcomes*, not a strategic form, and no plan is excluded by
+it: the rows record whether the seller ever performs, the columns whether the
+buyer ever resolves, and every plan either party may adopt terminates in one of
+the four. The seller's entries are bounds because what it can retain is at most
+the accumulated value at its link and is often less — a courier holds the meal
+but cannot retain a delivery it never made. The right-hand column holds no
+settlements: those are open positions the kernel has no operation to convert
+into anything.
 
-- **Against a cooperating counterparty**, cooperation is *strictly* better: the seller earns
-  `+P` instead of `-2G`; the buyer pays `-P` instead of `-2P`.
-- **Against a defecting counterparty**, the two rows are *equal* — `(-2P, -2G)` either way.
-  Once the counterparty defects, the bonds are burned regardless of what you do.
+#### The equilibrium, in two composing steps
 
-So cooperation never does worse and sometimes does better: **weak** dominance. Claiming strict
-dominance would require the flat column to be strictly ordered, and it is not — the matrix above
-is its own counterexample. IEWDS is what recovers uniqueness: eliminate the weakly dominated
-strategy (Defect) for both players, and (Cooperate, Cooperate) is the sole survivor.
+The two calls carry two mechanism designs, and the result composes in their
+order.
 
-**Why the seller cooperates anyway — the war of attrition.** Weak dominance leaves the seller
-*indifferent* in the flat column, so the equilibrium's credibility rests on what a standoff
-costs each side. A buyer who refuses to resolve burns `2P` of their own bond; the seller burns
-`2G`. Because cumulative value is at least the local payment (`G ≥ P`), we have `2G ≥ 2P`: **the
-seller always loses at least as much as the buyer, and strictly more at every position where
-`G > P`** — which is every position downstream of the first. Refusal is therefore a war the
-seller cannot win, and the deeper the seller sits in the chain, the more lopsided the loss. That
-is what makes the buyer's implicit threat credible without any timeout, arbitrator, or appeal:
-the seller's only strategy that is never worse and sometimes better is to cooperate. The buyer's
-side of the same asymmetry is mutual-assured-destruction, not free power — refusing costs the
-buyer `2P` and returns nothing (see *Liveness Properties*).
+- **(a) Resolve.** At any buyer node *after performance*, the buyer strictly
+  prefers to resolve. It holds the delivery either way, so the branches differ
+  only in the kernel's transfers: resolving returns the bond less the payment,
+  `−2P + P + P = 0`; never resolving leaves the bond locked, `−2P + P = −P`. The
+  withheld payment is not kept by the buyer — it sits inside the buyer's own
+  locked bond, out of reach of both parties — which is why withholding buys the
+  buyer nothing at all. **This comparison needs no assumption whatever about the
+  seller**: the seller's conduct is already fixed at that node.
+- **(b) Perform.** Given (a), at any seller node performance is the seller's
+  strict best response: `+P` for performing and being resolved, against at best
+  `−2G + G = −G` for holding out — twice the value at its link locked, the value
+  itself credited back to it. The margin is `P + G > 0`, and it widens with every
+  payment accumulated ahead of the seller.
+- **(c) Withhold before performance.** Given (b), at a buyer node where
+  performance has not occurred the buyer strictly prefers to keep the process
+  open — its continuation is `0` — over resolving at once, which is terminal at
+  `−P`: paying for a product it does not have and foreclosing the only
+  continuation on which the product could still arrive.
+
+The profile — the seller performs; the buyer resolves once performance has
+occurred and not before — therefore has each party choosing a strictly better
+continuation at every one of its nodes, and its outcome `(0, +P)` is the buyer's
+unique maximum over all four outcomes. Every deviation that changes the outcome
+is strictly worse for the party making it.
+
+#### What the result is not
+
+It is **not a dominance result** and must not be restated as one. *Resolve
+regardless* is a plan the kernel admits, and against a seller that will never
+perform it is better for the buyer than holding the position open; what is
+unconditional is the narrower claim (a) — *after performance*, resolving beats
+never resolving, whatever the seller is like. The seller's side is conditional
+throughout: no bond schedule can make handing goods to a party that will not pay
+attractive. What carries the equilibrium is therefore not that each party
+separately finds cooperation dominant, but that **the two calls compose in a
+definite order** — resolve's design gives the buyer an unconditional reason to
+close after performance, and only because that is settled is performance
+strictly best for the seller. A buyer that resolves without regard to
+performance has not been failed by the mechanism; it has declined to use it, and
+what it loses is bounded by exactly what it agreed to pay.
+
+#### Mutual assured destruction, with content
+
+The deterrent holding all of this in place is **mutual assured destruction**, and
+the doubled schedule is what gives it content. The content is *not* that the two
+parties lose equal amounts — they do not, and an accounting that says so is
+counting only what the kernel holds. It is that defection leaves **whichever
+party holds the value** out of pocket, at every link, *after* crediting that
+party with what it keeps. A seller that walks off with the product is credited
+the product, worth at most `G`, and still stands at best at `−G` against the `+P`
+it declined. A buyer that keeps the delivery and never resolves is credited the
+delivery, worth `P`, and still stands at `−P` against the `0` it declined.
+Neither can reach the frozen payment; neither is repaid by what it took.
+
+#### Why the standoff ends in performance
+
+Nothing in the kernel ever executes the destruction: no operation consumes a
+bond, and an unresolved position is simply held — a standing position, not a
+loss taken. That is why the threat resolves into performance rather than into
+loss, and the asymmetry of the schedule is what decides which way. While the
+standoff runs the buyer has `2P` locked and the seller `2G` with `G ≥ P`, so the
+seller stands in at least as much and strictly more at every position past the
+root; and of the two, only the seller holds the move that ends the standoff on
+terms it prefers — perform, after which the buyer's own comparison (a) closes
+the process, trading a position of at best `−G` for `+P`.
+
+Where the seller *cannot* perform, the move that ends its exposure is the
+**remedy, agreed before resolution**. Concretely: the failing seller sends the
+buyer the payment it stands to receive and makes good whatever of the buyer's
+its failure left in its hands. The buyer, whole, resolves. At resolution the
+seller takes back its bond and the payment, having already paid that payment
+away — it ends at zero, its failure earning it exactly nothing, and zero is
+better than `−G` by the whole value at its link. Where the remedy is refused, an
+outside forum may rule on the open record (Layers 3–4) — still before any
+resolution, and with no power to resolve in the buyer's place. Where a party
+neither performs nor remedies nor answers a ruling, the position simply stands:
+both bonds locked, the seller at best at `−G`, the record marking an undertaking
+never closed. That is the irrational residue every system carries — the
+deterrent working, not a case the buyer solves by paying the party that failed.
+
+#### Robustness to weaker rationality
+
+Each comparison above (`+P` against at best `−G` for the seller; `0` against `−P`
+for the buyer) is preserved under any strictly monotone utility transformation,
+so the results hold for any preference order that prefers more to less —
+including arbitrary risk-averse and loss-averse specifications. The seller's gap
+`P + G` is bounded away from zero, so a trembling-hand perturbation does not
+overturn the cooperative profile, and in a chain the gap widens with every
+payment accumulated ahead of the seller. What remains outside the analysis is
+behaviour under non-pecuniary preferences (spite, fairness norms, an intrinsic
+taste for defection) and any valuation of the captured product other than the
+one both parties signed.
+
+#### The proof form is itself a design property
+
+The form of the argument above was chosen, not merely found, and the choice is
+part of the design. An earlier statement of this equilibrium leaned on iterated
+elimination of weakly dominated strategies: cooperation is never worse and
+sometimes better, so eliminate defection for both players and one profile
+survives. That form is mathematically respectable and behaviourally implausible
+— the level-k literature finds most participants reasoning at one or two steps,
+so a guarantee that needs the full iteration is a guarantee real participants
+cannot check. The ratified form asks
+for something far smaller: at each node one party compares two certain amounts,
+and the two comparisons compose in a stated order. A buyer who can see that `0`
+beats `−P`, and a seller who can see that `+P` beats `−G`, have between them
+verified the whole result. A protocol whose central claim is that anyone can
+check what a platform merely asks them to believe should not rest that claim on
+a proof only a game theorist can follow — the equilibrium's legibility is the
+same property the rest of the design is built for.
 
 ### Cumulative Upstream Bonding
 
-In multi-party chains, seller bonds grow geometrically:
+In multi-party chains, each seller's bond is keyed to the value the process has
+accumulated at its own link — **its own payment included**:
 
 ```
 Position 1: Seller bonds 2×P₁
@@ -216,38 +342,67 @@ Position 3: Seller bonds 2×(P₁ + P₂ + P₃)
 Position n: Seller bonds 2×∑Pᵢ
 ```
 
-**Coordination Pressure**: Later-stage sellers have MORE at stake, because they are responsible for more cumulative value (P₁ + P₂ + P₃). This creates automatic accountability up and down the chain.
+`G(i) = ∑_{j≤i} P(j)` is **inclusive**: a seller bonds against everything the
+process has accumulated through its link, its own contribution counted, because
+that total is the ceiling on what any defection at that link could carry off.
+And the figure is not a report. `commit` admits exactly one value — the payment
+itself at the root, the live accumulator plus the new payment for any extension
+— and refuses every other declaration (`CumulativeValueMismatch`), so the
+seller's bond base is fixed by arithmetic against the signed accumulator before
+anything is locked. A seller has no interest in declaring more in any case: the
+declaration is precisely what it must deposit.
 
-**Example**: If Charlie (delivery) fails:
-- Charlie loses $24 bond
-- Bob loses $20 bond (his delivery was good, but Alice can't approve)
-- **Bob will pressure Charlie** to fix the problem → Self-organizing coordination
+**Coordination pressure**: cumulative exposure `2G(i)` is non-decreasing along
+the chain, and the gap a seller weighs against holding out — `Δᵢ = Pᵢ + Gᵢ ≥
+2Pᵢ` — grows with every payment accumulated ahead of it. The risk-to-reward
+ratio `ρᵢ = 2Gᵢ/Pᵢ` rises with what came before while falling in the seller's own
+payment: for equal payments `ρᵢ = 2i`, linear in depth, whereas a late order
+with a large payment can face a lower ratio than its predecessor. What holds at
+every position without qualification is the exposure and the gap; the ratio need
+not rise.
 
-### Why 2× Is the Minimum Deterrent
+**Example**: if Charlie (delivery) holds out:
+- Charlie's $24 stays locked against a meal it can retain worth $10 — a standing
+  position of −$14 against the +$2 it declined
+- Bob's $20 stays locked too: his food was good, but nothing settles until Alice
+  resolves, and Alice resolves when she is satisfied
+- Bob's exposure to Charlie's holding out is `P_Bob + 2G_Bob = $10 + $20 = $30`,
+  computable from the record — which is why **Bob has a bonded interest in
+  Charlie curing** → self-organizing coordination, not altruism
 
-**Theorem**: Minimum viable bond is `2×` the transaction value.
+### What the Doubling Does
 
-**Proof**:
-```
-Let defection profit = D
-Let cooperation profit = C
-Let bond = B
+The doubled schedule is **constitutive**, in the same way that buyer dominance
+and atomic resolution are: it is an invariant of the mechanism, not a parameter
+it exposes. There is one schedule, applied to every order at every position —
+twice the payment from the buyer, twice the cumulative value through its own
+link from the seller. The kernel carries no other, exposes no setting, and
+admits no order bonded on different terms. What follows is therefore an account
+of what the schedule *achieves*, not a derivation of it from something prior,
+there being nothing prior to derive it from.
 
-For cooperation to be Nash equilibrium:
-  C > D - B   (cooperation must be more profitable)
-  
-When C = P and D = 0 (no delivery):
-  P > 0 - B
-  B > -P
-  
-But we need cooperation to weakly dominate:
-  B ≥ 2P (sufficient condition)
-```
+What it achieves is answering **retention**. A defector does not walk away
+empty: it walks away holding the value at its link, off-chain, where the kernel
+can neither see it nor recover it. A bond equal to the value at the link would
+be exactly offset by what the defector keeps, leaving the taking free. The
+second half of each bond *is* the retained value, and it is what makes the
+taking cost — differently on the two sides, which is why they are stated apart:
 
-**Why 2× specifically?**
-- 1× insufficient: Seller breaks even by defecting (gets bond back)
-- 2× sufficient: Seller loses entire payment value if buyer rejects
-- 3×+ unnecessary: Increases capital requirements without improving incentives
+- **Seller side.** Holding out leaves the seller credited at most `G` against a
+  locked `2G`: at best `−G`, against the `+P` it declined. Retention can halve
+  the seller's stake; it can never cancel it. That surviving exposure is what
+  gives the buyer's withholding its force and makes the co-seller interest of
+  Layer 2 a real one.
+- **Buyer side.** Withholding after delivery leaves the buyer credited `P`
+  against a locked `2P`: `−P`, against the `0` that closing would give it. Here
+  the second half supplies the *whole* of the comparison — a bond equal to the
+  payment would be cancelled outright by the goods the buyer holds, leaving it
+  indifferent between resolving and not.
+
+On the buyer's side the doubling **creates** the comparison; on the seller's side
+it **preserves** an exposure that would otherwise vanish. Both are aimed at value
+the kernel can neither see nor reach, which is the only reason a settlement
+layer that holds nothing but tokens can discipline the passage of goods at all.
 
 ---
 
@@ -290,9 +445,9 @@ sellerBond = c.expectedCumulativeValue * 2; // cumulative value G, doubled
 ```
 
 **Properties**:
-- `sellerBond` grows with chain position (it tracks cumulative value G)
+- `sellerBond` is non-decreasing along the chain — it is keyed to the accumulator, so it carries every payment committed ahead of it
 - `buyerBond` stays local (it tracks only this step's payment P)
-- the ratio `sellerBond / buyerBond` increases downstream → deeper coordination pressure
+- the deterrent holds at every position: the gap a seller weighs against holding out is `Δᵢ = Pᵢ + Gᵢ ≥ 2Pᵢ`, strictly positive everywhere and widening with what came before. The *ratio* `sellerBond / buyerBond = Gᵢ/Pᵢ` need not rise with depth — it falls in the seller's own payment, so a late order with a large payment can sit below its predecessor. What holds without qualification is the exposure and the gap, not the ratio
 
 ### Settlement on Resolution
 
@@ -304,10 +459,16 @@ sellerPayout = c.expectedCumulativeValue * 2 + c.payment;  // bond back + paymen
 buyerPayout  = c.payment;                                  // bond back, minus the payment
 ```
 
-**Net Effects** (per order, G = cumulative value, P = payment):
+**Net token effects** (per order, G = cumulative value, P = payment):
 - Seller: `−2G + (2G + P) = +P` — earns the payment, recovers the bond ✓
 - Buyer: `−2P + P = −P` — pays the payment, recovers the rest of the bond ✓
 - Contract: every bonded token is transferred straight back out; balance = 0 ✓
+
+These are the *token* movements, which is all the kernel knows. The buyer's full
+settled position adds the delivery it now holds, worth `P` at the value the
+parties signed: `−2P + P + P = 0`. That zero is the mark of an exchange
+completed, not of an exchange without benefit, and it is the figure the
+equilibrium analysis uses.
 
 **Conservation invariant**:
 
@@ -347,39 +508,58 @@ Order #2: Alice ← Charlie
 
 ### Coordination Cascade
 
-**Critical property**: If downstream seller fails, ALL upstream sellers lose bonds.
+**Critical property**: atomic resolution means one seller's holding out leaves *every* position in the process open — nobody's bond is consumed, and nobody's is released either.
 
 **Mechanism**:
 ```
-Charlie fails delivery
+Charlie holds out with the meal
   ↓
-Alice cannot approve Order #2
+Alice is not satisfied, so she does not resolve — and resolving would be
+terminal at −P, paying the party that failed
   ↓
-Charlie's $24 bond locked
+Charlie's $24 stands locked against a meal it can retain worth $10:
+a standing position of −$14 against the +$2 it declined
   ↓
 BUT: Bob delivered good food!
   ↓
-Bob's $20 bond ALSO locked (Alice can't approve Order #1 without full delivery)
+Bob's $20 stands locked too — atomic resolution settles every order or none
   ↓
-Bob pressures Charlie: "Fix this or we BOTH lose our bonds!"
+Bob's exposure to Charlie's holding out is P + 2G = $10 + $20 = $30,
+a figure Bob reads off the record
+  ↓
+Bob has a bonded interest in Charlie curing — and Charlie's own cheapest
+move is to perform, or to make Alice whole and net bond-only
   ↓
 Self-organizing coordination
 ```
 
-**Design Principle**: Make it cheaper to coordinate than to defect.
+**Design Principle**: make curing cheaper than standing in an open position.
 
 ### Asymmetric Ratios
 
-Position in chain determines bond asymmetry:
+Position in chain determines bond asymmetry (rows below use the running
+example: $10 food, +$2 delivery, +$3 packaging):
 
-| Position | Seller Bond | Buyer Bond | Ratio |
-|----------|-------------|------------|-------|
+| Position | Seller Bond `C_s` | Buyer Bond `C_b` | `C_s : C_b` |
+|----------|-------------------|------------------|-------------|
 | 1 | $20 | $20 | 1:1 |
 | 2 | $24 | $4 | 6:1 |
 | 3 | $30 | $6 | 5:1 |
-| n | 2×∑Pᵢ | 2×Pₙ | ∑Pᵢ/Pₙ |
+| n | 2×∑Pᵢ | 2×Pₙ | ∑Pᵢ : Pₙ |
 
-**Interpretation**: Downstream sellers have exponentially more to lose → Must coordinate with upstream.
+Two quantities are easily conflated here, so they are named apart. The table's
+last column is the **bond asymmetry** `C_s : C_b = Gᵢ/Pᵢ` — how the two parties'
+positions at one order compare with each other. The seller's **risk-to-reward
+ratio** is `ρᵢ = C_s/Pᵢ = 2Gᵢ/Pᵢ` — its own position against its own earnings, and
+twice the first quantity. Everything below is stated for whichever is meant.
+
+**Interpretation**: cumulative exposure `2G(i)` is non-decreasing along the
+chain — the deeper party bonds against everything accumulated at its link while
+earning only its own payment. Neither the asymmetry `C_s : C_b` nor `ρᵢ` need
+rise with depth: both fall in the seller's own payment, which is why the third
+row above sits below the second on the asymmetry (and `ρ₃ = 10` sits below
+`ρ₂ = 12`). What holds at every position without qualification is the exposure
+and the gap `Δᵢ = Pᵢ + Gᵢ`, not either ratio.
 
 ---
 
@@ -398,31 +578,42 @@ This layer is not Figaro's to build, but it is load-bearing and therefore named:
 ### Layer 1: Primary Nash Equilibrium (2-Party Game)
 
 **Players**: Single buyer, single seller  
-**Mechanism**: Symmetric bonding (2× payment from each party)  
-**Outcome**: Cooperation weakly dominates; (Cooperate, Cooperate) is the unique IEWDS survivor
+**Mechanism**: Bonding at the root, where `G = P` and the two bonds coincide at 2×payment  
+**Outcome**: After performance, resolving is unconditionally strictly better for the
+buyer; given that, performance is the seller's strict best response
 
-**Payoff Matrix** (revisited for clarity):
+**Outcomes** at the root (`G = P`), each cell = locked position + the assented
+value of what the party holds:
 
-|              | Buyer Cooperates | Buyer Defects |
-|--------------|------------------|---------------|
-| **Seller Cooperates** | B: -P, S: +P ✓ | B: -2P, S: -2P |
-| **Seller Defects** | B: -2P, S: -2P | B: -2P, S: -2P |
+|                        | resolution occurs | no resolution |
+|------------------------|-------------------|---------------|
+| **performance occurs** | B: 0, S: +P ✓     | B: −P, S: −2P |
+| **no performance**     | B: −P, S: ≤ +2P   | B: −2P, S: ≤ −P |
 
 **Key Properties**:
-- **Single transaction**: Isolated 2-party exchange
-- **Symmetric stakes**: Both parties bond 2×payment
-- **Clear outcome**: Mutual cooperation yields (-P, +P), all defection paths yield (-2P, -2P)
-- **Nash equilibrium**: (Cooperate, Cooperate) is the unique profile surviving iterated
-  elimination of weakly dominated strategies (the defection paths are flat — see the
-  weak-vs-strict reading under *Nash Equilibrium Analysis*)
+- **Single transaction**: isolated 2-party exchange
+- **Equal stakes at the root**: `G = P`, so both parties bond 2×payment; every
+  position below the root has the larger seller bond (Layer 1.5)
+- **Clear outcome**: performance with resolution yields `(0, +P)` — the buyer's
+  unique maximum of the four; the unresolved cells are standing positions, not
+  settlements, and nothing in the kernel converts them into anything
+- **The two-step composition**: `0 > −P` for the buyer after performance (needing
+  no assumption about the seller), and given that, `+P > −P` for the seller once
+  it is credited with everything it retains
 
 **Example**: Alice orders $10 bread from Bob
 - Alice bonds $20, Bob bonds $20
-- If Bob delivers good bread → Alice approves → Bob earns $10 profit
-- If Bob delivers nothing → Alice rejects → Both lose $20
-- **Result**: Bob delivers, Alice approves (rational outcome)
+- Bob bakes and delivers → Alice's own comparison is `0` against `−$10`, so she
+  resolves → Bob recovers $20 and earns $10
+- Bob holds out → he keeps bread worth at most $10 against $20 locked: −$10,
+  against the +$10 he declined; Alice, having received nothing, stands at −$20
+  and withholds, because paying for nothing is worse than waiting for something
+- **Result**: Bob delivers and Alice resolves — each because it is that party's
+  own better move, neither on trust in the other
 
-This layer is well-understood and thoroughly documented in existing game theory literature.
+The bilateral case is the well-studied one; what the rest of this document adds
+is the schedule that carries it to N parties and the resolution rule that closes
+them together.
 
 **Co-resident at Layer 1: the evidence record.** Every `commit` and `resolveProcess` emits immutable, block-timestamped events (`OrderCommitted`, `OrderResolved`, `ProcessResolved`) — produced always, as a by-product of ordinary operation, not only when something goes wrong. The record lives here, beside the bonds; Layers 3 and 4 consume it from outside, and neither produces anything of its own.
 
@@ -436,15 +627,15 @@ This layer is well-understood and thoroughly documented in existing game theory 
 
 **Naive Approach (Fails)**:
 ```
-Chain: Alice ← Bob ← Charlie
-Bonds: Bob: $20, Charlie: $20
+Chain: Alice ← Bob (food: $10) ← Charlie (delivery: $2)
+Bonds fixed per trade, on each seller's own payment:
+  Bob: $20, Charlie: $4
 
 Problem:
-- Charlie delivers bad work → Alice rejects
-- Charlie loses $20, Bob loses $20
-- BUT: Charlie only added $2 value, Bob added $10 value
-- Charlie's downside ($20) same as Bob's → Insufficient pressure
-- Charlie may defect (low value-add, equal penalty)
+- Charlie holds out with the meal in its hands
+- What it retains is the $12 accumulated at its link, not the $2 it is paid
+- Credit the retention: −$4 + $12 = +$8. The taking pays for itself
+- The deterrent survives at the root and evaporates at depth
 ```
 
 **Figaro Solution: Cumulative Upstream Bonding**
@@ -457,48 +648,68 @@ Bonds:
 - Charlie: 2×($10+$2) = $24 (asymmetric - scales with cumulative value)
 - Alice: $20 + $4 = $24 total
 
-Stakes:
-- Charlie risks $24 to earn $2 → 12:1 risk/reward ratio
-- Bob risks $20 to earn $10 → 2:1 risk/reward ratio
+Stakes (ρᵢ = C_s/Pᵢ, the risk-to-reward ratio — not the C_s : C_b asymmetry):
+- Charlie stands in $24 to earn $2 → ρ = 12
+- Bob stands in $20 to earn $10 → ρ = 2
 ```
 
 **Why This Works**:
 
-1. **Each seller has MORE to lose than earn**: Charlie risks $24 to earn $2
-2. **Later sellers have EXPONENTIALLY more at stake**: Cumulative bonding creates geometric growth
-3. **Nash equilibrium preserved at EVERY position**: No seller at any position benefits from defecting
-4. **Self-enforcing coordination**: Downstream sellers MUST satisfy upstream requirements
+1. **Each seller's bond exceeds what it could carry off**: Charlie's $24 is twice
+   the $12 accumulated at its link, so crediting the retention still leaves it out
+   of pocket
+2. **Cumulative exposure is non-decreasing along the chain**: `2G(i)` accumulates
+   every payment ahead of it — linear in depth for equal payments, never geometric
+3. **The deterrent holds at EVERY position**: the gap `Δᵢ = Pᵢ + Gᵢ ≥ 2Pᵢ` is
+   strictly positive everywhere, and widens with what came before
+4. **Self-enforcing coordination**: every seller's payout waits on every other's
+   performance, so each holds a computable interest in the rest of the chain
 
-**Mathematical Proof**:
-
-For seller at position `i` with cumulative value `G(i)` and local payment `P(i)`:
+**The comparison at position `i`**, with cumulative value `G(i)` and local payment
+`P(i)`:
 
 ```
-Seller bonds: B(i) = 2×G(i)
-Seller earns: E(i) = P(i)
+Seller bonds:  B(i) = 2×G(i)
+Seller earns:  E(i) = P(i)
 
-Cooperation payoff:  +P(i)            (earns payment, recovers bond)
-Defection payoff:    -B(i) = -2×G(i)   (loses entire bond)
+Performing, then resolution:   +P(i)             payment earned, bond recovered
+Holding out, no resolution:    −2×G(i) + r(i)    r(i) ≤ G(i) is what it can
+                                                 actually retain off-chain
+                             ≤ −G(i)             at maximal retention
 
-Nash condition (cooperation weakly dominates):
-  P(i) > -2×G(i)     against a cooperating buyer — strictly better
-  -2×G(i) = -2×G(i)  against a defecting buyer — equal, hence WEAK dominance
+Given that the buyer resolves after performance — unconditional, assuming
+nothing about the seller — performing is the seller's strict best response at
+every position. The gap is
 
-Since P(i) > 0 and G(i) > 0, the first inequality always holds.
-Therefore: cooperation weakly dominates at ALL chain positions, and (Cooperate,
-Cooperate) is the unique IEWDS survivor at every depth.
+  Δ(i) = P(i) + G(i) ≥ 2×P(i)
 
-Credibility deepens with position: refusal costs the buyer 2×P(i) and the seller
-2×G(i), and G(i) ≥ P(i) by construction — so the seller loses strictly more at
-every position past the first. The war of attrition is one the seller loses by
-more the deeper they sit.
+equal to 2×P(i) only at the root, wider with every payment accumulated ahead of
+the seller, and wider again wherever the seller cannot retain the whole
+accumulated value (a courier holds the meal but cannot retain a delivery it
+never made).
 ```
 
-**Critical Insight**: Asymmetric bonding ensures that:
-- **Early sellers** (high P, low G): Standard 2× punishment
-- **Late sellers** (low P, high G): AMPLIFIED punishment (risk 2×cumulative to earn small payment)
+**Not dominance-solvable on the seller side.** The conclusion is conditional and
+must stay so. Where some *other* seller has held out and the process is not going
+to close, `S_i`'s own holding out is strictly better for it than performing:
+performing costs it bond and product together, `−2G(i)`, against `−2G(i) + r(i)`
+for keeping what it holds. No bond schedule can make handing goods to a party
+that will not pay attractive. What recommends the cooperative profile to each
+seller is that it is strictly better **provided the others perform** — the
+weakest-link structure Layer 2 takes up — and what makes that proviso credible is
+that a failed profile is never banked: no clock runs from the bonded state, so
+the process does not fail, it stays open until it closes, and every party in it,
+the holdout included, strictly prefers the closing to the position it holds.
 
-**Result**: The deeper you are in the chain, the MORE careful you must be. This creates automatic quality control pressure up the value chain.
+**Critical Insight**: bonding against the accumulated value ensures that:
+- **Early sellers** (high P, low G): stake and retention are close together, and
+  the second half of the bond is what separates them
+- **Late sellers** (low P, high G): stake against everything the chain has
+  accumulated, while earning only their own payment
+
+**Result**: the deeper the position, the larger the standing exposure a party
+carries into the process. That is what produces quality-control pressure along
+the chain — and it is exposure, not punishment: nothing consumes a bond.
 
 **Why This Is "Layer 1.5"**:
 - It's not a separate game, but an **extension** of the primary Nash equilibrium
@@ -541,19 +752,23 @@ Atomic resolution:
 Scenario: Dave (packaging) does sloppy work
 
 Direct effect:
-  - Alice rejects → Dave loses $30 bond
+  - Alice is not satisfied, so she does not resolve
+  - Dave's $30 stays locked against what it holds — a standing position,
+    not a loss taken, and one only he and Alice can end
 
-Cascade effect:
-  - Charlie delivered perfectly, but Alice rejected → Charlie loses $24 bond
-  - Bob cooked perfectly, but Alice rejected → Bob loses $20 bond
-  - Total locked: $74 across all parties
+Cascade effect (the externality, computed with retention):
+  - Charlie delivered: his exposure to Dave's fault is P + 2G = $2 + $24 = $26
+  - Bob cooked: his exposure is P + 2G = $10 + $20 = $30
+  - Both figures are read off the record; a co-seller that has NOT yet
+    performed still holds what is in its hands, so its exposure has the
+    floor P_i + G_i and no exact figure
 
 Social pressure:
-  - Charlie to Dave: "Fix this or I lose $24!"
-  - Bob to Charlie: "Make sure Dave fixes it or I lose $20!"
-  - Dave faces pressure from BOTH upstream sellers
-  
-Result: Dave fixes the packaging (cheapest option for everyone)
+  - Charlie to Dave: "Cure this — $26 of mine turns on it"
+  - Bob to Charlie: "See that Dave cures it — $30 of mine turns on it"
+  - Dave faces a bonded interest, not a plea, from both co-sellers
+
+Result: Dave cures the packaging — the move that ends his exposure
 ```
 
 **Game Theory**:
@@ -562,16 +777,20 @@ This is a **one-shot weakest-link game** — no repeated interaction and no
 local information required:
 
 ```
-Single transaction: Dave might consider defecting (lose $30 bond once)
+Single transaction: Dave weighs curing against holding out
 
 But nobody is paid until the buyer resolves:
-  - Dave's cheapest move is the remedy: fix the packaging (cost: $5)
-  - Every co-seller's cheapest move is to help him fix it — their own
-    locked bonds are what back the remedy
-  - The weakest-link stakes (P_i + 2G_i on every co-seller) are the
-    pressure; the fix is the play
+  - Dave performs — repackages to what Alice will accept — and is resolved at +P
+  - Or, where he cannot, the remedy transfer: send Alice the payment he stands
+    to receive and make good what he holds, netting bond-only at resolution —
+    zero, his failure earning him nothing
+  - Every co-seller has reason to help him cure it; their own locked positions
+    are what back the remedy
+  - The weakest-link stakes (P_i + 2G_i on a co-seller that has performed,
+    floor P_i + G_i on one that has not) are the pressure; the cure is the play
 
-Rational Dave: Fix the issue (cost: $5) vs. burn his $30 bond and every co-seller's with it
+Rational Dave: perform, or make the buyer whole — either beats standing at −G
+indefinitely with his $30 locked and every co-seller's position open beside his
 ```
 
 Periphery, not mechanism: settlement history is public and permanent, so any
@@ -600,7 +819,30 @@ Alice resolves ALL at once:
 Result: Sellers self-organize into quality control networks
 ```
 
-**Empirical Parallel**: This is exactly how micro-lending works at Grameen Bank, Kiva, etc. Default rates drop from ~20% (individual) to ~2% (group) due to peer pressure.
+**What is and is not reproduced**: the analogy is to the *coordination-pressure
+component* of the joint-liability equilibrium — the interest each participant
+holds in the others' performance — obtained here requiring none of four
+assumptions that literature carries:
+
+1. **repeated interaction** — the equilibrium is established within a single
+   process, with no continuation value across processes and no trigger strategies
+2. **local information among sellers** — the exposure `P_i + 2G_i`, or its floor
+   `P_i + G_i`, is computed from the accumulator alone. *Narrowly*: what is
+   reduced is the **existence** of the pressure and the knowledge of its
+   magnitude, not every use the parties may put it to. Acting on a *particular*
+   failure still needs local information — which seller did not perform is
+   knowledge the parties hold and the accumulator does not, performance being off
+   the record entirely
+3. **a punishment technology exogenous to the contract** — what a co-seller stands
+   to lose is its own locked position, held through non-resolution, not imposed
+   by anyone
+4. **joint-liability contracting** — each bond is posted individually against that
+   seller's own snapshot, never against a group's aggregate obligation; the
+   coupling comes from atomic resolution, not from the bond structure
+
+The peer-selection and peer-monitoring results of that literature are **not**
+reproduced: they need structure above the bonded primitive, and nothing here
+supplies it.
 
 **Design Implication**: Features that break atomic resolution (e.g., partial payments, pay-one-at-a-time) would DESTROY this coordination layer. This is why we reject such features.
 
@@ -612,7 +854,9 @@ Result: Sellers self-organize into quality control networks
 **Mechanism**: Third-party adjudication consuming the Layer-1 evidence record  
 **Outcome**: Disputes the economics did not dissolve are decided on an unforgeable record
 
-Arbitration is a standing layer, not a transition aid — and recourse here exists with no clause named: nothing in the agreement has to designate a forum for the parties to seek one. A decentralized arbitration protocol such as Kleros — or any forum the parties choose — takes the timestamped event record produced at Layer 1 as evidentiary input and renders a decision. The protocol composes with the forum from outside: no forum holds any on-chain power over bonds; an award operates on the parties, who execute it through ordinary resolution (or a compensating reverse commitment). Because arbitration is cheaper and faster than court, it is the natural first stop for the residue of cases Layers 1–2 leave; Layer 4 stands behind it.
+Arbitration is a standing layer, not a transition aid — and recourse here exists with no clause named: nothing in the agreement has to designate a forum for the parties to seek one. A decentralized arbitration protocol such as Kleros — or any forum the parties choose — takes the timestamped event record produced at Layer 1 as evidentiary input and renders a decision. **The forum rules while the process stands open, before the buyer resolves, and it cannot resolve in the buyer's place** — there is no direct enforcement mechanism, and that is precisely why composing a forum leaves the equilibrium untouched: nothing on the path by which bonds are released is handed to a party the bonds do not constrain. What an award changes is the parties' remedy negotiation; the parties then act on it — a cure, a remedy transfer, or a compensating reverse commitment — and the buyer resolves once satisfied. The record supplies what was undertaken and what remains unsettled; it never shows performance, which happened where the kernel cannot look, so the parties supply that themselves. Because arbitration is cheaper and faster than court, it is the natural first stop for the residue of cases Layers 1–2 leave; Layer 4 stands behind it.
+
+**Resolution is terminal acceptance**, and this is the corollary on the other side of the same boundary. Once the buyer resolves, the process is settled, the transfers are made, and the mechanism holds nothing further for anyone to recover — no forum, and no later ruling, can reach a balance that is no longer there. A buyer with a live complaint therefore resolves **after** the complaint is answered, not before: the whole of the recourse window is the interval in which the process stands open, which is also the interval in which both parties want their positions released. There is no recourse after resolution because there is nothing left to act on, and that is what makes resolving mean acceptance rather than merely mean payment.
 
 ---
 
@@ -622,7 +866,7 @@ Arbitration is a standing layer, not a transition aid — and recourse here exis
 **Mechanism**: Court enforcement backed by the immutable on-chain evidence produced at Layer 1  
 **Outcome**: Frivolous abuse deterred by legal precedent + the permanent public record
 
-Courts, too, are a standing layer — they consume the Layer-1 record from outside the protocol, and no clause has to name a jurisdiction or venue for the parties to reach one.
+Courts, too, are a standing layer — they consume the Layer-1 record from outside the protocol, and no clause has to name a jurisdiction or venue for the parties to reach one. The same boundary binds here as at Layer 3: a court rules **while the process stands open**, and it cannot call `resolveProcess` — resolution is the buyer's alone, and no ruling gives anyone else the call. A judgment reaches the buyer the way judgments ordinarily reach parties, through the buyer's exposure outside the process, and inside the process it works by changing what the buyer expects from continuing to withhold.
 
 **The SSoT (Single Source of Truth) Argument**:
 
@@ -643,8 +887,12 @@ With Figaro:
   - Blockchain shows: Order is still unresolved (no `OrderResolved` event for it)
   - Therefore: Buyer has not resolved for 90 days (computed from event timestamps)
   - Evidence is IMMUTABLE (can't be altered)
-  
-Court decision: Clear abuse, order buyer to resolve or forfeit bond
+  - What the record does NOT show: performance. That the bread was baked and
+    handed over happened off-chain; the parties bring that themselves
+
+Court ruling: on the undertaking from the record and the performance from the
+parties. It binds the buyer through the buyer's exposure outside the process —
+it cannot resolve the process, and does not try to
 ```
 
 **Legal Precedent Creation**:
@@ -652,10 +900,11 @@ Court decision: Clear abuse, order buyer to resolve or forfeit bond
 First few cases establish patterns:
 
 ```
-Case 1: Buyer blocks payment frivolously
-  - Court reviews on-chain evidence
-  - Orders buyer to resolve
-  - Buyer refuses → Held in contempt, fined
+Case 1: Buyer withholds resolution frivolously
+  - Court reviews the on-chain record plus what the parties show it
+  - Rules against the buyer; the ruling reaches the buyer outside the process
+  - The buyer, now worse off from continuing to withhold, resolves — its own
+    comparison was already 0 against −P before the ruling
   - Public court record established
 
 Case 2: Another buyer tries same tactic
@@ -663,25 +912,28 @@ Case 2: Another buyer tries same tactic
   - Judge: "This has been settled, rule for sellers"
   - Buyer pays legal fees + damages
 
-Result: After 3-5 cases, buyers stop trying (known losing strategy)
+Result: after a few cases, the tactic is a known losing one
 ```
 
 **Economic Deterrence**:
 
 ```
-Buyer considering frivolous block:
+Buyer considering a frivolous withholding:
 
 Costs:
-  - Own bond locked: $20 (recoverable only by resolving)
-  - Legal fees: $5,000-$50,000
-  - Court-ordered damages: Variable
-  - Permanent public record of the refusal — read by every future counterparty
+  - Its own position: −P once credited with the delivery it holds, against the
+    0 that resolving would give it — the mechanism's own figure, before any
+    forum is involved
+  - Legal fees and any damages awarded
+  - Permanent public record of an undertaking never closed — read by every
+    future counterparty
 
 Benefits:
   - Annoy sellers: $0 economic value
-  - Avoid payment: Not possible (court orders resolution)
+  - Avoid payment: no. The payment is frozen inside the buyer's own bond,
+    out of reach of both parties; withholding does not return it
 
-Rational decision: Don't abuse the system
+Rational decision: resolve
 ```
 
 **Why This Works**:
@@ -691,7 +943,7 @@ Rational decision: Don't abuse the system
 3. **Precedent cascade**: Early cases deter future abuse
 4. **Economic irrationality**: Abuse costs more than cooperation
 
-**Real-World Parallel**: Similar to credit card chargebacks. Early in credit card history, some buyers abused chargebacks. After legal precedents established fraudulent chargebacks as illegal, abuse dropped to <0.1%.
+**How the precedent cascade works here**: forums ruling on the open process record accumulate a body of decisions — what counted as conforming performance, what a remedy had to look like — that anyone can read before committing. The deterrent is not a new enforcement organ; it is that record of decisions, standing beside the mechanism's own arithmetic.
 
 **Layers 3–4 Handle Edge Cases Layers 1–2 Don't**:
 
@@ -710,7 +962,7 @@ The five enforcement layers work together. The goal is not redundancy for its ow
 | Layer | Mechanism | Primary Cases |
 |-------|-----------|---------------|
 | **0. Blockchain security** | Host-chain consensus — signatures, ordering, immutability | The foundation everything above inherits |
-| **1 + 1.5** | Asymmetric bonding (evidence record co-resident) — cooperation weakly dominates at every chain position; all-cooperate is the unique IEWDS survivor | The default: defection is never profitable for an economically rational party |
+| **1 + 1.5** | Asymmetric bonding (evidence record co-resident) — after performance the buyer's preference for resolving is unconditional, and given it performance is each seller's strict best response at every chain position | The default: crediting a defector with everything it retains, defection is still out of pocket |
 | **2. Co-Seller Remedy** | Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect) | Multi-seller failures |
 | **3. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-1 record | Disputes the economics did not dissolve |
 | **4. Courts** | Traditional legal systems consume the same record from outside | Irrational or adversarial actors |
@@ -724,9 +976,12 @@ Traditional protocols pick one enforcement mechanism — an arbitrator, a timeou
 ```
 Problem: Buyer tries to abuse system
 
-Layer 1: Forfeits their own bond (economic deterrence) — irrational unless spite > payoff
-Layer 2: Co-sellers remedy any real fault, leaving a pretextless refusal exposed in the permanent record
-Layers 3–4: Loses in arbitration or court (legal deterrence) — immutable evidence, unforgeable timeline
+Layer 1: Stands at −P holding the delivery, against the 0 that closing gives it
+         (economic deterrence) — irrational unless spite > payoff
+Layer 2: Co-sellers remedy any real fault, leaving a pretextless withholding
+         exposed in the permanent record
+Layers 3–4: Loses in arbitration or court (legal deterrence) — immutable
+         evidence, unforgeable timeline, ruled on while the process stands open
 
 Must beat ALL of these simultaneously → Economically and legally irrational
 ```
@@ -740,18 +995,21 @@ Must beat ALL of these simultaneously → Economically and legally irrational
 
 #### 1. Griefing Attack
 
-**Attack**: Buyer refuses to approve to lock seller funds.
+**Attack**: Buyer withholds resolution after delivery, to keep the sellers' bonds locked.
 
 **Defense**:
-- Buyer's own bond (2×P) stays locked for as long as they refuse — resolving is the only way to recover it
-- The refusal is permanently visible: settlement history is public and derived, and every future counterparty can read it
+- The buyer's own 2×P stays locked for as long as it withholds — resolving is the only way to recover it, and the payment it is "keeping" is frozen inside that same bond, out of reach of both parties
+- Credit the buyer with the delivery it holds and it still stands at −P against the 0 that closing would give it: the attack costs the attacker the whole payment
+- The withholding is permanently visible: settlement history is public and derived, and every future counterparty can read an undertaking never closed
 
 **Economic Analysis**:
 ```
-Attacker cost: 2×P forfeited (recoverable only by resolving) + a permanent public record of the refusal
-Attacker gain: 0 (just griefs, no financial benefit)
+Attacker position: −P (locked 2P, credited P for the delivery it holds)
+Closing instead:    0
+Attacker gain:      0 — the frozen payment is not returned by withholding
 
-Result: Irrational attack → Extremely rare
+Result: irrational attack; the deterrent prices a grudge, it does not
+        prevent an irrational party from paying that price
 ```
 
 #### 2. Sybil Attack
@@ -772,25 +1030,40 @@ Result: Irrational attack → Extremely rare
 
 #### 4. Bond-Minimization Attack
 
-**Attack**: Lock minimal bonds by creating many small orders.
+**Attack**: Split a chain into many small orders to reduce the bond posted at any one link.
 
-**Defense**: Bond formula ensures minimum `2×` coverage → Cannot reduce below threshold.
+**Defense**: the schedule is applied per order and keyed to the accumulator, not to the order's own payment — a seller at position `i` bonds `2G(i)`, everything the process has accumulated at its link. Splitting an order in two leaves the later half bonded against the same accumulated total, so the exposure at the link is unchanged. There is no order bonded on other terms.
 
 ### Liveness Properties
 
-**Theorem**: Protocol cannot deadlock if buyers are rational.
+**Theorem**: a process closes whenever the buyer is satisfied, and no other party's conduct can withhold closure from a satisfied buyer.
 
 **Proof**:
 ```
-Assume: Buyer refuses to resolve indefinitely
-Result: Buyer's own stake stays locked forever — withholding forfeits it permanently
-Rational strategy: Resolve (the only path that recovers the stake)
+After performance, the buyer's own comparison is 0 (resolve) against −P
+(withhold), and it holds whatever the seller is like. So a satisfied buyer
+resolves because resolving is its better move, not because anything compels it.
 
-Contradiction: Indefinite refusal is irrational
-Therefore: Rational buyers always resolve eventually
+Before performance, the buyer withholds — resolving is terminal at −P, and it
+forecloses the continuation on which the goods could still arrive. Withholding
+never worsens with time: no clock runs from the bonded state, and an unresolved
+position is a position held, not a loss taken.
+
+Therefore: the standoff ends in performance or in a remedy agreed before
+resolution — the failing seller sends the buyer the payment it stands to
+receive and makes good what it holds, netting bond-only at resolution.
 ```
 
-**Caveat**: Withholding costs the buyer their own stake, permanently. The deterrent prices a grudge; it does not prevent an irrational agent from paying that price.
+**The one interference, and its bound**: `resolveProcess` requires the complete
+active-order list, so a sub-order committed between the moment the buyer builds
+its calldata and the moment the transaction lands makes the call revert
+(`IncompleteOrderList`) and the buyer rebuilds and resends. This is a retry, not
+a denial, and it is bounded by the buyer itself: every sub-order carries the
+buyer's own signature and expires at its deadline, so the only party that can
+force the retry is one the buyer has already signed for, and only for as long as
+that signature remains valid.
+
+**Caveat**: the residue is a party that neither performs, nor remedies, nor answers a forum's ruling. Its position simply stands — bonds locked, the seller at best at `−G`, the record marking an undertaking never closed. That is the irrational residue every system carries; the deterrent prices a grudge, it does not prevent an irrational party from paying that price.
 
 ---
 
@@ -875,7 +1148,8 @@ accumulator and the bonds it sizes.
 **Bond Formula**:
 ```
 For the seller of the order at position i in a process:
-  G(i) = ∑ payment of every order committed so far (the live accumulator)
+  G(i) = ∑ payment of every order committed so far, INCLUDING this order's
+         own payment (the live accumulator plus P(i) — what commit checks)
   Bond(i) = 2 × G(i)
 ```
 
@@ -891,54 +1165,87 @@ Bonds:
   Alice:   2×($10+$2+$3) = $30 total across all orders
 ```
 
-### Capital Recycling
+### Capital Velocity Across Processes
 
-**Pattern**: Buyer capital can be reused across chain.
+**Pattern**: bonded capital is never consumed, so the same balance secures an
+unbounded sequence of settlements over time.
 
-**Mechanism**:
+Nothing in the kernel destroys a bond. At resolution every locked token is
+transferred straight back out to the two parties, and the contract's balance
+returns to zero. A bond is therefore a *position held for the life of one
+process*, not a cost paid into it — which means the capital a party needs is
+set by how many processes it holds open **at once**, not by how many it settles.
+
+**Mechanism** (two successive processes, resolved in order):
 ```
-Alice creates Order #1 with Bob: Locks $20
-Order #1 resolved: Alice gets $10 back
-Alice creates Order #2 with Charlie: Locks $4 (uses returned $10)
+Process A — Alice buys a $10 meal from Bob
+  Alice locks 2×$10 = $20; Bob locks 2×$10 = $20
+  Alice resolves: Bob receives $20 + $10 = $30, Alice receives $10
+  Alice is out $10 — the payment — and her $20 of bonding capacity is free again
+
+Process B — Alice buys a $10 meal from Dana the next day
+  Alice locks the same $20 again
 ```
 
-**Net Capital**: Alice only needs `2×(final total)` not `2×(sum of all steps)`.
+Within a single process there is no such recycling and the section should not
+be read to suggest one: resolution is **atomic and terminal for the whole
+process** — every active order settles together, and a resolved process cannot
+be extended, so there is no "settle the first order, then commit the second
+against the returned capital". A buyer running an N-order chain stands in
+`2×∑Pᵢ` for the whole of that chain's life. What recycles is capital across
+*settlements*, serially: the same $20 that secured Monday's process secures
+Tuesday's, and the constraint on a participant is concurrency, not throughput.
+
+This is the wallet-life reading of the mechanism from the buyer's side. A
+participant stays productive for as long as it holds balances it can bond;
+resolution returns those balances intact, so bonding is a use of capital rather
+than a consumption of it.
 
 ### Mutual-Consent Exit (Permanently Excluded)
 
 **Question**: What happens when neither party is at fault but the deal cannot
 complete? A delivery truck is in an accident. A natural disaster destroys
-inventory. Can both parties agree to unwind with a refund split?
+inventory. Can both parties agree to unwind?
 
 **Answer**: The kernel carries no exit path, and never will. It has exactly
 two external functions — `commit()` and `resolveProcess()` — and resolution
 pays one fixed settlement per order (seller: full bond back plus payment;
 buyer: payment recovered). A `mutualExit(processId, splitRatio, …)` entry
-point is permanently excluded (ruled 2026-07-14).
+point is permanently excluded (ruled 2026-07-14), and so is any operation that
+returns part of a bond on any terms but resolution.
 
-Nothing is lost, because a mutual exit is already fully expressible with the
+Nothing is lost, because the unwind is already fully expressible with the
 existing primitives:
 
-1. **The buyer can always resolve.** `resolveProcess` has no precondition
-   beyond buyer identity and the full active-order list. Bonds are locked only
-   while the buyer chooses not to resolve — the indefinite lock is the
-   deterrent working as designed (refusal is a war of attrition the seller
-   loses), not a missing feature.
-2. **The refund split is a compensating reverse commitment.** The original
-   seller, acting as buyer of a new process, commits the agreed refund to the
-   original buyer — bonded like any other order. Both processes resolve; the
-   net effect is exactly the agreed split. The "mutual consent" is enforced by
-   the same bilateral EIP-712 dual signature as the original commitment: the
-   exit is the primitive itself, not a hatch.
-3. **External legal forums** adjudicating frustration or impossibility operate
-   on the timestamped on-chain evidence as input; they are constrained by
-   their own institutional bond structures, never by kernel discretion.
+1. **The buyer resolves when it is satisfied.** `resolveProcess` has no
+   precondition beyond buyer identity and the full active-order list. Bonds
+   stand locked only while the buyer is not yet satisfied — a standing
+   position, held by parties who each want it released, which is the deterrent
+   working as designed and not a missing feature.
+2. **The unwind is settled between the parties, before resolution.** The
+   concrete transfer is the remedy of the equilibrium analysis: the seller that
+   cannot deliver sends the buyer the payment it stands to receive and makes
+   good whatever of the buyer's it holds; at resolution it takes back its bond
+   and the payment it has already paid away, ending at zero, and the buyer ends
+   at zero as well. Where the parties want a different split, the compensating
+   transfer is itself a commitment: the original seller, acting as buyer of a
+   new process, commits the agreed amount to the original buyer — bonded like
+   any other order, under the same schedule. Both processes resolve; the net
+   effect is exactly what the parties agreed. The "mutual consent" is enforced
+   by the same bilateral EIP-712 dual signature as the original commitment: the
+   unwind is the primitive itself, not a hatch.
+3. **External legal forums** adjudicating frustration or impossibility rule on
+   the timestamped on-chain record while the process stands open, and feed the
+   parties' negotiation; none of them can call `resolveProcess`, so none of
+   them ever sits on the path by which bonds are released.
 
-A kernel-level exit with a split ratio would be a third entry point on a
-frozen kernel and a soft edge on the no-escape-hatches constraint. The
-composed path preserves the equilibrium: knowing the exit exists changes
-nothing, because the exit carries the same bond structure as the deal it
-unwinds.
+A kernel-level exit with a split ratio would be a third entry point on a frozen
+kernel, and it would break the analysis rather than extend it: every comparison
+in the equilibrium weighs exactly two continuations at a node, and an exit path
+adds a third — either seating the decision with a party the bonds do not
+constrain, or replacing the comparison that made the cooperative move a best
+response. The composed path has no such effect: knowing it exists changes
+nothing, because it carries the same bond schedule as the deal it unwinds.
 
 ---
 
@@ -948,24 +1255,24 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 **Traditional Approach**: Build complex systems (timeouts, arbitrators, validators, governance) to handle edge cases.
 
-**Figaro Approach**: Design incentives so edge cases never occur. When they do occur, the immutable on-chain record provides the evidence trail that existing legal systems need.
+**Figaro Approach**: Arrange the on-chain positions so that the off-chain passages of value run honestly. The value, the performance, and the parties' knowledge of both stay off the record; what the kernel holds is the bonds, the accumulator, and the record of undertakings — and that is enough, because a defector credited with everything it keeps is still out of pocket. When a disagreement does arise, the record is the evidence trail that arbitration and existing legal systems work from, while the process stands open.
 
-**Core Thesis**: Locked bonds create sufficient economic pressure to force cooperation without external enforcement.
+**Core Thesis**: locked bonds sized against the value at each link make performance and resolution each party's own better move — no external enforcement required, and none available.
 
 **Defense-in-Depth**:
 1. **Layer 0 - Blockchain Security**: the host chain's consensus is the named foundation everything above inherits
-2. **Layer 1 - Primary Nash Equilibrium**: 2-party game theory with symmetric bonding ensures cooperation; the evidence record is co-resident here, produced by ordinary operation
-3. **Layer 1.5 - Asymmetric Bonding**: cumulative upstream bonding maintains Nash equilibrium at scale (2→N parties)
-4. **Layer 2 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect)
-5. **Layer 3 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) consumes the on-chain record
-6. **Layer 4 - Courts**: traditional legal systems consume the same record from outside the protocol
+2. **Layer 1 - The bilateral equilibrium**: after performance, resolving is unconditionally strictly better for the buyer; given that, performance is the seller's strict best response. The evidence record is co-resident here, produced by ordinary operation
+3. **Layer 1.5 - Asymmetric Bonding**: bonding against the cumulative value at each link carries that equilibrium to every chain position (2→N parties)
+4. **Layer 2 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers hold a computable, bonded interest in curing any one seller's fault (micro-lending circle effect)
+5. **Layer 3 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) rules on the open record; it cannot resolve in the buyer's place
+6. **Layer 4 - Courts**: traditional legal systems consume the same record from outside the protocol, on the same terms
 
 **Key Innovations**:
-1. **Asymmetric bonding**: cumulative upstream bonding ensures deep-chain coordination while preserving Nash equilibrium at every position
-2. **No escape hatches**: Capital lockup is the enforcement mechanism (no timeouts, no partial payments)
-3. **Buyer as sole resolver**: Accountability through the buyer's own locked bond + the permanent public settlement record
-4. **Atomic resolution**: All-or-nothing payment creates seller coordination pressure (like micro-lending groups)
-5. **Pure game theory**: Security from incentives, not validators
+1. **Asymmetric bonding**: bonding against the cumulative value at the link keeps the deterrent intact at depth, where what a defector could carry off is worth far more than the payment made for it
+2. **No escape hatches**: the two calls are the whole state-changing surface — the results are derived for that game, and any further exit path either seats a decision with a party the bonds do not constrain or replaces the comparison the analysis turned on
+3. **Buyer as sole resolver**: accountability through the buyer's own locked position — credited with the delivery it holds, an extracting buyer still stands at −P against the 0 that closing gives it — plus the permanent public record
+4. **Atomic resolution**: all-or-nothing settlement induces a weakest-link subgame among sellers, and nothing ever banks a failed profile, so coordination failure is never terminal
+5. **Pure game theory**: security from comparisons each party can make itself, not from validators
 
 **Result**: A simpler, more secure coordination protocol with redundant enforcement layers. The deterrent's price is posted openly — 2× on both sides — versus the recurring extraction of intermediated coordination.
 
@@ -981,7 +1288,7 @@ Figaro represents a paradigm shift in multi-party coordination:
 - [x] No fee: no `feeRate`, no `feeSnapshot`, no treasury — resolution pays `sellerPayout = 2×expectedCumulativeValue + payment`, `buyerPayout = payment`
 - [x] No cancellation path: a committed order can only be resolved
 - [x] Entry points: `commit()` and `resolveProcess()` — the only two external functions
-- [x] Buyer-only resolution: `require(msg.sender == process.rootBuyer)` in `resolveProcess()`
+- [x] Buyer-only resolution: `resolveProcess()` reverts with `NotProcessBuyer` unless the caller is the process's `rootBuyer` (a custom-error guard, not a `require` string)
 - [x] No timeouts: no escape from a committed order
 - [x] No validators: economic incentives replace validation
 - [x] Perfect accounting: every bonded token transferred back to the two parties; contract balance returns to 0

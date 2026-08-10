@@ -65,9 +65,9 @@ const NODE_PLAN: Array<{ parent: number | null; clauses: string[] }> = [
     { parent: null, clauses: [C.cargo, C.incoterms, C.custody, C.acceptance, C.geo, C.modalities] },
     { parent: 0, clauses: [C.merchant, C.acceptance] },
     { parent: 0, clauses: [C.merchant, C.geo] },
-    { parent: 2, clauses: [C.courier, C.coldChain, C.custody, C.emissions, C.freightClass, C.handoff, C.proximity, C.geo] },
+    { parent: 2, clauses: [C.courier, C.coldChain, C.custody, C.emissions, C.handoff, C.proximity, C.geo] },
     { parent: 3, clauses: [C.merchant, C.consent] },
-    { parent: 4, clauses: [C.courier, C.handoff, C.proximity, C.geo] },
+    { parent: 4, clauses: [C.courier, C.freightClass, C.handoff, C.proximity, C.geo] },
 ];
 
 const CONSENT_DOC_TEXT =

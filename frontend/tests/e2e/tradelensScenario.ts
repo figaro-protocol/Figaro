@@ -214,11 +214,14 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     await seed(CARRIER, 18, 'Boreal Lines', 'Reefer ocean freight', PRICES.carrier, {
         clauseValues: {
             [C.coldChain]: { tempClass: 'refrigerated', tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900 },
-            [C.freightClass]: { nmfcClass: '85' },
         },
     });
     await seed(CUSTOMS, 20, 'Portside Customs Agents', 'Customs entry filing', PRICES.customs);
-    await seed(INLAND, 21, 'Delta Drayage', 'Destination drayage', PRICES.inland);
+    await seed(INLAND, 21, 'Delta Drayage', 'Destination drayage', PRICES.inland, {
+        clauseValues: {
+            [C.freightClass]: { nmfcClass: '85' },
+        },
+    });
     await expect.poll(conformant, {
         timeout: 60000, message: "the shipper's pinned profile carries the binding + five designations + the item-level cargo master data",
     }).toBe(true);
