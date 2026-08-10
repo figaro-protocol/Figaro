@@ -329,7 +329,7 @@ check what a platform merely asks them to believe should not rest that claim on
 a proof only a game theorist can follow — the equilibrium's legibility is the
 same property the rest of the design is built for.
 
-### Cumulative Upstream Bonding
+### Cumulative Bonding
 
 In multi-party chains, each seller's bond is keyed to the value the process has
 accumulated at its own link — **its own payment included**:
@@ -565,9 +565,9 @@ and the gap `Δᵢ = Pᵢ + Gᵢ`, not either ratio.
 
 ## Enforcement Model
 
-Figaro's coordination mechanism operates across five layers (plus a critical scaling bridge between 2-party and N-party). Understanding each layer explains why the protocol works without timeouts, protocol-run arbitrators, or governance backstops — not as a temporary simplification, but as a permanent design property.
+Figaro's coordination mechanism operates across five layers. Understanding each layer explains why the protocol works without timeouts, protocol-run arbitrators, or governance backstops — not as a temporary simplification, but as a permanent design property.
 
-The stack, bottom to top: **Layer 0** — blockchain security, the named foundation; **Layer 1** — the bonding equilibrium, with the evidence/audit/event record co-resident (produced always, by ordinary operation); **Layer 2** — the co-seller coordination game, told remedy-first; **Layer 3** — arbitration (e.g. Kleros); **Layer 4** — traditional legal systems. Layers 3 and 4 are standing layers that consume the Layer-1 record from outside the protocol — recourse there exists with no clause named.
+The stack, bottom to top, and it is five: **Layer 0** — blockchain security, the named foundation; **Layer 1** — the bonding equilibrium at two parties and at N, with the evidence/audit/event record co-resident (produced always, by ordinary operation); **Layer 2** — the co-seller coordination game, told remedy-first; **Layer 3** — arbitration (e.g. Kleros); **Layer 4** — traditional legal systems. Layers 3 and 4 are standing layers that consume the Layer-1 record from outside the protocol — recourse there exists with no clause named. Scaling from two parties to N is not a layer: it is Layer 1's own schedule applied at every link, and it is treated inside Layer 1 for that reason.
 
 ### Layer 0: Blockchain Security (The Named Foundation)
 
@@ -575,7 +575,14 @@ The stack, bottom to top: **Layer 0** — blockchain security, the named foundat
 
 This layer is not Figaro's to build, but it is load-bearing and therefore named: the bonds are only as locked, and the event record only as immutable, as the chain that holds them. Every guarantee in the layers above inherits from it.
 
-### Layer 1: Primary Nash Equilibrium (2-Party Game)
+### Layer 1: The Bonding Equilibrium (Evidence Record Co-Resident)
+
+This layer is asymmetric bonding — Mechanism 1 — and it does two jobs that are
+easily mistaken for two layers. It secures the bilateral edge, and it carries
+that security to chains of any length. Both are the bond schedule's own work,
+and the subsections below take them in that order.
+
+#### At two parties
 
 **Players**: Single buyer, single seller  
 **Mechanism**: Bonding at the root, where `G = P` and the two bonds coincide at 2×payment  
@@ -593,7 +600,7 @@ value of what the party holds:
 **Key Properties**:
 - **Single transaction**: isolated 2-party exchange
 - **Equal stakes at the root**: `G = P`, so both parties bond 2×payment; every
-  position below the root has the larger seller bond (Layer 1.5)
+  position below the root has the larger seller bond (next subsection)
 - **Clear outcome**: performance with resolution yields `(0, +P)` — the buyer's
   unique maximum of the four; the unresolved cells are standing positions, not
   settlements, and nothing in the kernel converts them into anything
@@ -611,19 +618,22 @@ value of what the party holds:
 - **Result**: Bob delivers and Alice resolves — each because it is that party's
   own better move, neither on trust in the other
 
-The bilateral case is the well-studied one; what the rest of this document adds
-is the schedule that carries it to N parties and the resolution rule that closes
-them together.
+The bilateral case is the well-studied one. What follows is the same layer at
+N parties.
 
-**Co-resident at Layer 1: the evidence record.** Every `commit` and `resolveProcess` emits immutable, block-timestamped events (`OrderCommitted`, `OrderResolved`, `ProcessResolved`) — produced always, as a by-product of ordinary operation, not only when something goes wrong. The record lives here, beside the bonds; Layers 3 and 4 consume it from outside, and neither produces anything of its own.
+#### Layer 1 at N parties: scaling is the bond schedule's own work
 
----
+**Scaling to N parties is Mechanism 1's work** — each seller bonding the
+cumulative value at its own link — **and buyer dominance then coordinates the
+already-scaled mesh.** The distinction is worth holding: this is not a bridge
+between two layers, and the credit for reaching N parties belongs to the bond
+schedule, not to the resolution rule. Atomic resolution's contribution is a
+different one, taken up at Layer 2 — it closes the mesh from one signature and
+induces the weakest-link subgame among sellers, neither of which is a scaling
+result.
 
-### Layer 1.5: Scaling via Asymmetric Bonding (The Critical Bridge)
-
-**This is the most often overlooked layer, yet it's the key innovation that enables scaling from 2 to N parties while maintaining the Nash equilibrium.**
-
-**Problem Statement**: How do we extend the 2-party Nash equilibrium to multi-party service chains without breaking the incentive structure?
+**Problem Statement**: how does the bilateral equilibrium extend to multi-party
+chains without breaking the incentive structure?
 
 **Naive Approach (Fails)**:
 ```
@@ -638,7 +648,7 @@ Problem:
 - The deterrent survives at the root and evaporates at depth
 ```
 
-**Figaro Solution: Cumulative Upstream Bonding**
+**Figaro Solution: Cumulative Bonding**
 
 ```
 Chain: Alice ← Bob (food: $10) ← Charlie (delivery: $2)
@@ -711,12 +721,19 @@ the holdout included, strictly prefers the closing to the position it holds.
 carries into the process. That is what produces quality-control pressure along
 the chain — and it is exposure, not punishment: nothing consumes a bond.
 
-**Why This Is "Layer 1.5"**:
-- It's not a separate game, but an **extension** of the primary Nash equilibrium
-- It **bridges** 2-party game theory to N-party coordination
-- Without it, multi-party chains would collapse (incentives break down)
+**Why this is not a layer of its own**: it is not a separate game but the same
+equilibrium at every position, produced by the same schedule. Nothing new is
+assumed, no second mechanism is invoked, and the bilateral result is not
+patched — the bond base simply keys to the accumulator instead of to the local
+payment, and every comparison of the previous subsection carries through.
 
-**Common Mistake**: Treating multi-party coordination as just "multiple 2-party games." Wrong! Each position has DIFFERENT stake sizes, creating ASYMMETRIC pressure that maintains Nash equilibrium across the entire chain.
+**Common Mistake**: treating multi-party coordination as just "multiple 2-party
+games". Each position stands in a different amount, and it is that asymmetry —
+not any coordination rule — that preserves the deterrent at depth.
+
+#### Co-resident at Layer 1: the evidence record
+
+Every `commit` and `resolveProcess` emits immutable, block-timestamped events (`OrderCommitted`, `OrderResolved`, `ProcessResolved`) — produced always, as a by-product of ordinary operation, not only when something goes wrong. The record lives here, beside the bonds, and it is co-resident with both subsections above: what it holds is the commitments and the fact of non-resolution, never performance. Layers 3 and 4 consume it from outside, and neither produces anything of its own.
 
 ---
 
@@ -962,7 +979,7 @@ The five enforcement layers work together. The goal is not redundancy for its ow
 | Layer | Mechanism | Primary Cases |
 |-------|-----------|---------------|
 | **0. Blockchain security** | Host-chain consensus — signatures, ordering, immutability | The foundation everything above inherits |
-| **1 + 1.5** | Asymmetric bonding (evidence record co-resident) — after performance the buyer's preference for resolving is unconditional, and given it performance is each seller's strict best response at every chain position | The default: crediting a defector with everything it retains, defection is still out of pocket |
+| **1. Bonding equilibrium** | Asymmetric bonding at two parties and at N (evidence record co-resident) — after performance the buyer's preference for resolving is unconditional, and given it performance is each seller's strict best response at every chain position | The default: crediting a defector with everything it retains, defection is still out of pocket |
 | **2. Co-Seller Remedy** | Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect) | Multi-seller failures |
 | **3. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-1 record | Disputes the economics did not dissolve |
 | **4. Courts** | Traditional legal systems consume the same record from outside | Irrational or adversarial actors |
@@ -1259,13 +1276,12 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 **Core Thesis**: locked bonds sized against the value at each link make performance and resolution each party's own better move — no external enforcement required, and none available.
 
-**Defense-in-Depth**:
+**Defense-in-Depth — five layers**:
 1. **Layer 0 - Blockchain Security**: the host chain's consensus is the named foundation everything above inherits
-2. **Layer 1 - The bilateral equilibrium**: after performance, resolving is unconditionally strictly better for the buyer; given that, performance is the seller's strict best response. The evidence record is co-resident here, produced by ordinary operation
-3. **Layer 1.5 - Asymmetric Bonding**: bonding against the cumulative value at each link carries that equilibrium to every chain position (2→N parties)
-4. **Layer 2 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers hold a computable, bonded interest in curing any one seller's fault (micro-lending circle effect)
-5. **Layer 3 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) rules on the open record; it cannot resolve in the buyer's place
-6. **Layer 4 - Courts**: traditional legal systems consume the same record from outside the protocol, on the same terms
+2. **Layer 1 - The bonding equilibrium**: after performance, resolving is unconditionally strictly better for the buyer; given that, performance is the seller's strict best response. The same schedule carries that result to every position in an N-party chain — each seller bonding the cumulative value at its own link, which is asymmetric bonding's own work and not a layer of its own. The evidence record is co-resident here, produced by ordinary operation
+3. **Layer 2 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers hold a computable, bonded interest in curing any one seller's fault (micro-lending circle effect). This coordinates the already-scaled mesh; it does not scale it
+4. **Layer 3 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) rules on the open record; it cannot resolve in the buyer's place
+5. **Layer 4 - Courts**: traditional legal systems consume the same record from outside the protocol, on the same terms
 
 **Key Innovations**:
 1. **Asymmetric bonding**: bonding against the cumulative value at the link keeps the deterrent intact at depth, where what a defector could carry off is worth far more than the payment made for it
@@ -1297,7 +1313,7 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 - [x] Nash equilibrium: Mutual cooperation payoffs correct
 - [x] Collateral sufficiency: Bonds = 2× values
-- [x] Multi-party chain: cumulative upstream bonding verified
+- [x] Multi-party chain: cumulative bonding verified
 - [x] Token accounting: Zero contract balance after resolution
 - [x] Access control: Only buyer can resolve
 - [x] No escape hatches: No reclaim, no timeout, no challenges

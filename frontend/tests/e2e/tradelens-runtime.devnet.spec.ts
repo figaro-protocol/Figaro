@@ -173,7 +173,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             const [b, s, c] = await Promise.all([balanceOf(BUYER), balanceOf(who.address), balanceOf(core)]);
             expect(base.get(BUYER.toLowerCase())! - b, `after ${label}: buyer down by its buyer bonds so far`)
                 .toBe(buyerBondSoFar);
-            expect(base.get(who.address.toLowerCase())! - s, `${label} bonds 2× CUMULATIVE upstream value`)
+            expect(base.get(who.address.toLowerCase())! - s, `${label} bonds 2× CUMULATIVE value through its link`)
                 .toBe(bonds.sellerBond);
             expect(c - base.get(core.toLowerCase())!, 'escrow holds every bond so far').toBe(escrowSoFar);
         }

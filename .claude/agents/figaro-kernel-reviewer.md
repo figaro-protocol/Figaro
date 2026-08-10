@@ -45,7 +45,7 @@ A pattern that is an anti-pattern at the kernel tier may be acceptable at runtim
 The kernel preserves six invariants. For each hunk in the diff, identify which invariant (if any) it touches.
 
 1. **Asymmetric bonding** — buyer deposits 2P, seller deposits 2G; custody = 2P + 2G. Any change that alters the ratio, introduces yield on bonds, or makes bonding conditional (discounts, tiers, rebates, green-bond adjustments) breaks this. The 2× ratio is proven minimum sufficient — no compromise variants.
-2. **Cumulative upstream bonding** — bonds scale via the asymmetric bilateral primitive across the process DAG (mesh). Any change that weakens or short-circuits propagation across N parties breaks composition.
+2. **Cumulative bonding** — bonds scale via the asymmetric bilateral primitive across the process DAG (mesh). Any change that weakens or short-circuits propagation across N parties breaks composition.
 3. **Buyer dominance** — buyer holds the resolution key. Any timeout, recovery path, governance vote, oracle, or admin override that lets a non-buyer force resolution breaks MAD.
 4. **Atomic resolution** — a process resolves wholly or not at all. Partial resolution breaks the weakest-link coordination pressure among sellers in the mesh.
 5. **Immutable evidence** — commitments and resolutions are tamper-proof on-chain attestations. Mutable clause content, in-place rewrites of registered identities, or post-hoc state edits break this.
@@ -63,7 +63,7 @@ The skill enumerates the patterns to reject on sight. The recurrent imports are:
 |---|---|
 | Timeout / recovery path for locked bonds | Buyer dominance (MAD) |
 | Stuck-fund recovery | No escape hatches |
-| Finalized flag on resolved process | Multi-round composition (cumulative upstream bonding) |
+| Finalized flag on resolved process | Multi-round composition (cumulative bonding) |
 | Admin / owner / pause function | No escape hatches |
 | Yield on locked bonds / bond-lending pools | Asymmetric bonding |
 | Governance vote / DAO for disputes | Buyer dominance |

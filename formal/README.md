@@ -97,7 +97,7 @@ The TLA+ spec mirrors the two external functions of `FigaroCore.sol`:
 | Contract Function | TLA+ Action | What It Models |
 |---|---|---|
 | `commit()` (root) | `CommitRoot(buyer, seller, payment)` | New process creation, bond deposit |
-| `commit()` (sub) | `CommitSub(pid, seller, payment)` | Process extension, cumulative upstream bonding |
+| `commit()` (sub) | `CommitSub(pid, seller, payment)` | Process extension, cumulative bonding |
 | `resolveProcess()` | `ResolveProcess(pid)` | Atomic resolution, payout distribution |
 
 A resolved process is terminal in the model AND in the contract: `commit()`
@@ -118,7 +118,7 @@ Resolution:   sellerPayout = cumulativeValue × 2 + payment  (bond return + paym
 Per-order token conservation: `deposited = buyerBond + sellerBond = paid out`.
 This holds for every order, which implies per-process and global conservation.
 
-### Cumulative Upstream Bonding
+### Cumulative Bonding
 
 Sub-order sellers bond against the *total* cumulative value, not just their
 payment. This means later sellers in a process chain have more skin in the

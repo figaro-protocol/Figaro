@@ -313,7 +313,7 @@ KCommitRoot(pid, b, s, pay) ==
                      gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
 
 \* FigaroCore.commit() with c.processId != bytes32(0).
-\* Seller bonds 2× the NEW cumulative value (cumulative upstream bonding).
+\* Seller bonds 2× the NEW cumulative value (cumulative bonding).
 KCommitSub(pid, s, pay) ==
   LET free == { x \in BlockOf(pid): kStatus[x] = "Unknown" }
   IN /\ KActive(pid)

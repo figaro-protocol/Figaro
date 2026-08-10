@@ -212,7 +212,7 @@ contract FigaroCoreTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 6: Resolution payouts with cumulative upstream bonding
+    // 6: Resolution payouts with cumulative bonding
     // ═══════════════════════════════════════════════════════════════
 
     function test_resolution_payouts_progressiveCollateral() public {

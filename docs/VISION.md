@@ -78,7 +78,7 @@ Everything in Figaro derives from six protocol properties (see THEORY.md):
 | # | Property | What It Replaces |
 |---|---|---|
 | 1 | **Asymmetric bonding** | Trust, reputation, credit history |
-| 2 | **Cumulative upstream bonding** | Hierarchical authority, management chains |
+| 2 | **Cumulative bonding** | Hierarchical authority, management chains |
 | 3 | **Buyer dominance** | Arbitrators, dispute resolution, governance |
 | 4 | **Atomic resolution** | Partial payments, individual accountability |
 | 5 | **Immutable evidence** | Discovery, forensic audits — courts are not replaced; they consume the evidence from outside |
@@ -175,7 +175,7 @@ value-adders:
 - **Procurement**: buyer + N value-adders at every stage, template-guided
   cascades, GHG disclosure at each node
 - **Cross-border trade**: buyer + producer + shipper + customs broker +
-  logistics chain, cumulative upstream bonding with geographic bridging.
+  logistics chain, cumulative bonding with geographic bridging.
   In trade finance, a **Letter of Credit** (LC) is the closest legacy
   instrument: a bank-issued guarantee that payment will arrive on time and
   for the correct amount. The bank is the trusted third party; its fee is
@@ -228,7 +228,7 @@ of bilateral interactions. The enforcement is ex-ante (capital locked before
 work begins), not ex-post (courts invoked after breach). Asymmetric bonding
 replaces trust, reputation, credit history, and most forms of contractual
 enforcement at the bilateral level — and scales the bilateral primitive to
-N-party DAGs (each seller bonds against cumulative upstream value, creating a
+N-party DAGs (each seller bonds against cumulative value through its own link, creating a
 mesh of independently secured edges). Co-resident at this layer is the
 evidence record: every commit and resolution, and every lifecycle event
 emitted by coordinators, is an immutable, role-gated, block-timestamped

@@ -366,7 +366,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         }
 
         // First sub — the courier. Extends the process to cumulative 2; the
-        // courier bonds against the CUMULATIVE upstream value, not just its own
+        // courier bonds against the CUMULATIVE value through its own link, not just its own payment
         // cut — and accepts WITH A SWAP-FUNDED BOND on /sign. This is the
         // sub-order funding regression (the swapped-calculateBonds-args bug):
         // the funded quote must be 2×cumulativeValue, not 2×payment, or the

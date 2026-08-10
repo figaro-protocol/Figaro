@@ -247,7 +247,7 @@ Verify 3× before touching kernel invariants — the MAD equilibrium is fragile;
 
 ### Framing Discipline
 
-Reason from the core property downward: self-enforcing agreements between strangers. The six properties (asymmetric bonding, cumulative upstream bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches) describe how the mechanism works. Contracts implement properties; UI renders contracts.
+Reason from the core property downward: self-enforcing agreements between strangers. The six properties (asymmetric bonding, cumulative bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches) describe how the mechanism works. Contracts implement properties; UI renders contracts.
 
 Never frame Figaro as "removing the middleman." Figaro is sovereign P2P commerce infrastructure. The platform companies are not being replaced; the architecture makes them structurally unnecessary.
 

@@ -210,7 +210,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             escrowSoFar += bonds.buyerBond + bonds.sellerBond;
             const [b, sb, c] = await Promise.all([balanceOf(BUYER), balanceOf(s.address), balanceOf(core)]);
             expect(base.get(BUYER.toLowerCase())! - b, `after ${s.label}: buyer down by its bonds so far`).toBe(buyerBondSoFar);
-            expect(base.get(s.address.toLowerCase())! - sb, `${s.label} bonds 2× cumulative upstream value`).toBe(bonds.sellerBond);
+            expect(base.get(s.address.toLowerCase())! - sb, `${s.label} bonds 2× cumulative value through its own link`).toBe(bonds.sellerBond);
             expect(c - base.get(core.toLowerCase())!, 'escrow holds every bond so far').toBe(escrowSoFar);
         }
         expect((await queryCommitted()).length, 'exactly three orders committed').toBe(committedBefore + 3);

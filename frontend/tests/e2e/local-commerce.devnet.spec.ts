@@ -29,7 +29,7 @@
  *   accept   → merchant accepts first (root creates the process), courier
  *              second (extends it) — exact bond deltas asserted after each:
  *              buyer 2× payment per order, merchant 2×1, courier 2×2 (the
- *              courier bonds against CUMULATIVE upstream value).
+ *              courier bonds against the CUMULATIVE value through its own link).
  *   attest   → the story on the timeline: the merchant walks its WHOLE
  *              ladder, then the courier walks its WHOLE ladder — stage labels
  *              DERIVED from the registered specs (chain → IPFS), never a
@@ -332,7 +332,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             const [b, cr, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER), balanceOf(core)]);
             expect(buyer0 - b, 'after the delivery commit: buyer down by both buyer bonds')
                 .toBe(merchantBonds.buyerBond + courierBonds.buyerBond);
-            expect(courier0 - cr, 'the courier bonds against CUMULATIVE upstream value, not just its own cut')
+            expect(courier0 - cr, 'the courier bonds against the CUMULATIVE value through its own link, not just its own cut')
                 .toBe(courierBonds.sellerBond);
             expect(c - core0, 'escrow holds every bond in the process').toBe(
                 merchantBonds.buyerBond + merchantBonds.sellerBond

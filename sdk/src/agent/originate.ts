@@ -9,7 +9,7 @@
  *
  * Scope: the ROOT order (a two-party bonded process — the minimal real
  * origination). Multi-order DAG instantiation (sub-orders bonded against
- * cumulative upstream value) is the documented extension; the frontend's
+ * cumulative value through its own link) is the documented extension; the frontend's
  * `assemblyCheckout` is the reference for that walk.
  *
  * The SDK names no clause: instantiation reads the template's clause bag
