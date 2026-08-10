@@ -160,9 +160,13 @@ as a salt would introduce a partial-predictability vector for validator-MEV.
 
 The party-chosen `salt`, signed by both buyer and seller in the EIP-712
 commitment, is sufficient. If both parties sign the same salt twice (same
-commitment submitted a second time), `DuplicateCommitment` reverts it. The
-salt does not need to be unpredictable — it only needs to distinguish two
-separate agreements between the same parties with the same terms.
+commitment submitted a second time), the replay is rejected — by
+`ProcessAlreadyExists` at the root and `CumulativeValueMismatch` on
+sub-orders (the accumulator has strictly moved), with `DuplicateCommitment`
+as the content-addressed backstop behind both (the revert-branch suite pins
+the preempting error on each path). The salt does not need to be
+unpredictable — it only needs to distinguish two separate agreements
+between the same parties with the same terms.
 
 ---
 

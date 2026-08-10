@@ -367,4 +367,42 @@ contract FigaroCore_RevertBranch is Test {
         vm.expectRevert(FigaroCore.NoActiveOrders.selector);
         core.resolveProcess(processId, commitments);
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DuplicateCommitment is a defensive backstop: every replay of an
+    // identical commitment is preempted by an earlier check, so the
+    // guard itself is unreachable through commit()'s public surface.
+    // These tests pin the preempting error on each replay path.
+    // ═══════════════════════════════════════════════════════════════
+
+    function test_commit_rootReplay_preemptedByProcessAlreadyExists() public {
+        (,, CommitmentTypes.Commitment memory c) = _commitRoot(10 ether, 1);
+
+        vm.expectRevert(FigaroCore.ProcessAlreadyExists.selector);
+        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+    }
+
+    function test_commit_subReplay_preemptedByCumulativeValueMismatch() public {
+        (bytes32 processId,,) = _commitRoot(10 ether, 1);
+
+        CommitmentTypes.Commitment memory subC = CommitmentTypes.Commitment({
+            processId: processId,
+            buyer: buyer,
+            seller: seller2,
+            currency: address(token),
+            payment: 20 ether,
+            expectedCumulativeValue: 30 ether,
+            agreementHash: keccak256("sub"),
+            salt: 2,
+            deadline: block.timestamp + 1 hours
+        });
+        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+
+        // Identical struct: the accumulator has moved to 30, so the replay's
+        // expectedCumulativeValue (30) no longer matches 30 + 20 = 50.
+        vm.expectRevert(
+            abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 30 ether, 50 ether)
+        );
+        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+    }
 }

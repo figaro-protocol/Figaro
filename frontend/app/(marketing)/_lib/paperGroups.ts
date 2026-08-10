@@ -190,9 +190,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Psychology and Decisions Science",
         discipline: "Behavioral game theory · incentive legibility · interface cognition",
         intro: "How individuals actually decide, given knowledge of the rules and uncertainty about the decisions of others; the security of any incentive system depends on how people respond to incentives — an empirical question, not a theorem.",
-        definition: "How participants read a bonded equilibrium under uncertainty; the legibility of incentive structure to non-specialist readers. The bonded mechanism is dominance-solvable at the per-player level — the cognitive operation a participant must perform is a single comparison at the margin, amplified by loss aversion at the kink between cooperation and defection. The Van Huyck coordination-failure result does not transfer; the Grameen peer-pressure dynamics do.",
+        definition: "How participants read a bonded equilibrium under uncertainty; the legibility of incentive structure to non-specialist readers. The cognitive operation a participant must perform is one comparison of two certain amounts at its own node, in an order whose first step depends on nobody — and because a defector is credited with what it retains, both branches straddle the prospect-theoretic reference point, so loss aversion weights the defecting branch instead of cancelling. The Van Huyck coordination failure loses the finality it runs on; the joint-liability peer-pressure channel is present without the social substrate.",
         papers: [
-            { title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/behavioral-game-theory", formalCore: true, blurb: "How the full-rationality equilibrium carries over to real participants: weak dominance at the kink, why the Van Huyck coordination failure does not transfer, and atomic resolution as activated peer pressure." },
+            { title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/behavioral-game-theory", formalCore: true, blurb: "How the equilibrium fares once participants are real: loss aversion at the kink where retention and bond fall on opposite sides, why the Van Huyck coordination failure has no outcome to converge on, and atomic resolution as activated peer pressure." },
         ],
     },
 ];
