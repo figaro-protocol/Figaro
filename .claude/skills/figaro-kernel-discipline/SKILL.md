@@ -90,9 +90,18 @@ proposing, check the change against:
    upstream bonding, buyer dominance, atomic resolution, immutable evidence,
    no escape hatches). Does the change preserve all six?
 2. **The game-theoretic theorems** on the `/papers/asymmetric-bonding`
-   page (Theorems: Two-Party Nash Equilibrium, Minimal Viable Bond
-   Multiplier, Escape-Hatch Weakness, N-Party Nash Equilibrium,
-   Cumulative-Value Reporting Honesty).
+   page (Theorems: Two-Party Equilibrium, Escape-Hatch Weakness,
+   N-Party Nash Equilibrium, Endogenous Coordination Pressure; plus the
+   Price of a Coalition proposition). Two facts are INVARIANTS, not
+   theorem conclusions (ruled 2026-08-10): **k = 2** — the 2P/2G schedule
+   is constitutive; no parametric multiplier family exists or may be
+   introduced — and **cumulative-value exactness** — one admissible
+   declaration per commitment (the reporting-honesty theorem and the
+   minimal-viable-multiplier theorem were both retired accordingly).
+   The equilibrium's shape (ruled premise 2026-08-10, retention model):
+   after performance, resolving is unconditionally strictly better for
+   the buyer; given that, performance is each seller's strict best
+   response — the two calls compose in that order.
 3. **The TLA⁺ invariants** in `formal/FigaroCore.tla` (TokenConservation,
    ContractSolvency, WalletNonNegative, CumulativeIntegrity,
    ActiveCountCorrect, ResolutionAlwaysPossible, TypeOK).

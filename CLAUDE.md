@@ -17,7 +17,7 @@ Between strangers the element that fails is **consideration** — promising valu
 easy; nothing makes delivering it credible. Figaro fixed consideration with mechanism
 design: the buyer bonds twice the payment, each seller twice the cumulative value at
 their link in the value-added chain — each bond its party's own staked deterrent — and
-two Nash equilibria follow: cooperation dominates every edge, and the buyer's atomic
+two Nash equilibria follow: cooperation prevails on every edge, and the buyer's atomic
 resolution settles the chain as one (weakest link). A social layer rides the second:
 nobody is paid until the buyer resolves, so co-sellers hold a live, bonded interest in
 remedying any one seller's fault. That is the kernel and its social mechanism — the
@@ -205,9 +205,9 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
-- **Mechanism 1 — Asymmetric bonding.** Buyer locks 2× payment, seller locks 2× cumulative value. Produces the bilateral Nash equilibrium (cooperation weakly dominates defection for both parties) AND scales the primitive from 2-party to N-party — each seller bonds against cumulative upstream value, forming a mesh of independently secured edges, each carrying its own equilibrium at every depth. 2× is the minimum viable multiplier.
+- **Mechanism 1 — Asymmetric bonding.** Buyer locks 2× payment, seller locks 2× cumulative value. The bilateral equilibrium: after performance, resolving is unconditionally strictly better for the buyer; performance is then each seller's strict best response — the two calls compose in that order. Scales to N-party: each seller bonds the cumulative value at its link, a mesh of independently secured edges. k=2 is an invariant.
 - **Mechanism 2 — Buyer dominance.** Only the buyer can trigger `resolveProcess`; resolution is **atomic** — all orders in the process settle together or not at all. Operates on the already-scaled mesh to enforce inter-seller coordination: a weakest-link subgame reproducing Grameen joint-liability peer enforcement under strictly weaker assumptions.
-- **Security constraint — No escape hatches.** Any unilateral exit path weakens the equilibrium (α≥½ breaks weak dominance directly; an unbonded third party J ∉ {B,S} reintroduces discretion). Not a third mechanism — a constraint protecting the two. External legal forums adjudicating under duress / frustration / impossibility are NOT escape hatches: constrained by their own institutional bond structures, they operate on the commitment as evidentiary input.
+- **Security constraint — No escape hatches.** Commit and resolve are the only operations; a unilateral exit either needs an unbonded third party J ∉ {B,S} or alters the equilibrium's payoffs. No refunds, no refund modeling; remedies are party-negotiated BEFORE resolve; resolution is terminal acceptance, no recourse after (ruled 2026-08-10). Not a third mechanism — a constraint. Forums are NOT escape hatches: they rule on the open process record and cannot call resolve — no direct enforcement.
 
 The mechanisms are inseparable: bonding alone leaves a mesh needing N mutual agreements to resolve; buyer-dominance alone is a resolver with nothing at stake — together the mesh resolves from a single signature that propagates cooperation pressure through it.
 
@@ -215,7 +215,7 @@ The kernel sees only **linear process chains** — `commit` calls extending a mo
 
 **Three mistakes to avoid:**
 1. Do not collapse the two mechanisms to "one mechanism plus rules." Atomic resolution does mechanism-style work — it enforces inter-seller coordination via the weakest-link subgame, not just convenience-of-resolution.
-2. Do not credit buyer dominance with scaling. Scaling is asymmetric bonding's work — each seller bonding against cumulative upstream value; buyer dominance enforces coordination on the *already-scaled* mesh.
+2. Do not credit buyer dominance with scaling. Scaling is asymmetric bonding's work — each seller bonding the cumulative value at its link; buyer dominance enforces coordination on the *already-scaled* mesh.
 3. Do not treat no-escape-hatches as a third mechanism. It's a security constraint protecting the equilibrium the two mechanisms induce.
 
 Full game-theoretic derivation → `THEORY.md`. Post-firm economy, Coasean collapse, token denomination → `VISION.md`. The RWA-as-wallet / social-mechanism apparatus → `/papers/self-closing-ledger-periods` §7 (+ its two memories). Immutable evidence is produced by the on-chain composition layer, not the kernel.
