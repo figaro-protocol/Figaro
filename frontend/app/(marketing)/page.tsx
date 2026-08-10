@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 
 export const metadata: Metadata = {
-    title: "Figaro Protocol",
+    title: "Figaro Protocol — My word is my bond",
     description:
         "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
 };
@@ -19,6 +19,7 @@ export default function Home() {
         <>
             <MarketingHero
                 title="The Figaro Ecosystem"
+                tagline="My word is my bond"
                 lead={
                     <>
                         From guilds to banks to platforms, every economic system has fought over the same two questions: who enforces a deal, and who keeps the profit. Figaro&apos;s answer: both sides stake tokens worth more than cheating could gain &mdash; so no one needs to stand in the middle.
