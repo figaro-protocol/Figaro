@@ -59,7 +59,7 @@ interface IFigaroCore {
 ///
 /// @dev Content encoding:
 ///      An attestation's content is ABI-encoded per the clause's spec (off-chain
-///      JSON spec anchored via ClauseRegistry.uriHash) and lives OFF-CHAIN — in
+///      JSON spec anchored via ClauseRegistry.contentHashOf) and lives OFF-CHAIN — in
 ///      (optionally encrypted) IPFS for a `private`-disposition section, in the
 ///      open for a `public` one. The chain never sees the preimage: the caller
 ///      supplies only `contentRef` (`keccak256(content)`) and `sectionHash`
