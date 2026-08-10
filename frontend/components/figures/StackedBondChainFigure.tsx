@@ -3,12 +3,11 @@ import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 
 export type StackedBondChainFigureProps = BaseFigureProps;
 
-// The /local-commerce worked example (frontend/app/(marketing)/(surfaces)/local-commerce/page.tsx):
-// "8.40 to the kitchen, 2.10 to the courier, 0.30 to the farm". Reused verbatim so
-// the site keeps one consistent worked example. Order is load-bearing, not
-// editorial: the page states the courier's stake rides on "food and delivery
-// both" — i.e. at the courier's node cumulative value is exactly kitchen+courier,
-// with no farm yet — which only holds if the farm commits AFTER the courier.
+// Commit order is load-bearing, not editorial. Each seller bonds twice the
+// accumulator AT ITS OWN COMMIT, so the sequence below is what makes the
+// courier's stake ride on food and delivery only (kitchen + courier, no farm
+// yet) and the farm's ride on the whole chain. Reordering the legs changes
+// every bond and every payout; it is not a presentation choice.
 const LEGS = [
     { name: "Kitchen", role: "root order", payment: 8.4 },
     { name: "Courier", role: "sub-order", payment: 2.1 },
@@ -68,9 +67,9 @@ export function StackedBondChainFigure({
             >
                 <title id={titleId}>Stacked bond chain: kitchen, courier, farm</title>
                 <desc id={descId}>
-                    A three-order value chain from the local-commerce worked
-                    example: kitchen paid 8.40 as the root order, courier paid
-                    2.10 as a sub-order, farm paid 0.30 as a sub-order. Each
+                    A three-order value chain: kitchen paid 8.40 as the root
+                    order, courier paid 2.10 as a sub-order, farm paid 0.30 as
+                    a sub-order, in that commit order. Each
                     seller&apos;s bond is twice the cumulative value at their
                     node, not just their own payment, so the farm — paid the
                     least — still stakes against the whole 10.80 chain.
@@ -79,7 +78,7 @@ export function StackedBondChainFigure({
 
                 {/* Legend */}
                 <rect x="24" y="18" width="14" height="10" rx="2" className="fill-subtle-hover stroke-default" strokeWidth="0.5" />
-                <text x="42" y="27" fontSize="9" className="fill-ink-muted">already staked (upstream orders)</text>
+                <text x="42" y="27" fontSize="9" className="fill-ink-muted">value accumulated (upstream orders)</text>
                 <rect x="24" y="34" width="14" height="10" rx="2" className="fill-ink-heading" />
                 <text x="42" y="43" fontSize="9" className="fill-ink-muted">this order&apos;s own payment</text>
 
@@ -127,13 +126,14 @@ export function StackedBondChainFigure({
                     Resolution is atomic — all {nodes.length} orders settle together, or none do.
                 </text>
                 <text x="200" y={viewHeight - 10} fontSize="10" textAnchor="middle" className="fill-ink-muted">
-                    Total payment {fmt(totalPayment)} · buyer paid twice that ({fmt(2 * totalPayment)}) to open the chain
+                    Total payment {fmt(totalPayment)} · buyer bonds 2× each payment as that order commits ({fmt(2 * totalPayment)} in all)
                 </text>
             </svg>
             <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                Each new contributor stakes against everything ahead of them: the farm
-                is paid least (0.30) but bonds most (2 × 10.80 = 21.60) because by the
-                time it joins, it is carrying the whole chain&apos;s value, not just its own.
+                Each new contributor stakes against everything the chain has accumulated
+                through its own link: the farm is paid least (0.30) but bonds most
+                (2 × 10.80 = 21.60) because by the time it commits, the accumulator
+                already carries the kitchen&apos;s and the courier&apos;s value as well as its own.
             </figcaption>
         </figure>
     );

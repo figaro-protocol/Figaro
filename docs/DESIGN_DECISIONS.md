@@ -348,7 +348,7 @@ separately rule transferability out:
    cannot be a `transferBuyer` or `transferSeller` function without
    changing what an `orderHash` means.
 
-3. **No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.3). A transfer mechanism
+3. **No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.2). A transfer mechanism
    requires authorization for the substitution. In TradeTrust this is
    the holder's `transferBeneficiary` endorsement; in CargoX it is the
    holder's signature on the ERC-721 transfer. In Figaro terms, the

@@ -90,7 +90,7 @@ mechanism in the kernel to nominate a new buyer or seller for an existing
 order; the only way to change a party is a new commitment, which is a new
 order. (See `CLAUDE.md` § "What Figaro Is Not" and `docs/THEORY.md`.)
 
-**No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.3). Any unilateral exit path
+**No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.2). Any unilateral exit path
 weakens the Nash equilibrium. An exit that requires a third party J ∉ {B,
 S} whose incentives are not bond-constrained — including arbitrator,
 escrow, mediator, or governance vote — is forbidden at the kernel layer.
