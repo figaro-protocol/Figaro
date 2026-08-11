@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditAgents } from "@/components/members/MemberEditAgents";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Edit agent endpoints — Figaro Protocol",
     description: "Set or clear ERC-8004-compatible service endpoints (mcp / a2a / rest / did:web / ENS). Re-pins the profile JSON with the updated services field, then dispatches MembersRegistry.updateProfile.",
-};
+});
 
 export default function EditAgentsPage() {
     return (

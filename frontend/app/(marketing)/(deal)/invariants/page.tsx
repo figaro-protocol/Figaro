@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Invariants — Figaro Protocol",
     description:
         "The Figaro core is a small contract that obeys a few physical facts — nothing is kept, the deal only moves forward, the rule is local. Those facts are why its state can leave the chain, why anything can compose against it, and why trust moves from the platform in the middle to the boundary at the edge.",
-};
+});
 
 export default function Physics() {
     return (
@@ -20,11 +21,7 @@ export default function Physics() {
             <MarketingSection title="Three facts, not three rules.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        People meet Figaro through three plain promises &mdash; skin in the game, one-way progress,{" "}
-                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
-                            sovereign settlement
-                        </Link>
-                        . Underneath, those aren&apos;t policies someone chose. They are what three physical facts of the contract feel like from the outside.
+                        People meet Figaro through three plain promises. Underneath, those aren&apos;t policies someone chose. They are what three physical facts of the contract feel like from the outside.
                     </p>
                     <ul className="space-y-3">
                         <li>
@@ -38,8 +35,40 @@ export default function Physics() {
                         </li>
                     </ul>
                     <p>
-                        A contract built on physics instead of policy can&apos;t be argued with, paused, or quietly changed &mdash; because there is no one in the middle to do it. The three promises are the readable form of these three facts; the facts are the readable form of six on-chain invariants underneath.
+                        A contract built on physics instead of policy can&apos;t be argued with, paused, or quietly changed &mdash; because there is no one in the middle to do it. The three promises are the readable form of these three facts; the facts are the readable form of{" "}
+                        <Link href="#six-invariants" className="text-ink-heading font-medium hover:underline">
+                            six on-chain invariants
+                        </Link>{" "}
+                        underneath.
                     </p>
+                </div>
+            </MarketingSection>
+
+            <MarketingSection title="The six, named.">
+                <div id="six-invariants" className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose scroll-mt-24">
+                    <p>
+                        &ldquo;Six on-chain invariants&rdquo; above is not a rhetorical number. Here they are, one line each:
+                    </p>
+                    <ol className="space-y-3 list-decimal pl-5">
+                        <li>
+                            <strong className="text-ink-heading">Asymmetric bonding.</strong> The buyer locks twice the payment; each seller locks twice the cumulative value at its link in the chain &mdash; each party&apos;s own stake, sized so honoring the deal always beats walking away.
+                        </li>
+                        <li>
+                            <strong className="text-ink-heading">Cumulative bonding.</strong> Each seller&apos;s bond covers everything already committed before it, so a chain of many sellers scales into one continuous stake, not separate side bets.
+                        </li>
+                        <li>
+                            <strong className="text-ink-heading">Buyer dominance.</strong> Only the buyer can trigger settlement &mdash; nothing else in the contract can move the deal forward.
+                        </li>
+                        <li>
+                            <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer resolves, every order in the process settles together, in one transaction, or none of them do.
+                        </li>
+                        <li>
+                            <strong className="text-ink-heading">Immutable evidence.</strong> Once evidence is bound to the signed agreement by its fingerprint, nothing can be swapped underneath it.
+                        </li>
+                        <li>
+                            <strong className="text-ink-heading">No escape hatches.</strong> No timeout, no admin key, no third party who can step in &mdash; commit and resolve are the only two moves the contract knows.
+                        </li>
+                    </ol>
                 </div>
             </MarketingSection>
 

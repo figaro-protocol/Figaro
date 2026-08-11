@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
+import Link from "next/link";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
@@ -13,11 +15,11 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // (/kernel owns the mechanism) and grounded page claims in paper propositions
 // (the paper/frontend seam stays). Operational read/attach guidance lives in
 // the SDK README, not here.
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Composition — Figaro Protocol",
     description:
         "What composes with Figaro — an open category, not a catalogue.",
-};
+});
 
 export default function Composes() {
     return (
@@ -26,7 +28,7 @@ export default function Composes() {
                 title="What composes with Figaro."
                 lead={
                     <>
-                        Composition happens two ways: <strong>internally</strong>, where clauses assemble into assemblies and mechanism contracts extend the protocol without touching the kernel; and <strong>externally</strong>, through third-party products on the network.
+                        Composition happens two ways: <strong>internally</strong>, where clauses assemble into assemblies and mechanism contracts like <Link href="/spec#AttestationCoordinator" className="underline">AttestationCoordinator</Link> extend the protocol without touching the kernel — catalogued on <Link href="/spec" className="underline">/spec</Link>; and <strong>externally</strong>, through the third-party products below.
                     </>
                 }
             />

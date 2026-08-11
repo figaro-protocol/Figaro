@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Security — Figaro Protocol",
     description:
         "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna — the external-audit posture, and how to verify any deal yourself. Audit results are published here as they land.",
-};
+});
 
 // Security in the crypto sense only: testing, code security, audit results.
 // The questions people ask — custody, non-delivery, disputes, lost keys,

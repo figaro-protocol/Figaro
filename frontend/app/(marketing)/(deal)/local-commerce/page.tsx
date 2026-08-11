@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
+// No `openGraph`/`twitter` here (unlike its page siblings): this route's
+// layout (`local-commerce/layout.tsx`) already carries a curated `openGraph`
+// — Next.js metadata merging REPLACES a parent's `openGraph` object wholesale
+// with a child's, so adding one here would silently blank out that copy
+// rather than extend it.
 export const metadata: Metadata = {
     title: "Local Commerce — Figaro Protocol",
     description: "One meal, three strangers, no platform: a delivered meal ordered, cooked, carried, and settled in one stroke. Generic across food, retail, and services.",

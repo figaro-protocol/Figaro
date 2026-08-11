@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -8,11 +9,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "From Firms to Transaction-Scoped Institutions — Figaro Protocol",
     description:
         "A Coasean re-examination: when bilateral enforcement collapses to a fixed 2x capital lockup, the firm's subordination overlay loses its cost advantage. The firm is demoted from privileged organizational container to one pattern among several — assemblies, treasury communities, peer networks, agent coalitions.",
-};
+});
 
 export default function TransactionScopedInstitutionsPaper() {
     return (

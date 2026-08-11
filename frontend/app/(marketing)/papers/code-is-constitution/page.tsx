@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
 } from "@/components/papers/PaperLayout";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Code Is Constitution — Figaro Protocol",
     description:
         "Against 'code is law': sufficiently decentralized protocols are not rival legal systems but the entrenched procedural layer beneath enactment — rules about rules, held stable by a normative community, with ordinary law re-seated at the boundary as a consumer of the protocol's evidence.",
-};
+});
 
 export default function CodeIsConstitutionPaper() {
     return (

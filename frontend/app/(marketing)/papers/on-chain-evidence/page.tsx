@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "On-Chain Evidence, Off-Chain Adjudication — Figaro Protocol",
     description:
         "Settlement is on-chain by nature, adjudication is off-chain by nature. A layered approach to smart-contract dispute resolution: the protocol produces evidence existing courts already know how to use.",
-};
+});
 
 export default function OnChainEvidencePaper() {
     return (

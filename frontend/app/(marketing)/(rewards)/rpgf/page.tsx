@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
@@ -8,11 +9,11 @@ import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 // page — restored to its original route (/rpgf, born 2026-05-22) after two
 // renames buried it. Hero + one terms section + closer. Every claim traces
 // to src/rpgf/RpgfMinter.sol + src/protocol/usage/UsageCounter.sol.
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "RPGF — Figaro Protocol",
     description:
         "600 million florins reserved for the people who write the clauses and compose the assemblies that grow the network's usage, paid by a published formula anyone can check — the schedule, the two counters, the three-seller floor, the live-deposit condition.",
-};
+});
 
 export default function Rpgf() {
     return (

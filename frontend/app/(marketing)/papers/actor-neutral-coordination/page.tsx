@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Actor-Neutral Coordination over Bonded Commitments — Figaro Protocol",
     description:
         "The bonded settlement primitive is actor-neutral by construction: the kernel reads EIP-712 signatures and bond posture, not the type of the entity behind a wallet. An equilibrium whose node comparisons cannot tell a program from a person extends without modification to autonomous agents. A control-theory reading of the Agent SDK.",
-};
+});
 
 export default function ActorNeutralCoordinationPaper() {
     return (

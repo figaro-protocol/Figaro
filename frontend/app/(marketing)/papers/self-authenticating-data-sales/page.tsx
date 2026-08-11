@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Self-Authenticating Data Sales — Figaro Protocol",
     description:
         "A dataset sold on ordinary terms suffers Arrow's information paradox: the buyer cannot value the data without seeing it, and having seen it, has no reason to pay. A settlement layer that records trade as merkle-committed, bonded agreements dissolves the paradox economically rather than cryptographically: each delivered record carries an inclusion proof against the on-chain fingerprint of the settled process that produced it, and the licence granting access carries one against the fingerprint of the sale itself, and the doubled bond leaves a seller that ships less than it described out of pocket even after crediting it with everything shipping less lets it keep.",
-};
+});
 
 export default function SelfAuthenticatingDataSalesPaper() {
     return (

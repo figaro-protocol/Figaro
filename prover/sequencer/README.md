@@ -110,6 +110,23 @@ other way — bigger hardware, or a third-party SP1 proving network — settles
 identically; this crate's local flow is one way to produce a proof, not the
 only one.
 
+Rough order of magnitude, so you can budget hardware before running the
+benchmark above: local SP1 Groth16 proving is commonly reported, in general
+(not as a figure this repo benchmarks or publishes), as tens-of-GB-RAM class
+and wall-clock minutes-to-hours per proof on CPU. What this repo *does* say:
+`prove_groth16` (`prover/sequencer/src/prover.rs`) logs Groth16 generation as
+"this can take minutes", the manual exerciser (`prover/script/src/main.rs`)
+calls its own real-proof stage "Slow (~minutes)", and before the pinned k256
+secp256k1-precompile patch (`prover/Cargo.toml`), the ~7 EIP-712 ECDSA
+signatures in the canonical batch alone cost ~19.8M SP1 cycles — the patch
+exists to route that off the general-purpose RISC-V execution and onto the
+SP1 secp256k1 precompile; no patched-cycle or patched-proof-time figure is
+published in-repo yet, so measure your own setup rather than assume one. The
+paid alternative to self-hosting is the **Succinct Prover Network** — a
+decentralised proof marketplace: submit program + inputs, receive a proof —
+covered in `docs/SCALING_STRATEGY.md` § "Proving Infrastructure — Succinct
+(SP1)".
+
 ## Running locally against devnet
 
 The sequencer is started explicitly — `devup` does not launch it.

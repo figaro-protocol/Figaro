@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "A Verified Settlement Kernel — Figaro Protocol",
     description:
         "A reference implementation of the two-mechanism bonded commitment kernel — ownerless, fee-less, admin-less — with the machine-checked verification methodology applied to it, the properties each method establishes, the threat model, and an honest boundary between the direct settlement path and the proof-batched one.",
-};
+});
 
 export default function VerifiedSettlementKernelPaper() {
     return (

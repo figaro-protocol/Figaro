@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberLanding } from "@/components/members/MemberLanding";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Manage membership — Figaro Protocol",
     description: "The registered member's dashboard: view and edit the profile, leave the registry, claim a released deposit. Unregistered wallets are sent straight to the wizard.",
-};
+});
 
 // The registered member's home (operator rule 2026-08-06: the membership
 // pitch owns /members; the wizard lives directly beneath it). Unregistered

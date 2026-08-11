@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -8,11 +9,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Substrate-Broadening Retroactive Public-Goods Funding — Figaro Protocol",
     description:
         "An allocation mechanism that distributes 600M florins to clause authors and assembly designers of record over nine annual accrual periods on a rising budget schedule, scoring clauses and assemblies by distinct live-staked sellers of record rather than volume or value, counted on chain the moment a process settles, with Sybil resistance carried by a two-sided live stake whose cost bound the paper derives.",
-};
+});
 
 function FormalBlock({ label, children }: { label: string; children: React.ReactNode }) {
     return (

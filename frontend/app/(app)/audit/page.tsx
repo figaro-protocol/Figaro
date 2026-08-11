@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 
 /**
  * /audit — generic hash-verification surface (no processId).
@@ -19,10 +20,10 @@ import type { Metadata } from "next";
 import { HashVerifier } from "./_components/HashVerifier";
 import { ProcessAuditOpen } from "./_components/ProcessAuditOpen";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Audit — Figaro Protocol",
     description: "Verify a hash from an audit bundle against chain state.",
-};
+});
 
 export default function AuditPage() {
     return (

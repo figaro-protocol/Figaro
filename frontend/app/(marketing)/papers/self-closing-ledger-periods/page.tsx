@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -8,11 +9,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Bookkeeping as Protocol Byproduct — Figaro Protocol",
     description:
         "A bonded process is a self-closing ledger period: the process is an accounting entity with identically zero equity, commitments are its journal entries, the buyer's single atomic resolution is its closing entry, and every account it opened is zeroed by that act. A specific class of record-keeping work becomes protocol byproduct; interpretive accounting and the audit of records against reality continue.",
-};
+});
 
 function FormalBlock({ label, children }: { label: string; children: React.ReactNode }) {
     return (

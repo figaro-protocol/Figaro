@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { OnboardingEndpointsForm } from "@/components/members/OnboardingEndpointsForm";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Edit endpoints — Figaro Protocol",
     description: "The member's own infrastructure: IPFS node, gateway, chain RPC, verifier relay. Device configuration — stored in this browser, never pinned, never published.",
-};
+});
 
 export default function EditEndpointsPage() {
     return (

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MemberDiscovery } from "./_components/MemberDiscovery";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Discover members — Figaro Protocol",
     description:
         "Browse members — buyers and sellers — across the Figaro ecosystem. Filter by your location, search by name, pick an assembly. Click a member to open their assembly's runtime and start a bonded commitment.",
-};
+});
 
 export default function DiscoverPage() {
     return (

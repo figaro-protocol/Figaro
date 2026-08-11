@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Wallet Without a Polity — Figaro Protocol",
     description:
         "A bonded settlement primitive's precondition is a cryptographic key, not a recognized civil-legal subjecthood. For the displaced and stateless, it grants not the right to have rights (political) but a capacity to have commerce (structural).",
-};
+});
 
 export default function WalletWithoutPolityPaper() {
     return (

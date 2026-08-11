@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -6,11 +7,11 @@ import {
     PaperRemark,
 } from "@/components/papers/PaperLayout";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Ungoverned Substrate — Figaro Protocol",
     description:
         "The network-state and blockchain-governance programs both assume the alternative to state coordination must itself be a governed entity. The bonded settlement primitive realizes a third option: an invariant, ungoverned substrate on which arbitrary governed entities compose.",
-};
+});
 
 export default function UngovernedSubstratePaper() {
     return (

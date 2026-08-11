@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { PaperLayout, PaperSection, PaperRun, PaperRemark } from "@/components/papers/PaperLayout";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Coercion Variable — Figaro Protocol",
     description:
         "A bonded settlement primitive performs law's enforcement function in bilateral commerce without a coercive apparatus. Coercion becomes a substrate variable; the question of legitimate coercion relocates to a bounded domain.",
-};
+});
 
 export default function CoercionVariablePaper() {
     return (

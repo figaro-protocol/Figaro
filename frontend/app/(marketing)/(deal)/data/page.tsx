@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Data — Figaro Protocol",
     description:
         "The protocol never holds your private trade records — only a fingerprint. The public half of every trade is a shared map anyone can read. And opening your own books to a buyer is an ordinary bonded sale, on your terms, arriving provable.",
-};
+});
 
 export default function Data() {
     return (

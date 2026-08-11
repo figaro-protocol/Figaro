@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditCatalogue } from "@/components/members/MemberEditCatalogue";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Edit catalogue — Figaro Protocol",
     description: "Update the pinned catalogue document. Re-pins items to IPFS, then re-pins the member profile pointing at the new catalogue CID, then dispatches MembersRegistry.updateProfile.",
-};
+});
 
 export default function EditCataloguePage() {
     return (

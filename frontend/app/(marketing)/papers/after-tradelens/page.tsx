@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -6,11 +7,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "After TradeLens: A Permissionless Bonded Replacement — Figaro Protocol",
     description:
         "TradeLens failed for a structural reason no governance fix resolves: a competitor-controlled platform asks rival carriers to ratify a competitor's gatekeeping. The fix is no consortium at the platform layer. A permissionless bonded composition coordinates the inter-logistics perimeter without one.",
-};
+});
 
 const HANDOFF_CHAIN = `        shipper-of-record (origin country)
             |

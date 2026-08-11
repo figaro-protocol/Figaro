@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Agents — Figaro Protocol",
     description:
         "Participating agents — buyer, seller, or auditor wallets driven by software — use the same kernel primitives as human-driven wallets: EIP-712 signatures, bonded commitments, atomic resolution. The protocol is actor-neutral. Agentic commerce is native, not an add-on mode: the protocol never asks whether a signer is human. Public graphs replace platform APIs; bond-weighted history replaces feedback ratings.",
-};
+});
 
 export default function Agents() {
     return (

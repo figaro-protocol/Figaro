@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -6,11 +7,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment — Figaro Protocol",
     description:
         "How the bonded primitive's equilibrium fares once participants are real: each node a comparison of two certain amounts straddling the prospect-theoretic reference point, so loss aversion weights the defecting branch instead of cancelling; why the Van Huyck coordination failure loses the finality it runs on; atomic resolution as activated peer pressure; and incentive legibility as one comparison per node in a public order.",
-};
+});
 
 export default function BehavioralGameTheoryPaper() {
     return (

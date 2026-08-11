@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -8,11 +9,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern — Figaro Protocol",
     description:
         "The kernel becomes a protocol when work is composed onto it without weakening its equilibrium: a checkable decision rule for what belongs in the protocol, clause design as a verification discipline, and the coordinator pattern's sufficient conditions for invariant-preserving composition (the equilibrium step rests on the bonding derivation's payoff argument).",
-};
+});
 
 function FormalBlock({ label, children }: { label: string; children: React.ReactNode }) {
     return (

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { LockedFundsStateFigure } from "@/components/figures/LockedFundsStateFigure";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "How it works — Figaro Protocol",
     description:
         "How a Figaro deal works: both sides lock a stake larger than the deal, so cheating always loses; the buyer closes it out; every step is recorded permanently.",
-};
+});
 
 // FigaroCore's mechanism design, and ONLY that (operator rule 2026-08-06:
 // the kernel page never carries the stack — the stack figure lives on home).

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -8,11 +9,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Subordination Variable — Figaro Protocol",
     description:
         "The socialist and capitalist traditions both hinge on the wage/subordination relation. A bonded settlement primitive removes it from the substrate — so the same artifact admits both the associated-producer and the frictionless-market reading, and the partition relocates to the graph.",
-};
+});
 
 export default function SubordinationVariablePaper() {
     return (

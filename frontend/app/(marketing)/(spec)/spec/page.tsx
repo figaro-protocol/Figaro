@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { ContractEntry } from "@/components/shared/ContractEntry";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
@@ -6,12 +7,27 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
 import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Specifications — Figaro Protocol",
     description: "Canonical protocol surface: kernel, attestation coordinator, registries, token, optional protocol contracts — plus the sequencer, the batch path's one off-chain piece.",
-};
+});
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
+
+const JUMP_LINKS: { href: string; label: string }[] = [
+    { href: "#inheritance", label: "Inheritance" },
+    { href: "#install", label: "Install the SDK" },
+    { href: "#kernel", label: "Kernel" },
+    { href: "#attestation", label: "Attestation & clause" },
+    { href: "#clause-validation", label: "Clause validation" },
+    { href: "#settlement-paths", label: "Two settlement paths, two disjoint state universes" },
+    { href: "#sequencer", label: "The sequencer" },
+    { href: "#token", label: "Token" },
+    { href: "#optional-contracts", label: "Optional protocol contracts" },
+    { href: "#funding-composition", label: "Funding, payout & composition contracts" },
+    { href: "#deployments", label: "Canonical deployments" },
+    { href: "#composition", label: "Composition" },
+];
 
 export default function Specifications() {
     return (
@@ -26,7 +42,21 @@ export default function Specifications() {
                 }
             />
 
-            <MarketingSection title="Inheritance">
+            <MarketingSection sectionId="jump-index">
+                <nav aria-label="Sections on this page">
+                    <ol className="space-y-2 text-sm text-ink-body leading-relaxed list-decimal pl-5">
+                        {JUMP_LINKS.map((l) => (
+                            <li key={l.href}>
+                                <Link href={l.href} className="text-ink-heading font-medium hover:underline">
+                                    {l.label}
+                                </Link>
+                            </li>
+                        ))}
+                    </ol>
+                </nav>
+            </MarketingSection>
+
+            <MarketingSection title="Inheritance" sectionId="inheritance">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
                     This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/kernel" className="underline">Kernel</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
                 </p>
@@ -36,7 +66,25 @@ export default function Specifications() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Kernel">
+            <MarketingSection title="Install the SDK" sectionId="install">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <code>@figaro/sdk</code> is the TypeScript client for everything on this page &mdash; event parsing, state reconstruction, EIP-712 commitment building, bond math, agent coordination, checkout planning &mdash; over <code>viem</code>, a peer dependency:
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>npm install @figaro/sdk viem</code>
+                </pre>
+                <p className="text-sm text-ink-muted leading-relaxed mb-4">
+                    Honest scope: <code>@figaro/sdk</code> is not yet published to the npm registry &mdash; publication (with provenance attestation) is a tracked pre-release task. Until then, install from a repo checkout: <code>&quot;@figaro/sdk&quot;: &quot;file:../sdk&quot;</code> (build it first: <code>npm run build --workspace sdk</code> from the repo root).
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> in the public repo is the canonical integration manual &mdash; the five entry points and every function signature live there, not duplicated here. The canonical clause specs are readable without a browser too: <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/*.json</code></a> in the public repo is the <code>ClauseRegistry</code> seed data, loaded from <code>ClauseRegistry</code> &rarr; IPFS at runtime.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Kernel" sectionId="kernel">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="FigaroCore"
@@ -54,7 +102,7 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Attestation &amp; clause">
+            <MarketingSection title="Attestation &amp; clause" sectionId="attestation">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="AttestationCoordinator"
@@ -117,7 +165,7 @@ function attestViaResolver(
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Clause validation">
+            <MarketingSection title="Clause validation" sectionId="clause-validation">
                 <p className="text-base text-ink-body leading-relaxed">
                     Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK) before signing, and re-validated <strong>on-chain</strong> on the batched, proof-based settlement path &mdash; a generic SP1 engine checks each clause against its registry-anchored spec, so a never-seen clause settles with zero per-clause on-chain code. The direct attestation path merkle-binds but validates no content shape. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
@@ -194,7 +242,7 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The sequencer: the batch path&rsquo;s entry point, and the only off-chain piece.">
+            <MarketingSection title="The sequencer: the batch path&rsquo;s entry point, and the only off-chain piece." sectionId="sequencer">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Everything else on this page is a contract. This one is not: a <strong>sequencer</strong> is an off-chain HTTP relay that pools signed operations, assembles a batch, proves it with SP1, and calls <code>settleBatch</code>. It is the ordinary way onto the batch path &mdash; not because the path is gated, but because producing a batch proof is the work it does for you.
                 </p>
@@ -209,7 +257,7 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Token">
+            <MarketingSection title="Token" sectionId="token">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="FlorinToken"
@@ -230,7 +278,7 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Optional protocol contracts">
+            <MarketingSection title="Optional protocol contracts" sectionId="optional-contracts">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="MembersRegistry"
@@ -249,7 +297,7 @@ function attestViaResolver(
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Funding, payout &amp; composition contracts">
+            <MarketingSection title="Funding, payout &amp; composition contracts" sectionId="funding-composition">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists (Uniswap&apos;s Permit2 and router, the ownerless Disperse), a local devnet rehearses the composition with an interface-matching mock, and the deployment record wires the real one wherever it&apos;s deployed.
                 </p>
@@ -305,7 +353,7 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Canonical deployments">
+            <MarketingSection title="Canonical deployments" sectionId="deployments">
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
                         <thead>
@@ -317,7 +365,7 @@ function attestViaResolver(
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default">
                             <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-ink-muted">Devnet (active)</td></tr>
-                            <tr><td className="py-2 pr-4">Ethereum mainnet</td><td className="py-2 pr-4 font-mono">1</td><td className="py-2 text-ink-muted">Pending external audit</td></tr>
+                            <tr><td className="py-2 pr-4">Ethereum mainnet</td><td className="py-2 pr-4 font-mono">1</td><td className="py-2 text-ink-muted"><Link href="/security#audit" className="underline">Pending external audit</Link></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -331,7 +379,7 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Composition">
+            <MarketingSection title="Composition" sectionId="composition">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are shown on <Link href="/kernel" className="underline">Kernel</Link>; the academic frame for why the kernel is narrow is on <Link href="/working-groups" className="underline">Papers</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}

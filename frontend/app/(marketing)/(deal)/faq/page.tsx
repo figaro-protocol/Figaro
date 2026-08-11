@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "FAQ — Figaro Protocol",
     description:
         "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, non-delivery, disputes, lost keys, privacy, ownership — with each guarantee's caveat beside it.",
-};
+});
 
 /** The page's fourteen questions, in document order, split into two labeled
  *  groups by what each question is actually about — not by position. Titles

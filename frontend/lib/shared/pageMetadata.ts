@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+
+const SITE_SUFFIX = " — Figaro Protocol";
+
+/**
+ * Derives a page's Open Graph + Twitter metadata from its OWN `title` +
+ * `description` — no new copy authored. Next.js does not fall back to
+ * `metadata.title` for `openGraph`/`twitter`: a page with no `openGraph`
+ * block inherits the root layout's site-wide one wholesale, so a shared
+ * link unfurls as the generic homepage card instead of that page's own
+ * title. `og:title` drops the " — Figaro Protocol" suffix (applied
+ * uniformly across every caller); the site context comes from `siteName`,
+ * which MUST be set here — the wholesale replacement that motivates this
+ * helper also discards the root layout's `siteName`.
+ */
+export function withOg({
+    title,
+    description,
+}: {
+    title: string;
+    description: string;
+}): Metadata {
+    const ogTitle = title.endsWith(SITE_SUFFIX)
+        ? title.slice(0, -SITE_SUFFIX.length)
+        : title;
+    return {
+        title,
+        description,
+        openGraph: {
+            title: ogTitle,
+            description,
+            siteName: "Figaro Protocol",
+            type: "website",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: ogTitle,
+            description,
+        },
+    };
+}

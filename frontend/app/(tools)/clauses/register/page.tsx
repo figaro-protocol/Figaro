@@ -42,7 +42,7 @@ export default function ClauseAuthoring() {
                     Register a clause.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl mb-4">
-                    A clause is a content shape — the structured evidence an attestation carries. Paste its spec below; it is validated against the same off-chain Layer-A check that gates signing, pinned to IPFS, and anchored on the <code>ClauseRegistry</code>. Registration is permissionless, first-write-wins, and immutable per <code>(name, version)</code>.
+                    A clause defines a relationship — buyer↔seller and seller↔seller — one reusable term of a deal, tailored per designer via <code>block.design.fills</code>. It may include attestations, but is not one. Paste its spec below; it is validated against the same off-chain Layer-A check that gates signing, pinned to IPFS, and anchored on the <code>ClauseRegistry</code>. Registration is permissionless, first-write-wins, and immutable per <code>(name, version)</code>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     New to the spec format? The{" "}
@@ -121,7 +121,7 @@ export default function ClauseAuthoring() {
                     What the hash covers.
                 </h2>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Three different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause id</strong> is the registry key. The <strong><code>contentHash</code></strong> is the document&apos;s integrity anchor. The <strong><code>agreementHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is. Here is exactly which part of your spec reaches which:
+                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause id</strong> is the registry key. The <strong><code>contentHash</code></strong> is the document&apos;s integrity anchor. The <strong><code>agreementHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is. Here is exactly which part of your spec reaches which:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Glossary — Figaro Protocol",
     description:
-        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, operator, attestation, process, settlement, gas, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
-};
+        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, operator, order, attestation, process, settlement, gas, the four hashes, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
+});
 
 interface Term {
     id: string;
@@ -81,6 +82,13 @@ const TERMS: Term[] = [
         readMore: <Link href="/faq#compatibility" className="hover:underline">FAQ</Link>,
     },
     {
+        id: "hashes",
+        term: "The four hashes",
+        definition:
+            "A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is — registration is permanent and first-write-wins. idHash (the clause id — keccak256 of the clause's name and version) is the on-chain registry key. contentHash is the integrity anchor over the whole document. agreementHash is what a buyer and seller actually sign. compositionHash is what a designer's assembly is identified by.",
+        readMore: <Link href="/clauses/register#what-the-hash-covers" className="hover:underline">Register a clause</Link>,
+    },
+    {
         id: "kernel",
         term: "Kernel",
         definition:
@@ -95,10 +103,17 @@ const TERMS: Term[] = [
         readMore: <Link href="/faq#agents" className="hover:underline">FAQ</Link>,
     },
     {
+        id: "order",
+        term: "Order",
+        definition:
+            "One buyer-and-seller commitment — the signed unit the kernel bonds. A deal with several value-adders chains several orders into one process, each order adding its own seller and its own stake.",
+        readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
+    },
+    {
         id: "process",
         term: "Process",
         definition:
-            "The whole bonded deal one buyer opens — one buyer, one or more sellers chained together — settling together, atomically, or not at all.",
+            "The whole bonded deal one buyer opens — the chain of orders behind it, one buyer, one or more sellers — settling together, atomically, or not at all.",
         readMore: <Link href="/faq#multi-party" className="hover:underline">FAQ</Link>,
     },
     {

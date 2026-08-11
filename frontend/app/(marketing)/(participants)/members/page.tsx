@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Members — Figaro Protocol",
     description:
         "Membership: one wallet, one published profile — what you sell, and what you offer from the records of the deals you buy through. People and software agents register the same way.",
-};
+});
 
 // The membership page — ONE subject (operator ruling 2026-08-06): what a
 // member is, what a member publishes (both halves, agents included), and

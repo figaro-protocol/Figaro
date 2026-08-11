@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Air Service as Coordinated Resource Markets — Figaro Protocol",
     description:
         "Air service read as coordination across resource markets — crew, aircraft, fuel, slots, catering, maintenance, ground handling, and public services — each provider a wallet bonded directly to the passenger inside one process. Under buyer-only atomic resolution the provider cohort determines and pays compensation to the passenger directly, before any external mechanism engages. The public-authority wallets are the paper's declared thought experiment.",
-};
+});
 
 export default function AirServiceCoordinationPaper() {
     return (

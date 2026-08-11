@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -7,11 +8,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Disclosure Asymmetry — Figaro Protocol",
     description:
         "Mechanism design is the engineering of consent with the sign flipped, and the operation that flips it is disclosure. Consent-engineering manufactures a disposition by concealing the rules and exploiting the ruled's ignorance of them; cryptoeconomic mechanism design constructs warranted confidence by making the rules common knowledge and deterministically enforced. The two regimes have opposite-signed dependence on the participant's epistemic accuracy. A reply to Viljoen, Goldenfein & McGuigan.",
-};
+});
 
 export default function DisclosureAsymmetryPaper() {
     return (

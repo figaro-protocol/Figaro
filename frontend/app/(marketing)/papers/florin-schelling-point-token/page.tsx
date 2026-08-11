@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -6,11 +7,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Florin: A Schelling-Point Token — Figaro Protocol",
     description:
         "The florin is a pure focal-point token: its value is its focality, not yield, governance, fees, or activity-driven supply. Settlement never mints, consults, or denominates in it, and its issuance is a fixed matter settled elsewhere. It is situated among the four things that meet in one bonded process — three kinds of token (coordination, utility, community) and the signal a denomination emits, which is not a token at all — and the design is defined by what it refuses to do: each exclusion removes a reason to hold florins that is not alignment-signaling.",
-};
+});
 
 export default function FlorinSchellingPointTokenPaper() {
     return (

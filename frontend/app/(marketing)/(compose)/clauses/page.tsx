@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
@@ -11,11 +12,11 @@ import { ClauseInventory } from "./_components/ClauseInventory";
 // RPGF invitation with EXACTLY ONE link to the register page.
 // Public/private data belongs to /data — the disposition section died here.
 // Operator fine-tooth review pending (next session).
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Clauses — Figaro Protocol",
     description:
         "A clause is what it is in a paper contract — one reusable term of a deal — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry inventory, and the RPGF reward for clauses that get used.",
-};
+});
 
 export default function Clauses() {
     return (

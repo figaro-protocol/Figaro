@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Consequences — Figaro Protocol",
     description:
         "The question asked before release: assuming the whole thing is adopted — kernel, clauses, assemblies, the data layer, dispute composition, fiscal and regulatory reporting — what does the world look like in two hundred years, in what order does the old apparatus unwind, what does it cost, and where does power go instead.",
-};
+});
 
 const JUMP_LINKS: { href: string; label: string }[] = [
     { href: "#constant", label: "The one constant that changed" },

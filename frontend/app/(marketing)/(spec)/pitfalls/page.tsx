@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Sharp edges — Figaro Protocol",
     description:
         "The one canonical footguns page: six documented traps, organized by when each one bites — writing a clause spec, building a commit, or reading settled state — each with a one-paragraph summary and a link to its full, canonical explanation.",
-};
+});
 
 export default function Pitfalls() {
     return (
@@ -17,7 +18,7 @@ export default function Pitfalls() {
             <div className="container mx-auto px-6 pt-8">
                 <Breadcrumb
                     items={[
-                        { label: "Specifications", href: "/spec" },
+                        { label: "Builders", href: "/clauses" },
                         { label: "Sharp edges" },
                     ]}
                 />

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
@@ -9,11 +10,11 @@ import { PAPER_GROUPS } from "@/app/(marketing)/_lib/paperGroups";
 const TAXONOMY_URL =
     "https://research.wu.ac.at/en/publications/foundations-of-cryptoeconomic-systems-6/";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Working Groups — Figaro Protocol",
     description:
         "A working group is an interdisciplinary group of people: the eight disciplines of cryptoeconomics intersecting on questions none of them can close alone. The eight groups, their papers, and how to contribute.",
-};
+});
 
 export default function WorkingGroups() {
     return (

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Figaro Protocol — My word is my bond",
     description:
         "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
-};
+});
 
 // Copy constraints the code can't show: "process" always means the economic
 // object, "the blockchain" the substrate, "record" what a process leaves —

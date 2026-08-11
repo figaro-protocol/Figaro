@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -6,11 +7,11 @@ import {
     PaperRun,
 } from "@/components/papers/PaperLayout";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Wallet as Legal Subject — Figaro Protocol",
     description:
         "Labor law classifies along one axis — subordination. A bonded settlement primitive makes subordination architecturally optional in a region of transactions, and there the classification problem loses its subject. The wallet collapses the Roman res/persona distinction.",
-};
+});
 
 export default function WalletLegalSubjectPaper() {
     return (

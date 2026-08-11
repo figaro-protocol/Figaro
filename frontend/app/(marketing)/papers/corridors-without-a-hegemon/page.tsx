@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -6,11 +7,11 @@ import {
     PaperRemark,
 } from "@/components/papers/PaperLayout";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Corridors Without a Hegemon — Figaro Protocol",
     description:
         "The Belt and Road Initiative and the India-Middle East-Europe Economic Corridor are rival infrastructure-power projects in which control of the corridor is the geopolitical prize. An ownerless bonded settlement substrate can be common ground beneath them precisely because it takes no position and nobody owns it: it neutralizes the settlement-layer chokepoint while leaving the physical corridor exactly as contested as it was.",
-};
+});
 
 export default function CorridorsWithoutAHegemonPaper() {
     return (

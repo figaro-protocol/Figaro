@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
     PaperSection,
@@ -8,11 +9,11 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "The Visibility of Coordination — Figaro Protocol",
     description:
         "A Gramscian reading: “two strangers need a platform to transact safely” is a hegemonic proposition, not a structural necessity. A bonded settlement primitive makes the coordination function visible as a separable design choice.",
-};
+});
 
 export default function VisibilityOfCoordinationPaper() {
     return (

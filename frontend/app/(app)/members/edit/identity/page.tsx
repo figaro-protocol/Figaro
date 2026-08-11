@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditProfile } from "@/components/members/MemberEditProfile";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Edit profile — Figaro Protocol",
     description: "Update the on-chain member-profile metadata pointer. Re-pins the profile JSON to IPFS and calls MembersRegistry.updateProfile; the deposit is not touched.",
-};
+});
 
 export default function EditProfilePage() {
     return (

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditAssemblies } from "@/components/members/MemberEditAssemblies";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Edit assemblies — Figaro Protocol",
     description: "Pick which assemblies the wallet participates in. Re-pins the profile JSON with the updated assemblyBindings array, then dispatches MembersRegistry.updateProfile.",
-};
+});
 
 export default function EditAssembliesPage() {
     return (
