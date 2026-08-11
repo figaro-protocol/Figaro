@@ -11,7 +11,7 @@ export type LayeredDefenseFigureProps = BaseFigureProps;
  * the on-chain record from outside the deal and cannot reach in.
  *
  * Source of truth: the ranked list at /faq#layers ("What stands
- * behind a deal?", frontend/app/(marketing)/(explain)/faq/page.tsx) — chain,
+ * behind a deal?", frontend/app/(marketing)/(deal)/faq/page.tsx) — chain,
  * lockbox+record, other sellers, arbitration, ordinary courts — cross-
  * checked against the canonical stack in
  * ~/.claude/projects/-Users-adaliana-Figaro/memory/reference_layered_security_stack.md

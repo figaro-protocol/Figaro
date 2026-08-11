@@ -3,7 +3,7 @@
 /**
  * RewardsView — the RPGF minter's runtime surface at `/rewards`. Not an admin
  * panel and not an application form: usage is COUNTED ON CHAIN as it happens
- * (a settled order, the clause or assembly proven present in the agreement both parties
+ * (a settled process, the clause or assembly proven present in the agreement both parties
  * signed), a period's counts stop moving the moment it ends, and the wallet
  * then claims its clauses' and assemblies' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
@@ -158,7 +158,7 @@ export function RewardsView() {
                                                 <li key={a.clauseOrAssembly} className="font-mono break-all">
                                                     {a.label} — {(a.c + a.batchC).toString()} settled process
                                                     {a.c + a.batchC === 1n ? "" : "es"},{" "}
-                                                    {(a.d + a.batchD).toString()} distinct pair
+                                                    {(a.d + a.batchD).toString()} distinct staked seller
                                                     {a.d + a.batchD === 1n ? "" : "s"}, score{" "}
                                                     {a.score.toString()}
                                                 </li>

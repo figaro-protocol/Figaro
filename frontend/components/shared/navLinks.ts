@@ -3,10 +3,10 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The seven entries are the ruled protocol-object sections: The Deal,
-//   Market, Clauses & Assemblies, Participants, Rewards, Specifications,
-//   Research (papers are reached through Working Groups — discussion
-//   starters). The logo links home; no "Home" item here.
+//   The five entries are the ruled protocol-object sections (operator
+//   2026-08-07, enforced by scripts/lint-nav-structure.sh): The Deal,
+//   Market, Builders, Participants, Research — full tree in the
+//   MARKETING_MAP docstring below. The logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` feeds ONLY the mobile drawer's App section
 //   (no desktop row exists); entries whose routes the marketing map
@@ -56,7 +56,7 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/members/manage", label: "Manage membership" },
     { href: "/audit", label: "Audit" },
     // The RPGF distribution's runtime surface (read your accrual, claim a
-    // closed tranche) — a protocol surface (the composed UsageCounter +
+    // closed period) — a protocol surface (the composed UsageCounter +
     // RpgfMinter), not a product feature; claiming is permissionless network
     // participation.
     { href: "/rewards", label: "Rewards" },
@@ -150,7 +150,7 @@ export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = [
     // The app tier, announced on marketing mobile exactly as the footer's App
     // column announces it on desktop — DERIVED (filtered spread), never a
     // hand-copy. Routes the marketing map already lists (e.g. /discover,
-    // /members/manage under Users) are not repeated here.
+    // /orders, /audit under Market) are not repeated here.
     { isSectionHeader: true, label: "App", href: "" },
     ...NAV_LINKS_APP_PRIMARY.filter(
         (link) => !MARKETING_MAP.some((g) => g.links.some((l) => l.href === link.href)),

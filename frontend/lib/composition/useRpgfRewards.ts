@@ -28,7 +28,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 /** One clause or assembly the connected wallet is author of record for, with
  *  the accrual it carried in a given period. `c` = distinct settled processes,
- *  `d` = distinct (buyer, seller) pairs, `score` = the uniform breadth
+ *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
     /** Clause idHash or assembly compositionHash — the clause-or-assembly key. */
@@ -38,11 +38,11 @@ export interface RpgfClauseOrAssemblyAccrual {
     family: "clause" | "assembly";
     /** Distinct settled processes, DIRECT path (`accrualOf`). */
     c: bigint;
-    /** Distinct pairs in this period, DIRECT path. */
+    /** Distinct staked sellers in this period, DIRECT path. */
     d: bigint;
     /** Distinct settled processes, BATCH path (`batchAccrualOf`). */
     batchC: bigint;
-    /** Distinct pairs in this period, BATCH path. */
+    /** Distinct staked sellers in this period, BATCH path. */
     batchD: bigint;
     /** `scoreOf` — the two paths' scores SUMMED, and the figure the payout
      *  divides by. Reading `accrualOf.score` alone would show the wallet a
