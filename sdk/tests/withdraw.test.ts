@@ -203,6 +203,40 @@ describe("deriveAssemblyWithdrawGate", () => {
         expect(deriveAssemblyWithdrawGate(template(), []).canWithdraw).toBe(true);
     });
 
+    it("THE ASSEMBLY-SCOPE FOLD: a template with assemblyClauses matches the FOLDED committed shape (the K4 regression)", () => {
+        // Real templates always carry assembly-scoped clauses (the mandatory
+        // provenance anchor at minimum), and planTemplateOrders folds them
+        // into EVERY node — so committed sections always include them. The
+        // fingerprint must apply the same fold or it can never match a real
+        // process, silently disabling the stake-lock for every assembly
+        // author (the bug found by assembly-withdraw.devnet.spec.ts).
+        const pinned: AssemblyTemplate = {
+            ...template(),
+            assemblyClauses: { "figaro-assembly-provenance": {}, "figaro-utility-token": {} },
+        };
+        const folded: InFlightAgreement[] = [
+            { processId: PROC_A, agreement: agreementWith(["figaro-assembly-provenance", "figaro-utility-token", "figaro-commerce", "figaro-topology"]) },
+            { processId: PROC_A, agreement: agreementWith(["figaro-assembly-provenance", "figaro-utility-token", "figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
+        ];
+        expect(deriveAssemblyWithdrawGate(pinned, folded)).toEqual({
+            canWithdraw: false,
+            inFlightCount: 1,
+            unverifiedCount: 0,
+        });
+    });
+
+    it("the fold is exact: committed sections MISSING the assembly-scoped clauses do not match a pinned template", () => {
+        const pinned: AssemblyTemplate = {
+            ...template(),
+            assemblyClauses: { "figaro-assembly-provenance": {} },
+        };
+        const unfolded: InFlightAgreement[] = [
+            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
+            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
+        ];
+        expect(deriveAssemblyWithdrawGate(pinned, unfolded).canWithdraw).toBe(true);
+    });
+
     it("unverified-only: a process with an unverifiable agreement is a caveat, never blocking", () => {
         const agreements: InFlightAgreement[] = [
             { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },

@@ -62,6 +62,8 @@ import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { clauseIsAssemblyScoped } from '@/lib/shared/clauseSpecSource';
+import { primeClauseSpecs } from '../lib/primeClauseSpecs';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
@@ -140,6 +142,16 @@ const checkoutFill = (clauseId: string, field: string, value: string) =>
 const checkoutPick = (clauseId: string, field: string, option: string) =>
     async (page: Page) =>
         page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}-${option}"]`).first().check();
+/** Assembly-terms panel scalar input (`assembly-terms-field-<clauseId>-<field>`
+ *  — the designer fill for an ASSEMBLY-SCOPED clause, composed once for the
+ *  whole design instead of per order). */
+const assemblyTermsFill = (clauseId: string, field: string, value: string) =>
+    async (page: Page) =>
+        page.getByTestId(`assembly-terms-field-${clauseId}-${field}`).fill(value);
+/** Assembly-terms panel enum radio (`assembly-terms-field-<clauseId>-<field>-<option>`). */
+const assemblyTermsPick = (clauseId: string, field: string, option: string) =>
+    async (page: Page) =>
+        page.getByTestId(`assembly-terms-field-${clauseId}-${field}-${option}`).check();
 /** Wizard catalogue clause-values input (suffix-matched — the item uid is dynamic). */
 const catalogueFill = (clauseId: string, field: string, value: string) =>
     async (page: Page) =>
@@ -208,18 +220,23 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
+        // ASSEMBLY-SCOPED (design.scope: "assembly", ruled 2026-07-28): the
+        // recourse terms are part of the assembly's identity, composed ONCE
+        // on the AssemblyTermsPanel — never per order, never buyer-authored
+        // at checkout. The spec constrains applicableLaw to a shaped
+        // jurisdiction token (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose
+        // fails the Layer-A gate); convention per the field description is
+        // ISO 3166-2 — 'US-NY'.
         clauseId: 'figaro-applicable-law',
-        // The spec constrains applicableLaw to a shaped jurisdiction token
-        // (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose fails the Layer-A gate);
-        // convention per the field description is ISO 3166-2 — 'US-NY'.
-        // General clause → the BUYER fills it at checkout (ruled 2026-07-14).
-        checkout: checkoutFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
+        design: assemblyTermsFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
         auditTexts: ['Applicable law and forum', 'US-NY'],
         leaf: (data) => expect(data.applicableLaw).toBe('US-NY'),
     },
     {
+        // ASSEMBLY-SCOPED (design.scope: "assembly", ruled 2026-07-28): same
+        // designer-authored recourse family as figaro-applicable-law.
         clauseId: 'figaro-arbitration-kleros',
-        checkout: checkoutPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
+        design: assemblyTermsPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
         auditTexts: ['Kleros decentralized arbitration', 'Blockchain — Technical'],
         leaf: (data) => {
             expect(data.klerosCourt).toBe('blockchain-technical');
@@ -230,17 +247,17 @@ const RUNGS: ClauseRung[] = [
     },
     {
         // THE UTILITY-TOKEN PIN: the designer pins the one ERC-20 the whole
-        // assembly's processes run in — a designer-fills drawer fill (like
-        // consent's affix), identity-bearing in the compositionHash. Generic:
-        // the clause names no token and carries no economics. Checkout
-        // resolves the process currency from the pin, ahead of the buyer's
-        // payment-token pick and the seller default; the committed root's
-        // commerce section carries the SAME currency — the match is the
-        // provenance the pin exists to record.
+        // assembly's processes run in — an ASSEMBLY-SCOPED designer fill (like
+        // the recourse clauses above), identity-bearing in the
+        // compositionHash. Generic: the clause names no token and carries no
+        // economics. Checkout resolves the process currency from the pin,
+        // ahead of the buyer's payment-token pick and the seller default; the
+        // committed root's commerce section carries the SAME currency — the
+        // match is the provenance the pin exists to record.
         clauseId: 'figaro-utility-token',
         design: async (page) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
-            await page.getByTestId('drawer-field-figaro-utility-token-currency').fill(token);
+            await page.getByTestId('assembly-terms-field-figaro-utility-token-currency').fill(token);
         },
         auditTexts: ['Utility token'],
         leaf: (data, sections) => {
@@ -401,7 +418,11 @@ const RUNGS: ClauseRung[] = [
         // witness — the freelancer/production-chain completion evidence.
         clauseId: 'figaro-content-handoff',
         checkout: checkoutPick('figaro-content-handoff', 'contentHandoff', 'public-release'),
-        auditTexts: ['Content hand-off', 'public-release'],
+        // The audit renders the spec's own valueLabels (describeClause →
+        // labelEnumValue), like every other labeled-enum rung here
+        // (klerosCourt's "Blockchain — Technical", hazardClass's "Flammable
+        // liquids") — the raw token 'public-release' never surfaces as text.
+        auditTexts: ['Content hand-off', 'Public release'],
         leaf: (data) => expect(data.contentHandoff).toEqual(['public-release']),
         witness: {
             fill: all(
@@ -451,6 +472,13 @@ async function waitForConnected(page: Page) {
 test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic pipeline (devnet)', () => {
     test.setTimeout(360_000);
 
+    // Node-side spec cache (this process never loads the browser's
+    // `useClauseSpecs` hook) so `clauseIsAssemblyScoped` below can classify
+    // each rung's clause from its registered spec — the SAME classification
+    // AgreementDrawer/AssemblyTermsPanel apply in the browser, read here to
+    // pick the right leg, never a hardcoded clause list.
+    test.beforeAll(async () => { await primeClauseSpecs(); });
+
     for (const rung of RUNGS) {
         test(`${rung.clauseId}: drawer → encode → commit → audit through the generic pipeline`, async ({ page }) => {
             page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
@@ -479,25 +507,43 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
 
             const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
             await rootNode.waitFor({ state: 'visible', timeout: 10000 });
-            await rootNode.click();
-            await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
-            await page.getByTestId('drawer-tab-registry').click();
-            await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-            for (const host of rung.composeFirst ?? []) {
-                await page.getByTestId(`drawer-registry-clause-${host}`).check();
+            // ASSEMBLY-SCOPED clauses (design.scope: "assembly", ruled
+            // 2026-07-28) compose ONCE on the AssemblyTermsPanel, never per
+            // order — AgreementDrawer's registry list excludes them by design
+            // (AgreementDrawer.tsx / AssemblyTermsPanel.tsx partition the live
+            // registry by declared scope). Everything else keeps the per-order
+            // drawer leg. Derived from the registered spec, never a hardcoded
+            // clause list.
+            if (clauseIsAssemblyScoped(rung.clauseId)) {
+                const checkbox = page.getByTestId(`assembly-terms-clause-${rung.clauseId}`);
+                await expect(
+                    checkbox,
+                    `the assembly-terms panel surfaces ${rung.clauseId} from the live registry (drawer leg)`,
+                ).toHaveCount(1, { timeout: 20000 });
+                await checkbox.check();
+                if (rung.design) await rung.design(page);
+            } else {
+                await rootNode.click();
+                await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+                await page.getByTestId('drawer-tab-registry').click();
+                await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+
+                for (const host of rung.composeFirst ?? []) {
+                    await page.getByTestId(`drawer-registry-clause-${host}`).check();
+                }
+                const checkbox = rung.nestedUnder
+                    ? page
+                        .getByTestId(`drawer-nested-${rung.nestedUnder}-${rung.clauseId}`)
+                        .getByTestId(`drawer-registry-clause-${rung.clauseId}`)
+                    : page.getByTestId(`drawer-registry-clause-${rung.clauseId}`);
+                await expect(
+                    checkbox,
+                    `the drawer surfaces ${rung.clauseId} from the live registry (drawer leg)`,
+                ).toHaveCount(1, { timeout: 20000 });
+                await checkbox.check();
+                if (rung.design) await rung.design(page);
             }
-            const checkbox = rung.nestedUnder
-                ? page
-                    .getByTestId(`drawer-nested-${rung.nestedUnder}-${rung.clauseId}`)
-                    .getByTestId(`drawer-registry-clause-${rung.clauseId}`)
-                : page.getByTestId(`drawer-registry-clause-${rung.clauseId}`);
-            await expect(
-                checkbox,
-                `the drawer surfaces ${rung.clauseId} from the live registry (drawer leg)`,
-            ).toHaveCount(1, { timeout: 20000 });
-            await checkbox.check();
-            if (rung.design) await rung.design(page);
 
             await page.getByTestId('designer-name-input').fill(assemblyName);
             await page.getByTestId('designer-summary-input').fill(`Per-clause coverage rung: ${rung.clauseId}.`);

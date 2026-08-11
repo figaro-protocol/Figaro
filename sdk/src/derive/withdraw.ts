@@ -148,9 +148,20 @@ function nodeSignature(clauseIds: readonly string[]): string {
 /** An assembly's structural fingerprint: the sorted multiset of its nodes'
  *  clause signatures. Derivable identically from the registered template and
  *  from an in-flight process's committed orders, so the two are comparable
- *  without recomputing the (irrecoverable-from-runtime) composition hash. */
+ *  without recomputing the (irrecoverable-from-runtime) composition hash.
+ *  Each node's signature applies THE ASSEMBLY-SCOPE FOLD exactly as
+ *  `planTemplateOrders` does (`{...assemblyClauses, ...node.clauses}`): a
+ *  committed order's sections always carry the assembly-scoped clauses (the
+ *  provenance anchor at minimum), so a fingerprint computed without the fold
+ *  can never match a real process — which is precisely the bug this comment
+ *  guards against recurring. */
 function assemblyFingerprint(template: AssemblyTemplate): string[] {
-    return template.agreements.map((node) => nodeSignature(Object.keys(node.clauses))).sort();
+    const assemblyClauseIds = Object.keys(template.assemblyClauses ?? {});
+    return template.agreements
+        .map((node) => nodeSignature([
+            ...new Set([...assemblyClauseIds, ...Object.keys(node.clauses)]),
+        ]))
+        .sort();
 }
 
 function processFingerprint(orders: readonly Agreement[]): string[] {

@@ -91,7 +91,7 @@ export default defineConfig({
     // so a COLD devnet runs in stage order (alphabetical file order would
     // run runtimes before the scenarios that anchor what they consume):
     //
-    //   `devnet-authoring` — the sellers-onboarding wizard (idempotent).
+    //   `devnet-authoring` — the members-onboarding wizard (idempotent).
     //     Everything it consumes (clauses, ONE anchored seed assembly,
     //     sellers) is PRE-POPULATED by scripts/populate-test-data.mjs, which
     //     `test:e2e:devnet` runs before Playwright — seeding is never a test
@@ -115,7 +115,7 @@ export default defineConfig({
     projects: [
         {
             name: 'devnet-authoring',
-            testMatch: /sellers-onboarding\.devnet\.spec\.ts$/,
+            testMatch: /members-onboarding\.devnet\.spec\.ts$/,
             fullyParallel: false,
             workers: 1,
             use: { ...devices['Desktop Chrome'] },
@@ -134,7 +134,7 @@ export default defineConfig({
         {
             name: 'devnet',
             testMatch: /\.devnet\.spec\.ts$/,
-            testIgnore: /(sellers-onboarding|permissionless-clause|clause-coverage|assembly-withdraw|clause-authoring)\.devnet\.spec\.ts$/,
+            testIgnore: /(members-onboarding|permissionless-clause|clause-coverage|assembly-withdraw|clause-authoring)\.devnet\.spec\.ts$/,
             dependencies: ['devnet-authoring'],
             fullyParallel: false,
             workers: 1,
