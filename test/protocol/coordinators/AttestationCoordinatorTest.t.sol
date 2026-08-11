@@ -619,15 +619,23 @@ contract AttestationCoordinatorTest is Test {
         // one LIFECYCLE clause (empty) and one PROXIMITY clause (empty). The
         // merkle root is the agreementHash both parties sign at commit time;
         // each attestation carries the other leaf as its inclusion proof.
-        bytes32 lifecycleLeaf = AgreementTestHelper.leafFor(LIFECYCLE_CLAUSE, "");
-        bytes32 proximityLeaf = AgreementTestHelper.leafFor(PROXIMITY_CLAUSE, "");
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = lifecycleLeaf;
-        leaves[1] = proximityLeaf;
-        bytes32 agreementRoot = AgreementTestHelper.rootFor(leaves);
+        //
+        // Scoped: lifecycleLeaf/proximityLeaf/leaves are only inputs to the
+        // three values below and leave the stack once those are computed.
+        bytes32 agreementRoot;
+        bytes32[] memory proofLifecycle;
+        bytes32[] memory proofProximity;
+        {
+            bytes32 lifecycleLeaf = AgreementTestHelper.leafFor(LIFECYCLE_CLAUSE, "");
+            bytes32 proximityLeaf = AgreementTestHelper.leafFor(PROXIMITY_CLAUSE, "");
+            bytes32[] memory leaves = new bytes32[](2);
+            leaves[0] = lifecycleLeaf;
+            leaves[1] = proximityLeaf;
+            agreementRoot = AgreementTestHelper.rootFor(leaves);
 
-        bytes32[] memory proofLifecycle = AgreementTestHelper.proofFor(leaves, 0);
-        bytes32[] memory proofProximity = AgreementTestHelper.proofFor(leaves, 1);
+            proofLifecycle = AgreementTestHelper.proofFor(leaves, 0);
+            proofProximity = AgreementTestHelper.proofFor(leaves, 1);
+        }
 
         // ── Process setup ─────────────────────────────────────────
         (bytes32 processId, bytes32 rootHash, CommitmentTypes.Commitment memory rootC) =
@@ -650,15 +658,25 @@ contract AttestationCoordinatorTest is Test {
         coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 2, EMPTY, proofLifecycle, EMPTY);
 
         // ── Stage 3: PickedUp (driver) + proximity proof (BLE) ────
-        bytes memory pickupProofContent = "pickup-proximity-proof-band-2";
-        vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 2, EMPTY, proofProximity, keccak256(pickupProofContent));
-        vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 3, EMPTY, proofLifecycle, keccak256(pickupProofContent));
+        // Scoped: pickupProofContent leaves the stack once both calls below
+        // (its only uses) have fired.
+        {
+            bytes memory pickupProofContent = "pickup-proximity-proof-band-2";
+            vm.prank(seller2);
+            coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 2, EMPTY, proofProximity, keccak256(pickupProofContent));
+            vm.prank(seller2);
+            coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 3, EMPTY, proofLifecycle, keccak256(pickupProofContent));
+        }
 
         // ── Stage 4: Delivered (driver) + proximity proof (NFC) ───
-        bytes memory deliveryProofContent = "delivery-proximity-proof-band-3";
-        bytes32 deliveryProofRef = keccak256(deliveryProofContent);
+        // Scoped: deliveryProofContent is only an input to deliveryProofRef
+        // (which stays live for the final assertions below) and leaves the
+        // stack once that hash is computed.
+        bytes32 deliveryProofRef;
+        {
+            bytes memory deliveryProofContent = "delivery-proximity-proof-band-3";
+            deliveryProofRef = keccak256(deliveryProofContent);
+        }
         vm.prank(seller2);
         coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 3, EMPTY, proofProximity, deliveryProofRef);
 

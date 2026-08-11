@@ -143,6 +143,17 @@ contract HalmosUsageCounter is Test {
     uint64 internal constant P0_END = 1_000_000;
     uint64 internal constant P1_END = 2_000_000;
 
+    /// @dev Bundles one `(c, d, score, total)` reading behind a single memory
+    ///      pointer so a snapshot occupies one stack slot instead of four —
+    ///      needed to keep `check_directAccrualMonotone` under the legacy
+    ///      codegen stack limit with 6 symbolic parameters already live.
+    struct Snapshot {
+        uint64 c;
+        uint64 d;
+        uint256 score;
+        uint256 total;
+    }
+
     /// @dev One counter per check — no shared setUp, so each property starts
     ///      from a fresh, empty state exactly like the sibling harnesses.
     function _deploy() internal returns (UsageCounterHarness) {
@@ -178,26 +189,48 @@ contract HalmosUsageCounter is Test {
     ) public {
         UsageCounterHarness counter = _deploy();
 
-        (uint64 c0, uint64 d0, uint256 score0) = counter.accrualOf(clauseOrAssembly, period);
-        uint256 total0 = counter.totalScoreIn(period);
+        Snapshot memory s0 = _snapshot(counter, clauseOrAssembly, period);
 
-        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrAssembly, period, processId1, seller1)));
+        Snapshot memory s1 = _accrueAndSnapshot(counter, clauseOrAssembly, period, processId1, seller1);
+        assertGe(s1.c, s0.c, "c never goes backwards");
+        assertGe(s1.d, s0.d, "d never goes backwards");
+        assertGe(s1.score, s0.score, "score never goes backwards");
+        assertGe(s1.total, s0.total, "the period total never goes backwards");
 
-        (uint64 c1, uint64 d1, uint256 score1) = counter.accrualOf(clauseOrAssembly, period);
-        uint256 total1 = counter.totalScoreIn(period);
-        assertGe(c1, c0, "c never goes backwards");
-        assertGe(d1, d0, "d never goes backwards");
-        assertGe(score1, score0, "score never goes backwards");
-        assertGe(total1, total0, "the period total never goes backwards");
+        Snapshot memory s2 = _accrueAndSnapshot(counter, clauseOrAssembly, period, processId2, seller2);
+        assertGe(s2.c, s1.c, "c never goes backwards (2nd call)");
+        assertGe(s2.d, s1.d, "d never goes backwards (2nd call)");
+        assertGe(s2.score, s1.score, "score never goes backwards (2nd call)");
+        assertGe(s2.total, s1.total, "the period total never goes backwards (2nd call)");
+    }
 
-        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrAssembly, period, processId2, seller2)));
+    /// @dev Reads the current `(c, d, score, total)` accrual for a clause or
+    ///      assembly — factored out of `check_directAccrualMonotone` so each
+    ///      snapshot occupies one `Snapshot memory` stack slot at the call
+    ///      site instead of four scalars (this repo's existing pattern for
+    ///      stack depth, matching `UsageCounterTest`'s `_recordOn`/`_accrual`
+    ///      helpers).
+    function _snapshot(UsageCounterHarness counter, bytes32 clauseOrAssembly, uint8 period)
+        internal
+        view
+        returns (Snapshot memory s)
+    {
+        (s.c, s.d, s.score) = counter.accrualOf(clauseOrAssembly, period);
+        s.total = counter.totalScoreIn(period);
+    }
 
-        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(clauseOrAssembly, period);
-        uint256 total2 = counter.totalScoreIn(period);
-        assertGe(c2, c1, "c never goes backwards (2nd call)");
-        assertGe(d2, d1, "d never goes backwards (2nd call)");
-        assertGe(score2, score1, "score never goes backwards (2nd call)");
-        assertGe(total2, total1, "the period total never goes backwards (2nd call)");
+    /// @dev Fires one `_accrue` call through the harness and returns the
+    ///      post-call snapshot — see `_snapshot` above for why the return is
+    ///      a struct rather than four scalars.
+    function _accrueAndSnapshot(
+        UsageCounterHarness counter,
+        bytes32 clauseOrAssembly,
+        uint8 period,
+        bytes32 processId,
+        address seller
+    ) internal returns (Snapshot memory) {
+        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrAssembly, period, processId, seller)));
+        return _snapshot(counter, clauseOrAssembly, period);
     }
 
     // ── 2. Batch accrual REPLACES, never adds ────────────────────────
@@ -359,33 +392,64 @@ contract HalmosUsageCounter is Test {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000);
 
-        (uint64 bc0, uint64 bd0, uint256 bs0) = counter.accrualOf(clauseOrAssemblyB, 0);
-        (uint64 bbc0, uint64 bbd0, uint256 bbs0) = counter.batchAccrualOf(clauseOrAssemblyB, 0);
-        uint256 total0 = counter.totalScoreIn(0);
+        Isolation memory before = _isolationSnapshot(counter, clauseOrAssemblyB);
 
-        uint256 aScoreDelta;
+        uint256 aScoreDelta = _recordA(counter, clauseOrAssemblyA, processId, seller, viaBatch);
+
+        Isolation memory afterRecord = _isolationSnapshot(counter, clauseOrAssemblyB);
+
+        assertEq(afterRecord.bc, before.bc, "B's direct c is untouched by A's record");
+        assertEq(afterRecord.bd, before.bd, "B's direct d is untouched by A's record");
+        assertEq(afterRecord.bs, before.bs, "B's direct score is untouched by A's record");
+        assertEq(afterRecord.bbc, before.bbc, "B's batch c is untouched by A's record");
+        assertEq(afterRecord.bbd, before.bbd, "B's batch d is untouched by A's record");
+        assertEq(afterRecord.bbs, before.bbs, "B's batch score is untouched by A's record");
+        assertEq(afterRecord.total - before.total, aScoreDelta, "the shared total moves by exactly A's own delta");
+    }
+
+    /// @dev B's direct + batch accrual plus the shared period-0 total,
+    ///      bundled behind one stack slot — see `Snapshot` above for why.
+    struct Isolation {
+        uint64 bc;
+        uint64 bd;
+        uint256 bs;
+        uint64 bbc;
+        uint64 bbd;
+        uint256 bbs;
+        uint256 total;
+    }
+
+    function _isolationSnapshot(UsageCounterHarness counter, bytes32 clauseOrAssemblyB)
+        internal
+        view
+        returns (Isolation memory s)
+    {
+        (s.bc, s.bd, s.bs) = counter.accrualOf(clauseOrAssemblyB, 0);
+        (s.bbc, s.bbd, s.bbs) = counter.batchAccrualOf(clauseOrAssemblyB, 0);
+        s.total = counter.totalScoreIn(0);
+    }
+
+    /// @dev Records A's usage via whichever path `viaBatch` selects and
+    ///      returns A's own score delta (from zero, so delta == score) —
+    ///      factored out of `check_crossClauseOrAssemblyIsolation` for the
+    ///      same stack-depth reason as `_accrueAndSnapshot` above.
+    function _recordA(
+        UsageCounterHarness counter,
+        bytes32 clauseOrAssemblyA,
+        bytes32 processId,
+        address seller,
+        bool viaBatch
+    ) internal returns (uint256 scoreDelta) {
         if (viaBatch) {
             address[] memory sellers = new address[](1);
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
             accr[0] = UsageCounter.BatchAccrual(clauseOrAssemblyA, 3, 2);
             counter.applyBatchAccrual(0, PROV, accr, sellers);
-            (,, aScoreDelta) = counter.batchAccrualOf(clauseOrAssemblyA, 0); // from zero, so delta == score
+            (,, scoreDelta) = counter.batchAccrualOf(clauseOrAssemblyA, 0); // from zero, so delta == score
         } else {
             counter.accrue(clauseOrAssemblyA, 0, processId, seller);
-            (,, aScoreDelta) = counter.accrualOf(clauseOrAssemblyA, 0);
+            (,, scoreDelta) = counter.accrualOf(clauseOrAssemblyA, 0);
         }
-
-        (uint64 bc1, uint64 bd1, uint256 bs1) = counter.accrualOf(clauseOrAssemblyB, 0);
-        (uint64 bbc1, uint64 bbd1, uint256 bbs1) = counter.batchAccrualOf(clauseOrAssemblyB, 0);
-        uint256 total1 = counter.totalScoreIn(0);
-
-        assertEq(bc1, bc0, "B's direct c is untouched by A's record");
-        assertEq(bd1, bd0, "B's direct d is untouched by A's record");
-        assertEq(bs1, bs0, "B's direct score is untouched by A's record");
-        assertEq(bbc1, bbc0, "B's batch c is untouched by A's record");
-        assertEq(bbd1, bbd0, "B's batch d is untouched by A's record");
-        assertEq(bbs1, bbs0, "B's batch score is untouched by A's record");
-        assertEq(total1 - total0, aScoreDelta, "the shared total moves by exactly A's own delta");
     }
 }
