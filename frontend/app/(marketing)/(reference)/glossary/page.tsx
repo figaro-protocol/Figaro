@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Glossary — Figaro Protocol",
     description:
-        "Plain-language definitions of the fixed vocabulary used across the site — buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, attestation, process, settlement, gas, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
+        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, operator, attestation, process, settlement, gas, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
 };
 
 interface Term {
@@ -17,6 +17,13 @@ interface Term {
 }
 
 const TERMS: Term[] = [
+    {
+        id: "agent",
+        term: "Agent",
+        definition:
+            "Whoever runs a wallet in software rather than at a keyboard &mdash; a courier's dispatcher, a pricing bot, a long-running service. The kernel checks a signature, not who or what produced it, so an agent signs, bonds, and settles exactly as a person does.",
+        readMore: <Link href="/agents" className="hover:underline">Agents</Link>,
+    },
     {
         id: "assembly",
         term: "Assembly",
@@ -79,6 +86,13 @@ const TERMS: Term[] = [
         definition:
             "FigaroCore — the small program that holds every bonded commitment and settles a deal the instant its buyer confirms. It has no owner, no admin, no pause button, and no upgrade key.",
         readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
+    },
+    {
+        id: "operator",
+        term: "Operator",
+        definition:
+            "Whoever controls a wallet's signing key on its underlying asset's behalf &mdash; a person or an autonomous program alike; which of the two it is changes nothing in the mechanism. A person running their own asset is simply that asset's buyer or seller; the term matters when a wallet is run for the asset by someone or something else.",
+        readMore: <Link href="/faq#agents" className="hover:underline">FAQ</Link>,
     },
     {
         id: "process",

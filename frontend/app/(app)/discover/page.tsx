@@ -5,14 +5,14 @@ import { MemberDiscovery } from "./_components/MemberDiscovery";
 export const metadata: Metadata = {
     title: "Discover members — Figaro Protocol",
     description:
-        "Browse bonded members — buyers and sellers — across the Figaro ecosystem. Filter by your location, search by name, pick an assembly. Click a member to open their assembly's runtime and start a bonded commitment.",
+        "Browse members — buyers and sellers — across the Figaro ecosystem. Filter by your location, search by name, pick an assembly. Click a member to open their assembly's runtime and start a bonded commitment.",
 };
 
 export default function DiscoverPage() {
     return (
         <section className="container mx-auto px-6 pt-16 pb-24 max-w-5xl">
             <h1 className="text-4xl sm:text-5xl font-bold text-black leading-tight tracking-tight mb-3">
-                Bonded members on this network.
+                Members on this network.
             </h1>
             <p className="text-sm text-gray-500 mb-4">
                 Buyers and sellers alike publish a profile here &mdash; to appear yourself, register on{" "}
@@ -25,8 +25,8 @@ export default function DiscoverPage() {
                 That is expected this early: the registry fills as members join,
                 and this page is where they appear. Once it has members, you
                 filter by what is close to you, pick one, and place a bonded
-                order &mdash; locking your stake against the deal while the seller
-                locks theirs to accept.
+                order &mdash; a single commit, signed by both of you, locks
+                both stakes at once.
             </p>
             <p className="text-sm text-gray-500 mb-10">
                 New to this? <Link href="/members" className="underline hover:text-black">See what membership is</Link>, or read{" "}

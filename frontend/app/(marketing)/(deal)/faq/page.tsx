@@ -11,7 +11,7 @@ export const metadata: Metadata = {
         "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, non-delivery, disputes, lost keys, privacy, ownership — with each guarantee's caveat beside it.",
 };
 
-/** The page's thirteen questions, in document order, split into two labeled
+/** The page's fourteen questions, in document order, split into two labeled
  *  groups by what each question is actually about — not by position. Titles
  *  are copied verbatim from each `MarketingSection` below; keep the three in
  *  lockstep if a heading changes. */
@@ -26,6 +26,7 @@ const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
 
 const DEEPER_QUESTIONS: { id: string; title: string }[] = [
     { id: "keys", title: "What if you lose your keys?" },
+    { id: "agents", title: "Can software run a wallet here?" },
     { id: "verification", title: "Has the code been audited?" },
     { id: "signing", title: "Can this website lie about what you're signing?" },
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
@@ -101,10 +102,10 @@ export default function Faq() {
 
             <MarketingSection title="What if you genuinely disagree?" sectionId="disputes">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Three layers, in order. First, the bond architecture &mdash; the 2:1 ratio pushes most disagreements toward cooperative resolution before they become disputes, because the cost of defection is visible to both sides. Second, in multi-party processes, atomic resolution means the buyer holds a single resolution key for the entire process; co-sellers have material reason to coordinate rather than let the resolution fail. Third, every commitment, attestation, and resolution event is timestamped on-chain. The on-chain record is tamper-proof evidence, available for courts, arbitration providers, or any institution the parties had agreed to default to.
+                    Five layers, in order &mdash; the full stack is walked below. First, the chain: once a commitment is written to Ethereum, neither side can rewrite what was agreed, so there is nothing left to argue about there. Second, the lockbox and its record: FigaroCore holds both sides&apos; doubled stakes by fixed rule and timestamps every step as it happens, so the 2:1 ratio pushes most disagreements toward cooperative resolution before they become disputes &mdash; the cost of defection is visible to both sides. Third, the other sellers: in multi-party processes, atomic resolution means the buyer holds a single resolution key for the entire process, so co-sellers have material reason to coordinate rather than let the resolution fail. Fourth, arbitration: a forum the parties chose can weigh the on-chain record from outside the deal. Fifth, ordinary courts: always available whether or not the agreement names a forum, reading the same tamper-proof, timestamped record as evidence.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The caveat is honest: there is no on-chain verdict. The protocol does not adjudicate. Disagreements that exhaust the first two layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the kernel takes no position on which forum a community uses. Kleros is wired today; the full external-composition catalogue &mdash; forums, and everything else the kernel deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
+                    The caveat is honest: there is no on-chain verdict. The protocol does not adjudicate. Disagreements that exhaust the first three layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the kernel takes no position on which forum a community uses. Kleros is wired today; the full external-composition catalogue &mdash; forums, and everything else the kernel deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
                 </p>
             </MarketingSection>
 
@@ -191,6 +192,15 @@ export default function Faq() {
                 </div>
                 <p className="text-base text-ink-body leading-relaxed">
                     The honest limits. Wallet addresses and on-chain activity are public and linkable by anyone &mdash; this is pseudonymity, not anonymity; the fingerprints reveal no content, but the graph of which addresses transacted, and when, is visible to everyone. Unpinning stops your node from serving content and lets the network garbage-collect it, but anything another node copied before you unpinned it is beyond your recall &mdash; unpin is not a network-wide delete. And there is no privacy policy or terms of service here, by design rather than omission: those are the documents of a service with an operator in the middle, and this frontend is a reader of network state with no accounts and no operator-side services &mdash; there is no counterparty to contract with. Where a trade itself needs consent terms, that is an agreement concern: an assembly composes a consent clause and affixes its document to the deal.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Can software run a wallet here?" sectionId="agents">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Yes, and nothing about the mechanism changes because of it. FigaroCore checks a valid ECDSA signature from an externally-owned account &mdash; it has no field for &ldquo;human&rdquo; or &ldquo;software,&rdquo; only a signature. Every wallet on the network stands for some real-world asset &mdash; a kitchen, a delivery van, a courier&apos;s labor &mdash; and whoever controls that wallet&apos;s signing key on the asset&apos;s behalf is its <em>operator</em>, a person or an autonomous program alike; a person running their own asset is simply that asset&apos;s seller, no different a case. The full three-layer picture &mdash; asset, wallet, operator &mdash; is on <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The caveat is the one that applies to any wallet: the mechanism verifies a signature, not an identity. It cannot tell you whether the operator behind an address is what its profile claims, human or software &mdash; that assurance, where it exists, comes from the credentials a clause binds and checks against their issuing authority, not from the kernel. And note the word&apos;s other sense elsewhere on this page: &ldquo;operator&rdquo; also names a platform standing between you and a counterparty, of which Figaro has none. The operator described here is not a company in the middle &mdash; it is whoever holds the signing key for one wallet among many equals.
                 </p>
             </MarketingSection>
 
