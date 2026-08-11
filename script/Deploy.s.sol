@@ -50,19 +50,30 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // ── Mock tokens ─────────────────────────────────────────────
-        MockERC20 token = new MockERC20("Mock Token", "MOCK");
-        console.log("MockERC20 deployed at:", address(token));
+        // Assigned to contract-state vars (not run()-local), matching the
+        // established _batchVerifier/_usageCounter pattern below: under
+        // coverage instrumentation (FOUNDRY_PROFILE=coverage, --ir-minimum),
+        // every deployed address here stays live from its declaration
+        // through the NEXT_PUBLIC_ summary at the end of run(), which
+        // overflows the Yul stack allocator at minimum optimization. Storage
+        // reads/writes are addressed by slot, not stack residency, so moving
+        // the long-lived results off the stack relieves the pressure with no
+        // change to deployment order, addresses, or logged output — this is
+        // script-local EVM state (discarded after the script runs), never
+        // broadcast.
+        _token = new MockERC20("Mock Token", "MOCK");
+        console.log("MockERC20 deployed at:", address(_token));
 
-        MockPermitToken permitToken = new MockPermitToken();
-        console.log("MockPermitToken deployed at:", address(permitToken));
+        _permitToken = new MockPermitToken();
+        console.log("MockPermitToken deployed at:", address(_permitToken));
 
         // ── Core ────────────────────────────────────────────────────
-        FigaroCore core = new FigaroCore();
-        console.log("FigaroCore deployed at:", address(core));
+        _core = new FigaroCore();
+        console.log("FigaroCore deployed at:", address(_core));
 
         // ── AttestationCoordinator ──────────────────────────────────
-        AttestationCoordinator attestation = new AttestationCoordinator(address(core));
-        console.log("AttestationCoordinator deployed at:", address(attestation));
+        _attestation = new AttestationCoordinator(address(_core));
+        console.log("AttestationCoordinator deployed at:", address(_attestation));
 
         // ── WitnessSwapAndCommitCoordinator ─────────────────────────
         // Off-protocol multi-token bond funding. Devnet composes it with a
@@ -72,26 +83,25 @@ contract Deploy is Script {
         // Uniswap Universal Router. The router is pre-funded with bond-token
         // liquidity so buyer legs can swap the permit token into the bond
         // currency at the mock's settable rate (1:1 default).
-        MockWitnessPermit2 permit2 = new MockWitnessPermit2();
-        console.log("MockWitnessPermit2 deployed at:", address(permit2));
+        _permit2 = new MockWitnessPermit2();
+        console.log("MockWitnessPermit2 deployed at:", address(_permit2));
 
-        MockUniversalRouter router = new MockUniversalRouter();
-        console.log("MockUniversalRouter deployed at:", address(router));
+        _router = new MockUniversalRouter();
+        console.log("MockUniversalRouter deployed at:", address(_router));
 
-        WitnessSwapAndCommitCoordinator swapCoordinator =
-            new WitnessSwapAndCommitCoordinator(address(core), address(permit2), address(router));
-        console.log("WitnessSwapAndCommitCoordinator deployed at:", address(swapCoordinator));
+        _swapCoordinator = new WitnessSwapAndCommitCoordinator(address(_core), address(_permit2), address(_router));
+        console.log("WitnessSwapAndCommitCoordinator deployed at:", address(_swapCoordinator));
 
         // Router liquidity in both devnet tokens, so either can be swap output.
-        token.mint(address(router), 10_000_000 ether);
-        permitToken.mint(address(router), 10_000_000 ether);
+        _token.mint(address(_router), 10_000_000 ether);
+        _permitToken.mint(address(_router), 10_000_000 ether);
 
         // ── ClauseRegistry ──────────────────────────────────────────
         // Deposit = staked intent (K4): registering costs 0.001 ETH,
         // reclaimable via withdrawDeposit — which de-surfaces the clause.
         // No time lock; pollution is priced by deposit × time-surfaced.
-        ClauseRegistry clauses = new ClauseRegistry(0.001 ether);
-        console.log("ClauseRegistry deployed at:", address(clauses));
+        _clauses = new ClauseRegistry(0.001 ether);
+        console.log("ClauseRegistry deployed at:", address(_clauses));
 
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
         // on ClauseRegistry by frontend/scripts/populate-clauses.mjs — the single
@@ -124,8 +134,8 @@ contract Deploy is Script {
         // Devnet value: 0.001 ETH deposit so test wallets can register
         // without faucet drama. Mainnet picks its own value via
         // DeployMainnet.s.sol — record the reasoning there.
-        AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether);
-        console.log("AssemblyRegistry deployed at:", address(assemblies));
+        _assemblies = new AssemblyRegistry(0.001 ether);
+        console.log("AssemblyRegistry deployed at:", address(_assemblies));
 
         // ── MembersRegistry ────────────────────────────────────────
         // Deposit chosen for devnet ergonomics: 0.001 ETH so test wallets
@@ -137,8 +147,8 @@ contract Deploy is Script {
         // non-zero parameter (MembersRegistryTest), not here.
         // Mainnet picks both values via DeployMainnet.s.sol — record the
         // reasoning there.
-        MembersRegistry members = new MembersRegistry(0.001 ether, 0);
-        console.log("MembersRegistry deployed at:", address(members));
+        _members = new MembersRegistry(0.001 ether, 0);
+        console.log("MembersRegistry deployed at:", address(_members));
 
         // ── Multisender (composition target; mock on devnet) ────────
         // Batch dispersal — one payment, many recipients, one transaction;
@@ -166,20 +176,20 @@ contract Deploy is Script {
         // settleBatch checks each proof's (clause key → spec hash)
         // binding against contentHashOf before settling.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
-        _deployUsageAndVerifier(address(clauses), address(assemblies), address(core), address(members), deployer);
+        _deployUsageAndVerifier(address(_clauses), address(_assemblies), address(_core), address(_members), deployer);
 
         // ── florin token + RPGF minter ─────────────────────────────────
-        FlorinToken florin = new FlorinToken();
-        console.log("FlorinToken deployed at:", address(florin));
+        _florin = new FlorinToken();
+        console.log("FlorinToken deployed at:", address(_florin));
 
         // The RPGF minter must exist AT GENESIS: FlorinToken.registerMinter only
         // works before renounceDeployerMint, and renounce is irreversible — so
         // the 600M distribution registers here, before any other genesis step.
         // Nothing is posted, bonded, or challenged: UsageCounter records verified
         // usage as it happens and the minter pays pro rata from a closed period.
-        _deployRpgfMinter(florin, clauses, assemblies);
+        _deployRpgfMinter(_florin, _clauses, _assemblies);
 
-        _deployTreasuryGenesis(florin, deployer);
+        _deployTreasuryGenesis(_florin, deployer);
 
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
@@ -212,8 +222,8 @@ contract Deploy is Script {
             0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199
         ];
         for (uint256 i = 0; i < testAccounts.length; i++) {
-            token.mint(testAccounts[i], 100_000 ether);
-            permitToken.mint(testAccounts[i], 100_000 ether);
+            _token.mint(testAccounts[i], 100_000 ether);
+            _permitToken.mint(testAccounts[i], 100_000 ether);
         }
         console.log("Minted test tokens to Anvil accounts [0]-[19]");
 
@@ -221,20 +231,31 @@ contract Deploy is Script {
 
         console.log("---");
         console.log("Deployment complete. Addresses:");
-        console.log("  NEXT_PUBLIC_FIGARO_CORE=", address(core));
-        console.log("  NEXT_PUBLIC_TOKEN_ADDRESS=", address(token));
-        console.log("  NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=", address(permitToken));
-        console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(attestation));
-        console.log("  NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=", address(swapCoordinator));
-        console.log("  NEXT_PUBLIC_PERMIT2=", address(permit2));
-        console.log("  NEXT_PUBLIC_SWAP_ROUTER=", address(router));
-        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
-        console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", address(members));
-        console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
-        console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(florin));
+        console.log("  NEXT_PUBLIC_FIGARO_CORE=", address(_core));
+        console.log("  NEXT_PUBLIC_TOKEN_ADDRESS=", address(_token));
+        console.log("  NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=", address(_permitToken));
+        console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(_attestation));
+        console.log("  NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=", address(_swapCoordinator));
+        console.log("  NEXT_PUBLIC_PERMIT2=", address(_permit2));
+        console.log("  NEXT_PUBLIC_SWAP_ROUTER=", address(_router));
+        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(_clauses));
+        console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", address(_members));
+        console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(_assemblies));
+        console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(_florin));
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
     }
 
+    MockERC20 internal _token;
+    MockPermitToken internal _permitToken;
+    FigaroCore internal _core;
+    AttestationCoordinator internal _attestation;
+    MockWitnessPermit2 internal _permit2;
+    MockUniversalRouter internal _router;
+    WitnessSwapAndCommitCoordinator internal _swapCoordinator;
+    ClauseRegistry internal _clauses;
+    AssemblyRegistry internal _assemblies;
+    MembersRegistry internal _members;
+    FlorinToken internal _florin;
     address internal _batchVerifier;
     address internal _usageCounter;
 

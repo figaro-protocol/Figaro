@@ -471,6 +471,22 @@ contract HalmosAssemblyRegistry is Test {
 
     // ── P5: cross-key isolation ──────────────────────────────────────
 
+    /// @dev Bundles one `bindings(hash)` read behind a single memory pointer
+    ///      so a snapshot occupies one stack slot instead of four — needed to
+    ///      keep `check_crossKeyIsolation_keyATouchesNothingOfKeyB` under the
+    ///      stack limit with 5 symbolic parameters already live (same
+    ///      technique as `HalmosUsageCounter.t.sol`'s `Snapshot`).
+    struct Binding {
+        address author;
+        uint64 registeredAt;
+        bool withdrawn;
+        string uri;
+    }
+
+    function _binding(AssemblyRegistry r, bytes32 hash) internal view returns (Binding memory b) {
+        (b.author, b.registeredAt, b.withdrawn, b.uri) = r.bindings(hash);
+    }
+
     function check_crossKeyIsolation_keyATouchesNothingOfKeyB(
         uint96 deposit,
         bytes32 hashA,
@@ -488,7 +504,7 @@ contract HalmosAssemblyRegistry is Test {
 
         vm.prank(BOB);
         r.registerAssembly{value: deposit}(hashB, "ipfs://b");
-        (address authorB0, uint64 registeredAtB0, bool withdrawnB0, string memory uriB0) = r.bindings(hashB);
+        Binding memory before = _binding(r, hashB);
 
         vm.prank(ALICE);
         r.registerAssembly{value: deposit}(hashA, "ipfs://a");
@@ -503,10 +519,10 @@ contract HalmosAssemblyRegistry is Test {
             );
         }
 
-        (address authorB1, uint64 registeredAtB1, bool withdrawnB1, string memory uriB1) = r.bindings(hashB);
-        assertEq(authorB1, authorB0, "B's author is untouched by anything done to A");
-        assertEq(registeredAtB1, registeredAtB0, "B's registeredAt is untouched by anything done to A");
-        assertEq(withdrawnB1, withdrawnB0, "B's withdrawn flag is untouched by anything done to A");
-        assertEq(uriB1, uriB0, "B's contentURI is untouched by anything done to A");
+        Binding memory afterOps = _binding(r, hashB);
+        assertEq(afterOps.author, before.author, "B's author is untouched by anything done to A");
+        assertEq(afterOps.registeredAt, before.registeredAt, "B's registeredAt is untouched by anything done to A");
+        assertEq(afterOps.withdrawn, before.withdrawn, "B's withdrawn flag is untouched by anything done to A");
+        assertEq(afterOps.uri, before.uri, "B's contentURI is untouched by anything done to A");
     }
 }

@@ -5,7 +5,7 @@
 echo "🚀 Running fast test suite..."
 echo ""
 
-time forge test --via-ir --no-match-test "test_Gas_MaxOrdersResolvableUnder30MGas" "$@"
+time forge test --via-ir --no-match-test "test_Gas_resolveExecutionMarginal" "$@"
 
 echo ""
 echo "💡 Tip: Skips gas-ceiling test for speed."

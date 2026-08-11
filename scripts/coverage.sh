@@ -7,9 +7,14 @@ cd "$(dirname "$0")"
 # stack-too-deep from the shadow counter variables inserted per source statement.
 # FOUNDRY_PROFILE=coverage uses via_ir=true + optimizer=true (see foundry.toml).
 #
-# GasCeilingTest is excluded: its assertions are calibrated for non-instrumented
-# bytecode (>1500 orders in 30M gas). Under coverage instrumentation, per-order gas
-# cost rises (~14k → ~25k), so only ~1170 orders fit. The test measures gas capacity,
-# not correctness — resolveProcess coverage is fully exercised by other test files.
+# Two gas-anchor tests are excluded: their assertions are calibrated for
+# non-instrumented bytecode, and coverage's shadow counters raise per-call gas.
+# test_Gas_resolveExecutionMarginal (GasCeilingTest) checks the warm resolve-loop
+# marginal stays below RESOLVE_GAS_PER_ORDER (23,000); instrumentation pushes it
+# past that anchor. test_Gas_recordUsageStaysAtItsAnchor (UsageCounterTest) checks
+# recordClauseUsage's raw execution gas stays under its anchor (180,000);
+# instrumentation measures ~258,000. Both measure gas COST, not correctness — the
+# code paths they exercise are otherwise fully covered by the surrounding test
+# files' non-gas assertions.
 exec env FOUNDRY_PROFILE=coverage forge coverage --ir-minimum \
-  --no-match-test "test_Gas_MaxOrdersResolvableUnder30MGas" "$@"
+  --no-match-test "test_Gas_resolveExecutionMarginal|test_Gas_recordUsageStaysAtItsAnchor" "$@"

@@ -42,10 +42,34 @@ jobs:
             - name: Run forge fmt check
               run: forge fmt --check
 
-    # NOTE: no coverage job yet — scripts/coverage.sh currently FAILS at
-    # instrumented compilation (Yul stack-too-deep even under --ir-minimum;
-    # reproduced 2026-08-04). Fix the instrumentation first, then add the
-    # job + lcov artifact upload. Tracked in the punch-list (audit handover).
+    coverage:
+        name: Forge Coverage
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+
+            # scripts/coverage.sh runs FOUNDRY_PROFILE=coverage forge coverage
+            # --ir-minimum (full Yul IR pipeline, needed to avoid stack-too-deep
+            # from the shadow counters coverage instrumentation inserts per
+            # source statement — plain via-ir is not enough). It also excludes
+            # the two gas-anchor tests calibrated for non-instrumented bytecode
+            # (see the script's own comment). --report lcov writes lcov.info at
+            # the repo root alongside the printed summary table.
+            - name: Run forge coverage
+              run: bash scripts/coverage.sh --report lcov --report summary
+
+            - name: Upload lcov report
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: lcov-report
+                  path: lcov.info
+                  retention-days: 14
 
     # Formal-proof coverage in CI is halmos/z3 only. Certora is EXCLUDED by
     # design: it needs the operator-held CERTORAKEY, supplied inline at run
