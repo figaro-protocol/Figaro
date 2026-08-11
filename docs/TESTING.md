@@ -209,9 +209,14 @@ is e2e-only.
 
 Five projects:
 
-- **`devnet-authoring`** — the `sellers-onboarding` spec, a dependency project
-  of `devnet` (runs first so the anchors exist; a file-filtered run pulls it
-  too — pass `--no-deps` when the chain is already anchored).
+- **`devnet-authoring`** — the `members-onboarding` wizard spec, a dependency
+  project of `devnet`. Its real product: the wizard seller (anvil[13]),
+  registered through the UI and bound to the seed assembly — consumed by
+  `checkout-assembly-choice`, `sign-countersign`, `swap-funded-checkout`, and
+  `verification-coverage`. Everything else (clauses, anchored assemblies,
+  sellers anvil[5-12]) comes from `frontend/scripts/populate-test-data.mjs`, run before
+  Playwright by `test:e2e:devnet` — seeding is never a test. A file-filtered
+  run pulls the gate too; pass `--no-deps` when the chain is already anchored.
 - **`devnet-standalone`** — self-contained acceptance specs that author + run +
   audit their OWN full cycle (`permissionless-clause`, `clause-coverage`,
   `assembly-withdraw`, `clause-authoring`); they share no seeded state, so they

@@ -31,7 +31,7 @@
  *              token, read from chain
  *
  * Depends on populate-test-data (clauses + the equipment-hire reference +
- * sellers) and the devnet-authoring gate.
+ * sellers), run before Playwright by test:e2e:devnet.
  */
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';

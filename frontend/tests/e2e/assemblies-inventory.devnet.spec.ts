@@ -9,8 +9,8 @@
  * template (name, order count, clauses) fetches lazily from IPFS per row.
  *
  * The spec DISCOVERS an anchored assembly from chain (the latest
- * AssemblyRegistered event — the devnet-authoring project anchors the
- * scenario assemblies before this project runs) and asserts the
+ * AssemblyRegistered event — frontend/scripts/populate-test-data.mjs anchors the
+ * reference assemblies before Playwright runs) and asserts the
  * inventory renders its row. No seeding: registering a junk slug with
  * an unpinned URI burns a deposit and squats a permanent slug on the
  * persisted devnet per run — the devnet is a mainnet rehearsal, and no
@@ -50,9 +50,9 @@ function getRegistryAddress(): Hex {
 test.describe('Assemblies marketing inventory (devnet)', () => {
 
     test('renders an anchored assembly from on-chain events', async ({ page }) => {
-        // Discover from chain — never a roster. The devnet-authoring
-        // project (a Playwright project dependency) anchored the scenario
-        // assemblies before this spec runs.
+        // Discover from chain — never a roster. The seed script
+        // (frontend/scripts/populate-test-data.mjs, run before Playwright) anchored
+        // the reference assemblies before this spec runs.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const events = await publicClient.getContractEvents({
             address: getRegistryAddress(),
@@ -60,7 +60,7 @@ test.describe('Assemblies marketing inventory (devnet)', () => {
             eventName: 'AssemblyRegistered',
             fromBlock: 0n,
         });
-        expect(events.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
+        expect(events.length, 'no anchored assemblies on this devnet — run frontend/scripts/populate-test-data.mjs first').toBeGreaterThan(0);
         const slug = deriveAssemblySlug(events[events.length - 1].args.compositionHash as `0x${string}`);
 
         await page.goto('/assemblies');

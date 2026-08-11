@@ -11,8 +11,8 @@
  *   2. Register/update the seller through the canonical idempotent
  *      seeder (devnet-helpers.seedRegisteredMember) with a profile
  *      pointing at the catalogue AND binding an assembly DISCOVERED
- *      from the AssemblyRegistry (the devnet-authoring project anchors
- *      one first). The surfacing rule is applied EVENLY (operator
+ *      from the AssemblyRegistry (frontend/scripts/populate-test-data.mjs anchors
+ *      them before Playwright runs). The surfacing rule is applied EVENLY (operator
  *      2026-07-02): a seller without ≥1 anchored binding is absent on
  *      /discover, /s, and checkout alike — browse-only is retired.
  *   3. Open /s/view?seller=<sellerAddress>?e2e=devnet from a buyer wallet.
@@ -68,7 +68,7 @@ async function discoverAnchoredAssemblySlug(): Promise<string> {
         fromBlock: 0n,
     });
     if (events.length === 0) {
-        throw new Error('no anchored assemblies on this devnet — run the devnet-authoring project first');
+        throw new Error('no anchored assemblies on this devnet — run frontend/scripts/populate-test-data.mjs first');
     }
     return deriveAssemblySlug(events[events.length - 1].args.compositionHash as `0x${string}`);
 }

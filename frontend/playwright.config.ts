@@ -89,22 +89,25 @@ export default defineConfig({
 
     // The e2e suite is split along the persisted pipeline's stage boundary
     // so a COLD devnet runs in stage order (alphabetical file order would
-    // run runtimes before the scenarios that anchor what they consume):
+    // run consumers before the producer — checkout-assembly-choice sorts
+    // before members-onboarding):
     //
-    //   `devnet-authoring` — the members-onboarding wizard (idempotent).
-    //     Everything it consumes (clauses, ONE anchored seed assembly,
-    //     sellers) is PRE-POPULATED by scripts/populate-test-data.mjs, which
-    //     `test:e2e:devnet` runs before Playwright — seeding is never a test
-    //     (the scenario-era build-order coupling is the cautionary tale).
+    //   `devnet-authoring` — the members-onboarding wizard (idempotent). Its
+    //     REAL product: the wizard seller (anvil[13]) registered and bound to
+    //     the seed assembly, which checkout-assembly-choice, sign-countersign,
+    //     swap-funded-checkout, and verification-coverage all trade with.
+    //     Everything ELSE (clauses, anchored assemblies, sellers anvil[5-12])
+    //     is PRE-POPULATED by frontend/scripts/populate-test-data.mjs, which
+    //     `test:e2e:devnet` runs before Playwright — seeding is never a test.
     //   `devnet-standalone` — self-contained acceptance specs (e.g.
     //     permissionless-clause) that register their own clause, author their
     //     own assembly, and onboard their own seller. They share NO seeded
     //     state, so they depend on NOTHING — never the authoring gate.
-    //   `devnet` — the runtime specs that CONSUME the seeded anchors; depends
-    //     on devnet-authoring, so the anchors exist first. Dev-loop note:
-    //     a file-filtered run (`npx playwright test foo.devnet.spec.ts`)
-    //     runs the FULL authoring project first — pass `--no-deps` to skip
-    //     it when the chain is already anchored.
+    //   `devnet` — the runtime specs; depends on devnet-authoring so the
+    //     wizard seller exists first. Dev-loop note: a file-filtered run
+    //     (`npx playwright test foo.devnet.spec.ts`) runs the FULL authoring
+    //     project first — pass `--no-deps` to skip it when the chain is
+    //     already anchored.
     //   `mobile` — the lone non-e2e browser project: responsive/viewport
     //     chrome that needs a real browser and jsdom can't render.
     //
