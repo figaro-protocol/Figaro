@@ -6,19 +6,18 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Consequences — Figaro Protocol",
     description:
-        "The project's own pre-release ethical analysis: what the mechanism assumes, the risks that survive scrutiny, one analyst's scenario weights, what the protocol cannot control, and why the release decision holds anyway.",
+        "The question asked before release: assuming the whole thing is adopted — kernel, clauses, assemblies, the data layer, dispute composition, fiscal and regulatory reporting — what does the world look like in two hundred years, in what order does the old apparatus unwind, what does it cost, and where does power go instead.",
 };
 
 const JUMP_LINKS: { href: string; label: string }[] = [
-    { href: "#dilemma", label: "The dilemma" },
-    { href: "#assumptions", label: "What the mechanism assumes" },
-    { href: "#risk-immutability", label: "Risk — immutability is a wager" },
-    { href: "#risk-justice", label: "Risk — cooperation, not justice" },
-    { href: "#scenarios", label: "The scenario space" },
-    { href: "#transition", label: "The transition risk" },
-    { href: "#cannot-control", label: "What the protocol cannot control" },
-    { href: "#why-yes", label: "Why the answer is yes" },
-    { href: "#responsibility", label: "The responsibility that remains" },
+    { href: "#constant", label: "The one constant that changed" },
+    { href: "#first-order", label: "First order — the record stops being manufactured" },
+    { href: "#second-order", label: "Second order — the firm boundary moves" },
+    { href: "#third-order", label: "Third order — the state's modality inverts" },
+    { href: "#fourth-order", label: "Fourth order — the economy stops being human-paced" },
+    { href: "#power", label: "Where power goes" },
+    { href: "#counterweights", label: "The standing counterweights" },
+    { href: "#released-knowing", label: "Released knowing" },
 ];
 
 export default function Consequences() {
@@ -28,7 +27,7 @@ export default function Consequences() {
                 title="Consequences."
                 lead={
                     <>
-                        This page is the project&apos;s own pre-release ethical analysis, written before any decision to put the kernel on a public network, and reaffirmed since. It is not written to reassure. If the mechanism works as designed, its long-run effect is to make a specific organizational form &mdash; the coordination firm &mdash; structurally unnecessary across the sectors where it applies. That is a large claim. This page states what was weighed before standing behind it, including what doesn&apos;t resolve cleanly.
+                        One constant changed. Between two strangers with no institution between them, a promise to deliver can be made credible for the cost of temporarily locked capital and pennies of fixed gas, with no percentage taken by anyone in the middle. Everything civilization built to substitute for that missing property &mdash; the intermediaries, the books kept in order to be believed, the firm itself as a container for enforceable cooperation &mdash; becomes optional rather than necessary. What follows is a two-hundred-year projection of that substitution stack unwinding, in order of how much weight each part carries, with what the unwinding costs stated beside it. It is not a forecast and not a promise. It is the question asked before the code was released, answered as well as it could be answered, and written down first so that no one, the author included, could say afterwards that it had not been asked.
                     </>
                 }
             />
@@ -47,185 +46,145 @@ export default function Consequences() {
                 </nav>
             </MarketingSection>
 
-            <MarketingSection title="The dilemma." sectionId="dilemma">
+            <MarketingSection title="The one constant that changed." sectionId="constant">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    FigaroCore is an immutable, ownerless coordination primitive. Once deployed to a public network it cannot be patched, paused, governed, or recalled. The question this page answers is not &ldquo;does the code have bugs&rdquo; &mdash; that is a verification question, treated on Security. The question here is: is it responsible to release infrastructure that, if it works, reorganizes economic life at a scale no one who releases it can later walk back?
+                    Every trade is a contract, and the element that fails between strangers is consideration: promising value is easy, and nothing about the promise makes delivering it credible. The mechanism answers that with capital rather than authority. The buyer locks twice the payment; each seller locks twice the value the process has accumulated at its own link; only the buyer can resolve, and resolution settles every order in the process at once. No owner, no fee, no administrator, no escape hatch &mdash; the derivation and the frozen surface are on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link> and <Link href="/invariants" className="text-ink-heading font-medium hover:underline">Invariants</Link>. The consequence is not that trade becomes cheaper. It is that the one element which previously required an institution to underwrite it no longer does.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <Link href="/why" className="text-ink-heading font-medium hover:underline">Why</Link> looks back: three eras of rule-making, and what a rule enforced by mathematics rather than force or belief frees. This page looks forward, at the other half of the same question &mdash; what that freedom costs, and what follows from it. One is the continuity of the other.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    What it does, mechanically, is derived on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>: both sides lock a stake larger than the deal, cooperation becomes the cheapest option for each, and the buyer&apos;s confirmation settles everything at once &mdash; no owner, no fee, no admin, no escape hatch. The formal proofs are in the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>. This page assumes both and asks what follows from them.
+                    The ordering principle below is load-bearing-ness. What unwinds first is whatever exists only to substitute for the missing property &mdash; the apparatus of making a stranger&apos;s word believable. What unwinds later is what was built on top of that apparatus and outlived its reason. What does not unwind at all is everything that was never about enforcement: physical force, care, tacit skill, and the human wish to belong to something that lasts longer than a transaction.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="What the mechanism assumes." sectionId="assumptions">
+            <MarketingSection title="First order: the record stops being manufactured." sectionId="first-order">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    These are hardcoded into the kernel. They cannot be changed after deployment without deploying a different kernel.
+                    The first stratum to thin is the one whose product is belief in records. Bookkeeping kept so that someone else will accept it, external audit, escrow, reconciliation between two organizations&apos; separately maintained books, compliance reporting, customs brokerage: these are not inefficiencies, they are the price of a world in which a record is an assertion by an interested party. That price falls when the record is a byproduct of settlement rather than a separate construction. A settled process closes its own ledger period, and the buyer&apos;s checkout lines, the audit trail, and the financial presentation are three views of one itemized decomposition, not three separate constructions to be reconciled with each other &mdash; the argument is <Link href="/papers/self-closing-ledger-periods" className="text-ink-heading font-medium hover:underline">Self-Closing Ledger Periods</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    These professions do not disappear because they are automated. They thin because the question they answer stops being asked. Their successors move upstream, to design time: authoring the clause that routes a fiscal share, verifying that a published spec says what the people binding to it believe it says, designing an assembly whose record satisfies a given regulator by construction rather than by later assembly. That work is paid for the same way the rest of the commons is &mdash; retroactively, from what actually gets used (<Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>, <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>).
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The honest scale of this is decades, not years. Demand for reassurance is sticky, statutory obligations name specific professions by name, and the people whose training was the old apparatus do not retrain on the schedule a mechanism suggests. The first order is the least dramatic and the most certain part of this projection.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Second order: the firm boundary moves." sectionId="second-order">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Coase put the firm where internal coordination costs less than coordinating through the market. The primitive prices one side of that comparison directly: the opportunity cost of a stake locked for the process&apos;s own duration and returned at settlement, rather than a rent extracted from every transaction forever. Where that cost is below the standing overhead of coordinating the same work inside an organization, the rational choice is the market. That is a comparative-statics claim bounded to a class of transactions, not a prediction that everything migrates; it is derived, with its bounds stated, in <Link href="/papers/transaction-scoped-institutions" className="text-ink-heading font-medium hover:underline">From Firms to Transaction-Scoped Institutions</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Inside the class where it holds, the value-added chain coordinates itself. Each seller is bonded against the cumulative value at its own link, and nobody is paid until the buyer resolves &mdash; so when one seller&apos;s work is faulty, every co-seller&apos;s cheapest move is to help put it right before resolution, because that is the only path to being paid at all. A weakest-link subgame does what middle management was hired to do, without a manager and without anyone holding authority over anyone else.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Hierarchy survives this. Reputation, standards, house method, the pull of a well-run group: none of that is dissolved by a settlement rule. What hierarchy loses is its enforcement monopoly, and with it the assumption that adoption once won stays won. Exit costs a signature: fork the assembly, compose a different clause, bind to another one tomorrow (<Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>). Authority that has to be re-earned every process behaves differently from authority that owns the exit.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    What commerce gains here is what software gained a generation ago. Clauses are libraries; assemblies are packages; the registries are the index; and retroactive public-goods funding is the funding model open source never had, paying the authors of clauses and assemblies pro rata from usage recorded on chain rather than from a fee anyone pays. Deal-shapes then evolve at the speed of authorship rather than the speed of incorporation: a better way of structuring a freight movement, a clinical referral, a film crew, or a grid-balancing contract is published once and reused by anyone, anywhere, without asking.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The cost belongs in the same breath as the gain. The firm was never only a coordination device. It was an identity, a stability, and a social container: &ldquo;I work at X&rdquo; is load-bearing for how many people understand themselves, and steady employment carried narrative continuity, colleagues, and a long arc that transaction-scoped work does not supply. Work assembled per process and dissolved at settlement is thinner than belonging. Recurring participation with compatible counterparties, craft identity in a specialization, membership in a token community: these fill part of the gap and are visibly less cohesive than what they replace. The mechanism enables this and cannot remedy it, and the generation living through the change is the one that pays.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The precise claim is narrower than &ldquo;the firm ends,&rdquo; and the narrowness matters. What becomes structurally unnecessary is the coordination function: internal management of a bounded pool of labor and assets, whose whole justification was that enforcing agreements between non-subordinated strangers used to be expensive. The other functions the firm bundled with it are untouched by a settlement rule &mdash; owning durable assets, pooling risk across unrelated ventures, accumulating tacit operating knowledge, carrying legal personhood for contracting and liability. Those reconstitute in whatever wrapper a recurring group of wallets adopts: a treasury with a membership and a token, participating repeatedly in compatible processes, resembling a firm at that layer while the coordination it once sold is done by the mechanism.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Third order: the state's modality inverts." sectionId="third-order">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    This is not the end of the state. It is a change of modality: from compelling reports to reading a record, from an authority that must be believed to one that publishes rules others compose with.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <strong className="text-ink-heading font-medium">Fiscal routing becomes a default of settlement.</strong> A settled seller splits its own receipts onward to earmarked recipients in one transaction, through a public multisender it does not own &mdash; wallet-side and after settlement, spending its own balance (<code>frontend/lib/composition/payoutRouting.ts</code>). A tax authority, a pension pool, a welfare fund, a maintenance reserve is then a recipient address that is already in the routing, not a remittance someone has to remember to make later. And the kernel draws no line between a tax and a fee for service: a screening checkpoint, a customs authority, a road authority is a wallet representing a real service whose continued operation requires receipts that cover its costs, committing and being paid exactly as any commercial participant does (<Link href="/papers/self-closing-ledger-periods" className="text-ink-heading font-medium hover:underline">Self-Closing Ledger Periods</Link>, &sect;7).
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <strong className="text-ink-heading font-medium">Compliance inverts from attestation to demonstration.</strong> Today an entity asserts and an examiner checks the assertion. If the projection holds, the record already exists as a byproduct and the question is answered from it &mdash; timestamped, role-gated, produced in the ordinary course rather than at the moment of inquiry (<Link href="/papers/on-chain-evidence" className="text-ink-heading font-medium hover:underline">On-Chain Evidence</Link>). The regulator&apos;s successor publishes clauses instead of statutes and reads a live map instead of compelling filings: a rule that composes into the deal binds at the moment of the deal rather than being audited a year afterwards.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <strong className="text-ink-heading font-medium">Disputes stratify.</strong> Five layers, in order, none of them removable: the host chain&apos;s own security, which everything else rests on; the bonded commitment and the evidence record it emits; the co-sellers&apos; live, bonded interest in remedying a fault before resolution; an arbitration forum composed in, consuming that record from outside the game; and ordinary law, which rules on the same record whether or not any forum was ever named &mdash; composing one in fixes the venue in advance, and where none was composed the parties simply choose the venue after the fact. The inner layers absorb almost everything. Courts recede to the residue, and receive better evidence when they get it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <strong className="text-ink-heading font-medium">Economic membership decouples from territory.</strong> The precondition for participating is a key and a stake, not a recognized civil-legal subjecthood &mdash; which matters most for the people who occupy the negative space of those frames. The claim is bounded and should stay bounded: it grants a capacity to have commerce where the capacity to have rights is denied, which is not the same thing and is not a substitute for it, and it offers nothing at all to those whose displacement has also stripped away any stake to bond (<Link href="/papers/wallet-without-polity" className="text-ink-heading font-medium hover:underline">The Wallet Without a Polity</Link>). At the scale of trade routes, a settlement layer nobody operates can be common ground beneath rival corridor projects, without touching who owns the ports and cables (<Link href="/papers/corridors-without-a-hegemon" className="text-ink-heading font-medium hover:underline">Corridors Without a Hegemon</Link>).
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    <strong className="text-ink-heading font-medium">Denomination pluralizes.</strong> Each process is denominated in one token the parties chose, and the choice carries meaning the payment itself does not: a stablecoin expresses a legal-regime preference, a community&apos;s own token expresses where the value is meant to land. A displaced community&apos;s token, spent in Los Angeles or Lima, can sustain value at home without a fiat pipeline. The protocol&apos;s own token is deliberately the least interesting object in this picture: a named Schelling point with no fee, no yield, and no claim on resolution &mdash; designed by refusal, as <Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">the florin paper</Link> sets out.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The cost here is the least resolved line in this projection, and it should be read as unresolved rather than answered. Compulsion is how civilization funds the goods voluntarism under-provides: pandemic preparedness, defense, century-scale environmental response, long-horizon research. Free-riding is individually rational and the payoff horizon exceeds any single process&apos;s duration, so voluntary inclusion in templates cannot substitute for compulsory taxation at the scale those goods require. Fiscal compulsion eroding before its substitutes mature is the way this projection does real damage, and nothing in the mechanism prevents it.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Fourth order: the economy stops being human-paced." sectionId="fourth-order">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The protocol never asks whether a signer is human. A wallet driven by software commits, bonds, and is paid on exactly the same footing as one driven by a person, because there is nothing in a signature that reveals which it was (<Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>). Two properties compound with that. Coordination costs a signature and fixed gas rather than a negotiation, and commit and resolve require no synchrony between the parties. Together they expand the set of coordination worth doing to include everything previously too small, too fast, or too far away to be worth a contract at all.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    On a two-hundred-year horizon, most processes are then machine-to-machine, at frequencies no human observes, with human-meaningful surfaces sitting on top of them the way a dashboard sits on top of a network. Assets hold their own wallets: the aircraft, the kiln, the water-treatment plant earning what its own maintenance costs, with the operator a policy running on the asset&apos;s behalf rather than an owner-manager watching a queue. This is not tokenized ownership of the asset and never becomes it &mdash; the asset stays on its owner&apos;s books at carrying value; the wallet is its signing apparatus and its earnings pocket, and it stays in the market only as long as its receipts cover its real-world operating costs, exactly as a node stays online only while its fees cover its electricity.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Institutions become transaction-scoped by default: assembled for one process out of the parties actually doing the work, dissolved at settlement, with the standing institution becoming the exception that has to justify why it stands. And the data allocation of the platform century inverts. The aggregate map is public &mdash; what was coordinated, by whom in what role, at what value, settled or not &mdash; a live and verifiable picture of an economy that reopens, with evidence, the calculation debates that could previously only be argued in the abstract. The detail stays sealed with whoever produced it, disclosed only by their own choice, and sold, when it is sold, as an ordinary bonded sale on its owner&apos;s terms, arriving with a proof that ties it to the settled trade that produced it (<Link href="/data" className="text-ink-heading font-medium hover:underline">Your Records, Your Terms</Link>). A second economy runs on trade&apos;s exhaust, and the people who produced the exhaust are the ones holding it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    One line about distance. Because commitment and resolution need no synchrony between the parties &mdash; nothing in the mechanism requires the two sides to be within seconds of each other &mdash; the same contract form keeps its properties across light-lag. Every enforcement apparatus we have ever built assumed a shared jurisdiction and a reachable counterparty. This one assumes neither.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Where power goes." sectionId="power">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Power is not eliminated by any of this. It is re-priced and relocated, and the honest version of the projection names where it lands. What the intermediary used to meter redistributes to the hands in the chain, because every value-adder is paid its own line directly rather than a residual after the platform&apos;s cut. Four concentrations survive, and one of them gets stronger.
                 </p>
                 <ul className="space-y-5 text-base text-ink-body mb-5 ml-6">
                     <li>
-                        <strong className="text-ink-heading font-medium">Rationality.</strong> The mechanism assumes participants respond to economic incentives &mdash; defection costs more than cooperation, so a rational actor cooperates. This holds for the large majority of trades. It does not hold for a coerced actor (someone transacting under duress, where another party controls the wallet or the decision); an ideologically motivated actor (someone willing to accept economic loss to cause harm &mdash; the mechanism makes this expensive, not impossible); or an actor who does not understand the mechanism (someone who commits without understanding what a 2&times; lockup means). The mechanism does not claim to protect against irrationality. It claims to make cooperation the cheapest option for a rational participant. That boundary should be stated wherever the protocol is presented, not discovered later.
+                        <strong className="text-ink-heading font-medium">Capital.</strong> Bonding capacity gates participation. The doubled stake converts a behavioral question into a solvency one, and solvency is unevenly distributed. Lending contracts can route bond capital to a creditworthy participant &mdash; the deterrent survives borrowing, since the borrower loses the collateral on defection regardless of whose capital it was &mdash; but a participant with no access to bondable capital, borrowed or owned, is simply outside. That is a credit problem the mechanism does not solve and should not be described as solving.
                     </li>
                     <li>
-                        <strong className="text-ink-heading font-medium">Solvency.</strong> Participation requires capital to bond. The 2&times; requirement converts a behavioral problem (&ldquo;will they cooperate?&rdquo;) into a solvency problem (&ldquo;can they deposit?&rdquo;). This is not by itself an exclusion mechanism: on-chain lending contracts can route bond capital to any creditworthy participant. Skin in the game survives borrowing, because the borrower loses the collateral on defection regardless of where the capital came from. But it is real: a participant with no access to bondable capital, borrowed or owned, cannot bond, and the mechanism has nothing to say to them.
+                        <strong className="text-ink-heading font-medium">Design.</strong> Whoever authors the clauses and assemblies that everyone reuses shapes the defaults everyone accepts, and defaults are the quietest form of power there is. Permissionless authorship mitigates it &mdash; anyone may publish a competing clause, and the reward for authorship is uniform, counting real usage and nothing else &mdash; but mitigation is not elimination, and a widely adopted default is a position worth holding.
                     </li>
                     <li>
-                        <strong className="text-ink-heading font-medium">Buyer dominance.</strong> Only the buyer can trigger resolution. This is a resolution assignment, not a power asymmetry in cost &mdash; a buyer who refuses to resolve loses their own bond, the same magnitude of loss the seller faces. Buyer dominance exists so that no seller, or subset of sellers, can unilaterally force a resolution, which is what makes a multi-party value-added chain coordinable at all.
+                        <strong className="text-ink-heading font-medium">Standards communities.</strong> A community that sets terms others adopt can be forked by anyone who disagrees. Network effects make forking cheap in principle and expensive in practice; the exit is real and it is not free.
                     </li>
                     <li>
-                        <strong className="text-ink-heading font-medium">All-or-nothing resolution.</strong> Atomic resolution means every order in a process settles together or none of them does. This is what produces the joint-liability effect: every seller in the chain is accountable for every other seller in it. One bad actor can cause losses for every participant in the process &mdash; and that is the point. The coordination pressure to prevent that outcome is what makes the mechanism work without a manager.
+                        <strong className="text-ink-heading font-medium">Physical force.</strong> Untouched. The state&apos;s monopoly on violence is not contested by a settlement rule, and nothing on this page should be read as claiming otherwise.
                     </li>
                 </ul>
-            </MarketingSection>
-
-            <MarketingSection title="Risk: immutability is a wager on these assumptions." sectionId="risk-immutability">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The 2&times; ratio, buyer dominance, atomic resolution, and single-currency-per-process are hardcoded. If any of them is subtly wrong at a scale or in a context that decades of operation eventually reveal, the deployed kernel cannot be fixed in place.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The assumptions are not heuristic &mdash; they are derived from the payoff matrix, and the 2&times; ratio is proven to be the minimum sufficient deterrent (the theorem catalogue is on <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding</Link>). Migration is possible in principle: a new kernel deployed alongside the old one, with protocol-layer tooling bridging between them. In practice, civilizational-scale migration is hard &mdash; IPv4&rarr;IPv6 has been underway for 25 years and remains incomplete, and TCP/IP&apos;s own evolution has been as much a story of layering and patching as of clean versioning. Immutability is a 200-year wager on the correctness and adequacy of the current assumptions. The wager is defensible. It is still a wager.
-                </p>
-                <h3 className="text-heading-h3 text-ink-heading mb-2">What&apos;s better instrumented since</h3>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Two things are better instrumented today than when this analysis was first written. First, the frozen kernel now sits under an independent verification stack &mdash; Foundry, Halmos, Certora, TLA+, and Echidna, each targeting the same invariants from a different angle (the inventory is on <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">Security</Link>) &mdash; which narrows how a subtle flaw could survive undetected, without removing the wager itself. Second, the &ldquo;layering, not clean versioning&rdquo; mitigation this section predicted has already happened once: the batch settlement path (<code>FigaroBatchVerifier</code>) is a new contract added <em>beside</em> the frozen kernel &mdash; it shares no state with it and never calls into it &mdash; not an edit to it. It is exactly the kind of protocol-layer adaptation this section argued would have to carry the weight a frozen kernel cannot. See <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link> for the two-settlement-universe design.
+                    And the registries have no morality. A cartel composes as cheaply as a cooperative; a supply chain that treats people badly settles as reliably as one that does not. The mechanism makes coordination cheap and legible &mdash; not good. The one thing legibility changes is that unkindness has to happen in the open, on a record it cannot revise afterwards, and at its own expense.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Risk: the protocol enforces cooperation, not justice." sectionId="risk-justice">
+            <MarketingSection title="The standing counterweights." sectionId="counterweights">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    FigaroCore enforces that the seller receives what was agreed. It does not enforce that what was agreed was fair. A value-added chain where a contributor accepts a low price is valid the moment both parties sign the commitment. Price discovery for an unbound sub-order runs today as a dispatch race, not an auction: the order broadcasts to every priceable seller the catalogue can discover, replies race back &mdash; countersignatures, or quotes under the buyer&apos;s own price ceiling &mdash; and the cheapest valid reply wins, with the buyer free to override toward a different one entirely. The mechanism is competition among simultaneous replies, not a descending clock. The point survives the correction: in a market with surplus supply, the price that competition converges on can still be low.
+                    <strong className="text-ink-heading font-medium">None of this has been observed.</strong> Every line above is a cascade derived from a mechanism, not evidence drawn from a deployment. The modal outcome for a technology of this kind is not transformation but the niche: durable use in a few coordination-heavy corners, no visible effect anywhere else, and a literature that overstated it. This projection is the strongest case that can be argued from the mechanism, and it should be read as that rather than as the expected one.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Why this is a design choice and not an oversight: fairness is a social construction, not a mechanism property. The protocol provides tools to implement fairness &mdash; minimum-price clauses, community-mandated floor terms as template constraints, exclusion from token communities that enforce standards &mdash; but it does not impose fairness on a trade neither party is asking to escape.
+                    <strong className="text-ink-heading font-medium">The transition window is where the harm is.</strong> Call it twenty to forty years, in which the protections bundled with employment erode faster than composable replacements are authored, and in which the non-economic loss &mdash; identity, colleagues, narrative continuity, the sense of belonging to something with a longer arc than a process &mdash; falls on the same people at the same time as the economic one. This is not an argument against release. It is an argument for urgency in building the replacements, and against pretending that all transition costs are economic.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The firm bundled worker protections with subordination. That bundling was contingent, not necessary &mdash; the argument that subordination was always a historically specific response to enforcement cost, not a structural requirement of coordination itself, is developed at length in <Link href="/papers/transaction-scoped-institutions" className="text-ink-heading font-medium hover:underline">From Firms to Transaction-Scoped Institutions</Link>. Insurance is a bonded process. Taxation is a treasury node in a composed assembly. Welfare is community redistribution. Collective bargaining is coordinated template selection. And the record any of these leaves &mdash; who paid whom, against what agreement, when &mdash; is itself protocol byproduct rather than a bookkeeping service someone has to separately build, as <Link href="/papers/self-closing-ledger-periods" className="text-ink-heading font-medium hover:underline">Self-Closing Ledger Periods</Link> argues for the settlement record generally. The protections are not dissolved &mdash; they are unbundled and reconstructed as independent, voluntary, transparent, bonded processes.
+                    <strong className="text-ink-heading font-medium">Immutability is a wager.</strong> The kernel has no owner, no upgrade path, and no pause, so its assumptions are load-bearing forever. The heaviest of them is rationality, and the boundary belongs stated wherever the protocol is presented: the mechanism makes cooperation the cheapest option for a rational participant, and claims nothing beyond that. It does not hold for someone transacting under duress, where another party controls the wallet or the decision; it makes ideologically motivated harm expensive rather than impossible; and it does nothing for someone who commits without understanding what a doubled lockup means.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The protocol chooses sovereignty over paternalism. That choice has real consequences for participants who are vulnerable in markets. Building the composable protections alongside the primitive is a responsibility of the ecosystem, not a feature of the kernel &mdash; see <Link href="#responsibility" className="text-ink-heading font-medium hover:underline">below</Link>.
+                    The wager&apos;s only instrument is layering. Adaptation happens beside the frozen kernel, never inside it: the batch settlement path (<code>FigaroBatchVerifier</code>) is a separate contract that shares no state with the kernel and never calls into it, and that is the shape every future adaptation has to take. An independent verification stack &mdash; Foundry, Halmos, Certora, TLA+, and Echidna, each attacking the same invariants from a different angle (<Link href="/security#verification" className="text-ink-heading font-medium hover:underline">Security</Link>) &mdash; narrows how a subtle flaw could survive undetected. It does not remove the wager. The frozen surface itself is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>, and the properties it is wagering on are on <Link href="/invariants" className="text-ink-heading font-medium hover:underline">Invariants</Link>.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The scenario space." sectionId="scenarios">
+            <MarketingSection title="Released knowing." sectionId="released-knowing" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What follows is one scenario among several, not a forecast. Its value is as considered consequence &mdash; the set of outcomes thought through before deployment. The weights below are <strong className="text-ink-heading font-medium">one analyst&apos;s estimates (mid-2026)</strong>, not predictions; they exist so the elaboration that follows the table is not mistaken for the one path this is expected to take.
-                </p>
-                <div className="overflow-x-auto -mx-6 px-6 mb-5">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
-                                <th scope="col" className="py-2 pr-4">Scenario</th>
-                                <th scope="col" className="py-2 pr-4">Weight</th>
-                                <th scope="col" className="py-2">Character</th>
-                            </tr>
-                        </thead>
-                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
-                            <tr>
-                                <td className="py-2 pr-4">Partial durable adoption in coordination-heavy niches</td>
-                                <td className="py-2 pr-4 text-ink-body">~30%</td>
-                                <td className="py-2 text-ink-body">Cross-border trade, gig work, agent commerce, and DAO operations transform; capital-intensive production stays firm-structured.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">AI-accelerated substantial transformation (30&ndash;50 yr)</td>
-                                <td className="py-2 pr-4 text-ink-body">~25%</td>
-                                <td className="py-2 text-ink-body">AI agents as the dominant throughput users compress the timeline; coordination-heavy sectors restructure fundamentally; real political stress.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">Regulatory capture / CBDC substitution</td>
-                                <td className="py-2 pr-4 text-ink-body">~20%</td>
-                                <td className="py-2 text-ink-body">States force wallet-level KYC or promote CBDCs with programmable routing to treasury nodes; the pure kernel survives on the margins.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">Full dissolution of the coordination firm</td>
-                                <td className="py-2 pr-4 text-ink-body">~15%</td>
-                                <td className="py-2 text-ink-body">The most far-reaching path, elaborated in the paragraphs below, roughly on the timeline they describe.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">Transition-pain political backlash</td>
-                                <td className="py-2 pr-4 text-ink-body">~8%</td>
-                                <td className="py-2 text-ink-body">Erosion of employment-bundled protections outpaces composable replacements; political movements force restrictions.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">Supersession by a better primitive</td>
-                                <td className="py-2 pr-4 text-ink-body">~2%</td>
-                                <td className="py-2 text-ink-body">Zero-knowledge coordination, AI-mediated trust, or some other innovation makes asymmetric bonding obsolete.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The paragraphs below elaborate the fourth scenario because it is the one that requires the most argument, not because it is the most likely. The release argument in this document does not depend on which scenario obtains; the ecosystem&apos;s obligations (<Link href="#responsibility" className="text-ink-heading font-medium hover:underline">below</Link>) apply under all of them.
-                </p>
-                <h3 className="text-heading-h3 text-ink-heading mb-2">Reading the fourth scenario narrowly</h3>
-                <p className="text-base text-ink-body leading-relaxed">
-                    Read the fourth scenario narrowly. The firm historically bundles five distinct functions: coordinating production, aggregating capital across projects, accumulating tacit organizational knowledge, pooling risk across uncorrelated ventures, and providing legal personhood for contracting and liability. Asymmetric bonding addresses the first cleanly; it does not address the other four. Where persistent capital aggregation, tacit operating knowledge, risk pooling, or legal personhood matter, a structure that resembles a firm at the meta layer &mdash; a token-denominated treasury community that recurrently participates in compatible processes &mdash; is where those functions likely reconstitute. The precise claim is narrower than &ldquo;the firm dies&rdquo;: the <em>coordination firm</em>, whose value is internal management of a bounded labor pool, becomes structurally unnecessary where the primitive applies; the <em>capital firm</em>, whose value is durable asset ownership and risk-bearing, persists in revised wrappers. The fuller extrapolation &mdash; what a two-century horizon does to banking, securities, trade law, and the state&apos;s revenue base &mdash; is developed on <Link href="/why" className="text-ink-heading font-medium hover:underline">Why</Link> and in the papers; it is not repeated here.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="The transition risk." sectionId="transition">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The period during which firms are declining but composable protections are not yet mature is the most dangerous window &mdash; perhaps 20&ndash;40 years. The old safety nets (employer-provided health insurance, corporate pensions, employment-based social security) erode; the new ones (insurance as a bonded process, taxation as a treasury node, welfare as community redistribution) are not yet built. This window is where human suffering is most likely.
+                    The mechanism is deterministic, not intelligent. It does not decide, reason, or pursue anything; it enforces a bonding equilibrium that two parties explicitly agreed to, and it has no view about what they agreed to. Its power is in enabling coordination, not in directing it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Economic protections are not the only thing firms bundle with employment. The firm is also an identity container, a stability container, and a social-network container. &ldquo;I work at X&rdquo; is load-bearing for many people&apos;s self-concept in ways easy to under-weight. Work coordinated through a bonded process is transactional; it does not by itself provide the narrative continuity, the social scaffolding, or the long-arc sense of belonging that stable employment has historically provided for those who had it. Token communities can partially fill the gap &mdash; settlement history, template specialization as craft identity, recurring participation with compatible counterparties &mdash; but they are thinner and less cohesive than employer-based identity has been. The psychological and social cost of making transactional work the default is a real cost the mechanism enables and cannot remedy. It is distinct from the economic protection gap and will be felt by the same population during the same window.
+                    Withholding it would not have prevented it. The mathematics is published, and the extension from two parties to a chain of them is derivable by any mechanism designer who wants it. The live question was never whether this primitive exists but what properties the first serious implementation has &mdash; and the dangerous version is not this one. An admin key, governance over resolution, or yield on locked bonds would each be a capture vector that breaks the very equilibrium the thing is built to provide. The safest version is the most constrained version: no owner, no fee, no escape hatches, nothing that votes on a settlement. That is what was built, and the question on this page was asked and answered before it was released rather than after.
                 </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    This is not an argument against deployment. It is an argument for urgency in building the composable protections alongside the kernel, and for recognizing that not all transition costs are economic. The kernel enables the new world. The templates, clauses, community patterns, and identity structures that form around it determine whether that world is livable.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="What the protocol cannot control." sectionId="cannot-control">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Even with the fullest possible ecosystem development, the protocol is a primitive. It enables coordination. What coordinates &mdash; and whether that coordination is wise, kind, sustainable, or just &mdash; is determined by the communities that build on it. The protocol cannot prevent:
-                </p>
-                <ul className="space-y-4 text-base text-ink-body mb-5 ml-6">
-                    <li>
-                        <strong className="text-ink-heading font-medium">Race-to-bottom pricing</strong> in fungible markets with surplus supply. Template floor-price constraints and community norms mitigate this; the kernel does not.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">Concentrations of token power.</strong> If one wallet accumulates a dominant position in the florin&apos;s circulating supply, it can influence graph economics that reference it &mdash; the same dynamic any concentrated holding creates in any market. The florin&apos;s own design narrows this without eliminating it: it is a pure Schelling-point token with no protocol-level value accrual to concentrate &mdash; no fee, no yield, no governance claim (<Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">the florin paper</Link>). The one pool a concentrated holder might try to capture, the 600M RPGF allocation, is fixed: a farmer only ever dilutes their own share of it. The reward&apos;s dominant term counts distinct live-ETH-staked sellers rather than raw holdings, so capturing a share of it costs a linear number of live deposits, not one large position (the rent-dissipation bound ratified 2026-07-31; see <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">RPGF</Link> and <code>docs/PUBLIC_GRAPH_MODEL.md</code> &sect; &ldquo;What the stake does and does not do&rdquo;). None of this deters a determined actor with enough capital; it aligns the honest majority and bounds what concentration buys &mdash; a narrower and more honest claim than asserting the dynamic away.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">Community fracture.</strong> Token communities that diverge on values can fork. This is the Tiebout exit mechanism working correctly, but it can produce fragmentation, insularity, and echo chambers. The semantic graphs are interoperable across communities &mdash; whether communities choose to interoperate is a social question, not a technical one.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">Long-horizon and tail-risk coordination.</strong> Pandemic preparedness, defense, long-horizon environmental response, and existential-risk coordination are goods that require compulsion &mdash; free-riding is rational for individuals, and the payoff horizon exceeds any individual process&apos;s duration. Voluntary coordination through token communities under-provides these goods; template inclusion cannot substitute for compulsory taxation at the scale these goods require. To the extent state fiscal capacity is eroded, civilizational resilience to tail risk degrades. The protocol does not enable or prevent these goods; it erodes the compulsory mechanism that has historically funded them, and the voluntary mechanisms that might replace them are not yet built.
-                    </li>
-                </ul>
-            </MarketingSection>
-
-            <MarketingSection title="Why the answer is yes." sectionId="why-yes">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Across the scenarios above &mdash; partial adoption, AI-accelerated transformation, regulatory capture, full dissolution, transition backlash, supersession &mdash; the release decision holds. Not because all scenarios are equally good, but because the five arguments below hold under each of them.
-                </p>
-                <ol className="space-y-4 text-base text-ink-body leading-relaxed list-decimal pl-5">
-                    <li>
-                        <strong className="text-ink-heading font-medium">The mechanism is deterministic, not intelligent.</strong> FigaroCore does not make decisions. It does not reason. It does not pursue goals. It enforces a bonding equilibrium that two parties explicitly agreed to. The power is in enabling coordination, not in directing it.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">Withholding does not prevent.</strong> The game theory is published. The N-party scaling is a natural extension any mechanism designer can derive. If this primitive is going to exist &mdash; and the math says it will &mdash; the live question is whether the first implementation has the right properties. This one does: no owner, no fee, no escape hatches, no governance over resolution, formally verified invariants, transparent operation. A worse version &mdash; an admin key, a governance DAO over disputes, yield on bonds &mdash; would be genuinely dangerous, because each of those features is a capture vector that breaks the equilibrium. The safest version is the most constrained version. This is it.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">Composability resolves the protection gap.</strong> Every protection firms bundled with subordination can be reconstructed through composable clauses: insurance as a bonded process, taxation as a treasury node, welfare as community redistribution, collective bargaining as coordinated template selection. The reconstruction is better because it is permissionless, transparent, voluntary, and individually chosen &mdash; not because it is automatic; see <Link href="#responsibility" className="text-ink-heading font-medium hover:underline">the responsibility that remains</Link>.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">Transparency is the safeguard.</strong> Every process, bond, attestation, and settlement is permanently public &mdash; and, as built today, the public/private split behind that claim is mechanized, not asserted. Each clause declares which of its fields are public and which are private; the chain anchors only a fingerprint of the whole agreement; and the SDK&apos;s own projection logic withholds a private or unrecognized field fail-closed whenever it produces anything meant to be shared, never the reverse (<code>docs/VERIFICATION_MAP.md</code> &sect; E-8). Selling access to what stays private is itself an ordinary bonded sale on the owner&apos;s own terms &mdash; see <Link href="/data" className="text-ink-heading font-medium hover:underline">Your Records, Your Terms</Link>. Law enforcement does not need warrants for what is public. Regulators can monitor in real time. Communities can analyze patterns. This is the opposite of opacity. And when the system works well enough that people get the value they create, the incentive for illicit use decreases structurally.
-                    </li>
-                    <li>
-                        <strong className="text-ink-heading font-medium">The alternative is not the status quo.</strong> The alternative to releasing a constrained, formally verified, ownerless primitive is not &ldquo;no permissionless coordination.&rdquo; It is someone else building a version with an admin key, a governance token, and escape hatches. Every one of those features weakens the equilibrium and creates a capture vector. Withholding this implementation does not prevent the category &mdash; it cedes the design space to worse implementations.
-                    </li>
-                </ol>
-            </MarketingSection>
-
-            <MarketingSection title="The responsibility that remains." sectionId="responsibility" bottomPad="wide">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Releasing the kernel is the beginning, not the end. The kernel enforces cooperation. Whether that cooperation is just depends on what is built on top. Three responsibilities fall to the ecosystem, not the kernel:
+                    Three responsibilities follow, and none of them is the kernel&apos;s:
                 </p>
                 <ol className="space-y-3 text-base text-ink-body leading-relaxed list-decimal pl-5 mb-5">
-                    <li><strong className="text-ink-heading font-medium">Build the composable protections.</strong> Insurance, taxation, welfare, minimum-price clauses, community standards &mdash; these are patterns composed above the kernel, not kernel features. They must be built, documented, and made as accessible as the kernel itself.</li>
-                    <li><strong className="text-ink-heading font-medium">Acknowledge what the mechanism does not do.</strong> The mechanism does not make people honest &mdash; it makes honesty the cheapest option. It does not ensure fairness &mdash; it ensures settlement. It does not protect against irrationality &mdash; it assumes rationality. These boundaries should be stated clearly wherever the protocol is presented, including here.</li>
-                    <li><strong className="text-ink-heading font-medium">Revisit this analysis.</strong> The original version of this document is dated April 2026; the operator reaffirmed its conclusions on 2026-08-03, ahead of any public-network deployment, while rebuilding the details that had drifted from the shipped system. The assumptions it records should keep being tested against reality as the protocol operates, and revised &mdash; with a successor kernel if the assumptions themselves turn out to need correcting &mdash; if evidence contradicts them.</li>
+                    <li><strong className="text-ink-heading font-medium">Build the composable protections.</strong> Insurance as a bonded process, fiscal shares as a routing default, community redistribution, floor terms, standards a community can hold each other to &mdash; these are patterns someone has to author above the kernel, not features it will ever grow. They should be as accessible, as documented, and as reusable as the primitive itself.</li>
+                    <li><strong className="text-ink-heading font-medium">Acknowledge what the mechanism does not do.</strong> It does not make people honest; it makes honesty the cheapest option. It does not ensure fairness; it ensures settlement. It does not protect against irrationality; it assumes rationality. Those boundaries belong wherever the protocol is presented, including here.</li>
+                    <li><strong className="text-ink-heading font-medium">Revisit this analysis.</strong> Everything above is a claim about the world, and claims about the world are testable as the protocol operates. Where evidence contradicts one, it should be revised in public. Where an assumption in the kernel itself turns out to need correcting, the answer is a different kernel deployed beside this one and adopted by whoever finds it better &mdash; not an edit to this one, which is not possible and is not meant to be.</li>
                 </ol>
                 <p className="text-base text-ink-body leading-relaxed">
-                    A companion question &mdash; can I, personally, be robbed by this mechanism &mdash; is answered plainly on <Link href="/faq" className="text-ink-heading font-medium hover:underline">the FAQ</Link>. This page answers the larger one: what does it do to the world, if it works.
+                    A narrower question &mdash; can I, personally, be robbed by this mechanism &mdash; is answered plainly on <Link href="/faq" className="text-ink-heading font-medium hover:underline">the FAQ</Link>. This page answered the larger one, in the order the consequences arrive.
                 </p>
             </MarketingSection>
         </>
