@@ -3,6 +3,11 @@
 # human-bypassable; this is the git-level stop. Override (reviewed change only):
 # FIGARO_KERNEL_EDIT=1 git commit ... Runs first so a kernel edit fails fast.
 bash scripts/lint-kernel-frozen.sh
+# Compile floor: the default-profile build must compile — no other guard compiles
+# Solidity, so a Stack-too-deep (or any compile error) anywhere in the tree
+# otherwise ships silently and blocks `forge test` until someone next builds.
+# Incremental: ~4s when nothing Solidity changed. Whole-tree: certifies state.
+forge build
 npx lint-staged
 # Repo-hygiene floor: only the shared agent harness (agents/ skills/ hooks/
 # settings.json) may be committed under .claude/; memory files never are. Reads the
