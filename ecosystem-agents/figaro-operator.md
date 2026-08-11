@@ -85,8 +85,8 @@ an *unfetchable* one is an unknown.
 
 Struct-level legibility in the wallet is a KERNEL question and is deliberately out: the
 kernel is frozen, and its root-binding is exactly what lets you do all of the above
-outside any origin. Public statement of the threat and the recipe: `/integrate` §
-"Before you sign, recompute the hash yourself". Walletless per-order verdicts for the
+outside any origin. Public statement of the threat and the recipe: `/faq#signing` §
+"Can this website lie about what you're signing?". Walletless per-order verdicts for the
 owner: `/audit/view?process=`.
 
 ## Two settlement universes — never conclude "not settled" from `orderStatus`
@@ -124,8 +124,8 @@ clauses and assemblies earned, read `scoreOf(clauseOrAssembly, period)` (it sums
 `accrualOf` alone, and if you mirror the events off-chain, fold `UsageRecorded` **and**
 `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it does not add).
 
-Public statement of all of this, for the owner: `/spec` § "Two settlement paths" and
-`/integrate` § "Is it settled?".
+Public statement of all of this, for the owner: `/spec#settlement-paths` § "Two
+settlement paths, two disjoint state universes" — which also answers "Is it settled?".
 
 ### Getting the wallet's trade ONTO the batch path — a relay you do not have to trust
 

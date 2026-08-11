@@ -1,4 +1,4 @@
-/** 1–8 — Voshmgir & Zargham's eight disciplines; drives the `#discipline-N` anchors. */
+/** 1–8 — Voshmgir & Zargham's eight disciplines. */
 type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 /**
@@ -11,9 +11,9 @@ type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
  * without departing from the taxonomy.
  *
  * Papers, `currentWork`, `grants`, and `venue` are all optional. Every
- * discipline always has a definition; `/papers` renders the discipline map
- * (the `#discipline-N` anchors live there). The asymmetry surfaces where
- * the project actually is.
+ * discipline always has a definition; `/working-groups` renders the
+ * discipline map (the `#<slug>` anchors live there). The asymmetry surfaces
+ * where the project actually is.
  *
  * Per-group `venue` overrides surface a dedicated channel when a
  * discipline has one. There is no project-wide coordination channel,
@@ -47,9 +47,9 @@ interface ReferenceLink {
 }
 
 export interface PaperGroup {
-    /** URL slug (stable). Used for `#discipline-N`-style anchors. */
+    /** URL slug (stable). Used for `#<slug>`-style anchors on /working-groups. */
     slug: string;
-    /** 1–8 — drives the per-discipline anchor. */
+    /** 1–8 — stable ordinal within the taxonomy (display only; the URL anchor is driven by `slug`). */
     disciplineIndex: DisciplineIndex;
     /** Zargham's discipline name. */
     name: string;
@@ -218,7 +218,7 @@ export function getPaperNavigation(slug: string): PaperNavigation | null {
             discipline: {
                 name: group.name,
                 disciplineIndex: group.disciplineIndex,
-                anchor: `/papers#discipline-${group.disciplineIndex}`,
+                anchor: `/working-groups#${group.slug}`,
             },
             prev: i > 0 ? group.papers[i - 1] : null,
             next: i < group.papers.length - 1 ? group.papers[i + 1] : null,

@@ -24,7 +24,7 @@ export default function Why() {
                     <p className="text-sm text-ink-body leading-relaxed">
                         <strong>Reading this page.</strong> The mechanism &mdash; bonded stakes, buyer-only resolution, no platform in the middle &mdash; is shown on{" "}
                         <Link href="/kernel" className="hover:underline">/kernel</Link>{" "}
-                        and lived through on /local-commerce. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, start there instead, or see{" "}
+                        and lived through on <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">/local-commerce</Link>. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, start there instead, or see{" "}
                         <Link href="/faq" className="hover:underline">/faq</Link>{" "}
                         for what the design protects against, and what it does not.
                     </p>

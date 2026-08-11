@@ -50,8 +50,7 @@ export function HashVerifier() {
                 </p>
                 <h2 className="text-xl font-bold text-black">Audit-bundle hash verifier</h2>
                 <p className="text-sm text-neutral-700 max-w-2xl">
-                    Paste content or a hash from an audit bundle to verify against
-                    chain. All computation is client-side via the same SDK
+                    All computation is client-side via the same SDK
                     functions the protocol uses internally — verifiability
                     follows from using the canonical functions, not a
                     re-implementation.

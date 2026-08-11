@@ -40,8 +40,8 @@ describe("Breadcrumb", () => {
         const { container } = render(
             <Breadcrumb
                 items={[
-                    { label: "Papers", href: "/papers" },
-                    { label: "Behavioral game theory", href: "/papers#discipline-8" },
+                    { label: "Papers", href: "/working-groups" },
+                    { label: "Behavioral game theory", href: "/working-groups#psychology-decisions" },
                     { label: "A paper title" },
                 ]}
             />,
