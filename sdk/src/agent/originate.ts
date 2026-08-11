@@ -22,6 +22,7 @@ import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
 import { buildCommitment, buildDomain, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
 import { computeAgreementHash, type Agreement } from "../agreement.js";
+import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
@@ -144,13 +145,32 @@ export interface OfferPolicy {
  * another), and the agreement's parties match the commitment. Cryptographic
  * verification of the buyer signature is done in `counterSignOffer` (async).
  *
+ * With `specs` supplied, ALSO runs the merkle-leaf seam
+ * (`assertAgreementSignable` — docs/CLAUSES.md § "Every clause is a merkle
+ * leaf"): every section conforms to its clause spec, and the offer's
+ * settlement-currency TERM (the commerce clause leaf, and any composed
+ * denomination pin) equals the currency the seller is about to bond against —
+ * the commitment struct's `currency` field. This is Layer A run on the
+ * SELLER's side of the handshake (the buyer runs the same check before
+ * initiating); `checkOfferPolicy`'s currency check alone only bounds the
+ * STRUCT field against an allowlist and cannot see a leaf that disagrees with
+ * it. WITHOUT `specs`, this check is skipped — a bare integration with no
+ * `SpecSource` gets no leaf/struct check here (structural + policy checks
+ * still run).
+ *
  * With a `policy`, ALSO checks the economic fields the seller bonds against:
  * root-shape, the currency allowlist, and the magnitude cap. WITHOUT a `policy`,
- * only the structural checks run — the seller-facing seam (`counterSignOffer`)
- * treats an absent policy as a DECLINE, so a bare integration never vouches for
- * economic fields it has not been told to bound.
+ * only the structural (+ merkle-leaf, when `specs` is given) checks run — the
+ * seller-facing seam (`counterSignOffer`) treats an absent policy as a DECLINE,
+ * so a bare integration never vouches for economic fields it has not been told
+ * to bound.
  */
-export function validateOffer(offer: CommitmentPayload, expectedSeller: Address, policy?: OfferPolicy): OfferCheck {
+export function validateOffer(
+    offer: CommitmentPayload,
+    expectedSeller: Address,
+    policy?: OfferPolicy,
+    specs?: SpecSource,
+): OfferCheck {
     if (!offer.buyerSig) return { ok: false, reason: "offer is missing the buyer signature" };
     const c = offer.commitment;
     if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) return { ok: false, reason: "offer names a different seller" };
@@ -160,6 +180,13 @@ export function validateOffer(offer: CommitmentPayload, expectedSeller: Address,
     if (offer.agreement.buyer.toLowerCase() !== c.buyer.toLowerCase()
         || offer.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
+    }
+    if (specs) {
+        try {
+            assertAgreementSignable(offer.agreement, c.agreementHash, specs, c.currency, "This offer");
+        } catch (cause) {
+            return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
+        }
     }
     if (policy) {
         const economic = checkOfferPolicy(c, policy);
@@ -211,6 +238,12 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
  *     bonds the seller against attacker-chosen `expectedCumulativeValue` /
  *     `currency`, so with NO policy the offer is declined — a bare integration
  *     never silently vouches for unbounded magnitudes or an unexpected currency.
+ *
+ * With `specs` supplied, the anti-tamper gate ALSO runs the merkle-leaf seam
+ * (`validateOffer`'s `assertAgreementSignable` check): an offer whose
+ * commerce-clause currency LEAF disagrees with the commitment struct's
+ * `currency` field THROWS here too, before any signature — the same treatment
+ * as every other structural tamper.
  */
 export async function counterSignOffer(
     wallet: WalletClient,
@@ -218,13 +251,14 @@ export async function counterSignOffer(
     ctx: { chainId: number; core: Address },
     accept?: (offer: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
+    specs?: SpecSource,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignOffer: wallet has no account");
     const seller = account.address;
 
     // Anti-tamper gate: a malformed/tampered offer THROWS (integrity attack).
-    const check = validateOffer(offer, seller);
+    const check = validateOffer(offer, seller, undefined, specs);
     if (!check.ok) throw new Error(`counterSignOffer: refusing malformed offer — ${check.reason}`);
 
     const domain = buildDomain(ctx.chainId, ctx.core);
@@ -322,6 +356,13 @@ export interface SellerOfferHandlerOpts {
      *  declines every offer — counter-signing bonds the seller against
      *  attacker-chosen magnitudes/currency, so vouching for them is opt-IN. */
     policy?: OfferPolicy;
+    /** The clause-spec source for the merkle-leaf seam (`assertAgreementSignable`,
+     *  wired through `validateOffer`'s anti-tamper gate): an offer whose
+     *  commerce-clause currency LEAF disagrees with the commitment struct's
+     *  `currency` is refused (thrown) before counter-signing. OMIT it and this
+     *  handler runs no leaf/struct check — the caller's own SpecSource (the same
+     *  one used to originate or display the offer) is the one to pass here. */
+    specs?: SpecSource;
     /** Approve the seller's 2× cumulative-value bond before returning the signed
      *  offer, so the allowance is on chain before the buyer commits (default true). */
     approveBond?: boolean;
@@ -343,7 +384,7 @@ export function makeSellerOfferHandler(
 ): OfferHandler {
     return async (offer: CommitmentPayload): Promise<CommitmentPayload | null> => {
         const chainId = await publicClient.getChainId();
-        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy);
+        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy, opts.specs);
         if (!signed) return null;
         if (opts.approveBond !== false) {
             await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);

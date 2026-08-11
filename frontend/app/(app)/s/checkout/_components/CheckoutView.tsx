@@ -26,7 +26,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
-import { planSubOrderSellers, readDenominationPin, resolveSubOrderPricing } from "@figaro/sdk";
+import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { deriveAgreementGroups, deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
@@ -107,7 +107,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? boundAssemblies[0]
         : boundAssemblies.find((a) => a.slug === selectedSlug);
 
-    // The process denomination. Resolution order: the assembly's DENOMINATION
+    // The process denomination. Resolution order: the assembly's UTILITY-TOKEN
     // PIN (the designer's design.fills tailoring on the root agreement — the
     // one token the whole assembly runs in, part of its identity), else the
     // BUYER'S PICK from the seller's accepted array (the social layer — the
@@ -118,12 +118,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The pin lives at the ASSEMBLY level of the template (design.scope:
     // "assembly", ruled 2026-07-28) — a term of the composition, folded into
     // every agreement at checkout; the old root-order convention is dead.
-    const denominationPin = pickedAssembly
-        ? readDenominationPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
+    const utilityTokenPin = pickedAssembly
+        ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
         : undefined;
     const sellerDefault = memberCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
-    const currency = denominationPin ?? paymentPick ?? sellerDefault;
+    const currency = utilityTokenPin ?? paymentPick ?? sellerDefault;
     // Price conversion, unit of account → the process denomination: catalogue
     // prices are quoted in the seller's default; when the pick/pin differs,
     // every amount converts at the venue's live rate BEFORE display and
@@ -638,7 +638,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             convert at the venue rate. A designer's denomination
                             pin replaces the pick entirely; a single-entry array
                             offers no choice. */}
-                        {!denominationPin && currency && (memberCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
+                        {!utilityTokenPin && currency && (memberCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
                             <div className="border-t border-neutral-200 pt-3 space-y-1" data-testid="payment-token-picker">
                                 <p className="text-xs font-semibold text-neutral-500">Pay in</p>
                                 <div className="flex flex-wrap gap-3 text-sm">
@@ -670,7 +670,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 )}
                             </div>
                         )}
-                        {denominationPin && (
+                        {utilityTokenPin && (
                             <p className="text-xs text-neutral-500 border-t border-neutral-200 pt-3" data-testid="payment-token-pinned">
                                 This assembly is denominated by design{tokenSymbol ? ` — every bond and payment moves in ${tokenSymbol}` : ""}.
                             </p>

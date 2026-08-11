@@ -115,8 +115,11 @@ interface ClauseRung {
     auditTexts: string[];
     /** Assertions on the committed leaf's data, from the pinned agreement —
      *  async so a rung can verify out-of-band effects the leaf points at
-     *  (e.g. the affixed document's IPFS pin). */
-    leaf: (data: Record<string, unknown>) => void | Promise<void>;
+     *  (e.g. the affixed document's IPFS pin). The second arg is every
+     *  committed section, for a rung whose assertion spans more than one
+     *  leaf (e.g. the utility-token pin vs. the commerce leaf's currency —
+     *  the provenance pair). */
+    leaf: (data: Record<string, unknown>, sections: { clause: string; data: Record<string, unknown> }[]) => void | Promise<void>;
     /** Witness-stage form input (TEST INPUT, like `design`) — REQUIRED when the
      *  registered spec declares `stages`; the trigger is the spec, this is only
      *  the data a seller would type. */
@@ -226,22 +229,32 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // THE DENOMINATION PIN: the designer pins the one ERC-20 the whole
+        // THE UTILITY-TOKEN PIN: the designer pins the one ERC-20 the whole
         // assembly's processes run in — a designer-fills drawer fill (like
         // consent's affix), identity-bearing in the compositionHash. Generic:
         // the clause names no token and carries no economics. Checkout
         // resolves the process currency from the pin, ahead of the buyer's
-        // payment-token pick and the seller default; the committed root
-        // carries the denomination section.
-        clauseId: 'figaro-denomination',
+        // payment-token pick and the seller default; the committed root's
+        // commerce section carries the SAME currency — the match is the
+        // provenance the pin exists to record.
+        clauseId: 'figaro-utility-token',
         design: async (page) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
-            await page.getByTestId('drawer-field-figaro-denomination-currency').fill(token);
+            await page.getByTestId('drawer-field-figaro-utility-token-currency').fill(token);
         },
-        auditTexts: ['Denomination'],
-        leaf: (data) => {
+        auditTexts: ['Utility token'],
+        leaf: (data, sections) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
             expect(String(data.currency).toLowerCase(), 'the committed pin is the designer\'s token').toBe(token.toLowerCase());
+            // The provenance pair: the commerce leaf's currency matches the
+            // pin — proving the denomination was designer-determined, not a
+            // buyer/seller checkout-time choice that happens to coincide.
+            const commerce = sections.find((s) => s.clause === 'figaro-commerce');
+            expect(commerce, 'the commerce leaf is committed alongside the pin').toBeTruthy();
+            expect(
+                String(commerce!.data.currency).toLowerCase(),
+                'commerce.currency matches the pin — the provenance pair',
+            ).toBe(token.toLowerCase());
         },
     },
     {
@@ -822,7 +835,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 ]));
             const targetLeaf = agreement.sections.find((s) => s.clause === rung.clauseId);
             expect(targetLeaf, `the ${rung.clauseId} section is a committed leaf`).toBeTruthy();
-            await rung.leaf(targetLeaf!.data);
+            await rung.leaf(targetLeaf!.data, agreement.sections);
 
             await page.getByTestId('verify-mode-agreement').click();
             await page.getByTestId('verify-agreement-input').fill(agreementJson);

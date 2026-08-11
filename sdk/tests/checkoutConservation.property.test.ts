@@ -29,6 +29,7 @@ const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
 const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
 const CORE = "0x00000000000000000000000000000000000000c0" as const;
 const NO_SPECS = specSourceFromFixtures([]);
+const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
 // ── Arbitraries ─────────────────────────────────────────────────────────────
 
@@ -94,6 +95,7 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
                     currency: CURRENCY,
                     chainId: 31337,
                     core: CORE,
+                    specs: SPECS,
                     nodes: (planned) => ({ seller: SELLER, payment: paymentOf.get(planned.nodeId)! }),
                     salt: () => 1n,
                     deadline: 1770000000n,
@@ -107,6 +109,10 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
                     // …and it is exactly what the signed struct names.
                     expect(order.commitment.expectedCumulativeValue).toBe(order.cumulativeValue);
                     expect(order.commitment.payment).toBe(order.payment);
+                    // THE MERKLE-LEAF SEAM: the commerce section's currency leaf
+                    // never diverges from the commitment struct, on every order.
+                    const commerce = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
+                    expect(commerce?.data.currency).toBe(order.commitment.currency);
                 }
                 // The final order's total is the sum of ALL node payments.
                 const total = payments.reduce((s, p) => s + p, 0n);
@@ -125,6 +131,7 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
                     currency: CURRENCY,
                     chainId: 31337,
                     core: CORE,
+                    specs: SPECS,
                     nodes: (planned) => ({ seller: SELLER, payment: paymentOf.get(planned.nodeId)! }),
                     salt: () => 1n,
                     deadline: 1770000000n,
@@ -136,6 +143,9 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
                     expect(topo?.data.parentOrderHashes).toEqual(
                         parents[i].map((p) => hashOf.get(`n${p}`)),
                     );
+                    // THE MERKLE-LEAF SEAM: same guarantee on this property too.
+                    const commerce = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
+                    expect(commerce?.data.currency).toBe(order.commitment.currency);
                 }
             }),
         );

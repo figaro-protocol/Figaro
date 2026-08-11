@@ -14,6 +14,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, templateCompositionHash } from '@figaro/sdk';
 import { encodeGeohash } from '@figaro/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { ZERO_ADDRESS } from '@/lib/shared/evm';
 
 export const RPC_URL = 'http://127.0.0.1:8545';
 export const LOCAL_ANVIL = defineChain({
@@ -511,6 +512,26 @@ export function referenceAssemblySlug(name: string): string {
     const template = JSON.parse(
         fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8'),
     );
+    return deriveAssemblySlug(templateCompositionHash(template));
+}
+
+/** Identity of a reference that composes `figaro-utility-token` (the
+ *  assembly-scoped designer currency pin, ruled 2026-07-28): its checked-in
+ *  copy carries the ZERO_ADDRESS sentinel (a live token address is new every
+ *  fresh deploy, so `assemblies/*.json` cannot ship a real one) — mirrors
+ *  `populate-test-data.mjs`'s `fillDeployTimeCurrency`, which substitutes the
+ *  live deployment's token address into the sentinel BEFORE anchoring. A spec
+ *  wanting such a reference's slug must hash the SUBSTITUTED template — the
+ *  raw file's hash never matches what's anchored. `name` is the file in
+ *  `assemblies/`. */
+export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
+    const template = JSON.parse(
+        fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8'),
+    );
+    const pin = template.assemblyClauses?.['figaro-utility-token'];
+    if (pin?.currency === ZERO_ADDRESS) {
+        template.assemblyClauses['figaro-utility-token'] = { ...pin, currency: tokenAddress };
+    }
     return deriveAssemblySlug(templateCompositionHash(template));
 }
 

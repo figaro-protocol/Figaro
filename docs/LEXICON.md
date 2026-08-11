@@ -26,7 +26,7 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 | the agreement | **`agreementHash`** (the EIP-712 fingerprint field) | — | `Agreement` (off-chain JSON) · `agreementUri` (IPFS location) | grep-verified canonical |
 | evidence | — | **attestation** (`contentRef` = `keccak256(content)`) | attestation | `lint-architecture-lexicon` |
 | value | currency · payment | — | consumer copy via `vocab.ts` (deposit/place/complete) | — |
-| token concepts | `currency` = ANY ERC-20 (the kernel is token-agnostic) | **three distinct, never assimilated**: the **florin** (a pure Schelling point — NOTHING is conditioned on it) ≠ **`figaro-denomination`** (a generic pin: the designer names any ERC-20; no economics in the clause) ≠ the **privileged token** (VISION doctrine: an assembly-author's OWN token) | florin · denomination pin | `lint-architecture-lexicon` (same-line florin↔pin / florin↔privileged coupling banned) |
+| token concepts | `currency` = ANY ERC-20 (the kernel is token-agnostic) | **three distinct, never assimilated**: the **florin** (a pure Schelling point — NOTHING is conditioned on it) ≠ **`figaro-utility-token`** (a generic pin: the designer names any ERC-20; no economics in the clause) ≠ the **privileged token** (VISION doctrine: an assembly-author's OWN token) | florin · utility-token pin | `lint-architecture-lexicon` (same-line florin↔pin / florin↔privileged coupling banned) |
 
 **Distinct concepts that are NOT drift** (do not collapse): `compositionHash` = the *assembly's*
 identity (AssemblyRegistry binding key) ≠ `contentHash` (the *clause spec's* integrity digest,
@@ -37,7 +37,7 @@ them. Verify-after-fetch: readers recompute `contentHash`/`compositionHash` from
 document (`canonicalJson.ts` — one canonical form, sorted keys) — a mismatched pin is absence.
 **The three token concepts stay apart** (operator, 2026-07-17 — the thrice-recurring drift):
 the **florin** is a pure Schelling point — no structural role anywhere, its only couplings are
-its own issuance (genesis + RpgfMinter); **`figaro-denomination`** is a generic settlement-token
+its own issuance (genesis + RpgfMinter); **`figaro-utility-token`** is a generic settlement-token
 pin carrying no economics; the **privileged token** is an assembly-author's own value-capture
 token (`VISION.md` § "Value Capture After the Firm" — which itself says "distinct from
 denomination"). Writing any of these in terms of another — "the florin's structural demand",
@@ -49,7 +49,7 @@ naming one with another's word is the recurring drift):
 |---|---|---|
 | Unit of account | the seller's **default** (`defaultTokenAddress`, one of the accepted array) | what the catalogue QUOTES in; the conversion basis |
 | Medium of payment & bond | the buyer's **pick** from the seller's **accepted array** (`acceptedTokens[]` — the SOCIAL layer: each entry declares a value system the seller coordinates with) | THE process denomination: recorded in the commitment, bonds 2×, payment — the seller RECEIVES it and SPENDS it onward. Circulation is the point: velocity and market liquidity for the accepted token, never mere LP demand |
-| Designer override | the **denomination pin** (`figaro-denomination`, assembly-scoped — `design.scope: "assembly"`, a designer fill folded into every agreement) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
+| Designer override | the **utility-token pin** (`figaro-utility-token`, assembly-scoped — `design.scope: "assembly"`, a designer fill folded into every agreement) | replaces the buyer's pick; the whole assembly is valued in the pinned token, and the sign gate asserts the pin matches BOTH the `figaro-commerce` currency leaf and the commitment struct's `currency` field |
 | On-ramp | **swap-and-commit** (`WitnessSwapAndCommitCoordinator`, buyer and/or seller funding legs) | either party short of the process denomination converts what they hold INTO it, atomically at commit/accept. A funding input is never the order's denomination |
 | No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
 | Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
@@ -124,7 +124,7 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
   collateralization`, `schema`, `order-received`, the retired clause tiers `category-1/2` /
   `manifest-only`, `manifest` as off-chain-content, and the retired package name `@figaro/core` —
   the SDK is `@figaro/sdk`) plus the token-concept coupling bans
-  (florin↔`figaro-denomination`, florin↔privileged-token, "florin structural demand"); grows
+  (florin↔`figaro-utility-token`, florin↔privileged-token, "florin structural demand"); grows
   tier by tier.
 - **synonym-audit agent (PENDING)** — the reasoning backstop for a *newly-minted* synonym no static
   guard lists yet; its anchor is THIS grid (punch-list, Agent-workflow hygiene).

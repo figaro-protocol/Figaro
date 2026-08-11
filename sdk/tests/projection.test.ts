@@ -31,6 +31,10 @@ import { specSourceFromFixtures } from "./specFixtures.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
+/** The commitment currency the golden vectors' commerce leaf mirrors — the
+ *  same token the frozen CommitmentPayload envelope signs. */
+const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
+const OTHER_TOKEN = "0x0000000000000000000000000000000000000002" as const;
 
 const SPECS = specSourceFromFixtures([
     "figaro-commerce",
@@ -39,10 +43,12 @@ const SPECS = specSourceFromFixtures([
     "figaro-assembly-provenance",
     "figaro-geolocation",
     "figaro-merchant-process",
+    "figaro-utility-token",
 ]);
 
 function commerceData() {
     return {
+        currency: CURRENCY,
         payment: "1",
         lineItems: [{ itemId: "item-1", name: "Test item", quantity: 1, unitPrice: "1" }],
     };
@@ -54,7 +60,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-commerce": commerceData(),
             "figaro-applicable-law": { applicableLaw: "US-NY" },
         }, SPECS);
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS)).not.toThrow();
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY)).not.toThrow();
     });
 
     it("throws on a section violating its clause spec, naming clause + path", () => {
@@ -64,7 +70,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-commerce": commerceData(),
             "figaro-applicable-law": { applicableLaw: "State of New York, USA" },
         }, SPECS);
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS))
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY))
             .toThrow(/figaro-applicable-law \$\.applicableLaw/);
     });
 
@@ -73,7 +79,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-commerce": commerceData(),
         }, SPECS);
         const wrongHash = `0x${"ab".repeat(32)}` as `0x${string}`;
-        expect(() => assertAgreementSignable(agreement, wrongHash, SPECS))
+        expect(() => assertAgreementSignable(agreement, wrongHash, SPECS, CURRENCY))
             .toThrow(/\(merkle\) agreementHash/);
     });
 
@@ -85,11 +91,75 @@ describe("assertAgreementSignable — the shared sign gate", () => {
                 language: "not-a-language-code!",
             },
         }, SPECS);
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS);
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, CURRENCY);
         expect(check.ok).toBe(false);
         const paths = check.issues.map((i) => `${i.clause} ${i.path}`);
         expect(paths.some((p) => p.includes("applicableLaw"))).toBe(true);
         expect(paths.some((p) => p.includes("language"))).toBe(true);
+    });
+});
+
+describe("the sign gate's settlement-currency chain — pin == leaf == struct", () => {
+    // Every term is a merkle leaf; the kernel struct is the EXECUTION mirror
+    // of the currency term, so the gate asserts the copy across the two layers
+    // (docs/CLAUSES.md § "Every clause is a merkle leaf", ruled 2026-08-11).
+    const build = (clauses: Record<string, Record<string, unknown>>) =>
+        buildOrderAgreement(BUYER, SELLER, clauses, SPECS);
+
+    it("passes when the commerce leaf equals the commitment's currency", () => {
+        const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY)).not.toThrow();
+    });
+
+    it("throws when the leaf and the struct name different tokens", () => {
+        const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, OTHER_TOKEN))
+            .toThrow(/figaro-commerce currency: the signed term names .* contradicts it/);
+    });
+
+    it("compares the leaf case-insensitively — an address is not a string", () => {
+        const { agreement, agreementHash } = build({
+            "figaro-commerce": { ...commerceData(), currency: "0x000000000000000000000000000000000000000A" },
+        });
+        expect(() => assertAgreementSignable(
+            agreement, agreementHash, SPECS, "0x000000000000000000000000000000000000000a",
+        )).not.toThrow();
+    });
+
+    it("passes an unpinned assembly: the commerce leaf alone carries the term", () => {
+        const { agreement, agreementHash } = build({
+            "figaro-commerce": commerceData(),
+            "figaro-topology": { parentOrderHashes: [] },
+        });
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, CURRENCY);
+        expect(check.ok).toBe(true);
+    });
+
+    it("passes a pinned assembly whose pin, leaf and struct all match", () => {
+        const { agreement, agreementHash } = build({
+            "figaro-commerce": commerceData(),
+            "figaro-utility-token": { currency: CURRENCY },
+        });
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY)).not.toThrow();
+    });
+
+    it("throws when the pin contradicts the commerce leaf", () => {
+        const { agreement, agreementHash } = build({
+            "figaro-commerce": commerceData(),
+            "figaro-utility-token": { currency: OTHER_TOKEN },
+        });
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY))
+            .toThrow(/figaro-utility-token currency: this assembly is denominated by design/);
+    });
+
+    it("reports a missing leaf as the ordinary required-field failure, not a mismatch", () => {
+        const { agreement, agreementHash } = build({
+            "figaro-commerce": { payment: "1", lineItems: [] },
+        });
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, CURRENCY);
+        expect(check.ok).toBe(false);
+        expect(check.issues).toHaveLength(1);
+        expect(check.issues[0].message).toMatch(/required/i);
     });
 });
 
@@ -268,8 +338,8 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     });
 
     it("warns nothing for a non-process-log clause that declares design.fills — the normal pattern", () => {
-        // figaro-denomination: article "settlement", design.fills: ["currency"].
-        const spec = specView("figaro-denomination", { article: "settlement", designFills: ["currency"] });
+        // figaro-utility-token: article "settlement", design.fills: ["currency"].
+        const spec = specView("figaro-utility-token", { article: "settlement", designFills: ["currency"] });
         expect(warnProcessLogFillsTrap(spec)).toEqual([]);
     });
 

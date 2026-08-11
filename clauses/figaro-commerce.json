@@ -2,8 +2,15 @@
     "clauseId": "figaro-commerce",
     "version": 1,
     "title": "Commerce terms",
-    "description": "Payment amount and itemized line items for the commercial half of an order. The process denomination is NOT here: it is signed in the kernel commitment itself, resolved at checkout as the assembly's figaro-denomination pin (the designer's tailoring, when composed on the root order), else the buyer's pick from the seller's accepted tokens, else the seller's default.",
+    "description": "Settlement currency, payment amount, and itemized line items for the commercial half of an order. The currency is a TERM of the agreement — a merkle leaf under agreementHash like every other term — and it is written by the checkout walk exactly as payment is: the assembly's figaro-utility-token pin when the designer composed one, else the buyer's pick from the seller's accepted tokens, else the seller's default. The kernel commitment's currency field MIRRORS this leaf (execution data beside the signed term), and the sign gate asserts the two match before either party signs.",
     "fields": [
+        {
+            "name": "currency",
+            "type": "string",
+            "format": "address-hex",
+            "required": true,
+            "description": "ERC-20 settlement token address — the term the kernel commitment's currency field mirrors."
+        },
         {
             "name": "payment",
             "type": "bigint",

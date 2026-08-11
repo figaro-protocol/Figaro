@@ -7,7 +7,7 @@ import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { t
 import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
-import denominationSpecRaw from "../../../clauses/figaro-denomination.json" with { type: "json" };
+import utilityTokenSpecRaw from "../../../clauses/figaro-utility-token.json" with { type: "json" };
 import contentHandoffSpecRaw from "../../../clauses/figaro-content-handoff.json" with { type: "json" };
 import geolocationSpecRaw from "../../../clauses/figaro-geolocation.json" with { type: "json" };
 import cargoSpecRaw from "../../../clauses/figaro-cargo.json" with { type: "json" };
@@ -63,14 +63,40 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(parseClauseSpec(commerceSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-commerce accepts an order with line items (currency is NOT commerce content — it is the kernel commitment's, pinned via figaro-denomination)", () => {
+    it("figaro-commerce accepts an order with its settlement currency and line items", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const ok = validateContent({
+            currency: "0x" + "ab".repeat(20),
             payment: "1000000000000000000",
             lineItems: [{ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500000000000000000" }],
         }, parsed.spec);
         expect(ok.ok).toBe(true);
+    });
+
+    it("figaro-commerce requires the currency — the settlement token is a TERM, a merkle leaf like every other term", () => {
+        const parsed = parseClauseSpec(commerceSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // The kernel commitment's currency field MIRRORS this leaf; a term
+        // living only in the struct would leave the evidence record
+        // incomplete (docs/CLAUSES.md § "Every clause is a merkle leaf").
+        expect(validateContent({
+            payment: "1000000000000000000",
+            lineItems: [],
+        }, parsed.spec).ok).toBe(false);
+        // …and it is a token ADDRESS, not prose.
+        expect(validateContent({
+            currency: "the MARIA token",
+            payment: "1000000000000000000",
+            lineItems: [],
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-commerce declares its currency as plain CONTENT, never a designer fill (the pin-routing seam)", () => {
+        // The disambiguation the SDK's pin lookup routes on: commerce's
+        // currency is checkout-written content; the utility-token clause's is
+        // a design fill. Same field name, two different terms.
+        expect((commerceSpecRaw as { block: { design: { fills: string[] } } }).block.design.fills).toEqual([]);
     });
 
     // ── figaro-content-handoff ──
@@ -90,18 +116,19 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ contentHandoff: ["carrier-pigeon"] }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-denomination ──
+    // ── figaro-utility-token ──
 
-    it("figaro-denomination spec parses cleanly and declares its token pin as a designer fill", () => {
-        const parsed = parseClauseSpec(denominationSpecRaw);
+    it("figaro-utility-token spec parses cleanly and declares its token pin as a designer fill", () => {
+        const parsed = parseClauseSpec(utilityTokenSpecRaw);
         expect(parsed.ok).toBe(true);
         // The designer authors the token pin into the template (block.design.fills)
-        // — the tailoring that adapts the generic assembly.
-        expect((denominationSpecRaw as { block: { design: { fills: string[] } } }).block.design.fills).toEqual(["currency"]);
+        // — the tailoring that adapts the generic assembly, and the
+        // declaration every pin lookup routes on.
+        expect((utilityTokenSpecRaw as { block: { design: { fills: string[] } } }).block.design.fills).toEqual(["currency"]);
     });
 
-    it("figaro-denomination accepts a token address and rejects prose", () => {
-        const parsed = parseClauseSpec(denominationSpecRaw);
+    it("figaro-utility-token accepts a token address and rejects prose", () => {
+        const parsed = parseClauseSpec(utilityTokenSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ currency: "0x" + "ab".repeat(20) }, parsed.spec).ok).toBe(true);
         expect(validateContent({ currency: "the MARIA token" }, parsed.spec).ok).toBe(false);

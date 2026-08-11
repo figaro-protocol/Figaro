@@ -134,7 +134,7 @@ export function useOrderCommitmentFlow() {
         // recomputed merkle root equals the hash being signed. The /orders
         // accept card, /sign, and the buyer's checkout sign all route through
         // here — both sides of the bilateral commit get the same check.
-        assertAgreementSignable(agreement, commitment.agreementHash, specSource());
+        assertAgreementSignable(agreement, commitment.agreementHash, specSource(), commitment.currency);
         // When the bond is swap-funded, `swap` surfaces the leg's maxInput in
         // the SAME confirm — one approval covers the commitment sign AND the
         // Permit2 witness sign the caller does right after.
@@ -464,6 +464,7 @@ export function useOrderCommitmentFlow() {
                 payload.agreement,
                 payload.commitment.agreementHash,
                 specSource(),
+                payload.commitment.currency,
             );
             const approved = await requestCommitConfirmation(
                 payload.commitment,

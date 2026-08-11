@@ -128,6 +128,26 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
     return spec.fields.some((f) => f.name === fieldName);
 }
 
+/** Whether a spec declares `fieldName` as PLAIN CONTENT — declared, and NOT a
+ *  designer fill (`block.design.fills`). The disambiguating half of
+ *  `specDeclaresField` for a field name two clauses legitimately share: an
+ *  order's settlement `currency` is plain content on the commerce clause
+ *  (written at checkout, one term of one order), and a DESIGNER FILL on a
+ *  denomination-pin clause (authored into the template, a term of the
+ *  composition). Same field name, two different terms — so surfaces that mean
+ *  one of them route on the declaration, never on a clause id. */
+export function specDeclaresContentField(spec: ProjectionSpecView, fieldName: string): boolean {
+    return specDeclaresField(spec, fieldName) && !specDesignFills(spec).includes(fieldName);
+}
+
+/** Whether a spec declares `fieldName` as a DESIGNER FILL — the pin half of
+ *  the pair above (`block.design.fills` carries the field). ANY clause
+ *  declaring a `currency` design fill is a denomination pin, including one
+ *  this code has never seen. */
+export function specDeclaresDesignFill(spec: ProjectionSpecView, fieldName: string): boolean {
+    return specDesignFills(spec).includes(fieldName);
+}
+
 /** Whether a clause spec declares ANY field as `private`-disposition. A section
  *  committing such a clause carries paid-edge plaintext that must never reach a
  *  public surface. Because the merkle leaf model withholds a WHOLE section (never
@@ -248,7 +268,7 @@ export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
  *  `figaro-merchant-process` nor `figaro-courier-process`, declares any
  *  fill list, which is the signal a genuine process-log clause never
  *  trips), and a fill list alone on any other article is the normal,
- *  intended pattern (`figaro-denomination`, `figaro-dimweight`, …). */
+ *  intended pattern (`figaro-utility-token`, `figaro-dimweight`, …). */
 export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly string[] {
     if (!specIsProcessLog(spec)) return [];
     const warnings: string[] = [];
@@ -350,19 +370,64 @@ export interface CommitmentAgreementIssue {
     message: string;
 }
 
+/** An address-valued leaf, or undefined when the section carries none (a
+ *  withheld section, an unloaded spec, a malformed value — each already a
+ *  Layer-A failure of its own where the field is required). */
+function addressLeaf(section: AgreementSection | undefined, field: string): `0x${string}` | undefined {
+    const value = section?.data?.[field];
+    return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value)
+        ? (value as `0x${string}`)
+        : undefined;
+}
+
+/** The section carrying the ORDER's settlement currency: the composed clause
+ *  declaring `payment` and declaring `currency` as plain content. Spec-routed,
+ *  naming no clause — a second commerce clause anyone registers participates
+ *  identically, and a denomination pin (whose `currency` is a designer fill)
+ *  is excluded by construction. */
+function commerceCurrencySection(
+    agreement: Agreement,
+    specs: SpecSource,
+): AgreementSection | undefined {
+    return agreement.sections.find((s) => {
+        const spec = specs.get(s.clause, s.version);
+        return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
+    });
+}
+
+/** The section carrying the COMPOSITION's denomination pin: the composed
+ *  clause declaring `currency` as a designer fill. */
+function currencyPinSection(
+    agreement: Agreement,
+    specs: SpecSource,
+): AgreementSection | undefined {
+    return agreement.sections.find((s) => {
+        const spec = specs.get(s.clause, s.version);
+        return !!spec && specDeclaresDesignFill(spec, "currency");
+    });
+}
+
 /**
  * Layer A of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
- * signs an invalid agreement. Two checks: every present section conforms to its
- * clause spec (validateContent; process-log clauses are presence-markers,
- * skipped), and the `agreementHash` about to be signed equals the merkle root
- * recomputed from the sections. Catches a malformed agreement before a chain
- * round-trip.
+ * signs an invalid agreement. Three checks: every present section conforms to
+ * its clause spec (validateContent; process-log clauses are presence-markers,
+ * skipped); the settlement currency the parties are about to sign as a TERM
+ * equals the one they are about to sign as EXECUTION data (leaf == struct, and
+ * where a denomination pin is composed, pin == leaf); and the `agreementHash`
+ * about to be signed equals the merkle root recomputed from the sections.
+ * Catches a malformed agreement before a chain round-trip.
+ *
+ * `currency` is the kernel commitment's currency field — the struct side of
+ * the leaf==struct assertion. Evidence and execution are different layers, so
+ * the copy across them is the binding, and asserting it is this gate's job
+ * (docs/CLAUSES.md § "Every clause is a merkle leaf").
  */
 export function validateCommitmentAgreement(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
+    currency: `0x${string}`,
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
 
@@ -377,6 +442,37 @@ export function validateCommitmentAgreement(
             for (const e of result.errors) {
                 issues.push({ clause: section.clause, path: e.path, message: e.message });
             }
+        }
+    }
+
+    // The settlement-currency chain: pin (when composed) == commerce leaf ==
+    // commitment struct. A missing or malformed leaf on a composed commerce
+    // clause is already reported above (the field is required by its spec), so
+    // there is nothing extra to say here — this compares the values that ARE
+    // present, and each comparison is skipped when its clause isn't composed.
+    const leafSection = commerceCurrencySection(agreement, specs);
+    const leaf = addressLeaf(leafSection, "currency");
+    if (leafSection && leaf && leaf.toLowerCase() !== currency.toLowerCase()) {
+        issues.push({
+            clause: leafSection.clause,
+            path: "currency",
+            message: `the signed term names ${leaf} as the settlement currency; the commitment currency ${currency} contradicts it`,
+        });
+    }
+    const pinSection = currencyPinSection(agreement, specs);
+    const pin = addressLeaf(pinSection, "currency");
+    if (pinSection && pin) {
+        // Against the leaf when a commerce clause is composed, else against
+        // the struct directly — the chain is transitive, so the pin is
+        // asserted either way.
+        const against = leaf ?? currency;
+        const againstLabel = leaf ? "the order's committed currency" : "the commitment currency";
+        if (pin.toLowerCase() !== against.toLowerCase()) {
+            issues.push({
+                clause: pinSection.clause,
+                path: "currency",
+                message: `this assembly is denominated by design (${pin}); ${againstLabel} ${against} contradicts the pinned term`,
+            });
         }
     }
 
@@ -406,16 +502,20 @@ export function validateCommitmentAgreement(
 /**
  * The ONE Layer-A thrower every signature routes through — buyer sign, seller
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
- * path signs an agreement whose sections violate their clause specs or whose
- * hash doesn't match its recomputed merkle root.
+ * path signs an agreement whose sections violate their clause specs, whose
+ * settlement currency differs between the signed term and the signed struct,
+ * or whose hash doesn't match its recomputed merkle root.
+ *
+ * `currency` is the currency field of the commitment being signed.
  */
 export function assertAgreementSignable(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
+    currency: `0x${string}`,
     label = "This order",
 ): void {
-    const check = validateCommitmentAgreement(agreement, expectedHash, specs);
+    const check = validateCommitmentAgreement(agreement, expectedHash, specs, currency);
     if (!check.ok) {
         throw new Error(
             `${label} isn't valid to sign yet: ${check.issues

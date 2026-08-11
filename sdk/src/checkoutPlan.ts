@@ -17,7 +17,15 @@
 
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
-import { specDeclaresField, specCatalogueFills, specProfileFills, type SpecSource } from "./projection.js";
+import {
+    specDeclaresContentField,
+    specDeclaresDesignFill,
+    specDeclaresField,
+    specCatalogueFills,
+    specProfileFills,
+    type ProjectionSpecView,
+    type SpecSource,
+} from "./projection.js";
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
@@ -46,19 +54,28 @@ export interface AssemblyCheckoutLineItem {
     clauseValues?: Record<string, Record<string, unknown>>;
 }
 
+/** The first composed clause whose LOADED spec satisfies `predicate`.
+ *  Undefined while the spec is unloaded — the fill degrades to a no-op,
+ *  exactly as the registry-reading frontend does before its cache warms. */
+function composedClauseWhere(
+    clauses: ClauseFields,
+    specs: SpecSource,
+    predicate: (spec: ProjectionSpecView) => boolean,
+): string | undefined {
+    return Object.keys(clauses).find((clauseId) => {
+        const spec = specs.get(clauseId);
+        return spec ? predicate(spec) : false;
+    });
+}
+
 /** The declared-field lookup the fills run: the first composed clause whose
- *  loaded spec declares `fieldName`. Undefined while the spec is unloaded —
- *  the fill degrades to a no-op, exactly as the registry-reading frontend
- *  does before its cache warms. */
+ *  loaded spec declares `fieldName`. */
 function composedClauseDeclaring(
     clauses: ClauseFields,
     fieldName: string,
     specs: SpecSource,
 ): string | undefined {
-    return Object.keys(clauses).find((clauseId) => {
-        const spec = specs.get(clauseId);
-        return spec ? specDeclaresField(spec, fieldName) : false;
-    });
+    return composedClauseWhere(clauses, specs, (spec) => specDeclaresField(spec, fieldName));
 }
 
 /**
@@ -88,28 +105,36 @@ export function derivePricedFields(
 }
 
 /**
- * Write the order's commercial terms into the commerce section, found by its
+ * Write the order's settlement terms into the commerce section, found by its
  * declared `lineItems` field (never by clause id; gracefully skipped when the
  * assembly composes no commerce clause). `payment` is stored as the clause
  * spec wants it (decimal string); `lineItems` is supplied only for the root
  * (the buyer's cart) and stripped to the commerce section's closed shape —
  * the cart's physical attributes belong to the cargo collapse, not here.
- * The settlement CURRENCY is not commerce content: it is signed in the
- * kernel commitment itself, and pinned assemblies commit it through the
- * root's denomination section (`readDenominationPin`).
+ *
+ * `currency` — the RESOLVED settlement token (the assembly's utility-token
+ * pin when composed, else the buyer's pick from the seller's accepted tokens,
+ * else the seller's default) — is written exactly as `payment` is: it is a
+ * TERM of the agreement, a merkle leaf under `agreementHash`, which the
+ * kernel commitment's currency field then mirrors. Written only where the
+ * commerce clause declares `currency` as content, so a third-party commerce
+ * clause that declares no such field keeps its closed shape.
  */
 export function fillCommerceSection(
     clauses: ClauseFields,
     payment: bigint,
+    currency: `0x${string}`,
     specs: SpecSource,
     lineItems?: AssemblyCheckoutLineItem[],
 ): ClauseFields {
     const commerceClauseId = composedClauseDeclaring(clauses, "lineItems", specs);
     if (!commerceClauseId) return clauses;
+    const spec = specs.get(commerceClauseId);
     return {
         ...clauses,
         [commerceClauseId]: {
             ...clauses[commerceClauseId],
+            ...(spec && specDeclaresContentField(spec, "currency") ? { currency } : {}),
             payment: payment.toString(),
             ...(lineItems
                 ? {
@@ -122,19 +147,25 @@ export function fillCommerceSection(
 }
 
 /**
- * The designer's denomination pin, read from a template agreement's composed
- * clauses — the first composed clause declaring a `currency` field (never a
- * clause id; commerce no longer declares one), with a non-empty designer
- * value. The pin is designer-fills content (block.design.fills): it survives the value-free build
- * and is part of the compositionHash — the assembly's one-token tailoring.
+ * The designer's utility-token pin, read from a template agreement's composed
+ * clauses — the composed clause declaring `currency` as a DESIGNER FILL
+ * (`block.design.fills`), with a well-formed value. The design-fill
+ * declaration is the whole routing rule, and it is what disambiguates the two
+ * clauses that legitimately carry a `currency` field: the commerce clause
+ * declares it as plain CONTENT (one order's settlement term, written at
+ * checkout) and is never a pin, while ANY clause — including one this code
+ * has never seen — declaring a `currency` design fill IS one. The pin
+ * survives the value-free template build and is part of the compositionHash:
+ * the assembly's one-token tailoring.
+ *
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
  * default, denominates) or spec cache cold.
  */
-export function readDenominationPin(
+export function readUtilityTokenPin(
     clauses: ClauseFields,
     specs: SpecSource,
 ): `0x${string}` | undefined {
-    const clauseId = composedClauseDeclaring(clauses, "currency", specs);
+    const clauseId = composedClauseWhere(clauses, specs, (spec) => specDeclaresDesignFill(spec, "currency"));
     const value = clauseId ? clauses[clauseId]?.currency : undefined;
     return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value)
         ? (value as `0x${string}`)
@@ -173,7 +204,7 @@ export function fillProvenanceSection(
  *  (`fillProvenanceSection`), the topology rewrite (`writeTopologySection`),
  *  and the dimweight derivation (`fillDimweightSection`). ONE list, owned
  *  beside the fills it describes. */
-const MECHANICAL_FILL_FIELDS = ["payment", "lineItems", "compositionHash", "parentOrderHashes", "billedMassGrams"] as const;
+const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "compositionHash", "parentOrderHashes", "billedMassGrams"] as const;
 
 /**
  * The field names the checkout walk fills mechanically for THIS composed

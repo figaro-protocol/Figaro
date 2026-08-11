@@ -12,6 +12,9 @@ import {
     reconstructOrdersFromTemplate,
 } from "../src/reconstructOrders.js";
 import type { AssemblyTemplate } from "../src/assembly.js";
+import { specSourceFromFixtures } from "./specFixtures.js";
+
+const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER_A = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
@@ -68,6 +71,7 @@ describe("reconstructOrdersFromTemplate — realization", () => {
             currency: CURRENCY,
             chainId: 31337,
             core: CORE,
+            specs: SPECS,
             nodes: (p) =>
                 p.nodeId === "merchant"
                     ? { seller: SELLER_A, payment: 100n }
@@ -95,6 +99,13 @@ describe("reconstructOrdersFromTemplate — realization", () => {
         // The composition's version pin survives into the section.
         const commerce = sub.agreement.sections.find((s) => s.clause === "figaro-commerce");
         expect(commerce?.version).toBe(2);
+        // THE MERKLE-LEAF SEAM: with specs supplied, the walk fills the
+        // commerce section's currency leaf to match the commitment struct —
+        // on EVERY realized order, root and sub alike.
+        for (const order of orders) {
+            const commerceSection = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
+            expect(commerceSection?.data.currency).toBe(order.commitment.currency);
+        }
     });
 
     it("rejects a template whose commit order starts with a parented node", async () => {

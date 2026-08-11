@@ -1,0 +1,35 @@
+{
+    "clauseId": "figaro-utility-token",
+    "version": 1,
+    "title": "Utility token",
+    "description": "The ONE token an assembly's processes are denominated in — the DESIGNER's pin. Any ERC-20; the clause names no token. DESIGNER-FILLED (block.design.fills: [\"currency\"]) and ASSEMBLY-SCOPED (design.scope: \"assembly\", ruled 2026-07-28): composed once for the whole design and folded into EVERY agreement at checkout, so every party signs the pin. When it is composed, checkout writes the pinned value into the commerce section's currency and no token picker renders; the two leaves then MATCH, and the match is what PROVES the denomination was designer-determined — the provenance this clause exists to record. The pin is part of the assembly's identity (compositionHash), so the same composition in another token is a different assembly. An assembly without this clause is denominated at checkout — the buyer's pick from the seller's accepted tokens, else the seller's default — and the commerce leaf alone carries the term.",
+    "fields": [
+        {
+            "name": "currency",
+            "type": "string",
+            "format": "address-hex",
+            "required": true,
+            "description": "ERC-20 token address the assembly's processes are denominated in."
+        }
+    ],
+    "stages": {},
+    "block": {
+        "design": {
+            "article": "settlement",
+            "scope": "assembly",
+            "nestsUnder": null,
+            "fills": [
+                "currency"
+            ],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": []
+        }
+    }
+}

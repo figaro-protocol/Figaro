@@ -34,7 +34,12 @@ import {
     computeOrderHash,
     ZERO_PROCESS_ID,
 } from "./commitments.js";
-import { buildOrderAgreement, type SpecSource } from "./projection.js";
+import {
+    buildOrderAgreement,
+    specDeclaresContentField,
+    specDeclaresField,
+    type SpecSource,
+} from "./projection.js";
 import { topologicalOrder } from "./topology.js";
 import type { Address, Commitment, Hex } from "./types.js";
 
@@ -141,10 +146,27 @@ export interface ReconstructParams {
     /**
      * When supplied, agreements build through the spec-default projection
      * (`buildOrderAgreement` — checkout semantics: registry-declared defaults
-     * fill omitted fields, process-log clauses stay empty anchors). Without
-     * it, the raw override-merge (`templateAgreementFromClauses`) applies —
-     * the agent-origination semantics. Either way the section versions come
-     * from the composition.
+     * fill omitted fields, process-log clauses stay empty anchors), and the
+     * walk ALSO fills `currency` (matched by declared field, never clause id)
+     * into the commerce section of EVERY realized order — the one term that
+     * must equal the commitment struct's `currency` field
+     * (docs/CLAUSES.md § "Every clause is a merkle leaf"). A caller override
+     * that already names a currency is accepted only when it matches; a
+     * CONTRADICTING override throws before hashing, so the walk never signs a
+     * leaf that disagrees with its struct.
+     *
+     * Without `specs`, the raw override-merge (`templateAgreementFromClauses`)
+     * applies — the agent-origination semantics — and currency-leaf routing is
+     * impossible (no spec to find the commerce clause by declared field). A
+     * spec-less caller OWNS that leaf: it must supply the commerce section's
+     * `currency` itself, via `ReconstructNodeSpec.overrides`, equal to the
+     * `currency` this walk is called with. The sign gate
+     * (`assertAgreementSignable`) is the net that catches a spec-less caller
+     * that forgets — it refuses to sign a leaf that disagrees with the struct
+     * — but this walk cannot fill or check the leaf itself with no spec to
+     * find it by.
+     *
+     * Either way the section versions come from the composition.
      */
     specs?: SpecSource;
     /** Optional deterministic salt per node (testing). */
@@ -215,7 +237,12 @@ export async function reconstructOrdersFromTemplate(
             ? buildOrderAgreement(
                   params.buyer,
                   spec.seller,
-                  mergeOverrides(clauses, spec.overrides),
+                  fillWalkCurrency(
+                      mergeOverrides(clauses, spec.overrides),
+                      params.currency,
+                      params.specs,
+                      node.nodeId,
+                  ),
                   params.specs,
                   node.clauseVersions,
               )
@@ -292,6 +319,50 @@ function withRealParents(
         }
     }
     return out;
+}
+
+/** The commerce section's clause id, found the same way
+ *  `checkoutPlan.fillCommerceSection` finds it: the composed clause whose
+ *  loaded spec declares `payment` and declares `currency` as plain content
+ *  (never a design-fill denomination pin — that is a different clause, a
+ *  different term). Undefined when no composed clause matches or the spec
+ *  cache is cold — a no-op, matching every other spec-routed fill in this
+ *  SDK; never a clause id. */
+function commerceClauseId(
+    clauses: Record<string, Record<string, unknown>>,
+    specs: SpecSource,
+): string | undefined {
+    return Object.keys(clauses).find((clauseId) => {
+        const spec = specs.get(clauseId);
+        return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
+    });
+}
+
+/** Write the process's settlement currency into the commerce section BEFORE
+ *  hashing, so the leaf every party signs never diverges from the commitment
+ *  struct's `currency` field (docs/CLAUSES.md § "Every clause is a merkle
+ *  leaf"). A no-op when no composed clause carries the currency-as-content
+ *  field. A caller override that already names a currency is accepted only
+ *  when it is IDENTICAL to `currency`; a CONTRADICTING override throws —
+ *  the walk owns this leaf whenever specs are available, so a mismatched
+ *  override is caller error to surface immediately, not a value to silently
+ *  reconcile or overwrite. */
+function fillWalkCurrency(
+    clauses: Record<string, Record<string, unknown>>,
+    currency: Address,
+    specs: SpecSource,
+    nodeId: string,
+): Record<string, Record<string, unknown>> {
+    const clauseId = commerceClauseId(clauses, specs);
+    if (!clauseId) return clauses;
+    const existing = clauses[clauseId]?.currency;
+    if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== currency.toLowerCase()) {
+        throw new Error(
+            `node "${nodeId}": override names commerce currency ${existing}, which contradicts this process's ` +
+                `currency ${currency} — refusing to build a leaf that disagrees with the commitment struct`,
+        );
+    }
+    return { ...clauses, [clauseId]: { ...clauses[clauseId], currency } };
 }
 
 function mergeOverrides(

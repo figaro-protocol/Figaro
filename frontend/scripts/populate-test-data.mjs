@@ -90,6 +90,35 @@ function mandatoryClauseFold(parents = []) {
     return out;
 }
 
+// The zero address — the codebase's standing sentinel for an unset
+// address-hex value (mirrors `ZERO_ADDRESS` in frontend/lib/shared/evm.ts and
+// the SDK's own address-hex schema default). A reference assembly cannot ship
+// a REAL token address: `assemblies/*.json` is checked in once and reused by
+// every fresh devnet deploy, but the deployed MockERC20's address is new
+// every time. A reference that composes figaro-utility-token (an
+// ASSEMBLY-SCOPED designer fill — ruled 2026-07-28 — that is part of the
+// composition's identity) ships the sentinel in place of the pin; this SEED
+// PATH is the one place that knows the live deployment's token address, so it
+// substitutes it in HERE, before pinning — the anchored template (and its
+// compositionHash) carries the real pin, never the sentinel.
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+/** Fill the deploy-time currency pin: any assembly-scoped figaro-utility-token
+ *  composed with the ZERO_ADDRESS sentinel gets the live token address
+ *  substituted before anchoring. Templates that don't compose the clause, or
+ *  that already pin a real address, pass through unchanged. */
+function fillDeployTimeCurrency(template, tokenAddress) {
+    const pin = template.assemblyClauses?.['figaro-utility-token'];
+    if (!pin || pin.currency !== ZERO_ADDRESS) return template;
+    return {
+        ...template,
+        assemblyClauses: {
+            ...template.assemblyClauses,
+            'figaro-utility-token': { ...pin, currency: tokenAddress },
+        },
+    };
+}
+
 async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template }) {
     // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
     // is presentation, derived off-chain. Both from the SDK single home — the
@@ -225,7 +254,8 @@ async function main() {
     await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
     await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
     for (const file of fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()) {
-        const template = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
+        const raw = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
+        const template = fillDeployTimeCurrency(raw, mockErc20);
         await anchorAssembly({ ...anchorArgs, template });
     }
 

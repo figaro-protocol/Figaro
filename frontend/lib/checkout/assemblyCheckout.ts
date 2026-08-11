@@ -24,7 +24,7 @@
  */
 
 import {
-    readDenominationPin,
+    readUtilityTokenPin,
     assertAgreementSignable,
     hashCommitmentStruct,
     profileValuesFor,
@@ -86,7 +86,7 @@ export interface AssemblyCheckoutDeps {
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {
-    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), label);
+    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), preview.commitment.currency, label);
 }
 
 /** The entries the fills actually CHANGED — passed to the walk as overrides so
@@ -172,12 +172,12 @@ export async function executeAssemblyCheckout(
     const specs = specSource();
     const template = assembly.assemblyTemplate;
 
-    // DENOMINATION VERIFICATION (ruled 2026-07-28): when the assembly pins
+    // UTILITY-TOKEN PIN VERIFICATION (ruled 2026-07-28): when the assembly pins
     // its settlement token (an assembly-scoped term, part of the
     // compositionHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
-    const pin = readDenominationPin(template.assemblyClauses ?? {}, specs);
+    const pin = readUtilityTokenPin(template.assemblyClauses ?? {}, specs);
     if (pin && !hexEqual(pin, currency)) {
         throw new Error(
             `this assembly is denominated by design (${pin}); the commitment currency ${currency} contradicts the pinned term`,
@@ -300,7 +300,7 @@ function checkoutNodes(
     },
 ): (planned: PlannedTemplateOrder) => ReconstructNodeSpec {
     const { rootId, boundSellerByNode, compositionByNode, specs } = ctx;
-    const { leadSellerAddress, payment, lineItems, sellerCatalogues, tokenDecimals, subOrderSelections } = params;
+    const { leadSellerAddress, currency, payment, lineItems, sellerCatalogues, tokenDecimals, subOrderSelections } = params;
     const template = params.assembly.assemblyTemplate;
     return (planned) => {
         const node = template.agreements.find((a) => a.id === planned.nodeId)!;
@@ -318,7 +318,7 @@ function checkoutNodes(
                         lineItems, specs,
                         profileValuesFor(leadSellerAddress, sellerCatalogues),
                     ),
-                    payment, specs, lineItems,
+                    payment, currency, specs, lineItems,
                 ),
                 templateCompositionHash(template), specs,
             );
@@ -393,7 +393,7 @@ function checkoutNodes(
                     subLineItems ?? [], specs,
                     profileValuesFor(subSeller, sellerCatalogues),
                 ),
-                subPayment, specs, subLineItems,
+                subPayment, currency, specs, subLineItems,
             ),
             templateCompositionHash(template), specs,
         );

@@ -304,7 +304,7 @@ function SignPageContent() {
     // the sign/commit gates re-assert this at the exit.
     const agreementCheck = useMemo(() => {
         if (!parsed?.agreement || !commitment) return null;
-        return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource());
+        return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource(), commitment.currency);
     }, [parsed, commitment]);
 
     return (

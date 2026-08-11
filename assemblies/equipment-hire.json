@@ -1,0 +1,24 @@
+{
+    "name": "Equipment hire",
+    "summary": "A single bonded rental, settled in the studio's own token — no card processor, no float.",
+    "description": "A renter books a piece of equipment — a camera kit, an audio rig, a tool — directly from its owner. Both sides lock a stake worth more than the deal, so returning it and paying for it are each party's most profitable move — no card network, no security deposit held by a platform. The composition pins one ERC-20 as the whole assembly's settlement currency, set once by the studio that designed it: checkout writes that pin straight into the deal, so no token picker ever appears and every signer sees the same denomination the assembly was built in.",
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {},
+        "figaro-utility-token": {
+            "currency": "0x0000000000000000000000000000000000000000"
+        }
+    },
+    "agreements": [
+        {
+            "id": "order-0",
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                },
+                "figaro-modalities": {},
+                "figaro-geolocation": {}
+            }
+        }
+    ]
+}

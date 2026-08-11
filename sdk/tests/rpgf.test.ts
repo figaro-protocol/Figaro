@@ -476,7 +476,11 @@ describe("buildUsageClaims", () => {
     }
 
     const modalities = { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } };
-    const commerce = { clause: "figaro-commerce", version: 1, data: { payment: "100" } };
+    const commerce = {
+        clause: "figaro-commerce",
+        version: 1,
+        data: { payment: "100", currency: order.currency, lineItems: [] },
+    };
     const provenance = {
         clause: "figaro-assembly-provenance",
         version: 1,

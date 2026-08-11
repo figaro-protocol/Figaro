@@ -13,6 +13,9 @@ import {
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeAgreementHash } from "../src/agreement.js";
 import type { Address } from "../src/types.js";
+import { specSourceFromFixtures } from "./specFixtures.js";
+
+const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const SELLER = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -180,6 +183,38 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         const bogus = await buildBuyerOffer(sellerW, { ...offerParams(), seller: SELLER.address });
         offer.buyerSig = bogus.buyerSig; // signature over a DIFFERENT commitment
         await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE })).rejects.toThrow(/does not recover/i);
+    });
+
+    // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
+    // leaf"): a leaf that disagrees with the struct is tampering, refused
+    // with the same anti-tamper treatment as every other structural check —
+    // but ONLY when the seller's SpecSource is supplied (`specs`), since
+    // that's what finds the commerce clause's currency-as-content leaf.
+    it("rejects an offer whose commerce leaf names a currency contradicting the allowlisted struct currency", async () => {
+        const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
+        const mismatched = {
+            ...offerParams(),
+            overrides: {
+                "figaro-commerce": {
+                    currency: BAD_CURRENCY, // the signed TERM
+                    payment: "1000",
+                    lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
+                },
+            },
+        };
+        const offer = await buildBuyerOffer(buyerW, mismatched);
+        // The signed STRUCT still names the allowlisted currency.
+        expect(offer.commitment.currency).toBe(CURRENCY);
+
+        // With no specs, the leaf/struct check does not run — structurally
+        // clean (the leaf mismatch is invisible without a SpecSource).
+        expect(validateOffer(offer, SELLER.address).ok).toBe(true);
+
+        // With specs, it's caught and refused — before any signature.
+        expect(validateOffer(offer, SELLER.address, undefined, SPECS).ok).toBe(false);
+        await expect(
+            counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS),
+        ).rejects.toThrow(/settlement currency/i);
     });
 });
 

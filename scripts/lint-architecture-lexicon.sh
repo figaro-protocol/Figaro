@@ -129,23 +129,23 @@ for file in "$@"; do
     # ── token concepts (three distinct; operator ruling 2026-07-17) ──
     # The florin is a PURE SCHELLING POINT — nothing structural anywhere is
     # conditioned on it (its only couplings are its own issuance: genesis +
-    # RpgfMinter). figaro-denomination is a GENERIC pin: the designer names ANY
+    # RpgfMinter). figaro-utility-token is a GENERIC pin: the designer names ANY
     # ERC-20; the clause carries no economics. The privileged token (VISION
     # § "Value Capture After the Firm") is an ASSEMBLY-AUTHOR's own token.
     # Assimilating any two is the thrice-recurring drift (reverted 2026-07-17);
     # same-line coupling is the tell. LEXICON.md documents the distinction.
-    check "$file" FAIL "florin.*figaro-denomination|figaro-denomination.*florin" \
+    check "$file" FAIL "florin.*figaro-utility-token|figaro-utility-token.*florin" \
         '(^|/)docs/LEXICON\.md$' "" \
-        "florin ≠ figaro-denomination: the pin is generic (any ERC-20); the florin has no structural role."
+        "florin ≠ figaro-utility-token: the pin is generic (any ERC-20); the florin has no structural role."
     check "$file" FAIL "florin.*privileged token|privileged token.*florin" \
         '(^|/)docs/LEXICON\.md$' "" \
         "florin ≠ privileged token: the privileged token is an assembly-author's OWN token (VISION doctrine), never the protocol's."
     check "$file" FAIL "florin-pinned|florin.*structural demand|structural demand.*florin" \
         '(^|/)docs/LEXICON\.md$' "" \
         "the florin has NO structural demand mechanism — it is a pure Schelling point."
-    check "$file" FAIL "privileged token.*figaro-denomination|figaro-denomination.*privileged token|PRIVILEGED TOKEN.*pin|pin.*PRIVILEGED TOKEN" \
+    check "$file" FAIL "privileged token.*figaro-utility-token|figaro-utility-token.*privileged token|PRIVILEGED TOKEN.*pin|pin.*PRIVILEGED TOKEN" \
         '(^|/)(docs/LEXICON\.md|docs/VISION\.md)$' "" \
-        "privileged token ≠ figaro-denomination: the pin is a generic slot (any ERC-20, no economics); the privileged token is VISION doctrine — an author's STRATEGY that may use the slot. The denomination birth commit carried this conflation; do not reintroduce it."
+        "privileged token ≠ figaro-utility-token: the pin is a generic slot (any ERC-20, no economics); the privileged token is VISION doctrine — an author's STRATEGY that may use the slot. The denomination birth commit carried this conflation; do not reintroduce it."
 done
 
 if (( fail > 0 )); then

@@ -9,9 +9,11 @@ import { describe, expect, it } from "vitest";
 import {
     fillCargoSection,
     fillClassSections,
+    fillCommerceSection,
     fillDerivedSections,
     fillDimweightSection,
     fillProfileSections,
+    readUtilityTokenPin,
     type AssemblyCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
@@ -56,6 +58,67 @@ describe("fillCargoSection — physical measure folded by declared field", () =>
     it("no-ops when no cargo clause is composed (services → absence)", () => {
         const clauses: ClauseFields = { "figaro-commerce": {} };
         expect(fillCargoSection(clauses, [line({ massGrams: 500 })], COMMERCE)).toEqual(clauses);
+    });
+});
+
+const TOKEN = "0x000000000000000000000000000000000000000a" as const;
+const OTHER_TOKEN = "0x000000000000000000000000000000000000000b" as const;
+const COMMERCE_AND_PIN = specSourceFromFixtures(["figaro-commerce", "figaro-utility-token"]);
+const PIN_ONLY = specSourceFromFixtures(["figaro-utility-token"]);
+
+describe("fillCommerceSection — the order's settlement terms, written by declared field", () => {
+    it("writes the resolved currency beside the payment — both are TERMS, both are leaves", () => {
+        const out = fillCommerceSection({ "figaro-commerce": {} }, 1000n, TOKEN, COMMERCE);
+        expect(out["figaro-commerce"]).toMatchObject({ currency: TOKEN, payment: "1000" });
+    });
+
+    it("writes line items when supplied, stripped to the section's closed shape", () => {
+        const out = fillCommerceSection({ "figaro-commerce": {} }, 1000n, TOKEN, COMMERCE, [
+            line({ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500", massGrams: 400 }),
+        ]);
+        expect(out["figaro-commerce"].lineItems).toEqual([
+            { itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500" },
+        ]);
+    });
+
+    it("no-ops when no commerce clause is composed", () => {
+        const clauses: ClauseFields = { "figaro-cargo": {} };
+        expect(fillCommerceSection(clauses, 1000n, TOKEN, CARGO)).toEqual(clauses);
+    });
+});
+
+describe("readUtilityTokenPin — routed on the DESIGN FILL, never on first match", () => {
+    it("finds the pin by its design.fills declaration", () => {
+        expect(readUtilityTokenPin({ "figaro-utility-token": { currency: TOKEN } }, PIN_ONLY)).toBe(TOKEN);
+    });
+
+    it("never mistakes the commerce leaf for a pin, whichever clause is composed first", () => {
+        // The disambiguation the restored commerce `currency` demands: BOTH
+        // clauses declare a currency field, so a first-match lookup would
+        // return the order's own settlement term as if the designer had
+        // pinned it. Asserted in both key orders — a first-match bug passes
+        // one and fails the other.
+        expect(readUtilityTokenPin({
+            "figaro-commerce": { currency: OTHER_TOKEN, payment: "1", lineItems: [] },
+            "figaro-utility-token": { currency: TOKEN },
+        }, COMMERCE_AND_PIN)).toBe(TOKEN);
+        expect(readUtilityTokenPin({
+            "figaro-utility-token": { currency: TOKEN },
+            "figaro-commerce": { currency: OTHER_TOKEN, payment: "1", lineItems: [] },
+        }, COMMERCE_AND_PIN)).toBe(TOKEN);
+    });
+
+    it("is undefined for an unpinned assembly composing only commerce", () => {
+        expect(readUtilityTokenPin({
+            "figaro-commerce": { currency: OTHER_TOKEN, payment: "1", lineItems: [] },
+        }, COMMERCE_AND_PIN)).toBeUndefined();
+    });
+
+    it("is undefined while the spec cache is cold, and for a malformed pin value", () => {
+        const cold = { get: () => undefined, list: () => [] };
+        expect(readUtilityTokenPin({ "figaro-utility-token": { currency: TOKEN } }, cold)).toBeUndefined();
+        expect(readUtilityTokenPin({ "figaro-utility-token": { currency: "the MARIA token" } }, PIN_ONLY))
+            .toBeUndefined();
     });
 });
 

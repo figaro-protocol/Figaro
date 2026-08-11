@@ -39,6 +39,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     ATTESTATION_COORDINATOR_ABI,
     MEMBERS_REGISTRY_ABI,
+    assertAgreementSignable,
     buildCommitment,
     buildDomain,
     buildSectionInclusionProof,
@@ -52,7 +53,9 @@ import {
 import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
+import { specSource } from '@/lib/shared/clauseSpecSource';
 import { RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro/sdk";
+import { primeClauseSpecs } from '../lib/primeClauseSpecs';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi([
@@ -98,6 +101,11 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         expect(minter, 'the RPGF minter is deployed (deploy-local.sh writes its address)').toBeTruthy();
         expect(counter, 'the UsageCounter is deployed (deploy-local.sh writes its address)').toBeTruthy();
         expect(core && token && coordinator && membersRegistry, 'full deployment record').toBeTruthy();
+
+        // Prime the Node-side spec cache (this process never loads the
+        // browser's `useClauseSpecs` hook) so `assertAgreementSignable` below
+        // can find the commerce clause's currency-as-content leaf.
+        await primeClauseSpecs(['figaro-commerce', 'figaro-topology', USED_CLAUSE]);
 
         const publicClient = localPublicClient();
         const chainId = LOCAL_ANVIL.id;
@@ -145,6 +153,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
                     {
                         clause: 'figaro-commerce', version: 1,
                         data: {
+                            currency: token,
                             payment: payment.toString(),
                             lineItems: [{ itemId: 'rpgf-e2e', name: 'RPGF e2e item', quantity: 1, unitPrice: payment.toString() }],
                         },
@@ -156,6 +165,10 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
                 ],
             };
             const agreementHash = computeAgreementHash(agreement);
+            // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
+            // leaf"): the commerce clause's currency TERM must equal the
+            // commitment struct's currency BEFORE either party signs.
+            assertAgreementSignable(agreement, agreementHash, specSource(), token);
 
             // 3. Sign + commit (both parties bond; the buyer broadcasts). Root
             //    orders sign processId = 0 — the chain derives the real id.

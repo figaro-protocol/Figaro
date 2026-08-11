@@ -821,9 +821,14 @@ sections deterministically, and returns the `Agreement` + its merkle-root
 `agreementHash`. `assertAgreementSignable` is the single Layer-A gate every
 signature routes through — buyer sign, seller counter-sign, and the checkout's
 pre-wallet check all call it, so no path signs an agreement whose sections
-violate their specs or whose hash mismatches its recomputed root
+violate their specs, whose settlement currency differs between the signed TERM
+and the signed STRUCT, or whose hash mismatches its recomputed root
 (`validateCommitmentAgreement` is the non-throwing form, returning
-`{ ok, issues }`). The negative half matters just as much: `buildOrderAgreement`
+`{ ok, issues }`). The currency check is why the gate takes the commitment's
+`currency`: the settlement token is a clause leaf under `agreementHash` (the
+commerce clause's `currency` field) AND a field of the kernel commitment, and
+the gate asserts the two name one token — plus, where the assembly composes a
+denomination pin, that the pin equals the leaf. The negative half matters just as much: `buildOrderAgreement`
 itself validates NOTHING — it is pure projection (apply spec defaults, sort,
 hash) — so a caller that builds an agreement and skips `assertAgreementSignable`
 can still produce a signable-looking object with content that violates its own
@@ -838,7 +843,9 @@ import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@f
 const { agreement, agreementHash } = buildOrderAgreement(
   buyer, seller, clauses, specs, clauseVersions,
 );
-assertAgreementSignable(agreement, agreementHash, specs, "checkout"); // throws on any Layer-A issue
+// `currency` is the commitment's currency field — the struct side of the
+// leaf==struct assertion; the last argument is the label used in the error.
+assertAgreementSignable(agreement, agreementHash, specs, currency, "checkout"); // throws on any Layer-A issue
 
 // Read sections by DECLARED FIELD, never by clause id — any registered clause
 // carrying the field participates.
@@ -892,10 +899,13 @@ const orders = await reconstructOrdersFromTemplate(template, {
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
     payment: paymentFor(node.nodeId),
-    // currency is NOT commerce content — it is signed in the kernel commitment
-    // (the `currency` param above); a pinned assembly commits it through the
-    // root's figaro-denomination section (readDenominationPin resolves it).
-    overrides: { "figaro-commerce": { payment: paymentFor(node.nodeId).toString(), lineItems } },
+    // The settlement currency is a TERM (a merkle leaf on the commerce
+    // clause) that the commitment's `currency` param above MIRRORS — write
+    // the same address into both, or the sign gate refuses the agreement.
+    // A pinned assembly's value comes from its denomination clause
+    // (`readUtilityTokenPin` resolves it); otherwise it is the buyer's pick
+    // from the seller's accepted tokens, else the seller's default.
+    overrides: { "figaro-commerce": { currency, payment: paymentFor(node.nodeId).toString(), lineItems } },
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
   // pin the party-private agreement, share, or compose here. SHARING is
@@ -1008,7 +1018,7 @@ await reconstructOrdersFromTemplate(template, {
     const filled = fillProvenanceSection(
       fillProfileSections(
         fillClassSections(
-          fillCommerceSection(planned.clauses, payment, specs, lineItems),
+          fillCommerceSection(planned.clauses, payment, currency, specs, lineItems),
           lineItems, specs,
         ),
         profileValuesFor(seller, memberCatalogues), specs,
