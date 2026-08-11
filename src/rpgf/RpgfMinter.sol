@@ -202,7 +202,7 @@ contract RpgfMinter {
     ///      clause or assembly with a non-zero score could repeat it until the
     ///      sum reached the period total and mint the ENTIRE tranche, leaving
     ///      every other
-    ///      author to revert on `TrancheBudgetExceeded`. The clamp is what made
+    ///      author to revert on `PeriodBudgetExceeded`. The clamp is what made
     ///      it maximal: it silently rounded a malformed claim UP to the whole
     ///      pool instead of letting the budget backstop reject it. Both are gone
     ///      — duplicates revert, and with a distinct list `score <= total` holds
