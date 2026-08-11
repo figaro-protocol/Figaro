@@ -21,6 +21,21 @@ CLAUDE.md keeps the lockstep principle (spec ↔ SDK ↔ on-chain registration);
 this file owns the full clause table, the architectural detail, and the
 adding-a-clause checklist below.
 
+## Every clause is a merkle leaf (ruled 2026-08-11)
+
+**Every term of an agreement is a clause section, and every clause section is a
+merkle leaf under `agreementHash`. A datum that is not a leaf is NOT a term of
+the agreement.** The kernel commitment struct's fields (currency, payment,
+expectedCumulativeValue, deadline) are EXECUTION data — what the kernel escrows
+and settles — and never substitute for a term: the agreement's merkle root is
+the evidence record of the deal's terms, and a term living only in the struct
+leaves that record incomplete. Evidence and execution are different layers; a
+copy across them is not redundancy — it is the binding, and the sign gate's job
+is to assert leaf == struct. (`payment` has always had both homes — the
+commerce leaf and the struct field; any proposal to strip a term's leaf because
+"the struct already has it" repeats the falsified 2026-07-14 currency removal
+and is wrong on sight.)
+
 ## Layer A — the off-chain validation layer (TypeScript)
 
 `@figaro/sdk/clauses` subpath:
