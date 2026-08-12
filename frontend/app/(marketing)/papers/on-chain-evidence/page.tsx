@@ -7,6 +7,7 @@ import {
     PaperRun,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 
 export const metadata: Metadata = withOg({
     title: "On-Chain Evidence, Off-Chain Adjudication — Figaro Protocol",
@@ -83,6 +84,39 @@ export default function OnChainEvidencePaper() {
                 <p>
                     Around those two calls the enforcement architecture is layered. We state each layer here from the legal-design perspective and walk it through operationally, because practitioners frequently arrive with the question &ldquo;where does my dispute go?&rdquo;
                 </p>
+                <LayeredDefenseFigure
+                    idPrefix="on-chain-evidence-layered-architecture"
+                    layers={[
+                        { label: "Layer 0 — chain security", note: "consensus and finality are what make an on-chain record authentic" },
+                        { label: "Layer 1 — bonding, with its co-resident record", note: "no bonded balance returns to its poster except through buyer-initiated atomic resolution" },
+                        { label: "Layer 2 — peer coordination", note: "atomic settlement points every co-seller's interest at remedying the fault" },
+                        { label: "Layer 3 — arbitration", note: "a Schelling-jury protocol, or a seated commercial arbitration" },
+                        { label: "Layer 4 — the traditional legal system", note: "the courts of the jurisdiction whose law the agreement selects" },
+                    ]}
+                    boundaryNote="forums rule below this line — none of them can settle the process"
+                    boundaryRingLabel="settlement boundary"
+                    figureTitle="The enforcement architecture, nested inside-out"
+                    figureDesc={
+                        "Five concentric layers. Layer 0, chain security, is the consensus and " +
+                        "finality that make an on-chain record authentic. Layer 1 is the bonding " +
+                        "game with its co-resident immutable record: no bonded balance returns to " +
+                        "its poster except through buyer-initiated atomic resolution. Layer 2 is " +
+                        "peer coordination, where atomic settlement points every co-seller's " +
+                        "interest at remedying another's fault. A boundary separates those three " +
+                        "from Layer 3, arbitration, and Layer 4, the traditional legal system. " +
+                        "Both outer layers rule on the record while the process stands open, and " +
+                        "their rulings reach the parties through their exposure outside the " +
+                        "process; neither can settle the process, which is the buyer's alone."
+                    }
+                    caption={
+                        <>
+                            Layers 0&ndash;2 are where the bonded position sits and moves. The
+                            record is produced at Layer 1 by construction; what Layers 3&ndash;4
+                            add is not the record but a forum that reads it &mdash; and no forum
+                            can resolve in the buyer&rsquo;s place.
+                        </>
+                    }
+                />
                 <PaperSubsection title="Layer 0 — chain security">
                     <p>
                         Beneath every claim in this paper sits the security of the underlying chain: its consensus rules and finality guarantees are what make an on-chain record authentic in the first place. The evidentiary properties developed in Sections 3 and 4 &mdash; that a record at block <Math>{"b"}</Math> is the same record at block <Math>{"b + N"}</Math>, that the integrity of an entry is a property of the kernel&rsquo;s bytecode and the chain&rsquo;s consensus rules rather than of any party&rsquo;s custodial practice &mdash; are inherited from this layer, not asserted by the protocol above it. We name it as a layer rather than assume it silently, because the entire evidentiary argument is only as strong as the chain&rsquo;s resistance to reorganization and censorship.

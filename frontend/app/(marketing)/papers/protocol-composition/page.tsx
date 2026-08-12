@@ -288,6 +288,64 @@ export default function ProtocolExtensionPaper() {
                     <p>
                         A second composer shows the other side of condition (i), where the mechanism does invoke a kernel operation. A swap-funded commitment coordinator lets a party post its bond from a token it does not yet hold in the process denomination: it converts the party&rsquo;s input token and then submits the commitment both parties had already signed. Condition (i) is the interesting one and it is discharged rather than evaded: the write is authorized because the kernel performs its own signature recovery and pulls each bond from the named party, so the composer forwards the parties&rsquo; own commitment and funds the party in place rather than substituting for it, never becoming a counterparty and never writing kernel state before the call it forwards. Condition (ii) holds because the conversion is a funding leg that completes before any bonded state exists, and the composer offers no operation that moves value out of the kernel. Condition (iii) holds because the bond currency and the bond amounts derive from the signed commitment rather than from the caller, so no funding leg can under-fund the kernel&rsquo;s pull, and the composer retains no lever once the commitment is in. Condition (iv) is not engaged, the composer accepting no clause-typed content &mdash; but the binding it does rely on is worth stating exactly, since it takes <em>two</em> signatures and the split is the composer&rsquo;s whole point. The bilateral commitment fixes the bond currency and the amounts and says nothing whatever about how the funding party gets there; the conversion route &mdash; the venue, the input token, the ceiling on input, and a hash of the exact swap calldata &mdash; is bound by a separate witness signature the funding party gives over those four terms alone. Substitute any of them and the recomputed witness no longer matches what was signed, so the transfer reverts before a token moves; a design that left the route outside every signature would let whoever relays the transaction pick a route of its own and keep the difference. Condition (v) is discharged by construction: it custodies no collateral and promises nothing indexed to how the process resolves. This is the general shape: a composer may supply transport for a bilaterally signed commitment, never authority over one &mdash; and over resolution, not even transport.
                     </p>
+                    <div className="my-4 overflow-x-auto">
+                        <table className="w-full border-collapse text-xs">
+                            <caption className="caption-bottom pt-2 text-xs text-ink-muted text-left leading-relaxed">
+                                The five conditions of Proposition 5.2 against what each preserves and how each
+                                is discharged on the two composers of this section. Every entry is checkable
+                                before deployment rather than argued afterwards, which is the property the
+                                interface-automata reading contributes.
+                            </caption>
+                            <thead>
+                                <tr>
+                                    {["Condition", "Preserves", "Attestation coordinator", "Swap-funded commitment coordinator"].map((h) => (
+                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading align-top">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    [
+                                        "(i) No unauthorized kernel-state mutation",
+                                        "status monotonicity, transition correctness, cumulative integrity",
+                                        "parametric kernel-immutability properties over every public function; holds nothing but a read-only interface to the kernel",
+                                        "discharged rather than evaded — it forwards the parties' own commitment, and the kernel recovers the signatures and pulls each bond itself",
+                                    ],
+                                    [
+                                        "(ii) No alternative settlement path",
+                                        "buyer dominance and atomic resolution",
+                                        "by construction — no operation invokes any kernel state-changing function",
+                                        "the conversion is a funding leg completing before any bonded state exists; no operation moves value out of the kernel",
+                                    ],
+                                    [
+                                        "(iii) No discretionary lock-bypass",
+                                        "the no-escape-hatches discipline",
+                                        "by construction — no operation transfers tokens from the kernel's bonded balance",
+                                        "bond currency and amounts derive from the signed commitment rather than from the caller; no lever is retained once the commitment is in",
+                                    ],
+                                    [
+                                        "(iv) Agreement-bound content (where applicable)",
+                                        "the agreement-binding surface downstream consumers rely on",
+                                        "the merkle-inclusion gate",
+                                        "not engaged — the composer accepts no clause-typed content; the route it does bind travels under a separate witness signature",
+                                    ],
+                                    [
+                                        "(v) No off-kernel side-payment",
+                                        "the bond posture as the sole marginal signal",
+                                        "by construction — custodies no collateral and promises no payout",
+                                        "by construction — custodies no collateral and promises nothing indexed to how the process resolves",
+                                    ],
+                                ].map((row) => (
+                                    <tr key={row[0]}>
+                                        <td className="border border-default px-3 py-1.5 align-top font-medium text-ink-heading">{row[0]}</td>
+                                        <td className="border border-default px-3 py-1.5 align-top">{row[1]}</td>
+                                        <td className="border border-default px-3 py-1.5 align-top">{row[2]}</td>
+                                        <td className="border border-default px-3 py-1.5 align-top">{row[3]}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </PaperSubsection>
                 <PaperSubsection title="5.4 What the pattern is not">
                     <p>

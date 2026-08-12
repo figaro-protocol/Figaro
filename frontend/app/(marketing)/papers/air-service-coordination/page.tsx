@@ -7,6 +7,7 @@ import {
     PaperRun,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigure";
 
 export const metadata: Metadata = withOg({
     title: "Air Service as Coordinated Resource Markets — Figaro Protocol",
@@ -181,6 +182,41 @@ export default function AirServiceCoordinationPaper() {
                     <p>
                         <em>The asymmetry between the two sides.</em> The passenger&rsquo;s aggregate locked position is $500, which is twice the ticket &mdash; the standard buyer posture, and the whole of it. The provider cohort&rsquo;s aggregate is $3,512, more than seven times the passenger&rsquo;s, because each provider bonds against the accumulator as it stands at its own commit and every payment before it is inside that figure. This is not an accident of the example; it is asymmetric bonding in operation. Held at fixed per-commit payments, the cohort&rsquo;s aggregate grows quadratically in the number of commits while the passenger&rsquo;s grows linearly: <Math>{"n"}</Math> commits of equal payment <Math>{"p"}</Math> put the cohort at <Math>{"p\\,n(n+1)"}</Math> against the passenger&rsquo;s <Math>{"2pn"}</Math>, a ratio of <Math>{"(n+1)/2"}</Math> that rises with every market the assembly adds. The qualifier is load-bearing: split a <em>fixed</em> ticket into <Math>{"n"}</Math> equal commits instead and the cohort aggregate is <Math>{"P_{\\text{ticket}}(n+1)"}</Math>, still rising with each market added but linearly rather than quadratically. A process the passenger has not resolved holds that whole pool locked.
                     </p>
+                    <ProcessTopologyFigure
+                        idPrefix="air-service-process-topology"
+                        legs={[
+                            { name: "Aircraft wallet", payment: 65 },
+                            { name: "Fuel supplier", payment: 45 },
+                            { name: "Crew member", payment: 40 },
+                            { name: "Maintenance provider", payment: 15 },
+                            { name: "Catering", payment: 5 },
+                            { name: "Ground handling", payment: 15 },
+                            { name: "Origin airport authority", payment: 20 },
+                            { name: "Destination airport authority", payment: 20 },
+                            { name: "Security screening", payment: 6 },
+                            { name: "Federal aviation system", payment: 19 },
+                        ]}
+                        buyerLabel="Passenger"
+                        unit="$"
+                        figureTitle="One process, ten bilateral edges, one root buyer"
+                        figureDesc={
+                            "The passenger is the buyer of all ten orders in the journey process. " +
+                            "Each order is an independent bilateral edge between the passenger and one " +
+                            "provider wallet; no edge joins one provider to another. The orders are " +
+                            "ordered by commit, and the accumulator G grows monotonically from $65 at " +
+                            "the aircraft commit to $250 at the last, so each provider's bond of twice G " +
+                            "rises along the sequence from $130 to $500. The passenger's own bonds total " +
+                            "$500, twice the ticket; the ten providers together lock $3,512."
+                        }
+                        caption={
+                            <>
+                                The same schedule read as shape rather than as arithmetic. Ten separately
+                                bonded edges, every one of them to the passenger, with no edge between
+                                providers &mdash; and a monotone accumulator that makes the last commit
+                                the largest bond whatever the sequence.
+                            </>
+                        }
+                    />
                     <p>
                         The cohort aggregate depends on the commit <em>order</em>, not only on the set of payments. Summing the schedule gives <Math>{"2\\sum_j (n - j + 1)\\,P_j"}</Math>: a payment made at position <Math>{"j"}</Math> is inside the bond base of its own commit and of every commit after it, so early payments are counted many times and late ones once. Permuting the order therefore changes the total whenever the permutation moves payments of different size between positions &mdash; swapping the two $20 authority commits leaves it exactly where it was, while committing the $19 federal-aviation-system payment first and shifting the other nine one place later gives $3,392 rather than $3,512, a $120 difference from a reordering that changes nothing else. What the order does <em>not</em> change is the end state: <Math>{"G_{\\text{final}}"}</Math> is the ticket total whatever the sequence, so the last provider to commit always bonds $500, and the passenger&rsquo;s aggregate is twice the ticket regardless. An assembly designer choosing a commit sequence is therefore choosing both how large the cohort&rsquo;s aggregate posture is and how it is distributed across the providers; what no sequence changes is the last bond, the accumulator it stands against, or the passenger&rsquo;s side.
                     </p>

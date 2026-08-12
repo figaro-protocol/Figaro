@@ -8,6 +8,7 @@ import {
     PaperRemark,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
 
 export const metadata: Metadata = withOg({
     title: "Substrate-Broadening Retroactive Public-Goods Funding — Figaro Protocol",
@@ -85,6 +86,7 @@ export default function SubstrateBroadeningRpgfPaper() {
                 <PaperRun title="What is allocated.">
                     The florin reserves 600 million units &mdash; 60% of its fixed supply &mdash; to fund clause authors and assembly designers. Accrual runs in nine annual periods, each with its own budget fixed at deployment. The budgets group into three rising tranches: 15% of the reserve across the first two years, 30% across the next three, and 55% across the last four, split equally within each group, so the nine annual slices are 45M, 45M, 60M, 60M, 60M, and then 82.5M four times over. The claim unit is the period, not the tranche &mdash; a wallet claims from one closed period&rsquo;s budget at a time, and the grouping is deployment data describing how the nine figures were chosen; the contracts themselves know only periods and their budgets.
                 </PaperRun>
+                <RpgfScheduleFigure idPrefix="substrate-broadening-rpgf-schedule" />
                 <PaperRun title="Why the schedule rises.">
                     The budgets rise rather than front-load, and the reason is measurement. This mechanism pays on evidence, and the evidence is thinnest exactly when the network is youngest: in the first year the denominator every share is divided by is small, which makes it both the least informative reading of what was actually adopted and the most manipulable &mdash; a fixed quantity of fabricated score buys a far larger fraction of a small honest total than of a large one, a relation Section 7 makes quantitative. Putting the largest budgets where the measurement is best is what aligns the reserve with the thing it claims to measure, and it shrinks the worst case at precisely the moment the mechanism is least able to defend itself. Early, evidence-poor funding is not thereby abandoned; it is simply not this instrument&rsquo;s job. The separately-held treasury allocation exists to fund work by human judgment before the evidence exists, which is the right instrument for that job and the wrong one for this.
                 </PaperRun>

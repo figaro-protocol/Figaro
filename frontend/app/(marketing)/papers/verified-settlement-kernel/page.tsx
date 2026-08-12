@@ -7,6 +7,7 @@ import {
     PaperRun,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { BatchSettlementSequenceFigure } from "@/components/figures/BatchSettlementSequenceFigure";
 
 export const metadata: Metadata = withOg({
     title: "A Verified Settlement Kernel — Figaro Protocol",
@@ -213,6 +214,7 @@ export default function VerifiedSettlementKernelPaper() {
                         <li><strong>The on-chain verifier as the sole acceptance gate.</strong> No off-chain party admits a batch. The verifier contract checks the proof, checks the hash bindings, reconciles the net token position of each participant in each denomination, and reverts otherwise. Prover, sequencer, and operator stand in the same relation to it: each can produce a candidate batch and none can admit one. A reader who trusts the first three items does not additionally have to trust whoever ran the proving job.</li>
                         <li><strong>The sequencer as transport, not as authority.</strong> Batching needs someone to gather commitments and order them for proving. That role can withhold service &mdash; a sequencer that stalls, censors a participant, or simply fails leaves the affected commitments unsettled for as long as the failure lasts &mdash; but it cannot forge a settlement, because a batch that does not verify does not settle, and it cannot capture a participant: a commitment never batched settles directly, and for a process already inside a settled batch &mdash; where the paths do not migrate &mdash; the guarantee rests on batch settlement itself being permissionless, so anyone may prove and submit what a stalled sequencer will not. The fallback is a fresh signature rather than a re-submission: each path binds its own verifying contract into the typed-data domain, so parties falling back to the kernel&rsquo;s own entry points sign again for that path. The cost of the fallback is direct-path gas and one more signing round, which is why a sequencer failure is a liveness problem and not a safety one.</li>
                     </ol>
+                    <BatchSettlementSequenceFigure idPrefix="verified-settlement-kernel-batch-sequence" />
                     <p>
                         Two consequences follow for how the Section 5 claims should be read. First, the cross-path model described above establishes safety under arbitrary interleaving <em>given</em> proof validity, which it abstracts; items 1 and 2 therefore sit outside what that model covers rather than inside it, and no machine check in this paper discharges them. Second, the trust surface is a choice rather than a condition of use. A participant who declines any of the five settles directly and pays direct-path gas for the privilege; the batch path buys amortized cost with a larger set of things to believe, and stating both sides of that trade is the point of this subsection.
                     </p>

@@ -6,6 +6,7 @@ import {
     PaperRun,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 
 export const metadata: Metadata = withOg({
     title: "After TradeLens: A Permissionless Bonded Replacement — Figaro Protocol",
@@ -185,6 +186,64 @@ export default function AfterTradeLensPaper() {
                 <p>
                     The commits document who the importer-of-record pays and how much: importer &rarr; shipper-of-record (for the cargo&rsquo;s invoice value, if the Incoterm assigns the import side that obligation), importer &rarr; freight forwarder, importer &rarr; NVOCC, importer &rarr; origin inland carrier, importer &rarr; inspection service, importer &rarr; port-of-loading authority, importer &rarr; ocean carrier, importer &rarr; port-of-discharge authority, importer &rarr; customs agent, importer &rarr; customs authority (for the import duty), importer &rarr; destination inland carrier, importer &rarr; marine insurer (if buyer-procured cover), importer &rarr; LC issuer (if the payment is letter-of-credit-arranged), and any other resource provider the operational arrangement draws on. The commits are independent of who hands the container to whom in the handoff chain above. The importer alone resolves on receipt at the agreed delivery point, settling the process atomically.
                 </p>
+                <DesignGraphCollapseFigure
+                    idPrefix="after-tradelens-design-collapse"
+                    designHeading="The organizational handoff chain"
+                    designNodes={[
+                        { label: "shipper-of-record (origin)" },
+                        { label: "freight forwarder + NVOCC" },
+                        { label: "origin inland leg" },
+                        { label: "inspection service" },
+                        { label: "port-of-loading" },
+                        { label: "ocean carrier" },
+                        { label: "port-of-discharge" },
+                        { label: "customs agent + authority" },
+                        { label: "destination inland leg" },
+                        { label: "consignee (importer-of-record)" },
+                        { label: "marine insurer", branch: true },
+                        { label: "LC issuer", branch: true },
+                    ]}
+                    commitOrder={[
+                        "importer → shipper-of-record",
+                        "importer → freight forwarder",
+                        "importer → NVOCC",
+                        "importer → origin inland carrier",
+                        "importer → inspection service",
+                        "importer → port-of-loading authority",
+                        "importer → ocean carrier",
+                        "importer → port-of-discharge authority",
+                        "importer → customs agent",
+                        "importer → customs authority",
+                        "importer → destination inland carrier",
+                        "importer → marine insurer",
+                        "importer → LC issuer",
+                    ]}
+                    rootBuyerLabel="Importer-of-record"
+                    topologyNote={[
+                        "The agreement does. The ordering the operational chain has is the parties' own,",
+                        "committed in the agreement and reconstructed off-chain by whoever reads the record.",
+                    ]}
+                    figureTitle="The handoff graph at the design layer, and the commit sequence the kernel sees"
+                    figureDesc={
+                        "On the left, the organizational handoff chain: ten operational nodes " +
+                        "from shipper-of-record to consignee, plus two value-adders — the marine " +
+                        "insurer and the letter-of-credit issuer — branching off the cargo-flow " +
+                        "line, bonded against the same process without owning a handoff. On the " +
+                        "right, what the kernel holds: thirteen dual-signed commits in a single " +
+                        "linear sequence, every one of them running to the importer-of-record as " +
+                        "root buyer, extending one monotonic accumulator. No parent, child, or " +
+                        "branch is recorded anywhere in settlement state. The ordering the " +
+                        "operational chain has is the parties' own: committed in the agreement, " +
+                        "and reconstructed off-chain by whoever reads the record."
+                    }
+                    caption={
+                        <>
+                            The two layers co-exist in one process. The branch on the left is real
+                            and is documented by clause attestations; the kernel is blind to it,
+                            and the commits are independent of who hands the container to whom.
+                        </>
+                    }
+                />
                 <PaperRun title="Granularity is a design choice.">
                     The same shipment can be composed coarsely (a few commits to aggregator wallets &mdash; the forwarder absorbs origin inland + port-of-loading + carrier + port-of-discharge + destination inland into one bonded commit) or finely (each value-adder a separate commit, as enumerated above). The kernel sees only commits; it does not reify any tier-role or aggregation choice. Granularity is chosen by the contracting parties to suit their coordination needs. The per-edge equilibrium is invariant to the choice in its <em>form</em> &mdash; every order is bonded on the same schedule, twice the payment against twice the accumulated value, whatever else the process carries &mdash; though not in its magnitudes, since a seller&rsquo;s bond base is the accumulator at its own link and therefore depends on how much was committed ahead of it. The cohort-pressure topology induced by atomic resolution varies in both, since each co-seller&rsquo;s exposure to a peer&rsquo;s fault (<Math>{"P_i + 2G_i"}</Math>) depends on how many parties are in the cohort and on where each sits. The six-order run described above is one point on that axis and the enumeration above is another; both are the same composition read at different granularities. This paper develops the fine-grained version because the value-adder structure is the substantive content of the TradeLens-perimeter coordination problem; coarse aggregations are admissible, may be operationally appropriate in many arrangements, and produce a different cohort-pressure topology that the assembly designer can engineer for.
                 </PaperRun>
