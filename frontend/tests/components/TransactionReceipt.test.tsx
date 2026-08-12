@@ -1,5 +1,5 @@
 /**
- * TransactionReceipt — the shared receipt-panel primitive (operator ruling
+ * TransactionReceipt — the shared receipt-panel primitive (maintainer ruling
  * 2026-08-07) that replaces the hand-rolled `<dl>` markup previously
  * duplicated across RegisterClauseForm, ViewAssemblyClient, OnboardingReview,
  * and MemberLanding's inline leave receipt. Read-only: it renders a result

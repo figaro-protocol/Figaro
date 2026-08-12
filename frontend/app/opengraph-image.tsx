@@ -10,7 +10,7 @@ import { ImageResponse } from "next/og";
 // replaces the resolved parent block wholesale — pages relying on the file
 // convention alone shipped no `og:image` at all. Palette + type follow
 // docs/DESIGN_TOKENS.md (canvas / ink ramp / tawny-amber heading).
-export const alt = "Figaro completes the contract.";
+export const alt = "My word is my bond";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -51,7 +51,7 @@ export default async function Image() {
                         maxWidth: 950,
                     }}
                 >
-                    Figaro completes the contract.
+                    My word is my bond
                 </div>
                 <div
                     style={{

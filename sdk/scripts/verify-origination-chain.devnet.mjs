@@ -91,7 +91,7 @@ const NODE_SELLERS = [SELLERS[0], SELLERS[1], SELLERS[1]];
 
 // ── One seller LOOP per DISTINCT seller, registered on the channel ────────────
 const channel = new InProcessChannel();
-// The refuse-all floor (operator ruling 2026-07-07): a bare handler declines
+// The refuse-all floor (maintainer ruling 2026-07-07): a bare handler declines
 // everything. This proof script IS the operator, so it supplies the explicit
 // accept rule + economic policy its sellers sign under. The root seller
 // requires root shape; the sub-order seller serves chain nodes, so it omits it.

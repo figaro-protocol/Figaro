@@ -118,7 +118,7 @@ For an implementation task:
 - vitest: <pass/fail count>
 
 ### Awaiting human approval
-Do not commit until the operator reviews. If feature components need migration, that's a separate dispatch to figaro-runtime-ui.
+Do not commit until the maintainer reviews. If feature components need migration, that's a separate dispatch to figaro-runtime-ui.
 ```
 
 ---
@@ -129,6 +129,6 @@ Do not commit until the operator reviews. If feature components need migration, 
 - Audit before implementing. Many proposed changes turn out to be smaller than they look (audit found "agent claimed 36 of 37 focus sites lack ring — actually only 4 do").
 - Cite line numbers in audits. "Focus-trap reimplementation bypassing `ModalChrome` at `<component>.tsx:<line>`" beats "modals reimplement focus trap."
 - Don't introduce visual decoration that doesn't carry information. The project's voice is academic-technical.
-- Don't auto-commit. Design-system changes touch every page; the operator reviews.
-- For a11y findings, cite the specific WCAG criterion (e.g., "WCAG 2.5.5 — Target Size") so the operator knows the standard.
+- Don't auto-commit. Design-system changes touch every page; the maintainer reviews.
+- For a11y findings, cite the specific WCAG criterion (e.g., "WCAG 2.5.5 — Target Size") so the maintainer knows the standard.
 - Pair design-system additions with migration tasks for runtime-ui-author. Don't ship a primitive that no feature component uses; don't ship without naming who migrates the existing duplicates.

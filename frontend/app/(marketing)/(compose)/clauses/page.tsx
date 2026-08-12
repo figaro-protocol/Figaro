@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { ClauseInventory } from "./_components/ClauseInventory";
 
-// RULED 2026-08-06 (operator), AMENDED 2026-08-12 (operator): this page holds
+// RULED 2026-08-06 (maintainer), AMENDED 2026-08-12 (maintainer): this page holds
 // FIVE things and nothing else — what a clause IS (a contract clause,
 // verifiable; it may include attestations but is NOT an attestation), the
 // writing requirements as BULLETS (never an exposé), the live inventory, the

@@ -155,7 +155,7 @@ ratified 2026-07-28; the published definition is
   never `runtime.fields`. Its former tenants were deleted for cause — the
   auction composition (`bef1886e`) and the carbon-retirement leg
   (`f206d306`: no live mainnet router); the seam stays for the next
-  on-chain-invoke tenant (operator rulings 2026-07-02 + 2026-07-28).
+  on-chain-invoke tenant (maintainer rulings 2026-07-02 + 2026-07-28).
   Nothing on-chain or in the SDK's content layer reads it;
   the reference parser is `ClauseBlockBinding`
   (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list
@@ -164,7 +164,7 @@ ratified 2026-07-28; the published definition is
   buyer owns every field named in no fills list, derived as the complement,
   never stored.
 
-**THE STANDARD (operator ruling 2026-07-28): every attribute expressed —
+**THE STANDARD (maintainer ruling 2026-07-28): every attribute expressed —
 zero, empty, or `null`, never absent.** The repo's 27 specs comply, enforced
 by the JSON-Schema conformance suite in `sdk/tests/clauses/`; consumers still
 treat an absent attribute as its empty value, so a sparser third-party spec
@@ -184,7 +184,7 @@ clause carries a bounded enum):
   (merchant-process, courier-process; a supply chain runs the same structure at
   length — each transfer attested, each intermediary paid at resolve). These
   are **coordination attestations for seller-to-seller coordination**
-  (operator, 2026-07-28) — the same runtime-evidence category as witness
+  (maintainer, 2026-07-28) — the same runtime-evidence category as witness
   stages, differing in shape (an event log the responsible party advances vs a
   measurement either party files). `clauseIsProcessLog` =
   `block.design.article === "attestations"` — ruled 2026-07-03, replacing a
@@ -205,7 +205,7 @@ The clause set is the specs in `clauses/` — the count is **derived, never
 stored** (`ls clauses/*.json | wc -l`). All are runtime-attestable (content
 validated off-chain by Layer A; no on-chain validator) except `figaro-topology`,
 which no assembly has YET used for a runtime attestation — a current-state
-fact, not a design limit (operator, 2026-07-28): a complex assembly can and
+fact, not a design limit (maintainer, 2026-07-28): a complex assembly can and
 should attest topology as evidence that seller Y performed after X and before
 Z. So runtime-attestable = that count minus one, today.
 
@@ -272,7 +272,7 @@ verification — clears the bar for a new primitive).
 
 `figaro-topology` is committed at agreement-signing time and — so far — never
 re-asserted as a runtime attestation. That is a fact about today's simple
-assemblies, not a design limit (operator, 2026-07-28): a complex assembly
+assemblies, not a design limit (maintainer, 2026-07-28): a complex assembly
 (Tradelens-grade) can and should attest topology as runtime evidence that
 seller Y performed after X and before Z. It is *not* off-chain-only, either
 way. Like every agreement section, a committed topology section is a merkle

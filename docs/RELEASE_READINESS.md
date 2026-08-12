@@ -8,7 +8,7 @@ This note is the current answer to a simple question: what is ready now, what is
 
 ## Deployment Targets
 
-Ruled by the operator 2026-07-23: the public deployment target is **Ethereum mainnet**.
+Ruled by the maintainer 2026-07-23: the public deployment target is **Ethereum mainnet**.
 **Polygon** is a possible additional deployment. A **Cairo rewrite** of the contracts
 (Starknet) is planned as a later line of work. Testnet rehearses the mainnet deployment
 (testnet = mainnet rehearsal); chain-coupled compositions resolve against these targets —
@@ -61,7 +61,7 @@ Required output:
 3. resolve findings or explicitly accept non-critical findings in writing
 4. record the final audit outcome in the release docs
 
-### Task 3: Resolve Mainnet Registry Parameters — RESOLVED 2026-07-31 (reference values landed; operator ratifies before broadcast)
+### Task 3: Resolve Mainnet Registry Parameters — RESOLVED 2026-07-31 (reference values landed; maintainer ratifies before broadcast)
 
 The RPGF paper's §7 turned this from a judgment into arithmetic, and the reference values
 are now in `script/DeployMainnet.s.sol` with the reasoning inline (placeholders removed).
@@ -102,7 +102,7 @@ ratified posture ("aligns the honest majority, does not deter a determined Sybil
 dilution, never theft) is unchanged. The state machine under all of it is Halmos-proved
 (cooldown unskippable, no deposit recycling, counter admits usage iff the stake is live).
 
-**Anchors RATIFIED by the operator 2026-07-31** (the 0.05 ETH honest-ceiling and the
+**Anchors RATIFIED by the maintainer 2026-07-31** (the 0.05 ETH honest-ceiling and the
 28-day cooldown) — the landed values are final deploy config. Remaining before
 broadcast: re-measure `g` on the target chain and record the deployment's point on the
 γ curve in the release record.
@@ -185,14 +185,14 @@ Required output:
    value — treat one REAL batch settling cleanly post-deploy as the genesis-root proof, not
    the deploy transaction succeeding; (c) confirm Succinct publishes an SP1 verifier gateway
    on Sepolia (or self-deploy one) before setting `SP1_VERIFIER_GATEWAY`.
-4. Testnet setup — the two networks, in order (operator-ruled 2026-08-12; targets per
+4. Testnet setup — the two networks, in order (maintainer-ruled 2026-08-12; targets per
    the Deployment Targets section: Sepolia first, Polygon second). Prerequisites, none
    yet in place:
    - Per-network deploy config/env (RPC endpoint per network — provider choice is the
-     operator's: public endpoints vs. a keyed provider account; keys never committed).
+     maintainer's: public endpoints vs. a keyed provider account; keys never committed).
    - Polygon's current testnet is **Amoy** (Mumbai is retired) — confirm at execution
      time, then pin chain id + RPC in the network config.
-   - A funded deployer key per network (operator act: Sepolia ETH / Amoy POL faucets).
+   - A funded deployer key per network (maintainer act: Sepolia ETH / Amoy POL faucets).
    - After each deploy: /spec's per-network deployments table and the SDK's published
      addresses fill from the real deployment records — the record is the source, never
      hand-typed constants.
@@ -253,7 +253,7 @@ is the delivery-of-the-frontend half:
 
 ### Task 12: GitHub Publication (the "GitHub remote/CI item" Task 11 sequences after)
 
-Pre-push decisions are the operator's alone (whether `CLAUDE.md` + `.claude/` ship
+Pre-push decisions are the maintainer's alone (whether `CLAUDE.md` + `.claude/` ship
 publicly; full history vs fresh-genesis commit; the commit-identity email). The tasks:
 
 1. **Fix every fictitious `github.com/figaro-protocol/Figaro` URL.** The org/repo does

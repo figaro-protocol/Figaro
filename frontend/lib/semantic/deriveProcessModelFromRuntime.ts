@@ -18,7 +18,7 @@ import {
 
 // Rootness is a TOPOLOGY concept (no parent edges in the committed topology
 // section) — never derived from bond arithmetic. Bonding is kernel-layer,
-// linear, and has nothing to do with topology (operator ruling 2026-07-02).
+// linear, and has nothing to do with topology (maintainer ruling 2026-07-02).
 
 function runtimeSource(sourceLabel: string, referenceId?: string) {
     return {
@@ -93,7 +93,7 @@ function roleCapabilities(
 
     // DERIVE means derive: this model READS the committed process — it never
     // alters it. The process shape is fixed by the assembly the buyer selected
-    // at checkout; there is no runtime composition (operator ruling 2026-07-02).
+    // at checkout; there is no runtime composition (maintainer ruling 2026-07-02).
     const out: CapabilityModel[] = [];
 
     // Lifecycle / handoff capabilities, gated on the clauses the agreement

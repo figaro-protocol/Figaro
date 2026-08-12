@@ -45,7 +45,7 @@ describe("generateSalt", () => {
 
 describe("computeDeadline", () => {
     // CHAIN time in, deadline out — there is deliberately no machine-clock
-    // path (operator rule 2026-08-06: the kernel judges block.timestamp).
+    // path (maintainer rule 2026-08-06: the kernel judges block.timestamp).
     it("adds the default 1-hour TTL to the chain's clock", () => {
         expect(computeDeadline(1_750_000_000n)).toBe(1_750_000_000n + 3600n);
     });

@@ -5,7 +5,7 @@ export interface SystemLayersFigureProps {
     className?: string;
 }
 
-// The whole system, drawn once (operator rule 2026-08-06: HOME owns this
+// The whole system, drawn once (maintainer rule 2026-08-06: HOME owns this
 // figure; the kernel page carries only FigaroCore's mechanism design).
 // Source of truth: the ratified frame (CLAUDE.md § "The frame") — the kernel
 // floor plus six layers: clauses, assemblies + checkout, composition,

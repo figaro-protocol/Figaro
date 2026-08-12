@@ -12,7 +12,7 @@
  *      seeder (devnet-helpers.seedRegisteredMember) with a profile
  *      pointing at the catalogue AND binding an assembly DISCOVERED
  *      from the AssemblyRegistry (frontend/scripts/populate-test-data.mjs anchors
- *      them before Playwright runs). The surfacing rule is applied EVENLY (operator
+ *      them before Playwright runs). The surfacing rule is applied EVENLY (maintainer
  *      2026-07-02): a seller without ≥1 anchored binding is absent on
  *      /discover, /s, and checkout alike — browse-only is retired.
  *   3. Open /s/view?seller=<sellerAddress>?e2e=devnet from a buyer wallet.

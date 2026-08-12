@@ -12,7 +12,7 @@
  * so the reward leg is undrivable against a schedule measured in years —
  * accrual would run and nothing could ever be claimed. `Deploy.s.sol` therefore
  * rehearses the ruled nine-period annual structure at 30-minute periods
- * (operator ruling 2026-07-27: "we can write the e2e test by compressing
+ * (maintainer ruling 2026-07-27: "we can write the e2e test by compressing
  * time"). This spec records usage, advances the chain just past the open
  * period's own end, and claims — the same shape mainnet runs over years, at a
  * scale a test run can observe. Devnet is a mainnet REHEARSAL, not a sandbox.

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Certora CVL specification for RpgfMinter — the 600M retroactive florin
-// distribution. This is the operator-approved formal-coverage gap: RpgfMinter
+// distribution. This is the maintainer-approved formal-coverage gap: RpgfMinter
 // mints florins, and its two worst historical bugs (a tranche-overdraw class,
 // commit f9a6d37e, and the pre-2026-07-30 clamp that let a repeated clause-or-assembly entry
 // mint an entire tranche — see the `_entitlement` doc comment in the .sol)
@@ -51,7 +51,7 @@
 //     call back into RpgfMinter) can change what those rules watch. Florin's
 //     own supply-cap/registry invariants are FlorinToken.spec's job.
 //
-// Rule numbering below follows the operator's brief exactly (rules 1-6);
+// Rule numbering below follows the maintainer's brief exactly (rules 1-6);
 // two supplementary rules (S1, S2) extend the same eligibility/no-double-claim
 // properties to the `claimable` VIEW path, because a divergent quote there is
 // exactly the shape of bug an audit catches and a test suite calling only

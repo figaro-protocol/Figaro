@@ -7,7 +7,7 @@
  * and trigger a browser download. No server round-trip; the user's data
  * never leaves the browser. Agreements are cleartext — the chain is a
  * deterministic state machine and this surface is a reader; there are no
- * redacted distribution forms (operator ruling 2026-07-02).
+ * redacted distribution forms (maintainer ruling 2026-07-02).
  */
 import { useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";

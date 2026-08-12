@@ -11,7 +11,7 @@
  *              (courier + supplier wallets) on the chain assembly's binding;
  *              the courier + supplier each pin the chain assembly to their OWN
  *              profiles through the seller-edit surface — the even-surfacing
- *              rule (operator 2026-07-02) admits a seller's catalogue to every
+ *              rule (maintainer 2026-07-02) admits a seller's catalogue to every
  *              read (discovery, checkout pricing) only with an anchored
  *              binding, and a participating seller binding the assembly it
  *              participates in IS the designed conformance path

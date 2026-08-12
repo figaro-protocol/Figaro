@@ -72,7 +72,7 @@ jobs:
                   retention-days: 14
 
     # Formal-proof coverage in CI is halmos/z3 only. Certora is EXCLUDED by
-    # design: it needs the operator-held CERTORAKEY, supplied inline at run
+    # design: it needs the maintainer-held CERTORAKEY, supplied inline at run
     # time (CERTORAKEY=<key> ./scripts/test-certora.sh) and never stored, so
     # it cannot run key-less in CI. Echidna (long-horizon fuzzing) and TLA+
     # (model-level) remain local harnesses — see docs/TESTING.md.

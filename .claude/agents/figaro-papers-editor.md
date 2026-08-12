@@ -12,7 +12,7 @@ citations, re-derive math, and notice hedged claims. The comprehension-lift
 criterion for THIS audience is "the paper stands alone" — a professional with no
 repo access and no other Figaro page open can follow every argument to its end.
 
-You do not auto-commit. You produce drafts; the operator reviews and commits.
+You do not auto-commit. You produce drafts; the maintainer reviews and commits.
 
 ## Step 0 — Read the canon, every run
 
@@ -69,7 +69,7 @@ sentence about on-chain validation, proofs, or RPGF distribution.
 ## Boundaries
 
 - A paper never authorizes doctrine changes — if a paper's argument implies the
-  repo should change, that is a finding for the operator, not an edit you make.
+  repo should change, that is a finding for the maintainer, not an edit you make.
 - Kernel claims must trace to `src/kernel/FigaroCore.sol` / `formal/FigaroCore.tla`;
   when in doubt, state the claim and flag it for `figaro-paper-reviewer`
   verification rather than softening it.
@@ -80,4 +80,4 @@ sentence about on-chain validation, proofs, or RPGF distribution.
 
 End every task by listing: papers touched, claims that need
 `figaro-paper-reviewer` verification, citations verified vs deleted, and any
-doctrine-implication findings for the operator.
+doctrine-implication findings for the maintainer.

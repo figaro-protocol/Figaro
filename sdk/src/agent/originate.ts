@@ -267,7 +267,7 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
  * TWO FLOORS, both operator-supplied, both opt-IN (autonomy is never the
  * default), both DECLINE (`null`) rather than throw — a throw is reserved for a
  * tampered/forged offer:
- *   - REFUSE-ALL FLOOR (operator ruling 2026-07-07): `accept` is the business
+ *   - REFUSE-ALL FLOOR (maintainer ruling 2026-07-07): `accept` is the business
  *     gate. A clean offer counter-signs ONLY when an explicit `accept` returns
  *     true; omit it (or return false) and the offer is declined.
  *   - ECONOMIC FLOOR: `policy` bounds the economic fields the seller bonds
@@ -386,7 +386,7 @@ export interface SellerOfferHandlerOpts {
     /** Business gate (the refuse-all floor): the handler counter-signs ONLY when
      *  this returns true. OMIT it and the handler declines every offer — a fresh
      *  integration is autonomous-inert by default; enabling autonomy means
-     *  writing this rule (operator ruling 2026-07-07). */
+     *  writing this rule (maintainer ruling 2026-07-07). */
     accept?: (offer: CommitmentPayload) => boolean;
     /** Economic floor: the operator's bounds on the offer's economic fields
      *  (root-shape, currency allowlist, magnitude cap). OMIT it and the handler

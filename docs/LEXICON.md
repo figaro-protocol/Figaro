@@ -42,14 +42,14 @@ IPFS document *location* (Clause/Assembly registries; MembersRegistry keeps `met
 mutable profile IS metadata) ≠ a hash; `contentRef` = the *attestation's* fingerprint ≠ any of
 them. Verify-after-fetch: readers recompute `contentHash`/`compositionHash` from the fetched
 document (`canonicalJson.ts` — one canonical form, sorted keys) — a mismatched pin is absence.
-**The three token concepts stay apart** (operator, 2026-07-17 — the thrice-recurring drift):
+**The three token concepts stay apart** (maintainer, 2026-07-17 — the thrice-recurring drift):
 the **florin** is a pure Schelling point — no structural role anywhere, its only couplings are
 its own issuance (genesis + RpgfMinter); **`figaro-utility-token`** is a generic settlement-token
 pin carrying no economics; the **privileged token** is an assembly-author's own value-capture
 token (`VISION.md` § "Value Capture After the Firm" — which itself says "distinct from
 denomination"). Writing any of these in terms of another — "the florin's structural demand",
 "florin-pinned" as a strategy object, the pin as "THE privileged token" — is drift.
-**THE TOKEN-LAYER GRID** (operator Q&A, 2026-07-20 — each layer answers a DIFFERENT question;
+**THE TOKEN-LAYER GRID** (maintainer Q&A, 2026-07-20 — each layer answers a DIFFERENT question;
 naming one with another's word is the recurring drift):
 
 | Layer | Token | Role |
@@ -179,9 +179,10 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 **Homonym (not a synonym):** `operator` = (1) the party operating a wallet — the
 key-holder behind a signer, human or software (glossary sense; the agents page's
 asset/wallet/operator triad); (2) the protocol-tier projection of a value-adding
-party (the grid's seller row); (3) the repo's maintainer, in operator-private
-tooling contexts (`.claude/`, CONTRIBUTING) — and, used with a negation, the
-platform sense ("no operator in the middle"), which /faq disambiguates in place.
+party (the grid's seller row); (3) used with a negation, the platform sense ("no
+operator in the middle"), which /faq disambiguates in place. The repo's human is
+canonically the **maintainer** — "operator" no longer carries that sense
+(maintainer-private tooling, maintainer rulings).
 Distinct concepts, intentionally same word; qualify on first use when two senses
 could collide on one surface.
 (The `DutchAuction` `provider` sense retired with the contract, 2026-07-02; the `OffsetProvider` sense
@@ -190,7 +191,7 @@ with the offset apparatus, 2026-07-03.)
 **New-term admission rule.** A product-flavored term — a named vertical ("eats"), a
 platform role ("driver", "restaurant"), a closed category ("archetype", "role",
 "businessType") — must not enter a hard-to-change surface (clauseId, ABI field,
-contract name, route segment) until the operator has confirmed it. Use a
+contract name, route segment) until the maintainer has confirmed it. Use a
 protocol-neutral term, or a working name in a soft surface (local variable, draft),
 first. The V3–V5 history of expensive de-product-ification renames (`figaro-eats` →
 `local-commerce`, `driver` → `courier`, `roleKind`/`archetypeId` deleted) is the

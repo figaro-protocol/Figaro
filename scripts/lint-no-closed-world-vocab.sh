@@ -19,7 +19,7 @@
 #   zero. The replacement vocabulary is modality / coordination / method.
 #
 # FAIL (doctrine class, code AND markdown) — bonding-multiplier drift. The 2×
-# bonding multiplier is mechanism-design DOCTRINE (operator ruling 2026-07-14).
+# bonding multiplier is mechanism-design DOCTRINE (maintainer ruling 2026-07-14).
 # The recurring prior is traditional-finance capital-efficiency reasoning:
 # ">1× suffices", "1+ε restores strict loss", reputation-weighted/adjusted
 # bonds. Excised from THEORY.md + the retrospective-audit memory 2026-07-14;
@@ -45,17 +45,17 @@ FAIL_WORD='[Ff]ulfil+ment'
 # 2× is doctrine: no ">1x"/">1×", no "1+ε"/"1+epsilon" bonding bound, no
 # reputation-weighted/adjusted bonds, no lower/reduced/variable/tunable multiplier.
 FAIL_DOCTRINE='>[[:space:]]*1(\.[0-9]+)?[x×]|1[[:space:]]*\+[[:space:]]*(ε|epsilon)|[Rr]eputation[- ]?weighted|reputationMultiplier|adjustedBond|(lower|reduced|variable|tunable)[[:space:]]+(bond[[:space:]]+)?multiplier'
-# Bonds are DETERRENTS, not assets (operator ruling 2026-07-24): never financeable
+# Bonds are DETERRENTS, not assets (maintainer ruling 2026-07-24): never financeable
 # ("bond-financing"), never a credit instrument ("bond-default" — bonds forfeit, they
 # cannot default), never measured by capital efficiency, never "bonds are capital".
 FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|bonds are capital'
-# Payoffs are TRANSFERS ONLY (operator ruling 2026-08-08): no cost variable and no
+# Payoffs are TRANSFERS ONLY (maintainer ruling 2026-08-08): no cost variable and no
 # valuation variable exists in the mechanism's game — the seller's node is +P vs −2G
 # on tokens alone; V ≥ P / v ≥ c are market-existence economics, never proof inputs.
 # "Costless performance" (and any c=0-as-proof-scope framing) is the residue of
 # importing per-transaction cost accounting into a coordination mechanism.
 FAIL_COSTLESS='[Cc]ostless[- ]performance|proved at.*c *= *0|claimed only.*c *= *0'
-# "money" is BANNED (operator ruling 2026-08-03): nothing in this system IS money —
+# "money" is BANNED (maintainer ruling 2026-08-03): nothing in this system IS money —
 # the florin is a TOKEN and a SCHELLING POINT; what moves is tokens/value/payments.
 # The word drags readers into the old economic paradigm, and it is just plain wrong
 # for an ERC-20-based protocol. Replacements are context-specific (value / token /
@@ -66,14 +66,14 @@ FAIL_COSTLESS='[Cc]ostless[- ]performance|proved at.*c *= *0|claimed only.*c *= 
 FAIL_MONEY='\bmoney\b'
 ALLOWED_MONEY='hold the money, decide|real money is a common|Historical money names|your identity, your money|money judgment'
 
-# Forum-jurisdiction drift is BANNED (operator, 2026-08-05 — recurring correction,
+# Forum-jurisdiction drift is BANNED (maintainer, 2026-08-05 — recurring correction,
 # ~17 instances across sessions): forums and courts rule REGARDLESS of whether the
 # parties composed one in. Composition only fixes the jurisdiction in advance;
 # uncomposed means the parties pick the venue after the fact. The evidence record
 # serves either path. Never "forums rule only if/where/when composed".
 FAIL_FORUM='[Ff]orums? (can |will |may )?rules? only|rules? only (where|when|if)[^.]{0,40}compos'
 
-# Card-rail vocabulary is BANNED on protocol surfaces (operator, 2026-08-04:
+# Card-rail vocabulary is BANNED on protocol surfaces (maintainer, 2026-08-04:
 # "chargeback" reached /security via a blind probe's phrasing — defining the
 # mechanism by comparison to platform/card rails is the framing doctrine's
 # definition-by-elimination failure). The mechanism is described in its OWN

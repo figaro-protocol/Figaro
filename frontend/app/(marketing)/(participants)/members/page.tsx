@@ -10,7 +10,7 @@ export const metadata: Metadata = withOg({
         "Membership: one wallet, one published profile — what you sell, and what you offer from the records of the deals you buy through. People and software agents register the same way.",
 });
 
-// The membership page — ONE subject (operator ruling 2026-08-06): what a
+// The membership page — ONE subject (maintainer ruling 2026-08-06): what a
 // member is, what a member publishes (both halves, agents included), and
 // how to join. The only outbound links are the wizard and discovery.
 export default function Join() {

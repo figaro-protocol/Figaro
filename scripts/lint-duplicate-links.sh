@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # lint-duplicate-links.sh — no page body links the same route more than twice.
 #
-# WHY (operator, 2026-08-04): LLM agents each add "one line + link" and nobody
+# WHY (maintainer, 2026-08-04): LLM agents each add "one line + link" and nobody
 # counts the pile — the home page accumulated 3 in-body /protocol links on top
 # of the nav door, the audience tile, and the reading-path step that shared
 # chrome already renders. Prose-repetition probes never see this; a link census

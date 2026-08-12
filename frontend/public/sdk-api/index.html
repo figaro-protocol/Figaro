@@ -28,6 +28,28 @@ publication (with provenance attestation) is a tracked pre-release task.
 Until then, install from a repo checkout: <code>&quot;@figaro/sdk&quot;: &quot;file:../sdk&quot;</code>
 (build it first: <code>npm run build --workspace sdk</code> from the repo root).</p>
 </blockquote>
+<p><strong>Trap — a consumer <code>npm install</code> can DELETE the SDK's <code>dist/</code>.</strong> Read this
+before you wire the <code>file:</code> dependency; it is the one way to make the SDK
+unimportable by following its own install instructions.</p>
+<p><code>sdk/package.json</code> declares <code>&quot;prepare&quot;: &quot;npm run build&quot;</code>, and npm runs a <code>file:</code>
+dependency's <code>prepare</code> on <strong>every</strong> consumer install. <code>build</code> is
+<code>rm -rf dist &amp;&amp; tsc</code>. The <code>rm</code> always succeeds. So if <code>tsc</code> cannot be resolved
+from the SDK's own directory, the rebuild dies with <code>sh: tsc: command not found</code>,
+the install exits <code>127</code>, and <code>dist/</code> is <strong>gone</strong> — the package the README just
+told you to install no longer has an entry point (<code>Cannot find package '@figaro/sdk'</code>). <code>--ignore-scripts</code> does <strong>not</strong> save you: measured, npm runs the
+linked package's <code>prepare</code> regardless and <code>dist/</code> still goes.</p>
+<p><code>tsc</code> is a devDependency of the <code>sdk</code> workspace, hoisted to the <strong>checkout
+root's</strong> <code>node_modules</code>. That is the whole fix — do this once, in this order,
+before the consumer install:</p>
+<pre><code class="bash"><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">clone</span><span class="hl-1"> </span><span class="hl-2">https://github.com/figaro-protocol/Figaro</span><span class="hl-1"> &amp;&amp; </span><span class="hl-0">cd</span><span class="hl-1"> </span><span class="hl-2">Figaro</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1">                       </span><span class="hl-3"># root: hoists typescript for the sdk workspace</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">build</span><span class="hl-1"> </span><span class="hl-4">--workspace</span><span class="hl-1"> </span><span class="hl-2">sdk</span><span class="hl-1">     </span><span class="hl-3"># produces sdk/dist</span>
+</code><button type="button">Copy</button></pre>
+
+<p>…and point <code>file:</code> at the <code>sdk</code> directory <strong>inside that checkout</strong>, never at a
+copy you moved somewhere else. Then the consumer's install finds <code>tsc</code> up the
+directory chain and its <code>prepare</code> <em>rebuilds</em> <code>dist/</code> instead of destroying it.
+Already hit it? Nothing is lost: rerun those two commands from the repo root.
+(Do not &quot;fix&quot; this by editing <code>sdk/package.json</code> — that <code>prepare</code> hook is what
+keeps the workspace build honest.)</p>
 <h2 id="your-first-commit" class="tsd-anchor-link">Your first commit<a href="#your-first-commit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>The shortest path from nothing to a bonded order on chain, on a devnet you own.
 Every step is a command in a checkout of the public repo — which is also how you
@@ -44,9 +66,10 @@ addresses, the RPC URL and the signer change.</p>
 stack, and pins every clause spec to IPFS + anchors it on <code>ClauseRegistry</code>. It
 writes the deployed addresses to <code>frontend/.env.local</code> (and
 <code>.deployments/local.json</code>) — that file is where every step below reads addresses
-from. It installs nothing: Foundry (<code>anvil</code>, <code>cast</code>) and a running Kubo must
-already be there. Full prerequisites, env vars and the native-Kubo recipe:
-<code>docs/LOCAL_DEV.md</code>.</p>
+from. It installs nothing: run <code>npm install</code> once at the repo root first (that
+is what puts <code>tsc</code> where the SDK build below finds it — see the Install trap
+above), and Foundry (<code>anvil</code>, <code>cast</code>) plus a running Kubo must already be there.
+Full prerequisites, env vars and the native-Kubo recipe: <code>docs/LOCAL_DEV.md</code>.</p>
 <p><strong>2. Put something on the network to discover.</strong> A fresh chain is an EMPTY
 network — no assemblies, no members, nothing to buy, and discovery correctly
 returns nothing. Fill it either way:</p>
@@ -120,6 +143,37 @@ process reads <code>resolved</code> on the next <code>ctx.sync()</code>. No time
 third party who can do this instead — and resolution is terminal. A buyer agent
 that resolves without recording credits no author and no designer — the reward
 mechanism's uniformity across actors is exactly this call.</p>
+<p><strong>Two things bite here. Both are silent.</strong></p>
+<p><em>The two <code>processId</code>s.</em> <code>resolveProcess(bytes32 processId, Commitment[] commitments)</code> takes <strong>two different ids that share a name</strong>, and they are not
+interchangeable: the ARGUMENT is the kernel's DERIVED process id (the storage
+key it looks the process up by), while every struct INSIDE <code>commitments</code> must be
+the one the parties SIGNED — and a root order signed <code>processId = 0</code>. The kernel
+recomputes <code>keccak256(processId ‖ hashStruct(c))</code> from both
+(<code>src/kernel/FigaroCore.sol:280-285</code>), so putting the derived id inside the root
+struct — the natural move, since that is what <code>OrderCommitted</code> carries and what
+event reconstruction hands you — yields a hash that matches no committed order
+and reverts <code>OrderNotCommitted</code>. The bridge is <code>restoreSignedProcessId(c, chainId, core)</code> (root export): it re-derives the id from the struct-as-root and,
+if that reproduces the id the event carried, hands the struct back with
+<code>processId = 0</code>; a genuine sub-order is returned untouched. <code>executeAction</code>
+(above) applies it to every element for you, which is the reason to prefer it —
+the lower-level <code>resolveProcess(walletClient, core, processId, commitments)</code>
+does NOT, and neither does hand-rolled <code>cast</code>.</p>
+<p><em><code>AccrualClosed()</code>.</em> <code>recordClauseUsage</code> and <code>recordAssemblyUsage</code> both open by
+calling <code>UsageCounter.currentPeriod()</code>, which reverts <code>AccrualClosed()</code> once the
+last accrual period has ended (<code>src/protocol/usage/UsageCounter.sol:386-392</code>) —
+the nine annual periods are the RPGF mechanism's whole life, and after the ninth
+boundary usage is permanently unrecordable. Two consequences before that day: a
+record is attributed to the period <strong>open when you call</strong>, not the one the
+process resolved in, so crossing a boundary between resolve and record moves the
+credit into the next period's budget and denominator; and <code>recordProcessUsage</code>
+tolerates per-leg reverts by design, so a closed accrual does not throw — it
+returns a report where every leg sits in <code>failures</code> and <code>recorded</code> is <code>0</code>. Check
+before you trust a run, and never after: <code>currentPeriod()</code> (it reverts, so wrap
+it — the revert IS the answer), <code>periodClosed(uint8)</code>, <code>periodCount()</code>, and
+<code>periodEnd(uint256)</code> are all in <code>USAGE_COUNTER_ABI</code>, and <code>AccrualClosed()</code> is in
+it too so the revert decodes by name instead of arriving as opaque bytes. This
+is the mechanical form of the at-settlement rule: record in the same
+transaction batch as the resolve and none of it can happen.</p>
 <p><strong>6. Know the traps before you extend this.</strong> The site's <code>/pitfalls</code> page is the
 canonical list; the first one a chain integration hits is <strong>sub-order
 approval</strong> — every <code>commit</code>, root or sub-order, pulls the FULL per-order bond
@@ -129,6 +183,11 @@ while the earlier bonds stay locked until the buyer resolves. Size it with
 <code>calculateSubOrderApproval</code> and check it with <code>assertApprovalCoversBond</code> (both
 below).</p>
 <h2 id="five-entry-points" class="tsd-anchor-link">Five Entry Points<a href="#five-entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>A generated API reference covering every export of all five entry points is
+served on the site at <code>/sdk-api</code> (TypeDoc over the same source; regenerate
+with <code>npm run docs</code> from <code>sdk/</code>). This README stays the manual — recipes,
+traps, and the order to do things in; the reference is where you look a
+signature up.</p>
 <h3 id="-protocol-primitives" class="tsd-anchor-link"><code>@figaro/sdk</code> — Protocol Primitives<a href="#-protocol-primitives" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the distribution mirror —
@@ -150,7 +209,7 @@ only while the clause or assembly's registration deposit stays un-withdrawn). Th
 exists to display a distribution, predict a claim, and verify a recorded
 accrual; <code>formula.json</code> is the normative prose statement of the mechanism and
 the source of every constant the mirror uses.</p>
-<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">addressesFromDeploymentRecord</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">fetchCoreEvents</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">reconstruct</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">calculateBonds</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">buildCommitment</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">buildDomain</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">Topology</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">maxOrdersResolvablePerProcess</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro/sdk&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">// `addresses` everywhere below is a `FigaroAddresses` ({ core, token, … }).</span><br/><span class="hl-3">// A PUBLISHED DEPLOYMENT RECORD uses different key names (`figaroCore`,</span><br/><span class="hl-3">// `tokenAddress`, …) — do not spread it verbatim; map it once:</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">addresses</span><span class="hl-1"> = </span><span class="hl-0">addressesFromDeploymentRecord</span><span class="hl-1">(</span><span class="hl-5">deploymentRecord</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Fetch all FigaroCore events from a block range. The return is a GROUPED</span><br/><span class="hl-3">// object — { orderCommitted, orderResolved, processResolved }, each a typed</span><br/><span class="hl-3">// array — NOT one flat log list. (Attestations are NOT in here: they live on</span><br/><span class="hl-3">// the AttestationCoordinator, a separate contract — read those with</span><br/><span class="hl-3">// EV_ATTESTATION + parseAttestationLogs; see @figaro/sdk/derive.)</span><br/><span class="hl-3">// `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`,</span><br/><span class="hl-3">// `fetchBatchUsageRecords`) chunk `getLogs` internally in sub-ranges of</span><br/><span class="hl-3">// `DEFAULT_LOG_CHUNK_SIZE` (9,500 blocks) so a wide range doesn&#39;t exceed a</span><br/><span class="hl-3">// public RPC provider&#39;s block-range cap; pass a trailing `chunkSize` to tune</span><br/><span class="hl-3">// it for a stricter (or more permissive) provider.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">events</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">fetchCoreEvents</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">, </span><span class="hl-5">addresses</span><span class="hl-1">, </span><span class="hl-8">0</span><span class="hl-4">n</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Reconstruct full process/order state from events</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">topology</span><span class="hl-1"> = </span><span class="hl-4">new</span><span class="hl-1"> </span><span class="hl-0">Topology</span><span class="hl-1">();</span><br/><span class="hl-5">topology</span><span class="hl-1">.</span><span class="hl-0">applyEvents</span><span class="hl-1">(</span><span class="hl-5">events</span><span class="hl-1">);</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">process</span><span class="hl-1"> = </span><span class="hl-5">topology</span><span class="hl-1">.</span><span class="hl-0">getProcess</span><span class="hl-1">(</span><span class="hl-5">processId</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">active</span><span class="hl-1"> = </span><span class="hl-5">topology</span><span class="hl-1">.</span><span class="hl-0">getActiveProcesses</span><span class="hl-1">();</span><br/><br/><span class="hl-3">// Calculate bond requirements</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">bonds</span><span class="hl-1"> = </span><span class="hl-0">calculateBonds</span><span class="hl-1">(</span><span class="hl-5">cumulativeValue</span><span class="hl-1">, </span><span class="hl-5">payment</span><span class="hl-1">);</span><br/><span class="hl-3">// → { sellerBond, buyerBond, totalLocked }</span><br/><br/><span class="hl-3">// Per-process resolve ceiling on the active chain (a process grown past</span><br/><span class="hl-3">// this can NEVER settle — check before every commit; the kernel cannot)</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">cap</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">maxOrdersResolvablePerProcess</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Build EIP-712 typed data for signing</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">domain</span><span class="hl-1"> = </span><span class="hl-0">buildDomain</span><span class="hl-1">(</span><span class="hl-5">chainId</span><span class="hl-1">, </span><span class="hl-5">coreAddress</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> { </span><span class="hl-7">commitment</span><span class="hl-1">, </span><span class="hl-7">typedData</span><span class="hl-1"> } = </span><span class="hl-0">buildCommitment</span><span class="hl-1">(</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-5">processId:</span><span class="hl-1"> </span><span class="hl-2">&quot;0x0000000000000000000000000000000000000000000000000000000000000000&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">buyer</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">seller</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">currency</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">payment</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">expectedCumulativeValue:</span><span class="hl-1"> </span><span class="hl-5">payment</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">agreementHash</span><span class="hl-1">,</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-5">domain</span><span class="hl-1">,</span><br/><span class="hl-1">);</span>
+<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">addressesFromDeploymentRecord</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">fetchCoreEvents</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">reconstruct</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">calculateBonds</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">buildCommitment</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">buildDomain</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">Topology</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">maxOrdersResolvablePerProcess</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro/sdk&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">// `addresses` everywhere below is a `FigaroAddresses` ({ core, token, … }).</span><br/><span class="hl-3">// A PUBLISHED DEPLOYMENT RECORD uses different key names (`figaroCore`,</span><br/><span class="hl-3">// `tokenAddress`, …) — do not spread it verbatim; map it once:</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">addresses</span><span class="hl-1"> = </span><span class="hl-0">addressesFromDeploymentRecord</span><span class="hl-1">(</span><span class="hl-5">deploymentRecord</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Fetch all FigaroCore events from a block range. The return is a GROUPED</span><br/><span class="hl-3">// object — { orderCommitted, orderResolved, processResolved }, each a typed</span><br/><span class="hl-3">// array — NOT one flat log list. (Attestations are NOT in here: they live on</span><br/><span class="hl-3">// the AttestationCoordinator, a separate contract — read those with</span><br/><span class="hl-3">// EV_ATTESTATION + parseAttestationLogs; see @figaro/sdk/derive.)</span><br/><span class="hl-3">// `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`,</span><br/><span class="hl-3">// `fetchBatchUsageRecords`) chunk `getLogs` internally in sub-ranges of</span><br/><span class="hl-3">// `DEFAULT_LOG_CHUNK_SIZE` (9,500 blocks) so a wide range doesn&#39;t exceed a</span><br/><span class="hl-3">// public RPC provider&#39;s block-range cap; pass a trailing `chunkSize` to tune</span><br/><span class="hl-3">// it for a stricter (or more permissive) provider.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">events</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">fetchCoreEvents</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">, </span><span class="hl-5">addresses</span><span class="hl-1">, </span><span class="hl-8">0</span><span class="hl-4">n</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Reconstruct full process/order state from events</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">topology</span><span class="hl-1"> = </span><span class="hl-4">new</span><span class="hl-1"> </span><span class="hl-0">Topology</span><span class="hl-1">();</span><br/><span class="hl-5">topology</span><span class="hl-1">.</span><span class="hl-0">applyEvents</span><span class="hl-1">(</span><span class="hl-5">events</span><span class="hl-1">);</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">process</span><span class="hl-1"> = </span><span class="hl-5">topology</span><span class="hl-1">.</span><span class="hl-0">getProcess</span><span class="hl-1">(</span><span class="hl-5">processId</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">active</span><span class="hl-1"> = </span><span class="hl-5">topology</span><span class="hl-1">.</span><span class="hl-0">getActiveProcesses</span><span class="hl-1">();</span><br/><br/><span class="hl-3">// Calculate bond requirements</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">bonds</span><span class="hl-1"> = </span><span class="hl-0">calculateBonds</span><span class="hl-1">(</span><span class="hl-5">cumulativeValue</span><span class="hl-1">, </span><span class="hl-5">payment</span><span class="hl-1">);</span><br/><span class="hl-3">// → { sellerBond, buyerBond, totalLocked }</span><br/><br/><span class="hl-3">// Per-process resolve ceiling on the active chain (a process grown past</span><br/><span class="hl-3">// this can NEVER settle — check before every commit; the kernel cannot)</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">cap</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">maxOrdersResolvablePerProcess</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Build EIP-712 typed data for signing.</span><br/><span class="hl-3">//</span><br/><span class="hl-3">// THE FIELD ORDER BELOW IS CANONICAL, NOT STYLISTIC. There is exactly one</span><br/><span class="hl-3">// authoritative ordering: `CommitmentTypes.COMMITMENT_TYPEHASH`</span><br/><span class="hl-3">// (`src/kernel/CommitmentTypes.sol:31-33`), the type string the kernel hashes</span><br/><span class="hl-3">// and recovers both signatures against. The SDK derives its own typehash from</span><br/><span class="hl-3">// the same field list and exports it — `COMMITMENT_TYPEHASH` (a root</span><br/><span class="hl-3">// `@figaro/sdk` export) is</span><br/><span class="hl-3">// 0xea70b4a1b704921c6919c3e8358981256c050e862e155886edf8828ee897f75c.</span><br/><span class="hl-3">// Anything that transcribes the struct (the `cast` tuple below, a non-JS</span><br/><span class="hl-3">// client, a Rust signer) must reproduce that order: permute two fields and the</span><br/><span class="hl-3">// struct hash changes, so the kernel recovers a different address and rejects</span><br/><span class="hl-3">// the bond.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">domain</span><span class="hl-1"> = </span><span class="hl-0">buildDomain</span><span class="hl-1">(</span><span class="hl-5">chainId</span><span class="hl-1">, </span><span class="hl-5">coreAddress</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> { </span><span class="hl-7">commitment</span><span class="hl-1">, </span><span class="hl-7">typedData</span><span class="hl-1"> } = </span><span class="hl-0">buildCommitment</span><span class="hl-1">(</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-5">processId:</span><span class="hl-1"> </span><span class="hl-2">&quot;0x0000000000000000000000000000000000000000000000000000000000000000&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">buyer</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">seller</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">currency</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">payment</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">expectedCumulativeValue:</span><span class="hl-1"> </span><span class="hl-5">payment</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">agreementHash</span><span class="hl-1">,</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-5">domain</span><span class="hl-1">,</span><br/><span class="hl-1">);</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Calling the kernel without the SDK.</strong> A <code>cast</code>-only participant talks to
@@ -158,6 +217,12 @@ the source of every constant the mirror uses.</p>
 <pre><code><span class="hl-0">commit</span><span class="hl-1">((</span><span class="hl-5">bytes32</span><span class="hl-1"> </span><span class="hl-5">processId</span><span class="hl-1">, </span><span class="hl-5">address</span><span class="hl-1"> </span><span class="hl-5">buyer</span><span class="hl-1">, </span><span class="hl-5">address</span><span class="hl-1"> </span><span class="hl-5">seller</span><span class="hl-1">, </span><span class="hl-5">address</span><span class="hl-1"> </span><span class="hl-5">currency</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">uint256</span><span class="hl-1"> </span><span class="hl-5">payment</span><span class="hl-1">, </span><span class="hl-5">uint256</span><span class="hl-1"> </span><span class="hl-5">expectedCumulativeValue</span><span class="hl-1">, </span><span class="hl-5">bytes32</span><span class="hl-1"> </span><span class="hl-5">agreementHash</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">uint256</span><span class="hl-1"> </span><span class="hl-5">salt</span><span class="hl-1">, </span><span class="hl-5">uint256</span><span class="hl-1"> </span><span class="hl-5">deadline</span><span class="hl-1">) </span><span class="hl-5">c</span><span class="hl-1">, </span><span class="hl-5">bytes</span><span class="hl-1"> </span><span class="hl-5">buyerSig</span><span class="hl-1">, </span><span class="hl-5">bytes</span><span class="hl-1"> </span><span class="hl-5">sellerSig</span><span class="hl-1">)</span><br/><span class="hl-0">resolveProcess</span><span class="hl-1">(</span><span class="hl-5">bytes32</span><span class="hl-1"> </span><span class="hl-5">processId</span><span class="hl-1">, &lt;</span><span class="hl-9">that</span><span class="hl-1"> </span><span class="hl-9">same</span><span class="hl-1"> </span><span class="hl-9">tuple</span><span class="hl-1">&gt;[] </span><span class="hl-5">commitments</span><span class="hl-1">)   </span><span class="hl-3">// buyer only</span>
 </code><button>Copy</button></pre>
 
+<p>That tuple's field order is the same canonical one — <code>COMMITMENT_TYPEHASH</code> in
+<code>src/kernel/CommitmentTypes.sol:31-33</code>. The sketch above and the
+<code>buildCommitment</code> literal earlier are two transcriptions of that one source;
+check either against the SDK's re-export
+(<code>COMMITMENT_TYPEHASH === keccak256(toBytes(yourTypeString))</code>) before signing
+anything you hand-rolled.</p>
 <p>A ROOT commitment signs <code>processId = 0</code> (the kernel derives the real id and
 returns it); a sub-order carries the root's derived <code>processId</code>. <code>buyerSig</code> /
 <code>sellerSig</code> are EIP-712 signatures over the <code>Commitment</code> struct under domain
@@ -168,12 +233,69 @@ kernel's on-chain recovery rejects the bond. Reach for the wrappers unless you
 have a reason not to; this sketch is only enough to orient a raw caller.</p>
 <p><strong>Token approvals before commit — the whole per-order bond, every time.</strong> The
 kernel pulls the FULL per-order bonds on EVERY <code>commit</code>, root or sub-order, and
-nets nothing against bonds it already holds from earlier orders in the process
-(<code>src/kernel/FigaroCore.sol:208-209</code> — <code>payment × 2</code> from the buyer, <code>expectedCumulativeValue × 2</code>
-from the seller). Approve the settlement ERC-20 for both legs before each commit:</p>
+nets nothing against bonds it already holds from earlier orders in the process.</p>
+<p>Two different things state that, and it is worth keeping them apart. The
+KERNEL only <em>pulls exactly</em>: <code>src/kernel/FigaroCore.sol:208-209</code> is two
+<code>_pullExact</code> transfer calls, <code>c.payment * 2</code> from <code>c.buyer</code> and
+<code>c.expectedCumulativeValue * 2</code> from <code>c.seller</code>, with no approval commentary
+and no netting logic anywhere in the file — if the allowance falls short the
+<code>transferFrom</code> reverts inside the settlement token and the kernel never sees
+the reason. WHAT TO APPROVE is therefore an off-chain calculation, and the
+SDK's <code>calculateRootApproval</code> / <code>calculateSubOrderApproval</code> (<code>sdk/src/bonds.ts</code>)
+are the authority for it. Approve the settlement ERC-20 for both legs before
+each commit:</p>
 <pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">calculateRootApproval</span><span class="hl-1">, </span><span class="hl-5">calculateSubOrderApproval</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro/sdk&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">// Root order:</span><br/><span class="hl-4">const</span><span class="hl-1"> { </span><span class="hl-7">buyerApproval</span><span class="hl-1">, </span><span class="hl-7">sellerApproval</span><span class="hl-1"> } = </span><span class="hl-0">calculateRootApproval</span><span class="hl-1">(</span><span class="hl-5">payment</span><span class="hl-1">);</span><br/><span class="hl-3">// → buyerApproval = 2 × payment,  sellerApproval = 2 × payment</span><br/><br/><span class="hl-3">// Sub-order (extends an existing process):</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">approvals</span><span class="hl-1"> = </span><span class="hl-0">calculateSubOrderApproval</span><span class="hl-1">(</span><span class="hl-5">payment</span><span class="hl-1">, </span><span class="hl-5">newCumulativeValue</span><span class="hl-1">);</span><br/><span class="hl-3">// → buyerApproval  = 2 × payment</span><br/><span class="hl-3">//   sellerApproval = 2 × newCumulativeValue  — the WHOLE cumulative bond for</span><br/><span class="hl-3">//   this order, NOT the increment over the previous order&#39;s bond.</span>
 </code><button type="button">Copy</button></pre>
 
+<p><strong>Worked: one root plus a two-link chain.</strong> Whole settlement-token units (scale
+by your token's <code>decimals</code>). Each row is one <code>commit</code>; the seller column is
+THAT order's seller, bonding twice the cumulative value at their own link.</p>
+<table>
+<thead>
+<tr>
+<th>Order</th>
+<th><code>payment</code></th>
+<th><code>expectedCumulativeValue</code></th>
+<th>Buyer approves</th>
+<th>Seller approves</th>
+<th>The common mistake</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — root</td>
+<td>100</td>
+<td>100</td>
+<td><strong>200</strong></td>
+<td><strong>200</strong></td>
+<td>— (root: the two legs coincide, which is why the trap only bites later)</td>
+</tr>
+<tr>
+<td>2 — sub-order</td>
+<td>40</td>
+<td>140</td>
+<td><strong>80</strong></td>
+<td><strong>280</strong></td>
+<td>approving <strong>80</strong> — 2 × the 40 increment — instead of 2 × 140</td>
+</tr>
+<tr>
+<td>3 — sub-order</td>
+<td>25</td>
+<td>165</td>
+<td><strong>50</strong></td>
+<td><strong>330</strong></td>
+<td>approving <strong>50</strong> — 2 × the 25 increment — instead of 2 × 165</td>
+</tr>
+</tbody>
+</table>
+<p>Read the rows as <code>calculateRootApproval(100n)</code> and
+<code>calculateSubOrderApproval(40n, 140n)</code> / <code>calculateSubOrderApproval(25n, 165n)</code>
+— they are that output. Two things the table makes visible that the prose
+doesn't: the BUYER is charged again on every order (200 + 80 + 50 = 330 pulled
+across the three commits, not 330 total value bonded once), and the seller's
+number GROWS with the chain even though their own link only added 40 or 25.
+Every one of those 330 + 810 units stays locked in the kernel until the buyer
+calls <code>resolveProcess</code>; nothing is released order by order.</p>
 <p>Approving the <em>increment</em> instead of the full <code>2 × newCumulativeValue</code> is the
 reverting mistake: <code>commit</code> reverts inside the settlement token with
 <code>ERC20InsufficientAllowance</code>, and the bonds already pulled for the earlier
@@ -492,14 +614,23 @@ registration at all.</p>
 <ul>
 <li><strong>Profile</strong> (<code>MemberProfileMetadata</code>) — the stable identity envelope pinned at
 <code>MembersRegistry.metadataURI</code>. <code>name</code> is the ONLY required field; everything
-else is optional (<code>description</code>, <code>specialty</code>, <code>location</code>, <code>branding</code>, <code>assets</code>,
-<code>acceptedTokens</code>, <code>defaultTokenAddress</code>, <code>profileClauseValues</code>, <code>assemblyBindings</code>,
+else is optional (<code>subjectAddress</code>, <code>description</code>, <code>specialty</code>, <code>location</code>,
+<code>branding</code>, <code>assets</code>, <code>acceptedTokens</code>, <code>defaultTokenAddress</code>,
+<code>profileClauseValues</code>, <code>assemblyBindings</code>, <code>buyerAssemblies</code>,
 <code>disclosurePolicy</code>, <code>services</code>, and <code>catalogueURI</code> — the pointer to the
 catalogue). Token
 acceptance is an identity declaration, not a market position. Carries no
 role / archetype / category taxonomy — what a seller does is inferred from the
 catalogue.
 <ul>
+<li><code>subjectAddress</code> is the wallet the profile speaks for. Optional in the
+on-chain-pinned shape because the registry already binds wallet →
+<code>metadataURI</code>, so a solitary document need not repeat it — but stamp it
+anyway: the moment profiles are materialised side by side (an indexer's
+array, a fixture file, a catalogue joined to its profile) it is the only
+join key, and <code>MemberCatalogueMetadata</code> REQUIRES its own. Treat it as
+non-clearable once set; a patch that drops it silently orphans the
+document.</li>
 <li><code>assemblyBindings</code> is an array of <code>AssemblyBindingRecord</code> — one entry per
 assembly the wallet participates in, each
 <code>{ bindingId, subjectAddress, assemblySlug, counterpartyBindings? }</code>. Each

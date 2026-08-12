@@ -36,7 +36,7 @@ export interface OrderPreview {
  * Commitment deadline from CHAIN time. `block.timestamp` is the clock the kernel
  * checks (FigaroCore's DeadlineExpired guard); a wall-clock deadline silently
  * expires whenever the device clock and the chain disagree (a skewed device on
- * mainnet; a time-traveled devnet). NO wall-clock fallback (operator rule
+ * mainnet; a time-traveled devnet). NO wall-clock fallback (maintainer rule
  * 2026-08-06): if the chain can't be read, the order can't be built either —
  * fail loudly here rather than sign a deadline the kernel may judge by a
  * different clock.

@@ -41,12 +41,12 @@ them); forks are first-class.
 
 ## The seam — two worlds, do not blur them
 
-Pre-defined agents are **operator-private by default**; "public" is the exception, only when
+Pre-defined agents are **maintainer-private by default**; "public" is the exception, only when
 explicitly designed for it — these three are those exceptions.
 
 | World | Home | For | Touches the repo? |
 |---|---|---|---|
-| **Operator-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the operator only** | yes (that's their job) |
+| **Maintainer-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the maintainer only** | yes (that's their job) |
 | **Public ecosystem** — operate / author / fork (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-designer`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
 A public ecosystem agent that writes a repo file has crossed the line: it re-imposes the

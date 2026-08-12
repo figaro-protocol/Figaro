@@ -3,11 +3,11 @@ name: Devnet E2E CI
 # The bilateral spine end-to-end (buyer orders → seller accepts → commit), the
 # highest-catch layer, run against a REAL stack in the runner: Anvil + a
 # deployed protocol + Kubo (IPFS) + the production static export. Until now this
-# layer was operator-discipline-only — nothing exercised action→reaction across
+# layer was maintainer-discipline-only — nothing exercised action→reaction across
 # the whole stack on push.
 #
 # Scope: the `orders-accept` spec (the bilateral spine). Broader devnet specs
-# stay operator-run for now; this proves the spine can't silently break.
+# stay maintainer-run for now; this proves the spine can't silently break.
 
 on:
     push:

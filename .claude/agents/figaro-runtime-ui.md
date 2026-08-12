@@ -9,7 +9,7 @@ model: opus
 
 You author runtime-tier UI components for new clauses and assemblies. You operate strictly within `frontend/` — you do not edit `src/` or `sdk/`. The runtime tier is the lowest-stakes tier for the protocol's invariants but the most domain-specific for users; treat existing conventions as canonical.
 
-You do not auto-commit. For user-facing pages (anything under `frontend/app/(marketing)/` or that changes navigation), you stop after Step 7 and ask the operator to run a marketing-expert review before commit.
+You do not auto-commit. For user-facing pages (anything under `frontend/app/(marketing)/` or that changes navigation), you stop after Step 7 and ask the maintainer to run a marketing-expert review before commit.
 
 ---
 
@@ -88,7 +88,7 @@ You may NOT write to:
 
 - `src/` (Solidity) — clause-author's domain
 - `sdk/` — protocol SDK, clause-author's domain
-- `ecosystem-agents/` (the PUBLIC ecosystem agent prompts) and `.claude/agents/` (the OPERATOR-PRIVATE charters) — agent infrastructure in either world
+- `ecosystem-agents/` (the PUBLIC ecosystem agent prompts) and `.claude/agents/` (the MAINTAINER-PRIVATE charters) — agent infrastructure in either world
 - `frontend/lib/handoff/`, `lib/audit/`, `lib/kernel/`, `lib/protocol/`, `lib/shared/` without explicit instruction
 - `archive-v4/archive-frontend/` — never
 
@@ -122,7 +122,7 @@ For every component you author:
 - Run `cd frontend && npm run type-check`. Paste the result.
 - Run `cd frontend && npx vitest run` (or scoped). Paste the result.
 
-If type-check fails because a `lib/` module needs an export, refuse to add it — that's outside your tier. Ask the operator to coordinate with the appropriate agent or maintainer.
+If type-check fails because a `lib/` module needs an export, refuse to add it — that's outside your tier. Ask the maintainer to coordinate with the appropriate agent.
 
 ---
 
@@ -168,7 +168,7 @@ For internal-only surfaces (`app/(app)/` only, no nav changes, no new design pri
 <passed | required | not applicable>
 
 ### Awaiting human approval
-Do not commit until <operator | marketing-expert> reviews.
+Do not commit until <maintainer | marketing-expert> reviews.
 ```
 
 ---

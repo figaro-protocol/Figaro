@@ -1,7 +1,7 @@
 #!/bin/bash
 # lint-nav-structure.sh — MARKETING_MAP must equal the ruled route tree.
 #
-# The marketing nav is DERIVED from the route-group structure (operator
+# The marketing nav is DERIVED from the route-group structure (maintainer
 # ruling 2026-08-07), one group per protocol object:
 #   (deal) -> /kernel                       (section "The Deal")
 #   (compose)+(rewards)+(spec) -> /clauses  (section "Builders" — the three
@@ -13,7 +13,7 @@
 # e-commerce tools (/discover, /orders, /audit). (reference) is footer
 # chrome and carries no nav entries; papers/ are reached through Working
 # Groups. /local-commerce and /faq are nav-visible under The Deal
-# (operator, 2026-08-07) on the standing condition that sitewide copy
+# (maintainer, 2026-08-07) on the standing condition that sitewide copy
 # stays demoted — the meal is one worked example, never THE model.
 # Labels are each page's own metadata.title
 # minus the " — Figaro Protocol" suffix. Entry ORDER within a group is the

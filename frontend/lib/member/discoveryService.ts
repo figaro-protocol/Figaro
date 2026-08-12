@@ -68,7 +68,7 @@ async function fetchSellerAsCatalogue(
     if (!profile) return null;
 
     // The frontend's surfacing rule, applied EVENLY across every projection
-    // (operator ruling 2026-07-02; extends the 2026-06-12 discover rule): the
+    // (maintainer ruling 2026-07-02; extends the 2026-06-12 discover rule): the
     // contracts are permissionless — anyone can anchor any profile shape —
     // but this frontend surfaces only sellers whose profile binds ≥1 assembly
     // anchored in the AssemblyRegistry (the registry is the authority, the

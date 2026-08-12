@@ -59,7 +59,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (the even-surfacing rule: a seller surfaces only with an anchored binding,
 // so an empty AssemblyRegistry means zero surfaced sellers). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
-// (operator ruling 2026-07-02; the scenario-era build-order coupling is the
+// (maintainer ruling 2026-07-02; the scenario-era build-order coupling is the
 // cautionary tale). The template reproduces the designer's emission byte for
 // byte: identity (compositionHash + slug) and canonical JSON come from the
 // SDK; the mandatory fold mirrors `lib/designer/buildAssemblyTemplate.ts`

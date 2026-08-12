@@ -1,5 +1,5 @@
 /**
- * xmtp-relay.smoke.spec.ts — OPERATOR-MANUAL smoke of the REAL XMTP relay.
+ * xmtp-relay.smoke.spec.ts — MAINTAINER-MANUAL smoke of the REAL XMTP relay.
  *
  * NOT part of any suite (playwright project `smoke` — run explicitly):
  *
@@ -42,7 +42,7 @@
  *  3. Diagnostics for the open stream-sharing question (whether the /orders
  *     triple subscription — 2× usePendingCommitments + the header badge —
  *     shares one XMTP stream or opens three): the spec fails on page errors
- *     and prints every console warning/error for the operator to review.
+ *     and prints every console warning/error for the maintainer to review.
  *     Run HEADED to watch: add `--headed`.
  */
 import fs from 'fs';

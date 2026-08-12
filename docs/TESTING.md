@@ -235,10 +235,10 @@ Five projects:
 - **`devnet`** — every other `*.devnet.spec.ts`; depends on `devnet-authoring`.
 - **`mobile`** — the lone non-e2e browser project: responsive/viewport chrome
   jsdom can't render.
-- **`smoke`** — OPERATOR-MANUAL smokes over real external transports the devnet
+- **`smoke`** — MAINTAINER-MANUAL smokes over real external transports the devnet
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
   suite run — explicitly `npx playwright test --project=smoke`; pass/fail is an
-  operator observation, not a CI gate.
+  maintainer observation, not a CI gate.
 
 **⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
 acceptance specs (`clause-coverage`, `permissionless-clause`,
@@ -368,7 +368,7 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 Six workflows. Five gate `main`/`develop` on push + PR (the language-scoped
 four path-filtered, the guard battery whole-tree); the sixth publishes:
 - **`foundry-ci`** — `forge build`/`test`/`fmt` + Halmos symbolic proofs (Certora
-  is excluded by design — it needs the operator-held CERTORAKEY, never stored).
+  is excluded by design — it needs the maintainer-held CERTORAKEY, never stored).
 - **`sdk-ci`** — tsc type-check, `npm test`, build.
 - **`frontend-ci`** — type-check, ESLint, Vitest (+coverage), the **mobile**
   Playwright project, production build.
@@ -376,7 +376,7 @@ four path-filtered, the guard battery whole-tree); the sixth publishes:
   the runner: Kubo (IPFS, CORS-configured), Anvil (`--accounts 38`), a full
   `deploy-local.sh` stack, `populate-test-data`, then the `orders-accept` devnet
   spec against the production static export. The highest-catch layer, no longer
-  operator-discipline-only. Broader devnet specs stay operator-run.
+  maintainer-discipline-only. Broader devnet specs stay maintainer-run.
 - **`guards-ci`** — the whole-tree guard battery, NOT path-filtered: the guards
   are repo-wide and lint-staged only ever sees a commit's touched files, so this
   job re-certifies the whole tree on every push/PR.

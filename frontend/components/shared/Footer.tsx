@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * The footer is the LEGAL/IDENTITY strip only (operator rule 2026-08-06):
+ * The footer is the LEGAL/IDENTITY strip only (maintainer rule 2026-08-06):
  * the site-map columns died with the per-page "More on…" closers — the nav
  * tree (`NavTreeRow`, fed by `MARKETING_MAP`) is the ONE wayfinding surface
  * on desktop, the drawer on mobile. Do not regrow link columns here.

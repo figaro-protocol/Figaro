@@ -152,12 +152,12 @@ export default defineConfig({
             use: { ...devices['Pixel 5'] },
         },
         {
-            // OPERATOR-MANUAL smokes — NEVER part of any suite run. Explicitly:
+            // MAINTAINER-MANUAL smokes — NEVER part of any suite run. Explicitly:
             //     npx playwright test --project=smoke
             // These exercise REAL external transports the devnet suite
             // deliberately mocks (the XMTP hosted `dev` network) — they need
             // internet plus the standard devup stack, and their pass/fail is
-            // an operator observation, not a CI gate.
+            // an maintainer observation, not a CI gate.
             name: 'smoke',
             testMatch: /\.smoke\.spec\.ts$/,
             fullyParallel: false,

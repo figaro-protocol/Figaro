@@ -91,7 +91,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // Labels track navLinks.ts (the one nav source): the invariants page is
         // labelled by its own metadata.title, and the papers are reached through
         // Working Groups — the corpus is unbounded, so the working-groups page
-        // IS the index (operator-ruled 2026-08-12; no /papers index exists).
+        // IS the index (maintainer-ruled 2026-08-12; no /papers index exists).
         for (const [label, href] of [
             ['Invariants', '/invariants'],
             ['Working Groups', '/working-groups'],

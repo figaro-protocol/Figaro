@@ -53,7 +53,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(validateAgainstSchema(noArticle)).toBe(false);
     });
 
-    // THE STANDARD (operator ruling 2026-07-28): the repo's own clause corpus
+    // THE STANDARD (maintainer ruling 2026-07-28): the repo's own clause corpus
     // expresses every standard attribute explicitly — zero, empty, or null,
     // never absent. Consumers still treat an absent attribute as its empty
     // value (resolved-empty = absence — a sparser third-party spec surfaces

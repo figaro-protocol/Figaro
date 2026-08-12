@@ -45,7 +45,7 @@ export function MemberLanding() {
     const { data: deposit } = useRegistrationDeposit();
     const { pending, isLoading: withdrawalLoading, refetch: refetchWithdrawal } = useWithdrawalStatus(address);
 
-    // NO doorway page (operator rule 2026-08-06): the reader arrives from
+    // NO doorway page (maintainer rule 2026-08-06): the reader arrives from
     // /join already sold — an unregistered wallet goes STRAIGHT to Identity.
     // The one exception is a wallet that LEFT but is still owed its deposit:
     // redirecting it would strand the ETH behind a screen it can't reach, so

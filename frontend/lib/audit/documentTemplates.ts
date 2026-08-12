@@ -10,7 +10,7 @@
  * makes this open-world: the templates are hardcoded here, but they carry no
  * clause-specific knowledge — they read whatever fields the committed leaves declare.
  *
- * DECISION (operator, 2026-07-08): these templates are a hardcoded array in this
+ * DECISION (maintainer, 2026-07-08): these templates are a hardcoded array in this
  * file. They are NOT moved to an on-chain registry — no on-chain document registry
  * at this time. Do NOT "graduate" this to a registry, and do NOT call it a
  * "catalogue" (that word is the SELLER'S catalogue — a different object entirely).

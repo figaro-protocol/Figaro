@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ONBOARDING_STEPS } from "@/lib/member/onboardingState";
 
-// The wizard's ruled order (operator, 2026-08-06): the buyer page sits
+// The wizard's ruled order (maintainer, 2026-08-06): the buyer page sits
 // between the seller assemblies step and the agents step, so the agents
 // step delegates control of the member's WHOLE profile — seller and
 // buyer alike.

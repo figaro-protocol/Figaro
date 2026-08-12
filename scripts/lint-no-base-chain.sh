@@ -2,7 +2,7 @@
 #
 # lint-no-base-chain.sh — DEPLOYMENT-TARGET FLOOR: no Coinbase Base chain wiring.
 #
-# Operator ruling 2026-07-23 (project_deployment_targets): deployment targets are
+# Maintainer ruling 2026-07-23 (project_deployment_targets): deployment targets are
 # Ethereum Sepolia → Ethereum mainnet FIRST — NOT Coinbase/Base. The repo config
 # pointed at Base Sepolia for months and kept misleading agents into treating Base
 # as the target; this guard makes the retarget permanent.

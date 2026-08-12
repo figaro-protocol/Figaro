@@ -120,8 +120,8 @@ not consent. This section IS the canonical statement of the model — everything
 
 The base-model default you carry in unexamined and that is **wrong here**:
 
-> **"Figaro is a product app."** It is not — it is **protocol infrastructure**, the TCP/IP
-> of trade; the frontend is a *protocol surface that composes catalogues*, never a product
+> **"Figaro is a product app."** It is not — it is **protocol infrastructure**; the
+> frontend is a *protocol surface that composes catalogues*, never a product
 > application.
 
 So deep in base training it ships as a role taxonomy or onboarding funnel *before anyone asks
@@ -199,7 +199,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 ## What Figaro Is
 
-**Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.** A stateless, ownerless protocol defining the smallest unit of a secure handshake: **the Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
+**Figaro is not an app, a firm, or an economic system. Its tagline is a theorem: my word is my bond.** A stateless, ownerless protocol defining the smallest unit of a secure handshake: **the Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
 
 **The spine** (do not re-derive or duplicate): one object, the boundary, read four ways — **HOLDS** (the chain keeps only a fingerprint; artifacts are *pinned* off-chain, never reconstructed), **COUPLES** (data, identity, compute/agents, law attach through the same boundary), **EMERGES** (meaning lives one level up, in clauses/assemblies/processes), **ADMITS** (anyone who can sign and bond participates). **All four bind the KERNEL ONLY, never the tiers above** — see § "Three-Tier Naming". The frontend reads network state, never custodies. Canonical source: `/invariants` + `/why` (`frontend/app/(marketing)/(deal)/invariants/page.tsx` + `(research)/why/page.tsx`) + the `project_physics_spine` memory.
 
@@ -391,7 +391,7 @@ e2e-tested → `assemblies/README.md`.
 
 `@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions (runtime deps → `sdk/README.md`). ESM; five subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth — and `/handoff`, the runtime handoff wire protocol). Root also owns the promoted choreography: agreement/template projection behind `SpecSource`, the ONE template→orders walk (`reconstructOrdersFromTemplate`), and checkout planning. Full entry-point map + build/test commands → `sdk/README.md`.
 
-**"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-designer`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
+**"Agent" = two worlds; pin the referent.** Default = MAINTAINER-PRIVATE (`.claude/agents/`, the maintainer's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-designer`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 
 ### Local Development
 

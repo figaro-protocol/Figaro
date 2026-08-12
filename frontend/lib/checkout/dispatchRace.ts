@@ -2,7 +2,7 @@
 
 /**
  * dispatchRace.ts — the buyer-side dispatch race: market formation with zero
- * contracts (operator-ruled 2026-07-20).
+ * contracts (maintainer-ruled 2026-07-20).
  *
  * An unbound sub-order (a node the adopting seller's profile leaves without a
  * counterparty — the SAME derived absence the manual picker resolves) can be

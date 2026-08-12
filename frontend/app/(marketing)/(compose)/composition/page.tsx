@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 // AUDITED + MERGED 2026-08-05: this page absorbed /builders/composability (the
 // split was an author's filing distinction — "catalogue" vs "doctrine" — that no
-// reader could see; operator ruled ONE page). RULED + REWRITTEN BY THE OPERATOR
+// reader could see; maintainer ruled ONE page). RULED + REWRITTEN BY THE MAINTAINER
 // 2026-08-06, final form: the hero (two ways to compose) plus the wired
 // third-party list, forward-looking ("add others to help the ecosystem
 // evolve") — nothing else. The five-conditions apparatus, the kernel-invariant

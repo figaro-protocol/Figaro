@@ -220,7 +220,7 @@ export interface OnboardingStep {
     optional: boolean;
 }
 
-// No welcome step (operator rule 2026-08-06): /join owns the membership
+// No welcome step (maintainer rule 2026-08-06): /join owns the membership
 // pitch, so the wizard opens directly on Identity.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },

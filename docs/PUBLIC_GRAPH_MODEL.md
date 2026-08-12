@@ -142,7 +142,7 @@ participants that other agents learn from, without centralized orchestration.
 ## The design instrument — three forward-looking stress tests
 
 The 600M's design constraints are not aesthetic preferences; they are DERIVED, and
-this is the instrument they are derived with (operator, ratified with the reward
+this is the instrument they are derived with (maintainer, ratified with the reward
 mechanism 2026-07-29). The 600M exists to incentivize the permissionless creation of
 the protocol-layer **public graphs** — the coordination commons agents and humans
 (same level) learn from for free. Platforms' moat is privately holding
@@ -271,7 +271,7 @@ sale — the content-handoff clause family names datasets and access credentials
 as digital value-added, delivered over the sealed channel.
 
 The voluntary data market around that capacity is kernel-native and needs no
-contract of its own (operator-ruled 2026-07-24): data products are catalogue
+contract of its own (maintainer-ruled 2026-07-24): data products are catalogue
 items; the disclosure regime for a process's own records is the composable
 `figaro-data-terms` clause (designer-set regime, buyer-committed choice over
 their own half); the terms of a specific sale are the `figaro-data-license`

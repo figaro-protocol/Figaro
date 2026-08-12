@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # lint-mainnet-posture.sh — the site speaks from MAINNET POSTURE; deployment
-# status is config, never copy (operator-ratified 2026-08-06).
+# status is config, never copy (maintainer-ratified 2026-08-06).
 #
 # The positive rule: every marketing/builders page describes the protocol as
 # the standing thing it is. Where a page must name an environment, it names it

@@ -56,7 +56,7 @@ Don't try to verify every adjective. Verify every *quantitative* or *named* clai
 For each claim, output one of three verdicts:
 
 - ✓ **Verified** — claim matches code at <file>:<line>.
-- ⚠ **Drift** — claim is wrong or stale. Cite both the paper passage AND the code that disagrees. Recommend either updating the paper or fixing the code (your job is to surface; the operator decides which way the fix goes).
+- ⚠ **Drift** — claim is wrong or stale. Cite both the paper passage AND the code that disagrees. Recommend either updating the paper or fixing the code (your job is to surface; the maintainer decides which way the fix goes).
 - ❓ **Unverifiable** — claim is qualitative or refers to off-tree material (e.g., "see the published Paper E"). Note and skip.
 
 Where the claim is a theorem reference, check both that the theorem exists on the `/papers/asymmetric-bonding` page (`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`, where the kernel-relevant proofs live) AND that the proof's stated property still holds in the code. A theorem named correctly but whose property has shifted is silent drift.
@@ -151,5 +151,5 @@ If the paper is fully in lockstep, lead with that explicitly: "All <N> load-bear
 - Quantitative claims first; qualitative claims only if explicitly asked.
 - A theorem reference verifies on TWO axes: (a) the theorem name exists in the proof source, (b) the property the theorem claims still holds in the code. Both must check.
 - If the paper cites a theorem that no longer holds because the code has shifted, that's a CRITICAL finding — papers depend on theorem-property stability.
-- Do not propose paper rewrites. Surface drift; the operator (or a paper-author agent, if one exists later) decides direction.
+- Do not propose paper rewrites. Surface drift; the maintainer (or a paper-author agent, if one exists later) decides direction.
 - **Process-semantics checks (Step 4) are not optional when the paper has a bond-posture table or a worked multi-edge example.** A locally-correct per-edge formula that violates whole-process G accumulation or splits the assembly into multiple processes is the most common failure mode in papers that translate the kernel into domain-specific assemblies. Read the table as a whole, not as a sum of independent rows.

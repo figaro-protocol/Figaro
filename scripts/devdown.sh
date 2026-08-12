@@ -78,7 +78,7 @@ fi
 
 # ── 3. Report what is NOT ours ──────────────────────────────────────────────
 # Reported, never killed: a :3100 could be a Playwright run in flight, and :3000
-# is the operator's. Silence here would be the worse failure — a stray :3100
+# is the maintainer's. Silence here would be the worse failure — a stray :3100
 # fails the NEXT Playwright run with a confusing port-in-use error.
 for port in 3000 3100; do
     if lsof -ti:"$port" >/dev/null 2>&1; then

@@ -22,7 +22,7 @@ export const OG_IMAGE = {
     url: "/opengraph-image",
     width: 1200,
     height: 630,
-    alt: "Figaro completes the contract.",
+    alt: "My word is my bond",
 };
 
 export function withOg({

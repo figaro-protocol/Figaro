@@ -45,7 +45,7 @@ export function OnboardingStepIndicator({
                         : "border border-default text-ink-faint",
                 );
 
-                // One line on EVERY viewport (operator rule 2026-08-06): on
+                // One line on EVERY viewport (maintainer rule 2026-08-06): on
                 // small screens only the current step keeps its label — the
                 // rest show as numbered circles.
                 const labelClasses = cn(

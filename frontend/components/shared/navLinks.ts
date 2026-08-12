@@ -3,7 +3,7 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The five entries are the ruled protocol-object sections (operator
+//   The five entries are the ruled protocol-object sections (maintainer
 //   2026-08-07, enforced by scripts/lint-nav-structure.sh): The Deal,
 //   Market, Builders, Participants, Research — full tree in the
 //   MARKETING_MAP docstring below. The logo links home; no "Home" item here.
@@ -73,7 +73,7 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — the ruled site tree (operator, 2026-08-07), five nav
+ * The marketing map — the ruled site tree (maintainer, 2026-08-07), five nav
  * entries: The Deal `(deal)`, Market (the all-bridge group carrying the app
  * tier's e-commerce tools), Builders (`(compose)` + `(rewards)` + `(spec)`, one flat list of pages),
  * Participants `(participants)`, Research `(research)`. Each group's first
@@ -82,7 +82,7 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  * Labels derive from each page's own `metadata.title` minus the site suffix.
  * `(reference)` (Glossary) is footer chrome, never nav; papers are
  * reached through Working Groups. /local-commerce and /faq are nav-visible
- * under The Deal (operator, 2026-08-07) on the standing condition that the
+ * under The Deal (maintainer, 2026-08-07) on the standing condition that the
  * rest of the site stays demoted — the meal is one worked example among
  * many, never THE model. Tools (Register a clause,
  * Designer, Claim, Join) are buttons on their object's page, never nav

@@ -10,7 +10,7 @@ export const metadata: Metadata = withOg({
         "How a Figaro deal works: both sides lock a stake larger than the deal, so cheating always loses; the buyer closes it out; every step is recorded permanently.",
 });
 
-// FigaroCore's mechanism design, and ONLY that (operator rule 2026-08-06:
+// FigaroCore's mechanism design, and ONLY that (maintainer rule 2026-08-06:
 // the kernel page never carries the stack — the stack figure lives on home).
 // Compressed 2026-08-06 from ~950 words to ~420 + the state figure (moved
 // here from /security, which owns tests and audit results) + the outcome

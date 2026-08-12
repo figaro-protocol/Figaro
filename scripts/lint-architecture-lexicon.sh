@@ -126,7 +126,7 @@ for file in "$@"; do
         'CARGO_MANIFEST|--manifest-path|manifestation|will manifest|would manifest' \
         "retired: 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed payload'."
 
-    # ── token concepts (three distinct; operator ruling 2026-07-17) ──
+    # ── token concepts (three distinct; maintainer ruling 2026-07-17) ──
     # The florin is a PURE SCHELLING POINT — nothing structural anywhere is
     # conditioned on it (its only couplings are its own issuance: genesis +
     # RpgfMinter). figaro-utility-token is a GENERIC pin: the designer names ANY

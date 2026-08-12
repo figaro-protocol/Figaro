@@ -1,7 +1,7 @@
 /**
  * @figaro/sdk/agent — The dispatch race: market formation with zero contracts.
  *
- * Countersign-first choreography (operator-ruled 2026-07-20). An unbound
+ * Countersign-first choreography (maintainer-ruled 2026-07-20). An unbound
  * sub-order position is filled by racing the market instead of a manual pick:
  * the buyer sends the SAME unsigned draft shape to k candidate sellers — each
  * draft naming that candidate as `seller` at the candidate's own posted

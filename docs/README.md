@@ -39,8 +39,8 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Release gates, frozen audit surface | `RELEASE_READINESS.md` |
 | Public-graph / RPGF incentive rationale (why the flow-map gets built under a uniform reward) | `PUBLIC_GRAPH_MODEL.md` |
 | RPGF mechanics (UsageCounter, RpgfMinter — uniform reward, live ETH stake) | `CONTRACTS.md` |
-| Operator preferences, incidents, rulings | memory dir (`MEMORY.md` index) — operator-private, not shipped in this repo; the docs above carry every conclusion |
-| Open work | the punch-list (memory dir, operator-private) |
+| Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
+| Open work | the punch-list (memory dir, maintainer-private) |
 
 ## Start Here
 

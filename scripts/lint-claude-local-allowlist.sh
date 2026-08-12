@@ -5,7 +5,7 @@
 # feedback_claude_local_state_not_committed: only project-shared agent harness
 # lives in the repo under .claude/ — agents, skills, hooks, settings.json. Local
 # session state, caches, and anything else stay out.
-# feedback_memories_not_committed: memory files (the operator's `memory/` dir) are
+# feedback_memories_not_committed: memory files (the maintainer's `memory/` dir) are
 # NEVER committed, under any path.
 #
 # Reads the STAGED file set (pre-commit body, not lint-staged — lint-staged only

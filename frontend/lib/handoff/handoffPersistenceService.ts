@@ -5,7 +5,7 @@ import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
  * handoffPersistenceService — the resolution-path PURGE choreography for
  * per-order ceremony key material.
  *
- * GDPR posture (operator ruling 2026-07-22): key material is EPHEMERAL by
+ * GDPR posture (maintainer ruling 2026-07-22): key material is EPHEMERAL by
  * construction — the only key store is the ecdh sessionStorage store
  * (`lib/handoff/ecdh.ts`: per-order keypairs, tab-close clearing, its own
  * abandoned-ceremony age sweep). This service adds the resolution-path purge:

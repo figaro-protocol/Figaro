@@ -171,7 +171,7 @@ export interface ReconstructParams {
     specs?: SpecSource;
     /** Optional deterministic salt per node (testing). */
     salt?: (nodeId: string) => bigint | undefined;
-    /** CHAIN-time deadline for every reconstructed commitment (operator rule
+    /** CHAIN-time deadline for every reconstructed commitment (maintainer rule
      *  2026-08-06): `computeDeadline(await readChainTimestamp(client))`. */
     deadline: bigint;
     /** Per-node seam, invoked in commit order as each order is realized —

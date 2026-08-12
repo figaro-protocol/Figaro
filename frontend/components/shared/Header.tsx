@@ -19,7 +19,7 @@ import { usePathname } from "next/navigation";
  *  2. The mobile drawer uses `NAV_LINKS_APP_DRAWER` (grouped publication +
  *     transactional sections). There is no second desktop row — the
  *     wallet's personal surfaces attach to their object pages and the
- *     wallet chrome (operator ruling 2026-08-07).
+ *     wallet chrome (maintainer ruling 2026-08-07).
  */
 export function Header() {
     const walletConnected = useWalletConnected();

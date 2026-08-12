@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 
-// VALIDATED IN CHAT 2026-08-05 (operator copy pass): the page is the RPGF
+// VALIDATED IN CHAT 2026-08-05 (maintainer copy pass): the page is the RPGF
 // page — restored to its original route (/rpgf, born 2026-05-22) after two
 // renames buried it. Hero + one terms section + closer. Every claim traces
 // to src/rpgf/RpgfMinter.sol + src/protocol/usage/UsageCounter.sol.

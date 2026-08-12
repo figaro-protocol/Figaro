@@ -1,6 +1,6 @@
 ---
 name: figaro-memory-hygiene
-description: Periodic audit of the user's memory files (`~/.claude/projects/<project>/memory/`). Lists files exceeding line thresholds, flags drift between memory entries and the code/git they describe, identifies obvious prune candidates. Output is a TABLE, not a narrative. Read-only. Invoke monthly or when the operator suspects memory bloat.
+description: Periodic audit of the user's memory files (`~/.claude/projects/<project>/memory/`). Lists files exceeding line thresholds, flags drift between memory entries and the code/git they describe, identifies obvious prune candidates. Output is a TABLE, not a narrative. Read-only. Invoke monthly or when the maintainer suspects memory bloat.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -15,7 +15,7 @@ Audit memory files. Output a table. **Do not write narrative.** This agent exist
 
 | File class | Soft limit | Hard limit | Action at hard |
 |---|---|---|---|
-| `MEMORY.md` (index) | 18 KB | 20 KB | Operator ceiling 20 KB (2026-07-06); ignore the harness's ~17 KB compaction nudge. One-liner entries; prune only above 20 KB. |
+| `MEMORY.md` (index) | 18 KB | 20 KB | Maintainer ceiling 20 KB (2026-07-06); ignore the harness's ~17 KB compaction nudge. One-liner entries; prune only above 20 KB. |
 | `feedback_*.md` | 100 lines | 200 lines | Prune to the rule + why + how-to-apply only. |
 | `project_*.md` | 100 lines | 200 lines | Prune. Move history to git. Move audits to docs/. |
 

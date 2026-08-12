@@ -2,7 +2,7 @@
  * swap-funded-checkout.devnet.spec.ts
  *
  * THE PAYMENT TOKEN, end to end and UI on both ends. The corrected model
- * (operator ruling 2026-07-20): the buyer PICKS the payment token from the
+ * (maintainer ruling 2026-07-20): the buyer PICKS the payment token from the
  * seller's accepted array, and the pick IS the process denomination — the
  * commitment records it, both 2× bonds and the payment move in it, and the
  * seller RECEIVES it (and can spend it onward — circulation, not LP demand).

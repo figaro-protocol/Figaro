@@ -187,7 +187,7 @@ after atomic settlement would dilute the finality the resolve mechanism is
 designed to produce. Post-settlement claims belong to off-chain forums, which
 receive the resolved process's complete, closed evidentiary record as input.
 (An earlier revision permitted post-resolve attestation; that was closed-world
-residue — closed by operator ruling, 2026-07-10.)
+residue — closed by maintainer ruling, 2026-07-10.)
 
 ---
 
@@ -487,7 +487,7 @@ The funds are not stuck, on any reading:
 **Scope**: `MembersRegistry` only. `ClauseRegistry` and `AssemblyRegistry` deliberately
 have no cooldown and need none — their withdrawal is one-shot per key and the key's
 binding is permanent, so there is nothing to recycle. Ruled ACCEPT 2026-07-30, with
-the operator's framing: "no rage quitting."
+the maintainer's framing: "no rage quitting."
 
 ---
 
