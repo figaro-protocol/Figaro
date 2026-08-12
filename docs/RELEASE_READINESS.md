@@ -185,6 +185,17 @@ Required output:
    value — treat one REAL batch settling cleanly post-deploy as the genesis-root proof, not
    the deploy transaction succeeding; (c) confirm Succinct publishes an SP1 verifier gateway
    on Sepolia (or self-deploy one) before setting `SP1_VERIFIER_GATEWAY`.
+4. Testnet setup — the two networks, in order (operator-ruled 2026-08-12; targets per
+   the Deployment Targets section: Sepolia first, Polygon second). Prerequisites, none
+   yet in place:
+   - Per-network deploy config/env (RPC endpoint per network — provider choice is the
+     operator's: public endpoints vs. a keyed provider account; keys never committed).
+   - Polygon's current testnet is **Amoy** (Mumbai is retired) — confirm at execution
+     time, then pin chain id + RPC in the network config.
+   - A funded deployer key per network (operator act: Sepolia ETH / Amoy POL faucets).
+   - After each deploy: /spec's per-network deployments table and the SDK's published
+     addresses fill from the real deployment records — the record is the source, never
+     hand-typed constants.
 
 (Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
 

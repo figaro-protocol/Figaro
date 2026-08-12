@@ -41,7 +41,8 @@
         "prepare": "npm run build",
         "test": "vitest run",
         "test:watch": "vitest",
-        "lint": "tsc --noEmit"
+        "lint": "tsc --noEmit",
+        "docs": "typedoc"
     },
     "dependencies": {
         "@noble/curves": "^1.9.1",
@@ -53,6 +54,7 @@
     "devDependencies": {
         "ajv": "^8.20.0",
         "fast-check": "^4.9.0",
+        "typedoc": "^0.28.20",
         "typescript": "^5.5.0",
         "viem": "^2.55.1",
         "vitest": "^2.0.0"

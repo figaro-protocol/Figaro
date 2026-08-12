@@ -47,8 +47,8 @@ export default function UngovernedSubstratePaper() {
                     <li>Sablier Labs. Sablier Protocol: Token Streaming Infrastructure. Sablier Documentation, 2023.</li>
                     <li>Srinivasan, B. <em>The Network State: How to Start a New Country</em>. Self-published, 2022.</li>
                     <li>Walch, A. The Path of the Blockchain Lexicon (and the Law). <em>Boston University Review of Banking and Financial Law</em>, 36:713&ndash;765, 2017.</li>
-                    <li>Walch, A. Deconstructing &lsquo;Decentralization&rsquo;: Exploring the Core Claim of Crypto Systems. In C. Brummer (ed.), <em>Cryptoassets: Legal, Regulatory, and Monetary Perspectives</em>. Oxford University Press, 2019a.</li>
-                    <li>Walch, A. In Code(rs) We Trust: Software Developers as Fiduciaries in Public Blockchains. In <em>Regulating Blockchain: Techno-Social and Legal Challenges</em>. Oxford University Press, 2019b.</li>
+                    <li>Walch, A. Deconstructing &lsquo;Decentralization&rsquo;: Exploring the Core Claim of Crypto Systems. In C. Brummer (ed.), <em>Cryptoassets: Legal, Regulatory, and Monetary Perspectives</em>. Oxford University Press, New York, 2019a.</li>
+                    <li>Walch, A. In Code(rs) We Trust: Software Developers as Fiduciaries in Public Blockchains. In P. Hacker, I. Lianos, G. Dimitropoulos &amp; S. Eich (eds.), <em>Regulating Blockchain: Techno-Social and Legal Challenges</em>. Oxford University Press, Oxford, 2019b.</li>
                     <li>Werbach, K. <em>The Blockchain and the New Architecture of Trust</em>. MIT Press, Cambridge, MA, 2018.</li>
                 </>
             }

@@ -1,0 +1,22 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": [
+        "src/index.ts",
+        "src/agent/index.ts",
+        "src/derive/index.ts",
+        "src/clauses/index.ts",
+        "src/handoff/index.ts"
+    ],
+    "out": "../frontend/public/sdk-api",
+    "name": "@figaro/sdk",
+    "readme": "README.md",
+    "includeVersion": false,
+    "excludePrivate": true,
+    "excludeInternal": true,
+    "hideGenerator": true,
+    "githubPages": false,
+    "navigationLinks": {
+        "Site": "/",
+        "Builders": "/clauses"
+    }
+}

@@ -166,6 +166,12 @@ below).
 
 ## Five Entry Points
 
+A generated API reference covering every export of all five entry points is
+served on the site at `/sdk-api` (TypeDoc over the same source; regenerate
+with `npm run docs` from `sdk/`). This README stays the manual — recipes,
+traps, and the order to do things in; the reference is where you look a
+signature up.
+
 ### `@figaro/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
