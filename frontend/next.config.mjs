@@ -75,6 +75,18 @@ const nextConfig = {
     // Emit a static export to `out/` on `next build`.
     output: 'export',
 
+    // Directory-per-route export shape: each route emits `<route>/index.html`
+    // (not `<route>.html`), and every canonical URL carries a trailing slash.
+    // This is the only shape that resolves on EVERY static host with no
+    // rewrite config — Cloudflare Pages / Netlify serve the directory index
+    // and redirect the slashless form, IPFS gateways resolve only
+    // directory + index.html, and a bare nginx `$uri/` try_files hits it.
+    // Under the flat `.html` shape (trailingSlash: false), `/why/` 404s on
+    // hosts without a rewrite layer — external links that pick up a slash
+    // are lost (blind probe, 2026-08-07). `scripts/serve-export.mjs`
+    // resolves both shapes, so the e2e webServer needs no change.
+    trailingSlash: true,
+
     // next/image's default loader needs a server to optimize on demand; a
     // static export has none, so images are served as-authored.
     images: {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { Suspense } from "react";
 import { NewAssemblyClient } from "./NewAssemblyClient";
 
@@ -12,10 +13,10 @@ import { NewAssemblyClient } from "./NewAssemblyClient";
  * for the static export prerender. See `docs/FRONTEND.md` § "Static export".
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "New assembly — Figaro Protocol",
     description: "Compose a Figaro assembly on the topology canvas. Drafts persist in local storage.",
-};
+});
 
 export default function Page() {
     return (

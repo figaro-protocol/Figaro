@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { DraftsList } from "./_components/DraftsList";
 import { PublishedList } from "./_components/PublishedList";
 import { ClausesList } from "./_components/ClausesList";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withOg({
     title: "Designer — Figaro Protocol",
     description: "Compose a Figaro assembly on the composition canvas. Drafts persist locally; publish to the on-chain AssemblyRegistry when ready.",
-};
+});
 
 export default function DesignerLanding() {
     return (

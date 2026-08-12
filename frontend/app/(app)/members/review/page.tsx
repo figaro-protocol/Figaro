@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
 import { OnboardingShell } from "@/components/members/OnboardingShell";
 import { OnboardingReview } from "@/components/members/OnboardingReview";
 
-export const metadata: Metadata = { title: "Review — Seller onboarding" };
+export const metadata: Metadata = withOg({
+    title: "Review — Seller onboarding",
+    description: "Preview how your wallet will appear on its member page, then publish: catalogue and profile pinned to IPFS, registered on MembersRegistry in one action.",
+});
 
 export default function OnboardingReviewPage() {
     return (

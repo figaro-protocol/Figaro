@@ -13,22 +13,27 @@ type Entry = {
     priority: number;
 };
 
-// Publication surface — the `(marketing)/` tier plus the two `(tools)/`
-// tools that are crawlable landings (they read walletlessly and enumerate
-// live registry state).
+// Publication surface — the `(marketing)/` tier, the two `(tools)/` tools
+// that are crawlable landings (they read walletlessly and enumerate live
+// registry state), and the `(app)`-tier landings the nav/footer advertises
+// (`/orders`, `/audit`, `/rewards`, `/members/manage`): each is a real,
+// linked landing that prerenders a walletless-readable shell, so the
+// sitemap must agree with the nav in both directions — a nav-listed page
+// absent here is the drift the 2026-08-07 blind probe flagged.
 //
-// Deliberately NOT emitted, and why:
+// Drift audit for this hand list (papers are derived below):
+//   cd frontend && find app -name page.tsx | sort
+// Every route in that listing is either present here or enumerated in the
+// deliberately-NOT-emitted set:
 //   - Query-param app views (`/orders/view?process=`, `/audit/view?process=`,
-//     `/s/view?seller=`, `/s/checkout?seller=`, `/assemblies/designer/edit?slug=`,
-//     `/assemblies/designer/view?slug=`): the id is an open-world value unknowable
-//     at build time, so there is no enumerable URL set to publish.
+//     `/s/view?seller=`, `/s/checkout?seller=`, `/sign?payload=`,
+//     `/assemblies/designer/edit?slug=`, `/assemblies/designer/view?slug=`):
+//     the id is an open-world value unknowable at build time, so there is no
+//     enumerable URL set to publish.
 //   - `/assemblies/designer/new`: a per-instance authoring form, not a document.
-//   - The `/members/{identity,catalogue,assemblies,agents,review}` and
-//     `/members/edit/*` steps: interior states of the `/members` enrolment
+//   - The `/members/{identity,catalogue,assemblies,buyer,endpoints,agents,review}`
+//     and `/members/edit/*` steps: interior states of the `/members` enrolment
 //     wizard, entered from it and meaningless as landings.
-//   - Wallet-personal surfaces (`/orders`, `/rewards`, `/sign`,
-//     `/audit`): what they render is scoped to the connected wallet, so the
-//     crawlable URL carries no content.
 //   - `/evidence-display`: a deliberate orphan — the iframe target for a
 //     recognised arbitration forum, with a `frame-ancestors` override in
 //     `public/_headers`. Nothing in-app links it by design.
@@ -55,12 +60,20 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/assemblies", changeFrequency: "weekly", priority: 0.7 },
     { path: "/discover", changeFrequency: "weekly", priority: 0.6 },
+    // (app)-tier landings the nav/footer lists. What each renders in detail
+    // is scoped to the connected wallet, but the page itself is a linked,
+    // walletless-readable landing describing its surface.
+    { path: "/orders", changeFrequency: "weekly", priority: 0.5 },
+    { path: "/audit", changeFrequency: "weekly", priority: 0.5 },
+    { path: "/rewards", changeFrequency: "weekly", priority: 0.5 },
+    { path: "/members/manage", changeFrequency: "weekly", priority: 0.5 },
 ];
 
 /**
- * Paper URLs are DERIVED from `PAPER_GROUPS` — the same source the `/papers`
- * listing renders from — never a hand list, so a paper added to a discipline
- * is crawlable without touching this file.
+ * Paper URLs are DERIVED from `PAPER_GROUPS` — the same source the
+ * /working-groups page renders from (the corpus is unbounded, so that page IS
+ * the papers index; no /papers listing exists) — never a hand list, so a paper
+ * added to a discipline is crawlable without touching this file.
  *
  * A `PaperRef.href` is either a `/papers/<slug>` page route or a path to a
  * PDF for a paper still authored in LaTeX; only the page routes are emitted
@@ -87,9 +100,12 @@ function paperRoutes(): Entry[] {
 
 export default function sitemap(): MetadataRoute.Sitemap {
     const lastModified = new Date();
+    // trailingSlash: true (next.config.mjs): the canonical form of every
+    // route is the slash-terminated one the static hosts actually serve —
+    // the sitemap must publish that form, not the redirecting one.
     return [...PUBLIC_ROUTES, ...paperRoutes()].map(
         ({ path, changeFrequency, priority }) => ({
-            url: `${SITE_URL}${path}`,
+            url: path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}/`,
             lastModified,
             changeFrequency,
             priority,

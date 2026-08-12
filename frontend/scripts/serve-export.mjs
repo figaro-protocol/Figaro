@@ -11,9 +11,11 @@
  * ReadStream the moment the response closes (client abort included), so fds are
  * released promptly and a request-level error can never crash the process.
  *
- * Clean-URL resolution mirrors what a Next export needs (trailingSlash: false):
+ * Clean-URL resolution covers both Next export shapes (the build uses
+ * trailingSlash: true, so the directory form is the live one):
  *   /                → index.html
- *   /s/view          → s/view.html          (query string is ignored for files)
+ *   /s/view          → s/view/index.html    (or s/view.html under the flat shape;
+ *   /s/view/         → s/view/index.html     query string is ignored for files)
  *   /_next/static/…  → served verbatim
  *   unknown          → 404.html with status 404
  *

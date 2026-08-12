@@ -37,6 +37,15 @@
 # 'self' https://resolve.kleros.io). The unconfigured default admits no
 # third-party ancestor. X-Frame-Options is detached so the legacy header
 # can't override the CSP allowlist.
+#
+# Two matcher blocks, same policy: trailingSlash: true exports the route as
+# `evidence-display/index.html`, served at `/evidence-display/` — hosts match
+# `_headers` paths literally, so both the slashless and the directory form
+# are pinned. A deployment editing the frame-ancestors list edits BOTH lines.
 /evidence-display
+  ! X-Frame-Options
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: ws: wss: https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; frame-src 'self' https://*.walletconnect.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'
+
+/evidence-display/*
   ! X-Frame-Options
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: ws: wss: https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; frame-src 'self' https://*.walletconnect.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'

@@ -62,7 +62,8 @@ export default defineConfig({
         // developer's interactive :3000 dev build (`.next`) so neither clobbers
         // the other. In prod mode `next build` emits the static site into
         // `.next-e2e`, which `serve` hosts (no `next start` under output:export);
-        // clean-URL resolution maps `/s/view` → `.next-e2e/s/view.html`.
+        // clean-URL resolution maps `/s/view` → `.next-e2e/s/view/index.html`
+        // (trailingSlash: true — the directory-per-route export shape).
         command:
             WEB_MODE === 'prod'
                 // `serve:export` (scripts/serve-export.mjs), NOT `npx serve`: serve

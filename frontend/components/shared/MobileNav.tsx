@@ -75,7 +75,11 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
         triggerRef.current?.focus();
     };
 
-    const isActive = (href: string) => pathname === href;
+    // trailingSlash: true — usePathname() reports "/orders/" for the
+    // "/orders" nav entry, so compare with the trailing slash stripped.
+    const stripSlash = (p: string) =>
+        p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p;
+    const isActive = (href: string) => stripSlash(pathname) === stripSlash(href);
 
     const btnCls =
         theme === "dark"
