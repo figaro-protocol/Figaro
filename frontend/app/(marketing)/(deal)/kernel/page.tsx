@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { LockedFundsStateFigure } from "@/components/figures/LockedFundsStateFigure";
+import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 export const metadata: Metadata = withOg({
     title: "How it works — Figaro Protocol",
@@ -44,13 +45,16 @@ export default function Kernel() {
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Nothing is seized and nobody judges: a forfeited stake is simply value that never comes home, locked in the box, benefiting no one. The math is exactly why walking away is rare &mdash; it always costs the one who walks more than finishing ever could.
+                Nothing is seized and nobody judges: a forfeited stake is simply value that never comes home, locked in the box, benefiting no one. The math is exactly why walking away is rare &mdash; it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts: until the buyer closes, neither side can reach anything, so a deal nobody closes strands both stakes in the box, not just the walker&apos;s. The deterrent works on both sides at once, with one difference &mdash; whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked, and never a token more.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The stake is a new kind of thing. Value you part with has always had two modes: spent, or invested. The stake is a third &mdash; neither consumed nor put to work earning, a promise made expensive to break, and it comes home intact every honest time.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer is locked at twice the value too, so stalling costs the buyer exactly as much as anyone. No arbitrator weighs the case; no timer releases what is locked. And because nothing settles until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the deal closes.
+            </p>
+            <p className="text-base text-ink-body leading-relaxed mb-5">
+                Two mechanisms, then, not one, and neither is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands settle as one deal, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close settles the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
             <p className="text-base text-ink-body leading-relaxed mb-5">
@@ -60,6 +64,34 @@ export default function Kernel() {
                 </Link>
                 .
             </p>
+            <StackedBondChainFigure
+                className="my-8"
+                idPrefix="kernel-stacked-stakes"
+                legs={[
+                    { name: "First contributor", role: "opens the deal", payment: 6 },
+                    { name: "Second contributor", role: "commits next", payment: 3 },
+                    { name: "Third contributor", role: "commits last", payment: 1 },
+                ]}
+                figureTitle="The same ten-token deal, shared by three contributors"
+                figureDesc={
+                    "A ten-token deal split across three contributors in the order they " +
+                    "commit: the first is paid 6.00, the second 3.00, the third 1.00. " +
+                    "Each stakes twice the value the deal has accumulated at its own " +
+                    "link rather than twice its own payment, so the third contributor — " +
+                    "paid least — stakes twice the whole 10.00. The buyer stakes twice " +
+                    "each payment as that contributor commits, twenty in all. All three " +
+                    "settle together, or none do."
+                }
+                caption={
+                    <>
+                        The same ten-token deal, now shared by three pairs of hands. The third
+                        contributor is paid the least (1.00) and locks the most
+                        (2 &times; 10.00 = 20.00): by the time it commits, the running total
+                        already carries the other two. The buyer&apos;s twenty is the same
+                        twenty as before &mdash; it just arrives one commitment at a time.
+                    </>
+                }
+            />
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Either way, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>

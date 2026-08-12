@@ -7,9 +7,8 @@ import { NAV_LINKS_MARKETING_DRAWER } from "@/components/shared/navLinks";
  * `useWalletConnected` so marketing pages don't pull the wallet provider
  * into their client bundle.
  *
- * Audience CTAs live below
- * the three doorways on the homepage (`/`), not in the header — text
- * doesn't visually cue redirection. The header carries the publication-
+ * Audience CTAs live in the homepage's own body (`/`), not in the header —
+ * text doesn't visually cue redirection. The header carries the publication-
  * row nav and the logo only.
  *
  * Desktop nav stays the section-doorway publication row; the MOBILE drawer gets

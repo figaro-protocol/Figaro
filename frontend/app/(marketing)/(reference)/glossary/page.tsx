@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Glossary — Figaro Protocol",
     description:
-        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, operator, order, attestation, process, settlement, gas, the four hashes, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
+        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, operator, order, attestation, process, settlement, gas, the four hashes, keccak256, EIP-712, ECDSA, IPFS and its CID, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
 });
 
 interface Term {
@@ -68,6 +68,20 @@ const TERMS: Term[] = [
         readMore: <Link href="/composition" className="hover:underline">Composition</Link>,
     },
     {
+        id: "ecdsa",
+        term: "ECDSA",
+        definition:
+            "The signature scheme an Ethereum account signs with. A signature made this way shows that the holder of one particular key approved one exact piece of text, and anyone can check it against that account's address without ever seeing the key. Recovering the address from the signature is the only identity check the kernel makes.",
+        readMore: <Link href="/faq#keys" className="hover:underline">FAQ</Link>,
+    },
+    {
+        id: "eip-712",
+        term: "EIP-712",
+        definition:
+            "The Ethereum convention for signing structured data rather than a loose blob of text: the fields of what is being agreed are laid out and fingerprinted in a fixed, published order, so the same deal always produces the same thing to sign and one changed field produces a different one. Buyer and seller each sign their commitment this way.",
+        readMore: <Link href="/faq#signing" className="hover:underline">FAQ</Link>,
+    },
+    {
         id: "florin",
         term: "The florin (FLORIN, ƒ)",
         definition:
@@ -84,9 +98,61 @@ const TERMS: Term[] = [
     {
         id: "hashes",
         term: "The four hashes",
-        definition:
-            "A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is — registration is permanent and first-write-wins. idHash (the clause id — keccak256 of the clause's name and version) is the on-chain registry key. contentHash is the integrity anchor over the whole document. agreementHash is what a buyer and seller actually sign. compositionHash is what a designer's assembly is identified by.",
+        definition: (
+            <>
+                <p className="mb-3">
+                    A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is &mdash; registration is permanent and first-write-wins.
+                </p>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Hash</th>
+                                <th scope="col" className="py-2 pr-4">Computed over</th>
+                                <th scope="col" className="py-2">If it doesn&apos;t match</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            <tr>
+                                <td className="py-2 pr-4">idHash &mdash; the clause id</td>
+                                <td className="py-2 pr-4">the clause&apos;s name and version, and nothing else</td>
+                                <td className="py-2">You are pointing at a different clause in the registry &mdash; and the binding you made is permanent.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">contentHash</td>
+                                <td className="py-2 pr-4">the whole document, exactly as written &mdash; the half people read and the half programs parse</td>
+                                <td className="py-2">The document is not the one that was anchored; the batch settlement path refuses to settle against it.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">agreementHash</td>
+                                <td className="py-2 pr-4">every filled-in term of one deal, folded together into a single fingerprint</td>
+                                <td className="py-2">Buyer and seller are not signing the same deal, and the kernel will not accept the commitment.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">compositionHash</td>
+                                <td className="py-2 pr-4">the set of clauses a designer composed into an assembly</td>
+                                <td className="py-2">The shape being offered is not the shape that was published under that name.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </>
+        ),
         readMore: <Link href="/clauses#what-the-hash-covers" className="hover:underline">Clauses</Link>,
+    },
+    {
+        id: "ipfs",
+        term: "IPFS and its CID",
+        definition:
+            "The storage the documents live in: a network where a file is addressed by a fingerprint of its own contents — the CID — rather than by whose server it sits on. Ask for a CID and you can only ever get that exact file back; change one character and it is a different CID. You pin what you publish on a node you choose, and unpinning it stops your node serving it.",
+        readMore: <Link href="/faq#privacy" className="hover:underline">FAQ</Link>,
+    },
+    {
+        id: "keccak256",
+        term: "keccak256",
+        definition:
+            "The fingerprinting function Ethereum uses: hand it a document of any length and it returns the same 32 bytes every time, while a single changed character returns something entirely different. It is what lets the chain hold a fingerprint of an agreement without holding the agreement.",
+        readMore: <Link href="/faq#privacy" className="hover:underline">FAQ</Link>,
     },
     {
         id: "kernel",

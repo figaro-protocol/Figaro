@@ -8,6 +8,7 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { BatchSettlementSequenceFigure } from "@/components/figures/BatchSettlementSequenceFigure";
+import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
 
 export const metadata: Metadata = withOg({
     title: "A Verified Settlement Kernel — Figaro Protocol",
@@ -27,7 +28,7 @@ export default function VerifiedSettlementKernelPaper() {
             abstract={
                 <>
                     <p>
-                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (the buyer locks twice the payment and each seller twice the value the process has accumulated through its own link, that figure inclusive of the order&rsquo;s own payment) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology applied to it (machine checks by the authoring project; no external audit has been performed). The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state.
+                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (the buyer locks twice the payment and each seller twice the value the process has accumulated through its own link, that figure inclusive of the order&rsquo;s own payment) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology applied to it (machine checks by the authoring project; no external audit has been performed). The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state. The object is a coordination primitive for bilateral commercial agreements rather than a decentralized-finance protocol: nothing is pooled, lent, or issued, no return accrues to a locked bond, and what the mechanism prices is settlement discipline rather than capital.
                     </p>
                     <p>
                         Verification is layered: exhaustive model checking explores the full reachable state space under bounded parameters; property-based fuzzing exercises the compiled bytecode against randomized adversarial call sequences; symbolic execution discharges the kernel safety properties over all inputs in the modeled traces; and SMT-based specification checking proves method-quantified rules across the kernel, the attestation surface, and a token-operations conservation surface covering every kernel value-transfer call site. The properties established are token conservation, contract solvency, the asymmetric-bonding amounts, monotonic cumulative value, buyer-dominant atomic resolution, and the no-state-change guarantee on the attestation surface.
@@ -199,6 +200,60 @@ export default function VerifiedSettlementKernelPaper() {
                     <PaperRun title="The second settlement path.">
                         Beside the direct path the system carries a proof-batched one: a batch verifier that admits a validity proof of off-chain execution by a guest mirror of the kernel&rsquo;s state machine, reconciles net token positions per participant and denomination, re-emits the attestations, and advances its own state root. The two paths share no settlement state, and neither calls the other or writes the other&rsquo;s. An order settled through the batch verifier never acquires a kernel order status at all, which means the kernel-state properties of Section 5.1 are silent about it &mdash; not satisfied and not violated, simply not about that path. Exactly one quantity is common to both: a usage accrual, which each path writes into the same counter of clause and assembly usage &mdash; the batch path as proved numbers &mdash; a surface that settles nothing and holds no bond. This is the honest statement of what the Section 5 claims cover, and it is why the coverage sentence above is stated at all.
                     </PaperRun>
+                    <SettlementPathsFigure
+                        idPrefix="verified-settlement-kernel-settlement-paths"
+                        lineFont="sans"
+                        directPath={{
+                            heading: "Direct path",
+                            subheading: "the kernel's own two calls",
+                            inputs: ["a dual-signed commitment", "the buyer's resolution over the process"],
+                            events: ["order committed", "order resolved", "process resolved"],
+                            state: ["per-order status, advancing monotonically"],
+                            stateNote: "has no notion of a batch",
+                        }}
+                        batchPath={{
+                            heading: "Batch path",
+                            subheading: "proof-verified off-chain execution",
+                            inputs: [
+                                "signed commitments, gathered and ordered",
+                                "a validity proof of a mirror's execution",
+                                "carried to the settlement call",
+                            ],
+                            events: ["batch settled"],
+                            state: ["its own state root, verifier-local"],
+                        }}
+                        sectionLabels={{ inputs: "Inputs", events: "Records emitted", state: "State" }}
+                        neverWrittenNote="a kernel order status — never acquired"
+                        bridgeLabel="The usage counter"
+                        bridgeSublabel="clause and assembly usage"
+                        crossingLabel="a usage accrual"
+                        crossingSublabel="the one quantity common to both"
+                        figureTitle="The two settlement paths, and the one surface common to both"
+                        figureDesc={
+                            "Two panels. The direct path is the kernel's own two calls: a " +
+                            "dual-signed commitment, and the buyer's resolution over the process; " +
+                            "it records an order committed, an order resolved, and a process " +
+                            "resolved, and it holds a per-order status that advances " +
+                            "monotonically. It has no notion of a batch. The batch path is " +
+                            "proof-verified off-chain execution: signed commitments gathered and " +
+                            "ordered, a validity proof of a mirror's execution, carried to the " +
+                            "settlement call; it records a batch settled and advances its own " +
+                            "verifier-local state root. A kernel order status is never acquired " +
+                            "on that path. The two panels share no settlement state, and neither " +
+                            "calls the other or writes the other's. One arrow crosses between " +
+                            "them, carrying a usage accrual — the one quantity common to both — " +
+                            "into the counter of clause and assembly usage, a surface that " +
+                            "settles nothing and holds no bond."
+                        }
+                        caption={
+                            <>
+                                An order settled through the batch verifier never acquires a kernel
+                                order status at all. Exactly one quantity is common to the two paths
+                                &mdash; a usage accrual &mdash; and the counter that receives it
+                                settles nothing and holds no bond.
+                            </>
+                        }
+                    />
                     <PaperRun title="What is checked about the composition of the two paths.">
                         The cross-path composition is not left to inspection. A machine-checked model of the composed system &mdash; the kernel, the batch verifier, the usage counter, and the off-chain guest kernel, interleaved arbitrarily &mdash; carries invariants of its own, among them that no value is paid out twice across the two paths, that the two paths&rsquo; order identities are disjoint, that token conservation and exact per-pool escrow hold on both sides at once, that the kernel&rsquo;s status gates stay blind to batch-settled orders, and that the usage score composes as the sum of the two paths&rsquo; contributions with the bridged write replacing rather than adding. What the model establishes is safety under arbitrary interleaving, given two named assumptions, and neither the model nor this paper claims more. The first assumption &mdash; that one signed commitment can never acquire the same identity in both paths &mdash; is contract-enforced rather than promised, since each path binds its own verifying-contract address into the typed-data domain from which a root identifier is derived, so the two identifier spaces are disjoint by construction. The second &mdash; that no accrual-period boundary falls between a batch being proved and its settling &mdash; is <em>not</em> enforced; when it fails, the usage accrual for the affected processes is dropped rather than double-counted, so the failure mode is a conservative under-count and the model separates which invariants rest on which assumption. Proof validity itself, signature recovery, and hash collision-resistance are abstracted by the model, as they are by the kernel model of Section 5.2.
                     </PaperRun>

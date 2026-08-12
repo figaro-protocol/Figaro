@@ -3,7 +3,6 @@
   "ignore": [
     "tests/e2e/fixtures/inject-ethereum-multi.js",
     "lib/agent/useDidWeb.ts",
-    "components/figures/MerkleTreeFigure.tsx",
     "public/sdk-api/**"
   ]
 }

@@ -92,14 +92,14 @@ export default function Specifications() {
                     <ContractEntry
                         id="FigaroCore"
                         title="FigaroCore.sol"
-                        href={`${GH}/FigaroCore.sol`}
+                        href={`${GH}/kernel/FigaroCore.sol`}
                         meta="2 fns · 3 mappings · no owner"
                         desc="The protocol kernel: holds every bonded commitment, and settles a process atomically when its buyer resolves. commit (unified dual-signed) and resolveProcess. EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution. Settlement state is the public mapping orderStatus(bytes32 orderHash) → uint8: 0 UNKNOWN, 1 ACTIVE, 2 RESOLVED. It answers for the DIRECT path only — a process settled through FigaroBatchVerifier (below) is never written here and reads 0 forever, so 0 means 'not on this path', never 'not settled'. See 'Two settlement paths' below."
                     />
                     <ContractEntry
                         id="CommitmentTypes"
                         title="CommitmentTypes.sol"
-                        href={`${GH}/CommitmentTypes.sol`}
+                        href={`${GH}/kernel/CommitmentTypes.sol`}
                         desc="EIP-712 typed structs and hash functions. Single Commitment struct for root and sub-orders; processId zero for root."
                     />
                 </ul>
@@ -110,7 +110,7 @@ export default function Specifications() {
                     <ContractEntry
                         id="AttestationCoordinator"
                         title="AttestationCoordinator.sol"
-                        href={`${GH}/AttestationCoordinator.sol`}
+                        href={`${GH}/protocol/coordinators/AttestationCoordinator.sol`}
                         meta="receipt-bound · merkle-only"
                         desc="Three attest modes (seller / buyer / resolver). A merkle inclusion proof binds each attestation to the signed agreementHash, and the evidence is content-hashed; the chain validates no content shape. Attestations whose clause was not committed cannot land (InvalidInclusionProof revert)."
                     />
@@ -154,14 +154,14 @@ function attestViaResolver(
                     <ContractEntry
                         id="ClauseRegistry"
                         title="ClauseRegistry.sol"
-                        href={`${GH}/ClauseRegistry.sol`}
+                        href={`${GH}/protocol/registries/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
                         desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. contentURI points at the off-chain JSON spec, and the registry stores its keccak256 contentHash as the integrity anchor the batch verifier binds witness specs to (contentHashOf). The registry validates no content shape itself — a registered clause is immediately attestable, and settleable through the proven path."
                     />
                     <ContractEntry
                         id="FigaroBatchVerifier"
                         title="FigaroBatchVerifier.sol"
-                        href={`${GH}/FigaroBatchVerifier.sol`}
+                        href={`${GH}/protocol/verifier/FigaroBatchVerifier.sol`}
                         meta="SP1 proof · open-world content check"
                         desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. A local devnet wires MockSP1Verifier; the deployment record wires Succinct's SP1 gateway + program vkey from env wherever a network names one."
                     />
@@ -286,14 +286,14 @@ function attestViaResolver(
                     <ContractEntry
                         id="MembersRegistry"
                         title="MembersRegistry.sol"
-                        href={`${GH}/MembersRegistry.sol`}
+                        href={`${GH}/protocol/registries/MembersRegistry.sol`}
                         meta="self-register · reclaimable deposit"
                         desc="Permissionless participant self-registration with reclaimable ETH deposit — one declaration document per wallet, whichever side of a trade it takes. Four functions (register, updateProfile, requestWithdrawal, withdraw): leaving de-lists you immediately, and the deposit is released after a cooldown, so a stake cannot be recycled through identity after identity. Availability is signal-by-availability off-chain, not registry state."
                     />
                     <ContractEntry
                         id="AssemblyRegistry"
                         title="AssemblyRegistry.sol"
-                        href={`${GH}/AssemblyRegistry.sol`}
+                        href={`${GH}/protocol/registries/AssemblyRegistry.sol`}
                         meta="self-register · reclaimable deposit"
                         desc="Permissionless assembly anchoring with reclaimable ETH deposit — the assembly registry's anchor, parallel to ClauseRegistry and MembersRegistry. Two functions (registerAssembly, withdrawDeposit); first-write-wins. Identity IS the composition: compositionHash = keccak256 of the template's canonical composition subset, so identical compositions collapse to one binding and the human slug is derived off-chain (deriveAssemblySlug). The binding is permanent — withdraw returns only the deposit and de-surfaces the assembly; no owner, no admin, no content validation."
                     />
@@ -308,7 +308,7 @@ function attestViaResolver(
                     <ContractEntry
                         id="WitnessSwapAndCommitCoordinator"
                         title="WitnessSwapAndCommitCoordinator.sol"
-                        href={`${GH}/WitnessSwapAndCommitCoordinator.sol`}
+                        href={`${GH}/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`}
                         meta="off-protocol · swap-and-commit"
                         desc="Off-protocol multi-token bond funding. A party (buyer or seller) holding a token the process isn't denominated in signs a Permit2 witness permit; the coordinator pulls that token, swaps it into the settlement currency, and commits in one transaction — the kernel still sees a single-currency commitment. It reads no kernel state and holds no bond; the kernel is untouched. DIRECT PATH ONLY: it calls FigaroCore.commit, and the batch path carries no funding leg — there, a party swaps in their own wallet before submitting the signed commitment to a sequencer (record key: witnessSwapAndCommitCoordinator)."
                     />

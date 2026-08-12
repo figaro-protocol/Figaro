@@ -6,6 +6,8 @@ import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphColla
 import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 import { BatchSettlementSequenceFigure } from "@/components/figures/BatchSettlementSequenceFigure";
+import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
+import { readFile } from "node:fs/promises";
 
 afterEach(() => {
     cleanup();
@@ -136,6 +138,150 @@ describe("DesignGraphCollapseFigure", () => {
     });
 });
 
+/** Mirrors the prop set verified-settlement-kernel §5.5 passes. The companion
+ *  source-level assertion below is what stops this fixture drifting from the
+ *  page: a banned identifier reaching the real call site fails there. */
+const PAPER_SETTLEMENT_PATHS = {
+    lineFont: "sans" as const,
+    directPath: {
+        heading: "Direct path",
+        subheading: "the kernel's own two calls",
+        inputs: ["a dual-signed commitment", "the buyer's resolution over the process"],
+        events: ["order committed", "order resolved", "process resolved"],
+        state: ["per-order status, advancing monotonically"],
+        stateNote: "has no notion of a batch",
+    },
+    batchPath: {
+        heading: "Batch path",
+        subheading: "proof-verified off-chain execution",
+        inputs: [
+            "signed commitments, gathered and ordered",
+            "a validity proof of a mirror's execution",
+            "carried to the settlement call",
+        ],
+        events: ["batch settled"],
+        state: ["its own state root, verifier-local"],
+    },
+    sectionLabels: { inputs: "Inputs", events: "Records emitted", state: "State" },
+    neverWrittenNote: "a kernel order status — never acquired",
+    bridgeLabel: "The usage counter",
+    bridgeSublabel: "clause and assembly usage",
+    crossingLabel: "a usage accrual",
+    crossingSublabel: "the one quantity common to both",
+    figureTitle: "The two settlement paths, and the one surface common to both",
+    figureDesc:
+        "Two panels. The direct path is the kernel's own two calls. The batch path " +
+        "is proof-verified off-chain execution, and a kernel order status is never " +
+        "acquired on it. One arrow crosses between them, carrying a usage accrual " +
+        "into the counter of clause and assembly usage.",
+    caption: "An order settled through the batch verifier never acquires a kernel order status at all.",
+};
+
+/** The paper corpus names no contract, function, event, or proving system. */
+const BANNED_IDENTIFIERS = [
+    "SP1",
+    "KernelOp",
+    "FigaroBatchVerifier",
+    "settleBatch",
+    "UsageCounter",
+    "applyBatchAccrual",
+    "FigaroCore",
+    "resolveProcess",
+    "transferFrom",
+    "orderStatus",
+    "stateRoot",
+    "OrderCommitted",
+    "OrderResolved",
+    "ProcessResolved",
+    "BatchSettled",
+];
+
+describe("SettlementPathsFigure", () => {
+    it("renders /spec's exact strings when given no props (the default must not drift)", () => {
+        const { container } = render(<SettlementPathsFigure />);
+        const text = container.textContent ?? "";
+        for (const specString of [
+            "Direct path",
+            "FigaroCore — kernel (frozen)",
+            "commit(commitment, buyerSig, sellerSig)",
+            "resolveProcess(processId, commitments[])",
+            "OrderCommitted",
+            "OrderResolved",
+            "ProcessResolved",
+            "orderStatus[orderHash]: 0 → 1 → 2",
+            "has no notion of a batch",
+            "Batch path",
+            "FigaroBatchVerifier — proof-based (SP1)",
+            "signed Commitment structs",
+            "→ sequencer → SP1 validity proof",
+            "BatchSettled",
+            "stateRoot (verifier-local only)",
+            "FigaroCore.orderStatus — never written",
+            "UsageCounter",
+            "usage-accrual ledger",
+            "usage accrual",
+            "(same settleBatch tx)",
+            "Two disjoint settlement paths",
+        ]) {
+            expect(text).toContain(specString);
+        }
+    });
+
+    it("keeps /spec's default body lines monospaced", () => {
+        const { container } = render(<SettlementPathsFigure />);
+        const mono = container.querySelectorAll("text.font-mono");
+        expect(mono.length).toBeGreaterThan(0);
+    });
+
+    it("names no contract, function, event, or proving system in the paper register", () => {
+        const { container } = render(<SettlementPathsFigure {...PAPER_SETTLEMENT_PATHS} />);
+        const text = container.textContent ?? "";
+        for (const identifier of BANNED_IDENTIFIERS) {
+            expect(text).not.toContain(identifier);
+        }
+    });
+
+    it("puts the crossing quantity on the crossing arrow and the bridge on the bridge", () => {
+        const { container } = render(<SettlementPathsFigure {...PAPER_SETTLEMENT_PATHS} />);
+        const text = container.textContent ?? "";
+        expect(text).toContain("a usage accrual");
+        expect(text).toContain("the one quantity common to both");
+        expect(text).toContain("The usage counter");
+        expect(text).toContain("a kernel order status — never acquired");
+    });
+
+    it("carries no banned identifier at the real §5.5 call site (guards fixture drift)", async () => {
+        // Relative to the vitest cwd (frontend/), not to this module.
+        const source = await readFile(
+            "app/(marketing)/papers/verified-settlement-kernel/page.tsx",
+            "utf8",
+        );
+        const figureCall = source.slice(
+            source.indexOf("<SettlementPathsFigure"),
+            source.indexOf("<PaperRun title=\"What is checked about the composition of the two paths.\">"),
+        );
+        expect(figureCall.length).toBeGreaterThan(0);
+        for (const identifier of BANNED_IDENTIFIERS) {
+            expect(figureCall).not.toContain(identifier);
+        }
+    });
+
+    it("grows a panel with its content instead of overlapping it (layout is computed)", () => {
+        const heightOf = (inputs: readonly string[]) => {
+            const { container } = render(
+                <SettlementPathsFigure
+                    directPath={{ ...PAPER_SETTLEMENT_PATHS.directPath, inputs }}
+                    batchPath={PAPER_SETTLEMENT_PATHS.batchPath}
+                />,
+            );
+            const h = Number((container.querySelector("svg")?.getAttribute("viewBox") ?? "").split(" ")[3]);
+            cleanup();
+            return h;
+        };
+        expect(heightOf(["a", "b", "c", "d", "e", "f"])).toBeGreaterThan(heightOf(["a"]));
+    });
+});
+
 describe("BatchSettlementSequenceFigure", () => {
     it("renders all seven steps, numbered in order, and none beyond them", () => {
         const { container } = render(<BatchSettlementSequenceFigure />);
@@ -172,17 +318,7 @@ describe("BatchSettlementSequenceFigure", () => {
     it("names no contract, function, or proving system — the paper corpus convention", () => {
         const { container } = render(<BatchSettlementSequenceFigure />);
         const text = container.textContent ?? "";
-        for (const identifier of [
-            "SP1",
-            "KernelOp",
-            "FigaroBatchVerifier",
-            "settleBatch",
-            "UsageCounter",
-            "applyBatchAccrual",
-            "FigaroCore",
-            "resolveProcess",
-            "transferFrom",
-        ]) {
+        for (const identifier of BANNED_IDENTIFIERS) {
             expect(text).not.toContain(identifier);
         }
     });

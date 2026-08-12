@@ -50,6 +50,9 @@ export default function Agents() {
             </MarketingSection>
 
             <MarketingSection title="ERC-8004 interop, by metadata convention.">
+                <p className="text-sm text-ink-muted leading-relaxed mb-5">
+                    For integrators: from here on the register shifts &mdash; registry fields, identifiers, and the SDK calls a wallet is driven through, rather than what the protocol is.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>MembersRegistry.metadataURI</code> JSON. The clause can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/clauses" className="underline">ClauseRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
                 </p>

@@ -31,7 +31,16 @@ export default function Consequences() {
                         One constant changed. Between two strangers with no institution between them, a promise to deliver can be made credible for the cost of temporarily locked capital and pennies of fixed gas, with no percentage taken by anyone in the middle. Everything civilization built to substitute for that missing property &mdash; the intermediaries, the books kept in order to be believed, the firm itself as a container for enforceable cooperation &mdash; becomes optional rather than necessary. What follows is a two-hundred-year projection of that substitution stack unwinding, in order of how much weight each part carries, with what the unwinding costs stated beside it. It is not a forecast and not a promise. It is the question asked before the code was released, answered as well as it could be answered, and written down first so that no one, the author included, could say afterwards that it had not been asked.
                     </>
                 }
-            />
+            >
+                <div className="border-l-2 border-default pl-6 mt-6">
+                    <p className="text-sm text-ink-body leading-relaxed">
+                        <strong>Reading this page.</strong> This is the densest page on the site, and the only one that is a projection rather than a description: every line below is derived from the mechanism, not observed in a deployment. If you landed here cold, read the mechanism first &mdash; it is on /kernel, linked below and in the nav, and everything here rests on it. Then{" "}
+                        <Link href="/why" className="hover:underline">/why</Link>{" "}
+                        is the same argument looking backwards, at where a rule like this comes from. If what you actually want to know is what happens in your own deal, that is{" "}
+                        <Link href="/faq" className="hover:underline">/faq</Link>. The section on the standing counterweights says what would make this projection wrong; it belongs to the page, not to a disclaimer at the end.
+                    </p>
+                </div>
+            </MarketingHero>
 
             <MarketingSection sectionId="jump-index">
                 <nav aria-label="Sections on this page">

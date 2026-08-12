@@ -1,47 +1,197 @@
 import { cn } from "@/lib/shared/utils";
+import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 
-export type SettlementPathsFigureProps = BaseFigureProps;
+interface SettlementPathPanel {
+    heading: string;
+    subheading: string;
+    inputs: readonly string[];
+    events: readonly string[];
+    state: readonly string[];
+    /** Italic line closing the panel's state section. Optional. */
+    stateNote?: string;
+}
+
+export interface SettlementPathsFigureProps extends BaseFigureProps {
+    directPath?: SettlementPathPanel;
+    batchPath?: SettlementPathPanel;
+    /** Section labels inside both panels. */
+    sectionLabels?: { inputs: string; events: string; state: string };
+    /** Label beside the no-entry glyph — the kernel field the batch path never writes. */
+    neverWrittenNote?: string;
+    /** The bridge box: the one surface both paths touch. */
+    bridgeLabel?: string;
+    bridgeSublabel?: string;
+    /** Printed ON the crossing arrow — the one quantity that crosses. */
+    crossingLabel?: string;
+    crossingSublabel?: string;
+    /** Panel body lines are monospaced by default (they are literal identifiers
+     *  on /spec). A surface passing prose rather than identifiers passes "sans". */
+    lineFont?: "mono" | "sans";
+    figureTitle?: string;
+    figureDesc?: string;
+    caption?: ReactNode;
+}
 
 /**
- * Embedded by /spec § "Two settlement paths" (the canonical #settlement-paths anchor).
+ * The two disjoint settlement universes, side by side, with the single surface
+ * that bridges them.
  *
- * The two disjoint settlement universes: FigaroCore's direct kernel path
- * (`commit` / `resolveProcess`) and `FigaroBatchVerifier`'s proof-based batch
- * path (`settleBatch`). They never share kernel state — `orderStatus` is
- * written only by the direct path. The single point of contact is usage
- * accrual, which the batch path carries into `UsageCounter` in the same
- * transaction as `settleBatch`. Names verified against `docs/CONTRACTS.md`
- * and `src/kernel/FigaroCore.sol` / `src/protocol/verifier/FigaroBatchVerifier.sol`.
+ * The default prop set is /spec's, verbatim — /spec § "Two settlement paths"
+ * (the canonical #settlement-paths anchor) renders it with no props at all, and
+ * its strings are identifiers on purpose: that surface names contracts. Names
+ * verified against `docs/CONTRACTS.md` and `src/kernel/FigaroCore.sol` /
+ * `src/protocol/verifier/FigaroBatchVerifier.sol`.
+ *
+ * Every rendered string is a prop because the paper corpus names no contract,
+ * function, or proving system, so a paper embedding this figure must supply its
+ * own register. Layout is COMPUTED from the content, not hardcoded: a caller
+ * passing a different number of lines gets a taller panel rather than an
+ * overlap.
+ *
+ * The structural facts the figure asserts are the same under any register: the
+ * two paths share no settlement state, the batch path never writes the kernel's
+ * per-order status, and the usage accrual is the one quantity that crosses.
  */
+
+const SPEC_DIRECT: SettlementPathPanel = {
+    heading: "Direct path",
+    subheading: "FigaroCore — kernel (frozen)",
+    inputs: ["commit(commitment, buyerSig, sellerSig)", "resolveProcess(processId, commitments[])"],
+    events: ["OrderCommitted", "OrderResolved", "ProcessResolved"],
+    state: ["orderStatus[orderHash]: 0 → 1 → 2"],
+    stateNote: "has no notion of a batch",
+};
+
+const SPEC_BATCH: SettlementPathPanel = {
+    heading: "Batch path",
+    subheading: "FigaroBatchVerifier — proof-based (SP1)",
+    inputs: [
+        "signed Commitment structs",
+        "→ sequencer → SP1 validity proof",
+        "→ settleBatch(proof, publicValues,",
+        "   positions, events, usage)",
+    ],
+    events: ["BatchSettled"],
+    state: ["stateRoot (verifier-local only)"],
+};
+
+const SPEC_SECTION_LABELS = { inputs: "Inputs", events: "Events", state: "State" };
+const SPEC_NEVER_WRITTEN = "FigaroCore.orderStatus — never written";
+const SPEC_BRIDGE_LABEL = "UsageCounter";
+const SPEC_BRIDGE_SUBLABEL = "usage-accrual ledger";
+const SPEC_CROSSING_LABEL = "usage accrual";
+const SPEC_CROSSING_SUBLABEL = "(same settleBatch tx)";
+const SPEC_TITLE = "Two disjoint settlement paths";
+const SPEC_DESC =
+    "FigaroCore's direct path (commit, resolveProcess) and FigaroBatchVerifier's " +
+    "proof-based batch path (signed commitments through a sequencer and an SP1 " +
+    "proof to settleBatch) settle independently. The batch path never writes " +
+    "FigaroCore's orderStatus. The one connection between the two paths is usage " +
+    "accrual, carried from settleBatch into UsageCounter in the same transaction.";
+const SPEC_CAPTION = (
+    <>
+        Batch-settled orders never acquire kernel status &mdash; FigaroBatchVerifier
+        never writes FigaroCore.orderStatus. UsageCounter is the only bridge
+        between the two settlement universes.
+    </>
+);
+
+// Vertical rhythm, all measured from a panel's own top edge.
+const HEAD_DY = 28;
+const SUB_DY = 44;
+const RULE_DY = 54;
+const SECTION_LABEL_DY = 18;
+const LINE_DY = 15;
+const SECTION_GAP = 8;
+const PANEL_PAD = 16;
+
+/** Lay a panel out from its content; returns the y of every line it draws. */
+function layoutPanel(panel: SettlementPathPanel, top: number, withGlyphRow: boolean) {
+    let cursor = top + RULE_DY;
+    const section = (lines: readonly string[]) => {
+        const labelY = cursor + SECTION_LABEL_DY;
+        const lineYs = lines.map((_, i) => labelY + (i + 1) * LINE_DY);
+        cursor = lineYs.length > 0 ? lineYs[lineYs.length - 1] : labelY;
+        return { labelY, lineYs };
+    };
+
+    const inputs = section(panel.inputs);
+    cursor += SECTION_GAP;
+    const events = section(panel.events);
+    cursor += SECTION_GAP;
+    const state = section(panel.state);
+
+    let stateNoteY: number | undefined;
+    if (panel.stateNote) {
+        stateNoteY = cursor + LINE_DY;
+        cursor = stateNoteY;
+    }
+    let glyphY: number | undefined;
+    if (withGlyphRow) {
+        glyphY = cursor + SECTION_LABEL_DY;
+        cursor = glyphY;
+    }
+
+    return {
+        top,
+        headY: top + HEAD_DY,
+        subY: top + SUB_DY,
+        ruleY: top + RULE_DY,
+        inputs,
+        events,
+        state,
+        stateNoteY,
+        glyphY,
+        height: cursor - top + PANEL_PAD,
+    };
+}
+
 export function SettlementPathsFigure({
     idPrefix = "settlement-paths",
     className,
     svgProps,
+    directPath = SPEC_DIRECT,
+    batchPath = SPEC_BATCH,
+    sectionLabels = SPEC_SECTION_LABELS,
+    neverWrittenNote = SPEC_NEVER_WRITTEN,
+    bridgeLabel = SPEC_BRIDGE_LABEL,
+    bridgeSublabel = SPEC_BRIDGE_SUBLABEL,
+    crossingLabel = SPEC_CROSSING_LABEL,
+    crossingSublabel = SPEC_CROSSING_SUBLABEL,
+    lineFont = "mono",
+    figureTitle = SPEC_TITLE,
+    figureDesc = SPEC_DESC,
+    caption = SPEC_CAPTION,
 }: SettlementPathsFigureProps) {
     const titleId = `${idPrefix}-title`;
     const descId = `${idPrefix}-desc`;
+    const lineClass = lineFont === "mono" ? "fill-ink-primary font-mono" : "fill-ink-primary";
+
+    const direct = layoutPanel(directPath, 16, false);
+    const batch = layoutPanel(batchPath, direct.top + direct.height + 24, true);
+
+    const arrowTop = batch.top + batch.height;
+    const bridgeTop = arrowTop + 26;
+    const viewHeight = bridgeTop + 60;
+
+    const panels = [
+        { layout: direct, panel: directPath, key: "direct" },
+        { layout: batch, panel: batchPath, key: "batch" },
+    ];
 
     return (
         <figure className={cn("w-full max-w-xl mx-auto", className)}>
             <svg
-                viewBox="0 0 400 620"
+                viewBox={`0 0 400 ${viewHeight}`}
                 role="img"
                 aria-labelledby={`${titleId} ${descId}`}
                 className="w-full h-auto"
                 style={{ maxWidth: "100%" }}
                 {...svgProps}
             >
-                <title id={titleId}>Two disjoint settlement paths</title>
-                <desc id={descId}>
-                    FigaroCore&apos;s direct path (commit, resolveProcess) and
-                    FigaroBatchVerifier&apos;s proof-based batch path (signed
-                    commitments through a sequencer and an SP1 proof to
-                    settleBatch) settle independently. The batch path never
-                    writes FigaroCore&apos;s orderStatus. The one connection
-                    between the two paths is usage accrual, carried from
-                    settleBatch into UsageCounter in the same transaction.
-                </desc>
+                <title id={titleId}>{figureTitle}</title>
+                <desc id={descId}>{figureDesc}</desc>
 
                 <defs>
                     <marker
@@ -57,70 +207,100 @@ export function SettlementPathsFigure({
                     </marker>
                 </defs>
 
-                {/* Direct path — FigaroCore (kernel) */}
-                <rect x="16" y="16" width="368" height="256" rx="10" className="fill-paper stroke-default" strokeWidth="1" />
-                <text x="32" y="44" fontSize="14" fontWeight="600" className="fill-ink-heading">Direct path</text>
-                <text x="32" y="60" fontSize="10" className="fill-ink-muted">FigaroCore — kernel (frozen)</text>
-                <line x1="32" y1="70" x2="368" y2="70" className="stroke-default" strokeWidth="1" />
+                {panels.map(({ layout, panel, key }) => (
+                    <g key={key}>
+                        <rect
+                            x="16"
+                            y={layout.top}
+                            width="368"
+                            height={layout.height}
+                            rx="10"
+                            className="fill-paper stroke-default"
+                            strokeWidth="1"
+                        />
+                        <text x="32" y={layout.headY} fontSize="14" fontWeight="600" className="fill-ink-heading">
+                            {panel.heading}
+                        </text>
+                        <text x="32" y={layout.subY} fontSize="10" className="fill-ink-muted">
+                            {panel.subheading}
+                        </text>
+                        <line x1="32" y1={layout.ruleY} x2="368" y2={layout.ruleY} className="stroke-default" strokeWidth="1" />
 
-                <text x="32" y="88" fontSize="11" fontWeight="600" className="fill-ink-body">Inputs</text>
-                <text x="40" y="104" fontSize="10" className="fill-ink-primary font-mono">commit(commitment, buyerSig, sellerSig)</text>
-                <text x="40" y="120" fontSize="10" className="fill-ink-primary font-mono">resolveProcess(processId, commitments[])</text>
+                        {([
+                            [sectionLabels.inputs, panel.inputs, layout.inputs],
+                            [sectionLabels.events, panel.events, layout.events],
+                            [sectionLabels.state, panel.state, layout.state],
+                        ] as const).map(([label, lines, geometry]) => (
+                            <g key={label}>
+                                <text x="32" y={geometry.labelY} fontSize="11" fontWeight="600" className="fill-ink-body">
+                                    {label}
+                                </text>
+                                {lines.map((line, i) => (
+                                    // xmlSpace preserves a caller's leading indent —
+                                    // /spec's default wraps one call across two lines.
+                                    <text
+                                        key={line}
+                                        x="40"
+                                        y={geometry.lineYs[i]}
+                                        fontSize="10"
+                                        xmlSpace="preserve"
+                                        className={lineClass}
+                                    >
+                                        {line}
+                                    </text>
+                                ))}
+                            </g>
+                        ))}
 
-                <text x="32" y="140" fontSize="11" fontWeight="600" className="fill-ink-body">Events</text>
-                <text x="40" y="156" fontSize="10" className="fill-ink-primary font-mono">OrderCommitted</text>
-                <text x="40" y="170" fontSize="10" className="fill-ink-primary font-mono">OrderResolved</text>
-                <text x="40" y="184" fontSize="10" className="fill-ink-primary font-mono">ProcessResolved</text>
+                        {panel.stateNote && layout.stateNoteY !== undefined && (
+                            <text x="40" y={layout.stateNoteY} fontSize="10" fontStyle="italic" className="fill-ink-muted">
+                                {panel.stateNote}
+                            </text>
+                        )}
 
-                <text x="32" y="204" fontSize="11" fontWeight="600" className="fill-ink-body">State</text>
-                <text x="40" y="220" fontSize="10" className="fill-ink-primary font-mono">orderStatus[orderHash]: 0 → 1 → 2</text>
-                <text x="40" y="238" fontSize="10" fontStyle="italic" className="fill-ink-muted">has no notion of a batch</text>
+                        {/* Visually explicit disjointness: a no-entry glyph beside the
+                            one kernel field the batch path never touches. */}
+                        {layout.glyphY !== undefined && (
+                            <>
+                                <g transform={`translate(46, ${layout.glyphY - 5})`}>
+                                    <circle r="7" className="fill-none stroke-ink-muted" strokeWidth="1.25" />
+                                    <line x1="-5" y1="5" x2="5" y2="-5" className="stroke-ink-muted" strokeWidth="1.25" />
+                                </g>
+                                <text x="60" y={layout.glyphY} fontSize="10" fontStyle="italic" className="fill-ink-muted">
+                                    {neverWrittenNote}
+                                </text>
+                            </>
+                        )}
+                    </g>
+                ))}
 
-                {/* Batch path — FigaroBatchVerifier (proof-based) */}
-                <rect x="16" y="296" width="368" height="250" rx="10" className="fill-paper stroke-default" strokeWidth="1" />
-                <text x="32" y="324" fontSize="14" fontWeight="600" className="fill-ink-heading">Batch path</text>
-                <text x="32" y="340" fontSize="10" className="fill-ink-muted">FigaroBatchVerifier — proof-based (SP1)</text>
-                <line x1="32" y1="350" x2="368" y2="350" className="stroke-default" strokeWidth="1" />
+                {/* The bridge — the one surface both paths touch. */}
+                <rect x="110" y={bridgeTop} width="180" height="46" rx="8" className="fill-subtle stroke-default-strong" strokeWidth="1" />
+                <text x="200" y={bridgeTop + 20} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">
+                    {bridgeLabel}
+                </text>
+                <text x="200" y={bridgeTop + 35} fontSize="9" textAnchor="middle" className="fill-ink-muted">
+                    {bridgeSublabel}
+                </text>
 
-                <text x="32" y="368" fontSize="11" fontWeight="600" className="fill-ink-body">Inputs</text>
-                <text x="40" y="384" fontSize="10" className="fill-ink-primary font-mono">signed Commitment structs</text>
-                <text x="40" y="398" fontSize="10" className="fill-ink-primary font-mono">→ sequencer → SP1 validity proof</text>
-                <text x="40" y="412" fontSize="10" className="fill-ink-primary font-mono">→ settleBatch(proof, publicValues,</text>
-                <text x="52" y="426" fontSize="10" className="fill-ink-primary font-mono">positions, events, usage)</text>
-
-                <text x="32" y="446" fontSize="11" fontWeight="600" className="fill-ink-body">Events</text>
-                <text x="40" y="462" fontSize="10" className="fill-ink-primary font-mono">BatchSettled</text>
-
-                <text x="32" y="482" fontSize="11" fontWeight="600" className="fill-ink-body">State</text>
-                <text x="40" y="498" fontSize="10" className="fill-ink-primary font-mono">stateRoot (verifier-local only)</text>
-
-                {/* Visually explicit disjointness: a no-entry glyph beside the one kernel field the batch path never touches. */}
-                <g transform="translate(46, 512)">
-                    <circle r="7" className="fill-none stroke-ink-muted" strokeWidth="1.25" />
-                    <line x1="-5" y1="5" x2="5" y2="-5" className="stroke-ink-muted" strokeWidth="1.25" />
-                </g>
-                <text x="60" y="517" fontSize="10" fontStyle="italic" className="fill-ink-muted">FigaroCore.orderStatus — never written</text>
-
-                {/* UsageCounter — the one bridge between the two universes */}
-                <rect x="110" y="572" width="180" height="46" rx="8" className="fill-subtle stroke-default-strong" strokeWidth="1" />
-                <text x="200" y="592" fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">UsageCounter</text>
-                <text x="200" y="607" fontSize="9" textAnchor="middle" className="fill-ink-muted">usage-accrual ledger</text>
-
-                {/* The one crossing arrow: batch path → UsageCounter, same tx. */}
+                {/* The one crossing arrow. */}
                 <line
-                    x1="200" y1="546" x2="200" y2="570"
+                    x1="200"
+                    y1={arrowTop}
+                    x2="200"
+                    y2={bridgeTop - 2}
                     className="stroke-ink-muted"
                     strokeWidth="1.5"
                     markerEnd={`url(#${idPrefix}-arrow)`}
                 />
-                <text x="208" y="562" fontSize="9" className="fill-ink-body font-mono">usage accrual</text>
-                <text x="208" y="573" fontSize="8" fontStyle="italic" className="fill-ink-muted">(same settleBatch tx)</text>
+                <text x="208" y={arrowTop + 10} fontSize="9" className={lineFont === "mono" ? "fill-ink-body font-mono" : "fill-ink-body"}>
+                    {crossingLabel}
+                </text>
+                <text x="208" y={arrowTop + 21} fontSize="8" fontStyle="italic" className="fill-ink-muted">
+                    {crossingSublabel}
+                </text>
             </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                Batch-settled orders never acquire kernel status — FigaroBatchVerifier
-                never writes FigaroCore.orderStatus. UsageCounter is the only bridge
-                between the two settlement universes.
-            </figcaption>
+            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
         </figure>
     );
 }

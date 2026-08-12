@@ -14,7 +14,6 @@ import { ClauseInventory } from "./_components/ClauseInventory";
 // page, never forked onto the register tool), and the add-your-own + RPGF
 // invitation with EXACTLY ONE link to the register page.
 // Public/private data belongs to /data — the disposition section died here.
-// Operator fine-tooth review pending (next session).
 export const metadata: Metadata = withOg({
     title: "Clauses — Figaro Protocol",
     description:

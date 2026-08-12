@@ -42,7 +42,7 @@ export default function Join() {
 
             <MarketingSection title="Joining." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    You need a wallet.
+                    You need a wallet. A <Link href="/glossary#wallet" className="text-ink-heading hover:underline">wallet</Link> is an app that holds your tokens and signs for you &mdash; like a banking app, except no bank runs it and you alone hold the key; any standard Ethereum wallet works, and there is no Figaro-specific one to install.
                 </p>
                 <div className="overflow-x-auto mb-6">
                     <table className="w-full max-w-2xl text-sm text-left">

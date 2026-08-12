@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { MerkleTreeFigure } from "@/components/figures/MerkleTreeFigure";
 
 export const metadata: Metadata = withOg({
     title: "Invariants — Figaro Protocol",
@@ -70,6 +71,17 @@ export default function Invariants() {
                     <p>
                         Almost nothing. Every token that goes in comes back out to one of the parties &mdash; the contract never holds a balance of its own, so there is no leak, no pool, and no house. And because each commitment only ever looks at one handoff between two parties, the chain never needs a map of the whole deal, or the deal itself. It needs a <em>fingerprint</em> of the agreement and nothing more.
                     </p>
+                    <figure className="my-6">
+                        <MerkleTreeFigure
+                            leaves={["the goods", "the price", "the terms", "the venue"]}
+                            idPrefix="invariants-fingerprint"
+                            accessibleTitle="How the fingerprint is built"
+                            accessibleDesc="The agreement's parts as leaves, hashed pair by pair down to the single root the chain holds."
+                        />
+                        <figcaption className="text-sm text-ink-muted mt-2 max-w-prose">
+                            Every part of the agreement is a leaf; pairs are hashed together, level by level, down to one root &mdash; the fingerprint. The chain holds only the root.
+                        </figcaption>
+                    </figure>
                     <p>
                         The agreement, the terms, the proof that something was delivered &mdash; all of it lives outside the chain, pinned where its owner chooses. The fingerprint does the securing: it can&apos;t rebuild the agreement and never tries to, it just makes exactly one version of the outside detail acceptable. Change anything out there by a hair and it stops matching, and the math throws it out. A contract that once had to carry everything came to carry almost nothing, and gave up none of its security doing it. What that leaves in your hands &mdash; what stays sealed, and what you can sell &mdash; is on{" "}
                         <Link href="/data" className="text-ink-heading font-medium hover:underline">
