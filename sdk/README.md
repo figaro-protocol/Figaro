@@ -23,6 +23,36 @@ Figaro-shaped one.
 > Until then, install from a repo checkout: `"@figaro/sdk": "file:../sdk"`
 > (build it first: `npm run build --workspace sdk` from the repo root).
 
+**Trap — a consumer `npm install` can DELETE the SDK's `dist/`.** Read this
+before you wire the `file:` dependency; it is the one way to make the SDK
+unimportable by following its own install instructions.
+
+`sdk/package.json` declares `"prepare": "npm run build"`, and npm runs a `file:`
+dependency's `prepare` on **every** consumer install. `build` is
+`rm -rf dist && tsc`. The `rm` always succeeds. So if `tsc` cannot be resolved
+from the SDK's own directory, the rebuild dies with `sh: tsc: command not found`,
+the install exits `127`, and `dist/` is **gone** — the package the README just
+told you to install no longer has an entry point (`Cannot find package
+'@figaro/sdk'`). `--ignore-scripts` does **not** save you: measured, npm runs the
+linked package's `prepare` regardless and `dist/` still goes.
+
+`tsc` is a devDependency of the `sdk` workspace, hoisted to the **checkout
+root's** `node_modules`. That is the whole fix — do this once, in this order,
+before the consumer install:
+
+```bash
+git clone https://github.com/figaro-protocol/Figaro && cd Figaro
+npm install                       # root: hoists typescript for the sdk workspace
+npm run build --workspace sdk     # produces sdk/dist
+```
+
+…and point `file:` at the `sdk` directory **inside that checkout**, never at a
+copy you moved somewhere else. Then the consumer's install finds `tsc` up the
+directory chain and its `prepare` *rebuilds* `dist/` instead of destroying it.
+Already hit it? Nothing is lost: rerun those two commands from the repo root.
+(Do not "fix" this by editing `sdk/package.json` — that `prepare` hook is what
+keeps the workspace build honest.)
+
 ## Your first commit
 
 The shortest path from nothing to a bonded order on chain, on a devnet you own.
@@ -43,9 +73,10 @@ One shot, idempotent, safe to re-run: clean-rebuilds `sdk/dist`, ensures Anvil o
 stack, and pins every clause spec to IPFS + anchors it on `ClauseRegistry`. It
 writes the deployed addresses to `frontend/.env.local` (and
 `.deployments/local.json`) — that file is where every step below reads addresses
-from. It installs nothing: Foundry (`anvil`, `cast`) and a running Kubo must
-already be there. Full prerequisites, env vars and the native-Kubo recipe:
-`docs/LOCAL_DEV.md`.
+from. It installs nothing: run `npm install` once at the repo root first (that
+is what puts `tsc` where the SDK build below finds it — see the Install trap
+above), and Foundry (`anvil`, `cast`) plus a running Kubo must already be there.
+Full prerequisites, env vars and the native-Kubo recipe: `docs/LOCAL_DEV.md`.
 
 **2. Put something on the network to discover.** A fresh chain is an EMPTY
 network — no assemblies, no members, nothing to buy, and discovery correctly
@@ -155,6 +186,42 @@ third party who can do this instead — and resolution is terminal. A buyer agen
 that resolves without recording credits no author and no designer — the reward
 mechanism's uniformity across actors is exactly this call.
 
+**Two things bite here. Both are silent.**
+
+*The two `processId`s.* `resolveProcess(bytes32 processId, Commitment[]
+commitments)` takes **two different ids that share a name**, and they are not
+interchangeable: the ARGUMENT is the kernel's DERIVED process id (the storage
+key it looks the process up by), while every struct INSIDE `commitments` must be
+the one the parties SIGNED — and a root order signed `processId = 0`. The kernel
+recomputes `keccak256(processId ‖ hashStruct(c))` from both
+(`src/kernel/FigaroCore.sol:280-285`), so putting the derived id inside the root
+struct — the natural move, since that is what `OrderCommitted` carries and what
+event reconstruction hands you — yields a hash that matches no committed order
+and reverts `OrderNotCommitted`. The bridge is `restoreSignedProcessId(c,
+chainId, core)` (root export): it re-derives the id from the struct-as-root and,
+if that reproduces the id the event carried, hands the struct back with
+`processId = 0`; a genuine sub-order is returned untouched. `executeAction`
+(above) applies it to every element for you, which is the reason to prefer it —
+the lower-level `resolveProcess(walletClient, core, processId, commitments)`
+does NOT, and neither does hand-rolled `cast`.
+
+*`AccrualClosed()`.* `recordClauseUsage` and `recordAssemblyUsage` both open by
+calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
+last accrual period has ended (`src/protocol/usage/UsageCounter.sol:386-392`) —
+the nine annual periods are the RPGF mechanism's whole life, and after the ninth
+boundary usage is permanently unrecordable. Two consequences before that day: a
+record is attributed to the period **open when you call**, not the one the
+process resolved in, so crossing a boundary between resolve and record moves the
+credit into the next period's budget and denominator; and `recordProcessUsage`
+tolerates per-leg reverts by design, so a closed accrual does not throw — it
+returns a report where every leg sits in `failures` and `recorded` is `0`. Check
+before you trust a run, and never after: `currentPeriod()` (it reverts, so wrap
+it — the revert IS the answer), `periodClosed(uint8)`, `periodCount()`, and
+`periodEnd(uint256)` are all in `USAGE_COUNTER_ABI`, and `AccrualClosed()` is in
+it too so the revert decodes by name instead of arriving as opaque bytes. This
+is the mechanical form of the at-settlement rule: record in the same
+transaction batch as the resolve and none of it can happen.
+
 **6. Know the traps before you extend this.** The site's `/pitfalls` page is the
 canonical list; the first one a chain integration hits is **sub-order
 approval** — every `commit`, root or sub-order, pulls the FULL per-order bond
@@ -239,7 +306,19 @@ const bonds = calculateBonds(cumulativeValue, payment);
 // this can NEVER settle — check before every commit; the kernel cannot)
 const cap = await maxOrdersResolvablePerProcess(client);
 
-// Build EIP-712 typed data for signing
+// Build EIP-712 typed data for signing.
+//
+// THE FIELD ORDER BELOW IS CANONICAL, NOT STYLISTIC. There is exactly one
+// authoritative ordering: `CommitmentTypes.COMMITMENT_TYPEHASH`
+// (`src/kernel/CommitmentTypes.sol:31-33`), the type string the kernel hashes
+// and recovers both signatures against. The SDK derives its own typehash from
+// the same field list and exports it — `COMMITMENT_TYPEHASH` (a root
+// `@figaro/sdk` export) is
+// 0xea70b4a1b704921c6919c3e8358981256c050e862e155886edf8828ee897f75c.
+// Anything that transcribes the struct (the `cast` tuple below, a non-JS
+// client, a Rust signer) must reproduce that order: permute two fields and the
+// struct hash changes, so the kernel recovers a different address and rejects
+// the bond.
 const domain = buildDomain(chainId, coreAddress);
 const { commitment, typedData } = buildCommitment(
   {
@@ -265,6 +344,13 @@ commit((bytes32 processId, address buyer, address seller, address currency,
 resolveProcess(bytes32 processId, <that same tuple>[] commitments)   // buyer only
 ```
 
+That tuple's field order is the same canonical one — `COMMITMENT_TYPEHASH` in
+`src/kernel/CommitmentTypes.sol:31-33`. The sketch above and the
+`buildCommitment` literal earlier are two transcriptions of that one source;
+check either against the SDK's re-export
+(`COMMITMENT_TYPEHASH === keccak256(toBytes(yourTypeString))`) before signing
+anything you hand-rolled.
+
 A ROOT commitment signs `processId = 0` (the kernel derives the real id and
 returns it); a sub-order carries the root's derived `processId`. `buyerSig` /
 `sellerSig` are EIP-712 signatures over the `Commitment` struct under domain
@@ -276,9 +362,18 @@ have a reason not to; this sketch is only enough to orient a raw caller.
 
 **Token approvals before commit — the whole per-order bond, every time.** The
 kernel pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
-nets nothing against bonds it already holds from earlier orders in the process
-(`src/kernel/FigaroCore.sol:208-209` — `payment × 2` from the buyer, `expectedCumulativeValue × 2`
-from the seller). Approve the settlement ERC-20 for both legs before each commit:
+nets nothing against bonds it already holds from earlier orders in the process.
+
+Two different things state that, and it is worth keeping them apart. The
+KERNEL only *pulls exactly*: `src/kernel/FigaroCore.sol:208-209` is two
+`_pullExact` transfer calls, `c.payment * 2` from `c.buyer` and
+`c.expectedCumulativeValue * 2` from `c.seller`, with no approval commentary
+and no netting logic anywhere in the file — if the allowance falls short the
+`transferFrom` reverts inside the settlement token and the kernel never sees
+the reason. WHAT TO APPROVE is therefore an off-chain calculation, and the
+SDK's `calculateRootApproval` / `calculateSubOrderApproval` (`sdk/src/bonds.ts`)
+are the authority for it. Approve the settlement ERC-20 for both legs before
+each commit:
 
 ```ts
 import { calculateRootApproval, calculateSubOrderApproval } from "@figaro/sdk";
@@ -293,6 +388,25 @@ const approvals = calculateSubOrderApproval(payment, newCumulativeValue);
 //   sellerApproval = 2 × newCumulativeValue  — the WHOLE cumulative bond for
 //   this order, NOT the increment over the previous order's bond.
 ```
+
+**Worked: one root plus a two-link chain.** Whole settlement-token units (scale
+by your token's `decimals`). Each row is one `commit`; the seller column is
+THAT order's seller, bonding twice the cumulative value at their own link.
+
+| Order | `payment` | `expectedCumulativeValue` | Buyer approves | Seller approves | The common mistake |
+|---|---|---|---|---|---|
+| 1 — root | 100 | 100 | **200** | **200** | — (root: the two legs coincide, which is why the trap only bites later) |
+| 2 — sub-order | 40 | 140 | **80** | **280** | approving **80** — 2 × the 40 increment — instead of 2 × 140 |
+| 3 — sub-order | 25 | 165 | **50** | **330** | approving **50** — 2 × the 25 increment — instead of 2 × 165 |
+
+Read the rows as `calculateRootApproval(100n)` and
+`calculateSubOrderApproval(40n, 140n)` / `calculateSubOrderApproval(25n, 165n)`
+— they are that output. Two things the table makes visible that the prose
+doesn't: the BUYER is charged again on every order (200 + 80 + 50 = 330 pulled
+across the three commits, not 330 total value bonded once), and the seller's
+number GROWS with the chain even though their own link only added 40 or 25.
+Every one of those 330 + 810 units stays locked in the kernel until the buyer
+calls `resolveProcess`; nothing is released order by order.
 
 Approving the *increment* instead of the full `2 × newCumulativeValue` is the
 reverting mistake: `commit` reverts inside the settlement token with
@@ -1232,13 +1346,22 @@ registration at all.
 
 - **Profile** (`MemberProfileMetadata`) — the stable identity envelope pinned at
   `MembersRegistry.metadataURI`. `name` is the ONLY required field; everything
-  else is optional (`description`, `specialty`, `location`, `branding`, `assets`,
-  `acceptedTokens`, `defaultTokenAddress`, `profileClauseValues`, `assemblyBindings`,
+  else is optional (`subjectAddress`, `description`, `specialty`, `location`,
+  `branding`, `assets`, `acceptedTokens`, `defaultTokenAddress`,
+  `profileClauseValues`, `assemblyBindings`, `buyerAssemblies`,
   `disclosurePolicy`, `services`, and `catalogueURI` — the pointer to the
   catalogue). Token
   acceptance is an identity declaration, not a market position. Carries no
   role / archetype / category taxonomy — what a seller does is inferred from the
   catalogue.
+  - `subjectAddress` is the wallet the profile speaks for. Optional in the
+    on-chain-pinned shape because the registry already binds wallet →
+    `metadataURI`, so a solitary document need not repeat it — but stamp it
+    anyway: the moment profiles are materialised side by side (an indexer's
+    array, a fixture file, a catalogue joined to its profile) it is the only
+    join key, and `MemberCatalogueMetadata` REQUIRES its own. Treat it as
+    non-clearable once set; a patch that drops it silently orphans the
+    document.
   - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
     assembly the wallet participates in, each
     `{ bindingId, subjectAddress, assemblySlug, counterpartyBindings? }`. Each

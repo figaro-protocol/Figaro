@@ -44,5 +44,5 @@ committed per deploy (`deployments/<chainId>.json`). `/spec` and any other
 surface that needs to publish or read canonical addresses should read from
 here rather than repeat them in prose — the same discipline
 `.deployments/local.json` already follows for the devnet (`docs/LOCAL_DEV.md`
-documents the local record; `/integrate` documents the record's key → SDK
-mapping).
+documents the local record; `sdk/README.md` documents the record's key → SDK
+mapping — `addressesFromDeploymentRecord`).

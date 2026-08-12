@@ -13,7 +13,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 The frozen settlement primitive. Never edited — see CLAUDE.md § Agent Permissions.
 
 **`src/kernel/FigaroCore.sol`** — The protocol kernel. No owner, no fee, no escape hatches.
-- 2 external functions: `commit` (unified dual-signed), `resolveProcess`
+- 2 state-changing entry points: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
 - Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
@@ -334,7 +334,15 @@ boundary case, never lets one seller straddle the universes.
 **Reading the exponent.** `score = d·(c/d)^(1/3)` — distinct relationships, times average
 repeat depth raised to α. So **α is the elasticity of reward to repeat depth** (8× the depth
 earns 2× the score), and when every pair trades once (`c = d`) the score is the count itself
-for any α at all. `α < 1/2` is justified because a new relationship informs more than another
+for any α at all. Worked rows (score in units of `1e6`-scaled `icbrt(c·d²·1e18)`,
+shown here unscaled as `d·(c/d)^(1/3)`):
+
+| c (uses) | d (staked sellers) | c/d | score ≈ | reading |
+|---|---|---|---|---|
+| 8 | 8 | 1 | 8.0 | every pair once — score is the breadth itself |
+| 8 | 2 | 4 | 3.2 | same volume, thin breadth — depth discounted |
+| 64 | 8 | 8 | 16.0 | 8× the depth of row 1 earns 2× its score |
+| 64 | 2 | 32 | 6.3 | volume farming on two counterparties barely moves it | `α < 1/2` is justified because a new relationship informs more than another
 observation of a known one; **α = 1/3 exactly is a JUDGMENT, not a derivation** — uniform
 across clauses and assemblies, so it is not curation. It is **not** a Sybil defense and must not be
 described as one (2026-07-30): no scoring shape can separate a fabricated counterparty from a

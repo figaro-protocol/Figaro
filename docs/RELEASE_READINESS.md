@@ -260,10 +260,20 @@ publicly; full history vs fresh-genesis commit; the commit-identity email). The 
    not exist; the URL ships today in `frontend/components/shared/Footer.tsx`,
    `(spec)/spec/page.tsx` (the `GH` constant + inline links), `(spec)/pitfalls/page.tsx`,
    `_lib/paperGroups.ts` (per-paper resource links), `frontend/tests/components/ContractEntry.test.tsx`,
-   `sdk/package.json` (`repository`/`bugs`/`homepage`), and `CHANGELOG.md`. Either create
-   the org/repo under exactly that name (making the URLs true) or sweep all of them to the
-   real target — an exhaustive grep for `figaro-protocol/Figaro` must match only live URLs
-   before push.
+   `sdk/package.json` (`repository`/`bugs`/`homepage`), `CHANGELOG.md`,
+   `.github/ISSUE_TEMPLATE/config.yml`, `(deal)/faq/page.tsx`, `(spec)/security/page.tsx`,
+   `(research)/working-groups/page.tsx`, `(compose)/clauses/page.tsx`,
+   `(compose)/assemblies/page.tsx`, and `sdk/README.md`/`(spec)/spec/page.tsx` prose links.
+   This inventory goes stale as pages change — the executable form of the task is the
+   grep itself: an exhaustive `grep -r "figaro-protocol/Figaro"` over the tracked tree
+   must match only live URLs before push. Either create the org/repo under exactly that
+   name (making the URLs true) or sweep all of them to the real target.
+1a. **Un-gate the site from crawlers, and set the site URL.** `frontend/app/layout.tsx`
+   hardcodes `robots: noindex, nofollow` sitewide (a deliberate pre-publication hold, and
+   `frontend/public/robots.txt` Disallow-all is its sibling) — both flip at launch, not
+   before. `NEXT_PUBLIC_SITE_URL` must be set for the deploy build or `metadataBase`
+   falls back to `figaro.example` and every og:image/sitemap URL is dead — verify it in
+   the deploy environment before the export is uploaded.
 2. **`SECURITY.md` — a vulnerability-disclosure channel.** The 2026-08-07 site probe
    found `/security` gives no way to report a finding; GitHub's standard security-policy
    file is the answer, and `/security` links it.
@@ -484,6 +494,17 @@ git diff <FREEZE_COMMIT> -- src/ src/florin/ script/Deploy.s.sol script/DeployMa
 ```
 
 Expected output: empty.
+
+`<FREEZE_COMMIT>` is deliberately unfilled: the Solidity freeze is DECLARED but not yet
+STAMPED — the stamp happens when Task 1 closes (the last pre-audit Solidity change), at
+which point the placeholder is replaced with that commit and never moves again. (The
+frontend freeze below is already stamped because its surface froze first.) Related
+staleness note: the three hand-run formal methods (Certora, TLA+, Echidna) record no
+verified-at commit, so their coverage can silently go stale against Solidity changes —
+when the freeze commit is stamped, record it beside each hand-run result in
+`VERIFICATION_MAP.md` §7/§10 and re-run any method whose last run predates it; until
+then, any Solidity change after a method's recorded run date means re-run before audit
+handover.
 
 ### Handover Checklist for the Auditor
 

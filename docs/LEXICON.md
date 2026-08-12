@@ -9,13 +9,20 @@ so the canonical names live in the committed, verified tier — read this, don't
 name at each tier* — these are PROJECTIONS, not synonyms. Translate across tiers; never flatten
 (fold) or equate, and never collapse two concepts that exist for a reason (over-collapse).
 
+**The three tiers, in one breath:** the **kernel** is `FigaroCore` — the irreducible
+settlement primitive (bond, commit, resolve). The **protocol** is the kernel plus the
+public registries, coordinators, and composition doctrine anchored on chain. The
+**runtime** is everything people touch — the semantic layer, builder surfaces, and UI
+that read protocol state. A name is only right *at its tier*; the grid below gives each
+concept's name per tier.
+
 ## The grid
 
 | Concept | core / kernel | registry / protocol | frontend / runtime | verified by |
 |---|---|---|---|---|
 | paying party | **buyer** | buyer | buyer | `lint-no-product-party-terms` |
 | value-adding party | **seller** | operator · author · provider | merchant · courier · driver · vendor · supplier *(projections)* | `lint-no-product-party-terms` |
-| relationship unit | — | **clause** (+ validator) | clause | `lint-no-clause-grouping-synonyms` (one grouping mechanism, by `article`) |
+| relationship unit | — | **clause** (+ the Layer-A SDK validator — per-clause validator *contracts* do not exist, permanently) | clause | `lint-no-clause-grouping-synonyms` (one grouping mechanism, by `article`) |
 | ↳ clause group | — | **`block.design.article`** — the one grouping word (`categories` array + on-chain `family` removed 2026-06-26) | grouped by `article` | `lint-no-clause-grouping-synonyms` |
 | ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **runtime event logs** (`clauseIsProcessLog` — empty anchor at commit) and **witness stages** (`spec.stages[N≥1]`) vs content committed at signing (stage 0); all one runtime-evidence category — coordination attestations | `lint-architecture-lexicon` — retired: **`block.tier`** and its `cross-checked`/`runtime` tiers, `category-1/2`, `manifest-only` |
 | reusable composition | — | **assembly** | assembly | `lint-architecture-lexicon` |
@@ -168,6 +175,15 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 
 **Homonym (not a synonym):** `provider` = the wallet provider · the arbitration/ODR provider (the
 `figaro-arbitration-<provider>` sister-clause pattern) — distinct concepts, intentionally same word.
+
+**Homonym (not a synonym):** `operator` = (1) the party operating a wallet — the
+key-holder behind a signer, human or software (glossary sense; the agents page's
+asset/wallet/operator triad); (2) the protocol-tier projection of a value-adding
+party (the grid's seller row); (3) the repo's maintainer, in operator-private
+tooling contexts (`.claude/`, CONTRIBUTING) — and, used with a negation, the
+platform sense ("no operator in the middle"), which /faq disambiguates in place.
+Distinct concepts, intentionally same word; qualify on first use when two senses
+could collide on one surface.
 (The `DutchAuction` `provider` sense retired with the contract, 2026-07-02; the `OffsetProvider` sense
 with the offset apparatus, 2026-07-03.)
 

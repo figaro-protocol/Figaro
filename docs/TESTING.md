@@ -2,6 +2,17 @@
 
 `LOCAL_DEV.md` keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all verification layers.
 
+**What success looks like, per harness** (so a first run is judgeable without
+digging): Foundry — `forge test --via-ir` exits 0 with every suite green and no
+skipped test; Halmos — every listed property prints `[PASS]`, none `[TIMEOUT]`;
+Certora — the cloud run reports all rules verified (no `violated`, no sanity
+failures); Echidna — all properties hold across the run (`passing!`, no
+counterexample); TLA+ — TLC finishes with "No error" and states-generated > 0
+for each model; SDK/frontend Vitest — `vitest run` exits 0, all files passing;
+Playwright — every project green, no test skipped by the devnet gate it expects
+to run under. Any harness ending some other way is a failure to investigate,
+never a variant of success.
+
 ## Foundry (`test/`)
 
 The test tree mirrors `src/` (`test/kernel/`, `test/protocol/{registries,coordinators,usage,verifier}/`,

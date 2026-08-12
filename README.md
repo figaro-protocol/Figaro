@@ -2,40 +2,55 @@
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.**
 
-It is a stateless, ownerless protocol that defines the smallest possible unit of a secure handshake: **The Bonded Commitment**. Like the internet protocol, it is a fractal—you can use it to build a corporation, a marketplace, or a global treaty. Figaro doesn't care what you build; it only ensures the math of the handshake is unbreakable.
+Every trade is a contract, and between strangers the element that fails is
+consideration — promising value is easy; nothing makes delivering it credible.
+**Figaro completes the contract**: it fixes consideration with mechanism
+design. The unit is the **Bonded Commitment** — a mathematically enforced
+agreement in which cheating always costs more than cooperating. The buyer
+locks twice the payment; each seller locks twice the cumulative value at their
+link in the chain; only the buyer can close, and every order in the deal
+settles together or not at all. The deal enforces itself. No arbitrator. No
+admin. No timeouts.
 
-**A Bonded Commitment is a mathematically enforced agreement—cheating always costs more than cooperating.**
+It is a stateless, ownerless protocol — a runtime for composing self-enforcing
+agreements between strangers into transaction-scoped institutions. Like the
+internet protocol, it is a fractal — you can use it to build a corporation, a
+marketplace, or a global treaty. Figaro doesn't care what you build; it only
+ensures the math of the handshake is unbreakable. The organizational
+consequence: each process assembles a temporary institution of directly bonded
+contributors — independent value-adders who bond and settle independently —
+then dissolves at settlement.
 
-Figaro enables self-enforcing agreements between strangers — plus a runtime for composing them into transaction-scoped institutions.
-
-Both parties deposit 2× value. Cheating always costs more than cooperating. The deal enforces itself. No arbitrator. No admin. No timeouts.
-
-The organizational consequence: each process assembles a temporary institution of directly bonded contributors — independent value-adders who bond and settle independently — then dissolves at settlement.
+**Status:** contracts complete, machine-checked by the authoring project; no
+external audit yet; no public deployment (local devnet only); the SDK is not
+yet on npm. The release gates live in
+[docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
 
 ## What This Repo Contains
 
 `Figaro` is the canonical runtime. It owns:
 
-- **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
+- **Kernel** — `FigaroCore.sol`: two state-changing entry points (`commit`, `resolveProcess`), 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, members registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
 - **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
 - **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Papers** — web-native academic papers at `frontend/app/(marketing)/papers/<slug>/page.tsx` (server-rendered KaTeX)
-- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships fifteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, feedback-triage), communications (marketing-copy, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet — sign every transaction on the owner's behalf via `@figaro/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-designer` (author or fork a clause/assembly and register it on the permissionless registries). See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
+- **The data layer** — the platform allocation inverted: the aggregate map (registries, usage, the settlement record) is public and derivable by anyone; the private detail lives sealed in merkle-committed agreements, disclosed or sold only on its owner's terms. See `docs/PUBLIC_GRAPH_MODEL.md` and the site's Data page.
+- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/`, the Claude Code subagents used to build Figaro itself (reviews, audits, runtime UI, communications, operations). *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet via `@figaro/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-designer`. See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
 
 Start with [docs/README.md](docs/README.md) for the doc map + reading path.
+Building on it? `sdk/README.md` opens with **Your first commit** — a linear
+walkthrough from a cold machine to a bonded order committed on chain. The repo
+also ships its own site (`frontend/`, static-exported): marketing pages, the
+paper corpus, builder references, and the generated SDK API reference.
 
 ---
 
 ## Repository Structure
 
 ```
-
-
-
-
 src/                        Solidity contracts (0.8.26, Foundry)
   kernel/                   FigaroCore.sol (protocol kernel, frozen) + CommitmentTypes.sol (EIP-712 structs + hashing)
   protocol/coordinators/    AttestationCoordinator.sol (zero-storage role-gated attestation) + IRoleResolver.sol + WitnessSwapAndCommitCoordinator.sol (Permit2 witness-bound swap-funded bonds)
@@ -77,7 +92,7 @@ frontend/                   Next.js 14 runtime
 
 test/                       Foundry tests
 formal/                     TLA+ specs + TLC config
-docs/                    Active design documents
+docs/                       Active design documents (architecture, theory, inventories, release gates)
 ```
 
 ---
@@ -145,10 +160,10 @@ cd sdk && npm test                          # SDK
 cd frontend && npx vitest run               # Frontend unit
 cd frontend && npm run test:e2e:mobile      # Responsive/viewport (jsdom can't)
 cd frontend && npm run test:e2e:devnet      # E2E, real UI against Anvil + contracts
-./scripts/test-echidna.sh                           # Echidna fuzzing
-./scripts/test-halmos.sh                            # Halmos symbolic proofs
-./scripts/test-tla.sh                               # TLA+ model checking
-./scripts/test-certora.sh                           # Certora CVL (paid cloud)
+./scripts/test-echidna.sh                   # Echidna fuzzing
+./scripts/test-halmos.sh                    # Halmos symbolic proofs
+./scripts/test-tla.sh                       # TLA+ model checking
+./scripts/test-certora.sh                   # Certora CVL (paid cloud)
 ```
 
 ## Formal Verification
@@ -173,6 +188,7 @@ Inventories indexed by CLAUDE.md:
 
 Core theory + design:
 
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — The whole-system stack, top to bottom, and the `clause.block` seam
 - [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
 - [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
 - [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF distribution

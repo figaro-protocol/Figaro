@@ -38,8 +38,8 @@ not a governance right, not a staking instrument.
 
 ### What the token is not
 
-- **Not a security mechanism.** The 98% cooperation rate comes from the
-  bonding equilibrium, not from token staking or slashing.
+- **Not a security mechanism.** Cooperation comes from the bonding
+  equilibrium, not from token staking or slashing.
 - **Not governance.** Minimizing governance is a security property. Every
   governance parameter is an attack surface. The protocol has no admin
   backdoor, no timeout, no arbiter. A governance token would reintroduce
@@ -120,7 +120,10 @@ DAO-decided at any time, nothing hardcoded (ruled 2026-07-17):
    and atomically resolved rather than trusted.
 
 **DAO custody**: the DAO wallet is a **multisig** (mainnet: a canonical Safe instance —
-deployment config via `DAO_WALLET`, never authored code). *No vault contract exists or is
+deployment config via `DAO_WALLET`, never authored code). The concrete custody detail —
+signer set, threshold, and the founder/supporter wallet addresses — is deployment
+configuration and will be disclosed in the deployment record when a public deployment
+exists; none is named now because none exists yet, not because any is withheld. *No vault contract exists or is
 needed* — custody is composed, not authored. For path 3 the DAO **procures** through a
 **per-procurement funded operator-EOA** (it *procures services*; it never buys tokens —
 the issuer never touches a market) — the treasury itself can never sign kernel

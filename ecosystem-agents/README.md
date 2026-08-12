@@ -9,6 +9,20 @@ rewiring closed-world priors. These prompts are the answer: each teaches an agen
 capacity so it acts correctly on a **user's** behalf, and the newcomer needn't internalize
 the whole model first.
 
+> **Honest scope:** these prompts are published for rehearsal and review — not for
+> unattended custody of a funded key. An agent loop wired to a signer ingests
+> attacker-authorable input at every step (an assembly's title, a member's profile
+> document, a clause spec, an offer envelope a counterparty relayed), so a
+> prompt-injection payload hidden in any of it reaches something that can sign:
+> prompt-injection → wallet theft. The mitigation is a sandboxed signer runtime
+> that bounds what a compromised loop can authorize. **It does not exist yet**, and
+> building it is a NAMED release gate on this whole tier, separate from the
+> frontend's (`docs/RELEASE_READINESS.md` § "Pre-Mainnet Deployment
+> Verification"). Until it lands, run these against a devnet you own or a key
+> holding only what you can afford to lose, and leave `figaro-operator`'s
+> human-in-the-loop default on. Every safety rule below is BEHAVIORAL — the prompt
+> asks the agent to refuse; nothing outside the prompt makes it.
+
 ## The three capacities
 
 - **`figaro-operator`** — *operate* a buyer/seller wallet: sign every transaction on the
@@ -32,7 +46,7 @@ explicitly designed for it — these three are those exceptions.
 
 | World | Home | For | Touches the repo? |
 |---|---|---|---|
-| **Operator-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing, visual-design, site-ia, runtime-ui-author, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the operator only** | yes (that's their job) |
+| **Operator-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the operator only** | yes (that's their job) |
 | **Public ecosystem** — operate / author / fork (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-designer`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
 A public ecosystem agent that writes a repo file has crossed the line: it re-imposes the
