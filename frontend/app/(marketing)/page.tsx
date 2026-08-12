@@ -13,7 +13,8 @@ export const metadata: Metadata = withOg({
 // Copy constraints the code can't show: "process" always means the economic
 // object, "the blockchain" the substrate, "record" what a process leaves —
 // never blur the referents. The cents claim is COORDINATION friction
-// (lawyer/accountant/platform), not gas alone. The unhappy path lives on
+// (the company functions the second section enumerates), not gas alone.
+// The unhappy path lives on
 // /faq (the FAQ owns it); home points, never carries it.
 export default function Home() {
     return (
@@ -42,7 +43,20 @@ export default function Home() {
                     And Figaro is never a finished catalogue: the terms of a deal are open parts anyone can write, improve, and be paid for as others use them &mdash; so new kinds of deals appear without waiting for anyone&apos;s approval. Your keys, your signatures, your data, the same rules in math for everyone: what a platform asks you to believe, Figaro lets you check.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The two questions every system fought over finally have answers: the deal enforces itself, and the profit stays with the hands that made it. The coordination that once needed institutions &mdash; a lawyer for the terms, an accountant for the books, a platform for the trust &mdash; is carried by a blockchain instead: securing a whole deal on Ethereum costs a few cents, and batched settlement cuts that to a sixth.
+                    The two questions every system fought over finally have answers: the deal enforces itself, and the profit stays with the hands that made it. The coordination that once needed institutions is carried by a blockchain instead: securing a whole deal on Ethereum costs a few cents, and batched settlement cuts that to a sixth.
+                </p>
+            </section>
+
+            <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">Every deal spins up everything a company ever did &mdash; and dissolves it at settlement</h2>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    A company is a bundle of functions held together long enough to make deals happen. A Figaro deal spins each one up for the length of a single process, then winds it up when the deal settles. The treasury and the boss are the kernel: it holds both sides&apos; stakes, and its equilibrium makes cooperation everyone&apos;s best strategy &mdash; no manager needed. The legal department is clauses: the terms of a deal, written by anyone, published for reuse, their authors paid as others put them to work. The org chart is an assembly: who adds value in what order, coordination between sellers included.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Partnerships are composition with the chain&apos;s other contracts &mdash; a Kleros forum for a dispute, a Uniswap swap that keeps a community&apos;s token circulating, a multisender that routes taxes and gifts. There is no hiring: any signer &mdash; a person, a software agent, or an asset holding its own wallet &mdash; joins by posting a bond. The books, the audit, and compliance are the record the process leaves: public in aggregate, sealed in detail, shown or sold only on its owner&apos;s terms, and enough for any regulator, tax authority, or court to rule on.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    When the buyer resolves, everyone is paid at once &mdash; and the company that never existed winds up.
                 </p>
             </section>
 
