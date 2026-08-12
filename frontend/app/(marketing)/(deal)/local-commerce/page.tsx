@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 // No `openGraph`/`twitter` here (unlike its page siblings): this route's
 // layout (`local-commerce/layout.tsx`) already carries a curated `openGraph`
@@ -18,9 +19,12 @@ export const metadata: Metadata = {
 //
 // The narrated deal must match the published `Local commerce` assembly, which
 // is TWO orders: a merchant root order and one co-equal courier sub-order. Do
-// not reintroduce a third tier (a farm, a supplier); no published assembly
-// carries one, and the numbers in the prose are the checkout values of those
-// two legs.
+// not reintroduce a third tier (a farm, a supplier) into the narrated deal or
+// into its figure; no published assembly carries one, and the numbers in the
+// prose — like the `legs` passed to `StackedBondChainFigure` — are the
+// checkout values of those two legs. The closing paragraph is the one place
+// deeper chains are named, and it names them only as shapes OTHER assemblies
+// could compose: a stated possibility, never a third leg of tonight's deal.
 export default function LocalCommercePage() {
     return (
         <>
@@ -56,8 +60,35 @@ export default function LocalCommercePage() {
                     That dissolving institution left something behind that an ordinary evening never does: you saw where your payment was going before you committed to any of it. Order from an ordinary restaurant chain and it lands as one lump sum; where it goes after that &mdash; the cooks, the courier, the landlord, the owner&apos;s cut &mdash; is decided inside the company, privately, after the fact. Order this way and you saw the split at checkout: 8.40 to the kitchen, 2.10 to the courier, 10.50 in all &mdash; the complete P&amp;L of your dinner, line by line, before you paid a cent. These figures differ from the other worked examples on this site; the 2&times; rule under all of them is the same.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Each line was its own stake, and both had to settle together or not at all &mdash; that is the same rule that let the kitchen and the courier trust each other without a dispatcher. The stakes follow from the split: the kitchen backed its 8.40 with twice that; the courier, who took the leg once the food&apos;s value was already on the deal, backed the running total of 10.50 with twice that &mdash; 21.00 staked to earn 2.10. Two paid lines on one receipt is the ordinary shape here; a bookshop order or a single tailor&apos;s bill is simply the shortest version, a P&amp;L with one line, and a longer chain is the same move repeated.
+                    Each line was its own stake, and both had to settle together or not at all &mdash; that is the same rule that let the kitchen and the courier trust each other without a dispatcher. The figure sets the two legs side by side: what each was paid, what each had to lock up to take the work, and what came back when you confirmed. Two paid lines on one receipt is the ordinary shape here; a bookshop order or a single tailor&apos;s bill is simply the shortest version, a P&amp;L with one line.
                 </p>
+                <StackedBondChainFigure
+                    className="mt-8"
+                    idPrefix="local-commerce-stacked-stakes"
+                    legs={[
+                        { name: "Kitchen", role: "root order", payment: 8.4 },
+                        { name: "Courier", role: "sub-order", payment: 2.1 },
+                    ]}
+                    figureTitle="The two legs of the dinner: what each was paid, what each staked"
+                    figureDesc={
+                        "A two-order deal. The kitchen takes the root order: paid 8.40, " +
+                        "staking twice the value on the deal at its link — 16.80. The " +
+                        "courier commits afterwards, once the food's 8.40 is already on the " +
+                        "deal, so it stakes twice the 10.50 running total — 21.00 — to earn " +
+                        "2.10. The buyer stakes twice each payment as that order commits, " +
+                        "21.00 in all. Both orders settle together, or neither does."
+                    }
+                    caption={
+                        <>
+                            Each contributor stakes against everything the deal has accumulated
+                            through its own link. So the courier takes the smaller share (2.10 to
+                            the kitchen&apos;s 8.40) and locks up the larger stake
+                            (2 &times; 10.50 = 21.00, against the kitchen&apos;s 16.80): by the
+                            time the courier commits, the running total carries the food as well
+                            as the ride.
+                        </>
+                    }
+                />
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
@@ -128,6 +159,9 @@ export default function LocalCommercePage() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-5">
                     The evening above is not a sketch: this deal-shape &mdash; a merchant order with one courier leg hanging off it &mdash; is composed as the <em>Local commerce</em> assembly, and it sits among the registered shapes listed on <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>. Open it there to read its clauses, or fork it in the <Link href="/assemblies/designer" className="text-ink-heading font-medium hover:underline">designer</Link> and change what your own trade needs changed.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mt-5">
+                    And a shape can be drawn deeper than the evening you just read. Two legs is what this one carries; another can carry the whole supply chain standing behind them &mdash; the mill behind the kitchen, the workshop that keeps the courier&apos;s bicycle on the road &mdash; each its own line with its own stake, all of them paid by the same buyer. Deeper shapes are already published: <em>Containerised import chain</em>, on that same list, moves a reefer container from shipper to consignee through pre-shipment inspection, freight forwarding, ocean carriage, customs, and drayage &mdash; six bonded parties, one importer of record closing every leg at once. A deal, in other words, can be decomposed into its component parts and every part settled in one stroke: one checkout signing the whole chain, one confirmation closing every order together or none at all. The only limits are the network&apos;s gas and how much of that detail a buyer finds material &mdash; and that second limit is exercised by choosing: whoever wants the mill named picks a seller offering the shape that names it, and whoever just wants dinner picks the one you saw. Anyone can publish the deeper shape; nobody is obliged to trade through it.
                 </p>
             </section>
 
