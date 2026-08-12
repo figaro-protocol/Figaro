@@ -242,17 +242,18 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         GAS CEILING: Each order costs ~23k gas to resolve
     ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
     ///         LOG + the order's calldata — measured all-in on real
-    ///         transaction receipts). At Ethereum's 30M block gas limit,
-    ///         that's a hard cap of ~1,240 orders per process (resolve
-    ///         cost ~= 38,000 + 23,000*N). The cap is a property of
-    ///         the kernel resolveProcess path; it cannot be enforced
-    ///         on-chain at assembly registration because assembly documents
-    ///         live off-chain (AssemblyRegistry only stores their
+    ///         transaction receipts; resolve cost ~= 38,000 + 23,000*N).
+    ///         The maximum number of orders per process therefore varies
+    ///         with the network's block gas limit: clients derive it from
+    ///         the live limit, never from a fixed number. The ceiling is
+    ///         a property of the kernel resolveProcess path; it cannot be
+    ///         enforced on-chain at assembly registration because assembly
+    ///         documents live off-chain (AssemblyRegistry only stores their
     ///         hash + URI). Publish-side clients refuse to anchor an
-    ///         assembly that would exceed the cap; buyer-side clients
-    ///         verify the assembly document's order count before committing.
-    ///         For trees larger than the cap, compose multiple
-    ///         processes: a sub-order in process A roots process B,
+    ///         assembly that would exceed the network's ceiling; buyer-side
+    ///         clients verify the assembly document's order count before
+    ///         committing. For trees larger than the ceiling, compose
+    ///         multiple processes: a sub-order in process A roots process B,
     ///         so the overall tree spans multiple settlements while
     ///         each individual process stays within the ceiling.
     ///

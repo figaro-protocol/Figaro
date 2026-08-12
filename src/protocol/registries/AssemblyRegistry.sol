@@ -32,8 +32,8 @@ pragma solidity 0.8.26;
 ///         the AttestationCoordinator merkle-binds each attestation to
 ///         the signed agreement without validating content shape.
 ///
-///         The per-process gas ceiling (~1,240 orders, documented in
-///         `FigaroCore.sol`) is a property of the kernel
+///         The per-process gas ceiling (network-gas-limit dependent,
+///         documented in `FigaroCore.sol`) is a property of the kernel
 ///         resolveProcess path. Publish-side and buyer-side clients
 ///         enforce it; the contract makes no claim about node count
 ///         because that claim would be unenforceable against off-chain
