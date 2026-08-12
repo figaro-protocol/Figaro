@@ -130,8 +130,9 @@ Making these graphs public enables:
    pickup/drop-off zones.
 4. **Reputation derivation** — Settlement history, on-time rates, and
    disclosure compliance can be computed from public graph data.
-5. **Cross-institution interoperability** — Assemblies beyond Local Commerce
-   can consume the same graphs for their own coordination logic.
+5. **Cross-institution interoperability** — every assembly consumes the same
+   graphs for its own coordination logic, whatever it is for; the kinds are
+   unbounded and no one of them is the reference case.
 
 This is the "economic pheromones" model: coordination signals left by
 participants that other agents learn from, without centralized orchestration.

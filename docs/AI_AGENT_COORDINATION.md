@@ -168,90 +168,206 @@ message format, and XMTP can too — the way dispute resolution is not any one f
 
 ---
 
-## How Agents Use Each Graph
+## How an agent derives each graph
 
-### Process Graph → Work Discovery
+The five graphs are `PUBLIC_GRAPH_MODEL.md`'s; this section is how a reader gets from logs
+to a view. None of them is a feed to subscribe to — each is a derivation over events plus
+the documents those events commit to.
 
-An agent queries the process graph to find:
-- Pending orders awaiting acceptance (seller agents)
-- Active deliveries awaiting drivers (courier agents)
-- Settlement history for reliability assessment (any agent)
+### Process graph — events, reconstructed
 
-Courier agents monitor open delivery demand (unfilled courier edges in
-committed processes) and accept work whose catalogue-rate economics meet
-their profitability threshold. (The Dutch-auction coordination surface was
-abandoned 2026-07-02; pricing is a catalogue concern — e.g. rate × geohash
-distance.)
+`fetchCoreEvents(client, addresses, fromBlock)` then `reconstruct(events)` (`@figaro/sdk`)
+returns the processes as a map; `FigaroContext.sync()` (`@figaro/sdk/agent`) does both and
+adds the live registry catalogue. What a wallet may then DO is read off that state
+(`proposeActions` / `proposeInitiations`, above), never off a stored role.
 
-### Geo Graph → Spatial Routing
+Two things the kernel does not hold, which no amount of querying will produce:
 
-The geohash layer enables:
-- **Job filtering**: Driver agents filter available deliveries by proximity
-  to their current position (4-char prefix match for coarse area, 6-char
-  for neighborhood).
-- **Demand heat maps**: Aggregating pickup geohashes over time reveals
-  demand density by zone — no centralized analytics platform needed.
-- **Route optimization**: Knowing pickup and drop-off zones before claiming
-  a job lets agents estimate travel time and profitability.
-- **Multi-stop batching**: Agents can identify nearby pickups and cluster
-  deliveries for efficiency.
+- **There is no pending order and no open job board.** `OrderState` is `Active` or
+  `Resolved` — an order exists only once BOTH signatures committed it. An offer awaiting
+  acceptance lives on the coordination channel, so work reaches a seller by being ROUTED to
+  it (`makeSellerOfferHandler`, or the race / RFQ handlers), not by the seller finding it on
+  chain.
+- **There is no unfilled edge.** The kernel sees a linear chain of commits against a
+  monotonic accumulator; parent-order edges are a committed TERM — `figaro-topology`'s
+  `parentOrderHashes`, empty for a root — so the DAG is reconstructed off-chain from
+  agreements, never queried from the kernel.
 
-### GHG Graph → Compliance Signaling
+Settlement history is derivable — `OrderResolved` / `ProcessResolved` per address, in
+`blockNumber` order — and it is a record, not a rating: nothing scores it and nothing gates
+on it. Read it knowing `fetchCoreEvents` is direct-path by construction; attestations are
+the one stream that folds both settlement universes (`fetchAttestationRecords`), so an
+address absent from a reconstruction has not necessarily been idle.
 
-Automated compliance agents can:
-- Monitor disclosure completeness across a process
-- Flag orders missing required seller disclosures
-- Aggregate emissions data across reporting boundaries
-- Generate audit-ready reports from on-chain anchors + off-chain content
+### Geo graph — locality under a DECLARED standard
 
-### Settlement Graph → Economic Decision-Making
+`figaro-geolocation` commits `origin` and `destination` under a required
+`geocodeStandard`, and that axis is open: cell grids (geohash, h3, s2, olc) and
+jurisdiction codes (iso3166-1/-2, unlocode) are equally valid declarations, and geohash is
+one value of the field — the built frontend's default — never the model. So the first move
+on any locality read is the standard the leaf DECLARES; a reader that speaks one standard
+skips the leaves it cannot parse rather than misreading them.
 
-Agents make economic decisions by monitoring:
-- Bond flows and settlement payouts over time (settlement flows)
-- Settled courier payments over time (market rate for delivery services)
-- Settlement velocity (time from Active to Resolved)
+Where the declared standard is geohash, `@figaro/sdk/derive` ships the readers:
+`geohashCommonPrefix` (shared-prefix length as coarse proximity), `geohashesMatch(a, b,
+precision)` — **the precision is the caller's parameter, not a protocol constant** —
+`geohashCentroidDistanceKm`, `encodeGeohash` / `decodeGeohash`, `haversineDistance`.
+Another declared standard needs its own reader; nothing in the protocol privileges one.
 
-### Cross-Process Graph → Process Provenance Intelligence
+Locality as EVIDENCE of where work happened is a different clause and a different surface:
+`figaro-proximity-policy` commits the acceptable detection `bands` and its stage-1
+attestation records the band actually witnessed. Any aggregate over zones is aggregation
+the reader performs, bounded by which orders composed a locality clause at all.
 
-For multi-institution workflows:
-- Track provenance across linked processes
-- Identify bottlenecks in multi-step processs
-- Verify template compliance across institutions
+### Disclosure graph — a committed methodology plus a declared stage
+
+`figaro-emissions` commits one term, `standard` (the methodology), and declares a **stage-1**
+evidence shape: `gramsCO2e` plus an optional `evidenceUri`. That is the machinery in
+general form — a spec's `stages` maps a stage number (the same `stage` the
+`AttestationCoordinator` event carries) to the field shape of the evidence filed at it, so
+one generic reader handles a never-seen clause: `validateContent(content, spec, { stage: 1 })`
+routes to the stage fields, and the identical content fails against the committed-content
+shape, which is the point.
+
+The stream is `fetchAttestationRecords` (both universes), sliced by `filterByClause` /
+`filterByStage` / `filterByProcess` / `filterByOrder` (`@figaro/sdk/derive`). Of the
+evidence itself a record carries only `contentRef = keccak256(content)`, so a report is
+assembled by fetching pre-images and checking them against the anchors —
+`/audit/view?process=` is the built example of that assembly.
+
+Derivable: which orders committed a methodology, and which filed evidence against it.
+**Not derivable: whether the disclosure is substantively true** — the protocol ensures
+referential integrity, not accuracy (`PUBLIC_GRAPH_MODEL.md` §3).
+
+### Settlement graph — the figures, and what is derived from them
+
+`OrderCommitted` carries `payment` and `cumulativeValue`. The bonds are **not stored** —
+they are derived at the invariant 2×, `calculateBonds(cumulativeValue, payment)` →
+`{sellerBond, buyerBond, totalLocked}`, with `calculateSettlement` for the payouts. Timing
+comes from the events' `blockNumber`: commit-to-resolve is a chain interval, never a host
+clock reading.
+
+Aggregate what the events actually name — value by currency, by seller, by assembly. A
+clearing price is not a network object: whoever wants one computes it over the orders they
+chose to treat as comparable, and the protocol neither publishes that comparison nor
+endorses it.
+
+### Cross-process graph — provenance from committed hashes
+
+Two committed terms carry it: `figaro-assembly-provenance`'s `compositionHash` (which
+registered assembly a process instantiated — the same value the once-per-process assembly
+credit is claimed from, which counts only while that composition holds a live
+`AssemblyRegistry` binding) and `figaro-topology`'s `parentOrderHashes` (the edges the
+kernel does not store). Both are merkle leaves under `agreementHash`, so a provenance claim
+is verifiable by inclusion proof against the on-chain root instead of trusted from an index.
+
+That supports asking which processes instantiated a given assembly and how their orders
+relate. It does not support "template compliance": nothing on chain compares a live
+agreement against the template it came from. What IS enforced is that every composed
+section validates against its clause spec before a signature is emitted
+(`assertAgreementSignable`) and, on the batched path, inside the proof.
 
 ---
 
-## Economic Pheromones
+## Coordination signals — what the network actually emits
 
-The term "economic pheromones" (THEORY.md) describes how these public signals
-function as decentralized coordination:
+THEORY.md calls these signals **economic pheromones**, and the metaphor is exact about
+one thing: nobody emits them for anybody else. There is **no signalling channel, no
+broadcast, no ranking and no analytics feed** — every signal below is an ordinary event
+or view, written because some wallet did something for its own account. Any aggregate
+picture is the reader's own derivation, never a surface someone maintains.
 
-1. A food-preparation role publishes a geohash when it registers → signal: "food is
-   prepared here"
-2. A buyer creates an order with a drop-off geohash → signal: "demand exists
-   in this zone"
-3. A courier order commits at a catalogue-rate payment → signal: "delivery
-   in this zone clears at X"
-4. The courier's attestations advance → signal: "this zone is being served"
-5. Settlement completes → signal: "this route was profitable"
+What is emitted, and what each thing is evidence of:
 
-Over time, agents accumulate a spatial-temporal model of supply and demand
-without any party intentionally publishing analytics. The coordination
-emerges from individual self-interested actions — exactly as Coase predicted
-firms would dissolve when transaction costs reach zero.
+- **A wallet published a profile, and staked to keep it surfaced.**
+  `MembersRegistry.MemberRegistered(member, metadataURI)` and `MemberProfileUpdated`; the
+  URI resolves to the member-profile document (`parseMemberProfileDocument`) carrying the
+  name, optional branding, accepted tokens, an optional `catalogueURI`, and optional
+  `services`. `MemberWithdrawalRequested` / `MemberWithdrawn` are the same signal run
+  backwards. Evidence of: a counterparty holding a live, reclaimable ETH deposit — never a
+  score, never a gate.
+- **New terms and new deal-shapes exist.** `ClauseRegistry.ClauseRegistered` and
+  `AssemblyRegistry.AssemblyRegistered` carry the author and a `contentURI`; the content
+  resolves chain → IPFS. Either registry's `DepositWithdrawn` de-surfaces the entry for new
+  compositions while every agreement already bound to it keeps resolving.
+- **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
+  beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
+  it are merkle leaves under `agreementHash` — the chain holds the root; the document is
+  fetched from wherever it was pinned, and a fingerprint whose pre-image is unreachable is
+  party-private by design, not a hole in the data.
+- **Work advanced.** `AttestationCoordinator.Attestation(orderHash, processId, attester,
+  clauseId, stage, contentRef)`. `clauseId` and `stage` are what make the stream readable
+  without knowing any clause in advance — `filterByClause` / `filterByStage` /
+  `filterByProcess` (`@figaro/sdk/derive`) slice it. `contentRef` is `keccak256(content)`;
+  the pre-image never enters calldata.
+- **A process ended.** `OrderResolved` and `ProcessResolved` — the whole process settling
+  at once on the buyer's single call, atomically and terminally.
+- **What the network is actually composed OF.**
+  `UsageCounter.UsageRecorded(clauseOrAssembly, period, processId, seller, c, d, score)`,
+  plus `BatchUsageRecorded` on the batch path (cumulative — it REPLACES rather than adds);
+  `scoreOf(clauseOrAssembly, period)` sums both. The `d` term counts DISTINCT LIVE-STAKED
+  sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
+  thing on the network to a demand signal for a clause or an assembly. It exists only
+  because buyers call `recordProcessUsage` at settlement; unrecorded usage is permanently
+  deniable.
+
+**Where, when, how much, and under what standard are clause TERMS, not signal types.** A
+location, a window, a temperature range or a credential is a filled field of whatever
+clause the designer composed, so an agent finds it by declared FIELD
+(`specDeclaresField`) against the spec it fetched, never by clause id — and finds nothing
+where no such clause was composed. Absence is absence: a wallet that emitted no signal is
+unknown, not idle, and nothing stands in for it.
+
+Whether these signals add up to a usable map of the network is therefore not a protocol
+guarantee — it depends on which clauses got composed and filled
+(`PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built" owns that incentive argument;
+the economics it serves are `VISION.md`'s).
 
 ---
 
-## Agent Types
+## What an agent does — the five nouns, derived
 
-| Agent Type | Graph Consumed | Action Taken |
-|------------|---------------|--------------|
-| Driver (human) | Geo, Process, Settlement | Filter jobs by zone, accept work |
-| Driver (AI) | Geo, Process, Settlement | Optimize multi-stop routes, update its own catalogue rate |
-| Food preparer | Process | Accept/decline orders, manage prep pipeline |
-| Buyer | Process, GHG | Place orders, verify disclosures |
-| Market observer | Settlement, Geo | Monitor settlement flows, demand density, catalogue coverage |
-| Compliance | GHG, Cross-Process | Audit disclosure completeness |
-| Analytics | All | Generate reports, predict demand |
+**There is no agent type, and nothing to look one up in.** The protocol admits any signer
+on equal footing and stores no role, species or capability field: what a wallet may do
+right now is DERIVED — from its position in a process (read from chain state) and from the
+specs of the clauses that process composed. The things anyone does are the protocol's five
+nouns; an agent does them with the same calls any UI makes, and one wallet commonly holds
+several at once — buyer in one process, seller in another, author of the clause a third
+composes.
+
+- **Buyer** — derived as `process.rootBuyer == my address`; nothing configures it.
+  `proposeActions(process, myAddress)` (`@figaro/sdk/agent`) returns the buyer's actions on
+  a synced process — `resolve-process` (only the buyer can end one, atomically and
+  terminally) and `attest-as-buyer`; `proposeInitiations(ctx.getAssemblies(), myAddress)`
+  returns the processes the wallet could START, one per discovered assembly. Origination is
+  `originateProcess` / `originateChain` (the handshake above); resolution is
+  `resolve-process` followed in the same breath by `recordProcessUsage`, without which the
+  process credits no clause author and no assembly designer.
+- **Seller** — derived as an order naming my address as its seller; the same
+  `proposeActions` call returns `attest-as-seller` for it. Work arrives through the
+  handshake — `makeSellerOfferHandler` (the anti-tamper gate plus two decline-by-default
+  floors), `makeSellerRaceHandler` / `makeSellerQuoteHandler` on the formation legs. Being
+  DISCOVERABLE is `MembersRegistry.register(metadataURI)`; being REACHABLE for inbound
+  offers is a `services` endpoint inside that profile. Two different things, and neither is
+  a status.
+- **Clause author** — no process role at all:
+  `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)` under the
+  author's own key, over a spec pinned off-chain. Permissionless, first-write-wins,
+  deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
+- **Assembly designer** — `AssemblyRegistry.registerAssembly(compositionHash, contentURI)`
+  over a published template. Composition is the designer's act and happens only there,
+  never mid-checkout and never mid-process (`OPEN_WORLD.md` §1, pattern 1); the prompt is
+  `ecosystem-agents/figaro-assembly-designer.md`.
+- **Composition** — dispatched from the spec, never from a table the agent carries: a
+  clause declares what it composes with in `block.design.composes` (`interface` names a
+  standard composition interface; `forumUrl` deep-links a provider's own web UI), and the
+  concrete on-chain instance is chain-specific and supplied at runtime. An agent routes to
+  what the composed clause DECLARES — which is why a forum, a swap route or a fiscal leg it
+  has never heard of still resolves.
+
+Reading needs none of this and no wallet: `fetchCoreEvents` + `reconstruct` (`@figaro/sdk`)
+run against an RPC endpoint and an IPFS gateway, which is the whole permission model for
+observing the network.
 
 ---
 
@@ -263,8 +379,13 @@ firms would dissolve when transaction costs reach zero.
    by platform-imposed throttling.
 3. **No data moats**: Competitors and collaborators see the same signals.
    Advantage comes from better *interpretation*, not better *access*.
-4. **Composable agents**: An agent built for Local Commerce delivery routing can be
-   adapted for any other archetype that uses geohash coordination.
+4. **Spec-routed agents port; example-shaped ones don't**: an agent that routes by the
+   fields a clause DECLARES — read from the spec it fetched (`specDeclaresField`) — works
+   over every assembly composing that clause, whoever authored it and whatever is being
+   traded. One that branches on a clause id, an assembly, or a worked example works until
+   the next registration. Local commerce is one example among unbounded kinds, never the
+   model: even the geocode standard is a declared value (`figaro-geolocation`'s
+   `geocodeStandard`), so "geohash" is content in a document, never an assumption in code.
 
 ---
 
