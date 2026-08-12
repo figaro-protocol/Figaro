@@ -36,10 +36,11 @@
  *     profile state, and those specs take within-run event baselines, so
  *     this spec's extra events for anvil[4] never skew them. Its clause
  *     registrations are per-run-unique and end withdrawn.
- *   SELLER = anvil[19] — shared ONLY with assembly-withdraw (this spec's
- *     sibling, same standalone serial project); BOTH specs onboard through
- *     the wizard with the unbind-all-then-bind-own step, so each run is
- *     self-contained regardless of what the other left bound.
+ *   SELLER = anvil[19] — shared with assembly-withdraw (this spec's
+ *     sibling, same standalone serial project) AND content-delivery; every
+ *     sharer onboards through the wizard with the unbind-all-then-bind-own
+ *     step, so each run is self-contained regardless of what the others
+ *     left bound.
  *
  * VALUE LEGS (the chain is the point):
  *   register — ClauseRegistry ETH escrow +registrationDeposit exactly;

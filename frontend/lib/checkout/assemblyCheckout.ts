@@ -86,7 +86,7 @@ export interface AssemblyCheckoutDeps {
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {
-    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), preview.commitment.currency, label);
+    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), preview.commitment, label);
 }
 
 /** The entries the fills actually CHANGED — passed to the walk as overrides so

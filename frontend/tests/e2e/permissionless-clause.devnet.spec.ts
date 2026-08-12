@@ -31,7 +31,8 @@
  * code IS the open-world property, now structural: there is no validator to register.
  *
  * Self-contained: registers its OWN novel clause, authors + publishes its OWN
- * assembly, onboards its OWN seller (anvil[14], used by no other spec). It does
+ * assembly, onboards its OWN seller (anvil[14], shared only with rate-pricing —
+ * both onboard it idempotently and neither depends on the other's state). It does
  * NOT snapshot/revert — devnet is a mainnet rehearsal, so it leaves its state
  * on-chain and a per-run nonce (minted below) keeps every clause and assembly unique.
  *
@@ -79,7 +80,7 @@ const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author + registrar
-const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }); // anvil[14] — used by no other spec
+const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }); // anvil[14] — shared only with rate-pricing (both self-establish idempotently)
 const SELLER = seller.address;
 
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */

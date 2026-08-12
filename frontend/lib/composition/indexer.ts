@@ -204,21 +204,27 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
 
 /**
  * Reconstruct a seller's full public-graph track record from the OrderCommitted
- * / OrderResolved process graph and the AttestationCoordinator disclosure
- * graph — all keyed to one address.
+ * / OrderResolved process graph and the disclosure graph — all keyed to one
+ * address. Attestation tallies fold BOTH settlement universes (coordinator +
+ * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
+ * § "A reader must fold BOTH"). The process/value figures are direct-path by
+ * construction: the batch universe emits no per-order events (no status, no
+ * process crosses the crease), so batch-settled trade surfaces here only
+ * through its attestations.
  */
 export async function getSellerTrackRecord(
     client: PublicClient,
     chainId: number,
     seller: string,
 ): Promise<MemberTrackRecord> {
-    const [sellerOrders, buyerOrders, resolved, registrations, attestations] =
+    const [sellerOrders, buyerOrders, resolved, registrations, attestations, batchAttestations] =
         await Promise.all([
             getOrderCommittedBySeller(client, chainId, seller),
             getOrderCommittedByBuyer(client, chainId, seller),
             getAllOrderResolved(client, chainId),
             getAllMemberRegistered(client, chainId),
             getAllAttestations(client, chainId),
+            getAllBatchAttestations(client, chainId),
         ]);
 
     const resolvedProcessIds = new Set(
@@ -266,7 +272,7 @@ export async function getSellerTrackRecord(
     }
 
     const attestationsByClauseMap = new Map<string, number>();
-    for (const log of attestations) {
+    for (const log of [...attestations, ...batchAttestations]) {
         if (!hexEqual(getStringArg(log, "attester"), seller)) continue;
         const clauseId = getStringArg(log, "clauseId") ?? "unknown";
         attestationsByClauseMap.set(clauseId, (attestationsByClauseMap.get(clauseId) ?? 0) + 1);

@@ -166,9 +166,9 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
             };
             const agreementHash = computeAgreementHash(agreement);
             // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
-            // leaf"): the commerce clause's currency TERM must equal the
-            // commitment struct's currency BEFORE either party signs.
-            assertAgreementSignable(agreement, agreementHash, specSource(), token);
+            // leaf"): the commerce clause's currency and payment TERMS must
+            // equal the commitment struct's mirrors BEFORE either party signs.
+            assertAgreementSignable(agreement, agreementHash, specSource(), { currency: token, payment });
 
             // 3. Sign + commit (both parties bond; the buyer broadcasts). Root
             //    orders sign processId = 0 — the chain derives the real id.
