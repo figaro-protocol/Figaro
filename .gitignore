@@ -109,8 +109,11 @@ tlc_output.txt
 # Rust / Prover
 prover/target/
 # The relay's publication journal (ARCHIVE_PATH) — local runtime state, not source.
+# The e2e suite names its journal sequencer-archive-e2e-<pid>.jsonl, hence the
+# second pattern: without it, `git add sdk/` sweeps per-run artifacts into commits.
 *sequencer-archive.jsonl
 *sequencer-archive.jsonl.tmp
+*sequencer-archive-e2e-*.jsonl
 
 # Local tool state
 .solcx-lock-*
