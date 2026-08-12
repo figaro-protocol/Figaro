@@ -38,28 +38,28 @@ export default function WalletWithoutPolityPaper() {
             }
             references={
                 <>
-                    <li>Arendt, H. <em>The Origins of Totalitarianism</em>. Harcourt, Brace &amp; Co., New York, 1951 (esp. Part II, Ch. 9, &ldquo;The Decline of the Nation-State and the End of the Rights of Man&rdquo;).</li>
-                    <li>Betts, A. &amp; Collier, P. <em>Refuge: Transforming a Broken Refugee System</em>. Penguin, London, 2017.</li>
-                    <li>Pritchett, L. <em>Let Their People Come: Breaking the Gridlock on Global Labor Mobility</em>. Center for Global Development, Washington, DC, 2006.</li>
                     <li>Allen, C. The Path to Self-Sovereign Identity. Personal blog, April 26, 2016.</li>
+                    <li>Arendt, H. <em>The Origins of Totalitarianism</em>. Harcourt, Brace &amp; Co., New York, 1951 (esp. Part II, Ch. 9, &ldquo;The Decline of the Nation-State and the End of the Rights of Man&rdquo;).</li>
+                    <li>Arendt, H. <em>The Human Condition</em>. University of Chicago Press, Chicago, 1958.</li>
+                    <li>Argent. Social Recovery: Reinventing Wallet Security. Argent Documentation, n.d.</li>
+                    <li>Benhabib, S. <em>The Rights of Others: Aliens, Residents, and Citizens</em>. Cambridge University Press, Cambridge, 2004.</li>
+                    <li>Betts, A. &amp; Collier, P. <em>Refuge: Transforming a Broken Refugee System</em>. Penguin, London, 2017.</li>
                     <li>Buterin, V. Why We Need Wide Adoption of Social Recovery Wallets. Personal blog, January 11, 2021.</li>
-                    <li>Tobin, A. &amp; Reed, D. The Inevitable Rise of Self-Sovereign Identity. Sovrin Foundation White Paper, 2017.</li>
-                    <li>W3C. Decentralized Identifiers (DIDs) v1.0: Core Architecture, Data Model, and Representations. W3C Recommendation, July 2022.</li>
+                    <li>Coppi, G. &amp; Fast, L. Blockchain and Distributed Ledger Technologies in the Humanitarian Sector. Humanitarian Policy Group, Overseas Development Institute, 2019.</li>
+                    <li>Goodwin-Gill, G. S. &amp; McAdam, J. <em>The Refugee in International Law</em>, 4th ed. Oxford University Press, Oxford, 2021.</li>
+                    <li>Hernandez, K. <em>Blockchain for Development: Hope or Hype?</em> IDS Rapid Response Briefing, Institute of Development Studies, 2017.</li>
+                    <li>Kesby, A. <em>The Right to Have Rights: Citizenship, Humanity, and International Law</em>. Oxford University Press, Oxford, 2012.</li>
                     <li>Locke, J. <em>Two Treatises of Government</em>. Awnsham Churchill, London, 1689.</li>
                     <li>Nozick, R. <em>Anarchy, State, and Utopia</em>. Basic Books, New York, 1974.</li>
-                    <li>Argent. Social Recovery: Reinventing Wallet Security. Argent Documentation, n.d.</li>
+                    <li>Pritchett, L. <em>Let Their People Come: Breaking the Gridlock on Global Labor Mobility</em>. Center for Global Development, Washington, DC, 2006.</li>
                     <li>Safe. Social Recovery via Threshold Multi-Signature. Safe (formerly Gnosis Safe) Documentation, n.d.</li>
-                    <li>Arendt, H. <em>The Human Condition</em>. University of Chicago Press, Chicago, 1958.</li>
-                    <li>Benhabib, S. <em>The Rights of Others: Aliens, Residents, and Citizens</em>. Cambridge University Press, Cambridge, 2004.</li>
-                    <li>Goodwin-Gill, G. S. &amp; McAdam, J. <em>The Refugee in International Law</em>, 4th ed. Oxford University Press, Oxford, 2021.</li>
-                    <li>Kesby, A. <em>The Right to Have Rights: Citizenship, Humanity, and International Law</em>. Oxford University Press, Oxford, 2012.</li>
+                    <li>Tobin, A. &amp; Reed, D. The Inevitable Rise of Self-Sovereign Identity. Sovrin Foundation White Paper, 2017.</li>
+                    <li>UN High Commissioner for Refugees. <em>Global Trends: Forced Displacement in 2023</em>. UNHCR, Geneva, 2024.</li>
                     <li>United Nations. <em>Convention Relating to the Status of Refugees</em>. 189 UNTS 137, 1951; expanded by the 1967 Protocol, 606 UNTS 267.</li>
                     <li>US Department of the Treasury, Office of Foreign Assets Control. Treasury Sanctions Notorious Virtual Currency Mixer Tornado Cash. Press release, August 8, 2022.</li>
                     <li>Van Valkenburgh, P. Analysis of the Tornado Cash Sanctions: How Far Does Treasury&rsquo;s Authority Reach? Coin Center Report, 2022.</li>
+                    <li>W3C. Decentralized Identifiers (DIDs) v1.0: Core Architecture, Data Model, and Representations. W3C Recommendation, July 2022.</li>
                     <li>World Food Programme. <em>Building Blocks: Blockchain for Humanitarian Assistance</em>. WFP (with UNHCR biometric registration), ongoing since 2017.</li>
-                    <li>Coppi, G. &amp; Fast, L. Blockchain and Distributed Ledger Technologies in the Humanitarian Sector. Humanitarian Policy Group, Overseas Development Institute, 2019.</li>
-                    <li>Hernandez, K. <em>Blockchain for Development: Hope or Hype?</em> IDS Rapid Response Briefing, Institute of Development Studies, 2017.</li>
-                    <li>UN High Commissioner for Refugees. <em>Global Trends: Forced Displacement in 2023</em>. UNHCR, Geneva, 2024.</li>
                 </>
             }
         >

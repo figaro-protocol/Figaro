@@ -26,7 +26,6 @@ export default function Kernel() {
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The short version is a lockbox: both sides put in a stake, more than the deal is worth, held by a small program that runs in the open, owned by no one, following one fixed rule. Say the deal is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a stake. The seller locks twenty too, all of it stake. Forty is held, and until the deal is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
             </p>
-            <LockedFundsStateFigure className="my-8" />
             <p className="text-base text-ink-body leading-relaxed mb-4">
                 Why twice the value, and not the payment plus a small margin? Because the size of the stake is the whole mechanism. At twice the value there is no amount that is clever to steal:
             </p>
@@ -53,6 +52,7 @@ export default function Kernel() {
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer is locked at twice the value too, so stalling costs the buyer exactly as much as anyone. No arbitrator weighs the case; no timer releases what is locked. And because nothing settles until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the deal closes.
             </p>
+            <LockedFundsStateFigure className="my-8" />
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
                 <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">

@@ -40,8 +40,8 @@ export default function TransactionScopedInstitutionsPaper() {
             references={
                 <>
                     <li>Coase, R. H. The Nature of the Firm. <em>Economica</em>, 4(16):386&ndash;405, 1937.</li>
-                    <li>Grossman, S. J. &amp; Hart, O. D. The Costs and Benefits of Ownership: A Theory of Vertical and Lateral Integration. <em>Journal of Political Economy</em>, 94(4):691&ndash;719, 1986.</li>
                     <li>Gibbons, R. Four Formal(izable) Theories of the Firm? <em>Journal of Economic Behavior &amp; Organization</em>, 58(2):200&ndash;245, 2005.</li>
+                    <li>Grossman, S. J. &amp; Hart, O. D. The Costs and Benefits of Ownership: A Theory of Vertical and Lateral Integration. <em>Journal of Political Economy</em>, 94(4):691&ndash;719, 1986.</li>
                     <li>Hansmann, H. <em>The Ownership of Enterprise</em>. Harvard University Press, Cambridge, MA, 1996.</li>
                     <li>Hart, O. <em>Firms, Contracts, and Financial Structure</em>. Oxford University Press, Oxford, 1995.</li>
                     <li>Hart, O. &amp; Moore, J. Property Rights and the Nature of the Firm. <em>Journal of Political Economy</em>, 98(6):1119&ndash;1158, 1990.</li>

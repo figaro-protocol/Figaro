@@ -39,19 +39,19 @@ export default function SubordinationVariablePaper() {
             }
             references={
                 <>
+                    <li>Bowles, S. &amp; Gintis, H. The Distribution of Wealth and the Viability of the Democratic Firm. In U. Pagano &amp; R. Rowthorn (eds.), <em>Democracy and Efficiency in the Economic Enterprise</em>. Routledge, London, 1996.</li>
+                    <li>Braverman, H. <em>Labor and Monopoly Capital: The Degradation of Work in the Twentieth Century</em>. Monthly Review Press, New York, 1974.</li>
+                    <li>Burawoy, M. <em>Manufacturing Consent: Changes in the Labor Process Under Monopoly Capitalism</em>. University of Chicago Press, Chicago, 1979.</li>
+                    <li>Cheney, G. <em>Values at Work: Employee Participation Meets Market Pressure at Mondragón</em>. Cornell University Press, Ithaca, NY, 1999.</li>
                     <li>Coase, R. H. The Nature of the Firm. <em>Economica</em>, 4(16):386&ndash;405, 1937.</li>
                     <li>Cohen, G. A. <em>Karl Marx&rsquo;s Theory of History: A Defence</em>. Princeton University Press, Princeton, NJ, 1978.</li>
                     <li>Friedman, M. <em>Capitalism and Freedom</em>. University of Chicago Press, Chicago, 1962.</li>
                     <li>Hayek, F. A. The Use of Knowledge in Society. <em>American Economic Review</em>, 35(4):519&ndash;530, 1945.</li>
                     <li>Marx, K. <em>Das Kapital, Band I</em>. Verlag von Otto Meissner, Hamburg, 1867. English: <em>Capital, Volume I</em>, trans. B. Fowkes, Penguin Classics, 1976.</li>
                     <li>Srnicek, N. <em>Platform Capitalism</em>. Polity, Cambridge, 2017.</li>
-                    <li>Bowles, S. &amp; Gintis, H. The Distribution of Wealth and the Viability of the Democratic Firm. In U. Pagano &amp; R. Rowthorn (eds.), <em>Democracy and Efficiency in the Economic Enterprise</em>. Routledge, London, 1996.</li>
-                    <li>Whyte, W. F. &amp; Whyte, K. K. <em>Making Mondragon: The Growth and Dynamics of the Worker Cooperative Complex</em>, 2nd ed. ILR Press, Ithaca, NY, 1991.</li>
-                    <li>Cheney, G. <em>Values at Work: Employee Participation Meets Market Pressure at Mondragón</em>. Cornell University Press, Ithaca, NY, 1999.</li>
                     <li>Vanek, J. <em>The General Theory of Labor-Managed Market Economies</em>. Cornell University Press, Ithaca, NY, 1970.</li>
                     <li>Ward, B. The Firm in Illyria: Market Syndicalism. <em>American Economic Review</em>, 48(4):566&ndash;589, 1958.</li>
-                    <li>Braverman, H. <em>Labor and Monopoly Capital: The Degradation of Work in the Twentieth Century</em>. Monthly Review Press, New York, 1974.</li>
-                    <li>Burawoy, M. <em>Manufacturing Consent: Changes in the Labor Process Under Monopoly Capitalism</em>. University of Chicago Press, Chicago, 1979.</li>
+                    <li>Whyte, W. F. &amp; Whyte, K. K. <em>Making Mondragon: The Growth and Dynamics of the Worker Cooperative Complex</em>, 2nd ed. ILR Press, Ithaca, NY, 1991.</li>
                     <li>Wright, E. O. <em>Envisioning Real Utopias</em>. Verso, London, 2010.</li>
                 </>
             }

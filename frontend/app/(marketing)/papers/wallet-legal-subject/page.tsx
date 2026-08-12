@@ -37,27 +37,27 @@ export default function WalletLegalSubjectPaper() {
             }
             references={
                 <>
-                    <li>California State Legislature. Assembly Bill No. 5, Ch. 296, Stats. 2019 (codifying the ABC test for employee classification).</li>
                     <li>Anderson, E. <em>Private Government: How Employers Rule Our Lives (and Why We Don&rsquo;t Talk About It)</em>. Princeton University Press, Princeton, NJ, 2017.</li>
                     <li><em>Autoclenz Ltd v Belcher</em>, [2011] UKSC 41.</li>
-                    <li><em>Dynamex Operations West, Inc. v Superior Court</em>, 4 Cal.5th 903 (2018).</li>
-                    <li>Ellerman, D. P. <em>Property and Contract in Economics: The Case for Economic Democracy</em>. Blackwell, Cambridge, MA, 1992.</li>
-                    <li>European Parliament and Council. Directive (EU) 2024/2831 of 23 October 2024 on improving working conditions in platform work. <em>Official Journal of the European Union</em>, 2024.</li>
+                    <li>Bayern, S. Of Bitcoins, Independently Wealthy Software, and the Zero-Member LLC. <em>Northwestern University Law Review</em>, 108:1485&ndash;1500, 2014.</li>
                     <li>California Proposition 22 (2020), codified at Cal. Bus. &amp; Prof. Code §§ 7448&ndash;7467.</li>
-                    <li>Taleb, N. N. <em>Skin in the Game: Hidden Asymmetries in Daily Life</em>. Random House, New York, 2018 (Book 4, &ldquo;Wolves Among Dogs,&rdquo; Ch. 3, &ldquo;How to Legally Own Another Person&rdquo;).</li>
+                    <li>California State Legislature. Assembly Bill No. 5, Ch. 296, Stats. 2019 (codifying the ABC test for employee classification).</li>
                     <li>Collins, H. Market Power, Bureaucratic Power, and the Contract of Employment. <em>Industrial Law Journal</em>, 15(1):1&ndash;14, 1986.</li>
                     <li>Deakin, S. The Changing Concept of the &lsquo;Employer&rsquo; in Labour Law. <em>Industrial Law Journal</em>, 30(1):72&ndash;84, 2001.</li>
                     <li>Deakin, S. &amp; Morris, G. S. <em>Labour Law</em>, 6th ed. Hart Publishing, Oxford, 2012.</li>
+                    <li><em>Dynamex Operations West, Inc. v Superior Court</em>, 4 Cal.5th 903 (2018).</li>
+                    <li>Ellerman, D. P. <em>Property and Contract in Economics: The Case for Economic Democracy</em>. Blackwell, Cambridge, MA, 1992.</li>
+                    <li>European Parliament and Council. Directive (EU) 2024/2831 of 23 October 2024 on improving working conditions in platform work. <em>Official Journal of the European Union</em>, 2024.</li>
+                    <li>Fairfield, J. A. T. <em>Owned: Property, Privacy, and the New Digital Serfdom</em>. Cambridge University Press, Cambridge, 2017.</li>
                     <li>Freedland, M. &amp; Kountouris, N. <em>The Legal Construction of Personal Work Relations</em>. Oxford University Press, Oxford, 2011.</li>
                     <li>Fudge, J. The Legal Boundaries of the Employer, Precarious Workers, and Labour Protection. In G. Davidov &amp; B. Langille (eds.), <em>Boundaries and Frontiers of Labour Law</em>. Hart Publishing, Oxford, 2006.</li>
-                    <li>Veitch, S. <em>Obligations: New Trajectories in Law</em>. Routledge, Abingdon, 2021.</li>
                     <li>Hohfeld, W. N. Some Fundamental Legal Conceptions as Applied in Judicial Reasoning. <em>Yale Law Journal</em>, 23(1):16&ndash;59, 1913.</li>
-                    <li>Naffine, N. <em>Law&rsquo;s Meaning of Life: Philosophy, Religion, Darwin and the Legal Person</em>. Hart Publishing, Oxford, 2009.</li>
-                    <li>Bayern, S. Of Bitcoins, Independently Wealthy Software, and the Zero-Member LLC. <em>Northwestern University Law Review</em>, 108:1485&ndash;1500, 2014.</li>
                     <li>LoPucki, L. M. Algorithmic Entities. <em>Washington University Law Review</em>, 95:887&ndash;953, 2018.</li>
-                    <li>Fairfield, J. A. T. <em>Owned: Property, Privacy, and the New Digital Serfdom</em>. Cambridge University Press, Cambridge, 2017.</li>
+                    <li>Naffine, N. <em>Law&rsquo;s Meaning of Life: Philosophy, Religion, Darwin and the Legal Person</em>. Hart Publishing, Oxford, 2009.</li>
                     <li>Pasquale, F. <em>The Black Box Society: The Secret Algorithms That Control Money and Information</em>. Harvard University Press, Cambridge, MA, 2015.</li>
+                    <li>Taleb, N. N. <em>Skin in the Game: Hidden Asymmetries in Daily Life</em>. Random House, New York, 2018 (Book 4, &ldquo;Wolves Among Dogs,&rdquo; Ch. 3, &ldquo;How to Legally Own Another Person&rdquo;).</li>
                     <li><em>Uber BV and others v Aslam and others</em>, [2021] UKSC 5.</li>
+                    <li>Veitch, S. <em>Obligations: New Trajectories in Law</em>. Routledge, Abingdon, 2021.</li>
                 </>
             }
         >
