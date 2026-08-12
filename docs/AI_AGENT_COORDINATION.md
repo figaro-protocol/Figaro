@@ -407,8 +407,10 @@ surface. Agents simply include a `services` key in that JSON.
 
 No new contracts are needed:
 - **Identity** → `MembersRegistry` already handles this (metadataURI)
-- **Reputation** → Bond-weighted settlement history is strictly superior to
-  ERC-8004's permissionless feedback (which has Sybil vulnerability)
+- **Reputation** → Figaro issues none. The settlement record is public and
+  any counterparty may weigh it; the protocol keeps no score, and nothing
+  gates on history (ERC-8004's permissionless feedback is Sybil-vulnerable
+  precisely because it reifies a score)
 - **Validation** → Buyer dominance + 2× bond asymmetry already enforces
   honesty without independent validators
 
@@ -519,9 +521,10 @@ envelope signatures).
 |---------|----------|--------|
 | Identity | ERC-721 mint | MembersRegistry event + bond history |
 | Trust | Permissionless feedback (Sybil-vulnerable) | 2× bonding equilibrium (MAD) |
-| Reputation | Arbitrary int128 ratings | Settlement volume + token acceptance |
+| Reputation | Arbitrary int128 ratings | None issued — an open settlement record the reader weighs |
 | Validation | External provers (zkML, TEE) | Buyer dominance + on-chain evidence |
 
-An agent that has settled 1,000 orders with 2× bonds locked each time
-has proven more than any number of ERC-8004 feedback scores can convey.
-The bonding mechanism IS the validation layer.
+An agent's settlement record states facts — which orders it was on, what it
+bonded, how each resolved — and a counterparty reads and weighs that record
+for itself; no score summarizes it and no gate consumes it. The bonding
+mechanism IS the validation layer.
