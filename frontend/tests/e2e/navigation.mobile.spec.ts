@@ -31,8 +31,10 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // Desktop nav container is CSS-hidden below the md breakpoint. Assert
         // it is ATTACHED first — toBeHidden() passes vacuously for a testid
         // that doesn't exist, which is how a rename made this assertion
-        // meaningless once before (desktop-nav → desktop-nav-app).
-        const desktopNav = page.getByTestId('desktop-nav-app');
+        // meaningless twice already (desktop-nav → desktop-nav-app, then back
+        // to desktop-nav when the app tier's second row was deleted and
+        // HeaderShell/NavTreeRow became the one desktop nav on every tier).
+        const desktopNav = page.getByTestId('desktop-nav');
         await expect(desktopNav).toBeAttached();
         await expect(desktopNav).toBeHidden();
     });
@@ -62,7 +64,10 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
 
-        await drawer.getByRole('link', { name: 'Clauses', exact: true }).click();
+        // The (app) drawer lists the five publication doorways by their ruled
+        // section labels — /clauses is the 'Builders' doorway there (the
+        // 'Clauses' page label exists only in the marketing drawer's map).
+        await drawer.getByRole('link', { name: 'Builders', exact: true }).click();
 
         await expect(page).toHaveURL(/\/clauses$/);
         // useEffect on pathname change closes the drawer
@@ -83,9 +88,13 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeVisible();
 
         // A page from BEHIND each doorway — the ones the 3-link drawer stranded.
+        // Labels track navLinks.ts (the one nav source): the invariants page is
+        // labelled by its own metadata.title, and the papers are reached through
+        // Working Groups — the corpus is unbounded, so the working-groups page
+        // IS the index (operator-ruled 2026-08-12; no /papers index exists).
         for (const [label, href] of [
-            ['Physics', '/invariants'],
-            ['Papers', '/papers'],
+            ['Invariants', '/invariants'],
+            ['Working Groups', '/working-groups'],
             ['Clauses', '/clauses'],
             ['Agents', '/agents'],
         ] as const) {
@@ -95,11 +104,12 @@ test.describe('Mobile navigation (Pixel 5)', () => {
             ).toHaveAttribute('href', href);
         }
 
-        // Section headers group the map (same shape as the (app) drawer).
-        await expect(drawer.getByText('Protocol', { exact: true }).first()).toBeVisible();
+        // Section headers group the map (same shape as the (app) drawer) —
+        // the ruled five sections, asserted by one of them.
+        await expect(drawer.getByText('Builders', { exact: true }).first()).toBeVisible();
 
         // And it navigates, closing behind itself.
-        await drawer.getByRole('link', { name: 'Physics' }).click();
+        await drawer.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
