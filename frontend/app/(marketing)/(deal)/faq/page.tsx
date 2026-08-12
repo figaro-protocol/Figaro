@@ -259,7 +259,7 @@ export default function Faq() {
                     Multi-party processes resolve atomically &mdash; either every commitment in the process settles together or none of them does. Each seller is bonded against the cumulative value flowing through them, so a participant who fails to perform has their own bond at risk, and the participants downstream have material reason to coordinate before resolution. The phenomenon &mdash; peer pressure across co-sellers, emerging from bond architecture rather than from any platform&apos;s enforcement &mdash; is described as the protocol&apos;s social mechanism. It reproduces the joint-liability behavior of community-bound lending circles without requiring a shared community, repeated interaction, or exogenous punishment.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The caveat: if the process genuinely cannot complete &mdash; an upstream contributor disappears, no co-seller can take their place, the work is impossible &mdash; the buyer still holds the resolution key. Bonds stay locked until the buyer signs. The asymmetry is intentional: the party who initiated the process and is paying for it is the party who decides when it is finished.
+                    The caveat: if the process genuinely cannot complete &mdash; an upstream contributor disappears, no co-seller can take their place, the work is impossible &mdash; the buyer still holds the resolution key. Bonds stay locked until the buyer signs &mdash; why resolution is assigned that way, and what stalling costs the buyer, is derived on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>.
                 </p>
             </MarketingSection>
 

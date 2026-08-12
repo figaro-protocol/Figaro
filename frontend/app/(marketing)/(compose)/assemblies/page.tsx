@@ -40,7 +40,7 @@ export default function Assemblies() {
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. Somebody draws the shape once, and every seller who fits that shape can offer it without redoing the design work. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
                 </p>
             </MarketingSection>
 
@@ -79,8 +79,10 @@ export default function Assemblies() {
                     caller-chosen name exists to squat.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Registration is permissionless. The <strong>composition</strong> binding is
-                    first-write-wins and permanent &mdash; identical compositions collapse to
+                    Registration is permissionless and permanent once written, on the terms
+                    every registry here shares (<Link href="/faq#builders-registries" className="underline">what that
+                    protects, and what the deposit does</Link>). What is specific to the{" "}
+                    <strong>composition</strong> binding: identical compositions collapse to
                     one binding, and withdrawing the deposit de-surfaces the assembly without
                     clearing it. To change an assembly, register the changed composition: it
                     hashes differently, so it is a different assembly with a different derived

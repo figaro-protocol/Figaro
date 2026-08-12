@@ -24,7 +24,7 @@ export default function Data() {
 
             <MarketingSection title="What the chain keeps.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Settling a trade produces a fingerprint on-chain &mdash; a hash of the agreement, timestamped and permanent &mdash; never the agreement itself. The terms, the proof of delivery, the books each side kept: none of it is handed to the protocol to be secured, because none of it needs to be. The fingerprint is enough to prove, later, that a specific record matches a specific settled trade. It proves nothing about what the record says, and it was never meant to. See <Link href="/invariants" className="text-ink-heading font-medium hover:underline">physics</Link> for why a boundary this thin can hold an unbounded world honest.
+                    Settling a trade produces a fingerprint on-chain &mdash; a hash of the agreement, timestamped and permanent &mdash; never the agreement itself. What that buys is narrow, and worth being exact about: it proves that a specific record matches a specific settled trade, and proves nothing about what the record says. Why a boundary this thin can hold an unbounded world honest is on <Link href="/invariants" className="text-ink-heading font-medium hover:underline">Invariants</Link>.
                 </p>
             </MarketingSection>
 
@@ -54,7 +54,7 @@ export default function Data() {
 
             <MarketingSection title="Erasure, honestly." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
-                    What you publish, you can erase: unpinning stops your node serving it and lets the network garbage-collect it. But a fingerprint on-chain is permanent by design &mdash; the whole point is that nothing can be swapped in underneath it. Any copy another node already pinned before you unpinned is beyond your recall. Erasing your own record is real. Erasing everyone else&apos;s copy of it is not something anyone can promise, on Figaro or off it. The honest limits are stated in full on <Link href="/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
+                    What you publish, you can erase: unpinning stops your node serving it and lets the network garbage-collect it. Two things it cannot reach &mdash; a fingerprint on-chain, which is permanent by design, since the whole point is that nothing can be swapped in underneath it; and a copy another node already took before you unpinned. The honest limits are stated in full on <Link href="/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
                 </p>
             </MarketingSection>
         </>

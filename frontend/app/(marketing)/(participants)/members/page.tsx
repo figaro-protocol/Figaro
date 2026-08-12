@@ -63,7 +63,7 @@ export default function Join() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-10">
-                    Registering requires a reclaimable ETH deposit &mdash; to participate in the ecosystem. This is not a fee. The live deposit keeps you surfaced in the UI; you reclaim the exact amount when you leave, after a cooldown, and leaving de-lists you at once. Nobody can seize it, and nobody&apos;s permission is needed to reclaim it.
+                    Registering posts a reclaimable ETH deposit: it keeps you listed, you reclaim the exact amount when you leave, after a cooldown, and leaving de-lists you at once. Nobody can seize it, and nobody&apos;s permission is needed to reclaim it.
                 </p>
                 <p className="text-sm text-ink-muted mb-4">
                     Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, claim a released deposit.

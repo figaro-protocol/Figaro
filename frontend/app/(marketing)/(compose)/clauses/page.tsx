@@ -34,7 +34,7 @@ export default function Clauses() {
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed list-disc pl-5">
                     <li>One canonical JSON document: <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, and the <code>fields</code> the clause carries.</li>
                     <li>It passes the public well-formedness check &mdash; <code>parseClauseSpec</code> from <code>@figaro/sdk/clauses</code>, the same validator the registration form runs.</li>
-                    <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless, first-write-wins, permanent per <code>(name, version)</code> &mdash; staking a small reclaimable ETH deposit.</li>
+                    <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless, permanent per <code>(name, version)</code> &mdash; staking a small reclaimable ETH deposit (<Link href="/faq#builders-registries" className="underline">the registry terms in full</Link>).</li>
                     <li>Nothing else, ever: a clause is data, not code. No per-clause contract exists, and a registered clause is immediately usable in agreements and settleable.</li>
                 </ul>
             </MarketingSection>

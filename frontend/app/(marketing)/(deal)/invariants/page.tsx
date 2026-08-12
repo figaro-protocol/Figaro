@@ -7,121 +7,117 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Invariants — Figaro Protocol",
     description:
-        "The Figaro core is a small contract that obeys a few physical facts — nothing is kept, the deal only moves forward, the rule is local. Those facts are why its state can leave the chain, why anything can compose against it, and why trust moves from the platform in the middle to the boundary at the edge.",
+        "The six facts the Figaro core cannot violate — asymmetric bonding, cumulative bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches — each with what it means for you, and the four things that follow from them: what the chain holds, what couples to it, who may act, and where the meaning lives.",
 });
 
-export default function Physics() {
+// THE INVARIANTS PAGE — it states the six invariants named in CLAUDE.md
+// § "What Figaro Is", in the general-public register, and nothing else is
+// re-derived here: /kernel owns the mechanism derivation, /data owns the
+// records boundary, /agents owns actor-neutrality, /working-groups routes to
+// the formal case.
+//
+// CANONICAL, DO NOT RELOCATE: with /why, this page is the in-repo source of
+// the four boundary readings — HOLDS ("What the chain holds"), COUPLES
+// ("What couples to it"), ADMITS ("Who may act"), EMERGES ("Where the
+// meaning lives"). All four bind the KERNEL ONLY. They may be reorganized
+// under the invariant list; they may not move to another page.
+export default function Invariants() {
     return (
         <>
             <MarketingHero
-                title="Physics."
-                lead="Figaro started as a contract for buying safely from a stranger. It worked — and it could not scale, because it tried to hold the whole agreement itself. The fix was not more code. It was noticing that the core only has to obey a few physical facts, and everything else can leave. What is left is a primitive, not a platform — the thin, fixed layer trade is built on, the way the network is built on TCP/IP. This is Figaro read as structure: the shape of the thing itself, before any history."
+                title="Invariants."
+                lead="An invariant is a fact a contract cannot violate — not a policy someone chose, and not a promise anyone keeps. Figaro rests on six of them, and they are the whole of it: everything else the protocol does either follows from these six or is built on top of them by somebody else. This is Figaro read as structure — the shape of the thing itself, before any history."
             />
 
-            <MarketingSection title="Three facts, not three rules.">
+            <MarketingSection title="The six.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
-                    <p>
-                        People meet Figaro through three plain promises. Underneath, those aren&apos;t policies someone chose. They are what three physical facts of the contract feel like from the outside.
-                    </p>
-                    <ul className="space-y-3">
+                    <ol className="space-y-4 list-decimal pl-5">
                         <li>
-                            <strong className="text-ink-heading">Nothing is kept.</strong> Every token that goes in comes back out to one of the two parties. The contract never holds a balance of its own &mdash; no leak, no pool, no house. It is a closed system.
+                            <strong className="text-ink-heading">Asymmetric bonding.</strong> The buyer locks twice the payment; each seller locks twice the value the deal has accumulated at its own link. <em>What it means for you:</em> whatever the other side is thinking, honoring the deal leaves them better off than walking away from it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">The deal only moves forward.</strong> Value adds up; it never runs backward. A deal settles completely or not at all. There is no rewind.
+                            <strong className="text-ink-heading">Cumulative bonding.</strong> A seller&apos;s stake covers everything already added ahead of it, not just its own line. <em>What it means for you:</em> a deal with six hands in it is secured the same way a deal with one is &mdash; no coordinator, and nothing new to trust as the chain gets longer.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">The rule is local.</strong> The contract only ever looks at one handoff, between two parties, at a time. It never needs a map of the whole network to do its job.
-                        </li>
-                    </ul>
-                    <p>
-                        A contract built on physics instead of policy can&apos;t be argued with, paused, or quietly changed &mdash; because there is no one in the middle to do it. The three promises are the readable form of these three facts; the facts are the readable form of{" "}
-                        <Link href="#six-invariants" className="text-ink-heading font-medium hover:underline">
-                            six on-chain invariants
-                        </Link>{" "}
-                        underneath.
-                    </p>
-                </div>
-            </MarketingSection>
-
-            <MarketingSection title="The six, named.">
-                <div id="six-invariants" className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose scroll-mt-24">
-                    <p>
-                        &ldquo;Six on-chain invariants&rdquo; above is not a rhetorical number. Here they are, one line each:
-                    </p>
-                    <ol className="space-y-3 list-decimal pl-5">
-                        <li>
-                            <strong className="text-ink-heading">Asymmetric bonding.</strong> The buyer locks twice the payment; each seller locks twice the cumulative value at its link in the chain &mdash; each party&apos;s own stake, sized so honoring the deal always beats walking away.
+                            <strong className="text-ink-heading">Buyer dominance.</strong> Only the buyer can close a deal. Nobody can close it for them, and nothing closes it on its own. <em>What it means for you:</em> whatever was agreed gets met first, because nothing settles until the one paying says it is finished.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Cumulative bonding.</strong> Each seller&apos;s bond covers everything already committed before it, so a chain of many sellers scales into one continuous stake, not separate side bets.
+                            <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer closes, every order in the deal settles in one transaction, or none of them does. <em>What it means for you:</em> nobody is paid while somebody else is left hanging &mdash; so everyone bonded in has their own reason to help put a fault right before the close.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Buyer dominance.</strong> Only the buyer can trigger settlement &mdash; nothing else in the contract can move the deal forward.
+                            <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nothing can be swapped underneath the record afterwards, so a forum or a court reads what happened rather than reconstructing it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer resolves, every order in the process settles together, in one transaction, or none of them do.
-                        </li>
-                        <li>
-                            <strong className="text-ink-heading">Immutable evidence.</strong> Once evidence is bound to the signed agreement by its fingerprint, nothing can be swapped underneath it.
-                        </li>
-                        <li>
-                            <strong className="text-ink-heading">No escape hatches.</strong> No timeout, no admin key, no third party who can step in &mdash; commit and resolve are the only two moves the contract knows.
+                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the contract knows &mdash; no refund path, no timeout, no admin key, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a deal by anyone but the two parties to it, which is also why whatever is wrong gets put right before the close rather than argued about after it.
                         </li>
                     </ol>
+                    <p>
+                        They are facts, not rules: nothing in the contract can suspend one, because there is nothing in the contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived in ten minutes on{" "}
+                        <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
+                            Kernel
+                        </Link>
+                        , and at length in the{" "}
+                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
+                            papers
+                        </Link>
+                        . What follows here is the four things that fall out of the six.
+                    </p>
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="Why the state can leave.">
+            <MarketingSection title="What the chain holds.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Because the rule is local and nothing is kept, the chain doesn&apos;t need to hold your agreement &mdash; it only needs a <em>fingerprint</em> of it. The agreement itself, the terms, the proof that something was delivered &mdash; all of it lives outside the chain. The fingerprint does the securing. Change anything outside by a hair and the fingerprint stops matching, and the math throws it out.
+                        Almost nothing. Every token that goes in comes back out to one of the parties &mdash; the contract never holds a balance of its own, so there is no leak, no pool, and no house. And because each commitment only ever looks at one handoff between two parties, the chain never needs a map of the whole deal, or the deal itself. It needs a <em>fingerprint</em> of the agreement and nothing more.
                     </p>
                     <p>
-                        The fingerprint can&apos;t rebuild the agreement from itself, and it never tries to. It only <em>pins it down</em> &mdash; it makes exactly one version of the outside detail acceptable, so nothing can be swapped underneath it. That is enough. A contract that once had to carry everything became one that carries almost nothing &mdash; and gave up none of its security doing it. A small, fixed boundary holds an unbounded world honest. The longer version is in the{" "}
-                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
-                            papers
+                        The agreement, the terms, the proof that something was delivered &mdash; all of it lives outside the chain, pinned where its owner chooses. The fingerprint does the securing: it can&apos;t rebuild the agreement and never tries to, it just makes exactly one version of the outside detail acceptable. Change anything out there by a hair and it stops matching, and the math throws it out. A contract that once had to carry everything came to carry almost nothing, and gave up none of its security doing it. What that leaves in your hands &mdash; what stays sealed, and what you can sell &mdash; is on{" "}
+                        <Link href="/data" className="text-ink-heading font-medium hover:underline">
+                            Data
                         </Link>
                         .
                     </p>
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="The same move, for everything.">
+            <MarketingSection title="What couples to it.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        The chain only needs a fingerprint &mdash; and the agreement was just the first thing to leave it, not the last. Everything a deal touches can stay where it already lives and couple to the core through the same small boundary &mdash; in its own medium, never handed to Figaro to be secured.
+                        The agreement was the first thing to leave the chain, not the last. Everything a deal touches can stay where it already lives and couple to the core through the same small boundary &mdash; in its own medium, never handed to Figaro to be secured.
                     </p>
                     <ul className="space-y-3">
                         <li>
-                            <strong className="text-ink-heading">Your data stays yours.</strong> The documents, the photos, the records of what happened &mdash; they live in storage you control, not in a company&apos;s database. The chain holds only a fingerprint. Nothing has to be handed over to be made trustworthy.
+                            <strong className="text-ink-heading">Your data stays yours.</strong> The documents, the photos, the records of what happened &mdash; they live in storage you control, not in a company&apos;s database. Nothing has to be handed over to be made trustworthy.
                         </li>
                         <li>
                             <strong className="text-ink-heading">Your identity stays yours.</strong> A wallet is enough to act. A name, a reputation, a web address can attach to it &mdash; or not. Figaro issues none of it and can revoke none of it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">The work can be anyone &mdash; or anything.</strong> The core can&apos;t tell a person from a program. A signature is a signature, and it is the only thing the core reads. An ordinary web service, or an autonomous agent, takes a role in a deal on exactly the same terms a human does.
+                            <strong className="text-ink-heading">The work can be done by anyone &mdash; or anything.</strong> An ordinary web service, or an autonomous agent, takes a role in a deal on exactly the same terms a person does.
                         </li>
                         <li>
                             <strong className="text-ink-heading">The law that applies is named, not assumed.</strong> Which country&apos;s rules govern a deal is written into the agreement and settled in that forum, off-chain. The core takes no side; it just keeps the record a court can read.
                         </li>
                     </ul>
                     <p>
-                        Anything already on-chain composes too &mdash; a token, an item held in a wallet, another contract that prices or matches or settles. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. The core exposes one honest boundary, and the world composes against it. That openness was never something Figaro had to build &mdash; it is what having a boundary instead of a platform means.
+                        Anything already on-chain composes too &mdash; a token, an item held in a wallet, another contract that prices or matches or settles. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. That openness was never something Figaro had to build &mdash; it is what having a boundary instead of a platform means.
                     </p>
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="Why there is more than the core.">
+            <MarketingSection title="Who may act.">
+                <p className="text-base text-ink-body leading-relaxed max-w-prose">
+                    Nobody admits you. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing, because the core reads a signature and never asks what produced it. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Where the meaning lives.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        A law this small barely says anything on its own. You can&apos;t read a market off a single rule any more than you can read the weather off a single molecule &mdash; the behavior worth having only appears when many of them interact. The meaning of Figaro&apos;s core lives one level up: in the agreements people write on it, the roles they take, the multi-party processes they assemble.
+                        A law this small barely says anything on its own. What it means shows up one level up: in the agreements people write on it, the roles they take, the multi-party processes they assemble. That is why the rest of Figaro exists &mdash; not as decoration on the core, but as the only level at which the core <em>means</em> anything. The core is complete and, by itself, silent. You hear it in what gets built on it.
                     </p>
                     <p>
-                        That is why the rest of Figaro exists. Not as decoration on the core &mdash; as the only level at which the core <em>means</em> anything. The core is complete and, by itself, silent. You hear it in what gets built on it.
-                    </p>
-                    <p>
-                        And that is what the network&apos;s token funds &mdash; not the core, which runs itself, but the clauses, agreements, and assemblies built on it, and the authors the protocol{" "}
+                        And that is what the network&apos;s token funds &mdash; not the core, which runs itself, but the clauses and assemblies built on it, and the authors the protocol{" "}
                         <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
                             pays for the ones it comes to rely on
                         </Link>
@@ -133,29 +129,20 @@ export default function Physics() {
                 </div>
             </MarketingSection>
 
-            <MarketingSection title="Who gets to act.">
-                <p className="text-base text-ink-body leading-relaxed max-w-prose">
-                    No one governs, and the same boundary that settles that question settles who may act: anyone, or anything &mdash; a wallet to sign with and a bond to stake are all any actor needs, human or software. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
-                </p>
-            </MarketingSection>
-
             <MarketingSection title="A different place to put your trust." bottomPad="wide">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Step back and the whole shape is one idea. The internet we have asks you to trust the platform in the middle &mdash; the one that holds your data, your identity, your money, and promises to behave. You trust the keeper of the pile.
+                        Step back and the six are one idea. The internet we have asks you to trust the platform in the middle &mdash; the one that holds your data, your identity, your value, and promises to behave. You trust the keeper of the pile.
                     </p>
                     <p>
-                        This is the other arrangement. Trust sits in the boundary &mdash; a stake large enough that cheating loses, and a fingerprint nothing can be swapped underneath. The pile never moves; it stays with whoever owns it. Keeping your own data isn&apos;t a feature added on top &mdash; it falls out for free, because the chain only ever held a fingerprint of it in the first place.
+                        This is the other arrangement. Trust sits in the boundary: a stake large enough that cheating loses, and a fingerprint nothing can be swapped underneath. The pile never moves; it stays with whoever owns it. What is left is a thin, fixed layer that everything composes against and no one owns &mdash; the way the network runs on TCP/IP. Not a new internet bolted over the old one. The same internet, with trust moved from the keeper in the middle to the boundary at the edge.
                     </p>
                     <p>
-                        What is left is a thin, fixed layer that everything composes against and no one owns &mdash; the way the network runs on TCP/IP. Not a new internet bolted over the old one. The same internet, with trust moved from the keeper in the middle to the boundary at the edge.
-                    </p>
-                    <p>
-                        This is the structural reading. There is also a historical one: this is the third era of rule-making &mdash; after force, after belief &mdash; and{" "}
+                        That is the structural reading. The historical one &mdash; why a rule like this arrives now, after force and after belief &mdash; is on{" "}
                         <Link href="/why" className="text-ink-heading font-medium hover:underline">
-                            why it arrives now
-                        </Link>{" "}
-                        is its own story.
+                            Why
+                        </Link>
+                        .
                     </p>
                 </div>
             </MarketingSection>
