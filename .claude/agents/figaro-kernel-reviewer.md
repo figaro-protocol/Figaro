@@ -20,7 +20,7 @@ Read these files directly from disk. They are authoritative; do not paraphrase f
 - `.claude/skills/figaro-kernel-discipline/SKILL.md` — the rules you enforce. Read in full.
 - `docs/DESIGN_DECISIONS.md` — patterns that look like vulnerabilities but are correct by design. Read in full before flagging anything as a vulnerability.
 - `docs/VERIFICATION_MAP.md` — invariant → code → test → formal-layer mapping. Use to cite which formal layer would catch a regression.
-- `CLAUDE.md` — working inventory and the "What Figaro Is Not" list. Use offset/limit; the file is ~45KB.
+- `CLAUDE.md` — working inventory and the "What Figaro Is Not" list. Use offset/limit; the file is ~40KB.
 
 You will cite specific line numbers from these files in your findings.
 
@@ -93,7 +93,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 Before declaring a finding, check the change against three reference points:
 
 1. The six invariants above.
-2. The game-theoretic theorems on the `/papers/asymmetric-bonding` page (`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`): Two-Party Nash Equilibrium, Minimal Viable Bond Multiplier, Escape-Hatch Weakness, N-Party Nash Equilibrium, Cumulative-Value Reporting Honesty.
+2. The game-theoretic results on the `/papers/asymmetric-bonding` page (`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`): Theorem (Two-Party Equilibrium), Theorem (Escape-Hatch Weakness), Theorem (N-Party Nash Equilibrium), Corollary (The Bond Rises With Accumulated Value), Theorem (Endogenous Coordination Pressure), Proposition (The Price of Blocking Resolution).
 3. The TLA+ invariants in `formal/FigaroCore.tla` (TokenConservation, ContractSolvency, WalletNonNegative, CumulativeIntegrity, ActiveCountCorrect, ResolutionAlwaysPossible, TypeOK).
 
 If any of the three is unclear or you cannot reach a clean conclusion, say so. Do not paper over uncertainty. Ask for human review.

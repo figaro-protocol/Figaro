@@ -68,7 +68,7 @@ Audit the input for these recurring patterns:
 2. **Tangling** — marketing copy on `(app)/` surfaces; `(app)/` catalogues (clauses, mechanisms, assemblies) on marketing pages; merging audiences the project has separated (readers + contributors on one page).
 3. **Decorative claims** — "the paradigm-shift bridge", "the foundations index", "the canonical Zargham-aware index". Every claim must trace to a theorem, proposition, or spec. Cut the rest.
 4. **CTA stacking** — more than one CTA per page; per-discipline CTAs instead of one site-wide CTA.
-5. **Catalogue-on-marketing** — listing 18 clauses, the Dutch auction, or the 5 reference assemblies on a marketing page. Marketing communicates; it does not catalogue. The catalogue lives on `(app)/`.
+5. **Catalogue-on-marketing** — listing every clause, the Dutch auction, or the reference assemblies on a marketing page (counts are derived, never stored — `ls clauses/*.json | wc -l`, `ls assemblies/*.json | wc -l`). Marketing communicates; it does not catalogue. The catalogue lives on `(app)/`.
 6. **Web2 vocabulary** — "remove the middleman", "kill X", "the Uber of …", "platform", "DeFi", "TradFi", "yield", "liquidity", "users" (vs "participants" / "readers" / "contributors"), "value prop", "go-to-market", "funnel", "segment routing".
 7. **Per-paper companion pages** — proposals that add a page summarizing a paper. The PDF is the depth. Companion pages are forbidden.
 8. **Vertical-stack page shape** — long single-page scroll with hero / sections / CTA. Figaro marketing is many short single-concept pages.
@@ -85,7 +85,7 @@ The most repeated reasoning failure on this project is firing a tier-scoped law 
 
 1. **List every doctrine the input cites** as grounds for an objection, finding, or "this breaks X" claim — `ADMITS` / "anyone who can sign and bond participates", no-escape-hatches, "no admin/owner", "role is derived never stored", "no gatekeeping", the 2× ratio, "meaning lives in clauses".
 2. **For each, name the tier it binds.** `CLAUDE.md` § "Common Misframings" tags each line with its tier; the spine limbs (HOLDS/COUPLES/EMERGES/ADMITS) bind the **kernel only**.
-3. **Name the tier of the artifact it is being fired at.** Look it up in the `LEXICON.md` grid — columns `core / kernel` · `registry / protocol` · `frontend / runtime`. Do not infer it from the artifact's name or from how "protocol-ish" it sounds. The grid places `ClauseRegistry`, `MembersRegistry`, and `AssemblyRegistry` at the **protocol** tier.
+3. **Name the tier of the artifact it is being fired at.** Look it up in the `LEXICON.md` grid — columns `core / kernel` · `registry / protocol` · `frontend / runtime`. Do not infer it from the artifact's name or from how "protocol-ish" it sounds. `CLAUDE.md` § "Three-Tier Naming" states it directly: all three on-chain anchors (`ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`) are **protocol** tier.
 4. **Mismatch ⇒ BLOCKER (pattern 11).** A kernel law cited against a protocol- or runtime-tier artifact is Folding. The fix text is: "strike the objection — <law> binds the kernel; <artifact> is <tier> tier per `LEXICON.md`, and that tier is permitted to be defined."
 5. **If the input cannot name a tier, that is itself the BLOCKER.** "Verify the tier before objecting."
 

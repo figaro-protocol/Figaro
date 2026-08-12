@@ -12,7 +12,7 @@ import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 export const metadata: Metadata = withOg({
     title: "RPGF — Figaro Protocol",
     description:
-        "600 million florins reserved for the people who write the clauses and compose the assemblies that grow the network's usage, paid by a published formula anyone can check — the schedule, the two counters, the three-seller floor, the live-deposit condition.",
+        "600 million florins reserved for whoever writes the clauses and composes the assemblies that grow the network's usage, paid by a published formula anyone can check — the schedule, the two counters, the three-seller floor, the live-deposit condition.",
 });
 
 export default function Rpgf() {
@@ -22,7 +22,7 @@ export default function Rpgf() {
                 title="Retroactive public goods funding."
                 lead={
                     <>
-                        600 million florins &mdash; sixty percent of all that will ever exist &mdash; reserved for the people who write the clauses and compose the assemblies that grow the network&apos;s usage, by a published formula anyone can check.
+                        600 million florins &mdash; sixty percent of all that will ever exist &mdash; reserved for whoever writes the clauses and composes the assemblies that grow the network&apos;s usage, by a published formula anyone can check.
                     </>
                 }
             />

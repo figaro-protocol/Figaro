@@ -34,7 +34,8 @@ requires the repo, the surface is wrong — fix the surface or flag the gap.
 - `docs/LEXICON.md` — one canonical name per tier; qualify, never mint.
 - The owning inventories for whatever you touch: `docs/CLAUSES.md` (clause
   architecture), `docs/CONTRACTS.md` (incl. § "Teardown state — CLOSED" and its
-  two-tense rule — present-state pages state merkle-only reality),
+  reading rule — present-state surfaces state the apparatus AS BUILT; only
+  DEPLOYMENT stays two-tense: no public network deployment exists yet),
   `sdk/README.md` (entry-point map).
 - The probe's protected list (recipe memory, run-2 note): the SDK `.d.ts` doc
   comments, `ecosystem-agents/*.md`, and the README publish recipe CARRIED the
@@ -49,9 +50,14 @@ requires the repo, the surface is wrong — fix the surface or flag the gap.
 - **Claim-traceability**: registry mechanics trace to the Solidity source;
   SDK claims trace to the shipped dist; never quote a deposit or gas figure as
   if it were mainnet-stable when it is a deploy-time parameter.
-- **Two enforcement layers, honestly**: off-chain Layer-A validation is the
-  only content check today; the chain anchors + merkle-binds. The
-  validator/prover rebuild is deferred — present-state pages say what IS.
+- **Two settlement paths, honestly**: on the DIRECT path, off-chain Layer-A
+  validation is the content check — the chain anchors + merkle-binds but
+  validates no content shape. On the BATCHED path, in-proof content validation
+  is LIVE: the witness-based prover validates against the registered spec and
+  `FigaroBatchVerifier` settles only if its hash matches
+  `ClauseRegistry.contentHashOf`. Nothing remains deferred
+  (`docs/CONTRACTS.md` § "Teardown state — CLOSED" owns this) —
+  present-state pages say what IS.
 - **Audience boundary**: if a sentence explains what Figaro means for society,
   it belongs to `figaro-marketing-copy`; if it proves a theorem, to
   `figaro-papers-editor`. Hand it off rather than absorbing it.

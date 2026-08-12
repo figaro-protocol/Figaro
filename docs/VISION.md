@@ -573,20 +573,35 @@ Imagine you want to buy something for $10:
    guarantee that they'll deliver what they promised.
 3. **Now there's $40 locked up, and neither of you can touch it.**
 
-If the deal goes through, the lockbox opens: you get your $10 guarantee
+Only you can open the lockbox, and nobody is paid until it opens. When
+the deal goes through, everything comes home: you get your $10 guarantee
 back, the seller gets their $20 guarantee back plus the $10 payment.
-If either of you tries to cheat, **both of you lose everything in the
-lockbox**. The cheater loses their deposit, but so does the victim. That sounds
-harsh, but it's the whole point: cheating always costs you more than
-just playing fair.
 
-It's like mutually assured destruction, but for online shopping.
+That arrangement makes playing fair the better move for both of you.
+Walking off with your $10 without delivering would cost the seller the
+$20 they put in — a deliberate loss, and a bigger one than simply doing
+the job and getting paid for it. Taking the goods and never opening the
+box would cost you your whole $20 to avoid paying $10 for something you
+already have. Neither of you gets anywhere by cheating, which is why, in
+practice, neither of you does.
 
-**Why 2×?** At 1×, the seller could cheat and break even (lose deposit,
-keep what they stole). At 2×, cheating always means a net loss. 3×
-would work too, but it's wasted capital for no extra deterrent.
+It's like mutually assured destruction, but for online shopping — the
+threat is what makes it unnecessary.
 
-### There are no companies — only people doing work
+So the case worth thinking about isn't cheating; it's the ordinary one.
+The order is late. The burger is wrong. Something is missing. The
+lockbox hasn't opened yet, and it opens only when you say so — the
+seller's own $20 is sitting there waiting on your word. Their winning
+move is to put it right: remake it, redeliver it, make good. Then the
+deal closes the way it was always going to, and every deposit goes back
+where it came from.
+
+**Why twice the value?** Because at double, there is no amount that is
+clever to steal: whatever a cheater walks away with, they left more than
+that behind in the box. The ratio is part of the protocol's physics —
+fixed, the same for every deal, not a dial anyone tunes.
+
+### There are no companies — only whoever does the work, person or software
 
 Think about ordering a burger. In the current world, you think you're
 buying from "Joe's Burger Joint." But under that name, there's a cook
@@ -594,7 +609,7 @@ making the burger, an ingredient sourcer, a kitchen seller, a driver,
 and a platform like DoorDash sitting on top taking a cut.
 
 In Figaro, "Joe's Burger Joint" doesn't exist as one thing. There's a
-**process** of individual people, each doing their part:
+**process** of individual participants, each doing their part:
 
 ```
 You (buyer)
@@ -604,15 +619,20 @@ You (buyer)
  └─ Driver (delivers it, bonds $W)
 ```
 
-Each person locks their own deposit. Each person gets paid directly for
-the value they added. And if any one person in the process screws up,
-**the whole process fails and everyone loses their deposits**. So every
-person in the process is motivated to make sure every other person does
-their job — group-project peer pressure with real value on the line.
+Each one locks their own deposit. Each one gets paid directly for the
+value they added. And nobody is paid until you say the whole thing is
+done: it closes as one deal or not at all. So everyone in the process
+has their own stake riding on every other part of it. If the tomatoes
+never showed or the driver goes missing, the rest of them have a real
+reason to help get it put right before the deal closes — group-project
+peer pressure with real value on the line. Once it's put right, the deal
+closes, each one is paid for what they added, and every deposit goes
+back where it came from.
 
 This same pattern works for rides, repairs, international shipments,
-freelance work — any deal between people. Lock a deposit, do the work, get
-paid. No leap of faith needed.
+freelance work — any deal between strangers, whether the one on the other
+end is a person or a piece of software working for one. Lock a deposit, do
+the work, get paid. No leap of faith needed.
 
 ### What everyone can see (and what they can't)
 

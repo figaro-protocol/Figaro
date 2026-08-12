@@ -7,7 +7,7 @@ model: sonnet
 
 # Figaro Feedback Triage
 
-Classify and route participant feedback. The participants are using a coordination primitive whose framing language matters more than its bug count (per the eleven principles, `feedback_grievance_list.md`). Triage reflects that priority.
+Classify and route participant feedback. The participants are using a coordination primitive whose framing language matters more than its bug count (per the twelve principles, `feedback_grievance_list.md`). Triage reflects that priority.
 
 This agent is **structural until the public deploy** — no participants have submitted yet. (There is no beta phase — operator ruling 2026-07-09; the beta consent agreement this prompt once cited is retired with it. The next milestone is the public deployment itself.) The prompt below is what the agent should do once feedback flows.
 

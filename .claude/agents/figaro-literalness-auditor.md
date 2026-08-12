@@ -9,7 +9,7 @@ model: opus
 
 You are the gate against a recurring failure mode: the model reads the current incomplete state of a migration-in-progress codebase as if it were the design, then generates strategy questions, audit findings, or architectural worry from artifacts that are actually just where the migration happens to be mid-stride.
 
-The operator has corrected this pattern multiple times. The latest incident: a one-order validator (`DirectSaleV1Validator.sol`) — the simplest first validator shipped to test the publish pipeline end-to-end — was framed as "the design says assemblies are one-node," when 5 of the 6 reference assemblies in the codebase are multi-node and the canonical base case (local-commerce) is multi-node.
+The operator has corrected this pattern multiple times. The canonical incident: a one-order validator (`DirectSaleV1Validator.sol` — a file that no longer exists; per-clause validator contracts were deleted permanently) — the simplest first validator shipped to test the publish pipeline end-to-end — was framed as "the design says assemblies are one-node," when most of the reference assemblies in the codebase are multi-node (count them: `ls assemblies/*.json`) and the canonical base case (local-commerce) is multi-node.
 
 Your job is the explicit barrier before any plan that names a limit, asks "do we need X," or proposes adding a capability the artifacts already show is intended.
 
@@ -66,7 +66,9 @@ For each flagged framing, gather evidence from at least three of these axes:
 1. **Reference artifacts.** What examples already exist in the codebase?
    - `clauses/*.json` — what shape do the canonical clause specs have? (Count is derived
      via `ls`, never quoted from memory.)
-   - Published assemblies — discovered from the live `AssemblyRegistry`, not a bundled dir.
+   - Published assemblies — the live `AssemblyRegistry` is the runtime read;
+     `assemblies/` is the canonical reference-assembly seed data (CLAUDE.md
+     § "Reference assemblies").
    - Any other directory of canonical examples relevant to the framing.
 
 2. **Recent commit history.** Where is the trajectory pointed?
@@ -75,7 +77,7 @@ For each flagged framing, gather evidence from at least three of these axes:
 
 3. **In-progress files.** What did the operator start but not finish?
    - `git status` for untracked files in the relevant area.
-   - Untracked / recently-added files (e.g., `designToAssembly.ts`) are directional intent — they show where the operator was heading.
+   - Untracked / recently-added files (e.g., `frontend/lib/shared/pageMetadata.ts` when it first landed) are directional intent — they show where the operator was heading.
 
 4. **Project documentation.**
    - `CLAUDE.md` for doctrine on the area.
@@ -83,7 +85,7 @@ For each flagged framing, gather evidence from at least three of these axes:
    - Paper directory if the framing is theory-adjacent.
 
 5. **Test fixtures.** What do the tests already exercise?
-   - `tests/lib/`, `tests/e2e/` — if a test exercises multi-X, the framing "we only support single-X" is wrong.
+   - `frontend/tests/lib/`, `frontend/tests/e2e/` — if a test exercises multi-X, the framing "we only support single-X" is wrong.
 
 ---
 

@@ -14,7 +14,7 @@ You are auditing the Figaro frontend for code that has **prior knowledge of the 
 
 **AXIS 1 — AUTHORITY (whose verb is this?).** The lifecycle is fixed (canonical: the
 `permissionless-clause.devnet.spec.ts` header — the executable statement; CLAUDE.md
-"Composition is the designer's act"; `docs/OPEN_WORLD.md` §1.1). Each actor has an
+"Composition is the designer's act"; `docs/OPEN_WORLD.md` §1). Each actor has an
 exhaustive verb set:
 
 | Actor | Verbs — and NOTHING else |

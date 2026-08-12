@@ -35,7 +35,7 @@ These are the constraints the project's framing imposes on IA decisions. Differe
 | Principle | Why |
 |---|---|
 | **Publication, not product** | No funnel. No "Get started" CTA at the top of the homepage. Reading paths, not conversion paths. Per `CLAUDE.md` § "Read this first". |
-| **Curriculum, not catalog** | Visitors don't know what to read first. The homepage's primary job is to surface a reading order, not to list all destinations. The `/research` and `/publications` pages should anchor a path. |
+| **Curriculum, not catalog** | Visitors don't know what to read first. The homepage's primary job is to surface a reading order, not to list all destinations. The `(research)` route-group pages (`/why`, `/consequences`, `/working-groups` — `(research)` is a route group, not a URL segment) should anchor a path. |
 | **Zargham 8-discipline organization** | Papers organize by Voshmgir & Zargham, *Foundations of Cryptoeconomic Systems* (8 disciplines). The canonical taxonomy + paper→discipline mapping is `frontend/app/(marketing)/_lib/paperGroups.ts` — DERIVE the current mapping from it every run; never quote a remembered route list (the old per-discipline routes were consolidated and now 308-redirect). New papers join the group catalogue, not a new top-level route. |
 | **Many short horizontal pages, not long vertical scrolls** | Figaro is a paradigm shift; long vertical pages overwhelm readers and force massive repetition. Default to many short single-concept pages with lateral navigation between them. The hero → "what this means" → mechanism → boundary → "what this is not" → PDF-download vertical template is the web2 default and is wrong by default. When recommending IA, prefer lateral nav primitives (tabs, prev/next, card grids) over scroll-deep pages. |
 | **Tier-respecting navigation** | Marketing pages live under `(marketing)/`; transactional surfaces under `(app)/`. The route-group split is structural — don't merge them in nav. Per `frontend/app/(app)/layout.tsx` (wagmi-loaded) vs `frontend/app/(marketing)/layout.tsx` (no wagmi). |
@@ -67,10 +67,10 @@ For each finding, propose a change and rank by impact:
 
 | Impact | Type | Action |
 |---|---|---|
-| **HIGH** | Reading path absent | Recommend a curriculum surface (homepage section, dedicated `/start` page, or promoted `/research` as canonical entry). |
-| **HIGH** | Transactional surfaces mutually unaware | Recommend specific cross-links between the live `(app)` surfaces (`ls "frontend/app/(app)/"` — currently includes `/discover`, `/orders`, `/sign`, `/audit`, `/sellers`, `/rewards`, `/settings`; derive the current set, never quote a remembered list). |
+| **HIGH** | Reading path absent | Recommend a curriculum surface (homepage section, dedicated `/start` page, or a promoted `(research)`-group page such as `/why` as canonical entry). |
+| **HIGH** | Transactional surfaces mutually unaware | Recommend specific cross-links between the live `(app)` surfaces (derive the set: `find frontend/app/'(app)' -name page.tsx` — never quote a remembered list). |
 | **MED** | Page-purpose overlap | Recommend consolidation OR explicit purpose differentiation in copy headers. |
-| **MED** | Missing breadcrumbs on depth ≥ 2 | Recommend a `<Breadcrumb>` primitive (defer the visual implementation to `figaro-visual-design`). |
+| **MED** | Missing breadcrumbs on depth ≥ 2 | The `<Breadcrumb>` primitive is shipped (`frontend/components/shared/Breadcrumb.tsx`) — recommend wiring it on routes that lack it (defer visual changes to `figaro-visual-design`). |
 | **LOW** | Mobile nav misses footer links | Recommend mobile-specific nav surface or a hamburger drawer. |
 
 Do not propose visual designs. Do not write copy. Recommend the *structure*; defer copy to `figaro-marketing-copy` and visuals to `figaro-visual-design`.
@@ -86,8 +86,8 @@ Propose a default reading path. Each step is 1 page. The path should:
 1. Frame what Figaro is (1 page — likely the homepage).
 2. Explain the mechanism in plain words (1 page — `/invariants` or `/why`).
 3. Surface a worked example (1 page — `/local-commerce` or similar use-case page).
-4. Show the math is real (1 page — `/papers`).
-5. Surface what to do next (1 page — `/builders`).
+4. Show the math is real (1 page — `/working-groups`, which IS the corpus index; a `/papers` index route is permanently declined — the corpus is unbounded, operator-ruled 2026-08-12).
+5. Surface what to do next (1 page — `/clauses` or `/spec`).
 (Verify each against the live tree before recommending — routes consolidate over time.)
 
 Five pages, in order. The path should be visible on every marketing page (e.g., a footer "What to read next: [N] of 5"). Not as a funnel — as a curriculum.

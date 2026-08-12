@@ -52,7 +52,7 @@ Output: 1–3 React components plus tests. No new routes.
 
 A new assembly (e.g., a TradeLens replacement) typically needs:
 
-1. **Per-role landing page** — `frontend/app/(app)/<assembly-slug>/page.tsx` showing the role-filtered process list, recent activity, and quick actions.
+1. **Extension of the real assembly surfaces** — there is NO per-assembly route, and adding one is forbidden by the URL-depth rule (`docs/FRONTEND.md` § "URL-depth rule"). The surfaces are: the assemblies concept page (`frontend/app/(marketing)/(compose)/assemblies/page.tsx`), the designer tool (`frontend/app/(tools)/assemblies/designer/` — landing/new/edit/view), and the runtime order view (`frontend/app/(app)/orders/view/`). Assembly UI work extends these.
 2. **Process-detail enrichment** — assembly-specific clause displays in the existing process-detail view (extending existing surfaces, not parallel ones).
 3. Optionally a marketing surface in `(marketing)/` describing what the assembly is.
 
@@ -88,7 +88,7 @@ You may NOT write to:
 
 - `src/` (Solidity) — clause-author's domain
 - `sdk/` — protocol SDK, clause-author's domain
-- `agents/` — agent infrastructure
+- `ecosystem-agents/` (the PUBLIC ecosystem agent prompts) and `.claude/agents/` (the OPERATOR-PRIVATE charters) — agent infrastructure in either world
 - `frontend/lib/handoff/`, `lib/audit/`, `lib/kernel/`, `lib/protocol/`, `lib/shared/` without explicit instruction
 - `archive-v4/archive-frontend/` — never
 
@@ -107,7 +107,7 @@ When writing clause UI:
 
 When writing assembly UI:
 
-- Per-role pages should filter the existing `ProcessList` by role membership; do not write new state-reconstruction logic.
+- Role-filtered views should filter the existing `OrdersList` (`frontend/app/(app)/orders/_components/OrdersList.tsx`) by role membership; do not write new state-reconstruction logic.
 - Process-detail enrichment goes through the lens system; do not bypass it.
 - Marketing surfaces (`app/(marketing)/`) MUST NOT load wagmi — that's the entire point of the route-group split.
 

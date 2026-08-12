@@ -5,7 +5,7 @@ import { OnboardingAgentsForm } from "@/components/members/OnboardingAgentsForm"
 
 export const metadata: Metadata = withOg({
     title: "Agent endpoints — Seller onboarding",
-    description: "Optional ERC-8004-compatible service endpoints for wallets driven by autonomous agents. Skip if your wallet is human-driven.",
+    description: "Optional ERC-8004-compatible service endpoints — where other members route offers and calls to this wallet. Skip it and the wallet is simply unreachable for inbound coordination; nothing else changes.",
 });
 
 export default function OnboardingAgentsPage() {
@@ -15,7 +15,7 @@ export default function OnboardingAgentsPage() {
             title="Agent endpoints"
             description={
                 <p>
-                    Optional. ERC-8004-compatible service endpoints for wallets driven by autonomous agents. Skip if your wallet is human-driven.
+                    Optional. ERC-8004-compatible service endpoints &mdash; where other members route offers and calls to this wallet. Endpoints declare reachability, not what runs the wallet: skip them and the wallet is simply unreachable for inbound coordination; nothing else changes.
                 </p>
             }
         >

@@ -20,10 +20,11 @@ Read first: `docs/CLAUSES.md` (owns the clause table + adding-a-clause checklist
 |---|---|---|---|
 | 1 | **Canonical spec JSON** | `clauses/<id>.json` — `ls clauses/*.json` IS the clause list | every clause |
 | 2 | **Generic Layer A round-trip** | `sdk/src/clauses/` — the spec must PARSE (`parseClauseSpec`) and its fields round-trip through `validateContent` + `encodeContentFromSpec`. There is NO per-clause TS code — finding any would itself be drift | every clause (encoder n/a for agreement-only) |
-| 3 | **Registry seeding** | the deploy path (`frontend/scripts/populate-clauses.mjs` / `deploy-local.sh`) registers the id with `ClauseRegistry` | every clause |
+| 3 | **Registry seeding** | the deploy path (`frontend/scripts/populate-clauses.mjs` / `scripts/deploy-local.sh` — the latter at repo root, not under `frontend/`) registers the id with `ClauseRegistry` | every clause |
 | 4 | **User-facing prose** | `grep -rl "<id>" frontend/app/` — the inventory pages (`/clauses`) render from the live registry automatically; only PROSE mentions can drift | check on rename/remove |
 | 5 | **On-chain validator** | does not exist, permanently — the generic in-proof engine replaced per-clause validators | demanding one IS drift |
 | 6 | **Rust prover mirror** | LIVE (`prover/clause`) — generic; specs are witness inputs | per-clause Rust code would BE drift |
+| 7 | **Merkle-leaf law** | `docs/CLAUSES.md` § "Every clause is a merkle leaf" (ruled 2026-08-11) — a clause's leaf-committed terms and their execution mirrors move together | every clause |
 
 Agreement-only vs runtime-attestable is a real categorization: `figaro-topology` is the
 canonical agreement-only clause (spec, no runtime attestation, no encoded content —
@@ -35,7 +36,7 @@ verified via merkle inclusion instead). Discover the category from the spec; don
    checked relative to it.
 2. **Per clause**: parse the spec via the SDK; check the id is BARE (a `-v1`/`-v2` suffix
    in the id is drift — `version` is a static hashed field, not part of the name); check
-   `block.article` present (drawer grouping); confirm the seed path registers the id;
+   `block.design.article` present (drawer grouping); confirm the seed path registers the id;
    grep `frontend/app/` for prose mentions when the clause changed or was renamed.
 3. **On a diff**: check the SYMMETRY of the change — a clause change that touches only
    one surface is almost always wrong. Spec edited but seed untouched? Renamed in

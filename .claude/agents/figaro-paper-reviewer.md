@@ -44,7 +44,7 @@ Walk the paper. Surface every claim that touches code. Categories to look for:
 | **Clause claim** | "N runtime-attestable clauses" | Derive from `ls clauses/*.json` (all runtime-attestable except `figaro-topology`) — never a stored count |
 | **Mechanism claim** | "Kernel runs two mechanisms: asymmetric bonding + buyer dominance" | Verify against the actual mechanism implementation |
 | **Anti-pattern claim** | "No admin, no escape hatch" | Verify by grep — no admin functions, no upgradeability |
-| **Token allocation** | "10% founder, 30% DAO, 60% RPGF" | Match against `docs/FLORIN_TOKEN.md` + `src/florin/FlorinToken.sol`. The RPGF reserve HAS a wired minter: `src/rpgf/RpgfMinter.sol` over `src/protocol/usage/UsageCounter.sol`, registered at florin genesis, three RISING tranches (15% over years 1–2, 30% over years 3–5, 55% over years 6–9, ruled 2026-07-31) paid pro rata from closed accrual periods. Nothing posted, bonded, or arbitrated — flag "optimistic"/"challenge window"/"deferred" as stale |
+| **Token allocation** | "7% founders (70M) + 3% supporters (30M), 30% DAO, 60% RPGF" | Match against `docs/FLORIN_TOKEN.md` + `src/florin/FlorinToken.sol`. The RPGF reserve HAS a wired minter: `src/rpgf/RpgfMinter.sol` over `src/protocol/usage/UsageCounter.sol`, registered at florin genesis, three RISING tranches (15% over years 1–2, 30% over years 3–5, 55% over years 6–9, ruled 2026-07-31) paid pro rata from closed accrual periods. Nothing posted, bonded, or arbitrated — flag "optimistic"/"challenge window"/"deferred" as stale |
 | **Numerical bound** | "MAX_SUPPLY = 1B florins" | Match against the constant |
 
 Don't try to verify every adjective. Verify every *quantitative* or *named* claim.
@@ -65,7 +65,7 @@ Where the claim is a theorem reference, check both that the theorem exists on th
 
 ## Step 4 — Process semantics and asymmetric bonding (multi-edge claims)
 
-When a paper presents bond-posture for a multi-edge assembly (a process DAG, a worked example, a stylized chain or fan-out), apply these checks **before** declaring any per-edge bond formula "verified":
+When a paper presents bond-posture for a multi-edge assembly (a multi-order design, a worked example, a stylized chain or fan-out — the kernel sees a LINEAR chain; design-time shape lives off-chain), apply these checks **before** declaring any per-edge bond formula "verified":
 
 **ONE process, ONE rootBuyer, ONE monotonic G accumulator, BUYER = rootBuyer in every order.** A process in `src/kernel/FigaroCore.sol` has a single `rootBuyer` set in `commit`'s process-initialization branch (the first commit for a `processId`). Every subsequent commit in the same process is checked in `commit`'s buyer gate:
 
@@ -83,7 +83,7 @@ Verify in any multi-edge claim:
 
 Process-internal G accumulation is monotonic: `G_new = G_prev + P_sub` (`commit`'s `cumulativeValue` update on subsequent commits). The first commit has `G = P_root` (`commit`'s process-initialization branch sets `cumulativeValue: c.payment`). Subsequent commits increment.
 
-**Asymmetric bonding scaling.** The whole point of the asymmetric-bonding result (the N-Party Nash Equilibrium theorem and its "Coordination Pressure Grows With Depth" corollary on the `/papers/asymmetric-bonding` page) is that seller bonds GROW as G accumulates along the chain. The kernel pulls `2 × G_at_commit_time` from each seller; G has grown since the previous commit; therefore the seller bonds asymmetrically more than the buyer at the same edge (buyer still bonds only 2P_sub for that edge). Verify:
+**Asymmetric bonding scaling.** The whole point of the asymmetric-bonding result (the N-Party Nash Equilibrium theorem and its "The Bond Rises With Accumulated Value" corollary on the `/papers/asymmetric-bonding` page (the page explicitly does NOT claim the risk-to-reward ratio rises along the chain — a paper asserting "pressure grows with depth" is drift)) is that seller bonds GROW as G accumulates along the chain. The kernel pulls `2 × G_at_commit_time` from each seller; G has grown since the previous commit; therefore the seller bonds asymmetrically more than the buyer at the same edge (buyer still bonds only 2P_sub for that edge). Verify:
 - Does the paper show G accumulating across sub-orders, or does it (silently) reset G to P at each sub-edge?
 - Are seller bonds for sub-orders shown as `2 × cumulative_G` (correct) or as `2 × P_sub` (WRONG — that's symmetric bonding repeated, the "fresh-root-per-sub-edge" anti-pattern)?
 - Does the LAST seller to commit post the BIGGEST bond? (If not, G is not being treated as monotonic.)
@@ -96,7 +96,7 @@ Process-internal G accumulation is monotonic: `G_new = G_prev + P_sub` (`commit`
 
 If the paper exhibits this anti-pattern, mark the multi-edge claim as ⚠ DRIFT regardless of whether each per-edge formula is locally correct. Cite the N-Party Nash Equilibrium theorem on the `/papers/asymmetric-bonding` page and the asymmetric-bonding rule in `src/kernel/FigaroCore.sol` commit logic. Recommend the paper restructure the bond-posture presentation to show G monotonically growing across sequential commits.
 
-**The "many root orders" anti-pattern.** Closely related: the paper treats the assembly as N independent commitments that happen to share the same buyer, rather than as one process DAG under one rootBuyer. Symptoms:
+**The "many root orders" anti-pattern.** Closely related: the paper treats the assembly as N independent commitments that happen to share the same buyer, rather than as one process (a star around one rootBuyer; the kernel sees a linear commit sequence). Symptoms:
 - "Passenger commits separately to each resource provider" without a single rootBuyer→rootSeller commitment binding them.
 - Each commitment presented as having its own G_root = its own P (instead of one G shared across the process).
 - No coordinator party at the root, but atomic resolution still claimed across the parties.
