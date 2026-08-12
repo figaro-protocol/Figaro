@@ -14,7 +14,9 @@
  */
 
 import type { WalletClient, PublicClient } from "viem";
+import { keccak256 } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abis.js";
+import { validateContent, encodeContentFromSpec, type ClauseSpec } from "../clauses/index.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import { buildSectionInclusionProof, sectionDataHash, type Agreement } from "../agreement.js";
@@ -192,6 +194,33 @@ export async function recordProcessUsage(
         }
     }
     return report;
+}
+
+/**
+ * The headless attestation PREFLIGHT — the same Layer-A gate the frontend's
+ * capability rail runs before every attestation it files: validate the values
+ * against the clause spec (witness stages via `{ stage }`, ladder events as
+ * plain content), encode canonically, and derive the content fingerprint. The
+ * direct path validates NO content shape on chain by design, so a headless
+ * agent that skips this anchors whatever bytes it produced; run it, then pass
+ * `contentRef` to `attestAsSeller`/`attestAsBuyer`. Throws with the exact
+ * failing paths, mirroring the rail.
+ */
+export function prepareAttestationContent(
+    spec: ClauseSpec,
+    values: Record<string, unknown>,
+    opts?: { stage?: number },
+): { content: Hex; contentRef: Hex } {
+    const validation = opts?.stage !== undefined
+        ? validateContent(values, spec, { stage: opts.stage })
+        : validateContent(values, spec);
+    if (!validation.ok) {
+        throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
+    }
+    const content = opts?.stage !== undefined
+        ? encodeContentFromSpec(spec, values, { stage: opts.stage })
+        : encodeContentFromSpec(spec, values);
+    return { content, contentRef: keccak256(content) };
 }
 
 /**

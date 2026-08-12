@@ -33,11 +33,25 @@ export function ecdhAuthText(
     return `Figaro handoff auth v1\ntype: ${type}\norder: ${orderId}\nbody: ${body}`;
 }
 
+/** The COMPLETE inbound check — both halves the auth contract requires: the
+ *  claimed `senderAddress` must BE the order's counterparty, and the signature
+ *  must recover to it. The two frontend panels hand-rolled this pair; a
+ *  headless ceremony participant uses this one call so neither half can be
+ *  forgotten. Skip-on-false, never a throw. */
+export async function verifyEcdhMessageFromCounterparty(
+    msg: AuthenticatedEcdhMessage,
+    counterparty: string,
+): Promise<boolean> {
+    if (typeof msg.senderAddress !== "string" || msg.senderAddress.toLowerCase() !== counterparty.toLowerCase()) return false;
+    return verifyEcdhMessageAuth(msg);
+}
+
 /** Verify an ECDH message's wallet authentication: the signature must
  *  recover to the message's claimed `senderAddress`. Returns false on any
  *  malformed input — verification failure is a skip, never a throw. The
  *  caller still owns the second check: `senderAddress` must equal the
- *  order's counterparty. */
+ *  order's counterparty (or use `verifyEcdhMessageFromCounterparty`, which
+ *  owns both halves). */
 export async function verifyEcdhMessageAuth(msg: AuthenticatedEcdhMessage): Promise<boolean> {
     try {
         return await verifyMessage({

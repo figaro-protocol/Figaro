@@ -58,6 +58,7 @@ export {
     commit,
     resolveProcess,
     attestAsSeller,
+    prepareAttestationContent,
     attestAsBuyer,
     executeAction,
     recordProcessUsage,

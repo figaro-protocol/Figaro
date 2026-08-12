@@ -96,6 +96,8 @@ export {
     parseProcessResolvedLogs,
     parseAttestationLogs,
     fetchCoreEvents,
+    fetchAttestationRecords,
+    type UniverseAttestationEvent,
 } from "./events.js";
 
 // State reconstruction

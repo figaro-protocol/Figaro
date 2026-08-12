@@ -31,7 +31,14 @@ import { SWAP_FUNDING_BIGINT_FIELDS, type SwapFundingLeg } from "../swapFunding.
  *  bond leg (witness-signed at checkout): when present, whoever broadcasts
  *  routes through `WitnessSwapAndCommitCoordinator.swapAndCommit` instead of
  *  the kernel's `commit` — relayer-agnostic by construction, because the swap
- *  route is bound into the buyer's Permit2 witness signature. */
+ *  route is bound into the buyer's Permit2 witness signature.
+ *
+ *  PRIVACY POSTURE: the envelope carries the FULL plaintext `agreement` — the
+ *  counterparty must read the terms to sign them, so this is by design — but
+ *  the shipped transports give it point-to-point TLS to the counterparty's
+ *  own endpoint, NOT the end-to-end property the frontend's XMTP relay has.
+ *  Route the envelope only to the counterparty; a third-party relay or queue
+ *  in between needs its own E2E layer, or it reads every term. */
 export interface CommitmentPayload {
     commitment: Commitment;
     agreement: Agreement;
