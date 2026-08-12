@@ -46,16 +46,175 @@ state, never configured).
      which sellers). Ships refuse-all until they write it.
 4. **Execute** — `executeAction(wallet, publicClient, addresses, action, inputs?)`.
    `resolve-process` is self-contained; `commit`/`attest`/`initiate` take signed inputs
-   (the counterparty's signature). Originating a chain: `originateProcess` /
-   `originateChain` — build the offer, get it counter-signed, bond, submit.
+   (the counterparty's signature). Origination has its own recipe — the next section,
+   executable as written.
    To surface the wallet as a discoverable seller, `MembersRegistry.register(metadataURI)`
-   (a self-signed action, only the wallet's own key) — but if the wallet is already
-   registered `register()` reverts `AlreadyRegistered`, so publish or refresh the profile
-   with `updateProfile(metadataURI)` instead. `metadataURI` points at the member-profile
-   JSON document — its shape (required `name`; optional branding, accepted tokens,
-   `catalogueURI`, agent `services`) is `MemberProfileMetadata` in `@figaro/sdk`; parse
-   and validate it with `parseMemberProfileDocument` before pinning (see the SDK README's
-   "Member Profile + Catalogue Documents").
+   (a self-signed action, only the wallet's own key). **It is `payable`, and `msg.value`
+   must EQUAL `registrationDeposit()` exactly** — read that view off the contract before
+   sending; it is a deploy-time immutable, so it differs per deployment and a hardcoded
+   figure is a revert waiting to happen. Under or over both revert (`InsufficientDeposit`);
+   there is no sweep and no refund of an overpay. The deposit is a reclaimable stake, not a
+   fee. If the wallet is already registered `register()` reverts `AlreadyRegistered`, so
+   publish or refresh the profile with `updateProfile(metadataURI)` instead — that one is
+   NOT payable (the stake is already staked; sending value reverts). `metadataURI` points
+   at the member-profile JSON document — its shape (required `name`; optional branding,
+   accepted tokens, `catalogueURI`, agent `services`) is `MemberProfileMetadata` in
+   `@figaro/sdk`; parse and validate it with `parseMemberProfileDocument` before pinning
+   (see the SDK README's "Member Profile + Catalogue Documents").
+
+## Originating a process — the executable recipe
+
+The runnable form of everything below is `sdk/scripts/verify-origination.devnet.mjs` (its
+siblings change exactly one thing each: `verify-origination-chain.devnet.mjs` a three-order
+value-added chain, `verify-origination-http.devnet.mjs` a real HTTP socket instead of the
+in-process channel). Read one beside this section; the SDK README's "Your first commit"
+narrates the same run from nothing to a bonded order. Skip any step here and the commit
+either reverts on chain or lands binding terms nobody checked.
+
+**1. Build a `SpecSource` — the fuel of the merkle-leaf sign gate.** Every clause's terms
+are merkle leaves under the `agreementHash` both parties sign, so the gate that refuses a
+bad agreement needs the clause SPECS. The SDK holds no spec cache: you build the source
+from the live registry → IPFS, from the same specs any UI reads. It is ~15 lines, and it is
+the whole difference between a gated signature and a blind one.
+
+```ts
+import { parseClauseSpec } from "@figaro/sdk/clauses";
+import { parseProjectionHints } from "@figaro/sdk";
+
+const specViews = [];
+for (const c of ctx.getClauses()) {                 // the synced registry catalogue
+  const raw = await hydrate(c.contentURI);          // your IPFS read; skip unreachable ones
+  const parsed = parseClauseSpec(raw);
+  if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+}
+const specs = {
+  get: (clauseId, version) => specViews.find(
+    (v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+  list: () => specViews,
+};
+```
+
+**2. Take the deadline from CHAIN time — required, never the machine clock.** The kernel
+compares the signed struct's `deadline` against `block.timestamp` and reverts
+`DeadlineExpired`. `deadline` is a REQUIRED parameter on every origination call — the SDK
+ships no default on purpose — and reading it off the host clock is the failure that broke
+all three origination proofs for a week: a chain's time drifts from wall time, and a stale
+deadline reverts every commit after the signatures were already gathered.
+
+```ts
+import { computeDeadline, readChainTimestamp } from "@figaro/sdk";
+const deadline = computeDeadline(await readChainTimestamp(publicClient));
+```
+
+**3. Pass `specs` on BOTH sides of the handshake.** The gate is per-signature, so each side
+arms its own — and a side that omits it signs with no content check at all, leaving the
+counterparty's gate as the only net.
+
+- **Buyer side:** `originateProcess` / `originateChain` take `specs` beside `deadline`
+  (the builders under them, `buildBuyerOffer` / `buildChainOffers`, take the same field).
+  With it the walk also fills the currency leaf from the figure the struct signs and
+  THROWS on an override that contradicts it.
+- **Seller side:** `makeSellerOfferHandler(wallet, publicClient, addresses, { accept,
+  policy, specs })`, or `counterSignOffer(wallet, offer, ctx, accept, policy, specs)`
+  directly. The market-formation legs take it in the same last position —
+  `counterSignDraft(wallet, draft, ctx, accept, policy, specs)`,
+  `quoteDraft(wallet, draft, ctx, quote, policy, specs)` — and the mountable handlers
+  `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept it in their opts.
+
+```ts
+channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
+  accept: (offer) => offer.commitment.currency === myAcceptedToken,
+  policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
+  specs,
+}));
+const result = await originateProcess(buyerWallet, publicClient, addresses, {
+  channel, template, seller, currency, payment, chainId, core, overrides, deadline, specs,
+});
+```
+
+**4. Author the transaction particulars — ROUTED BY DECLARED FIELD, never by clause name.**
+A published template arrives value-free: the designer composed the clause SELECTION and
+their own tailoring; the remaining required content fields are the BUYER's to author at
+origination. Route each value by the field a clause DECLARES, read from its spec — a clause
+id is an open set, and a hardcoded one silently skips whatever the designer actually
+composed:
+
+```ts
+const overrides = {};
+for (const clauseId of Object.keys(template.agreements[0].clauses)) {
+  const fields = specs.get(clauseId)?.fields ?? [];
+  if (fields.some((f) => f.name === "lineItems"))          // the commerce clause, by field
+    overrides[clauseId] = { currency, payment: payment.toString(), lineItems };
+  if (fields.some((f) => f.name === "modality"))            // a modality clause, if composed
+    overrides[clauseId] = { modality: "virtual" };          // the BUYER's request
+}
+```
+
+**The gate is your checklist for this step.** Author what you can, then let
+`assertAgreementSignable` (armed by `specs`) tell you what is still missing — it names every
+unfilled required term by clause and path, e.g. *"figaro-schedule $.windowStart: required
+field 'windowStart' is missing"*, and it refuses the signature until they are filled. A rich
+assembly composes far more than a commerce clause, and the loop above is only complete when
+the gate stops objecting.
+
+Two of them are not yours to write. The settlement **currency** is a TERM (a leaf) that the
+commitment struct MIRRORS: write the same address into both, or the gate refuses. And the
+assembly's **`compositionHash`** fills MECHANICALLY once `specs` is passed — the same
+spec-routed fill checkout performs, found by the declared `compositionHash` field. Do not
+hand-write provenance: a value contradicting the template you instantiated is a claim to a
+different assembly, and the SDK throws on it.
+
+**5. Resolve — and record the usage in the same breath.** Only the buyer can end a process,
+and resolution is atomic and terminal. After `executeAction` dispatches the
+`resolve-process` action, call `recordProcessUsage` (`@figaro/sdk/agent`) with each resolved
+order's ORIGINAL commitment struct and its hydrated agreement:
+
+```ts
+import { executeAction, recordProcessUsage } from "@figaro/sdk/agent";
+await executeAction(walletClient, publicClient, addresses, resolveAction);
+const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter, [
+  { commitment: resolveAction.commitments[0], agreement },
+]);
+```
+
+Usage is recorded **at settlement or it is permanently deniable** (`docs/DESIGN_DECISIONS.md`
+§21 — a seller can unstake, a period can close, and a late record is refusable). A buyer
+agent that resolves without this credits no clause author and no assembly designer, and the
+600M reward's uniformity across actors is exactly this call. Only the section FINGERPRINT
+reaches calldata, so a private section's plaintext never becomes public. Read the report,
+not the absence of an exception: **excluded protocol-floor clauses reverting inside it is
+routine**, by design — the counter refuses the floor (the commerce, topology and provenance
+clauses), never the open set — so those legs appear in `failures` with
+`ClauseOrAssemblyExcluded` on a perfectly healthy run. The once-per-process assembly credit
+is an INDEPENDENT leg (`assemblyRecorded`): it is claimed from the first section carrying a
+well-formed `compositionHash` and requires that composition to hold a live registry binding,
+so an agreement with no provenance section credits no designer at all. Report the report,
+never "it reverted, so it failed".
+
+## Reclaiming a registration stake — apply the K4 withdraw gate yourself
+
+If the owner registered a clause or an assembly, its deposit comes back with one call
+(`ClauseRegistry.withdrawDeposit(idHash)` / `AssemblyRegistry.withdrawDeposit(compositionHash)`)
+— which **de-surfaces the entry for new compositions while the binding stays permanent**,
+because agreements already committed against it keep resolving forever. The rule the stake
+encodes: do not reclaim it while deals composed from that clause or assembly are still in
+flight. Derive that before withdrawing:
+
+```ts
+import { fetchCoreEvents } from "@figaro/sdk";
+import { deriveInFlightOrders, deriveClauseWithdrawGate, deriveAssemblyWithdrawGate } from "@figaro/sdk/derive";
+
+const inFlight = deriveInFlightOrders(await fetchCoreEvents(publicClient, addresses, 0n));
+// You resolve each ref's pinned agreement (the SDK does no IPFS I/O), pairing it as
+// { processId, agreement }; a null agreement is party-private and counted, never blocking.
+const gate = deriveClauseWithdrawGate("figaro-emissions", agreements);
+if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
+```
+
+`canWithdraw === (inFlightCount === 0)`; `unverifiedCount` is a caveat to surface, never a
+veto. **The gate is ADVISORY** — nothing on chain enforces it, and its only other
+enforcement anywhere is a disabled button in a UI you are not using. A headless operator is
+the enforcement, or there is none.
 
 ## Verify before you sign — the hash is the whole of what you agree to
 
@@ -76,6 +235,29 @@ root `@figaro/sdk` exports and the document you were handed:
    show the owner *what each hash covers* (HITL review context).
 4. After the fact — yours or a counterparty's — `verifyCommitmentSignature(commitment,
    sig, address, { chainId, core })` answers "did this address really sign this struct?".
+
+**Recomputing the hash stays necessary — and it is not sufficient.** A document can hash
+correctly and still be wrong: the terms inside it can contradict the struct you bond
+against, or omit a term the clause requires. `assertAgreementSignable(agreement,
+agreementHash, specs, commitment, label)` is the one Layer-A gate every signature in the
+SDK routes through, and it refuses three things the hash comparison cannot see:
+
+- **A section that violates its own clause spec** — including a MISSING REQUIRED term. An
+  agreement can carry a section the designer composed and the buyer never filled; the gate
+  refuses to sign it rather than committing an empty term.
+- **A leaf that contradicts the struct, on BOTH mirrored terms.** `currency` and `payment`
+  live in two places at once: as merkle leaves under `agreementHash` (the commerce clause's
+  fields — the TERMS) and as fields of the kernel commitment (the EXECUTION data). The gate
+  asserts each leaf equals its struct mirror; a mismatch on either is a refusal.
+- **A broken pin chain.** Where the assembly composes a denomination pin (an
+  assembly-scoped clause declaring `currency` as a designer fill), the gate asserts
+  pin == commerce leaf == struct — so an assembly denominated by design cannot be settled
+  in a token the designer did not pin.
+
+The gate needs your `SpecSource` to run (step 1 of the recipe above): pass `specs` and it
+runs, omit it and only the structural checks do. On the seller side the same gate rides
+inside `validateOffer`'s anti-tamper check, so a contradicting leaf **throws** exactly like
+a forged signature — treat it as tamper, not as a decline.
 
 The counterparty's counter-signature deserves the same treatment: `verifyRaceReply` /
 `requestQuotes` already verify replies by struct-hash equality and reconstruction, so
@@ -183,7 +365,9 @@ the next reply is the free fallback. Two legs, one choreography, from
   posted price; a counter-signature means "available at my price"; cheapest available
   wins. Buyer: build one draft per candidate, then
   `requestCounterSignatures(channel, drafts, ctx)` → verified replies + the winner.
-  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy })`.
+  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs })` — the
+  same `SpecSource` as everywhere else, so a draft whose leaf contradicts the struct is
+  refused before any signature.
 - **The RFQ (the candidate authors the price):** the request drafts at the buyer's
   CEILING (their reservation price, inside the signed struct so the cap is enforceable)
   with `pricedFields` naming where the figure lives; the candidate's counter-draft
@@ -191,8 +375,9 @@ the next reply is the free fallback. Two legs, one choreography, from
   `requestQuotes(channel, drafts, ctx)` — every reply is verified by RECONSTRUCTION
   (your own draft re-priced at the quote must reproduce it hash-for-hash; a quote can
   change the price and nothing else). Candidate: mount
-  `makeSellerQuoteHandler(wallet, ctx, { quote, policy })` — `quote(draft)` is the
-  owner's pricing function; `null` declines.
+  `makeSellerQuoteHandler(wallet, ctx, { quote, policy, specs })` — `quote(draft)` is the
+  owner's pricing function; `null` declines. Build the request with `deadline` in CHAIN
+  time here too: `buildQuoteRequest` requires it, like every other origination call.
 
 **Declaring `services.rest` on the wallet's member profile makes it reachable by HUMAN
 buyers too:** a browser checkout that races or requests quotes POSTs the draft straight
@@ -288,6 +473,10 @@ are requirements ON it, written now so the floor is never mistaken for the ceili
 - You do not fabricate a counterparty signature, ever. No counter-signature ⇒ no commit.
 - You do not sign an `agreementHash` you did not recompute from the document you were
   handed. A mismatch is a refusal, not a warning (see "Verify before you sign" above).
+- Every deadline you sign comes from `readChainTimestamp`, never the host clock; every
+  signature you emit runs the gate, which means you carry a `SpecSource`.
+- Resolving without recording usage is an unfinished action, not a completed one — the
+  authors of everything the process composed go unpaid.
 - Verify effects out-of-band (a fresh chain read), never from your own optimism — and read
   the RIGHT contract: absence from `FigaroCore` is not absence from the network (see "Two
   settlement universes" above).

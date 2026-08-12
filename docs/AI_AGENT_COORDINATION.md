@@ -54,26 +54,44 @@ message that carries this is the offer envelope (`CommitmentPayload`):
 
 ```jsonc
 {
-  "commitment": { /* the EIP-712 Commitment: buyer, seller, currency, payment,
+  "commitment": { /* the EIP-712 Commitment: processId, buyer, seller, currency, payment,
                      expectedCumulativeValue, agreementHash, salt, deadline */ },
   "agreement":  { /* the full off-chain agreement whose merkle root == agreementHash,
                      pinned inline so the recipient hydrates everything from one message */ },
   "buyerSig":   "0x…",   // filled by the buyer
-  "sellerSig":  "0x…"    // filled by the seller on accept; absent until then
+  "sellerSig":  "0x…",   // filled by the seller on accept; absent until then
+  "buyerFunding":  { /* OPTIONAL — the buyer's swap-funded bond leg, witness-signed:
+                        when present, whoever broadcasts routes through
+                        WitnessSwapAndCommitCoordinator.swapAndCommit, not the kernel's
+                        commit. Absent when the buyer self-funds. */ },
+  "quoteRequest":  { /* OPTIONAL — present ONLY on an RFQ quote-request draft, naming the
+                        pricedFields the candidate may re-price. Absent on every offer. */ }
 }
 ```
 
 It serializes to compact JSON (bigints → hex). The envelope is the entire wire
 payload — there is no side channel.
 
+Two of the commitment's fields carry rules a hand-rolled implementation gets wrong:
+
+- **`processId`** — a ROOT commitment signs `ZERO_PROCESS_ID` (32 zero bytes) and the
+  kernel derives the real id at commit; a sub-order carries the root's DERIVED id. Signing
+  a made-up id for a root is a commit that never lands.
+- **`deadline` is CHAIN time, and it is mandatory.** The kernel compares it against
+  `block.timestamp` and reverts `DeadlineExpired`; the SDK's origination calls take
+  `deadline` as a REQUIRED parameter with no default, precisely so nobody reaches for the
+  host clock. Read it from the chain (`readChainTimestamp`) and offset from there
+  (`computeDeadline`) — wall-clock drift between a signer's machine and the chain expires
+  offers that both parties signed in good faith.
+
 ### The exchange
 
 1. **Buyer** instantiates a discovered assembly's root order (merges its own terms
    onto the template's clause bag), signs its half, and sends the envelope to the
    seller over a coordination channel.
-2. **Seller** runs the anti-tamper gate (below), applies its accept policy, and — if
-   accepting — approves its 2× cumulative-value bond and returns the envelope with
-   `sellerSig` filled. Declining returns nothing.
+2. **Seller** runs the anti-tamper gate (below), applies BOTH of its decision floors
+   (below), and — if accepting — approves its 2× cumulative-value bond and returns the
+   envelope with `sellerSig` filled. Declining returns nothing.
 3. **Buyer** approves its 2× payment bond and submits the two-party commit. No
    counter-signature ⇒ no commit — **the protocol never fabricates the counterparty's
    signature, it carries it.**
@@ -91,11 +109,44 @@ never silently declines — on a tampered one:
 - the named seller is *me*;
 - the agreement **hashes to the committed `agreementHash`** (a buyer cannot sign one
   agreement and pin another);
-- the agreement's parties match the commitment.
+- the agreement's parties match the commitment;
+- **and, when the checker holds the clause specs, the terms inside the agreement do not
+  contradict the struct.** The hash check above proves the document is the one the buyer
+  signed; it says nothing about whether that document's TERMS match the execution data.
+  Currency and payment live in both places at once — as merkle leaves under
+  `agreementHash` and as fields of the kernel commitment — so the gate additionally
+  asserts leaf == struct on both, plus pin == leaf wherever the assembly composes a
+  denomination pin, and refuses any section that violates its own clause spec (a missing
+  required term included). In the SDK this is `validateOffer`'s fourth parameter, a
+  `SpecSource` built from the live `ClauseRegistry → IPFS` specs; **a leaf/struct
+  contradiction is treated as TAMPER — it throws, exactly like a forged signature.**
+  Without a `SpecSource` this half is skipped, and the offer is counter-signed with no
+  content check whatsoever: the check is only as present as the specs the checker loaded.
 
-A clean offer the *policy* rejects returns "declined" (no signature); only a malformed
-or forged one throws. This gate is the whole reason the handshake is safe between
-strangers over an untrusted transport.
+A clean offer a *decision floor* rejects returns "declined" (no signature); only a
+malformed, forged, or term-contradicting one throws. This gate is the whole reason the
+handshake is safe between strangers over an untrusted transport.
+
+### The seller's decision model — two floors, both opt-in, both decline by default
+
+The gate above answers "is this offer honest?". Whether to counter-sign an honest offer is
+a second question, and the answer is **no** until the operator says otherwise — twice.
+Counter-signing bonds the seller 2× an attacker-chosen `expectedCumulativeValue` in an
+attacker-chosen `currency`, so autonomy is opt-IN at two independent seams:
+
+- **The business floor (`accept`)** — an operator-written predicate over the offer. Omit
+  it, or return false, and the offer is declined.
+- **The economic floor (`OfferPolicy`)** — bounds on the fields the seller bonds against:
+  `requireRootShape` (a root order signs `processId` zero and `expectedCumulativeValue ==
+  payment`; omit it for a seller serving sub-orders in a chain), `currencyAllowlist` (the
+  operator's own currencies — never a bundled token list), and `maxValue` (the magnitude
+  cap). Omit the policy and every offer is declined; supply one that omits the allowlist or
+  the cap and it REJECTS rather than waving the offer through — an empty allowlist vouches
+  for no currency, an absent cap bounds no magnitude.
+
+Both floors decline (return nothing), never throw — a throw stays reserved for tamper. A
+seller-side handler registered bare therefore answers every stranger with silence, which is
+the correct default for a wallet that has not yet been told what it is willing to bond.
 
 ### The transport seam
 
@@ -284,9 +335,18 @@ metadata, not a clause, and gets no registry anchoring.
 | `services.ens` | string | ENS name |
 | `capabilities` | string[] | Self-declared capability tags |
 
-All fields are optional. An seller with no `services` key is a
-human-operated participant — the default case. Frontends detect agent
-status by checking for the presence of the `services` key.
+All fields are optional. A `services` key declares **coordination reachability, not
+species**: it says "an inbound offer, race draft or quote request routed to this endpoint
+will get an answer." Its absence means only that the wallet publishes no inbound endpoint —
+unreachable for inbound offers, and reachable by every other route (a human at a keyboard,
+an agent that originates outbound, a wallet coordinated out of band). It does not mean
+"human."
+
+**There is no agent status to detect.** The protocol admits any signer on equal footing and
+records no species anywhere: autonomy is a policy choice about how a wallet decides, never a
+structural property of the wallet (see "The operator" above). A surface that branches on the
+presence of `services` is branching on *routability* — which endpoint, if any, to POST an
+offer to — and must not present that as identifying who or what is behind the key.
 
 ### did:web Identity Resolution
 

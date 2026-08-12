@@ -17,8 +17,8 @@ the whole model first.
   rule is set).
 - **`figaro-clause-author`** — author (or version) a clause: a spec → IPFS → a permissionless
   `ClauseRegistry` registration under the user's wallet. No on-chain code.
-- **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one: a
-  an `AssemblyTemplate` → IPFS → a permissionless `AssemblyRegistry` registration under the
+- **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one: an
+  `AssemblyTemplate` → IPFS → a permissionless `AssemblyRegistry` registration under the
   user's wallet.
 
 All three are **prompts** (frontmatter + body). They drive `@figaro/sdk` (the SDK), act for
@@ -42,9 +42,25 @@ permission barrier (repo access + a merge) the open world exists to remove.
 
 Registration is the whole act. A UI surfaces clauses and assemblies *from the registry
 events*, so registering makes a clause or assembly discoverable everywhere that reads the registry —
-there is no frontend binding to meet. `block` attributes shape how a UI *presents* an
-entry, never its validity or discoverability. The core is invariant (unless forked); many
+there is no frontend binding to meet. MOST `block` attributes shape how a UI *presents* an
+entry and affect neither validity nor discoverability — **but never say that unqualified:
+five hints inside `block` are hash-load-bearing and change what a designer's template and a
+party's signed agreement actually CONTAIN** (a reserved `design.article`, `design.scope`,
+`design.fills`, and the two `checkout` fill lists — `figaro-clause-author` § "The five
+hash-load-bearing `block` hints" is the owner of that list, and it bans the unqualified
+sentence for the same reason). The core is invariant (unless forked); many
 UIs compete — that is what permissionless and decentralized mean.
+
+## The run that proves a stranger's wiring
+
+Before trusting any of these prompts against real funds, do the whole handshake yourself on
+a devnet you own: `sdk/README.md` § "Your first commit" is the shortest path from nothing to
+a bonded order on chain — bring up the chain and an IPFS node, put something on the network
+to discover, originate through the SDK's two loops, read the process back out of band, and
+resolve it. Every step is a command; nothing in it is hosted by anyone. It is the same
+sequence `figaro-operator` runs, in a form you can watch, and its runnable script
+(`sdk/scripts/verify-origination.devnet.mjs`) is the reference these prompts are written
+against.
 
 ## Running the prompts outside Claude Code
 

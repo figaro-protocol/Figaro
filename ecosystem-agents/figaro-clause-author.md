@@ -99,6 +99,19 @@ empty. **Registration is permanent and first-write-wins**, so if that is not wha
 wants, group it under any other word BEFORE registering. There is no fix afterwards, only
 a new `version`.
 
+**The fills-on-process-log trap — the SDK will tell you.** There is one combination that
+never makes sense: declaring content pins (`design.fills`, or
+`checkout.catalogueFills`/`profileFills`) on a clause whose article marks it a process-log
+(`"attestations"`). A process-log section is committed as an unvalidated empty anchor —
+content validation is SKIPPED for it and field defaults are never filled — so a pin declared
+there is content the author believes is checked and that in fact never is. Run
+`warnProcessLogFillsTrap(spec)` from `@figaro/sdk` on the finished spec and read back what
+it returns to the user. It is a WARNING, not a parse error, and deliberately so: the article
+is free text and a third-party clause may declare anything, and `"attestations"` is correct
+and meaningful for a genuine process-log clause — the two shipped ones,
+`figaro-merchant-process` and `figaro-courier-process`, declare no fill list at all, which is
+the shape a real one always has. The warning fires only on that specific combination.
+
 **And one field attribute is mis-typed as UI metadata: `default`.** A field's `default`
 is documented as composition metadata, but it is NOT inert — when the composing input
 omits the field, the spec's own `default` fills it, and that value lands in the signed
@@ -122,6 +135,25 @@ validator — there is none, by design.
 
 ## Step 5 — Pin + register (the user's wallet)
 
+0. **Check the slot is free BEFORE you pin anything or spend a wei.** `registerClause` is
+   permissionless and first-write-wins: an `id`+`version` someone already registered is
+   taken PERMANENTLY, and a second registration reverts `AlreadyRegistered` — after the
+   pin, and with the deposit already in the transaction. Compute the exact key the registry
+   hashes and read the dedup guard:
+
+   ```ts
+   import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro/sdk";
+
+   const key = computeClauseKey(clauseId, version); // keccak256(abi.encode(clauseId, version))
+   const taken = await client.readContract({
+     address: clauseRegistryAddress, abi: CLAUSE_REGISTRY_ABI,
+     functionName: "registered", args: [key],
+   });
+   if (taken) throw new Error("this id+version is already registered — pick another");
+   ```
+
+   `registered` takes the bytes32 KEY, not the name. Do this first; everything after it
+   costs the user something.
 1. Pin the **canonical serialization** to IPFS → `contentURI` (`ipfs://…`): the exact
    bytes `canonicalize(spec)` returns from `@figaro/sdk` (sorted keys at every depth, no
    whitespace). Anchor `contentHash = canonicalContentHash(spec)`. Pin *that* serialization,
@@ -130,8 +162,17 @@ validator — there is none, by design.
    surfaces. The IPFS add options (CID version, chunker) do NOT matter: the registry binds
    the keccak CONTENT HASH, not the CID, and verification is always
    fetch → re-canonicalize → re-hash.
-2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`
-   with the deposit, signed by the **user's** key. First-write-wins: the id binds
+2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`,
+   signed by the **user's** key. The call is **`payable`, and `msg.value` must EQUAL
+   `registrationDeposit()`** — read that view off the registry itself and send exactly it;
+   under and over BOTH revert (`WrongDeposit`), there is no sweep, and an overpay is not
+   refunded. Never hardcode the figure: it is a deploy-time immutable and differs per
+   deployment. The parameter types are the function's identity — `version` is `uint64`, not
+   the `uint256` a caller reaches for by habit — so a mistyped one fails as an opaque
+   selector mismatch, not a friendly error. The deposit is a reclaimable stake, not a fee:
+   `withdrawDeposit(idHash)` returns it, de-surfacing the clause for new compositions while
+   the binding stays permanent — and it is also the RPGF eligibility gate, so a withdrawn
+   deposit ends the author's earnings on that clause. First-write-wins: the id binds
    permanently. A behaviour change is a NEW `version` (never mutate a registered id).
    There is no reward tag, category or weight to declare — the spec carries no
    `rpgfTag` field and `registerClause` takes no such argument. The 600M retroactive
