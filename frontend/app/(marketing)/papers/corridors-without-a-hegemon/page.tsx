@@ -41,7 +41,7 @@ export default function CorridorsWithoutAHegemonPaper() {
                     <li>Gramsci, A. <em>Selections from the Prison Notebooks</em>. Ed. and trans. Q. Hoare &amp; G. Nowell-Smith. International Publishers, New York, 1971.</li>
                     <li>Hirschman, A. O. <em>National Power and the Structure of Foreign Trade</em>. University of California Press, Berkeley, 1945.</li>
                     <li>Hirschman, A. O. <em>Exit, Voice, and Loyalty: Responses to Decline in Firms, Organizations, and States</em>. Harvard University Press, Cambridge, MA, 1970.</li>
-                    <li>Hussain, A. &amp; Shafer, N. <em>The India&ndash;Middle East&ndash;Europe Economic Corridor: Connectivity in an Era of Geopolitical Uncertainty</em>. Atlantic Council, Washington, DC, 2025. [Report.]</li>
+                    <li>Hussain, A. &amp; Shafer, N. <em>The India&ndash;Middle East&ndash;Europe Economic Corridor: Connectivity in an Era of Geopolitical Uncertainty</em>. Atlantic Council, Washington, DC, 2025.</li>
                     <li>Keohane, R. O. <em>After Hegemony: Cooperation and Discord in the World Political Economy</em>. Princeton University Press, Princeton, 1984.</li>
                     <li>Rolland, N. <em>China&rsquo;s Eurasian Century? Political and Strategic Implications of the Belt and Road Initiative</em>. The National Bureau of Asian Research, Seattle, 2017.</li>
                     <li>Strange, S. <em>States and Markets</em>. Pinter Publishers, London, 1988.</li>

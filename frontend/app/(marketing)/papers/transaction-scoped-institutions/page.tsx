@@ -43,7 +43,7 @@ export default function TransactionScopedInstitutionsPaper() {
                     <li>Grossman, S. J. &amp; Hart, O. D. The Costs and Benefits of Ownership: A Theory of Vertical and Lateral Integration. <em>Journal of Political Economy</em>, 94(4):691&ndash;719, 1986.</li>
                     <li>Gibbons, R. Four Formal(izable) Theories of the Firm? <em>Journal of Economic Behavior &amp; Organization</em>, 58(2):200&ndash;245, 2005.</li>
                     <li>Hansmann, H. <em>The Ownership of Enterprise</em>. Harvard University Press, Cambridge, MA, 1996.</li>
-                    <li>Hart, O. <em>Firms, Contracts, and Financial Structure</em>. Oxford University Press, 1995.</li>
+                    <li>Hart, O. <em>Firms, Contracts, and Financial Structure</em>. Oxford University Press, Oxford, 1995.</li>
                     <li>Hart, O. &amp; Moore, J. Property Rights and the Nature of the Firm. <em>Journal of Political Economy</em>, 98(6):1119&ndash;1158, 1990.</li>
                     <li>Holmstrom, B. &amp; Roberts, J. The Boundaries of the Firm Revisited. <em>Journal of Economic Perspectives</em>, 12(4):73&ndash;94, 1998.</li>
                     <li>Macneil, I. R. <em>The New Social Contract: An Inquiry into Modern Contractual Relations</em>. Yale University Press, New Haven, 1980.</li>

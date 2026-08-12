@@ -59,8 +59,8 @@ export default function SelfClosingLedgerPeriodsPaper() {
             }
             references={
                 <>
-                    <li>American Institute of Certified Public Accountants. <em>AU-C Section 315: Understanding the Entity and Its Environment and Assessing the Risks of Material Misstatement</em>. In <em>AICPA Professional Standards</em>.</li>
-                    <li>American Institute of Certified Public Accountants. <em>AU-C Section 500: Audit Evidence</em>. In <em>AICPA Professional Standards</em>.</li>
+                    <li>American Institute of Certified Public Accountants. <em>AU-C Section 315: Understanding the Entity and Its Environment and Assessing the Risks of Material Misstatement</em>. In <em>AICPA Professional Standards</em>, n.d.</li>
+                    <li>American Institute of Certified Public Accountants. <em>AU-C Section 500: Audit Evidence</em>. In <em>AICPA Professional Standards</em>, n.d.</li>
                     <li>Braudel, F. <em>Civilization and Capitalism, 15th&ndash;18th Century, Volume 2: The Wheels of Commerce</em>. Harper &amp; Row, New York, 1982. Trans. S. Reynolds.</li>
                     <li>Buterin, V. Ethereum: A Next-Generation Smart Contract and Decentralized Application Platform. White paper, 2014.</li>
                     <li>Chandler, A. D. <em>The Visible Hand: The Managerial Revolution in American Business</em>. Belknap Press of Harvard University Press, Cambridge, MA, 1977.</li>
@@ -80,7 +80,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     <li>Mattessich, R. <em>Accounting and Analytical Methods: Measurement and Projection of Income and Wealth in the Micro- and Macro-Economy</em>. Richard D. Irwin, Homewood, IL, 1964.</li>
                     <li>Nakamoto, S. Bitcoin: A Peer-to-Peer Electronic Cash System. White paper, 2008.</li>
                     <li>Pacioli, L. <em>Summa de Arithmetica, Geometria, Proportioni et Proportionalita</em>. Paganinus de Paganinis, Venice, 1494. Particularis de computis et scripturis (book on accounts and records), treatise XI.</li>
-                    <li>Power, M. <em>The Audit Society: Rituals of Verification</em>. Oxford University Press, 1997.</li>
+                    <li>Power, M. <em>The Audit Society: Rituals of Verification</em>. Oxford University Press, Oxford, 1997.</li>
                     <li>Sombart, W. <em>Der moderne Kapitalismus</em>, volume 2. Duncker &amp; Humblot, Munich, 1916.</li>
                     <li>Yamey, B. S. Scientific Book-keeping and the Rise of Capitalism. <em>The Economic History Review</em>, 1(2&ndash;3):99&ndash;113, 1949.</li>
                     <li>Yermack, D. Corporate Governance and Blockchains. <em>Review of Finance</em>, 21(1):7&ndash;31, 2017.</li>

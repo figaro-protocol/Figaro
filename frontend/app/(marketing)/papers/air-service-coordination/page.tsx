@@ -43,7 +43,7 @@ export default function AirServiceCoordinationPaper() {
                     <li>Ghatak, M. Group Lending, Local Information and Peer Selection. <em>Journal of Development Economics</em>, 60(1):27&ndash;50, 1999.</li>
                     <li>Lan, S., Clarke, J.-P., &amp; Barnhart, C. Planning for Robust Airline Operations: Optimizing Aircraft Routings and Flight Departure Times to Minimize Passenger Disruptions. <em>Transportation Science</em>, 40(1):15&ndash;28, 2006.</li>
                     <li>Stiglitz, J. E. Peer Monitoring and Credit Markets. <em>World Bank Economic Review</em>, 4(3):351&ndash;366, 1990.</li>
-                    <li>US Federal Aviation Administration. <em>14 CFR Part 117: Flight and Duty Limitations and Rest Requirements: Flightcrew Members</em>. 2014.</li>
+                    <li>US Federal Aviation Administration. <em>14 CFR Part 117: Flight and Duty Limitations and Rest Requirements: Flightcrew Members</em>. Code of Federal Regulations.</li>
                     <li>US Federal Aviation Administration. <em>14 CFR Part 119: Certification: Air Carriers and Commercial Operators</em>. Code of Federal Regulations.</li>
                     <li>US Federal Aviation Administration. <em>14 CFR Part 121: Operating Requirements: Domestic, Flag, and Supplemental Operations</em>, &sect;121.467 (flight attendant duty period limitations and rest requirements). Code of Federal Regulations.</li>
                 </>

@@ -47,12 +47,12 @@ export default function WalletWithoutPolityPaper() {
                     <li>W3C. Decentralized Identifiers (DIDs) v1.0: Core Architecture, Data Model, and Representations. W3C Recommendation, July 2022.</li>
                     <li>Locke, J. <em>Two Treatises of Government</em>. Awnsham Churchill, London, 1689.</li>
                     <li>Nozick, R. <em>Anarchy, State, and Utopia</em>. Basic Books, New York, 1974.</li>
-                    <li>Argent. Social Recovery: Reinventing Wallet Security. Argent Documentation.</li>
-                    <li>Safe. Social Recovery via Threshold Multi-Signature. Safe (formerly Gnosis Safe) Documentation.</li>
+                    <li>Argent. Social Recovery: Reinventing Wallet Security. Argent Documentation, n.d.</li>
+                    <li>Safe. Social Recovery via Threshold Multi-Signature. Safe (formerly Gnosis Safe) Documentation, n.d.</li>
                     <li>Arendt, H. <em>The Human Condition</em>. University of Chicago Press, Chicago, 1958.</li>
-                    <li>Benhabib, S. <em>The Rights of Others: Aliens, Residents, and Citizens</em>. Cambridge University Press, 2004.</li>
-                    <li>Goodwin-Gill, G. S. &amp; McAdam, J. <em>The Refugee in International Law</em>, 4th ed. Oxford University Press, 2021.</li>
-                    <li>Kesby, A. <em>The Right to Have Rights: Citizenship, Humanity, and International Law</em>. Oxford University Press, 2012.</li>
+                    <li>Benhabib, S. <em>The Rights of Others: Aliens, Residents, and Citizens</em>. Cambridge University Press, Cambridge, 2004.</li>
+                    <li>Goodwin-Gill, G. S. &amp; McAdam, J. <em>The Refugee in International Law</em>, 4th ed. Oxford University Press, Oxford, 2021.</li>
+                    <li>Kesby, A. <em>The Right to Have Rights: Citizenship, Humanity, and International Law</em>. Oxford University Press, Oxford, 2012.</li>
                     <li>United Nations. <em>Convention Relating to the Status of Refugees</em>. 189 UNTS 137, 1951; expanded by the 1967 Protocol, 606 UNTS 267.</li>
                     <li>US Department of the Treasury, Office of Foreign Assets Control. Treasury Sanctions Notorious Virtual Currency Mixer Tornado Cash. Press release, August 8, 2022.</li>
                     <li>Van Valkenburgh, P. Analysis of the Tornado Cash Sanctions: How Far Does Treasury&rsquo;s Authority Reach? Coin Center Report, 2022.</li>

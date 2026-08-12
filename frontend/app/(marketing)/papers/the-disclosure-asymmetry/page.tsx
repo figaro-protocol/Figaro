@@ -39,9 +39,10 @@ export default function DisclosureAsymmetryPaper() {
             references={
                 <>
                     <li>Beetham, D. <em>The Legitimation of Power</em>. Macmillan, London, 1991.</li>
-                    <li>Bernays, E. L. The Engineering of Consent. <em>The Annals of the American Academy of Political and Social Science</em>, 250(1):113&ndash;120, 1947.</li>
                     <li>Bernays, E. L. <em>Propaganda</em>. Horace Liveright, New York, 1928.</li>
-                    <li>Buterin, V. <em>Trust Models</em>. Personal essay, 2020; <em>The Most Important Scarce Resource is Legitimacy</em>. Personal essay, 2021.</li>
+                    <li>Bernays, E. L. The Engineering of Consent. <em>The Annals of the American Academy of Political and Social Science</em>, 250(1):113&ndash;120, 1947.</li>
+                    <li>Buterin, V. <em>Trust Models</em>. Personal essay, 2020.</li>
+                    <li>Buterin, V. <em>The Most Important Scarce Resource is Legitimacy</em>. Personal essay, 2021.</li>
                     <li>De Filippi, P., Mannan, M., &amp; Reijers, W. Blockchain as a Confidence Machine: The Problem of Trust &amp; Challenges of Governance. <em>Technology in Society</em>, 62:101284, 2020.</li>
                     <li>Gambetta, D. (ed.). <em>Trust: Making and Breaking Cooperative Relations</em>. Basil Blackwell, Oxford, 1988.</li>
                     <li>Habermas, J. <em>Legitimation Crisis</em>. Trans. T. McCarthy. Beacon Press, Boston, 1975.</li>

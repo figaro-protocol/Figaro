@@ -40,8 +40,8 @@ export default function SubordinationVariablePaper() {
             references={
                 <>
                     <li>Coase, R. H. The Nature of the Firm. <em>Economica</em>, 4(16):386&ndash;405, 1937.</li>
-                    <li>Cohen, G. A. <em>Karl Marx&rsquo;s Theory of History: A Defence</em>. Princeton University Press, 1978.</li>
-                    <li>Friedman, M. <em>Capitalism and Freedom</em>. University of Chicago Press, 1962.</li>
+                    <li>Cohen, G. A. <em>Karl Marx&rsquo;s Theory of History: A Defence</em>. Princeton University Press, Princeton, NJ, 1978.</li>
+                    <li>Friedman, M. <em>Capitalism and Freedom</em>. University of Chicago Press, Chicago, 1962.</li>
                     <li>Hayek, F. A. The Use of Knowledge in Society. <em>American Economic Review</em>, 35(4):519&ndash;530, 1945.</li>
                     <li>Marx, K. <em>Das Kapital, Band I</em>. Verlag von Otto Meissner, Hamburg, 1867. English: <em>Capital, Volume I</em>, trans. B. Fowkes, Penguin Classics, 1976.</li>
                     <li>Srnicek, N. <em>Platform Capitalism</em>. Polity, Cambridge, 2017.</li>
