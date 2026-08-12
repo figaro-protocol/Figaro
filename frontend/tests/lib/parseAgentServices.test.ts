@@ -3,21 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { parseAgentServices } from '@/lib/member/useMembersRegistry';
 
 describe('parseAgentServices', () => {
-    it('returns isAgent=false when no services key is present', () => {
+    it('returns reachable=false when no services key is present', () => {
         const result = parseAgentServices({ name: 'Bob Pizza' });
-        expect(result.isAgent).toBe(false);
+        expect(result.reachable).toBe(false);
         expect(result.services).toEqual({});
         expect(result.capabilities).toEqual([]);
     });
 
-    it('returns isAgent=false when services is not an object', () => {
+    it('returns reachable=false when services is not an object', () => {
         const result = parseAgentServices({ services: 'not-an-object' });
-        expect(result.isAgent).toBe(false);
+        expect(result.reachable).toBe(false);
     });
 
-    it('returns isAgent=false when services is null', () => {
+    it('returns reachable=false when services is null', () => {
         const result = parseAgentServices({ services: null });
-        expect(result.isAgent).toBe(false);
+        expect(result.reachable).toBe(false);
     });
 
     it('parses a full agent metadata object', () => {
@@ -33,7 +33,7 @@ describe('parseAgentServices', () => {
             capabilities: ['route-optimization', 'live-eta', 'multi-stop-batching'],
         });
 
-        expect(result.isAgent).toBe(true);
+        expect(result.reachable).toBe(true);
         expect(result.services.mcp).toBe('https://agent-42.example.com/mcp');
         expect(result.services.a2a).toBe('https://agent-42.example.com/a2a');
         expect(result.services.rest).toBe('https://agent-42.example.com/v1');
@@ -47,7 +47,7 @@ describe('parseAgentServices', () => {
             services: { mcp: 'https://agent.example.com/mcp' },
         });
 
-        expect(result.isAgent).toBe(true);
+        expect(result.reachable).toBe(true);
         expect(result.services.mcp).toBe('https://agent.example.com/mcp');
         expect(result.services.a2a).toBeUndefined();
         expect(result.services.rest).toBeUndefined();
@@ -61,7 +61,7 @@ describe('parseAgentServices', () => {
             services: { mcp: 123, a2a: true, rest: null, did: 'did:web:seller.example.com' },
         });
 
-        expect(result.isAgent).toBe(true);
+        expect(result.reachable).toBe(true);
         expect(result.services.mcp).toBeUndefined();
         expect(result.services.a2a).toBeUndefined();
         expect(result.services.rest).toBeUndefined();

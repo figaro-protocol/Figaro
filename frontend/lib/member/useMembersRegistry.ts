@@ -303,11 +303,11 @@ export function useRegistrationDeposit() {
 // ── Agent service discovery hook ─────────────────────────────────────────────
 
 /** The absence value: a human-operated participant (no services key). */
-const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], isAgent: false };
+const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], reachable: false };
 
 /**
  * Fetches a member's metadataURI and parses ERC-8004-compatible
- * agent service endpoints if present. Returns { isAgent: false } for
+ * agent service endpoints if present. Returns { reachable: false } for
  * human-operated participants (no services key in metadata). Absence
  * semantics all the way down: a missing/unfetchable/unparsable document is
  * a human participant, never an error. Built on the ONE member-resource

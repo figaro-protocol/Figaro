@@ -266,25 +266,25 @@ describe("member profile metadata parser", () => {
     });
 
     describe("projectAgentServices", () => {
-        it("returns isAgent=false when no services key is present", () => {
+        it("returns reachable=false when no services key is present", () => {
             const result = projectAgentServices({ name: "Bob" });
-            expect(result.isAgent).toBe(false);
+            expect(result.reachable).toBe(false);
             expect(result.services).toEqual({});
             expect(result.capabilities).toEqual([]);
         });
 
-        it("returns isAgent=true even without a name (services-only docs)", () => {
+        it("returns reachable=true even without a name (services-only docs)", () => {
             const result = projectAgentServices({
                 services: { mcp: "https://example.com/mcp" },
             });
-            expect(result.isAgent).toBe(true);
+            expect(result.reachable).toBe(true);
             expect(result.services.mcp).toBe("https://example.com/mcp");
         });
 
-        it("returns isAgent=false when input is not an object", () => {
-            expect(projectAgentServices(null).isAgent).toBe(false);
-            expect(projectAgentServices("string").isAgent).toBe(false);
-            expect(projectAgentServices([]).isAgent).toBe(false);
+        it("returns reachable=false when input is not an object", () => {
+            expect(projectAgentServices(null).reachable).toBe(false);
+            expect(projectAgentServices("string").reachable).toBe(false);
+            expect(projectAgentServices([]).reachable).toBe(false);
         });
 
         it("drops non-string capability entries", () => {

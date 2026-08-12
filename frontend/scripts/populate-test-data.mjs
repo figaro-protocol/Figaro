@@ -156,6 +156,13 @@ function seedTemplateBlank() {
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
+        // Provenance is MANDATORY AT ASSEMBLY SCOPE (ruled 2026-07-28): the
+        // assembly-scope fold carries it into every agreement, checkout fills
+        // the template's own compositionHash mechanically, and the designer
+        // credit can land. A seed without it denies every run that binds it
+        // the RPGF assembly leg — which is how the first-commit walkthrough
+        // resolved with assemblyRecorded:false for weeks.
+        assemblyClauses: { 'figaro-assembly-provenance': {} },
         agreements: [{ id: 'order-0', clauses: mandatoryClauseFold() }],
     };
 }
@@ -171,6 +178,12 @@ function seedTemplateChain() {
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: meal, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
+        // The provenance declaration lives at ASSEMBLY SCOPE (ruled
+        // 2026-07-28) — the fold carries it into EVERY agreement, checkout
+        // fills the template's own compositionHash mechanically (the hash
+        // cannot appear inside the composition it hashes), and the buyer's
+        // record of it at resolve is the RPGF designer-credit event.
+        assemblyClauses: { 'figaro-assembly-provenance': {} },
         agreements: [
             {
                 id: 'order-0',
@@ -179,12 +192,6 @@ function seedTemplateChain() {
                     // Design time is STRUCTURAL (ruled 2026-07-14): the clause
                     // is SELECTED; the modality is the buyer's checkout pick.
                     'figaro-modalities': {},
-                    // The designer's provenance declaration: checkout fills the
-                    // template's own compositionHash (mechanically — the hash
-                    // cannot appear inside the composition it hashes), and a
-                    // buyer attestation of it links the process to this
-                    // assembly on-chain (the RPGF designer-credit event).
-                    'figaro-assembly-provenance': {},
                     ...mandatoryClauseFold([]),
                 },
             },

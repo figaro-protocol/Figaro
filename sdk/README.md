@@ -1298,7 +1298,7 @@ const registeredMember = graph.getMembers()[0];
 // 2. Fetch + parse the profile document (IPFS/HTTP fetch is yours to make).
 const profileJson = await (await fetch(gateway(registeredMember.metadataURI))).json();
 const profile: MemberProfileMetadata = parseMemberProfileDocument(profileJson);
-const { isAgent, services } = projectAgentServices(profileJson);
+const { reachable, services } = projectAgentServices(profileJson);
 
 // 3. Follow catalogueURI to the item list.
 if (profile.catalogueURI) {

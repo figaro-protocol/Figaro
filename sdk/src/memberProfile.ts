@@ -527,7 +527,11 @@ export function tryParseMemberProfileDocument(
 export interface AgentServiceInfo {
     services: MemberAgentServices;
     capabilities: string[];
-    isAgent: boolean;
+    /** Whether the document declares coordination services — REACHABILITY for
+     *  inbound offers, never species: the protocol has no agent status to
+     *  detect, and a wallet with no endpoints is simply unreachable, not
+     *  human (docs/AI_AGENT_COORDINATION.md). */
+    reachable: boolean;
 }
 
 /**
@@ -535,17 +539,17 @@ export interface AgentServiceInfo {
  * partial documents (the caller may have fetched something that is not a
  * full profile but still carries `services`) AND tolerates malformed
  * individual service fields (non-string values are dropped rather than
- * causing the whole projection to fail). Returns `isAgent: false` when
+ * causing the whole projection to fail). Returns `reachable: false` when
  * no `services` object is present or the document is not an object.
  */
 export function projectAgentServices(value: unknown): AgentServiceInfo {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return { services: {}, capabilities: [], isAgent: false };
+        return { services: {}, capabilities: [], reachable: false };
     }
     const record = value as UnknownRecord;
     const rawServices = record.services;
     if (!rawServices || typeof rawServices !== "object" || Array.isArray(rawServices)) {
-        return { services: {}, capabilities: [], isAgent: false };
+        return { services: {}, capabilities: [], reachable: false };
     }
 
     const s = rawServices as UnknownRecord;
@@ -563,6 +567,6 @@ export function projectAgentServices(value: unknown): AgentServiceInfo {
     return {
         services,
         capabilities,
-        isAgent: true,
+        reachable: true,
     };
 }
