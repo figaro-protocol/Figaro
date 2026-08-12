@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 // No `openGraph`/`twitter` here (unlike its page siblings): this route's
 // layout (`local-commerce/layout.tsx`) already carries a curated `openGraph`
@@ -12,9 +11,16 @@ export const metadata: Metadata = {
     description: "One meal, three strangers, no platform: a delivered meal ordered, cooked, carried, and settled in one stroke. Generic across food, retail, and services.",
 };
 
-// The scene page: the canonical story (lockbox + delivered meal) told as a
-// lived deal. Protocol vocabulary and contract identifiers stay OFF this
-// page — the exact contracts, clauses, and event flow live at /spec.
+// One worked example, told as a lived deal — never the site's default telling
+// (the local-commerce model is demoted: one vertical among many). Protocol
+// vocabulary and contract identifiers stay OFF this page — the exact
+// contracts, clauses, and event flow live at /spec.
+//
+// The narrated deal must match the published `Local commerce` assembly, which
+// is TWO orders: a merchant root order and one co-equal courier sub-order. Do
+// not reintroduce a third tier (a farm, a supplier); no published assembly
+// carries one, and the numbers in the prose are the checkout values of those
+// two legs.
 export default function LocalCommercePage() {
     return (
         <>
@@ -47,12 +53,11 @@ export default function LocalCommercePage() {
                     What you saw before you paid
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    That dissolving institution left something behind that an ordinary evening never does: you saw where your payment was going before you committed to any of it. Order from an ordinary restaurant chain and it lands as one lump sum; where it goes after that &mdash; the cooks, the courier, the farm that grew the tomatoes, the landlord, the owner&apos;s cut &mdash; is decided inside the company, privately, after the fact. Order this way and you saw the split at checkout: 8.40 to the kitchen, 2.10 to the courier, 0.30 to the farm &mdash; the complete P&amp;L of your dinner, line by line, before you paid a cent. These figures differ from the other worked examples on this site; the 2&times; rule under all of them is the same.
+                    That dissolving institution left something behind that an ordinary evening never does: you saw where your payment was going before you committed to any of it. Order from an ordinary restaurant chain and it lands as one lump sum; where it goes after that &mdash; the cooks, the courier, the landlord, the owner&apos;s cut &mdash; is decided inside the company, privately, after the fact. Order this way and you saw the split at checkout: 8.40 to the kitchen, 2.10 to the courier, 10.50 in all &mdash; the complete P&amp;L of your dinner, line by line, before you paid a cent. These figures differ from the other worked examples on this site; the 2&times; rule under all of them is the same.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Every line was its own stake, and they all had to settle together or not at all &mdash; that is the same rule that let the kitchen and the courier trust each other without a dispatcher. The figure below lays out each leg&apos;s stake and payout side by side. Three parties on one receipt is the ordinary shape here; a bookshop order or a single tailor&apos;s bill is simply the shortest version, a P&amp;L with one line.
+                    Each line was its own stake, and both had to settle together or not at all &mdash; that is the same rule that let the kitchen and the courier trust each other without a dispatcher. The stakes follow from the split: the kitchen backed its 8.40 with twice that; the courier, who took the leg once the food&apos;s value was already on the deal, backed the running total of 10.50 with twice that &mdash; 21.00 staked to earn 2.10. Two paid lines on one receipt is the ordinary shape here; a bookshop order or a single tailor&apos;s bill is simply the shortest version, a P&amp;L with one line, and a longer chain is the same move repeated.
                 </p>
-                <StackedBondChainFigure className="mt-8" />
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
@@ -120,6 +125,9 @@ export default function LocalCommercePage() {
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed">
                     Everything above has an exact, inspectable form: the kernel contract that holds the stakes, the registries the participants enrolled in, the clauses their agreement composed, and the event flow the evening left behind. The full catalogue is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">the spec page</Link>; the mechanism itself is told in ten minutes on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mt-5">
+                    The evening above is not a sketch: this deal-shape &mdash; a merchant order with one courier leg hanging off it &mdash; is composed as the <em>Local commerce</em> assembly, and it sits among the registered shapes listed on <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>. Open it there to read its clauses, or fork it in the <Link href="/assemblies/designer" className="text-ink-heading font-medium hover:underline">designer</Link> and change what your own trade needs changed.
                 </p>
             </section>
 

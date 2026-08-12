@@ -25,7 +25,7 @@ export default function Why() {
                     <p className="text-sm text-ink-body leading-relaxed">
                         <strong>Reading this page.</strong> The mechanism &mdash; bonded stakes, buyer-only resolution, no platform in the middle &mdash; is shown on{" "}
                         <Link href="/kernel" className="hover:underline">/kernel</Link>{" "}
-                        and lived through on <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">/local-commerce</Link>. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, start there instead, or see{" "}
+                        and lived through, in one worked deal among many, on <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">/local-commerce</Link>. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, start there instead, or see{" "}
                         <Link href="/faq" className="hover:underline">/faq</Link>{" "}
                         for what the design protects against, and what it does not.
                     </p>
@@ -49,7 +49,7 @@ export default function Why() {
                     Most of what runs on crypto today is one of three things: traditional financial products ported to a new venue, grifters exploiting the same social engineering that underlies adoption, or the cognitive era&apos;s institutional apparatus lifted onto a new substrate &mdash; on-chain governance recreating corporate voting, legal-engineering toolchains porting written contracts onto chain.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Figaro is none of these. It is cryptoeconomics applied to value-added processes &mdash; trade. As a primitive it takes no position on where value flows or under what conditions; the participants in each process decide. If you would rather see the mechanism walked through as one evening&apos;s dinner, that lived version is at <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">local commerce</Link>.
+                    Figaro is none of these. It is cryptoeconomics applied to value-added processes &mdash; trade. As a primitive it takes no position on where value flows or under what conditions; the participants in each process decide.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The full argument for what kind of rule this is &mdash; why an immutable, ownerless kernel sits closer to a constitution&apos;s entrenched layer than to an enacted law, and what a federal court has already recognized about immutable, ownerless code like it &mdash; is developed at length in the paper <Link href="/papers/code-is-constitution" className="text-ink-heading font-medium hover:underline">Code Is Constitution</Link>. Read it as a paper, not a page.

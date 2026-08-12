@@ -52,7 +52,7 @@ export default function Assemblies() {
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Worked through end to end, in plain language, at <Link href="/local-commerce" className="underline">Local Commerce</Link>.
+                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Each row in the inventory below carries its own shape, and opens on the composition it was registered under.
                 </p>
             </MarketingSection>
 
