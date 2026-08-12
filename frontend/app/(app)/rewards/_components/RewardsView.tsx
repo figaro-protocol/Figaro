@@ -16,8 +16,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
 import { FLORIN_TOKEN_ABI } from "@figaro/sdk";
 import { Button } from "@/components/ui/Button";
-import { WalletGate } from "@/components/runtime/WalletGate";
-import { useMounted } from "@/hooks/useMounted";
+import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -32,7 +31,6 @@ function periodStatus(t: RpgfPeriodState, currentId: number): string {
 }
 
 export function RewardsView() {
-    const mounted = useMounted();
     const rewards = useRpgfRewards();
     const { address: account } = useAccount();
     const publicClient = usePublicClient();
@@ -59,8 +57,10 @@ export function RewardsView() {
         };
     }, [publicClient, account, rewards.periods]);
 
-    if (!mounted) return null;
-
+    // No whole-view mounted gate: everything above the WalletGate children is
+    // hydration-stable (config-derived `available`, static prose), and
+    // WalletGate gates its own children on mounted — a blanket `return null`
+    // here made the server render an empty body (probe move 10's finding).
     const act = async (label: string, run: () => Promise<unknown>) => {
         setBusy(label);
         setError("");
@@ -98,7 +98,7 @@ export function RewardsView() {
                 </p>
             )}
 
-            <WalletGate hint="Connect a wallet to read your accrual and claim a closed period.">
+            <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to read your accrual and claim a closed period.">
                 {account && florinBalance !== null && (
                     <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
                         Your florin balance: <span className="font-mono">{formatUnits(florinBalance, 18)}</span>

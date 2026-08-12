@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/shared/pageMetadata";
 
 export const metadata: Metadata = {
     title: "Local Commerce — Figaro Protocol",
@@ -7,11 +8,14 @@ export const metadata: Metadata = {
         title: "Figaro Local Commerce — Reference Implementation",
         description: "A local-commerce workflow built on Figaro Protocol end to end. A working example of the full trade coordination stack across food, retail, and services.",
         type: "website",
+        siteName: "Figaro Protocol",
+        images: [OG_IMAGE],
     },
     twitter: {
         card: "summary_large_image",
         title: "Figaro Local Commerce — Reference Implementation",
         description: "A local-commerce workflow built on Figaro Protocol end to end. Both parties lock stakes. No intermediary needed.",
+        images: [OG_IMAGE.url],
     },
 };
 

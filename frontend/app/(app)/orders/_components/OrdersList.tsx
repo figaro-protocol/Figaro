@@ -30,7 +30,7 @@ import { formatToken } from "@/lib/shared/utils";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { Button } from "@/components/ui/Button";
-import { WalletGate } from "@/components/runtime/WalletGate";
+import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { type CommitmentPayload } from "@figaro/sdk/agent";
@@ -362,7 +362,7 @@ export function OrdersList() {
                 synchronously from storage — branching on it during hydration is
                 React #418/#423/#425). Real state takes over post-mount. */}
             {!mounted || !isConnected ? (
-                <WalletGate hint="Connect a wallet to see your orders.">
+                <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to see your orders.">
                     <div className="rounded-lg border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
                         Connect a wallet to see your orders.
                     </div>

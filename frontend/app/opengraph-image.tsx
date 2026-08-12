@@ -4,7 +4,13 @@ import { ImageResponse } from "next/og";
 // static export would emit the <meta og:image> URL but never the image itself
 // (a guaranteed 404 on every deploy — measured 2026-08-05). Default runtime
 // lets `output: 'export'` render the PNG at build time.
-export const alt = "Figaro Protocol — The Figaro Ecosystem";
+//
+// Every page references this one card: `withOg` points `openGraph.images` at
+// the emitted `/opengraph-image` path, because a page-level `openGraph` block
+// replaces the resolved parent block wholesale — pages relying on the file
+// convention alone shipped no `og:image` at all. Palette + type follow
+// docs/DESIGN_TOKENS.md (canvas / ink ramp / tawny-amber heading).
+export const alt = "Figaro completes the contract.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -13,42 +19,49 @@ export default async function Image() {
         (
             <div
                 style={{
-                    background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
+                    background: "#f5f5f2",
                     width: "100%",
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "center",
+                    alignItems: "flex-start",
                     justifyContent: "center",
-                    fontFamily: "system-ui, sans-serif",
-                    padding: "60px 80px",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    padding: "80px 96px",
+                    borderBottom: "16px solid #a16328",
                 }}
             >
-                {/* Protocol name */}
                 <div
                     style={{
-                        fontSize: 72,
-                        fontWeight: 800,
-                        color: "#f8fafc",
+                        fontSize: 96,
+                        fontWeight: 700,
+                        color: "#a16328",
                         letterSpacing: "-2px",
-                        marginBottom: 24,
+                        marginBottom: 28,
                     }}
                 >
-                    Figaro Protocol
+                    Figaro
                 </div>
-
-                {/* Tagline */}
                 <div
                     style={{
-                        fontSize: 32,
+                        fontSize: 44,
                         fontWeight: 400,
-                        color: "#94a3b8",
-                        textAlign: "center",
-                        lineHeight: 1.4,
-                        maxWidth: 900,
+                        color: "#3a322a",
+                        lineHeight: 1.35,
+                        maxWidth: 950,
                     }}
                 >
-                    The Figaro Ecosystem
+                    Figaro completes the contract.
+                </div>
+                <div
+                    style={{
+                        fontSize: 26,
+                        fontWeight: 400,
+                        color: "#857c6e",
+                        marginTop: 36,
+                    }}
+                >
+                    Self-enforcing agreements between strangers — on Ethereum.
                 </div>
             </div>
         ),

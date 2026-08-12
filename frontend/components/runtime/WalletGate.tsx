@@ -36,9 +36,24 @@ import { useAccount } from "wagmi";
 import { ConnectWallet } from "@/components/shared/ConnectWallet";
 import { useMounted } from "@/hooks/useMounted";
 
+/**
+ * The shared stranger-facing explanation for wallet-scoped pages reached
+ * from the top-level nav (probe move 10): the disconnected branch is what
+ * the server renders, so this copy is what a cold visitor and a crawler
+ * see. One constant, spelled here, so the three surfaces never drift.
+ */
+export const STRANGER_EXPLAINER =
+    "There is no account to create: a wallet is the only identity the protocol knows. This page is a reading of the public chain state that belongs to whichever wallet connects — nothing on it is held by a platform.";
+
 export interface WalletGateProps {
     /** Short message explaining why a wallet is needed. */
     hint: string;
+    /**
+     * Optional longer explanation rendered above the hint in the
+     * disconnected state — server-rendered, so it is the stranger/crawler
+     * view of the page. Pass `STRANGER_EXPLAINER` for nav-reachable pages.
+     */
+    explainer?: string;
     /**
      * Content to render when a wallet is connected. Use a fallback like
      * "no items found" — the connected-but-empty state, not the loading
@@ -72,6 +87,7 @@ const STANDALONE_CLASS =
 
 export function WalletGate({
     hint,
+    explainer,
     children,
     variant = "inline",
     title,
@@ -95,6 +111,9 @@ export function WalletGate({
                 {title && (
                     <p className="text-sm font-semibold text-black mb-1">{title}</p>
                 )}
+                {explainer && (
+                    <p className="text-xs text-gray-500 mb-3 text-left">{explainer}</p>
+                )}
                 <p className="text-xs text-gray-500 mb-6">{hint}</p>
                 <ConnectWallet />
             </div>
@@ -103,6 +122,7 @@ export function WalletGate({
 
     return (
         <div className={wrapperClass} data-testid={testId ?? "wallet-gate"}>
+            {explainer && <p>{explainer}</p>}
             <p>{hint}</p>
             <ConnectWallet />
         </div>
