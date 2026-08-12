@@ -40,7 +40,7 @@ const assemblyMandatoryClauseIds = mandatorySpecs
 describe("reference assemblies — the onboarding set", () => {
     it("the set exists and carries at least the four ruled scenarios", () => {
         expect(referenceFiles.length).toBeGreaterThanOrEqual(4);
-        for (const name of ["pos.json", "local-delivery.json", "freelancer.json", "tradelens.json"]) {
+        for (const name of ["pos.json", "local-commerce.json", "freelancer.json", "tradelens.json"]) {
             expect(referenceFiles, `${name} is part of the onboarding set`).toContain(name);
         }
     });

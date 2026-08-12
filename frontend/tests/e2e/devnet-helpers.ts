@@ -737,7 +737,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         // particulars — authored by the buyer at checkout, never here.
 
         // Editorial identity + publish (pin template → AssemblyRegistered).
-        await page.getByTestId('designer-name-input').fill('Local delivery');
+        await page.getByTestId('designer-name-input').fill('Local commerce');
         await page.getByTestId('designer-summary-input').fill('Meal/grocery delivery: a merchant order plus one co-equal courier order.');
         await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
