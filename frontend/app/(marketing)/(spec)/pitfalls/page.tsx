@@ -37,7 +37,7 @@ export default function Pitfalls() {
                     <LabelledListRow label="Reserved article names" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">Two <code>block.design.article</code> values are reserved, and picking one by accident is silent.</strong> <code>&quot;mandatory&quot;</code> auto-folds a clause into every template agreement; <code>&quot;attestations&quot;</code> commits its content empty at signing &mdash; nothing warns you, and registration is permanent and first-write-wins, so check your <code>article</code> value before you register, not after.
                         <div className="mt-2 text-sm">
-                            <Link href="/clauses/register" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Register a clause</Link>
+                            <Link href="/clauses#what-the-hash-covers" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Clauses, &ldquo;What the hash covers&rdquo;</Link>
                         </div>
                     </LabelledListRow>
                 </ul>

@@ -86,7 +86,7 @@ const TERMS: Term[] = [
         term: "The four hashes",
         definition:
             "A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is — registration is permanent and first-write-wins. idHash (the clause id — keccak256 of the clause's name and version) is the on-chain registry key. contentHash is the integrity anchor over the whole document. agreementHash is what a buyer and seller actually sign. compositionHash is what a designer's assembly is identified by.",
-        readMore: <Link href="/clauses/register#what-the-hash-covers" className="hover:underline">Register a clause</Link>,
+        readMore: <Link href="/clauses#what-the-hash-covers" className="hover:underline">Clauses</Link>,
     },
     {
         id: "kernel",
