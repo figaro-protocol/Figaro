@@ -90,6 +90,7 @@ solo "no-network-fallbacks"    scripts/lint-no-network-fallbacks.sh
 solo "runtime-tests-from-chain" scripts/lint-runtime-tests-from-chain.sh
 solo "core-contract-abis"      scripts/lint-core-contract-abis.sh
 solo "claude-md"               scripts/lint-claude-md.sh
+solo "agent-surface-refs"      scripts/lint-agent-surface-refs.sh
 solo "clause-counts"           scripts/lint-clause-counts.sh
 solo "clause-nests-under-a-field" scripts/lint-clause-nests-under-a-field.sh
 solo "chain-gas"               scripts/lint-chain-gas.sh

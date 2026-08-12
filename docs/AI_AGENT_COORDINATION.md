@@ -25,7 +25,7 @@ Pre-defined agents are **operator-private by default**; "public" is the exceptio
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
-  - **`figaro-clause-author` / `figaro-assembly-designer`** — author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user (RPGF rewards it).
+  - **`figaro-clause-author` / `figaro-assembly-designer`** — author or **fork** a clause/assembly and register it on the permissionless registries (a Layer-A `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user (RPGF rewards it).
 - **Operator-private repo agents** (the Claude Code subagents that build THIS repo, for the operator only): definitions live in `.claude/agents/*.md`. They touch the repo (that is their job); nothing in this document applies to them.
 
 ---
@@ -101,9 +101,9 @@ strangers over an untrusted transport.
 
 The transport is a one-method interface — `sendOffer(seller, offer) → signed offer | null`
 (`CoordinationChannel`). The origination loops depend on **only** that method, so the
-wire is genuinely swappable. The SDK ships two implementations: `InProcessChannel` (a
+wire is genuinely swappable. The SDK ships three implementations: `InProcessChannel` (a
 test transport that routes both agents in one process — real sign/validate/bond logic,
-only the network elided) and **`HttpChannel`, the first real transport** — the buyer
+only the network elided), `A2aChannel` (below), and **`HttpChannel`, the first real transport** — the buyer
 POSTs the serialized envelope to the seller's endpoint and awaits the counter-signed
 reply, and `makeHttpOfferResponder` turns a seller's `OfferHandler` into a
 framework-agnostic HTTP handler. `HttpChannel` is **keyed by the coordination endpoint
@@ -327,8 +327,10 @@ The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`,
 loop: resolve the DID, verify the wallet binding with `didDocumentMatchesAddress()`,
 then pull the coordination endpoint with `extractServiceEndpoints(doc, "MCPEndpoint")`
 (or whichever transport type the caller speaks) — that endpoint is where the
-origination offer is routed. The frontend provides the `useDidVerification()` hook in
-`lib/agent/useDidWeb.ts`.
+origination offer is routed. The frontend provides the `useDidDocument()` and
+`useDidConsistency()` hooks in `lib/agent/useDidWeb.ts` (consistency, not proof —
+the DID wallet-binding check is routing hygiene; authentication stays with the
+envelope signatures).
 
 ### Trust Model Difference
 

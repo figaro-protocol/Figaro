@@ -14,6 +14,10 @@ npx lint-staged
 # staged set directly — catches paths that match no lint-staged glob.
 bash scripts/lint-claude-local-allowlist.sh
 bash scripts/lint-claude-md.sh
+# The public agent surfaces (ecosystem-agents/ + AI_AGENT_COORDINATION.md) must
+# cite only referents the tree carries — prose fossilizes while code advances
+# (the 2026-08-12 agent-seam audit's useDidVerification/DesignDraft class).
+bash scripts/lint-agent-surface-refs.sh
 bash scripts/lint-clause-counts.sh
 # Nesting guard: block.nestsUnder must name a STRUCTURED field (enum/array/object) of another
 # clause — never a scalar, never a non-existent field. Kills the article-vs-nestsUnder
