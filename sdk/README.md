@@ -85,15 +85,20 @@ What it does, in order:
    commerce clause by the field it DECLARES (`lineItems`), never by clause name.
 2. **Registers the seller loop.** `makeSellerOfferHandler(…)` on an
    `InProcessChannel`, with both refusal floors filled in explicitly (an `accept`
-   business rule plus an economic `policy` bounding currency and magnitude). A
-   handler missing either one declines every offer.
+   business rule plus an economic `policy` bounding currency and magnitude) and
+   the registry-built `SpecSource` (`specs`), which arms the merkle-leaf sign
+   gate. A handler missing either floor declines every offer.
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
-   template's root agreement with the buyer's overrides, signs the EIP-712
-   commitment against a CHAIN-time deadline (`readChainTimestamp` +
+   template's root agreement with the buyer's overrides, runs the merkle-leaf
+   sign gate (`assertAgreementSignable` — every section conforms to its spec,
+   and the currency/payment TERMS equal the commitment struct's mirrors; a
+   missing required term or a leaf/struct contradiction refuses to sign), signs
+   the EIP-712 commitment against a CHAIN-time deadline (`readChainTimestamp` +
    `computeDeadline` — never the machine clock), and hands the offer to the
    channel. The seller re-hashes the agreement against the committed
-   `agreementHash`, applies its floors, approves its 2× bond and counter-signs.
-   The buyer approves its own 2× bond and submits `FigaroCore.commit`.
+   `agreementHash`, runs the same gate through its own `specs`, applies its
+   floors, approves its 2× bond and counter-signs. The buyer approves its own
+   2× bond and submits `FigaroCore.commit`.
 4. **Asserts what landed.** The commit receipt must be `success`: one
    `OrderCommitted` on the kernel, both bonds pulled into it.
 5. **Reads it back out of band.** A second `ctx.sync()`, then

@@ -20,9 +20,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
-    FigaroContext, proposeInitiations, originateProcess, makeSellerOfferHandler, InProcessChannel,
+    FigaroContext, originateProcess, makeSellerOfferHandler, InProcessChannel,
 } from "@figaro/sdk/agent";
-import { computeDeadline, readChainTimestamp } from "@figaro/sdk";
+import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro/sdk";
+import { parseClauseSpec } from "@figaro/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -54,8 +55,24 @@ let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} $
 // ── Buyer discovers the network ───────────────────────────────────────────────
 const ctx = new FigaroContext(pub, addresses);
 await ctx.sync();
-const clauseVersionOf = new Map(ctx.getClauses().map((c) => [c.clauseId, c.version]));
-const clauseUriOf = new Map(ctx.getClauses().map((c) => [c.clauseId, c.contentURI]));
+
+// The SpecSource, built from the SAME registry→IPFS specs the frontend uses
+// (parseClauseSpec + parseProjectionHints — the construction any consumer
+// performs). Passing it on BOTH sides of the handshake engages the merkle-leaf
+// sign gate (assertAgreementSignable): neither agent signs an agreement whose
+// terms contradict the commitment struct (docs/CLAUSES.md § "Every clause is a
+// merkle leaf").
+const specViews = [];
+for (const c of ctx.getClauses()) {
+    const raw = await tryHydrate(c.contentURI);
+    if (!raw) continue;
+    const parsed = parseClauseSpec(raw);
+    if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+}
+const specs = {
+    get: (clauseId, version) => specViews.find((v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+    list: () => specViews,
+};
 
 // Pick a single-order assembly by hydrating templates — no hardcoded id; skip un-hydratable ones.
 let chosen = null, template = null;
@@ -67,11 +84,8 @@ check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) process.exit(1);
 
 // Commerce clause by declared field (lineItems) — open-world, no clause name.
-let commerceClauseId = null;
-for (const cid of Object.keys(template.agreements[0].clauses)) {
-    const spec = clauseUriOf.get(cid) ? await tryHydrate(clauseUriOf.get(cid)) : null;
-    if (spec && (spec.fields ?? []).some((f) => f.name === "lineItems")) { commerceClauseId = cid; break; }
-}
+const commerceClauseId = Object.keys(template.agreements[0].clauses)
+    .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
 // ── Seller LOOP: register the offer handler on the channel ────────────────────
@@ -79,12 +93,13 @@ const channel = new InProcessChannel();
 // Refuse-all floor: the proof script IS the operator — explicit accept + policy.
 channel.register(SELLER.address, makeSellerOfferHandler(sellerW, pub, addresses, {
     accept: () => true, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
+    specs, // the merkle-leaf seam on the counter-sign side
 }));
 
 // ── Buyer LOOP: originate against the discovered assembly + seller ────────────
 const result = await originateProcess(buyerW, pub, addresses, {
     channel, template, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
-    clauseVersion: (cid) => clauseVersionOf.get(cid) ?? 1,
+    specs, // the merkle-leaf seam before the buyer signs
     overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENT.toString(), lineItems: [{ itemId: "sku-1", name: "Autonomous order", quantity: 1, unitPrice: PAYMENT.toString() }] } },
 });
 check("origination returned a tx (seller counter-signed, commit submitted)", !!result?.hash);

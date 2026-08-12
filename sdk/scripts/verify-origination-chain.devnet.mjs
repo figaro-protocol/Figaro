@@ -18,7 +18,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
-import { computeDeadline, readChainTimestamp } from "@figaro/sdk";
+import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro/sdk";
+import { parseClauseSpec } from "@figaro/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -54,24 +55,33 @@ let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} $
 // ── Discover the MULTI-order seed chain (a template with >1 agreement) ─────────
 const ctx = new FigaroContext(pub, addresses);
 await ctx.sync();
-const clauseVersionOf = new Map(ctx.getClauses().map((c) => [c.clauseId, c.version]));
-const clauseUriOf = new Map(ctx.getClauses().map((c) => [c.clauseId, c.contentURI]));
 
-let template = null;
+// The SpecSource (registry→IPFS, parseClauseSpec + parseProjectionHints) —
+// passed on both sides so the merkle-leaf sign gate runs on every order of the
+// chain, and so the walk's currency-leaf fill + contradiction throw engage.
+const specViews = [];
+for (const c of ctx.getClauses()) {
+    const raw = await tryHydrate(c.contentURI);
+    if (!raw) continue;
+    const parsed = parseClauseSpec(raw);
+    if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+}
+const specs = {
+    get: (clauseId, version) => specViews.find((v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+    list: () => specViews,
+};
+
+let chosen = null, template = null;
 for (const a of ctx.getAssemblies()) {
     const t = await tryHydrate(a.contentURI);
-    if (t && Array.isArray(t.agreements) && t.agreements.length === 3) { template = t; break; }
+    if (t && Array.isArray(t.agreements) && t.agreements.length === 3) { chosen = a; template = t; break; }
 }
 check("discovered the 3-order seed chain", !!template);
 if (!template) process.exit(1);
 
 // Commerce clause by declared field (lineItems) — open-world, once for the chain.
-let commerceClauseId = null;
-const allClauseIds = new Set(template.agreements.flatMap((a) => Object.keys(a.clauses)));
-for (const cid of allClauseIds) {
-    const spec = clauseUriOf.get(cid) ? await tryHydrate(clauseUriOf.get(cid)) : null;
-    if (spec && (spec.fields ?? []).some((f) => f.name === "lineItems")) { commerceClauseId = cid; break; }
-}
+const commerceClauseId = [...new Set(template.agreements.flatMap((a) => Object.keys(a.clauses)))]
+    .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
 // Node→seller: root to SELLERS[0]; BOTH subs to SELLERS[1]. One seller bonding
@@ -87,10 +97,10 @@ const channel = new InProcessChannel();
 // requires root shape; the sub-order seller serves chain nodes, so it omits it.
 const OPERATOR = { accept: () => true };
 channel.register(SELLERS[0].address, makeSellerOfferHandler(sellerW[0], pub, addresses, {
-    ...OPERATOR, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
+    ...OPERATOR, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n }, specs,
 }));
 channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, addresses, {
-    ...OPERATOR, policy: { currencyAllowlist: [TOKEN], maxValue: 10_000n },
+    ...OPERATOR, policy: { currencyAllowlist: [TOKEN], maxValue: 10_000n }, specs,
 }));
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
@@ -98,14 +108,32 @@ const orderedIds = [
     ...template.agreements.filter((a) => (Object.values(a.clauses).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? []).length === 0),
     ...template.agreements.filter((a) => (Object.values(a.clauses).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? []).length > 0),
 ].map((a) => a.id);
+// The headless buyer authors its transaction particulars exactly as checkout
+// does: the modality is the buyer's request, and the provenance section fills
+// mechanically with the instantiated assembly's OWN compositionHash — the gate
+// (engaged via `specs`) refuses to sign while any required term is missing,
+// which is how the pre-gate version of this proof was caught committing empty
+// provenance/modality sections.
+const rootParticulars = (agreementId) => {
+    const clauses = template.agreements.find((a) => a.id === agreementId)?.clauses ?? {};
+    const fill = {};
+    for (const cid of Object.keys(clauses)) {
+        const fields = specs.get(cid)?.fields ?? [];
+        if (fields.some((f) => f.name === "modality")) fill[cid] = { modality: "virtual" };
+        if (fields.some((f) => f.name === "compositionHash")) fill[cid] = { compositionHash: chosen.compositionHash };
+    }
+    return fill;
+};
 const nodes = orderedIds.map((id, i) => ({
     nodeId: id, seller: NODE_SELLERS[i].address, payment: PAYMENTS[i],
-    overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENTS[i].toString(), lineItems: [{ itemId: `n${i}`, name: `Node ${i}`, quantity: 1, unitPrice: PAYMENTS[i].toString() }] } },
+    overrides: {
+        ...rootParticulars(id),
+        [commerceClauseId]: { currency: TOKEN, payment: PAYMENTS[i].toString(), lineItems: [{ itemId: `n${i}`, name: `Node ${i}`, quantity: 1, unitPrice: PAYMENTS[i].toString() }] },
+    },
 }));
 
 const result = await originateChain(buyerW, pub, addresses, {
-    template, currency: TOKEN, chainId, core: addresses.core, channel, nodes, deadline,
-    clauseVersion: (cid) => clauseVersionOf.get(cid) ?? 1,
+    template, currency: TOKEN, chainId, core: addresses.core, channel, nodes, deadline, specs,
 });
 check("originateChain committed all three orders (3 tx hashes)", result?.hashes?.length === 3);
 

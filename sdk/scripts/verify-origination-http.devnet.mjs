@@ -24,7 +24,8 @@ import {
     FigaroContext, originateProcess, makeSellerOfferHandler,
     HttpChannel, makeHttpOfferResponder,
 } from "@figaro/sdk/agent";
-import { computeDeadline, readChainTimestamp } from "@figaro/sdk";
+import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro/sdk";
+import { parseClauseSpec } from "@figaro/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -53,10 +54,28 @@ const tryHydrate = async (uri) => { try { return await (await fetch(GATEWAY + ur
 
 let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} ${n}`); if (!c) fail++; };
 
+// ── Shared discovery + the SpecSource (registry→IPFS, parseClauseSpec +
+//    parseProjectionHints) — built BEFORE the seller endpoint so both sides of
+//    the socket run the merkle-leaf sign gate (assertAgreementSignable). ──────
+const ctx = new FigaroContext(pub, addresses);
+await ctx.sync();
+const specViews = [];
+for (const c of ctx.getClauses()) {
+    const raw = await tryHydrate(c.contentURI);
+    if (!raw) continue;
+    const parsed = parseClauseSpec(raw);
+    if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+}
+const specs = {
+    get: (clauseId, version) => specViews.find((v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+    list: () => specViews,
+};
+
 // ── Seller: run its offer handler behind a REAL HTTP endpoint ─────────────────
 // Refuse-all floor: the proof script IS the operator — explicit accept + policy.
 const responder = makeHttpOfferResponder(makeSellerOfferHandler(sellerW, pub, addresses, {
     accept: () => true, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
+    specs, // the merkle-leaf seam on the counter-sign side of the socket
 }));
 const server = createServer((req, res) => {
     let body = ""; req.on("data", (c) => (body += c));
@@ -70,12 +89,7 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const sellerUrl = `http://127.0.0.1:${server.address().port}/offer`;
 check("seller HTTP endpoint is listening", !!server.address().port);
 
-// ── Buyer discovers the network ───────────────────────────────────────────────
-const ctx = new FigaroContext(pub, addresses);
-await ctx.sync();
-const clauseVersionOf = new Map(ctx.getClauses().map((c) => [c.clauseId, c.version]));
-const clauseUriOf = new Map(ctx.getClauses().map((c) => [c.clauseId, c.contentURI]));
-
+// ── Buyer discovers the network (the ctx synced above) ────────────────────────
 let chosen = null, template = null;
 for (const a of ctx.getAssemblies()) {
     const t = await tryHydrate(a.contentURI);
@@ -84,18 +98,15 @@ for (const a of ctx.getAssemblies()) {
 check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) { server.close(); process.exit(1); }
 
-let commerceClauseId = null;
-for (const cid of Object.keys(template.agreements[0].clauses)) {
-    const spec = clauseUriOf.get(cid) ? await tryHydrate(clauseUriOf.get(cid)) : null;
-    if (spec && (spec.fields ?? []).some((f) => f.name === "lineItems")) { commerceClauseId = cid; break; }
-}
+const commerceClauseId = Object.keys(template.agreements[0].clauses)
+    .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
 // ── Buyer LOOP: originate over HttpChannel (the seller is reached via the socket) ─
 const channel = new HttpChannel({ resolveEndpoint: async () => sellerUrl });
 const result = await originateProcess(buyerW, pub, addresses, {
     channel, template, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
-    clauseVersion: (cid) => clauseVersionOf.get(cid) ?? 1,
+    specs, // the merkle-leaf seam before the buyer signs
     overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENT.toString(), lineItems: [{ itemId: "sku-1", name: "Autonomous order (HTTP)", quantity: 1, unitPrice: PAYMENT.toString() }] } },
 });
 check("origination returned a tx (offer traversed a real HTTP socket, seller counter-signed)", !!result?.hash);
