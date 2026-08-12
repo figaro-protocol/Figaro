@@ -216,6 +216,42 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
             counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS),
         ).rejects.toThrow(/settlement currency/i);
     });
+
+    it("buildBuyerOffer with specs refuses to sign the same contradiction BUYER-side", async () => {
+        const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
+        const mismatched = {
+            ...offerParams(),
+            specs: SPECS,
+            overrides: {
+                "figaro-commerce": {
+                    currency: BAD_CURRENCY,
+                    payment: "1000",
+                    lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
+                },
+            },
+        };
+        await expect(buildBuyerOffer(buyerW, mismatched)).rejects.toThrow(/settlement currency/i);
+        // A clean offer still signs with the gate on.
+        const offer = await buildBuyerOffer(buyerW, { ...offerParams(), specs: SPECS });
+        expect(offer.buyerSig).toBeDefined();
+    });
+
+    it("rejects an offer whose commerce PAYMENT leaf contradicts the struct payment (both mirrored fields gate)", async () => {
+        const mismatched = {
+            ...offerParams(), // struct payment stays 1000n
+            overrides: {
+                "figaro-commerce": {
+                    currency: CURRENCY,
+                    payment: "5", // the signed TERM disagrees
+                    lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "5" }],
+                },
+            },
+        };
+        const offer = await buildBuyerOffer(buyerW, mismatched);
+        // Invisible without a SpecSource, refused with one.
+        expect(validateOffer(offer, SELLER.address).ok).toBe(true);
+        expect(validateOffer(offer, SELLER.address, undefined, SPECS).reason).toMatch(/commitment payment 1000 contradicts/i);
+    });
 });
 
 describe("InProcessChannel", () => {

@@ -73,7 +73,7 @@ the spec, not around it:
 | Part | Who reads it | Verified? |
 |---|---|---|
 | **`fields`/`stages`** (the content; stage 0 IS the committed content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
-| **all of `block`** — sectioned by reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`) | the UI only (drawer grouping + editors, checkout folds, composition dispatch, runtime-input forms, the capability rail) | **No** — every on-chain and verification path ignores it |
+| **all of `block`** — sectioned by reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`) | the runtime only: the UI (drawer grouping + editors, composition dispatch, runtime-input forms, the capability rail) plus the SDK's five hash-load-bearing projection hints (`parseProjectionHints` — `design.article`/`scope`/`fills`, `checkout.catalogueFills`/`profileFills`; the documented carve-out in `sdk/src/projection.ts`, everything else in `block` the SDK never reads) | **No** — no on-chain, prover, or verifier path reads it |
 
 There is **no `block.tier`** (it was ripped from the block model). Verification is **uniform**:
 every clause section is a merkle leaf under the signed `agreementHash`, and that keccak binding
@@ -137,9 +137,12 @@ Corollaries:
   non-derivable AND confidential (channel-carried, hash-anchored). Do not conflate the
   two axes.
 - **Grain caps are protocol, not presentation.** Where the rule caps a public field's
-  precision (e.g. `figaro-geolocation`'s neighborhood-grade geohash), the cap belongs in
-  the **spec** (`maxLength`) — the verified side of the seam — never only in one
-  replaceable frontend's constant.
+  precision (e.g. `figaro-geolocation`'s neighborhood-grade geohash), the cap is a
+  protocol-tier rule, never one replaceable frontend's taste: the spec carries the
+  structural ceiling (`maxLength: 32`, all standards), and the public grain is
+  `cap(disposition, geocodeStandard)` (ruled 2026-07-29) — derived by every reader from
+  the committed spec; a frontend constant merely implements the derivation.
+  `docs/CLAUSES.md`'s `figaro-geolocation` row owns the rule.
 
 ## Composing the kernel — the coordinator pattern
 

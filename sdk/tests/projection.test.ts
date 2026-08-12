@@ -35,6 +35,10 @@ const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
  *  same token the frozen CommitmentPayload envelope signs. */
 const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
 const OTHER_TOKEN = "0x0000000000000000000000000000000000000002" as const;
+/** The commitment's mirrored pair (currency + payment) the gate asserts the
+ *  leaves against — matching the fixtures' commerce leaf below. */
+const STRUCT = { currency: CURRENCY, payment: 1n };
+const OTHER_STRUCT = { currency: OTHER_TOKEN, payment: 1n };
 
 const SPECS = specSourceFromFixtures([
     "figaro-commerce",
@@ -60,7 +64,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-commerce": commerceData(),
             "figaro-applicable-law": { applicableLaw: "US-NY" },
         }, SPECS);
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY)).not.toThrow();
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
     it("throws on a section violating its clause spec, naming clause + path", () => {
@@ -70,7 +74,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-commerce": commerceData(),
             "figaro-applicable-law": { applicableLaw: "State of New York, USA" },
         }, SPECS);
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY))
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT))
             .toThrow(/figaro-applicable-law \$\.applicableLaw/);
     });
 
@@ -79,7 +83,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-commerce": commerceData(),
         }, SPECS);
         const wrongHash = `0x${"ab".repeat(32)}` as `0x${string}`;
-        expect(() => assertAgreementSignable(agreement, wrongHash, SPECS, CURRENCY))
+        expect(() => assertAgreementSignable(agreement, wrongHash, SPECS, STRUCT))
             .toThrow(/\(merkle\) agreementHash/);
     });
 
@@ -91,7 +95,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
                 language: "not-a-language-code!",
             },
         }, SPECS);
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, CURRENCY);
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
         expect(check.ok).toBe(false);
         const paths = check.issues.map((i) => `${i.clause} ${i.path}`);
         expect(paths.some((p) => p.includes("applicableLaw"))).toBe(true);
@@ -108,12 +112,12 @@ describe("the sign gate's settlement-currency chain — pin == leaf == struct", 
 
     it("passes when the commerce leaf equals the commitment's currency", () => {
         const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY)).not.toThrow();
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
     it("throws when the leaf and the struct name different tokens", () => {
         const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, OTHER_TOKEN))
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, OTHER_STRUCT))
             .toThrow(/figaro-commerce currency: the signed term names .* contradicts it/);
     });
 
@@ -122,7 +126,7 @@ describe("the sign gate's settlement-currency chain — pin == leaf == struct", 
             "figaro-commerce": { ...commerceData(), currency: "0x000000000000000000000000000000000000000A" },
         });
         expect(() => assertAgreementSignable(
-            agreement, agreementHash, SPECS, "0x000000000000000000000000000000000000000a",
+            agreement, agreementHash, SPECS, { currency: "0x000000000000000000000000000000000000000a", payment: 1n },
         )).not.toThrow();
     });
 
@@ -131,7 +135,7 @@ describe("the sign gate's settlement-currency chain — pin == leaf == struct", 
             "figaro-commerce": commerceData(),
             "figaro-topology": { parentOrderHashes: [] },
         });
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, CURRENCY);
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
         expect(check.ok).toBe(true);
     });
 
@@ -140,7 +144,7 @@ describe("the sign gate's settlement-currency chain — pin == leaf == struct", 
             "figaro-commerce": commerceData(),
             "figaro-utility-token": { currency: CURRENCY },
         });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY)).not.toThrow();
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
     it("throws when the pin contradicts the commerce leaf", () => {
@@ -148,15 +152,31 @@ describe("the sign gate's settlement-currency chain — pin == leaf == struct", 
             "figaro-commerce": commerceData(),
             "figaro-utility-token": { currency: OTHER_TOKEN },
         });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, CURRENCY))
+        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT))
             .toThrow(/figaro-utility-token currency: this assembly is denominated by design/);
+    });
+
+    it("throws when the payment leaf and the struct disagree — payment mirrors like currency", () => {
+        const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
+        expect(() => assertAgreementSignable(
+            agreement, agreementHash, SPECS, { currency: CURRENCY, payment: 1000n },
+        )).toThrow(/figaro-commerce payment: the signed term names 1 as the payment; the commitment payment 1000 contradicts it/);
+    });
+
+    it("reports a malformed payment leaf as its own spec failure, never a mismatch", () => {
+        const { agreement, agreementHash } = build({
+            "figaro-commerce": { ...commerceData(), payment: "not-a-number" },
+        });
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
+        expect(check.ok).toBe(false);
+        expect(check.issues.some((i) => i.message.includes("commitment payment"))).toBe(false);
     });
 
     it("reports a missing leaf as the ordinary required-field failure, not a mismatch", () => {
         const { agreement, agreementHash } = build({
             "figaro-commerce": { payment: "1", lineItems: [] },
         });
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, CURRENCY);
+        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
         expect(check.ok).toBe(false);
         expect(check.issues).toHaveLength(1);
         expect(check.issues[0].message).toMatch(/required/i);

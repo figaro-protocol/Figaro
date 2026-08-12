@@ -439,9 +439,11 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // EXACTLY ONE winner — the single buyer signature is both the selection event
 // and the seller-address answer. A draft binds nobody and cannot be broadcast
 // (the kernel needs both signatures); a losing countersignature expires inert
-// at the struct deadline. Same two candidate-side floors as counterSignOffer.
+// at the struct deadline. Same two candidate-side floors as counterSignOffer,
+// and the same optional `specs` merkle-leaf gate: with a SpecSource, a draft
+// whose commerce leaf contradicts the struct is refused before any signature.
 import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro/sdk/agent";
-const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy);
+const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs);
 // Buyer side: exact struct-hash equality against the SENT draft, then recovery —
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
@@ -824,11 +826,12 @@ pre-wallet check all call it, so no path signs an agreement whose sections
 violate their specs, whose settlement currency differs between the signed TERM
 and the signed STRUCT, or whose hash mismatches its recomputed root
 (`validateCommitmentAgreement` is the non-throwing form, returning
-`{ ok, issues }`). The currency check is why the gate takes the commitment's
-`currency`: the settlement token is a clause leaf under `agreementHash` (the
-commerce clause's `currency` field) AND a field of the kernel commitment, and
-the gate asserts the two name one token — plus, where the assembly composes a
-denomination pin, that the pin equals the leaf. The negative half matters just as much: `buildOrderAgreement`
+`{ ok, issues }`). The mirror check is why the gate takes the commitment's
+`{ currency, payment }` pair (a full `Commitment` satisfies it): both are
+clause leaves under `agreementHash` (the commerce clause's `currency` and
+`payment` fields) AND fields of the kernel commitment, and the gate asserts
+each leaf equals its struct mirror — plus, where the assembly composes a
+denomination pin, that the pin equals the currency leaf. The negative half matters just as much: `buildOrderAgreement`
 itself validates NOTHING — it is pure projection (apply spec defaults, sort,
 hash) — so a caller that builds an agreement and skips `assertAgreementSignable`
 can still produce a signable-looking object with content that violates its own
@@ -843,9 +846,10 @@ import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@f
 const { agreement, agreementHash } = buildOrderAgreement(
   buyer, seller, clauses, specs, clauseVersions,
 );
-// `currency` is the commitment's currency field — the struct side of the
-// leaf==struct assertion; the last argument is the label used in the error.
-assertAgreementSignable(agreement, agreementHash, specs, currency, "checkout"); // throws on any Layer-A issue
+// The 4th argument is the commitment's mirrored pair (currency + payment) —
+// the struct side of the leaf==struct assertion; a full Commitment satisfies
+// it. The last argument is the label used in the error.
+assertAgreementSignable(agreement, agreementHash, specs, commitment, "checkout"); // throws on any Layer-A issue
 
 // Read sections by DECLARED FIELD, never by clause id — any registered clause
 // carrying the field participates.

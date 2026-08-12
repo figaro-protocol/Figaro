@@ -5,8 +5,10 @@
  * author (clause registrar / assembly author) must not reclaim their
  * registration stake while deals COMPOSED FROM that clause or assembly are still in
  * flight. This is the read-side derivation RPGF attribution pays on — the same
- * count. It is ADVISORY today (surfaced as a disabled affordance) and hardens
- * on-chain later when the prover returns; nothing here touches the kernel.
+ * count. It is ADVISORY today (surfaced as a disabled affordance); an on-chain
+ * inclusion-proof withdraw lock would harden it if one is ever built — a
+ * deliberate open item, not machinery that exists. Nothing here touches the
+ * kernel.
  *
  * The join, derived at read time from chain + IPFS, NEVER stored:
  *   1. an order is IN-FLIGHT when committed (`OrderCommitted`) but its process

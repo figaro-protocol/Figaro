@@ -380,6 +380,14 @@ function addressLeaf(section: AgreementSection | undefined, field: string): `0x$
         : undefined;
 }
 
+/** A bigint-valued leaf (stored as its canonical decimal string), or undefined
+ *  when the section carries none or the value is malformed — the malformed
+ *  case is already a Layer-A spec failure of its own. */
+function bigintLeaf(section: AgreementSection | undefined, field: string): bigint | undefined {
+    const value = section?.data?.[field];
+    return typeof value === "string" && /^\d+$/.test(value) ? BigInt(value) : undefined;
+}
+
 /** The section carrying the ORDER's settlement currency: the composed clause
  *  declaring `payment` and declaring `currency` as plain content. Spec-routed,
  *  naming no clause — a second commerce clause anyone registers participates
@@ -412,22 +420,32 @@ function currencyPinSection(
  * (buyer before initiating, seller before counter-signing) so neither party
  * signs an invalid agreement. Three checks: every present section conforms to
  * its clause spec (validateContent; process-log clauses are presence-markers,
- * skipped); the settlement currency the parties are about to sign as a TERM
- * equals the one they are about to sign as EXECUTION data (leaf == struct, and
- * where a denomination pin is composed, pin == leaf); and the `agreementHash`
- * about to be signed equals the merkle root recomputed from the sections.
- * Catches a malformed agreement before a chain round-trip.
+ * skipped); the settlement currency AND payment the parties are about to sign
+ * as TERMS equal the ones they are about to sign as EXECUTION data
+ * (leaf == struct for both mirrored fields, and where a denomination pin is
+ * composed, pin == leaf); and the `agreementHash` about to be signed equals
+ * the merkle root recomputed from the sections. Catches a malformed agreement
+ * before a chain round-trip.
  *
- * `currency` is the kernel commitment's currency field — the struct side of
- * the leaf==struct assertion. Evidence and execution are different layers, so
- * the copy across them is the binding, and asserting it is this gate's job
- * (docs/CLAUSES.md § "Every clause is a merkle leaf").
+ * `struct` is the kernel commitment's mirrored pair — the struct side of the
+ * leaf==struct assertion (a full `Commitment` satisfies it). Evidence and
+ * execution are different layers, so the copy across them is the binding, and
+ * asserting it is this gate's job (docs/CLAUSES.md § "Every clause is a
+ * merkle leaf"). Object-shaped on purpose: a stale caller still passing the
+ * bare currency string fails at compile, not silently.
  */
+export interface CommitmentMirror {
+    /** The kernel commitment's `currency` field. */
+    currency: `0x${string}`;
+    /** The kernel commitment's `payment` field. */
+    payment: bigint;
+}
+
 export function validateCommitmentAgreement(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
-    currency: `0x${string}`,
+    struct: CommitmentMirror,
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
 
@@ -452,11 +470,23 @@ export function validateCommitmentAgreement(
     // present, and each comparison is skipped when its clause isn't composed.
     const leafSection = commerceCurrencySection(agreement, specs);
     const leaf = addressLeaf(leafSection, "currency");
-    if (leafSection && leaf && leaf.toLowerCase() !== currency.toLowerCase()) {
+    if (leafSection && leaf && leaf.toLowerCase() !== struct.currency.toLowerCase()) {
         issues.push({
             clause: leafSection.clause,
             path: "currency",
-            message: `the signed term names ${leaf} as the settlement currency; the commitment currency ${currency} contradicts it`,
+            message: `the signed term names ${leaf} as the settlement currency; the commitment currency ${struct.currency} contradicts it`,
+        });
+    }
+    // The payment mirror, from the SAME section: the commerce clause's
+    // `payment` leaf is the term the commitment struct's `payment` mirrors
+    // (both homes, by the same ruling as currency). Same posture — compare the
+    // value that IS present; a missing/malformed leaf already failed its spec.
+    const leafPayment = bigintLeaf(leafSection, "payment");
+    if (leafSection && leafPayment !== undefined && leafPayment !== struct.payment) {
+        issues.push({
+            clause: leafSection.clause,
+            path: "payment",
+            message: `the signed term names ${leafPayment} as the payment; the commitment payment ${struct.payment} contradicts it`,
         });
     }
     const pinSection = currencyPinSection(agreement, specs);
@@ -465,7 +495,7 @@ export function validateCommitmentAgreement(
         // Against the leaf when a commerce clause is composed, else against
         // the struct directly — the chain is transitive, so the pin is
         // asserted either way.
-        const against = leaf ?? currency;
+        const against = leaf ?? struct.currency;
         const againstLabel = leaf ? "the order's committed currency" : "the commitment currency";
         if (pin.toLowerCase() !== against.toLowerCase()) {
             issues.push({
@@ -503,19 +533,20 @@ export function validateCommitmentAgreement(
  * The ONE Layer-A thrower every signature routes through — buyer sign, seller
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
  * path signs an agreement whose sections violate their clause specs, whose
- * settlement currency differs between the signed term and the signed struct,
- * or whose hash doesn't match its recomputed merkle root.
+ * settlement currency or payment differs between the signed term and the
+ * signed struct, or whose hash doesn't match its recomputed merkle root.
  *
- * `currency` is the currency field of the commitment being signed.
+ * `struct` is the mirrored pair of the commitment being signed (a full
+ * `Commitment` satisfies it).
  */
 export function assertAgreementSignable(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
-    currency: `0x${string}`,
+    struct: CommitmentMirror,
     label = "This order",
 ): void {
-    const check = validateCommitmentAgreement(agreement, expectedHash, specs, currency);
+    const check = validateCommitmentAgreement(agreement, expectedHash, specs, struct);
     if (!check.ok) {
         throw new Error(
             `${label} isn't valid to sign yet: ${check.issues
@@ -588,6 +619,20 @@ function composeMandatoryClauses(
         out[spec.clauseId] = data;
     }
     return out;
+}
+
+/** Only the values a clause's `design.fills` declares survive into a template
+ *  — FIELD-granular, so a stray non-fill value on a fills-declaring clause
+ *  strips like any other transaction particular instead of riding its
+ *  neighbor's declaration (the pasted-template corner: the UI editors gate
+ *  per-field, but a template arriving whole must strip here too). */
+function designFillValues(
+    spec: ProjectionSpecView | undefined,
+    values: Record<string, unknown>,
+): Record<string, unknown> {
+    const fills = spec ? specDesignFills(spec) : [];
+    if (fills.length === 0) return {};
+    return Object.fromEntries(Object.entries(values).filter(([field]) => fills.includes(field)));
 }
 
 /** Build the no-hash assembly template from the design's orders + the per-order
@@ -681,7 +726,7 @@ export function buildAssemblyTemplate(args: {
     }
     for (const [clauseId, values] of Object.entries(assemblyClauses ?? {})) {
         const spec = specs.get(clauseId, assemblyClauseVersions?.[clauseId]);
-        assemblySelection[clauseId] = spec && specDesignFills(spec).length > 0 ? values : {};
+        assemblySelection[clauseId] = designFillValues(spec, values);
         const v = assemblyClauseVersions?.[clauseId] ?? specs.get(clauseId)?.version ?? 1;
         if (v !== 1) assemblyVersions[clauseId] = v;
     }
@@ -702,7 +747,7 @@ export function buildAssemblyTemplate(args: {
             const selection: Record<string, Record<string, unknown>> = {};
             for (const [clauseId, values] of Object.entries(clausesByOrderId[order.orderHash] ?? {})) {
                 const spec = specs.get(clauseId, clauseVersionsByOrderId?.[order.orderHash]?.[clauseId]);
-                selection[clauseId] = spec && specDesignFills(spec).length > 0 ? values : {};
+                selection[clauseId] = designFillValues(spec, values);
             }
             const clauses = {
                 ...selection,

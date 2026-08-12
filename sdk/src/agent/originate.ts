@@ -78,12 +78,20 @@ export interface BuildOfferParams extends InstantiateParams {
     salt?: bigint;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
+    /** The clause-spec source for the merkle-leaf seam (`assertAgreementSignable`,
+     *  docs/CLAUSES.md § "Every clause is a merkle leaf"): with it, the buyer
+     *  refuses to sign an agreement whose terms contradict the commitment
+     *  struct. WITHOUT it, the buyer signs ungated and the counterparty's
+     *  `validateOffer(..., specs)` is the only net. */
+    specs?: SpecSource;
 }
 
 /**
  * Buyer builds the root commitment from a discovered assembly and signs its half.
  * `wallet.account` is the buyer. Returns the offer envelope (buyerSig filled)
- * ready to send over a `CoordinationChannel`.
+ * ready to send over a `CoordinationChannel`. With `specs`, the merkle-leaf
+ * sign gate runs before the signature — the buyer-side half of the check
+ * `validateOffer` runs for the seller.
  */
 export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferParams): Promise<CommitmentPayload> {
     const account = wallet.account;
@@ -99,6 +107,9 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
         payment: params.payment, expectedCumulativeValue: params.payment,
         agreementHash, salt: params.salt, deadline: params.deadline,
     }, domain);
+    if (params.specs) {
+        assertAgreementSignable(agreement, agreementHash, params.specs, commitment, "This offer");
+    }
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
     return { commitment, agreement, buyerSig };
 }
@@ -151,8 +162,9 @@ export interface OfferPolicy {
  * settlement-currency TERM (the commerce clause leaf, and any composed
  * denomination pin) equals the currency the seller is about to bond against —
  * the commitment struct's `currency` field. This is Layer A run on the
- * SELLER's side of the handshake (the buyer runs the same check before
- * initiating); `checkOfferPolicy`'s currency check alone only bounds the
+ * SELLER's side of the handshake (the buyer-side builders —
+ * `buildBuyerOffer`, `buildChainOffers` — run the same gate when given
+ * `specs`); `checkOfferPolicy`'s currency check alone only bounds the
  * STRUCT field against an allowlist and cannot see a leaf that disagrees with
  * it. WITHOUT `specs`, this check is skipped — a bare integration with no
  * `SpecSource` gets no leaf/struct check here (structural + policy checks
@@ -183,7 +195,7 @@ export function validateOffer(
     }
     if (specs) {
         try {
-            assertAgreementSignable(offer.agreement, c.agreementHash, specs, c.currency, "This offer");
+            assertAgreementSignable(offer.agreement, c.agreementHash, specs, c, "This offer");
         } catch (cause) {
             return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
         }
@@ -431,6 +443,13 @@ export interface BuildChainParams {
     salt?: (nodeId: string) => bigint | undefined;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
+    /** The clause-spec source. With it, the walk's currency-leaf fill engages
+     *  (`reconstructOrdersFromTemplate` writes the commerce leaf from the same
+     *  figure the struct signs, and THROWS on a contradicting override) and
+     *  every order passes the merkle-leaf sign gate before the buyer signs.
+     *  WITHOUT it, the walk is the documented spec-less caller-owns-the-leaf
+     *  branch and the counterparty's `validateOffer(..., specs)` is the net. */
+    specs?: SpecSource;
 }
 
 /** A buyer-signed offer for one node, in commit order. */
@@ -459,6 +478,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         currency: params.currency,
         chainId: params.chainId,
         core: params.core,
+        specs: params.specs,
         nodes: (planned) => {
             const spec = specByNode.get(planned.nodeId);
             if (!spec) throw new Error(`no seller/payment spec for template node "${planned.nodeId}"`);
@@ -467,6 +487,12 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         salt: params.salt,
         deadline: params.deadline,
         onOrder: async (order) => {
+            if (params.specs) {
+                assertAgreementSignable(
+                    order.agreement, order.commitment.agreementHash, params.specs,
+                    order.commitment, `Order "${order.nodeId}"`,
+                );
+            }
             const buyerSig = await wallet.signTypedData({ account, ...order.typedData });
             out.push({
                 nodeId: order.nodeId,

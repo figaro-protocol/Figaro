@@ -30,6 +30,7 @@ import { computeAgreementHash, type Agreement } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
 import { checkOfferPolicy, instantiateRootAgreement, type OfferCheck, type OfferPolicy } from "./originate.js";
+import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import type { AssemblyTemplate } from "../assembly.js";
 
 /**
@@ -42,7 +43,11 @@ import type { AssemblyTemplate } from "../assembly.js";
  * Checks: no signatures present, the draft names me as seller, the agreement
  * hashes to the committed `agreementHash` (the sender cannot pin one agreement
  * and commit another), and the agreement's parties match the commitment. With
- * a `policy`, ALSO applies the operator's economic floor (root-shape, currency
+ * `specs`, ALSO runs the merkle-leaf seam (`assertAgreementSignable` —
+ * docs/CLAUSES.md § "Every clause is a merkle leaf"), exactly as
+ * `validateOffer` does: a draft whose commerce leaf contradicts the struct the
+ * candidate would bond against is refused before any signature. With a
+ * `policy`, ALSO applies the operator's economic floor (root-shape, currency
  * allowlist, magnitude cap) — the same floor `validateOffer` applies, reached
  * here through it.
  */
@@ -50,6 +55,7 @@ export function validateDraft(
     draft: CommitmentPayload,
     expectedSeller: Address,
     policy?: OfferPolicy,
+    specs?: SpecSource,
 ): OfferCheck {
     if (draft.buyerSig) return { ok: false, reason: "payload carries a buyer signature — an offer, not a race draft" };
     if (draft.sellerSig) return { ok: false, reason: "payload already carries a seller signature" };
@@ -63,6 +69,13 @@ export function validateDraft(
     if (draft.agreement.buyer.toLowerCase() !== c.buyer.toLowerCase()
         || draft.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
+    }
+    if (specs) {
+        try {
+            assertAgreementSignable(draft.agreement, c.agreementHash, specs, c, "This draft");
+        } catch (cause) {
+            return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
+        }
     }
     if (policy) {
         const economic = checkOfferPolicy(c, policy);
@@ -82,6 +95,11 @@ export function validateDraft(
  *     `accept` returns true.
  * A malformed/tampered draft THROWS — the candidate must never countersign a
  * bogus commitment. There is no buyer signature to verify; that is the point.
+ *
+ * With `specs`, the anti-tamper gate ALSO runs the merkle-leaf seam
+ * (`validateDraft`'s `assertAgreementSignable` check), the same treatment
+ * `counterSignOffer` gives a signed offer: a draft whose terms contradict the
+ * struct the candidate would bond against THROWS before any signature.
  */
 export async function counterSignDraft(
     wallet: WalletClient,
@@ -89,12 +107,13 @@ export async function counterSignDraft(
     ctx: { chainId: number; core: Address },
     accept?: (draft: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
+    specs?: SpecSource,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignDraft: wallet has no account");
     const seller = account.address;
 
-    const check = validateDraft(draft, seller);
+    const check = validateDraft(draft, seller, undefined, specs);
     if (!check.ok) throw new Error(`counterSignDraft: refusing malformed draft — ${check.reason}`);
     if (draft.quoteRequest) {
         throw new Error("counterSignDraft: payload is a quote request — the candidate prices it via quoteDraft, never countersigns the ceiling");
@@ -286,6 +305,10 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
  * A malformed/tampered request THROWS. The counter-draft is built through the
  * same substitution the buyer will reconstruct with — the quote changes the
  * price and nothing else, by construction.
+ *
+ * With `specs`, the anti-tamper gate ALSO runs the merkle-leaf seam on the
+ * inbound request (`validateDraft`'s `assertAgreementSignable` check), and the
+ * outbound counter-draft passes the same gate before the candidate signs it.
  */
 export async function quoteDraft(
     wallet: WalletClient,
@@ -293,12 +316,13 @@ export async function quoteDraft(
     ctx: { chainId: number; core: Address },
     quote?: (draft: CommitmentPayload) => bigint | null,
     policy?: OfferPolicy,
+    specs?: SpecSource,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("quoteDraft: wallet has no account");
     const seller = account.address;
 
-    const check = validateDraft(draft, seller);
+    const check = validateDraft(draft, seller, undefined, specs);
     if (!check.ok) throw new Error(`quoteDraft: refusing malformed quote request — ${check.reason}`);
     const terms = draft.quoteRequest;
     if (!terms || terms.pricedFields.length === 0) {
@@ -314,6 +338,9 @@ export async function quoteDraft(
     if (q === null || q < 1n || q > draft.commitment.payment) return null;
 
     const { commitment: quoted, agreement } = buildCounterDraft(draft, terms, q);
+    if (specs) {
+        assertAgreementSignable(agreement, quoted.agreementHash, specs, quoted, "This quote");
+    }
     const domain = buildDomain(ctx.chainId, ctx.core);
     const sellerSig = await wallet.signTypedData({
         account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: quoted,
@@ -453,9 +480,11 @@ export function makeSellerRaceHandler(
     opts: {
         accept: (draft: CommitmentPayload) => boolean;
         policy: OfferPolicy;
+        /** The clause-spec source for the merkle-leaf seam — see `counterSignDraft`. */
+        specs?: SpecSource;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy);
+    return (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy, opts.specs);
 }
 
 /**
@@ -470,7 +499,9 @@ export function makeSellerQuoteHandler(
     opts: {
         quote: (draft: CommitmentPayload) => bigint | null;
         policy: OfferPolicy;
+        /** The clause-spec source for the merkle-leaf seam — see `quoteDraft`. */
+        specs?: SpecSource;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy);
+    return (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy, opts.specs);
 }

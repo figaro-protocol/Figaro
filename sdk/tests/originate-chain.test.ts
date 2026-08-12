@@ -5,6 +5,7 @@ import {
     buildChainOffers, originateChain, counterSignOffer, type AssemblyTemplate, type ChainNodeSpec, type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
+import { specSourceFromFixtures } from "./specFixtures.js";
 import { computeCommitmentProcessId, computeOrderHash, ZERO_PROCESS_ID } from "../src/commitments.js";
 import type { Address } from "../src/types.js";
 
@@ -75,6 +76,33 @@ describe("buildChainOffers — the value-added chain walk", () => {
 
     it("throws when a template node has no seller/payment spec", async () => {
         await expect(buildChainOffers(buyerW, { ...params, nodes: nodes.slice(0, 2) })).rejects.toThrow(/no seller\/payment spec/i);
+    });
+
+    it("with specs, the walk's currency-leaf fill + sign gate run on every order (merkle-leaf seam)", async () => {
+        const SPECS = specSourceFromFixtures([
+            "figaro-commerce", "figaro-topology", "figaro-courier-process", "figaro-merchant-process",
+        ]);
+        const offers = await buildChainOffers(buyerW, { ...params, specs: SPECS });
+        const commerce = offers[0].offer.agreement.sections.find((s) => s.clause === "figaro-commerce");
+        expect(commerce?.data?.currency).toBe(CURRENCY);
+        expect(offers.every((o) => !!o.offer.buyerSig)).toBe(true);
+        // A contradicting root override refuses to build — the walk throws
+        // before any signature (no leaf may disagree with the struct).
+        const badNodes: ChainNodeSpec[] = [
+            {
+                ...nodes[0],
+                overrides: {
+                    "figaro-commerce": {
+                        currency: "0xdddddddddddddddddddddddddddddddddddddddd",
+                        payment: "1000",
+                        lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }],
+                    },
+                },
+            },
+            nodes[1], nodes[2],
+        ];
+        await expect(buildChainOffers(buyerW, { ...params, nodes: badNodes, specs: SPECS }))
+            .rejects.toThrow(/contradicts this process's/i);
     });
 });
 

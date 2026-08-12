@@ -9,6 +9,7 @@ import {
     type RaceReply,
 } from "../src/agent/dispatchRace.js";
 import { InProcessChannel, type CommitmentPayload, type PricedField } from "../src/agent/coordination.js";
+import { specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
 import { computeAgreementHash } from "../src/agreement.js";
 import type { Address, Hex } from "../src/types.js";
@@ -342,5 +343,65 @@ describe("requestQuotes over the coordination channel", () => {
         // The winner's struct hash is exactly the buyer's reconstruction at 500.
         expect(hashCommitmentStruct(winner!.reply.commitment))
             .toBe(hashCommitmentStruct((await quoteDraft(courierBW, drafts[1], CTX, () => 500n, quotePolicy))!.commitment));
+    });
+});
+
+describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Every clause is a merkle leaf')", () => {
+    const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+    const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
+    const fullCommerce = (currency: Address, payment: string) => ({
+        "figaro-commerce": {
+            currency, payment,
+            lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: payment }],
+        },
+    });
+    /** A draft whose commerce LEAF contradicts the struct — the tamper shape
+     *  only a SpecSource can see (the struct alone is allowlist-clean). */
+    async function mismatchedDraft(candidate: Address): Promise<CommitmentPayload> {
+        const offer = await buildBuyerOffer(buyerW, {
+            template, seller: candidate, currency: CURRENCY, payment: 1000n,
+            chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
+            overrides: fullCommerce(BAD_CURRENCY, "1000"),
+        });
+        const { buyerSig: _stripped, ...draft } = offer;
+        return draft;
+    }
+
+    it("without specs the contradiction is invisible; with specs validateDraft refuses it", async () => {
+        const draft = await mismatchedDraft(COURIER_A.address);
+        expect(validateDraft(draft, COURIER_A.address).ok).toBe(true);
+        expect(validateDraft(draft, COURIER_A.address, undefined, SPECS).reason).toMatch(/settlement currency/i);
+    });
+
+    it("counterSignDraft THROWS on the contradiction when specs are supplied — the candidate never countersigns it", async () => {
+        const draft = await mismatchedDraft(COURIER_A.address);
+        await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS))
+            .rejects.toThrow(/settlement currency/i);
+    });
+
+    it("a clean draft still countersigns with the gate on (specs via the mountable handler too)", async () => {
+        const offer = await buildBuyerOffer(buyerW, {
+            template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n,
+            chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
+            overrides: fullCommerce(CURRENCY, "1000"),
+        });
+        const { buyerSig: _stripped, ...draft } = offer;
+        const reply = await counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS);
+        expect(reply?.sellerSig).toBeDefined();
+        const viaHandler = makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, specs: SPECS });
+        expect((await viaHandler(draft))?.sellerSig).toBeDefined();
+    });
+
+    it("quoteDraft with specs: a clean request quotes (outbound gate passes), a leaf-tampered request THROWS", async () => {
+        const clean = requestFor(COURIER_A.address);
+        const reply = await quoteDraft(courierAW, clean, CTX, () => 700n, quotePolicy, SPECS);
+        expect(reply?.sellerSig).toBeDefined();
+        const tampered = buildQuoteRequest({
+            template, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
+            overrides: fullCommerce(BAD_CURRENCY, "0"),
+        });
+        await expect(quoteDraft(courierAW, tampered, CTX, () => 700n, quotePolicy, SPECS))
+            .rejects.toThrow(/settlement currency/i);
     });
 });
