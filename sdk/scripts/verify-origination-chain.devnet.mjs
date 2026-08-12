@@ -18,6 +18,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
+import { computeDeadline, readChainTimestamp } from "@figaro/sdk";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -43,6 +44,9 @@ const pub = createPublicClient({ transport: http(RPC), cacheTime: 0 });
 const buyerW = createWalletClient({ account: BUYER, transport: http(RPC) });
 const sellerW = SELLERS.map((s) => createWalletClient({ account: s, transport: http(RPC) }));
 const chainId = await pub.getChainId();
+// CHAIN time, never the machine clock — the kernel's DeadlineExpired guard
+// compares against block.timestamp.
+const deadline = computeDeadline(await readChainTimestamp(pub));
 const tryHydrate = async (uri) => { try { return await (await fetch(GATEWAY + uri.replace("ipfs://", ""))).json(); } catch { return null; } };
 
 let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} ${n}`); if (!c) fail++; };
@@ -100,7 +104,7 @@ const nodes = orderedIds.map((id, i) => ({
 }));
 
 const result = await originateChain(buyerW, pub, addresses, {
-    template, currency: TOKEN, chainId, core: addresses.core, channel, nodes,
+    template, currency: TOKEN, chainId, core: addresses.core, channel, nodes, deadline,
     clauseVersion: (cid) => clauseVersionOf.get(cid) ?? 1,
 });
 check("originateChain committed all three orders (3 tx hashes)", result?.hashes?.length === 3);

@@ -24,6 +24,7 @@ import {
     FigaroContext, originateProcess, makeSellerOfferHandler,
     HttpChannel, makeHttpOfferResponder,
 } from "@figaro/sdk/agent";
+import { computeDeadline, readChainTimestamp } from "@figaro/sdk";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -45,6 +46,9 @@ const pub = createPublicClient({ transport: http(RPC), cacheTime: 0 });
 const buyerW = createWalletClient({ account: BUYER, transport: http(RPC) });
 const sellerW = createWalletClient({ account: SELLER, transport: http(RPC) });
 const chainId = await pub.getChainId();
+// CHAIN time, never the machine clock — the kernel's DeadlineExpired guard
+// compares against block.timestamp.
+const deadline = computeDeadline(await readChainTimestamp(pub));
 const tryHydrate = async (uri) => { try { return await (await fetch(GATEWAY + uri.replace("ipfs://", ""))).json(); } catch { return null; } };
 
 let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} ${n}`); if (!c) fail++; };
@@ -90,7 +94,7 @@ check("located the commerce clause by its declared field", !!commerceClauseId);
 // ── Buyer LOOP: originate over HttpChannel (the seller is reached via the socket) ─
 const channel = new HttpChannel({ resolveEndpoint: async () => sellerUrl });
 const result = await originateProcess(buyerW, pub, addresses, {
-    channel, template, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core,
+    channel, template, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
     clauseVersion: (cid) => clauseVersionOf.get(cid) ?? 1,
     overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENT.toString(), lineItems: [{ itemId: "sku-1", name: "Autonomous order (HTTP)", quantity: 1, unitPrice: PAYMENT.toString() }] } },
 });

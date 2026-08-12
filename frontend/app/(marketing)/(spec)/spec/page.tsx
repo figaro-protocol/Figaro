@@ -82,6 +82,9 @@ export default function Specifications() {
                 <p className="text-base text-ink-body leading-relaxed">
                     The <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> in the public repo is the canonical integration manual &mdash; the five entry points and every function signature live there, not duplicated here. The canonical clause specs are readable without a browser too: <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/*.json</code></a> in the public repo is the <code>ClauseRegistry</code> seed data, loaded from <code>ClauseRegistry</code> &rarr; IPFS at runtime.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mt-4">
+                    Starting from zero? That README opens with <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit" target="_blank" rel="noopener noreferrer" className="underline">Your first commit</a> &mdash; a linear walkthrough from a cold machine to a bonded order committed on chain and read back from its events, every step a command you run yourself.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Kernel" sectionId="kernel">

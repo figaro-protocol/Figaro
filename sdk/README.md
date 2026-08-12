@@ -23,6 +23,128 @@ Figaro-shaped one.
 > Until then, install from a repo checkout: `"@figaro/sdk": "file:../sdk"`
 > (build it first: `npm run build --workspace sdk` from the repo root).
 
+## Your first commit
+
+The shortest path from nothing to a bonded order on chain, on a devnet you own.
+Every step is a command in a checkout of the public repo — which is also how you
+install the SDK today (see Install above). Nothing here is hosted by anyone: your
+Anvil, your IPFS node, contracts you deployed, the standard public Anvil test
+keys. The SDK calls are the same ones you make against a public chain; only the
+addresses, the RPC URL and the signer change.
+
+**1. Bring up the devnet.** From the repo root:
+
+```bash
+./scripts/devup.sh
+```
+
+One shot, idempotent, safe to re-run: clean-rebuilds `sdk/dist`, ensures Anvil on
+`:8545` and a Kubo daemon (API `:5001`, gateway `:8080`), deploys the protocol
+stack, and pins every clause spec to IPFS + anchors it on `ClauseRegistry`. It
+writes the deployed addresses to `frontend/.env.local` (and
+`.deployments/local.json`) — that file is where every step below reads addresses
+from. It installs nothing: Foundry (`anvil`, `cast`) and a running Kubo must
+already be there. Full prerequisites, env vars and the native-Kubo recipe:
+`docs/LOCAL_DEV.md`.
+
+**2. Put something on the network to discover.** A fresh chain is an EMPTY
+network — no assemblies, no members, nothing to buy, and discovery correctly
+returns nothing. Fill it either way:
+
+- **the real path**, identical to what you would do on a public chain: publish a
+  profile + catalogue (`MembersRegistry` — "Member Profile + Catalogue
+  Documents" below) and register an assembly
+  (`AssemblyRegistry.registerAssembly`), each against its registration deposit;
+- **the shortcut**, to reach a commit today — the repo's test seeder, which
+  registers a few seed assemblies and sellers through those same contracts:
+
+```bash
+cd frontend && node scripts/populate-test-data.mjs   # idempotent
+```
+
+**3. Build the SDK.**
+
+```bash
+npm run build --workspace sdk    # from the repo root; devup already ran it
+```
+
+**4. Originate.** `sdk/scripts/verify-origination.devnet.mjs` is the runnable
+form of the whole handshake — two agents holding nothing but private keys, no
+browser and no human:
+
+```bash
+cd sdk && node scripts/verify-origination.devnet.mjs
+```
+
+What it does, in order:
+
+1. **Discovers the network.** `new FigaroContext(publicClient, addresses)` +
+   `await ctx.sync()` folds the registry event streams into a live catalogue. It
+   picks its assembly by HYDRATING each `contentURI` from the IPFS gateway and
+   taking the first single-order template — no hardcoded id — and locates the
+   commerce clause by the field it DECLARES (`lineItems`), never by clause name.
+2. **Registers the seller loop.** `makeSellerOfferHandler(…)` on an
+   `InProcessChannel`, with both refusal floors filled in explicitly (an `accept`
+   business rule plus an economic `policy` bounding currency and magnitude). A
+   handler missing either one declines every offer.
+3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
+   template's root agreement with the buyer's overrides, signs the EIP-712
+   commitment against a CHAIN-time deadline (`readChainTimestamp` +
+   `computeDeadline` — never the machine clock), and hands the offer to the
+   channel. The seller re-hashes the agreement against the committed
+   `agreementHash`, applies its floors, approves its 2× bond and counter-signs.
+   The buyer approves its own 2× bond and submits `FigaroCore.commit`.
+4. **Asserts what landed.** The commit receipt must be `success`: one
+   `OrderCommitted` on the kernel, both bonds pulled into it.
+5. **Reads it back out of band.** A second `ctx.sync()`, then
+   `ctx.getProcessesAsBuyer(buyer)` — the process is found from chain events,
+   not from the return value of the call that created it, carrying the expected
+   seller and payment.
+
+A green run prints:
+
+```
+✓ discovered a single-order seed assembly
+✓ located the commerce clause by its declared field
+✓ origination returned a tx (seller counter-signed, commit submitted)
+✓ initiate-process commit landed on chain (status success)
+✓ the originated process is discoverable on chain with the right seller + payment
+
+AUTONOMOUS ORIGINATION PROVEN — no human in the loop
+```
+
+Two siblings run the same recipe with exactly one thing changed:
+`verify-origination-chain.devnet.mjs` (a three-order value-added chain, one
+seller taking two of the nodes) and `verify-origination-http.devnet.mjs` (the
+offer envelope crosses a real HTTP socket instead of the in-process channel).
+
+**5. Close it — the buyer resolves.** The script stops at a live bonded process,
+which is the state the mechanism is about. Ending it is a single call, and only
+the buyer can make it:
+
+```ts
+import { proposeActions, executeAction } from "@figaro/sdk/agent";
+
+// The proposer rebuilds the commitment structs resolveProcess needs from the
+// events themselves — nothing had to be stored client-side.
+const [resolve] = proposeActions(ctx.getProcess(processId)!, buyer)
+  .filter((a) => a.type === "resolve-process");
+await executeAction(walletClient, publicClient, addresses, resolve);
+```
+
+Every order in the process settles atomically, `ProcessResolved` lands, and the
+process reads `resolved` on the next `ctx.sync()`. No timeout, no arbitrator, no
+third party who can do this instead — and resolution is terminal.
+
+**6. Know the traps before you extend this.** The site's `/pitfalls` page is the
+canonical list; the first one a chain integration hits is **sub-order
+approval** — every `commit`, root or sub-order, pulls the FULL per-order bond
+and nets nothing against bonds the kernel already holds, so approving the
+increment reverts inside the settlement token with `ERC20InsufficientAllowance`
+while the earlier bonds stay locked until the buyer resolves. Size it with
+`calculateSubOrderApproval` and check it with `assertApprovalCoversBond` (both
+below).
+
 ## Five Entry Points
 
 ### `@figaro/sdk` — Protocol Primitives
