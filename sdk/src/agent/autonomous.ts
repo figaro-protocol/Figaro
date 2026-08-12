@@ -14,9 +14,11 @@
  */
 
 import type { WalletClient, PublicClient } from "viem";
-import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "../abis.js";
+import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abis.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
+import { buildSectionInclusionProof, sectionDataHash, type Agreement } from "../agreement.js";
+import { computeClauseKey } from "../discovery.js";
 import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
@@ -93,6 +95,103 @@ export async function resolveProcess(
         args: [processId, commitments],
     });
     return { hash };
+}
+
+// ── Usage recording at settlement ───────────────────────────────────────────
+
+/** One resolved order's inputs for usage recording: the ORIGINAL commitment
+ *  struct (the counter re-verifies it against the kernel) and its hydrated
+ *  agreement (the leaves whose usage is being claimed). */
+export interface UsageRecordingEntry {
+    commitment: Commitment;
+    agreement: Agreement;
+}
+
+export interface UsageRecordingReport {
+    /** Section legs attempted (clause legs; the assembly leg is counted by flag). */
+    attempted: number;
+    /** Clause legs that landed. */
+    recorded: number;
+    /** Whether the once-per-process assembly (designer) credit landed. */
+    assemblyRecorded: boolean;
+    /** Per-leg failures. An EXCLUDED clause reverting (`figaro-commerce`,
+     *  `figaro-topology`, the provenance clause) is routine by design, not a
+     *  fault — the counter refuses the protocol floor, never the open set. */
+    failures: string[];
+}
+
+/**
+ * Record direct-path usage for a just-resolved process — the headless twin of
+ * the frontend's at-settlement recording, and the step the RPGF path depends
+ * on: usage is recorded AT SETTLEMENT or the credit is deniable later
+ * (docs/DESIGN_DECISIONS.md §21 — a seller can unstake, a period can close;
+ * a deferred record is permanently refusable). A buyer agent that resolves
+ * without calling this credits no clause author and no assembly designer.
+ *
+ * Per order: every committed section gets a CLAUSE leg
+ * (`UsageCounter.recordClauseUsage` — only the section FINGERPRINT reaches
+ * calldata, never plaintext, so private sections stay off-chain), and the
+ * first section carrying a well-formed `compositionHash` gets the INDEPENDENT
+ * once-per-process ASSEMBLY leg (`recordAssemblyUsage` — content derived
+ * on-chain from the hash). The two legs are independent on purpose: the
+ * provenance clause's own clause leg always reverts (excluded), and
+ * sequencing the assembly credit behind it would kill designer credit.
+ * Tolerate-the-revert per leg; the report says what landed.
+ */
+export async function recordProcessUsage(
+    walletClient: WalletClient,
+    publicClient: PublicClient,
+    usageCounter: Address,
+    entries: readonly UsageRecordingEntry[],
+): Promise<UsageRecordingReport> {
+    const account = walletClient.account;
+    if (!account) throw new Error("recordProcessUsage: wallet has no account");
+    // The counter names its own kernel; the signed-processId restoration needs
+    // the kernel's EIP-712 domain, so both derive from the composition itself.
+    const [chainId, core] = await Promise.all([
+        publicClient.getChainId(),
+        publicClient.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "core" }) as Promise<Address>,
+    ]);
+    const report: UsageRecordingReport = { attempted: 0, recorded: 0, assemblyRecorded: false, failures: [] };
+    const send = async (functionName: "recordClauseUsage" | "recordAssemblyUsage", args: readonly unknown[]) => {
+        const hash = await walletClient.writeContract({
+            chain: walletClient.chain ?? null, account, address: usageCounter,
+            abi: USAGE_COUNTER_ABI, functionName, args: args as never,
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+    };
+    for (const { commitment: given, agreement } of entries) {
+        // The counter re-hashes the SIGNED struct to find the order — a root
+        // signed processId 0, so a derived-id commitment (the proposer's
+        // event-reconstructed shape) must be restored exactly as the resolve
+        // path restores it, or every leg reverts UnknownOrder.
+        const commitment = restoreSignedProcessId(given, chainId, core);
+        for (const section of agreement.sections) {
+            report.attempted++;
+            const { proof } = buildSectionInclusionProof(agreement, section.clause);
+            try {
+                await send("recordClauseUsage", [
+                    commitment, computeClauseKey(section.clause, section.version), sectionDataHash(section), proof,
+                ]);
+                report.recorded++;
+            } catch (error) {
+                report.failures.push(`${section.clause}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
+            if (report.assemblyRecorded || composition === undefined) continue;
+            if (typeof composition !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(composition)) {
+                report.failures.push(`${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
+                continue;
+            }
+            try {
+                await send("recordAssemblyUsage", [commitment, composition, proof]);
+                report.assemblyRecorded = true;
+            } catch (error) {
+                report.failures.push(`assembly ${composition}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    }
+    return report;
 }
 
 /**

@@ -12,6 +12,7 @@ import {
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeAgreementHash } from "../src/agreement.js";
+import { templateCompositionHash } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
 
@@ -262,5 +263,63 @@ describe("InProcessChannel", () => {
         const signed = await channel.sendOffer(SELLER.address, offer);
         expect(signed?.sellerSig).toBeDefined();
         expect(await channel.sendOffer("0x2222222222222222222222222222222222222222" as Address, offer)).toBeNull();
+    });
+});
+
+describe("the assembly-scope fold at root instantiation (audit hole (a), closed)", () => {
+    const FOLD_SPECS = specSourceFromFixtures([
+        "figaro-commerce", "figaro-topology", "figaro-utility-token", "figaro-assembly-provenance",
+    ]);
+    const PIN = CURRENCY;
+    const OTHER = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
+    const pinned: AssemblyTemplate = {
+        assemblyClauses: {
+            "figaro-utility-token": { currency: PIN },
+            "figaro-assembly-provenance": {},
+        },
+        agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+    };
+
+    it("instantiateRootAgreement folds assemblyClauses into the root agreement", () => {
+        const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
+        const ids = a.sections.map((s) => s.clause);
+        expect(ids).toEqual(expect.arrayContaining([
+            "figaro-utility-token", "figaro-assembly-provenance", "figaro-commerce", "figaro-topology",
+        ]));
+        expect(a.sections.find((s) => s.clause === "figaro-utility-token")?.data.currency).toBe(PIN);
+    });
+
+    it("with specs, the provenance section fills MECHANICALLY with the template's own composition hash", () => {
+        const a = instantiateRootAgreement(pinned, {
+            buyer: BUYER.address, seller: SELLER.address, overrides, specs: FOLD_SPECS,
+        });
+        expect(a.sections.find((s) => s.clause === "figaro-assembly-provenance")?.data.compositionHash)
+            .toBe(templateCompositionHash(pinned));
+    });
+
+    it("a contradicting provenance override THROWS — a different composition claim is a forgery", () => {
+        expect(() => instantiateRootAgreement(pinned, {
+            buyer: BUYER.address, seller: SELLER.address, specs: FOLD_SPECS,
+            overrides: { ...overrides, "figaro-assembly-provenance": { compositionHash: `0x${"ab".repeat(32)}` } },
+        })).toThrow(/contradicts this template's own composition hash/);
+    });
+
+    it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
+        const mismatched: AssemblyTemplate = {
+            ...pinned,
+            assemblyClauses: { ...pinned.assemblyClauses, "figaro-utility-token": { currency: OTHER } },
+        };
+        await expect(buildBuyerOffer(buyerW, {
+            template: mismatched, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
+            chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
+        })).rejects.toThrow(/denominated by design/);
+        // And the MATCHING pin signs clean — the fold + fill + gate agree.
+        const offer = await buildBuyerOffer(buyerW, {
+            template: pinned, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
+            chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
+        });
+        expect(offer.buyerSig).toBeDefined();
+        expect(offer.agreement.sections.find((s) => s.clause === "figaro-assembly-provenance")?.data.compositionHash)
+            .toBe(templateCompositionHash(pinned));
     });
 });

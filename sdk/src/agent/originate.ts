@@ -29,7 +29,8 @@ import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
 import { templateParentOrderHashes } from "../assembly.js";
 import type { AssemblyTemplate, TemplateAgreement } from "../assembly.js";
-import { reconstructOrdersFromTemplate, templateAgreementFromClauses } from "../reconstructOrders.js";
+import { reconstructOrdersFromTemplate, templateAgreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
+import { templateCompositionHash } from "../assembly.js";
 
 // ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
 // The shape's single home is ../assembly.js; re-exported here so the /agent
@@ -51,6 +52,12 @@ export interface InstantiateParams {
      *  buyer supplies its terms (typically the commerce clause's
      *  `{ currency, payment, lineItems }`). Keyed by clauseId; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
+    /** The clause-spec source. With it, the provenance section fills
+     *  MECHANICALLY with the template's own composition hash (the same fill
+     *  checkout performs; spec-routed by the declared `compositionHash`
+     *  field). Without it, the folded section still appears but its required
+     *  fill is the caller's — the sign gate is the net. */
+    specs?: SpecSource;
 }
 
 /**
@@ -61,9 +68,27 @@ export interface InstantiateParams {
 export function instantiateRootAgreement(template: AssemblyTemplate, params: InstantiateParams): Agreement {
     const root = template.agreements.find(isRootAgreement) ?? template.agreements[0];
     if (!root) throw new Error("assembly template has no agreements to instantiate");
+    // THE ASSEMBLY-SCOPE FOLD (ruled 2026-07-28), exactly as the walk performs
+    // it: the template's assembly-scoped sections — terms of the composition
+    // itself (a denomination pin, the provenance record) — fold into the root
+    // clause bag, so the agreement carries them and every party signs them.
+    // Skipping the fold was the audit-confirmed parity hole: the pin escaped
+    // the sign gate and the provenance never entered the agreement.
+    const assemblyClauses = template.assemblyClauses ?? {};
+    const folded = { ...assemblyClauses, ...root.clauses };
+    const assemblyVersions = Object.fromEntries(
+        Object.keys(assemblyClauses).map((c) => [c, template.assemblyClauseVersions?.[c] ?? 1]),
+    );
+    const node = { clauseVersions: { ...assemblyVersions, ...(root.clauseVersions ?? {}) } };
+    // Overrides merge BEFORE the mechanical provenance fill, so a contradicting
+    // caller-supplied compositionHash throws instead of slipping past the fill.
+    const merged = mergeOverrides(folded, params.overrides);
+    const filled = params.specs
+        ? fillWalkProvenance(merged, templateCompositionHash(template), params.specs, root.id ?? "root")
+        : merged;
     // The one clause-bag → Agreement builder (root and multi-order alike)
     // lives with the template walk: ../reconstructOrders.js.
-    return templateAgreementFromClauses(root.clauses, root, params.buyer, params.seller, params.overrides);
+    return templateAgreementFromClauses(filled, node, params.buyer, params.seller);
 }
 
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
@@ -98,7 +123,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     if (!account) throw new Error("buildBuyerOffer: wallet has no account");
     const buyer = account.address;
     const agreement = instantiateRootAgreement(params.template, {
-        buyer, seller: params.seller, overrides: params.overrides,
+        buyer, seller: params.seller, overrides: params.overrides, specs: params.specs,
     });
     const agreementHash = computeAgreementHash(agreement);
     const domain = buildDomain(params.chainId, params.core);

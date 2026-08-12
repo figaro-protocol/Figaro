@@ -24,7 +24,7 @@
  * by FIELD NAME, never clause id).
  */
 
-import { templateClauseVersion, templateParentOrderHashes } from "./assembly.js";
+import { templateClauseVersion, templateParentOrderHashes, templateCompositionHash } from "./assembly.js";
 import type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
 import { computeAgreementHash, type Agreement, type AgreementSection } from "./agreement.js";
 import {
@@ -219,6 +219,9 @@ export async function reconstructOrdersFromTemplate(
     const realHash = new Map<string, Hex>();
     let rootProcessId: Hex | null = null;
     let cumulative = 0n;
+    // Lazily computed only when a spec identifies a provenance clause — the
+    // template's OWN composition hash, filled mechanically (see fillWalkProvenance).
+    let walkCompositionHash: `0x${string}` | undefined;
     const out: ReconstructedOrder[] = [];
 
     for (const node of planned) {
@@ -237,9 +240,14 @@ export async function reconstructOrdersFromTemplate(
             ? buildOrderAgreement(
                   params.buyer,
                   spec.seller,
-                  fillWalkCurrency(
-                      mergeOverrides(clauses, spec.overrides),
-                      params.currency,
+                  fillWalkProvenance(
+                      fillWalkCurrency(
+                          mergeOverrides(clauses, spec.overrides),
+                          params.currency,
+                          params.specs,
+                          node.nodeId,
+                      ),
+                      walkCompositionHash ?? (walkCompositionHash = templateCompositionHash(template)),
                       params.specs,
                       node.nodeId,
                   ),
@@ -365,7 +373,49 @@ function fillWalkCurrency(
     return { ...clauses, [clauseId]: { ...clauses[clauseId], currency } };
 }
 
-function mergeOverrides(
+/** The composed clause whose loaded spec declares `compositionHash` as plain
+ *  content — the provenance section (`fillProvenanceSection` in checkoutPlan
+ *  routes the same way). Undefined when none is composed or the cache is cold
+ *  — a no-op, never a clause id. */
+function provenanceClauseId(
+    clauses: Record<string, Record<string, unknown>>,
+    specs: SpecSource,
+): string | undefined {
+    return Object.keys(clauses).find((clauseId) => {
+        const spec = specs.get(clauseId);
+        return !!spec && specDeclaresContentField(spec, "compositionHash");
+    });
+}
+
+/** Write the instantiated template's OWN composition hash into the provenance
+ *  section BEFORE hashing — the mechanical fill the checkout performs
+ *  (docs/CLAUSES.md: the hash cannot appear inside the composition it hashes,
+ *  so it fills at instantiation, never at design). A no-op when no composed
+ *  clause declares the field. A caller override that already names a hash is
+ *  accepted only when IDENTICAL; a CONTRADICTING override throws — an
+ *  agreement claiming to instantiate a different composition than the one
+ *  that built it is a forgery to surface, not a value to reconcile. */
+export function fillWalkProvenance(
+    clauses: Record<string, Record<string, unknown>>,
+    compositionHash: `0x${string}`,
+    specs: SpecSource,
+    nodeId: string,
+): Record<string, Record<string, unknown>> {
+    const clauseId = provenanceClauseId(clauses, specs);
+    if (!clauseId) return clauses;
+    const existing = clauses[clauseId]?.compositionHash;
+    if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== compositionHash.toLowerCase()) {
+        throw new Error(
+            `node "${nodeId}": override names compositionHash ${existing}, which contradicts this template's ` +
+                `own composition hash ${compositionHash} — refusing to claim a different provenance`,
+        );
+    }
+    return { ...clauses, [clauseId]: { ...clauses[clauseId], compositionHash } };
+}
+
+/** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared
+ *  by the walk and the root instantiation in agent/originate. */
+export function mergeOverrides(
     clauses: Record<string, Record<string, unknown>>,
     overrides?: Record<string, Record<string, unknown>>,
 ): Record<string, Record<string, unknown>> {

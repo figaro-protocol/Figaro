@@ -265,6 +265,10 @@ export interface BuildQuoteRequestParams {
     salt?: bigint;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
+    /** The clause-spec source — engages the assembly-scope provenance fill at
+     *  instantiation and (in `quoteDraft`/`validateDraft`) the merkle-leaf
+     *  sign gate. */
+    specs?: SpecSource;
 }
 
 /**
@@ -275,7 +279,7 @@ export interface BuildQuoteRequestParams {
  */
 export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPayload {
     const instantiated = instantiateRootAgreement(params.template, {
-        buyer: params.buyer, seller: params.seller, overrides: params.overrides,
+        buyer: params.buyer, seller: params.seller, overrides: params.overrides, specs: params.specs,
     });
     const agreement = substitutePricedValue(instantiated, params.pricedFields, params.ceiling);
     const domain = buildDomain(params.chainId, params.core);

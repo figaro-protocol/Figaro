@@ -135,11 +135,25 @@ import { proposeActions, executeAction } from "@figaro/sdk/agent";
 const [resolve] = proposeActions(ctx.getProcess(processId)!, buyer)
   .filter((a) => a.type === "resolve-process");
 await executeAction(walletClient, publicClient, addresses, resolve);
+
+// AND RECORD THE USAGE — at settlement, not later. The RPGF path pays clause
+// authors and assembly designers from records the BUYER's side writes when the
+// process resolves; a deferred record is permanently deniable (a seller can
+// unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
+// headless twin of what the frontend does at the same moment; excluded
+// protocol-floor clauses reverting inside it is routine, and the report says
+// what landed:
+import { recordProcessUsage } from "@figaro/sdk/agent";
+const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter, [
+  { commitment: resolve.commitments[0], agreement }, // the agreement each order signed
+]);
 ```
 
 Every order in the process settles atomically, `ProcessResolved` lands, and the
 process reads `resolved` on the next `ctx.sync()`. No timeout, no arbitrator, no
-third party who can do this instead — and resolution is terminal.
+third party who can do this instead — and resolution is terminal. A buyer agent
+that resolves without recording credits no author and no designer — the reward
+mechanism's uniformity across actors is exactly this call.
 
 **6. Know the traps before you extend this.** The site's `/pitfalls` page is the
 canonical list; the first one a chain integration hits is **sub-order
@@ -511,8 +525,15 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
     accept: (offer) => offer.commitment.currency === myAcceptedToken
         && offer.commitment.expectedCumulativeValue <= myMaxBond,
     policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
+    specs, // the merkle-leaf sign gate — a leaf/struct contradiction or missing
+           // required term REFUSES before counter-signing; omit it and no
+           // content check runs on this side
 }));
-const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, buyer, seller, currency, payment, chainId, core, overrides });
+const tx = await originateProcess(buyerWallet, publicClient, addresses, {
+    channel, template, buyer, seller, currency, payment, chainId, core, overrides,
+    deadline, // CHAIN time: computeDeadline(await readChainTimestamp(publicClient))
+    specs,    // same gate before the buyer signs + the mechanical provenance fill
+});
 
 // TRANSPORTS — `CoordinationChannel` is ONE method (`sendOffer`), and the SDK
 // ships three implementations of it: `InProcessChannel` (both agents in one
@@ -543,7 +564,7 @@ const a2aTx = await originateProcess(buyerWallet, publicClient, addresses,
 // serverless function), wrapping the SAME `makeSellerOfferHandler` — so the
 // refuse-all floor is unchanged: no `accept` OR no `policy` declines everything.
 const respond = makeA2aOfferResponder(
-    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy }), // the two floors above
+    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy, specs }), // the two floors + the sign gate
 );
 const { status, body } = await respond(rawRequestBody); // status is always 200 — JSON-RPC carries the outcome
 // The three handshake outcomes on the wire, mirroring HttpChannel's 200/204/422:
@@ -577,7 +598,7 @@ const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
 // Packaged fan-out + mountable responder (the RFQ leg below has the same pair):
 import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro/sdk/agent";
-channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy }));
+channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs }));
 const race = await requestCounterSignatures(channel, drafts, { chainId, core }); // { replies, winner }
 
 // The RFQ leg — same choreography, the CANDIDATE authors the price (bespoke

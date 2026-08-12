@@ -60,8 +60,9 @@ export {
     attestAsSeller,
     attestAsBuyer,
     executeAction,
+    recordProcessUsage,
 } from "./autonomous.js";
-export type { TxResult, ActionExecutionInputs } from "./autonomous.js";
+export type { TxResult, ActionExecutionInputs, UsageRecordingEntry, UsageRecordingReport } from "./autonomous.js";
 
 // Coordination channel + offer envelope (the two-party origination transport)
 export {
