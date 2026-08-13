@@ -115,6 +115,17 @@ jobs:
                   "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
                   echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
 
+            # sp1-prover-types generates gRPC bindings at build time and needs
+            # the protobuf compiler on PATH (absent from both runner images).
+            - name: Install protoc
+              run: |
+                  if [ "$RUNNER_OS" = "macOS" ]; then
+                      brew install protobuf
+                  else
+                      sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
+                  fi
+                  protoc --version
+
             # No build cache. A release build should be a clean build from the
             # committed lockfile — the same thing a third party rebuilding from
             # source gets. Cache reuse would trade that away for minutes.
