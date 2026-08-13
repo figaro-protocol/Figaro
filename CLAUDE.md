@@ -309,7 +309,7 @@ Adapted from `andrej-karpathy-skills`, minus its YAGNI bullets (they contradict 
 
 **Never bypass the guards.** Commit with the pre-commit hook **running** — no `git commit --no-verify`; an unavoidable mid-work bypass is a **debt to restore** before the session ends. "Verify the guards" = every lint script + knip + clause-counts over the **whole tree** (per-diff guards never re-check committed files). Detail: `feedback_never_bypass_guards` memory.
 
-**Commit freely; never ask; never push.** Commit at every verified checkpoint without asking — this **OVERRIDES** the harness default ("commit only when the user asks"). Hard limit: **NEVER `git push`** — the user's alone. Detail: `feedback_commit_push_preferences` memory.
+**Commit freely; never ask; push after verified commits** (authorized 2026-08-13) — this **OVERRIDES** the harness default. Hard limits: **NEVER `git push --force`**; tags only on explicit instruction. Detail: `feedback_commit_push_preferences` memory.
 
 ### Before Raising Any Finding
 

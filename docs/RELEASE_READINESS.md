@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-08-13 (the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the seven CI workflows exist, both awaiting the push to become live). Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-08-13 (the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the seven CI workflows exist — and since the same-day publication, both are LIVE). Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -233,13 +233,21 @@ is the delivery-of-the-frontend half:
    frontend exists. Copy edits go through the repo's copy-owner agents
    (`.claude/agents/`: figaro-marketing-copy, figaro-builders-docs) at execution time.
 
-### Task 12: GitHub Publication (the "GitHub remote/CI item" Task 11 sequences after)
+### Task 12: GitHub Publication — CLOSED 2026-08-13 except item 1a (the launch flip)
 
-Pre-push decisions are the maintainer's alone (whether `CLAUDE.md` + `.claude/` ship
-publicly; full history vs fresh-genesis commit; the commit-identity email). The tasks:
+**PUBLISHED 2026-08-13**: the maintainer ruled the pre-push decisions (harness ships;
+full history; the noreply commit identity), created the `figaro-protocol` org, and
+pushed. The repo is public at `github.com/figaro-protocol/Figaro`; all seven CI
+workflows have executed GREEN; `v0.1.0` is released (Linux relay binary + sha256 +
+canonical vkey in the release body); the historical v1 is archived at
+`figaro-protocol/figaro-v1` with the USPTO-cited URL preserved as a pointer repo at
+`adaliana/FigaroProtocol`; `/security` links the disclosure channels and GitHub
+private vulnerability reporting is ENABLED (primary; the security mailbox forwards as
+alternate). Item statuses:
 
-1. **Fix every fictitious `github.com/figaro-protocol/Figaro` URL.** The org/repo does
-   not exist; the URL ships today in `frontend/components/shared/Footer.tsx`,
+1. **DONE — the URLs became true.** The org/repo was created under exactly the name
+   the tree ships; the verification grep now matches only live URLs. (Original
+   inventory, for history: the URL shipped in `frontend/components/shared/Footer.tsx`,
    `(spec)/spec/page.tsx` (the `GH` constant + inline links), `(spec)/pitfalls/page.tsx`,
    `_lib/paperGroups.ts` (per-paper resource links), `frontend/tests/components/ContractEntry.test.tsx`,
    `sdk/package.json` (`repository`/`bugs`/`homepage`), `CHANGELOG.md`,
@@ -256,16 +264,15 @@ publicly; full history vs fresh-genesis commit; the commit-identity email). The 
    before. `NEXT_PUBLIC_SITE_URL` must be set for the deploy build or `metadataBase`
    falls back to `figaro.example` and every og:image/sitemap URL is dead — verify it in
    the deploy environment before the export is uploaded.
-2. **`SECURITY.md` — a vulnerability-disclosure channel.** DONE in-tree (root
-   `SECURITY.md`, landed 2026-08-12 with the codebase-probe findings). Remaining half:
-   `/security` does not yet link it (verified 2026-08-13) — add the pointer at push,
-   when the GitHub URL it links through becomes real.
-3. **CI: the guard suite as a GitHub Action.** AUTHORED (verified 2026-08-13): seven
-   workflows in `.github/workflows/` — `guards-ci.yml` runs the whole-tree
-   `verify-guards.sh` battery plus npm-audit gates, beside foundry/frontend/sdk/prover/
-   devnet-e2e CI and `sequencer-release.yml`. None has ever executed (no remote);
-   first green run on push is the remaining half, and the precondition for Task 11's
-   reproducible-build CID proof.
+2. **DONE.** Root `SECURITY.md` ships; GitHub private vulnerability reporting is
+   enabled and is the primary channel; `/security` links both (landed 2026-08-13).
+3. **DONE.** All seven workflows executed on the maiden slate and run GREEN
+   (first-run environment defects triaged 2026-08-13: husky prepare, initial-push
+   path filters, platform-incomplete lockfiles, unpinned forge, node 20, sdk types,
+   file:-link install order, fmt scope, trailing-slash assertions — `git log` has
+   each). The Task-11 reproducible-build precondition is met; the maiden release
+   run also measured the guest ELF as NOT cross-host reproducible (linux/darwin
+   vkeys diverged), so releases are Linux-only until the reproducible-guest work.
 4. **Repo metadata at creation.** Description, topics, default branch `main`; issues on.
    Recorded check (2026-08-07): `.git` is 247M, no tracked secrets/`.env`/keys/broadcast
    artifacts, `LICENSE` + root `README.md` present — no large-file surgery needed.
