@@ -10,6 +10,68 @@ import {
 } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
+    describe("managed pin service (deploy-build JWT)", () => {
+        afterEach(() => {
+            vi.unstubAllEnvs();
+            localStorage.removeItem("figaro.user-endpoints");
+        });
+
+        it("routes add to the pinning API with the bearer JWT and maps IpfsHash", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => ({ IpfsHash: "QmService1" }),
+                text: async () => JSON.stringify({ IpfsHash: "QmService1" }),
+            });
+            globalThis.fetch = fetchMock;
+
+            const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
+
+            expect(result.cid).toBe("QmService1");
+            const [url, init] = fetchMock.mock.calls[0];
+            expect(url).toBe("https://api.pinata.cloud/pinning/pinFileToIPFS");
+            expect(init.headers).toEqual({ Authorization: "Bearer test-jwt" });
+        });
+
+        it("a user's own node override beats the baked service", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+            localStorage.setItem(
+                "figaro.user-endpoints",
+                JSON.stringify({ ipfsApiUrl: "http://my-node:5001" }),
+            );
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => ({ Hash: "QmMyNode1" }),
+                text: async () => JSON.stringify({ Hash: "QmMyNode1" }),
+            });
+            globalThis.fetch = fetchMock;
+
+            const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
+
+            expect(result.cid).toBe("QmMyNode1");
+            expect(String(fetchMock.mock.calls[0][0])).toBe("http://my-node:5001/api/v0/add?pin=true");
+        });
+
+        it("tolerates a scoped-key 403 on unpin (content stays pinned, flow continues)", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 403,
+                statusText: "Forbidden",
+                json: async () => ({}),
+                text: async () => "",
+            });
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmGone")).resolves.toBeUndefined();
+            expect(warn).toHaveBeenCalledOnce();
+        });
+    });
+
     const originalFetch = globalThis.fetch;
 
     afterEach(() => {

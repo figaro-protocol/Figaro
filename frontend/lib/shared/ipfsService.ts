@@ -27,6 +27,26 @@ function activeIpfsGatewayUrl(): string {
 }
 
 /**
+ * Managed pinning service (testnet tier — `RELEASE_READINESS.md` Task 6.1).
+ * When a JWT is baked into the deploy build, `add`/`unpin` target a service
+ * speaking the Pinata-style pinning API instead of a Kubo node; gateway reads
+ * are unaffected. A user's own runtime endpoint override still WINS — their
+ * node, they pay. Dev and e2e builds carry no JWT and stay on Kubo (the JWT
+ * rides the deploy command only, never a checked-in env file —
+ * `docs/LOCAL_DEV.md`). `pinKeccakRawBlock` has no service equivalent (Kubo
+ * `block/put` with a keccak multihash); in service mode without a user node
+ * that publish stays best-effort-absent by its caller's own design
+ * (`witnessContent.ts` — the on-chain fingerprint stays verifiable).
+ */
+function activePinService(): { api: string; jwt: string } | null {
+    if (readUserEndpoints().ipfsApiUrl) return null;
+    const jwt = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? "";
+    if (!jwt) return null;
+    const api = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_API ?? "https://api.pinata.cloud";
+    return { api: api.replace(/\/$/, ""), jwt };
+}
+
+/**
  * The single resolver from a content URI to a gateway HTTP URL. Handles
  * `ipfs://CID`, `/ipfs/path`, `http(s)://` passthrough, and bare CIDv0/CIDv1.
  * Returns `null` for empty or unrecognised/unsafe schemes (javascript:, data:,
@@ -377,6 +397,31 @@ class DefaultIpfsService implements IpfsService {
     }
 
     async unpin(cid: string): Promise<void> {
+        const service = activePinService();
+        if (service) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
+            let res: Response;
+            try {
+                res = await fetch(`${service.api}/pinning/unpin/${encodeURIComponent(cid)}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${service.jwt}` },
+                    signal: controller.signal,
+                });
+            } finally {
+                clearTimeout(timer);
+            }
+            // 404: already absent — the state unpin exists to reach. 403: the
+            // scoped key cannot unpin (pin-only by intent) — the content stays
+            // pinned on the service account; loud but non-fatal, cleanup is
+            // account hygiene, not a user flow.
+            if (res.ok || res.status === 404) return;
+            if (res.status === 403) {
+                console.warn(`[ipfs] pin service refused unpin of ${cid} (scoped key) — content stays pinned`);
+                return;
+            }
+            throw new Error(`IPFS unpin failed: ${res.status} ${res.statusText}`);
+        }
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
         let res: Response;
@@ -422,15 +467,23 @@ class DefaultIpfsService implements IpfsService {
         emptyCidMessage: string,
         timeoutMs: number,
     ): Promise<string> {
+        const service = activePinService();
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         let res: Response;
         try {
-            res = await fetch(`${this.apiUrl}/api/v0/add?pin=true`, {
-                method: "POST",
-                body,
-                signal: controller.signal,
-            });
+            res = service
+                ? await fetch(`${service.api}/pinning/pinFileToIPFS`, {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${service.jwt}` },
+                      body,
+                      signal: controller.signal,
+                  })
+                : await fetch(`${this.apiUrl}/api/v0/add?pin=true`, {
+                      method: "POST",
+                      body,
+                      signal: controller.signal,
+                  });
         } finally {
             clearTimeout(timer);
         }
@@ -439,8 +492,8 @@ class DefaultIpfsService implements IpfsService {
             throw new Error(`${failureMessage}: ${res.status} ${res.statusText}`);
         }
 
-        const result = await safeJsonFromResponse<{ Hash?: unknown }>(res);
-        const cid = result?.Hash;
+        const result = await safeJsonFromResponse<{ Hash?: unknown; IpfsHash?: unknown }>(res);
+        const cid = service ? result?.IpfsHash : result?.Hash;
         if (typeof cid !== "string" || cid.length === 0) {
             throw new Error(emptyCidMessage);
         }

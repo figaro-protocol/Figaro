@@ -114,7 +114,12 @@ The chain stores only the agreement fingerprint (`agreementHash` / assembly `con
 
 Required output:
 
-1. **Testnet — managed pinning service (Option 1).** Pin every published agreement, assembly template, and profile to a managed multi-node pinning service (Pinata / Filebase / Storacha) so content survives the loss of the dev node. The pin path (`frontend/lib/shared/ipfsService.ts`) targets the service API; add the service endpoint/key as env vars in `docs/LOCAL_DEV.md` + `frontend/.env.local`.
+1. **Testnet — managed pinning service (Option 1) — WIRED 2026-08-13.**
+   The `ipfsService` add/unpin seam gained a deploy-build adapter (JWT env →
+   Pinata-style API; user's own node still wins; keccak block-put stays
+   Kubo-only, best-effort by its caller's design). Round-trip verified live;
+   the site export is the first mirror pin. Env vars: `docs/LOCAL_DEV.md`.
+   Original requirement: Pin every published agreement, assembly template, and profile to a managed multi-node pinning service (Pinata / Filebase / Storacha) so content survives the loss of the dev node. The pin path (`frontend/lib/shared/ipfsService.ts`) targets the service API; add the service endpoint/key as env vars in `docs/LOCAL_DEV.md` + `frontend/.env.local`.
 2. **Mainnet — sovereign per-party pinning (Option 3).** Shift durability to the parties: each publishing wallet's client pins what it authors, so no single operator is the custodian of availability — matching the ownerless / permissionless doctrine. No central pinning dependency in the mainnet trust model.
 3. **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay fetchable by its CID for the longest plausible dispute/audit window, anchored to the tax-audit horizon: most administrations can audit ~5 years back, plus 1 year because a year's transactions are declared the following year → a **6-year minimum**. The window varies by jurisdiction and shifts over time, so 6 years is a floor, not a fixed term — each agreement carries a per-party option to extend (longer retention for higher-stakes or longer-tail commitments).
 

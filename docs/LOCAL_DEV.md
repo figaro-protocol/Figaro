@@ -146,6 +146,14 @@ NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 # IPFS — used by ipfsService.ts + memberBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
+
+# Managed pinning service — DEPLOY BUILDS ONLY (testnet tier, RELEASE_READINESS
+# Task 6.1). Presence of the JWT switches ipfsService add/unpin to a
+# Pinata-style pinning API; a user's own endpoint override still wins; dev and
+# e2e builds carry no JWT and stay on Kubo. NEVER in a checked-in env file —
+# pass via the deploy command:  set -a; source ~/.figaro-deploy.env; set +a; npm run build
+# NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT=<scoped pin-only JWT>
+# NEXT_PUBLIC_IPFS_PIN_SERVICE_API=https://api.pinata.cloud   (default)
 ```
 
 The `/evidence-display` forum iframing allowlist is a **hosting/CDN-layer**
