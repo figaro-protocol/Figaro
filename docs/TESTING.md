@@ -144,7 +144,11 @@ regression.
 
 ## Rust — the proof apparatus (`prover/`)
 
-`cargo test` from `prover/` — five crates, one suite: `figaro-clause`
+`cargo test` from `prover/` — five crates, one suite. Prereq: three of the five
+(`figaro-prover` — the SP1 guest at `prover/program` — plus `figaro-prove-test`
+and `figaro-sequencer`) need the SP1 toolchain (`cargo prove`) to build; without
+it, `cargo test -p figaro-clause -p figaro-kernel` runs the two host-only crates,
+the same subset `prover-ci` gates. The crates: `figaro-clause`
 (Layer-A conformance: every spec in `clauses/` parses — count derived from the
 directory; 11 encode vectors generated from the live TS encoder lock byte
 parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
@@ -155,7 +159,8 @@ inclusion failure, attest-after-resolve; the RPGF usage bridge in
 replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the assembly leg via provenance reproduction, and the
 usage-hash vector asserted verbatim on the Solidity side; bincode roundtrips
-fence the SP1 stdin landmines), `figaro-prove-test` (SP1 mock-executor guest tests — guest
+fence the SP1 stdin landmines), `figaro-prover` (the SP1 guest program itself,
+exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — guest
 PublicValues must equal host `apply_batch` field-for-field; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
 and `figaro-sequencer` (mempool runs the kernel's own witness gates at the
@@ -179,9 +184,8 @@ The census is the directory listing (`ls frontend/tests/{components,lib}` —
 derived, never a stored count).
 
 - **Component tier** (`tests/components/`) — React Testing Library:
-  `Header`, `MobileNav`, `CapabilityRail`, `OnboardingWelcome`,
-  `MemberTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
-  `TokenDecimalDisplayFlows`, …
+  `Header`, `MobileNav`, `CapabilityRail`,
+  `MemberTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`, …
 - **Lib tier** (`tests/lib/`) — pure-client unit tests: commitment
   preparation + stores, clause-spec source, discovery +
   catalogue pipeline, emissions disclosure, delivery/handoff attestation, dispute
@@ -237,7 +241,7 @@ Five projects:
   jsdom can't render.
 - **`smoke`** — MAINTAINER-MANUAL smokes over real external transports the devnet
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
-  suite run — explicitly `npx playwright test --project=smoke`; pass/fail is an
+  suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a
   maintainer observation, not a CI gate.
 
 **⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
@@ -365,10 +369,13 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 
 ## CI (`.github/workflows/`)
 
-Six workflows. Five gate `main`/`develop` on push + PR (the language-scoped
-four path-filtered, the guard battery whole-tree); the sixth publishes:
+Seven workflows. Six gate `main`/`develop` on push + PR (the language-scoped
+five path-filtered, the guard battery whole-tree); the seventh publishes:
 - **`foundry-ci`** — `forge build`/`test`/`fmt` + Halmos symbolic proofs (Certora
   is excluded by design — it needs the maintainer-held CERTORAKEY, never stored).
+- **`prover-ci`** — `cargo test` on the two host-only prover crates
+  (`figaro-clause`, `figaro-kernel`); the SP1-dependent crates build only at
+  release time (see `sequencer-release`).
 - **`sdk-ci`** — tsc type-check, `npm test`, build.
 - **`frontend-ci`** — type-check, ESLint, Vitest (+coverage), the **mobile**
   Playwright project, production build.

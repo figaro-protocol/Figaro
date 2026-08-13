@@ -1,6 +1,6 @@
 # Smart Contracts — What Actually Exists (V5)
 
-All contracts in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`.
+All contracts in `src/`. Solidity 0.8.26, Foundry. (V3 lives in `archive-v3/`, a local-only directory that is not in any clone; git history preserves prior versions.)
 
 **The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier,usage}/` · `src/florin/` · `src/rpgf/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
 
@@ -16,7 +16,7 @@ The frozen settlement primitive. Never edited — see CLAUDE.md § Agent Permiss
 - 2 state-changing entry points: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
+- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 6 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
 **`src/kernel/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
@@ -429,8 +429,9 @@ dampens real breadth identically — so it can only live in the cost of an ident
 the registries' stake terms; the 07-31 ruling made the score's dominant statistic count
 ONLY what those terms have priced.
 
-**Gas anchor — `recordClauseUsage` costs ~168,678 all-in** (`forge --gas-report` median; ~162,642
-in-test execution, which excludes calldata charged at the tx level). The anchor and its
+**Gas anchor — `recordClauseUsage` costs ~175,250 in-test** (measured 2026-08-05
+after the clauseOrAssembly rename; excludes calldata charged at the tx level —
+the regression ceiling is `RECORD_USAGE_GAS = 180_000`). The anchor and its
 regression guard live in `UsageCounterTest.RECORD_USAGE_GAS`; it is deliberately NOT in
 `sdk/src/gasCeilings.ts`, which derives per-block/per-process CEILINGS and has no consumer for
 this figure. Any analysis costing manufactured usage (the RPGF soundness bound's `γ`) cites
@@ -568,7 +569,7 @@ The florin is not a governance token.
 
 ### Teardown state — CLOSED (the canonical statement)
 
-This subsection is the OWNER of teardown state (per the ownership map in `README.md`).
+This subsection is the OWNER of teardown state (per the ownership map in `docs/README.md`).
 Every other surface — docs, marketing pages, agent prompts, memories — states this only
 as a summary plus a pointer here.
 
@@ -577,8 +578,8 @@ nothing remains deferred:**
 
 - **The RPGF distribution** is live as `UsageCounter` + `RpgfMinter` (recipients =
   clause authors + assembly designers of record; usage counted on chain as it happens,
-  paid pro rata from a closed accrual period; the minter ships in TESTNET and gates
-  florin genesis). The 2026-07-15 optimistic intermediate — posted merkle root under an
+  paid pro rata from a closed accrual period; the minter deploys with the stack from the
+  first public network onward and gates florin genesis). The 2026-07-15 optimistic intermediate — posted merkle root under an
   ETH bond, challenge window, arbitrator seam (`IRpgfArbitrator`, `KlerosRpgfAdapter`,
   `MockArbitrator`, `MockKlerosCourt`) — was **deleted 2026-07-27** and does not return:
   the whole apparatus existed only to make the chain believe a claim about the past, and

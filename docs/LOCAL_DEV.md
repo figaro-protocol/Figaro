@@ -16,9 +16,11 @@ forge test --via-ir
 # --- Symbolic / formal / fuzz ---
 ./scripts/test-halmos.sh      # Halmos symbolic execution (z3). Prereq: brew install z3 && pipx install halmos
 ./scripts/test-echidna.sh     # Echidna property fuzzing.       Prereq: brew install echidna
-./scripts/test-tla.sh         # TLA+ (15 invariants / 2 models: FigaroCore 7 + FlorinToken 8). Prereq: Java 11+ (script auto-fetches tla2tools.jar)
+./scripts/test-tla.sh         # TLA+ (46 invariants / 4 models — see TESTING.md § TLA+). Prereq: Java 11+ (script auto-fetches tla2tools.jar)
 ./scripts/test-certora.sh     # Certora (paid cloud). Prereq: pip install certora-cli ; export CERTORAKEY=...
                               #   Prelude: scripts/lint-token-ops.sh gates certora/token-ops.inventory
+cd prover && cargo test       # Rust prover workspace. Prereq: SP1 toolchain (cargo prove); without it,
+                              #   cargo test -p figaro-clause -p figaro-kernel (host-only crates, = prover-ci)
                               #   against every ERC20 transfer call site in src/.
 
 # Direct Halmos invocation (single contract)
@@ -63,19 +65,17 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 ## Docker-hosted services
 
-Four project tools run in Docker, not natively on the host. **Convention
-(re-ruled 2026-07-09): the agent runs the testing stack end to end — Anvil,
-Kubo, and the frontend server included — starting/stopping/restarting as
-testing needs; the user keeps Docker Desktop alive.** The agent's duty is
-transparency: report what it started, on which port, and how to take it down.
-Mechanism caveat: processes started via `run_in_background` may be reaped by
-the harness — start long-lived services detached through the repo's own
+Four project tools run in Docker, not natively on the host. **Convention:
+whoever runs the testing stack — a contributor or a coding agent — runs it
+end to end (Anvil, Kubo, and the frontend server included),
+starting/stopping/restarting as testing needs, and reports what it started,
+on which port, and how to take it down.** Start long-lived services detached through the repo's own
 scripts (`devup.sh` starts Anvil detached → `/tmp/figaro-anvil.log`) or as
 Docker containers (which outlive the spawning shell), never as opaque
 one-off daemons. **Taking it down is one command: `./scripts/devdown.sh`** —
 the inverse of `devup.sh`, stopping Anvil + Kubo and nothing else. It reports
 a stray `:3100` rather than killing it (that may be a Playwright run in
-flight) and never touches `:3000` (yours).
+flight) and never touches `:3000` (the interactive dev server).
 
 - **IPFS (Kubo).** Pins member profiles, catalogues, agreements, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:v0.42.0` (pinned — `latest` at 0.40.1 segfaulted in its DHT reprovider; upgrade deliberately, container `figaro-ipfs` runs with `--restart unless-stopped`). Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
   - **Native Kubo (no Docker) — required on macOS the current Docker Desktop no longer supports (e.g. Ventura 13.x).** Docker Desktop ≥ the macOS-14 cutoff won't install on Ventura, and the last Ventura-compatible build's VM wedged under sustained pinning. `devup.sh` uses *anything listening on :5001* (`nc -z`), so run Kubo natively instead: `brew install ipfs` (Kubo 0.42.0, same version); init a repo at a dedicated path so a stale `~/.ipfs` can't interfere — `export IPFS_PATH="$HOME/.ipfs-figaro"; ipfs init`; allowlist the dev origins — `ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:3100","http://127.0.0.1:3100"]'` + `Access-Control-Allow-Methods '["POST","GET","OPTIONS"]'`; then run it detached and **offline** (no DHT ⇒ no reprovider stalls; every devnet CID is local anyway) — `IPFS_PATH="$HOME/.ipfs-figaro" nohup ipfs daemon --offline > /tmp/figaro-ipfs-native.log 2>&1 &`. `devup`/`devdown` reference the `figaro-ipfs` Docker container by name but do not require it when :5001 is already served natively; take a native daemon down by killing that process, not `devdown.sh`.
@@ -132,7 +132,8 @@ NEXT_PUBLIC_BATCH_VERIFIER=0x...
 # or any other relay). Deliberately EMPTY: settling a batch is permissionless, so
 # a relay is one publisher among any number and there is no default endpoint of
 # ours. Unset = batched trade is unreadable here, which /audit states plainly.
-# Readers can override it per-browser in /settings. Nothing a relay publishes is
+# Readers can override it per-browser (the client-side endpoint override read
+# by readUserEndpoints()). Nothing a relay publishes is
 # trusted: lib/audit/batchRelay.ts re-derives every struct, signature and payout
 # and anchors the batch's state root on chain before rendering it.
 NEXT_PUBLIC_BATCH_RELAY_URL=

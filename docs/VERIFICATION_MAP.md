@@ -1,6 +1,6 @@
 # Figaro V5 — Verification Map (Theory → Code → Tests → TLA+ → UI)
 
-Last updated: 2026-08-03
+Last updated: 2026-08-13 (freeze-stamp formal re-runs recorded in §7–§10)
 
 ## 0) Purpose
 
@@ -65,10 +65,12 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
+- `E-3` — unassigned (the id was skipped historically; ids are stable references and are never renumbered)
 - `E-4` **Member deposit reclaim**: de-surfacing is immediate on request; the ETH releases only after the cooldown
 - `E-5` **The stake mechanics the RPGF Sybil bound assumes**: the registry is solvent, a deposit cannot be recycled across identities, eligibility ends at request time, and the counter reads exactly that gate
 - `E-6` **Florin supply cap**: total minted ≤ 1,000,000,000 florins (enforced on every mint path)
 - `E-7` **Batch usage accrual is proof-gated and once-ever**: batch-settled trade counts for RPGF only via a proof, cannot be replayed across batches, and merges with the direct path as SCORES, never as components
+- `E-8` **Private-section withholding**: a `private`-disposition section's plaintext never reaches a public surface (public pin, audit bundle); the chain sees only the section fingerprint, so `agreementHash` is unchanged
 
 ---
 
@@ -330,10 +332,11 @@ brew install z3          # Z3 SMT solver (macOS)
 pipx install halmos      # Halmos CLI (Python 3.12+)
 ```
 
-The wrapper (`scripts/test-halmos.sh`) checks for both prerequisites, runs the 6
-fast FigaroCore properties batched in one `halmos` process, runs
-`check_resolutionPayouts` in a second, fresh `halmos` process, then runs the 7
-`HalmosMembersRegistry` properties in a third. Per-assertion
+The wrapper (`scripts/test-halmos.sh`) checks for both prerequisites, runs the suite
+in six passes: the 6 fast FigaroCore properties batched in one `halmos` process,
+`check_resolutionPayouts` in a second, fresh process, then the 7
+`HalmosMembersRegistry`, 6 `HalmosUsageCounter`, 6 `ClauseRegistry`, and 6
+`AssemblyRegistry` properties in their own passes. Per-assertion
 timeout defaults to 10 minutes; override with `HALMOS_SOLVER_TIMEOUT_MS`.
 
 ---

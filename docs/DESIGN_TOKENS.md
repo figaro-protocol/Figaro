@@ -73,7 +73,7 @@ Single-value tokens. Decorative or icon use only. **Do not use as text utilities
 
 ### Dark mode
 
-`darkMode: 'class'` is registered in `tailwind.config.ts`. No `<html class="dark">` toggle exists yet. Reserved for the Console route's dark surface and any future opt-in dark theme. The site-wide light palette is the default.
+`darkMode: 'class'` is registered in `tailwind.config.ts`. No `<html class="dark">` toggle exists yet. Reserved for any future opt-in dark theme. The site-wide light palette is the default.
 
 ---
 

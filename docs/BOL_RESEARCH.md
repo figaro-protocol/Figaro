@@ -3,8 +3,8 @@
 **Status**: research deliverable, 2026-04-28.
 **Author**: drafted by an agent with `claude-opus-4-7[1m]`, grounded in the
 codebase at the time of writing and the source citations below.
-**Closes**: backlog items "Order-as-traditional-contract UI + PDF" and the
-research dependency of "Supply-chain reference assembly".
+**Closes**: the order-as-traditional-contract UI + PDF question and the
+research dependency of the supply-chain reference assembly.
 
 This document settles whether Figaro can or should accommodate the BoL
 patterns established by CargoX, TradeTrust, the UNCITRAL Model Law on
@@ -30,8 +30,10 @@ leaves, and its view) can be made on solid ground.
 > **non-negotiable** BoL: the consignee is fixed at signing and the document is
 > a read-only projection over committed leaves (§6.1), never a transferable
 > document of title. The resale/negotiability limitation is recorded in
-> `DESIGN_DECISIONS.md`. This file's canonical question + answer is guarded by
-> the `reference_bol_research_canonical` memory — read it before editing here.
+> `DESIGN_DECISIONS.md` (entry #12, "No MLETR-style transferable records — by
+> design"), which cites this document for the full comparison. This file is
+> load-bearing for that entry: edits here must preserve the canonical question +
+> answer and the findings the entry cites.
 
 ## 1. Handoff is not a Bill of Lading
 
@@ -385,24 +387,24 @@ buyer↔courier order's agreement.
 | Destination | `figaro-geolocation.destination` | As above. |
 | Mode of carriage | `figaro-handoff.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
 | Service class (modality + organizer) | `figaro-modalities.modality` | Modality: consume-onsite / pickup / delivery / virtual (single-select). The organizer/coordination variant — seller-assigned / buyer-assigned — is an assembly-level composition, not a clause field. |
-| Stage progression (loaded / in-transit / delivered) | `figaro-courier-process` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
+| Stage progression (loaded / in-transit / delivered) | `figaro-courier-process` | The `eventType` enum's 5 values in lifecycle order: en-route-pickup / arrived-pickup / in-transit / arrived-dropoff / completed; each event filed as an attestation. |
 | Custody-change verification at handoff | `figaro-proximity-policy` (committed band) + a runtime proximity attestation on that same clause (runtime nonce + sig) | The runtime proof is an attestation on the committed clause, not a separate clause. Off-chain consumers verify proof.band == policy.band. |
-| Cargo description (line items) | `figaro-commerce.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
+| Cargo description (line items) | `figaro-commerce.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; line-item privacy is a separate line of work. |
 | Freight (carriage payment) | `figaro-commerce.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
 | Liability for non-performance | The bond mechanism (asymmetric bonding + atomic resolution) | Figaro's bond *is* the liability mechanism; Hague-Visby tonnage-based caps are incommensurable with this bond structure. |
 | Applicable law / forum | `figaro-applicable-law` | applicableLaw + forum + language. The doc-of-title transferability is governed by this clause, but Figaro has no transferability to govern. |
 | DAG topology | `figaro-topology` | parentOrderHashes — needed to render the multi-leg structure when the BoL is for one leg of a longer chain. |
-| Carrier per-role event log | `figaro-courier-process` | 8 event types: available / accepted / en-route-pickup / arrived-pickup / in-transit / arrived-dropoff / completed / cancelled. |
+| Carrier per-role event log | `figaro-courier-process` | The same 5-value `eventType` vocabulary as the stage-progression row, plus an optional `evidenceUri` per event (mechanism-grain public evidence pointer). |
 
 ### 7.1 Fields that are *not* covered today
 
 These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current clause in Figaro:
 
-- **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR). Broader cargo-type / transport-category taxonomies beyond dangerous goods remain unmodelled. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard and temperature are now separate standard-anchored electives.)
+- **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR); freight classification via `figaro-freight-class` (the declared NMFC class plus optional item number, anchored to the NMFTA standard); temperature via `figaro-cold-chain`. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard, temperature, and freight class are now separate standard-anchored electives.)
 - **Special-handling instructions — RESOLVED (2026-07-22, ruled: private detail, never clause content).** Fragile / orientation-sensitive / live-animal marks ride the addressee block on the ECDH private-detail channel (`frontend/lib/handoff/addressDetail.ts`, `handling` field) — like a BoL's handling marks, they travel with the label, encrypted to the order's counterparty, hash-anchored on-chain. Distinct from door-level delivery `instructions`. (Temperature-controlled handling remains committed clause content via `figaro-cold-chain`.)
 - **Notify party — RESOLVED (2026-07-22, same ruling).** The addressee block carries `notifyName`/`notifyContact` — the BoL notify-party lines, distinct from the consignee. The notify party is DATA, never a participant: no wallet, no channel message, no kernel involvement; the counterparty notifies by the off-protocol contact given.
-- **Cargo-detail beyond SKU.** `figaro-cargo` now carries the shipment's mass and volume, and `figaro-commerce.lineItems` carries `quantity` and `name`. Marks, numbers, and packaging type per shipment remain unmodelled.
+- **Cargo-detail beyond SKU.** `figaro-cargo` now carries the shipment's gross/net mass, volume, packaged dimensions (`lengthMm` / `widthMm` / `heightMm`), packaging type and count, and shipping marks & numbers — the "number and kind of packages" and "Marks & Numbers" columns of a traditional BoL — and `figaro-commerce.lineItems` carries `quantity` and `name`. Nothing at the logistic-unit grain remains unmodelled.
 - **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a clause concern.
 
 The decision on each of these — extend an existing clause (e.g. `figaro-cargo`),
@@ -465,7 +467,7 @@ at the title layer.
 ## 9. Implications for the supply-chain reference assembly
 
 This research closes the supply-chain assembly's research dependency. The
-deliverable for that backlog item, when build phase begins, is informed
+deliverable for that assembly, when build phase begins, is informed
 by:
 
 **The DAG model is the right primitive for supply chains.** Multi-leg
@@ -491,13 +493,16 @@ consortium structure, any permissioned visibility tier, or any commercial
 leader. Each participant is bonded independently; the protocol takes no
 position on the commercial relationship between them.
 
-**Cargo-detail clauses may be the deliverable.** When the assembly is
-built, the remaining live design question is packed-shipment dimensions
-(hazmat became `figaro-hazmat`; notify party rides the private addressee
-block — §7.1). Each such call follows the procedure in `docs/CLAUSES.md`
-§ "Adding a new clause — checklist", or lands on the private-detail side
-of the seam when it is operational data rather than bonded commitment. The
-research above lists the candidates without prejudging them.
+**The cargo-detail clauses largely exist.** The apparatus this research
+anticipated has since landed: `figaro-cargo` (gross/net mass, volume,
+packaged dimensions, packaging type/count, marks), `figaro-dimweight`
+(billed dimensional weight), `figaro-freight-class`, `figaro-hazmat`, and
+`figaro-cold-chain`; notify party rides the private addressee block —
+§7.1. What remains open is whatever per-field call a real customer's
+cargo set surfaces when the assembly enters build. Each such call follows
+the procedure in `docs/CLAUSES.md` § "Adding a new clause — checklist",
+or lands on the private-detail side of the seam when it is operational
+data rather than bonded commitment.
 
 **The TradeTrust document model is a useful reference, not a target.**
 TradeTrust's OpenAttestation document layer (W3C VC + signed attributes

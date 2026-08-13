@@ -21,12 +21,12 @@ that any agent can read, analyze, and act on.
 
 ## "Agent" names two worlds — pin the referent before reasoning
 
-Pre-defined agents are **maintainer-private by default**; "public" is the exception, only when explicitly designed for it.
+Pre-defined agents are **maintainer-facing by default** — they act on this repo, for its maintainer; "public ecosystem" is the exception, only when explicitly designed for it.
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
   - **`figaro-clause-author` / `figaro-assembly-designer`** — author or **fork** a clause/assembly and register it on the permissionless registries (a Layer-A `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user (RPGF rewards it).
-- **Maintainer-private repo agents** (the Claude Code subagents that build THIS repo, for the maintainer only): definitions live in `.claude/agents/*.md`. They touch the repo (that is their job); nothing in this document applies to them.
+- **Maintainer-facing repo agents** (the Claude Code subagents that build THIS repo, acting only for the maintainer): definitions live in `.claude/agents/*.md` and ship with the repo. They touch the repo (that is their job); nothing in this document applies to them.
 
 ---
 

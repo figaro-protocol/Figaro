@@ -17,7 +17,7 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │ FigaroCore — the frozen kernel.  Bonding + buyer-dominance + atomic resolve.  │
 │ Sees only LINEAR commit chains + an opaque `agreementHash` fingerprint.       │  ── protocol
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Registries (Clause / Seller / Assembly).  Permissionless, content-addressed    │
+│ Registries (Clause / Members / Assembly).  Permissionless, content-addressed  │
 │ anchors; first-write-wins.  Coordinators + verifier read the kernel.           │  ── protocol
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ UsageCounter → RpgfMinter.  Verified usage counted as it happens; the florin   │

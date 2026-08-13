@@ -96,13 +96,14 @@ Two on-chain touch points remain:
   human-readable name** (a string, e.g. `figaro-emissions`) and `version` is a separate
   `uint64`; the on-chain identity/dedup key is `keccak256(abi.encode(clauseId, version))`,
   so `name`+`version` together form the key. (On a live chain that registration is
-  first-write-wins immutable — but this repo is **device-only**: specs in `clauses/`
-  are edited **in place** and re-seeded fresh each `devup`. Do not bump `version` or
-  mint a `-v2` to change a clause.) It anchors the clauseId, the spec's IPFS locator, and the spec's
+  first-write-wins immutable — changing an anchored spec MEANS a new version; the
+  immutability is the point. On a local devnet, where the registry is wiped and
+  re-seeded fresh each `devup`, specs in `clauses/` are edited **in place** — do
+  not bump `version` or mint a `-v2` during development.) It anchors the clauseId, the spec's IPFS locator, and the spec's
   content hash (identity + integrity only — no group field; grouping is
   `block.design.article` in the spec JSON, which stays off-chain). No RPGF tag
   reaches the chain — the reward is uniform on real usage, with no per-clause
-  category (owner: memory `project_reward_mechanism_ratified_2026_07`). No validator
+  category (contract surface: `CONTRACTS.md` § RPGF). No validator
   is registered or bound; a registered clause is immediately attestable.
   **Versioning convention (RULED 2026-07-21): `version` is an integer lineage counter,
   never semver.** Semver's three-part contract (MAJOR.MINOR.PATCH) is a compatibility
@@ -165,7 +166,7 @@ ratified 2026-07-28; the published definition is
   never stored.
 
 **THE STANDARD (maintainer ruling 2026-07-28): every attribute expressed —
-zero, empty, or `null`, never absent.** The repo's 27 specs comply, enforced
+zero, empty, or `null`, never absent.** The repo's specs all comply (count derived: `ls clauses/*.json | wc -l`), enforced
 by the JSON-Schema conformance suite in `sdk/tests/clauses/`; consumers still
 treat an absent attribute as its empty value, so a sparser third-party spec
 surfaces fine (resolved-empty = absence).

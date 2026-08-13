@@ -24,7 +24,7 @@ signatures alone gate extension. "If both parties want a follow-on round,
 let them sign one against the same processId" sounds protocol-aligned.
 
 **Why the gate is correct**: Each bonded process is a transaction-scoped
-institution that dissolves at settlement (CLAUDE.md). The closure is the
+institution that dissolves at settlement (`docs/VISION.md`; CLAUDE.md). The closure is the
 *dissolution*. Parties wanting a follow-on bonded relationship sign a
 fresh root commitment, getting a new `processId`; cross-process
 composition (a sub-order in process A roots process B) carries the
@@ -132,7 +132,7 @@ and the frozen kernel forecloses adding contract-signature support. The live
 mitigation is **pre-installed EIP-7702 delegation**: before committing, the
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
-(`FigaroCore.sol:267`), so after key loss the delegated code can still
+(`FigaroCore.sol:268`), so after key loss the delegated code can still
 originate the resolve call from the buyer's address — every active process
 remains settleable and no bond is stranded. New commitments are not rescuable:
 each requires a fresh EIP-712 ECDSA signature from the lost key. The

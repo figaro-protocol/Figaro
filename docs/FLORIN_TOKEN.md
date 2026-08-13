@@ -52,7 +52,7 @@ not a governance right, not a staking instrument.
 - **Never market-touched by its issuers.** The market stance is stated indelibly in the
   contract natspec (`src/florin/FlorinToken.sol`): neither the DAO treasury nor the founder
   ever sells, buys, or provides liquidity on any market; the first price is a stranger's to
-  name. Strategy: the `project_florin_market_strategy_2026_07` memory (maintainer-held).
+  name.
 
 ---
 
@@ -140,8 +140,8 @@ upgrade for the buyer key, rehearsed on testnet before adoption.
 The *intent* of this allocation is unchanged: 60% of the supply is reserved for
 the people whose clauses and assemblies broaden the protocol's substrate — clause authors
 and assembly designers of record (recipients widened by the 2026-07-09
-redesign). The reward was ratified UNIFORM on 2026-07-29 (owner: memory
-`project_reward_mechanism_ratified_2026_07`): every clause and assembly earns by its **real
+redesign). The reward was ratified UNIFORM on 2026-07-29 (contract surface:
+`CONTRACTS.md` § RPGF): every clause and assembly earns by its **real
 usage alone**, with no category, tag, or weight tilting the split toward any kind
 of contribution.
 
@@ -283,6 +283,6 @@ Each item is a **decision**, not an open question.
 
 ## What This Document Is Not
 
-This is an internal design record. Not a whitepaper, pitch deck, or
+This is a design record. Not a whitepaper, pitch deck, or
 regulatory disclosure. The allocation table above is the canonical reference
 for any florin-related work in the codebase.

@@ -30,7 +30,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Contract inventory | `CONTRACTS.md` |
 | Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
 | Route catalogue, lib map, designer surface | `FRONTEND.md` |
-| Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks) |
+| Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Canonical names per tier | `LEXICON.md` |
@@ -40,7 +40,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Public-graph / RPGF incentive rationale (why the flow-map gets built under a uniform reward) | `PUBLIC_GRAPH_MODEL.md` |
 | RPGF mechanics (UsageCounter, RpgfMinter — uniform reward, live ETH stake) | `CONTRACTS.md` |
 | Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
-| Open work | the punch-list (memory dir, maintainer-private) |
+| Open work | GitHub Issues (public); the maintainer's working punch-list is private |
 
 ## Start Here
 

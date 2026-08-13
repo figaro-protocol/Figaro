@@ -103,13 +103,13 @@ or before `commit`; `resolveProcess` inherits what the commit recorded and decid
 authority's public record (the NYC TLC's active-drivers dataset, an airman registry, a state
 medical board) — referenced by a clause's committed content (`credentialRegisterUri`), read by
 counterparties at verification time, never mirrored on-chain; a **registry** is one of the
-protocol's three on-chain anchors (Clause/Seller/Assembly). Writing "registry" for an authority's
+protocol's three on-chain anchors (Clause/Members/Assembly — `ClauseRegistry`/`MembersRegistry`/`AssemblyRegistry`). Writing "registry" for an authority's
 record — or anchoring an authority's record in a protocol registry — is drift.
 **The clause's GROUP is `block.design.article`** (coordination, logistics, emissions…) — ONE word, ONE home. The
 earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) were a closed-world
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving
 the article (today `block.design.article`) as the sole grouping word. **RPGF does not read it — and reads no incentive tag at all**:
-the reward was ratified UNIFORM on 2026-07-29 (owner: memory `project_reward_mechanism_ratified_2026_07`),
+the reward was ratified UNIFORM on 2026-07-29 (contract surface: `CONTRACTS.md` § RPGF),
 scoring every clause and assembly on real usage alone with no category, tag, or weight — the article is purely a
 reader-facing grouping that stays off-chain. The guard `lint-no-clause-grouping-synonyms` blocks any re-introduced
 `category`/`family` grouper.
@@ -117,7 +117,7 @@ reader-facing grouping that stays off-chain. The guard `lint-no-clause-grouping-
 ## Drift status (conformance check, 2026-06-22)
 
 All rows above **CONFORMANT** in the live tree: `buyer`-as-"customer"/"user" = 0; `agreementHash`
-canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`/`Cid`) = 0;
+canonical across kernel + SDK + frontend, rivals (`agreementId`/`Ref`/`Cid`) = 0;
 `AssemblyDocument` = 0 (the rename to `AssemblyTemplate` is complete). No vocabulary drift found.
 *(Re-run the conformance grep when adding a row or after a parallel-agent burst — that's when drift enters.)*
 
@@ -133,8 +133,8 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
   the SDK is `@figaro/sdk`) plus the token-concept coupling bans
   (florin↔`figaro-utility-token`, florin↔privileged-token, "florin structural demand"); grows
   tier by tier.
-- **synonym-audit agent (PENDING)** — the reasoning backstop for a *newly-minted* synonym no static
-  guard lists yet; its anchor is THIS grid (punch-list, Agent-workflow hygiene).
+- **synonym-audit reasoning pass (future work)** — a reasoning backstop for a *newly-minted* synonym
+  no static guard lists yet; its anchor is THIS grid.
 
 ## Failure modes (the two ways the grid gets broken)
 
@@ -163,7 +163,7 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
    incentive with no narrow tag to aim at; the 07-15 rebuild had only `article` to reach for and
    picked two ENTIRE articles, turning a mechanism aimed at one clause into a boost for 14 of 27.
    **Superseded 2026-07-29:** the whole weighting axis was retired when the reward was ratified
-   UNIFORM (owner: memory `project_reward_mechanism_ratified_2026_07`) — `rpgfTag`/`rpgfTagOf` and
+   UNIFORM (contract surface: `CONTRACTS.md` § RPGF) — `rpgfTag`/`rpgfTagOf` and
    `UsageCounter`'s `boostedTag`/`BOOSTED_WEIGHT`/`BASE_WEIGHT` are deleted; every clause and assembly scores on
    real usage alone and Sybil-resistance moved to the two-sided live ETH stake. The `family`-vs-`article`
    history is preserved here only for the lesson it teaches.

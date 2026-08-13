@@ -63,7 +63,7 @@ What makes this more than a clever escrow:
    An institution is a composition of mechanisms, not a monolithic application.
 
 The result: a **public coordination economy** where trust is priced by capital,
-jurisdiction is replaced by code, processs assemble into
+jurisdiction is replaced by code, processes assemble into
 transaction-scoped institutions, and coordination emerges from economic
 incentives rather than management hierarchies.
 
@@ -92,8 +92,9 @@ implement properties. Mechanisms augment properties. UI renders contracts.
 The core bonding mechanism is augmented by coordination layers that extend its
 reach without weakening its guarantees:
 
-**`parentOrderId` + processs** — Public value-added process provenance.
-Every value chain is visible as a DAG. A buyer's cart can settle as a single
+**Process provenance** — public value-added provenance. Every value chain
+is visible as a DAG, reconstructed off-chain from process events — the kernel
+itself stores only linear chains, no parent-child links. A buyer's cart can settle as a single
 root process that distributes tokens downstream to every contributor, or each
 item can decompose into direct token flows to every value-adder in the DAG.
 Cumulative bonding at each node creates coordination pressure that never
@@ -131,7 +132,7 @@ is the parties' own sequencing of resolutions across linked processes — each
 process resolved by its own buyer, the links carried in the signed agreements
 and read off-chain. These are not auxiliary
 infrastructure — they are the primary mechanism by which value distributes
-through processs. A template defines how a buyer's payment decomposes into
+through processes. A template defines how a buyer's payment decomposes into
 flows reaching every contributor; when a process resolves, every order in it
 settles together — and separate processes each resolve on their own buyer's
 call, never across. These form the
@@ -470,8 +471,8 @@ When working in this repository:
    wrong regardless of how useful it seems.
 
 2. **No contract belongs to a dapp.** Every contract is a permissionless
-   primitive. The two-repo split (Figaro / Figaro-eats) is organizational,
-   not an ownership boundary.
+   primitive. The frontend is one replaceable surface over the contracts,
+   never an owner.
 
 3. **Token denomination matters.** When building UI or mechanism modules,
    surface token choice as a meaningful coordination signal, not just a

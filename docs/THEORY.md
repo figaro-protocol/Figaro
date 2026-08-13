@@ -1328,4 +1328,4 @@ Figaro represents a paradigm shift in multi-party coordination:
 ---
 
 **Version**: 1.3  
-**Last Updated**: May 2026
+**Last Updated**: August 2026

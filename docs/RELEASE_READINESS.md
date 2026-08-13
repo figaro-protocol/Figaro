@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-08-13 (the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the seven CI workflows exist, both awaiting the push to become live). Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owner: memory `project_reward_mechanism_ratified_2026_07`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the contract status. Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-08-13 (the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the seven CI workflows exist, both awaiting the push to become live). Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -118,9 +118,10 @@ Required output:
 2. **Mainnet — sovereign per-party pinning (Option 3).** Shift durability to the parties: each publishing wallet's client pins what it authors, so no single operator is the custodian of availability — matching the ownerless / permissionless doctrine. No central pinning dependency in the mainnet trust model.
 3. **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay fetchable by its CID for the longest plausible dispute/audit window, anchored to the tax-audit horizon: most administrations can audit ~5 years back, plus 1 year because a year's transactions are declared the following year → a **6-year minimum**. The window varies by jurisdiction and shifts over time, so 6 years is a floor, not a fixed term — each agreement carries a per-party option to extend (longer retention for higher-stakes or longer-tail commitments).
 
-### Task 7: Testnet Deployment Rehearsal (PAUSED)
+### Task 7: Testnet Deployment Rehearsal (ACTIVE)
 
-**Paused — the repo is device-only.** Resume when the deploy decision flips.
+**Active — the deploy decision flipped 2026-08-12** (Sepolia first, then Polygon
+Amoy; testnet planning began 2026-08-13).
 (The Cloudflare closed-beta apparatus — gate Worker + access codes, rpc-proxy
 allowlist, beta Anvil container, `cloudflare/` runbook — was deleted 2026-07-09
 with the no-beta ruling; there is no beta phase, so the rehearsal targets an
@@ -132,7 +133,8 @@ so the mirror trades the header layer for re-pinnability). The security headers
 are artifact-enforced: `frontend/public/_headers` ships inside the export
 (FRONTEND.md § Static export). The frontend is a static-exportable protocol
 surface with user-owned RPC/IPFS endpoints, so no edge middleware is presumed.) Order: deploy-script audits → Sepolia smoke-test
-→ flip the device-only deployment-context line in the punch-list and `CLAUDE.md`.
+→ flip the device-only deployment-context statements across the repo docs (a
+maintainer act).
 
 Required output:
 
@@ -194,7 +196,7 @@ and rehearsed with the rest of the stack, not a kernel change.
 At/after mainnet: stand up the real DAO treasury — a canonical Safe at `DAO_WALLET`
 with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet first.
 Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
-[[project_florin_market_strategy_2026_07]]
+Custody posture and treasury discipline: `docs/FLORIN_TOKEN.md`.
 
 ### Task 10: npm package provenance for `@figaro/sdk`
 
@@ -223,8 +225,8 @@ is the delivery-of-the-frontend half:
    says: trust no single origin — verify the typed data on your own machine with the
    SDK verifier (or any independent implementation built on the SDK; the
    `clause.block` seam makes frontends replaceable). No statement implying a second
-   frontend exists. Copy edits go through `figaro-marketing-copy` /
-   `figaro-builders-docs` at execution time.
+   frontend exists. Copy edits go through the repo's copy-owner agents
+   (`.claude/agents/`: figaro-marketing-copy, figaro-builders-docs) at execution time.
 
 ### Task 12: GitHub Publication (the "GitHub remote/CI item" Task 11 sequences after)
 
@@ -506,7 +508,7 @@ them so a reviewer does not spend time re-deriving they are intentional):
   math would overflow above it; it cannot be reached because a prior order's bond would
   have reverted first).
 - A blacklisted seller (a token that reverts transfers to that address) bricks
-  `resolveProcess` for the whole process — `FigaroCore.sol:293`; accepted (the buyer
+  `resolveProcess` for the whole process — `FigaroCore.sol:294`; accepted (the buyer
   chose the token and the seller), a token-choice concern, not a kernel escape hatch.
 - `FigaroCore.sol:238-240` — the multisig-vs-ECDSA note: the kernel recovers an ECDSA
   signer, so a smart-contract-wallet (multisig) party cannot be a kernel party directly;

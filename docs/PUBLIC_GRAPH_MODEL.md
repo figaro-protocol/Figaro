@@ -169,8 +169,8 @@ benchmark reasoning but fails one of the three is wrong here.
 
 This section is load-bearing: it explains why the geo/coordination clauses exist and
 get authored, now that the reward pays **no more for them than for any other clause.**
-The reward mechanism was ratified UNIFORM on 2026-07-29 (owner: memory
-`project_reward_mechanism_ratified_2026_07`): a clause's or assembly's score is its **real usage
+The reward mechanism was ratified UNIFORM on 2026-07-29 (contract surface:
+`CONTRACTS.md` § RPGF): a clause's or assembly's score is its **real usage
 alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.** The
 old "substrate-broadening weight" (`UsageCounter.BOOSTED_WEIGHT`/`BASE_WEIGHT`,
 `ClauseRegistry.rpgfTag`/`rpgfTagOf`, the counter's `boostedTag`) is **deleted.**
@@ -232,7 +232,7 @@ rent-dissipation bound whose closed form, and the deposit and cooldown derived f
 is published as RPGF paper §7 (`/papers/substrate-broadening-rpgf`), the parameter values
 ratified 2026-07-31; it is checkable at each period when both terms are observable. The florin has no protocol-set price, so the bound is stated as
 dilution per unit of attacker capital, never as a profit threshold.
-[[project_reward_mechanism_ratified_2026_07]] owns the rulings.
+The ratified rulings are recorded in `RELEASE_READINESS.md` Task 3 and the RPGF paper (`/papers/substrate-broadening-rpgf`).
 
 **The objective is a public, verifiable god's-eye view.** Aggregated over time,
 these attestations form a heat-map of physical/virtual flows — demand clusters,
