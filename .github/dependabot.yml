@@ -1,4 +1,11 @@
 version: 2
+# POLICY (maintainer-ruled 2026-08-13): routine version-bump PRs are DISABLED
+# (open-pull-requests-limit: 0 on every ecosystem) — the audited surface is
+# frozen and dependency churn is noise. Dependabot SECURITY updates remain on
+# (repo setting, independent of these limits) and still open PRs when a used
+# dependency has an advisory. Triage of anything Dependabot opens is the
+# maintainer-agent's job. The groups/schedules below are kept so re-enabling
+# is a one-line change per ecosystem.
 updates:
     # Root workspace. sdk/ is an npm workspace of this manifest with no own
     # lockfile (docs/LOCAL_DEV.md, package.json "workspaces": ["sdk"]) — its
@@ -13,7 +20,7 @@ updates:
               dependency-type: "production"
           npm-development:
               dependency-type: "development"
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 0
 
     # Frontend — its own package.json/package-lock.json, not part of the root
     # npm workspace.
@@ -26,7 +33,7 @@ updates:
               dependency-type: "production"
           frontend-development:
               dependency-type: "development"
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 0
 
     # prover/ — the Rust SP1 proof workspace (5 crates, one Cargo.lock).
     - package-ecosystem: "cargo"
@@ -37,7 +44,7 @@ updates:
           cargo-dependencies:
               patterns:
                   - "*"
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 0
 
     # Pinned Action SHAs (every `uses:` line in .github/workflows/ is pinned
     # by commit, not by tag) — Dependabot proposes the version bump with the
@@ -50,4 +57,4 @@ updates:
           github-actions:
               patterns:
                   - "*"
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 0
