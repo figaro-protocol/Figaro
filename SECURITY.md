@@ -9,7 +9,14 @@ locked funds. Disclosure is taken seriously.
 **Report privately. Do not open a public issue, pull request, or discussion
 for a suspected vulnerability.**
 
-Email **figarosecurity@gmail.com** with:
+Preferred channel: **[GitHub private vulnerability reporting](https://github.com/figaro-protocol/Figaro/security/advisories/new)**
+— a confidential report visible only to you and the maintainer, with
+structured triage and CVE issuance if one is warranted.
+
+Alternate channel (if you prefer not to use GitHub): email
+**figarosecurity@gmail.com**.
+
+Either way, include:
 
 - the affected file(s), with line numbers where possible;
 - the impact — what an attacker gains, and whose funds or state is at risk;
