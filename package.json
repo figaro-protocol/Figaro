@@ -19,7 +19,7 @@
     "test:e2e": "npm --prefix frontend run test:e2e --",
     "test:e2e:mock": "npm --prefix frontend run test:e2e:mock --",
     "test:e2e:devnet": "npm --prefix frontend run test:e2e:devnet --",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "**/*.{ts,tsx,sol,md}": [

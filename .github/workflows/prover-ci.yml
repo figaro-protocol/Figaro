@@ -22,6 +22,7 @@ name: Prover CI
 # guest-program toolchain tax.
 
 on:
+    workflow_dispatch:
     push:
         branches: [main]
         paths:
