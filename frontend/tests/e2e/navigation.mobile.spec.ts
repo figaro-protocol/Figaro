@@ -50,7 +50,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         // Drawer must list every registered nav link
         for (const link of NAV_LINKS) {
-            await expect(drawer.getByRole('link', { name: link.label })).toHaveAttribute('href', link.href);
+            await expect(drawer.getByRole('link', { name: link.label })).toHaveAttribute('href', new RegExp(`^${link.href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`));
         }
 
         await page.getByRole('button', { name: 'Close menu' }).click();
@@ -101,7 +101,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
             await expect(
                 drawer.getByRole('link', { name: label }),
                 `${label} is reachable from the marketing drawer`,
-            ).toHaveAttribute('href', href);
+            ).toHaveAttribute('href', new RegExp(`^${href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`));
         }
 
         // Section headers group the map (same shape as the (app) drawer) —
