@@ -191,7 +191,6 @@ contract Deploy is Script {
 
         _deployTreasuryGenesis(_florin, deployer);
 
-
         // ── Mint test tokens to Anvil accounts ──────────────────────
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
         // a randomized throwaway key (deploy-local.sh), so no anvil account
@@ -398,11 +397,7 @@ contract Deploy is Script {
     }
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    function _deployRpgfMinter(
-        FlorinToken florin,
-        ClauseRegistry clauses,
-        AssemblyRegistry assemblies
-    ) internal {
+    function _deployRpgfMinter(FlorinToken florin, ClauseRegistry clauses, AssemblyRegistry assemblies) internal {
         // The per-period budgets must sum to the registered minter cap. The
         // FlorinToken cap is the outer backstop (a claim over it reverts
         // MinterCapExceeded), but an over-committed schedule would turn late-

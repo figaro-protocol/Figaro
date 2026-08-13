@@ -186,9 +186,7 @@ contract ClauseRegistryTest is Test {
 
     function test_emitsClauseRegistered() public {
         vm.expectEmit(true, true, true, true);
-        emit ClauseRegistry.ClauseRegistered(
-            MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, address(this)
-        );
+        emit ClauseRegistry.ClauseRegistered(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, address(this));
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
     }
 

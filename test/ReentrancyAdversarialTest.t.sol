@@ -167,8 +167,9 @@ contract ReentrancyAdversarialTest is Test {
             1,
             periods
         );
-        FigaroBatchVerifier verifier =
-            new FigaroBatchVerifier(address(sp1), bytes32(uint256(1)), address(registry), address(usageCounter), genesis);
+        FigaroBatchVerifier verifier = new FigaroBatchVerifier(
+            address(sp1), bytes32(uint256(1)), address(registry), address(usageCounter), genesis
+        );
 
         // One payout position: the verifier pushes 10 tokens to `seller` from
         // its own balance. Fund the verifier and route the push through the

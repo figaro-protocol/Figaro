@@ -31,11 +31,7 @@ library AgreementTestHelper {
     /// @dev Compute the inclusion proof for a leaf at position `unsortedIdx` in
     ///      the caller's `leaves` array. Returns the sibling-hash sequence
     ///      verifiable via OpenZeppelin `MerkleProof.verify`.
-    function proofFor(bytes32[] memory leaves, uint256 unsortedIdx)
-        internal
-        pure
-        returns (bytes32[] memory proof)
-    {
+    function proofFor(bytes32[] memory leaves, uint256 unsortedIdx) internal pure returns (bytes32[] memory proof) {
         bytes32 target = leaves[unsortedIdx];
         bytes32[] memory layer = _sorted(leaves);
         uint256 idx = _indexOf(layer, target);

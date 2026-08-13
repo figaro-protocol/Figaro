@@ -125,11 +125,7 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
 
     /// @dev The witness digest, built with REAL Permit2's live DOMAIN_SEPARATOR —
     ///      the reconstruction under proof.
-    function _permitDigest(uint256 maxInput, uint256 deadline, bytes memory swapData)
-        internal
-        view
-        returns (bytes32)
-    {
+    function _permitDigest(uint256 maxInput, uint256 deadline, bytes memory swapData) internal view returns (bytes32) {
         bytes32 witness = coord.swapWitness(address(buyerInput), maxInput, swapData);
         bytes32 typeHash = keccak256(
             abi.encodePacked(
@@ -140,7 +136,8 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
         bytes32 tokenPermissionsHash = keccak256(
             abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), address(buyerInput), maxInput)
         );
-        bytes32 structHash = keccak256(abi.encode(typeHash, tokenPermissionsHash, address(coord), NONCE, deadline, witness));
+        bytes32 structHash =
+            keccak256(abi.encode(typeHash, tokenPermissionsHash, address(coord), NONCE, deadline, witness));
         return keccak256(abi.encodePacked("\x19\x01", IPermit2DomainSeparator(PERMIT2).DOMAIN_SEPARATOR(), structHash));
     }
 

@@ -1,15 +1,18 @@
 name: Frontend CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, develop]
     paths:
       - "frontend/**"
+      - ".nvmrc"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "frontend/**"
+      - ".nvmrc"
 
 permissions:
   contents: read

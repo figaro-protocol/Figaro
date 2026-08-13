@@ -64,10 +64,17 @@ contract FigaroBatchVerifierTest is Test {
         MockClauseOrAssemblyStake stakeGate = new MockClauseOrAssemblyStake();
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counter = new UsageCounter(
-            address(core), address(members), address(stakeGate), address(stakeGate), predicted, PROV_KEY, excluded, 1, periods
+            address(core),
+            address(members),
+            address(stakeGate),
+            address(stakeGate),
+            predicted,
+            PROV_KEY,
+            excluded,
+            1,
+            periods
         );
-        verifier =
-            new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
         assertEq(address(verifier), predicted, "verifier address prediction");
         vm.warp(PERIOD_END - 1000);
         token = new MockERC20("Mock", "MOCK");
@@ -98,7 +105,12 @@ contract FigaroBatchVerifierTest is Test {
             packed = bytes.concat(
                 packed,
                 abi.encodePacked(
-                    atts[i].orderHash, atts[i].processId, atts[i].attester, atts[i].clauseId, atts[i].stage, atts[i].contentRef
+                    atts[i].orderHash,
+                    atts[i].processId,
+                    atts[i].attester,
+                    atts[i].clauseId,
+                    atts[i].stage,
+                    atts[i].contentRef
                 )
             );
         }
@@ -120,7 +132,9 @@ contract FigaroBatchVerifierTest is Test {
     function _hashUsage(FigaroBatchVerifier.BatchUsageData memory u) internal pure returns (bytes32) {
         bytes memory packed = abi.encodePacked(u.period, u.provenanceClause, uint64(u.accruals.length));
         for (uint256 i = 0; i < u.accruals.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].c, u.accruals[i].d));
+            packed = bytes.concat(
+                packed, abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].c, u.accruals[i].d)
+            );
         }
         packed = bytes.concat(packed, abi.encodePacked(uint64(u.sellers.length)));
         for (uint256 i = 0; i < u.sellers.length; i++) {
@@ -195,8 +209,12 @@ contract FigaroBatchVerifierTest is Test {
     // ── Happy path ──────────────────────────────────────────────────
 
     function test_settleBatch_advancesRoot_reconciles_and_emits() public {
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
 
         uint256 buyerBefore = token.balanceOf(buyer);
         uint256 sellerBefore = token.balanceOf(seller);
@@ -217,14 +235,21 @@ contract FigaroBatchVerifierTest is Test {
     // ── The open-world anchor gate ──────────────────────────────────
 
     function test_settleBatch_revertsOnSpecBindingMismatch() public {
-        (, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
 
         // The proof validated against a spec the registry does not anchor.
         bytes32 wrongSpecHash = keccak256("a permissive substitute spec");
         events.specBindings[0] = FigaroBatchVerifier.SpecBinding(clauseKey, wrongSpecHash);
         bytes memory pv = abi.encode(
-            GENESIS, newRoot, uint64(block.chainid), address(verifier),
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
             _hashPositions(positions),
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
@@ -232,21 +257,30 @@ contract FigaroBatchVerifierTest is Test {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, clauseKey, SPEC_HASH, wrongSpecHash)
+            abi.encodeWithSelector(
+                FigaroBatchVerifier.SpecBindingMismatch.selector, clauseKey, SPEC_HASH, wrongSpecHash
+            )
         );
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
     }
 
     function test_settleBatch_revertsOnUnregisteredClauseBinding() public {
-        (, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
 
         // A clause key the registry never anchored: contentHashOf == 0,
         // which can never equal a real witness spec's hash.
         bytes32 strangerKey = keccak256(abi.encode("figaro-never-registered", uint64(1)));
         events.specBindings[0] = FigaroBatchVerifier.SpecBinding(strangerKey, SPEC_HASH);
         bytes memory pv = abi.encode(
-            GENESIS, newRoot, uint64(block.chainid), address(verifier),
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
             _hashPositions(positions),
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
@@ -268,12 +302,19 @@ contract FigaroBatchVerifierTest is Test {
         registry.registerClause{value: DEPOSIT}(novelId, 1, novelSpecHash, "ipfs://acme");
         bytes32 novelKey = keccak256(abi.encode(novelId, uint64(1)));
 
-        (, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
         events.specBindings[0] = FigaroBatchVerifier.SpecBinding(novelKey, novelSpecHash);
         events.attestations[0].clauseId = novelKey;
         bytes memory pv = abi.encode(
-            GENESIS, newRoot, uint64(block.chainid), address(verifier),
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
             _hashPositions(positions),
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
@@ -287,8 +328,11 @@ contract FigaroBatchVerifierTest is Test {
     // ── Continuity + binding-integrity reverts ──────────────────────
 
     function test_settleBatch_revertsOnStaleRoot() public {
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
 
         // Replaying the same batch: prevRoot no longer matches.
@@ -299,10 +343,17 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     function test_settleBatch_revertsOnChainIdMismatch() public {
-        (, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
         bytes memory pv = abi.encode(
-            GENESIS, newRoot, uint64(999), address(verifier),
+            GENESIS,
+            newRoot,
+            uint64(999),
+            address(verifier),
             _hashPositions(positions),
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
@@ -315,24 +366,33 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     function test_settleBatch_revertsOnTamperedPositions() public {
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
         positions[1].payout = 999 ether; // calldata no longer matches the proven hash
         vm.expectRevert(FigaroBatchVerifier.PositionHashMismatch.selector);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
     }
 
     function test_settleBatch_revertsOnTamperedAttestations() public {
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
         events.attestations[0].contentRef = keccak256("forged");
         vm.expectRevert(FigaroBatchVerifier.AttestationHashMismatch.selector);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
     }
 
     function test_settleBatch_revertsOnTamperedBindings() public {
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
         // Same clause key, different spec hash than the proof committed —
         // dies at the hash check BEFORE the registry anchor check.
         events.specBindings[0].specHash = keccak256("not what the proof said");
@@ -422,8 +482,12 @@ contract FigaroBatchVerifierTest is Test {
     //    stage-255 boundary packs identically to abi.encodePacked ────
 
     function test_settleBatch_rootChainsAcrossBatches_andStageBoundaryPacks() public {
-        (bytes memory pv1, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 root2) = _canonicalBatch();
+        (
+            bytes memory pv1,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 root2
+        ) = _canonicalBatch();
         verifier.settleBatch(hex"", pv1, positions, events, _emptyUsage());
 
         // Batch 2 chains root2 → root3 and carries a stage-255 attestation:
@@ -461,11 +525,18 @@ contract FigaroBatchVerifierTest is Test {
     // ── Verifying-contract binding revert ───────────────────────────
 
     function test_settleBatch_revertsOnVerifyingContractMismatch() public {
-        (, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
         address impostor = address(0xBEEF);
         bytes memory pv = abi.encode(
-            GENESIS, newRoot, uint64(block.chainid), impostor,
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            impostor,
             _hashPositions(positions),
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
@@ -513,8 +584,11 @@ contract FigaroBatchVerifierTest is Test {
     // advance, no counter bump.
 
     function test_settleBatch_atomicRevert_onRevokedApproval() public {
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
         uint256 sellerBefore = token.balanceOf(seller);
 
         vm.prank(buyer);
@@ -618,8 +692,11 @@ contract FigaroBatchVerifierTest is Test {
     /// for is a call that is never made, or made and reverted.
     function test_settleBatch_writesTheAccrualToTheCounter() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _batchWithUsage(usage);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _batchWithUsage(usage);
 
         verifier.settleBatch(hex"", pv, positions, events, usage);
 
@@ -635,8 +712,11 @@ contract FigaroBatchVerifierTest is Test {
     /// numbers after proving must not settle.
     function test_settleBatch_rejectsATamperedAccrual() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,) = _batchWithUsage(usage);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _batchWithUsage(usage);
 
         usage.accruals[0].c = 3000; // the proof committed 3
 
@@ -697,8 +777,12 @@ contract FigaroBatchVerifierTest is Test {
         // so the batch SETTLES and the accrual is dropped — which is itself
         // proof the hash matched (a mismatch would revert UsageAccrualHashMismatch
         // before the counter is ever reached).
-        (, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
         bytes memory pv = abi.encode(
             GENESIS,
             newRoot,
@@ -721,8 +805,12 @@ contract FigaroBatchVerifierTest is Test {
     /// the trade. A reward gate must not unwind another party's settlement.
     function test_settleBatch_settlesEvenWhenTheCounterRejectsTheAccrual() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1, 1);
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _batchWithUsage(usage);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _batchWithUsage(usage);
 
         vm.prank(seller);
         members.requestWithdrawal(); // the seller de-surfaces between prove and submit
@@ -744,8 +832,12 @@ contract FigaroBatchVerifierTest is Test {
     /// claims must still settle. This is the liveness leg of the bridge.
     function test_settleBatch_stillSettlesAfterAccrualCloses() public {
         vm.warp(PERIOD_END + 1);
-        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
 
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
         assertEq(verifier.stateRoot(), newRoot, "settlement is not hostage to the reward schedule");

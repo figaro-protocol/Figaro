@@ -235,7 +235,9 @@ contract HalmosClauseRegistry is Test {
         if (attemptReRegister) {
             vm.prank(BOB);
             address(r).call{value: deposit}(
-                abi.encodeCall(ClauseRegistry.registerClause, (CLAUSE_A_ID, VERSION, attemptedContentHash, "ipfs://again"))
+                abi.encodeCall(
+                    ClauseRegistry.registerClause, (CLAUSE_A_ID, VERSION, attemptedContentHash, "ipfs://again")
+                )
             );
         }
         if (attemptSecondWithdraw) {

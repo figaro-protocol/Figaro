@@ -9,6 +9,7 @@ name: Guards CI
 # witness-based prover rebuild; it covers the SP1-free prover crates.)
 
 on:
+    workflow_dispatch:
     push:
         branches: [main, develop]
     pull_request:

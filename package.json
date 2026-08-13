@@ -60,11 +60,11 @@
         "clauses/*.json": [
             "bash scripts/lint-clause-choices-are-bounded.sh"
         ],
-        "src/**/*.sol": [
-            "forge fmt",
+        "certora/token-ops.inventory": [
             "bash scripts/lint-token-ops.sh"
         ],
-        "certora/token-ops.inventory": [
+        "{src,test,script}/**/*.sol": [
+            "forge fmt",
             "bash scripts/lint-token-ops.sh"
         ]
     },

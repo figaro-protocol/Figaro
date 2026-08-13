@@ -582,7 +582,7 @@ contract FigaroCoreTest is Test {
 
     function test_subOrder_onResolvedProcess_reverts() public {
         // Commit root + resolve the process.
-        (bytes32 processId, , CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1);
+        (bytes32 processId,, CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1);
 
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](1);
         commitments[0] = rootC;
@@ -590,7 +590,7 @@ contract FigaroCoreTest is Test {
         core.resolveProcess(processId, commitments);
 
         // Confirm process is fully resolved (activeOrderCount cleared).
-        (, , , uint256 activeCount) = core.processes(processId);
+        (,,, uint256 activeCount) = core.processes(processId);
         assertEq(activeCount, 0, "process resolved");
 
         // Attempt a sub-order on the resolved processId — must revert.

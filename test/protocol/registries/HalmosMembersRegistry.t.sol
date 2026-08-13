@@ -125,9 +125,7 @@ contract HalmosMembersRegistry is Test {
     /// deposit through N identities: register, trade, request, re-register as
     /// someone new. Capital cost would be O(1) no matter how much breadth was
     /// fabricated, and the deposit would price nothing at all.
-    function check_reRegisteringWhilePendingCostsASecondDeposit(uint96 deposit, uint32 cooldown)
-        public
-    {
+    function check_reRegisteringWhilePendingCostsASecondDeposit(uint96 deposit, uint32 cooldown) public {
         vm.assume(deposit > 0);
         MembersRegistry r = new MembersRegistry(deposit, cooldown);
         vm.deal(ALICE, uint256(deposit) * 2);
@@ -144,11 +142,7 @@ contract HalmosMembersRegistry is Test {
         vm.prank(ALICE);
         r.register{value: deposit}("ipfs://a-again");
 
-        assertEq(
-            address(r).balance,
-            heldBefore + deposit,
-            "the second registration is funded with NEW capital"
-        );
+        assertEq(address(r).balance, heldBefore + deposit, "the second registration is funded with NEW capital");
         assertEq(r.pendingDeposit(ALICE), lockedBefore, "the locked deposit is untouched");
         assertTrue(r.registered(ALICE), "and the member is surfaced again");
     }
@@ -169,9 +163,7 @@ contract HalmosMembersRegistry is Test {
         // Low-level, because Halmos does not model `expectRevert`: the
         // assertion is on the call's own success flag.
         vm.prank(ALICE);
-        (bool ok,) = address(r).call{value: 0}(
-            abi.encodeCall(MembersRegistry.register, ("ipfs://free-ride"))
-        );
+        (bool ok,) = address(r).call{value: 0}(abi.encodeCall(MembersRegistry.register, ("ipfs://free-ride")));
         assertFalse(ok, "locked ETH can never fund a fresh registration");
     }
 
@@ -182,9 +174,7 @@ contract HalmosMembersRegistry is Test {
     /// and claim is the cooldown the economic model charges for; if
     /// eligibility survived into it, the attacker would keep earning
     /// throughout and `T` would drop out of the bound.
-    function check_registrationEndsAtRequestAndDoesNotComeBack(uint96 deposit, uint32 cooldown)
-        public
-    {
+    function check_registrationEndsAtRequestAndDoesNotComeBack(uint96 deposit, uint32 cooldown) public {
         MembersRegistry r = new MembersRegistry(deposit, cooldown);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
@@ -207,9 +197,7 @@ contract HalmosMembersRegistry is Test {
     /// between. (`cooldown > 0` because a zero cooldown is claimable in the
     /// same block by construction — a deliberate degenerate case, covered
     /// concretely in `MembersRegistryTest`.)
-    function check_theCooldownCannotBeSkipped(uint96 deposit, uint32 cooldown, uint32 elapsed)
-        public
-    {
+    function check_theCooldownCannotBeSkipped(uint96 deposit, uint32 cooldown, uint32 elapsed) public {
         vm.assume(cooldown > 0);
         vm.assume(elapsed < cooldown);
         MembersRegistry r = new MembersRegistry(deposit, cooldown);
@@ -238,9 +226,7 @@ contract HalmosMembersRegistry is Test {
     /// path needs a signed, kernel-resolved order, which symbolic ECDSA cannot
     /// reach (it is covered concretely by
     /// `UsageCounterTest.test_sellerLeavingTheRegistryStopsCounting`).
-    function check_theCounterAdmitsUsageExactlyWhileTheStakeIsLive(uint96 deposit, bool leaves)
-        public
-    {
+    function check_theCounterAdmitsUsageExactlyWhileTheStakeIsLive(uint96 deposit, bool leaves) public {
         MembersRegistry members = new MembersRegistry(deposit, 1 days);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
         vm.prank(ALICE);
@@ -271,11 +257,8 @@ contract HalmosMembersRegistry is Test {
         address[] memory sellers = new address[](1);
         sellers[0] = ALICE;
 
-        (bool admitted,) = address(counter).call(
-            abi.encodeCall(
-                UsageCounter.applyBatchAccrual, (0, keccak256("prov"), accruals, sellers)
-            )
-        );
+        (bool admitted,) = address(counter)
+            .call(abi.encodeCall(UsageCounter.applyBatchAccrual, (0, keccak256("prov"), accruals, sellers)));
 
         // THE LINKAGE, in both directions: the counter admits usage if and
         // only if the registry still reports a live stake.

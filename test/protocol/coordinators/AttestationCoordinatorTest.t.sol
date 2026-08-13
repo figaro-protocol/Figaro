@@ -174,12 +174,10 @@ contract AttestationCoordinatorTest is Test {
     ///      `agreementHash` equals `leafFor(clauseId, sectionData)`, which is
     ///      a valid single-leaf merkle tree — attestations use `sectionData`
     ///      plus an empty proof.
-    function _commitRootSingle(
-        uint256 payment,
-        uint256 salt,
-        bytes32 clauseIdLocal,
-        bytes memory sectionData
-    ) internal returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c) {
+    function _commitRootSingle(uint256 payment, uint256 salt, bytes32 clauseIdLocal, bytes memory sectionData)
+        internal
+        returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
+    {
         return _commitRoot(payment, salt, AgreementTestHelper.singleSectionRoot(clauseIdLocal, sectionData));
     }
 
@@ -195,7 +193,12 @@ contract AttestationCoordinatorTest is Test {
         bytes memory sectionData
     ) internal returns (bytes32 orderHash, CommitmentTypes.Commitment memory c) {
         return _commitSub(
-            processId, seller, payment, expectedCum, sellerKey, salt,
+            processId,
+            seller,
+            payment,
+            expectedCum,
+            sellerKey,
+            salt,
             AgreementTestHelper.singleSectionRoot(clauseIdLocal, sectionData)
         );
     }
@@ -242,7 +245,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_sellerAttestation_emissionsDisclosure() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
 
         bytes memory ipfsCidContent = "QmSomeIpfsCid";
 
@@ -255,7 +258,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         vm.prank(buyer);
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 5, EMPTY, _emptyProof(), EMPTY);
@@ -266,7 +269,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_unauthorizedSeller_reverts() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         vm.prank(buyer); // buyer tries to attest as seller
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
@@ -278,7 +281,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_unauthorizedBuyer_reverts() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         vm.prank(seller1); // seller tries to attest as buyer
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
@@ -294,7 +297,7 @@ contract AttestationCoordinatorTest is Test {
         // agreement so a lifecycle attestation against either has a valid
         // inclusion proof from the respective commitment.
         bytes32 agHash = AgreementTestHelper.singleSectionRoot(LIFECYCLE_CLAUSE, "");
-        (bytes32 processId, , CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1, agHash);
+        (bytes32 processId,, CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1, agHash);
         (, CommitmentTypes.Commitment memory subC) =
             _commitSub(processId, seller2, 20 ether, 30 ether, SELLER2_KEY, 2, agHash);
 
@@ -401,7 +404,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_contentRef_emitted() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
 
         bytes memory ipfsContent = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
         bytes32 ipfsRef = keccak256(ipfsContent);
@@ -436,8 +439,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_sellerAttestation_resolvedOrder_reverts() public {
-        (bytes32 processId, , CommitmentTypes.Commitment memory c) =
-            _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (bytes32 processId,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         // Resolve the process
         CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
@@ -456,8 +458,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation_resolvedOrder_reverts() public {
-        (bytes32 processId, , CommitmentTypes.Commitment memory c) =
-            _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (bytes32 processId,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
         cs[0] = c;
@@ -523,7 +524,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation_nonBuyer_validProcess_reverts() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         // seller1 tries to attest as buyer — they are not the commitment's buyer.
         vm.prank(seller1);
@@ -584,7 +585,7 @@ contract AttestationCoordinatorTest is Test {
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
-        bytes memory bs = _signCommitment(c2, SELLER1_KEY);  // seller1 acts as buyer here
+        bytes memory bs = _signCommitment(c2, SELLER1_KEY); // seller1 acts as buyer here
         bytes memory ss = _signCommitment(c2, SELLER2_KEY);
         core.commit(c2, bs, ss);
 
@@ -663,9 +664,13 @@ contract AttestationCoordinatorTest is Test {
         {
             bytes memory pickupProofContent = "pickup-proximity-proof-band-2";
             vm.prank(seller2);
-            coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 2, EMPTY, proofProximity, keccak256(pickupProofContent));
+            coordinator.attestAsSeller(
+                driverC, rootC, PROXIMITY_CLAUSE, 2, EMPTY, proofProximity, keccak256(pickupProofContent)
+            );
             vm.prank(seller2);
-            coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 3, EMPTY, proofLifecycle, keccak256(pickupProofContent));
+            coordinator.attestAsSeller(
+                driverC, rootC, LIFECYCLE_CLAUSE, 3, EMPTY, proofLifecycle, keccak256(pickupProofContent)
+            );
         }
 
         // ── Stage 4: Delivered (driver) + proximity proof (NFC) ───
@@ -718,29 +723,33 @@ contract AttestationCoordinatorTest is Test {
     function test_attestAsSeller_revertsOnClauseNotInAgreement() public {
         // Agreement is a single LIFECYCLE leaf; attesting under UNUSED_CLAUSE
         // (with an empty proof) cannot open against that root.
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 1, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 1, LIFECYCLE_CLAUSE, "");
         vm.prank(seller1);
-        vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
+            )
+        );
         coordinator.attestAsSeller(c, c, UNUSED_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     /// @dev Same merkle gate from the buyer path: wrong sectionData (or wrong
     ///      clause) breaks inclusion.
     function test_attestAsBuyer_revertsOnSectionDataMismatch() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 2, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 2, LIFECYCLE_CLAUSE, "");
         vm.prank(buyer);
-        vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, LIFECYCLE_CLAUSE
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, LIFECYCLE_CLAUSE
+            )
+        );
         // Signed sectionData was "" — attesting with non-empty sectionData
         // recomputes a different leaf that won't open against the root.
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, keccak256("tampered"), _emptyProof(), EMPTY);
     }
 
     function test_contentRefIsKeccakOfContent() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 3, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 3, LIFECYCLE_CLAUSE, "");
         bytes memory content = "arbitrary-content-bytes";
         bytes32 expected = keccak256(content);
 
@@ -753,7 +762,7 @@ contract AttestationCoordinatorTest is Test {
         bool found = false;
         for (uint256 i = 0; i < logs.length; i++) {
             if (logs[i].topics[0] == attSig) {
-                (, , bytes32 contentRef) = abi.decode(logs[i].data, (bytes32, uint8, bytes32));
+                (,, bytes32 contentRef) = abi.decode(logs[i].data, (bytes32, uint8, bytes32));
                 assertEq(contentRef, expected, "contentRef = keccak256(content)");
                 found = true;
             }
@@ -767,7 +776,7 @@ contract AttestationCoordinatorTest is Test {
     // can't be expressed as pure AC-level CVL rules without a mock-validator
     // scene.
     function testFuzz_contentRefIsKeccakOfContent(bytes calldata content) public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 4, LIFECYCLE_CLAUSE, "");
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 4, LIFECYCLE_CLAUSE, "");
         bytes32 expected = keccak256(content);
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
@@ -779,7 +788,7 @@ contract AttestationCoordinatorTest is Test {
         bool found;
         for (uint256 i = 0; i < logs.length; i++) {
             if (logs[i].topics[0] == attSig) {
-                (, , bytes32 contentRef) = abi.decode(logs[i].data, (bytes32, uint8, bytes32));
+                (,, bytes32 contentRef) = abi.decode(logs[i].data, (bytes32, uint8, bytes32));
                 assertEq(contentRef, expected, "contentRef = keccak256(content) for any content");
                 found = true;
             }

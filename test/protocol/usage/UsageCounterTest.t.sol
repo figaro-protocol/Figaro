@@ -87,7 +87,17 @@ contract UsageCounterTest is Test {
         // main fixture so each test isolates its own property. The floor's own
         // properties are proved in the "Minimum-support floor" section below on
         // a counter deployed at the mainnet value of 3.
-        counter = new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, periods);
+        counter = new UsageCounter(
+            address(core),
+            address(members),
+            address(stake),
+            address(stake),
+            batchVerifier,
+            PROV_KEY,
+            _excluded(),
+            1,
+            periods
+        );
 
         address[5] memory ppl = [buyer, buyer2, seller1, seller2, seller3];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -247,8 +257,7 @@ contract UsageCounterTest is Test {
         vm.prank(stranger);
         token.approve(address(core), type(uint256).max);
 
-        CommitmentTypes.Commitment memory c =
-            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, stranger, strangerKey, 1);
+        CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, stranger, strangerKey, 1);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, stranger));
         _record(c, CARGO_KEY);
     }
@@ -275,8 +284,7 @@ contract UsageCounterTest is Test {
         // agreement could commit any bytes32 leaf key and accrue score to it,
         // inflating the shared denominator at gas cost (audit M-2, 2026-08-01).
         stake.kill(CARGO_KEY);
-        CommitmentTypes.Commitment memory c =
-            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, CARGO_KEY));
         _record(c, CARGO_KEY);
     }
@@ -361,8 +369,7 @@ contract UsageCounterTest is Test {
         // Scoring them would pay their authors for the protocol's own floor.
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
 
-        CommitmentTypes.Commitment memory c =
-            _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, commerceKey));
         _record(c, commerceKey);
 
@@ -525,8 +532,7 @@ contract UsageCounterTest is Test {
     uint256 internal constant RECORD_USAGE_GAS = 180_000; // repriced 2026-08-05: measured 175,250 after the clauseOrAssembly rename wave (drift predates it; anchor is a drift alarm)
 
     function test_Gas_recordUsageStaysAtItsAnchor() public {
-        CommitmentTypes.Commitment memory c =
-            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 0xA45);
+        CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 0xA45);
         uint256 before = gasleft();
         counter.recordClauseUsage(c, CARGO_KEY, keccak256(SECTION), new bytes32[](0));
         uint256 used = before - gasleft();
@@ -586,8 +592,17 @@ contract UsageCounterTest is Test {
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        floored =
-            new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 3, periods);
+        floored = new UsageCounter(
+            address(core),
+            address(members),
+            address(stake),
+            address(stake),
+            batchVerifier,
+            PROV_KEY,
+            _excluded(),
+            3,
+            periods
+        );
     }
 
     function _recordOn(UsageCounter target, CommitmentTypes.Commitment memory c, bytes32 clauseOrAssembly) internal {
@@ -664,15 +679,25 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(0), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(core), address(0), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(0), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(core), address(members), address(0), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(0), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(0), batchVerifier, PROV_KEY, _excluded(), 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), address(0), PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), address(0), PROV_KEY, _excluded(), 1, p
+        );
     }
 
     function test_constructor_rejectsTooManyPeriods() public {
@@ -681,12 +706,24 @@ contract UsageCounterTest is Test {
             p[i] = uint64(P0_END + i);
         }
         vm.expectRevert(UsageCounter.TooManyPeriods.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
+        );
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, new uint64[](0));
+        new UsageCounter(
+            address(core),
+            address(members),
+            address(stake),
+            address(stake),
+            batchVerifier,
+            PROV_KEY,
+            _excluded(),
+            1,
+            new uint64[](0)
+        );
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -694,7 +731,9 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
+        );
     }
 
     function test_constructor_rejectsZeroMinSellers() public {
@@ -703,7 +742,9 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroMinSellers.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 0, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 0, p
+        );
     }
 
     // ── The batch bridge: proof-gated accrual ───────────────────────
@@ -827,9 +868,7 @@ contract UsageCounterTest is Test {
     function test_batchAccrualRejectsAForeignProvenanceClause() public {
         bytes32 impostor = keccak256(abi.encode("not-provenance", uint64(1)));
         vm.prank(batchVerifier);
-        vm.expectRevert(
-            abi.encodeWithSelector(UsageCounter.ProvenanceClauseMismatch.selector, PROV_KEY, impostor)
-        );
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceClauseMismatch.selector, PROV_KEY, impostor));
         counter.applyBatchAccrual(0, impostor, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 

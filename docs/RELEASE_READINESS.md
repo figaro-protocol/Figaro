@@ -476,6 +476,12 @@ git diff c7f85d0d -- src/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s
 
 Expected output: empty.
 
+Post-stamp record (2026-08-13, same day): `script/Deploy.s.sol` received a
+`forge fmt` line-rewrapping in the first-CI alignment wave (CI's pinned
+formatter check covers `test/` + `script/`, which the local pre-commit glob
+had not) — formatting only, no token-level change; recorded here per the
+Post-Audit Policy rather than slipped through.
+
 **STAMPED 2026-08-13: the freeze commit is `c7f85d0d`**
 (`c7f85d0dd79298d1add2623993cc60b21321fed3`, 2026-08-12) — the last commit touching the
 frozen scope; the stamp never moves again. Frozen-scope commits after the 2026-08-04

@@ -10,6 +10,7 @@ name: Devnet E2E CI
 # stay maintainer-run for now; this proves the spine can't silently break.
 
 on:
+    workflow_dispatch:
     push:
         branches: [main, develop]
         paths:

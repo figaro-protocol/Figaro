@@ -1,7 +1,7 @@
 {
     "name": "@figaro/sdk",
     "version": "0.1.0",
-    "description": "Figaro Protocol SDK — event parsing, state reconstruction, EIP-712 commitment building, and bond math for agents and integrations.",
+    "description": "Figaro Protocol SDK \u2014 event parsing, state reconstruction, EIP-712 commitment building, and bond math for agents and integrations.",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -57,7 +57,8 @@
         "typedoc": "^0.28.20",
         "typescript": "^5.5.0",
         "viem": "^2.55.1",
-        "vitest": "^2.0.0"
+        "vitest": "^2.0.0",
+        "@types/node": "^22.10.0"
     },
     "license": "MIT",
     "repository": {

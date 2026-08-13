@@ -400,9 +400,7 @@ contract FigaroCore_RevertBranch is Test {
 
         // Identical struct: the accumulator has moved to 30, so the replay's
         // expectedCumulativeValue (30) no longer matches 30 + 20 = 50.
-        vm.expectRevert(
-            abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 30 ether, 50 ether)
-        );
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 30 ether, 50 ether));
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
     }
 }
