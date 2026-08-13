@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-07-29 (the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owner: memory `project_reward_mechanism_ratified_2026_07`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the contract status. Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-08-13 (the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the seven CI workflows exist, both awaiting the push to become live). Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owner: memory `project_reward_mechanism_ratified_2026_07`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the contract status. Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -38,19 +38,12 @@ This is not because the current pass surfaced a new contract defect. It is becau
 
 The concrete tasks that remain before the public-release gate is closed:
 
-### Task 1: Freeze The Audited Solidity Surface
+### Task 1: Freeze The Audited Solidity Surface — CLOSED 2026-08-13
 
-Scope to freeze:
-
-1. `src/`
-2. `src/florin/`
-3. deploy and setup scripts that define the live Solidity surface
-
-Required output:
-
-1. a declared freeze point for the contracts and deployment path
-2. no feature churn in the audited Solidity surface after that point
-3. any later Solidity edit treated as a new review event, not as an invisible follow-up
+The freeze is declared AND stamped: freeze commit `c7f85d0d` (the last commit touching
+the frozen scope — see the Freeze Notice below for the stamp record and the
+classification of post-2026-08-04 frozen-scope commits). Any later Solidity edit is a
+new review event under the Post-Audit Policy.
 
 ### Task 2: Run The Final External Audit Pass
 
@@ -107,31 +100,13 @@ dilution, never theft) is unchanged. The state machine under all of it is Halmos
 broadcast: re-measure `g` on the target chain and record the deployment's point on the
 γ curve in the release record.
 
-### Task 4: AssemblyRegistry Mainnet-Parity Decision
+### Task 4: AssemblyRegistry Mainnet-Parity Decision — CLOSED
 
-**Disposition taken: deploy it (2026-07-27).** `script/DeployMainnet.s.sol` now imports and deploys `AssemblyRegistry` alongside `ClauseRegistry` and `MembersRegistry` — the parity the separation-of-concerns rule requires, and a hard dependency of `RpgfMinter`, which reads it for the assembly author of record. The devnet/mainnet asymmetry is closed.
+**Disposition taken: deploy it (2026-07-27).** `script/DeployMainnet.s.sol` deploys `AssemblyRegistry(0.05 ether)` (the Task-3 ratified stake) alongside the other two registries; both deployer-log lines print from `_logAddresses()`. The devnet/mainnet asymmetry is closed; no output remains.
 
-Remaining output:
+### Task 5: Launch Scenario — Assembly Seeding Decision — CLOSED
 
-1. ~~`NEXT_PUBLIC_ASSEMBLY_REGISTRY` and `NEXT_PUBLIC_USAGE_COUNTER` deployer-log lines~~ — DONE 2026-07-27: both are printed by `_logAddresses()`.
-2. ~~Its `registrationDeposit` reasoned per Task 3~~ — DONE: `script/DeployMainnet.s.sol` deploys `AssemblyRegistry(0.05 ether)`, the Task-3 ratified value (same stake as the other two registries).
-
-### Task 5: Launch Scenario — Assembly Seeding Decision
-
-**Decided (2026-06-03): no pre-seeding on either surface.** The devnet seeder
-`frontend/scripts/seed-devnet.mjs` was **deleted** — the devnet no longer
-direct-call-registers assemblies or members. Both devnet and mainnet now rely on
-permissionless on-chain publication: assemblies are authored through the designer
-UI (the `local-commerce` e2e is the live exemplar) and sellers onboarded through
-the registration wizard (`sellers-onboarding`), exactly as a real participant
-would — no seed path diverges from the mainnet path. `script/DeployMainnet.s.sol`
-seeds no assemblies. Assemblies are permissionless, so no-seed is the chosen
-disposition for both surfaces. The migration off the old seeded fixtures is
-complete; the deleted `scenario-*` specs' open-world rebuilds are punch-listed.
-
-Remaining output:
-
-1. mainnet seed list — `DeployMainnet.s.sol` seeds no assemblies at launch (recorded). If Task 4 disposition (2) is taken, the mainnet half collapses to n/a (no `AssemblyRegistry` deployed)
+**Decided (2026-06-03): no pre-seeding on either surface.** Both devnet and mainnet rely on permissionless on-chain publication — assemblies authored through the designer UI, sellers onboarded through the registration wizard; no seed path diverges from the mainnet path. `script/DeployMainnet.s.sol` seeds no assemblies (recorded); no output remains.
 
 ### Task 6: IPFS Content Persistence — Pinning Durability
 
@@ -274,12 +249,16 @@ publicly; full history vs fresh-genesis commit; the commit-identity email). The 
    before. `NEXT_PUBLIC_SITE_URL` must be set for the deploy build or `metadataBase`
    falls back to `figaro.example` and every og:image/sitemap URL is dead — verify it in
    the deploy environment before the export is uploaded.
-2. **`SECURITY.md` — a vulnerability-disclosure channel.** The 2026-08-07 site probe
-   found `/security` gives no way to report a finding; GitHub's standard security-policy
-   file is the answer, and `/security` links it.
-3. **CI: the guard suite as a GitHub Action.** Lint scripts, knip, Foundry tests, Vitest —
-   the same gate that runs in pre-commit, so external PRs meet the same bar. Also the
-   precondition for Task 11's reproducible-build CID proof.
+2. **`SECURITY.md` — a vulnerability-disclosure channel.** DONE in-tree (root
+   `SECURITY.md`, landed 2026-08-12 with the codebase-probe findings). Remaining half:
+   `/security` does not yet link it (verified 2026-08-13) — add the pointer at push,
+   when the GitHub URL it links through becomes real.
+3. **CI: the guard suite as a GitHub Action.** AUTHORED (verified 2026-08-13): seven
+   workflows in `.github/workflows/` — `guards-ci.yml` runs the whole-tree
+   `verify-guards.sh` battery plus npm-audit gates, beside foundry/frontend/sdk/prover/
+   devnet-e2e CI and `sequencer-release.yml`. None has ever executed (no remote);
+   first green run on push is the remaining half, and the precondition for Task 11's
+   reproducible-build CID proof.
 4. **Repo metadata at creation.** Description, topics, default branch `main`; issues on.
    Recorded check (2026-08-07): `.git` is 247M, no tracked secrets/`.env`/keys/broadcast
    artifacts, `LICENSE` + root `README.md` present — no large-file surgery needed.
@@ -490,21 +469,22 @@ The whole audited Solidity surface is now one frozen scope.
 To verify a file is unchanged from the freeze commit:
 
 ```bash
-git diff <FREEZE_COMMIT> -- src/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol
+git diff c7f85d0d -- src/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol
 ```
 
 Expected output: empty.
 
-`<FREEZE_COMMIT>` is deliberately unfilled: the Solidity freeze is DECLARED but not yet
-STAMPED — the stamp happens when Task 1 closes (the last pre-audit Solidity change), at
-which point the placeholder is replaced with that commit and never moves again. (The
-frontend freeze below is already stamped because its surface froze first.) Related
-staleness note: the three hand-run formal methods (Certora, TLA+, Echidna) record no
-verified-at commit, so their coverage can silently go stale against Solidity changes —
-when the freeze commit is stamped, record it beside each hand-run result in
-`VERIFICATION_MAP.md` §7/§10 and re-run any method whose last run predates it; until
-then, any Solidity change after a method's recorded run date means re-run before audit
-handover.
+**STAMPED 2026-08-13: the freeze commit is `c7f85d0d`**
+(`c7f85d0dd79298d1add2623993cc60b21321fed3`, 2026-08-12) — the last commit touching the
+frozen scope; the stamp never moves again. Frozen-scope commits after the 2026-08-04
+formal-suite runs, classified at stamping: `827fafe2` (2026-08-05) is the one
+non-comment contract change — the mechanical `artifact`→`clauseOrAssembly` identifier
+rename (110 code lines across UsageCounter, FigaroBatchVerifier, RpgfMinter, the
+registries, both deploy scripts); `8548552f` (2026-08-11) touched only the devnet
+`script/Deploy.s.sol` (coverage/Yul stack fixes, no deployed-contract change); the
+rest (`bd4642bb`, `772fbda0`, `0cc275e2`, `c7f85d0d`) are comment-only. Because the
+rename post-dates the 2026-08-04 hand-run results, the full formal suite is re-run at
+the stamp; fresh run records live beside each method in `VERIFICATION_MAP.md`.
 
 ### Handover Checklist for the Auditor
 
