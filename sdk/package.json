@@ -49,15 +49,15 @@
         "@noble/hashes": "^1.8.0"
     },
     "peerDependencies": {
-        "viem": "^2.55.1"
+        "viem": "^2.55.13"
     },
     "devDependencies": {
         "ajv": "^8.20.0",
         "fast-check": "^4.9.0",
         "typedoc": "^0.28.20",
-        "typescript": "^5.5.0",
-        "viem": "^2.55.1",
-        "vitest": "^2.0.0"
+        "typescript": "^7.0.2",
+        "viem": "^2.55.13",
+        "vitest": "^4.1.10"
     },
     "license": "MIT",
     "repository": {
