@@ -145,6 +145,10 @@ invariants are the E-6 rows), and — added 2026-08-04 —
 `WitnessSwapAndCommitCoordinator.tla` and `SettlementUniverses.tla`
 (both detailed below; harness inventory + state counts: `TESTING.md` § TLA+).
 
+Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — all four models,
+every invariant, TLC exit 0 (SettlementUniverses explored 7.46M states, no error);
+the freeze-stamp re-run.
+
 ### Model file: `formal/FigaroCore.tla`
 
 **Actions modeled (3):**
@@ -224,6 +228,10 @@ model's experiment and is EXPECTED to fail. Mutation-checked 2026-08-04
 
 ## 8) Echidna fuzzing — current posture
 
+Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — both harnesses
+(kernel + FlorinToken) held every property across the configured 50,000-call budget,
+exit 0 (the freeze-stamp re-run).
+
 ### Harness: `src/echidna/EchidnaFuzzer.sol`
 
 **Fuzzed actions:**
@@ -248,6 +256,10 @@ model's experiment and is EXPECTED to fail. Mutation-checked 2026-08-04
 ## 9) Halmos symbolic testing — current posture
 
 ### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol` + `test/protocol/usage/HalmosUsageCounter.t.sol` + `test/protocol/registries/HalmosClauseAndAssemblyRegistries.t.sol`
+
+Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — all 32 properties
+proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry +
+6 AssemblyRegistry), exit 0; the freeze-stamp re-run.
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),
@@ -398,18 +410,20 @@ load-bearing, not vacuous.
 37 declared rules across 6 specs (FigaroCore 8 + FlorinToken 6 +
 AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4 +
 RpgfMinter 8).
-**All green** — full 6-spec suite re-run 2026-08-04 with `--wait_for_results all`
-(zero rule violations, zero sanity failures across every spec), after the 08-03
-session's verdicts were lost to a machine crash.
+**All green** — full 6-spec suite re-run **2026-08-13 at the freeze commit `c7f85d0d`**
+with `--wait_for_results all` (exit 0 = every rule verified; every `Violated` line in
+the stream was the `rule_not_vacuous` healthy polarity). This is the freeze-stamp
+re-run required by `RELEASE_READINESS.md`'s staleness policy — the prior full-green
+run (2026-08-04, URLs in git history) predated the `827fafe2` identifier rename.
 
 | Spec | Report URL |
 |---|---|
-| FigaroCore | https://prover.certora.com/output/9512759/4fecd265ad4f426bae0243d5038a79c9 (2026-08-04) |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/88c56429629f4bb889b40bc99ca5acab (2026-08-04) |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/3130c848a9e043e79f8a8565fc55fab8 (2026-08-04) |
-| FlorinToken | https://prover.certora.com/output/9512759/008234514f674ae4a9056c2b4dbb5124 (2026-08-04) |
-| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/be3dad10f296412eb3e640a5bdeb56e2 (2026-08-04, usage-bridge `settleBatch` signature) |
-| RpgfMinter | https://prover.certora.com/output/9512759/2a202438b7ec4e4aaa22154550f30f73 (2026-08-04, first verdict) |
+| FigaroCore | https://prover.certora.com/output/9512759/28ecb74b667d4554b629056e8ee82fe7 (2026-08-13, freeze `c7f85d0d`) |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/1e31e01ce9254608a4207d5243f70954 (2026-08-13) |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/21ca3a24b2d549d3a0b08a7145695849 (2026-08-13) |
+| FlorinToken | https://prover.certora.com/output/9512759/a60d62ca5f11426bae63fdaec4f12b34 (2026-08-13) |
+| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/6592fd98108748f390c374e5f695e2e1 (2026-08-13) |
+| RpgfMinter | https://prover.certora.com/output/9512759/3a876d364f77497ab01e794932678734 (2026-08-13) |
 
 ```bash
 # Install
