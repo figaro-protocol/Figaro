@@ -494,8 +494,8 @@ surface area while preserving the load-bearing intuition.
 
 | Iteration | Year | Authors | Core mechanism | Status |
 |---|---|---|---|---|
-| Figaro-Original | March 2022 | F. R. Genovese & A. Daliana | Proof of Action consensus on its own chain | Abandoned |
-| Figaro-2 | 2022–2023 | F. R. Genovese & A. Daliana | 5-tx escrow with Mutually Assured Loss reasoning | Abandoned |
+| Figaro-Original | March 2022 | F. R. Genovese | Proof of Action consensus on its own chain | Abandoned |
+| Figaro-2 | May 2023 | F. R. Genovese & A. Daliana | 5-tx escrow with Mutually Assured Loss reasoning | Abandoned |
 | FigaroCore (current) | 2024–2026 | A. Daliana | Asymmetric bonding on existing chains, ~250 LOC kernel | Active |
 
 What survived: the factotum-of-the-city metaphor (Figaro-Original §1.0),

@@ -1,8 +1,8 @@
 # Bill of Lading research: CargoX, TradeTrust, MLETR, TradeLens vs Figaro
 
 **Status**: research deliverable, 2026-04-28.
-**Author**: drafted by an agent with `claude-opus-4-7[1m]`, grounded in the
-codebase at the time of writing and the source citations below.
+**Author**: AI-drafted, maintainer-verified; grounded in the codebase at the
+time of writing and the source citations below.
 **Closes**: the order-as-traditional-contract UI + PDF question and the
 research dependency of the supply-chain reference assembly.
 
