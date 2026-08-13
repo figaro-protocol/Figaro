@@ -16,6 +16,8 @@
 
 set -u
 
+failures=()
+
 CLAUSES_DIR="clauses"
 if [ ! -d "$CLAUSES_DIR" ]; then
     echo "[clause-counts] clauses dir not found: $CLAUSES_DIR" >&2

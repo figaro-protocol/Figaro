@@ -22,6 +22,8 @@
 
 set -u
 
+failures=()
+
 TS_FILE="sdk/src/gasCeilings.ts"
 SOL_FILE="test/kernel/GasCeilingTest.t.sol"
 

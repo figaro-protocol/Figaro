@@ -1,71 +1,74 @@
 {
-  "name": "figaro-protocol",
-  "private": true,
-  "workspaces": [
-    "sdk"
-  ],
-  "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.1",
-    "husky": "^9.1.7",
-    "jsdom": "^29.0.2",
-    "lint-staged": "^16.4.0"
-  },
-  "scripts": {
-    "dev": "npm --prefix frontend run dev",
-    "devup": "bash scripts/devup.sh",
-    "build": "npm --prefix frontend run build",
-    "start": "npm --prefix frontend run start",
-    "test:unit": "npm test --workspaces --if-present",
-    "test:e2e": "npm --prefix frontend run test:e2e --",
-    "test:e2e:mock": "npm --prefix frontend run test:e2e:mock --",
-    "test:e2e:devnet": "npm --prefix frontend run test:e2e:devnet --",
-    "prepare": "husky || true"
-  },
-  "lint-staged": {
-    "**/*.{ts,tsx,sol,md}": [
-      "bash scripts/lint-architecture-lexicon.sh"
+    "name": "figaro-protocol",
+    "private": true,
+    "workspaces": [
+        "sdk"
     ],
-    "**/*.{ts,tsx,sol,rs,md}": [
-      "bash scripts/lint-no-closed-world-vocab.sh"
-    ],
-    "frontend/**/*.{ts,tsx}": [
-      "bash -c 'cd frontend && npx tsc --noEmit'",
-      "bash scripts/lint-canonical-imports.sh",
-      "bash scripts/lint-no-eyebrows.sh",
-      "bash scripts/lint-mainnet-posture.sh",
-      "bash scripts/lint-no-product-party-terms.sh",
-      "bash scripts/lint-no-hardcoded-clauses-in-runtime.sh",
-      "bash scripts/lint-no-clause-names.sh",
-      "bash scripts/lint-lib-import-direction.sh",
-      "bash scripts/lint-no-clause-grouping-synonyms.sh",
-      "bash scripts/lint-type-safety.sh",
-      "bash scripts/lint-no-handwritten-kernel-abis.sh",
-      "bash scripts/lint-core-contract-abis.sh",
-      "bash scripts/lint-composition-is-designer-only.sh",
-      "bash scripts/lint-no-network-fallbacks.sh",
-      "bash scripts/lint-window-globals.sh",
-      "bash scripts/lint-runtime-tests-from-chain.sh",
-      "bash scripts/lint-duplicate-links.sh",
-      "bash scripts/lint-nav-structure.sh"
-    ],
-    "sdk/src/**/*.ts": [
-      "bash scripts/lint-no-clause-names.sh"
-    ],
-    "frontend/tests/**/*.devnet.spec.ts": [
-      "bash scripts/lint-no-devnet-revert.sh"
-    ],
-    "frontend/scripts/*.mjs": [
-      "bash scripts/lint-no-handwritten-kernel-abis.sh"
-    ],
-    "clauses/*.json": [
-      "bash scripts/lint-clause-choices-are-bounded.sh"
-    ],
-    "src/**/*.sol": [
-      "forge fmt",
-      "bash scripts/lint-token-ops.sh"
-    ],
-    "certora/token-ops.inventory": [
-      "bash scripts/lint-token-ops.sh"
-    ]
-  }
+    "devDependencies": {
+        "@vitejs/plugin-react": "^6.0.1",
+        "husky": "^9.1.7",
+        "jsdom": "^29.0.2",
+        "lint-staged": "^16.4.0"
+    },
+    "scripts": {
+        "dev": "npm --prefix frontend run dev",
+        "devup": "bash scripts/devup.sh",
+        "build": "npm --prefix frontend run build",
+        "start": "npm --prefix frontend run start",
+        "test:unit": "npm test --workspaces --if-present",
+        "test:e2e": "npm --prefix frontend run test:e2e --",
+        "test:e2e:mock": "npm --prefix frontend run test:e2e:mock --",
+        "test:e2e:devnet": "npm --prefix frontend run test:e2e:devnet --",
+        "prepare": "husky || true"
+    },
+    "lint-staged": {
+        "**/*.{ts,tsx,sol,md}": [
+            "bash scripts/lint-architecture-lexicon.sh"
+        ],
+        "**/*.{ts,tsx,sol,rs,md}": [
+            "bash scripts/lint-no-closed-world-vocab.sh"
+        ],
+        "frontend/**/*.{ts,tsx}": [
+            "bash -c 'cd frontend && npx tsc --noEmit'",
+            "bash scripts/lint-canonical-imports.sh",
+            "bash scripts/lint-no-eyebrows.sh",
+            "bash scripts/lint-mainnet-posture.sh",
+            "bash scripts/lint-no-product-party-terms.sh",
+            "bash scripts/lint-no-hardcoded-clauses-in-runtime.sh",
+            "bash scripts/lint-no-clause-names.sh",
+            "bash scripts/lint-lib-import-direction.sh",
+            "bash scripts/lint-no-clause-grouping-synonyms.sh",
+            "bash scripts/lint-type-safety.sh",
+            "bash scripts/lint-no-handwritten-kernel-abis.sh",
+            "bash scripts/lint-core-contract-abis.sh",
+            "bash scripts/lint-composition-is-designer-only.sh",
+            "bash scripts/lint-no-network-fallbacks.sh",
+            "bash scripts/lint-window-globals.sh",
+            "bash scripts/lint-runtime-tests-from-chain.sh",
+            "bash scripts/lint-duplicate-links.sh",
+            "bash scripts/lint-nav-structure.sh"
+        ],
+        "sdk/src/**/*.ts": [
+            "bash scripts/lint-no-clause-names.sh"
+        ],
+        "frontend/tests/**/*.devnet.spec.ts": [
+            "bash scripts/lint-no-devnet-revert.sh"
+        ],
+        "frontend/scripts/*.mjs": [
+            "bash scripts/lint-no-handwritten-kernel-abis.sh"
+        ],
+        "clauses/*.json": [
+            "bash scripts/lint-clause-choices-are-bounded.sh"
+        ],
+        "src/**/*.sol": [
+            "forge fmt",
+            "bash scripts/lint-token-ops.sh"
+        ],
+        "certora/token-ops.inventory": [
+            "bash scripts/lint-token-ops.sh"
+        ]
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "4.60.2"
+    }
 }

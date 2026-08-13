@@ -68,6 +68,7 @@
         "vitest": "^4.0.18"
     },
     "optionalDependencies": {
-        "@next/swc-darwin-x64": "14.2.33"
+        "@next/swc-darwin-x64": "14.2.33",
+        "@rollup/rollup-linux-x64-gnu": "4.60.1"
     }
 }

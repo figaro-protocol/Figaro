@@ -33,6 +33,8 @@ jobs:
 
             - name: Install Foundry
               uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
 
             - name: Run forge build
               run: forge build --via-ir
@@ -54,6 +56,8 @@ jobs:
 
             - name: Install Foundry
               uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
 
             # scripts/coverage.sh runs FOUNDRY_PROFILE=coverage forge coverage
             # --ir-minimum (full Yul IR pipeline, needed to avoid stack-too-deep
@@ -89,6 +93,8 @@ jobs:
 
             - name: Install Foundry
               uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
 
             - name: Install z3 and halmos
               run: |
