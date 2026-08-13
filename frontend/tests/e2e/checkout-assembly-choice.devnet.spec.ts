@@ -119,7 +119,7 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
     await page.getByRole('button', { name: /Continue to dashboard/ }).click();
-    await page.waitForURL(/\/members\/manage$/, { timeout: 15_000 });
+    await page.waitForURL(/\/members\/manage\/?$/, { timeout: 15_000 });
 }
 
 // Wizard + IPFS pins + two sign gates + commit + event polls.

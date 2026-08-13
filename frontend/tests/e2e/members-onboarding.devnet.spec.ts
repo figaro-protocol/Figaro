@@ -158,7 +158,7 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
-    await page.waitForURL(/\/members\/manage$/, { timeout: 15_000 });
+    await page.waitForURL(/\/members\/manage\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
     // BOTH calls visible on the dashboard (user rule 2026-06-12): the
     // profile view/edit above, and the onboarding wizard entry.

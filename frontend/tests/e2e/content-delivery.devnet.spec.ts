@@ -138,7 +138,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('designer-description-input').fill('Composes the content hand-off clause; the deliverable is counterparty-private and completion-evidenced by content hash.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
-        await page.waitForURL(/\/assemblies\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
 

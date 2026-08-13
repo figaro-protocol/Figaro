@@ -47,7 +47,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
 
         // ── Inspect → /assemblies/designer/view?slug=<slug> ─────────────────
         await page.getByTestId(`published-inspect-${slug}`).click();
-        await page.waitForURL(new RegExp(`/assemblies/designer/view\\?slug=${slug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/view/?\\?slug=${slug}`), { timeout: 15000 });
         await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
 
         // ── Back to the index, Fork → /assemblies/designer/edit?slug=<forkSlug> ──
@@ -61,7 +61,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         page.once('dialog', (dialog) => { void dialog.accept(forkSlug); });
         await page.getByTestId(`published-fork-${slug}`).click();
 
-        await page.waitForURL(new RegExp(`/assemblies/designer/edit\\?slug=${forkSlug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${forkSlug}`), { timeout: 15000 });
         // The forked draft hydrated into an editable canvas — not just a URL change.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });

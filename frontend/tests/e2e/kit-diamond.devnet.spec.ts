@@ -214,7 +214,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join the kernel never sees, committed in the topology clause.');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
-            await page.waitForURL(/\/assemblies\/designer\/view\?slug=asm-/, { timeout: 15000 });
+            await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
             const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
             await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });

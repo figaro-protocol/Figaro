@@ -165,7 +165,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         expect(metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
 
         // On a confirmed update the success effect redirects to /sellers.
-        await expect(page).toHaveURL(/\/members\/manage$/, { timeout: 30_000 });
+        await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 
     test('/members/edit/catalogue — Delete-catalogue affordance dispatches updateProfile', async ({ page }) => {
@@ -211,7 +211,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
 
         // On a confirmed update the success effect redirects to /sellers.
-        await expect(page).toHaveURL(/\/members\/manage$/, { timeout: 30_000 });
+        await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 
     test('/members/edit/agents — set MCP endpoint, submit, MemberProfileUpdated emits', async ({ page }) => {
@@ -239,7 +239,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
 
         // On a confirmed update the success effect redirects to /sellers.
-        await expect(page).toHaveURL(/\/members\/manage$/, { timeout: 30_000 });
+        await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
 
         // Diagnostic: confirm the render-loop bug is fixed. Pre-fix, the
         // `MemberEditAgents` component fired "Maximum update depth
@@ -292,6 +292,6 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
 
         // On a confirmed update the success effect redirects to /sellers.
-        await expect(page).toHaveURL(/\/members\/manage$/, { timeout: 30_000 });
+        await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 });

@@ -69,7 +69,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // 'Clauses' page label exists only in the marketing drawer's map).
         await drawer.getByRole('link', { name: 'Builders', exact: true }).click();
 
-        await expect(page).toHaveURL(/\/clauses$/);
+        await expect(page).toHaveURL(/\/clauses\/?$/);
         // useEffect on pathname change closes the drawer
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
@@ -110,7 +110,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         // And it navigates, closing behind itself.
         await drawer.getByRole('link', { name: 'Invariants' }).click();
-        await expect(page).toHaveURL(/\/invariants$/);
+        await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
 

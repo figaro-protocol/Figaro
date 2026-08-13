@@ -215,7 +215,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await page.getByTestId('designer-description-input').fill(`Single-node assembly carrying ${CLAUSE_ID}.`);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
-        await page.waitForURL(/\/assemblies\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
         await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
