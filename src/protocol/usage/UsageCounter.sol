@@ -144,16 +144,16 @@ contract UsageCounter {
     bytes32 public immutable provenanceClause;
 
     /// @notice Clauses and assemblies that earn nothing, set once at deploy and
-    ///         never written again — the two order-mandatory clauses (`figaro-commerce`,
-    ///         `figaro-topology`) plus `figaro-assembly-provenance`.
-    /// @dev    None of the three carries an adoption signal for its author. The
-    ///         mandatory pair rides EVERY order and the provenance clause every
-    ///         ASSEMBLY-composed process, so their counts are just "how many
-    ///         processes settled" — protocol plumbing, not merit. Scoring them
-    ///         would pay their authors for the protocol's own floor. (Assembly
-    ///         usage is unaffected: `recordAssemblyUsage` credits the
-    ///         `compositionHash` — the assembly's designer of record — never the
-    ///         provenance clause, so excluding the clause does not touch it.)
+    ///         never written again — at the reference genesis, exactly
+    ///         `figaro-assembly-provenance` (re-ruled 2026-08-13; the two
+    ///         order-mandatory clauses EARN).
+    /// @dev    The provenance clause is scoring infrastructure — the leaf through
+    ///         which an assembly's designer is credited — so scoring it would pay
+    ///         one adoption twice (once to the designer via `recordAssemblyUsage`,
+    ///         again to the leaf's author). The mandatory clauses ride every
+    ///         order, so scoring them levies every settled process for their
+    ///         author-of-record — the commons treasury under the genesis
+    ///         registration, a usage-indexed endowment of the commons.
     ///         This is deploy-frozen: WHICH clauses and assemblies the reward
     ///         ignores is a reward decision, not something a
     ///         registrar declares about itself — a self-declared exclusion would
@@ -331,7 +331,7 @@ contract UsageCounter {
     ///                    prediction is caught by the deploy script's own
     ///                    assertion, never silently tolerated.
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
-    /// @param _excluded    Clauses and assemblies that earn nothing — the mandatory clauses.
+    /// @param _excluded    Clauses and assemblies that earn nothing — attribution plumbing (the assembly-provenance clause).
     /// @param _minSellers  The minimum-support floor: distinct staked sellers an
     ///                     clause or assembly needs in a period before it scores. ≥ 1
     ///                     (1 disables the floor; mainnet uses 3).
@@ -616,9 +616,9 @@ contract UsageCounter {
     ///      feeds `c`; the first from each staked seller in the period also
     ///      feeds `d`.
     function _accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
-        // An excluded clause or assembly — a mandatory clause on every order, or the
-        // provenance clause on every assembly-composed process — is protocol
-        // floor; counting it would pay for the floor rather than for adoption.
+        // An excluded clause or assembly — at genesis, the provenance clause
+        // alone — is scoring infrastructure; counting it would double-pay the
+        // adoption it exists to attribute.
         if (excludedClauseOrAssembly[clauseOrAssembly]) revert ClauseOrAssemblyExcluded(clauseOrAssembly);
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
         // holds a LIVE MembersRegistry stake, read at RECORD time. This gate is

@@ -301,11 +301,16 @@ two-step inclusion-plus-content-match into a single structural gate. The provena
 key is fixed at deploy, which stops a caller substituting some other clause. Without that
 clause in the agreement, no process can credit its designer.
 
-**Excluded clauses and assemblies earn nothing directly:** `UsageCounter.excludedClauseOrAssembly` holds the
-protocol-floor clauses that ride every (or nearly every) agreement — `figaro-commerce`,
-`figaro-topology`, and `figaro-assembly-provenance` — and `recordClauseUsage` on any of
-them reverts `ClauseOrAssemblyExcluded` by design (scoring the floor would pay its author for
-the protocol's own mandatory carriage). The provenance clause's exclusion is what makes
+**One exclusion — attribution plumbing only (re-ruled 2026-08-13):**
+`UsageCounter.excludedClauseOrAssembly` holds exactly `figaro-assembly-provenance`;
+`recordClauseUsage` on it reverts `ClauseOrAssemblyExcluded` by design (scoring the
+credit-carrying leaf would double-pay every assembly-composed process). The two
+order-mandatory clauses (`figaro-commerce`, `figaro-topology`) EARN under the uniform
+rule: they ride every order, so scoring them levies every settled process for their
+author-of-record — the DAO treasury Safe under the genesis registration, the commons
+taxing its own unavoidable usage into the commons pot (a usage-indexed endowment that
+outlives the nine-period sunset; competition with and donation to the DAO's
+registrations are both permissionless). The provenance clause's exclusion is what makes
 the resolve-time recording loop's clause leg and assembly leg independent: the clause
 record on provenance always reverts while `recordAssemblyUsage` still credits the
 assembly's designer of record.

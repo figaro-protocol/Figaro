@@ -110,13 +110,12 @@ contract UsageCounterTest is Test {
         vm.warp(P0_END - 1000);
     }
 
-    /// @dev The protocol-floor clauses excluded from scoring on every deployment:
-    ///      the two order-mandatory clauses plus assembly-provenance.
+    /// @dev The one clause excluded from scoring on every deployment:
+    ///      assembly-provenance — attribution plumbing, not an earnable term
+    ///      (the mandatory clauses EARN, ruled 2026-08-13).
     function _excluded() internal pure returns (bytes32[] memory e) {
-        e = new bytes32[](3);
-        e[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
-        e[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
-        e[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
+        e = new bytes32[](1);
+        e[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -363,27 +362,27 @@ contract UsageCounterTest is Test {
 
     // ── Exclusions ──────────────────────────────────────────────────
 
-    function test_mandatoryClausesEarnNothing() public {
-        // figaro-commerce and figaro-topology are committed on EVERY order, so
-        // their count is just the process count and says nothing about adoption.
-        // Scoring them would pay their authors for the protocol's own floor.
+    function test_mandatoryClausesEarnForTheirAuthor() public {
+        // figaro-commerce and figaro-topology ride on EVERY order, so scoring
+        // them levies every settled process for their author-of-record — the
+        // DAO treasury under the ruled genesis registration (2026-08-13): the
+        // commons taxing its own unavoidable usage into the commons pot.
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
 
         CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, commerceKey));
         _record(c, commerceKey);
 
         (uint64 cCount,, uint256 score) = counter.accrualOf(commerceKey, 0);
-        assertEq(cCount, 0);
-        assertEq(score, 0);
-        assertEq(counter.totalScoreIn(0), 0);
+        assertEq(cCount, 1);
+        assertGt(counter.totalScoreIn(0), 0);
+        assertEq(score, counter.totalScoreIn(0));
     }
 
     function test_exclusionIsDeployFrozenNotSelfDeclared() public view {
         // A registrar cannot opt their own clause out or in — the set is fixed
         // at deploy, because a self-declared exclusion would never be declared.
-        assertTrue(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-commerce", uint64(1)))));
-        assertTrue(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-topology", uint64(1)))));
+        assertFalse(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-commerce", uint64(1)))));
+        assertFalse(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-topology", uint64(1)))));
         assertTrue(counter.excludedClauseOrAssembly(PROV_KEY));
         assertFalse(counter.excludedClauseOrAssembly(CARGO_KEY));
         assertFalse(counter.excludedClauseOrAssembly(GEO_KEY));
@@ -841,11 +840,12 @@ contract UsageCounterTest is Test {
         // SKIP, never revert: this runs inside settleBatch, so a revert would
         // take down the whole batch's token settlement. An excluded clause or assembly
         // simply earns nothing — not written, total untouched, trade settles.
-        bytes32 commerce = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        // PROV_KEY doubles as the excluded exemplar — the deploy shape (ruled
+        // 2026-08-13) excludes only the attribution-plumbing provenance clause.
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(commerce, 9, 9), _sellers(seller1));
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(commerce, 0);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(PROV_KEY, 9, 9), _sellers(seller1));
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(PROV_KEY, 0);
         assertEq(c, 0, "excluded clause or assembly not written");
         assertEq(d, 0, "excluded clause or assembly not written");
         assertEq(score, 0, "excluded clause or assembly not scored");

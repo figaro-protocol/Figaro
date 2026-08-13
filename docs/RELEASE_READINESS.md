@@ -494,6 +494,17 @@ formatter check covers `test/` + `script/`, which the local pre-commit glob
 had not) — formatting only, no token-level change; recorded here per the
 Post-Audit Policy rather than slipped through.
 
+Post-stamp record #2 (2026-08-13, evening — a CONFIG change, maintainer-ruled):
+the RPGF exclusion list shrank from three entries to one — the mandatory pair
+(`figaro-commerce`, `figaro-topology`) now EARNS for its author-of-record (the DAO
+treasury under the ruled genesis registration); only `figaro-assembly-provenance`
+stays excluded (attribution plumbing). Scope: both deploy scripts' `excluded`
+arrays + comment-only NatSpec in `UsageCounter.sol`; no contract bytecode changed.
+Formal re-run per the Post-Audit Policy, all green: Foundry 301/301 (fork suite
+included), Halmos 32/32, Certora 6/6 specs (`--wait_for_results`, run URLs in
+`VERIFICATION_MAP.md` §10). Doctrine record: memory
+`project_dao_endowment_ruling_2026_08_13`; paper §4/§9 revised the same day.
+
 **STAMPED 2026-08-13: the freeze commit is `c7f85d0d`**
 (`c7f85d0dd79298d1add2623993cc60b21321fed3`, 2026-08-12) — the last commit touching the
 frozen scope; the stamp never moves again. Frozen-scope commits after the 2026-08-04

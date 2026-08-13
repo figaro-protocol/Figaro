@@ -60,7 +60,7 @@ contract FigaroBatchVerifierTest is Test {
         uint64[] memory periods = new uint64[](1);
         periods[0] = PERIOD_END;
         bytes32[] memory excluded = new bytes32[](1);
-        excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        excluded[0] = PROV_KEY; // the deploy shape (ruled 2026-08-13): only attribution plumbing is excluded
         MockClauseOrAssemblyStake stakeGate = new MockClauseOrAssemblyStake();
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counter = new UsageCounter(

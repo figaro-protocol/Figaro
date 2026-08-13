@@ -371,14 +371,13 @@ contract Deploy is Script {
             periods[i] = uint64(block.timestamp + (i + 1) * 30 minutes);
         }
 
-        // Protocol floor earns nothing: the two order-mandatory clauses plus the
-        // assembly-provenance clause — their count is the process count and
-        // carries no adoption signal for the author. (Assembly designers still
-        // accrue via recordAssemblyUsage, which credits the compositionHash.)
-        bytes32[] memory excluded = new bytes32[](3);
-        excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
-        excluded[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
-        excluded[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
+        // The mandatory clauses EARN (ruled 2026-08-13; mirrors DeployMainnet):
+        // scoring commerce and topology levies every settled process for their
+        // author-of-record. Only assembly-provenance stays excluded — attribution
+        // plumbing; scoring it would double-pay every assembly trade. (Assembly
+        // designers accrue via recordAssemblyUsage, which credits the compositionHash.)
+        bytes32[] memory excluded = new bytes32[](1);
+        excluded[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
 
         UsageCounter counter = new UsageCounter(
             core,

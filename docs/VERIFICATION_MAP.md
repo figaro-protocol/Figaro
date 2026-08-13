@@ -421,12 +421,12 @@ run (2026-08-04, URLs in git history) predated the `827fafe2` identifier rename.
 
 | Spec | Report URL |
 |---|---|
-| FigaroCore | https://prover.certora.com/output/9512759/28ecb74b667d4554b629056e8ee82fe7 (2026-08-13, freeze `c7f85d0d`) |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/1e31e01ce9254608a4207d5243f70954 (2026-08-13) |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/21ca3a24b2d549d3a0b08a7145695849 (2026-08-13) |
-| FlorinToken | https://prover.certora.com/output/9512759/a60d62ca5f11426bae63fdaec4f12b34 (2026-08-13) |
-| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/6592fd98108748f390c374e5f695e2e1 (2026-08-13) |
-| RpgfMinter | https://prover.certora.com/output/9512759/3a876d364f77497ab01e794932678734 (2026-08-13) |
+| FigaroCore | https://prover.certora.com/output/9512759/d03ad4e8fc94446e80a3c814a892d2b0 (2026-08-13 evening, exclusion-wave re-run at freeze `c7f85d0d`) |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/d4614628e1bd4871a26271f11d41a6ba (2026-08-13 evening) |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/9b2bd9f369354806b9235dbfbce6add3 (2026-08-13 evening) |
+| FlorinToken | https://prover.certora.com/output/9512759/502e22335ef94090b61bb2ec12ff7a42 (2026-08-13 evening) |
+| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/accbbe50177f4894895267d6889c5ef8 (2026-08-13 evening) |
+| RpgfMinter | https://prover.certora.com/output/9512759/190e0ab0a9054ef5af792ac6281abb8f (2026-08-13 evening) |
 
 ```bash
 # Install
