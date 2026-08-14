@@ -28,6 +28,7 @@ import type { Hex } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
 import { serializeCommitmentPayload, deserializeCommitmentPayload } from "./coordination.js";
 import type { EndpointResolver } from "./httpChannel.js";
+import { readCappedResponseText } from "./httpChannel.js";
 
 // ── The A2A envelope shapes (the subset this transport speaks) ───────────────
 
@@ -144,7 +145,10 @@ export class A2aChannel implements CoordinationChannel {
             body: JSON.stringify(request),
         });
         if (!res.ok) throw new Error(`A2aChannel: offer to ${url} failed — HTTP ${res.status}`);
-        const reply = JSON.parse(await res.text()) as A2aResponse;
+        // The endpoint is an attacker-authorable advertised URL: cap the body
+        // read exactly as the HTTP sibling does (same threat, same mitigation —
+        // frontend security audit 2026-07-22 finding 6).
+        const reply = JSON.parse(await readCappedResponseText(res)) as A2aResponse;
         if (reply.error) {
             throw new Error(`A2aChannel: offer rejected — ${reply.error.message} (code ${reply.error.code})`);
         }
