@@ -61,6 +61,22 @@ naming one with another's word is the recurring drift):
 | No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
 | Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
 
+**THE VAULT-REGISTRAR SEAM** (maintainer-ruled 2026-08-14 — two words an agent
+keeps collapsing into a phantom protocol object and a phantom global role):
+**treasury = the DAO's VAULT** — a custody *wallet* (mainnet: a canonical Safe at
+`DAO_WALLET`, config never code; devnet/testnet: `MockTreasuryMultisig` as the
+stand-in) holding the DAO's 300M-florin allocation plus whatever ETH it chooses
+to stake. It is NOT a protocol contract: no protocol flow pays into it, and
+registration deposits NEVER go to it — stakes sit in the registry that took them,
+reclaimable only by their registrar (withdraw = de-surface). **registrar** = a
+PER-WALLET role, never a global one: the wallet that registered an artifact and
+holds its live stake. Every wallet is registrar of ONLY what it claims ownership
+of — the DAO's vault for the genesis seed set and donated keys (the 2026-08-13
+endowment ruling), the founder's address for the founder's own artifacts, any
+stranger's wallet for theirs. "The registrar" without an owner qualifier is the
+drift tell; seeding tooling acts FOR one designated registrar per invocation
+(an EOA key, or a vault via its owners' approvals) and confers no special role.
+
 **SYSTEM A (trade) ≠ SYSTEM B (funding) — three words the deleted optimistic/QF apparatus
 overloaded, now SINGLE-REFERENT** (the System-B meanings were deleted, so each word has ONE
 live sense — but an agent porting pre-07-29 text will re-conflate them, which cost most of the

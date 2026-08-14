@@ -24,16 +24,19 @@
  *   RPC_URL                      — chain RPC (default http://127.0.0.1:8545)
  *   REGISTRAR_PRIVATE_KEY        — signer; defaults to anvil[0] (devnet only)
  *
- * TREASURY MODE (genesis seed set — testnet/mainnet). Author-of-record is the
- * literal registrar (`RpgfMinter._isAuthor` reads `depositOf(...).registrar`),
- * and the DAO treasury is author-of-record for the seed set (ruled
- * 2026-08-13) — so genesis registrations must be EXECUTED BY the treasury
- * contract, not signed by an EOA. When DAO_TREASURY is set, every
- * registration routes through the multisig's approve/execute cycle
- * (threshold approvals from TREASURY_OWNER_KEYS, deposits paid from the
- * treasury's own ETH balance — fund it first):
- *   DAO_TREASURY          — treasury (multisig) address; registrar-of-record
- *   TREASURY_OWNER_KEYS   — comma-separated owner private keys (threshold many)
+ * VAULT-REGISTRAR MODE (the LEXICON vault-registrar seam). This script always
+ * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET
+ * role — a wallet registers only what it claims ownership of. The default
+ * registrar is an EOA (REGISTRAR_PRIVATE_KEY). When the registrar is a
+ * multisig VAULT — the DAO's vault for the genesis seed set (endowment ruling
+ * 2026-08-13: author-of-record is the literal registrar,
+ * `RpgfMinter._isAuthor` reads `depositOf(...).registrar`) — set:
+ *   REGISTRAR_VAULT    — the vault's address; it becomes msg.sender/registrar
+ *                        via its approve/execute cycle, staking deposits from
+ *                        its own ETH balance (fund it first)
+ *   VAULT_OWNER_KEYS   — comma-separated owner private keys (threshold many)
+ * The vault confers no special role: any wallet — the founder's address, a
+ * stranger's — is registrar of its own artifacts through the same registries.
  *
  * REFERENCE ASSEMBLIES ride the same invocation when both are set:
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — the AssemblyRegistry address
@@ -100,7 +103,7 @@ export async function resolveChain() {
  *  mirror-by-necessity of `src/mocks/MockTreasuryMultisig.sol` (the mock has
  *  no SDK ABI export; keep in lockstep). Mainnet's canonical Safe replaces
  *  this flow with the Safe SDK at the custody ceremony (Task 9). */
-export const TREASURY_ABI = [
+export const VAULT_ABI = [
     {
         type: 'function', name: 'transactionHash', stateMutability: 'view',
         inputs: [
@@ -125,33 +128,33 @@ export const TREASURY_ABI = [
     { type: 'function', name: 'executed', stateMutability: 'view', inputs: [{ type: 'bytes32' }], outputs: [{ type: 'bool' }] },
 ];
 
-/** Route one call through the treasury multisig: threshold approvals from the
+/** Route one call through the vault multisig: threshold approvals from the
  *  owner wallets, then a single execute. Idempotent — approvals and the
  *  execution are each skipped when already on-chain. `nonce` must be unique
  *  per logical action and deterministic (callers derive it from the content
  *  key) so a re-run converges instead of re-registering. */
-export async function treasuryExecute({ publicClient, treasury, ownerClients, to, value, data, nonce, log = console.log }) {
+export async function vaultExecute({ publicClient, vault, ownerClients, to, value, data, nonce, log = console.log }) {
     const txHash = await publicClient.readContract({
-        address: treasury, abi: TREASURY_ABI, functionName: 'transactionHash', args: [to, value, data, nonce],
+        address: vault, abi: VAULT_ABI, functionName: 'transactionHash', args: [to, value, data, nonce],
     });
     if (await publicClient.readContract({
-        address: treasury, abi: TREASURY_ABI, functionName: 'executed', args: [txHash],
+        address: vault, abi: VAULT_ABI, functionName: 'executed', args: [txHash],
     })) {
-        log('  · treasury tx already executed, skipped');
+        log('  · vault tx already executed, skipped');
         return;
     }
     for (const ownerClient of ownerClients) {
         const already = await publicClient.readContract({
-            address: treasury, abi: TREASURY_ABI, functionName: 'approvedBy', args: [txHash, ownerClient.account.address],
+            address: vault, abi: VAULT_ABI, functionName: 'approvedBy', args: [txHash, ownerClient.account.address],
         });
         if (already) continue;
         const hash = await ownerClient.writeContract({
-            address: treasury, abi: TREASURY_ABI, functionName: 'approveHash', args: [txHash],
+            address: vault, abi: VAULT_ABI, functionName: 'approveHash', args: [txHash],
         });
         await publicClient.waitForTransactionReceipt({ hash });
     }
     const execHash = await ownerClients[0].writeContract({
-        address: treasury, abi: TREASURY_ABI, functionName: 'execute', args: [to, value, data, nonce],
+        address: vault, abi: VAULT_ABI, functionName: 'execute', args: [to, value, data, nonce],
     });
     await publicClient.waitForTransactionReceipt({ hash: execHash });
 }
@@ -231,7 +234,7 @@ export function registrarAccount() {
  * Pin + register every clause spec. Reusable from the test-data script.
  * @returns the number of clauses newly registered.
  */
-export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients, limit, log = console.log }) {
+export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit, log = console.log }) {
     const files = fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort();
     // First pass: what actually needs registering (idempotent skips are free).
     let pending = [];
@@ -258,18 +261,18 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         pending = pending.slice(0, limit);
     }
     let registered = 0;
-    if (treasury && pending.length > 0) {
-        // Genesis-seed preflight: deposits are paid from the treasury's own
-        // balance (execute forwards value), so an underfunded treasury fails
+    if (vault && pending.length > 0) {
+        // Genesis-seed preflight: deposits are paid from the vault's own
+        // balance (execute forwards value), so an underfunded vault fails
         // here with arithmetic, not mid-run with a revert. Only UNREGISTERED
         // clauses cost a deposit.
         const deposit = await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
         });
-        const balance = await publicClient.getBalance({ address: treasury });
+        const balance = await publicClient.getBalance({ address: vault });
         const need = deposit * BigInt(pending.length);
         if (balance < need) {
-            throw new Error(`treasury ${treasury} holds ${balance} wei but the ${pending.length} outstanding clause deposits need ${need} wei — fund it first`);
+            throw new Error(`vault ${vault} holds ${balance} wei but the ${pending.length} outstanding clause deposits need ${need} wei — fund it first`);
         }
     }
     for (const { spec, clauseIdStr, version, clauseId } of pending) {
@@ -291,12 +294,13 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         // No reward tag: the 600M reward is UNIFORM (ratified 2026-07-29) — the
         // registry stores no incentive input. The only classification a clause
         // carries is block.design.article, a reader grouping that stays off-chain.
-        if (treasury) {
-            // Treasury mode: the multisig is msg.sender, so the DAO — not any
-            // EOA — becomes registrar/author-of-record. Nonce = the clause key
-            // itself: unique per clause, deterministic across re-runs.
-            await treasuryExecute({
-                publicClient, treasury, ownerClients,
+        if (vault) {
+            // Vault-registrar: the vault is msg.sender, so the vault's owner
+            // (the DAO, for genesis) — not any EOA — is registrar/author-of-
+            // record for THIS artifact. Nonce = the clause key itself: unique
+            // per clause, deterministic across re-runs.
+            await vaultExecute({
+                publicClient, vault, ownerClients,
                 to: registry,
                 value: deposit,
                 data: encodeFunctionData({
@@ -350,9 +354,9 @@ export function fillDeployTimeCurrency(template, tokenAddress) {
 }
 
 /** Anchor one AssemblyTemplate (idempotent — compositionHash is content-derived,
- *  first-write-wins). In treasury mode the multisig is msg.sender, so the DAO
+ *  first-write-wins). In vault mode the multisig is msg.sender, so the DAO
  *  becomes the author-of-record for the anchored binding. */
-export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, treasury, ownerClients, log = console.log }) {
+export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, vault, ownerClients, log = console.log }) {
     // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
     // is presentation, derived off-chain. Both from the SDK single home — the
     // registry keys bindings by compositionHash.
@@ -376,11 +380,11 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
     const deposit = await publicClient.readContract({
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
-    if (treasury) {
+    if (vault) {
         // Nonce = the compositionHash itself: unique per assembly,
         // deterministic across re-runs.
-        await treasuryExecute({
-            publicClient, treasury, ownerClients,
+        await vaultExecute({
+            publicClient, vault, ownerClients,
             to: registry,
             value: deposit,
             data: encodeFunctionData({
@@ -406,9 +410,9 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
 /** Pin the affixed documents, then anchor every reference assembly
  *  (`assemblies/*.json`) with the live settlement token substituted for the
  *  checked-in sentinel. The ONE reference-assembly population path —
- *  devnet (EOA, mock token) and testnet/mainnet (treasury, ruled token)
+ *  devnet (EOA, mock token) and testnet/mainnet (vault, ruled token)
  *  differ only in the arguments. */
-export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, treasury, ownerClients, limit, log = console.log }) {
+export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, vault, ownerClients, limit, log = console.log }) {
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -426,7 +430,7 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
         }
         const raw = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
         const template = fillDeployTimeCurrency(raw, tokenAddress);
-        const result = await anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, treasury, ownerClients, log });
+        const result = await anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, vault, ownerClients, log });
         if (result.anchored) anchored += 1;
     }
     return anchored;
@@ -443,12 +447,12 @@ async function main() {
     const publicClient = createPublicClient({ chain, transport: http(RPC_URL) });
     const walletClient = createWalletClient({ account, chain, transport: http(RPC_URL) });
 
-    const treasury = process.env.DAO_TREASURY;
+    const vault = process.env.REGISTRAR_VAULT;
     let ownerClients;
-    if (treasury) {
-        const keys = (process.env.TREASURY_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (vault) {
+        const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
         if (keys.length === 0) {
-            throw new Error('DAO_TREASURY is set but TREASURY_OWNER_KEYS is missing — the multisig needs threshold-many owner keys to approve');
+            throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing — the multisig needs threshold-many owner keys to approve');
         }
         ownerClients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC_URL) }));
     }
@@ -462,9 +466,9 @@ async function main() {
     }
 
     console.log(`Populating clauses → ClauseRegistry ${registry} (chain ${chain.id})`);
-    console.log(treasury ? `  registrar (treasury) ${treasury}` : `  registrar ${account.address}`);
+    console.log(vault ? `  registrar (vault) ${vault}` : `  registrar ${account.address}`);
     console.log(`  IPFS      ${pinService() ? `pin service (${pinService().api})` : ipfsApiUrl}\n`);
-    const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients, limit: seedLimit });
+    const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit: seedLimit });
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
 
     // Reference assemblies ride the same invocation when the registry and the
@@ -480,7 +484,7 @@ async function main() {
             console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
             const a = await populateReferenceAssemblies({
                 publicClient, walletClient, account, registry: assemblyRegistry, ipfsApiUrl,
-                tokenAddress: assemblyToken, treasury, ownerClients, limit: remaining,
+                tokenAddress: assemblyToken, vault, ownerClients, limit: remaining,
             });
             console.log(`Done — ${a} reference assembly(ies) newly anchored.`);
         }
