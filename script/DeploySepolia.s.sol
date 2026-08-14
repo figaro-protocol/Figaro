@@ -118,7 +118,7 @@ contract DeploySepolia is Script {
         _assemblies = address(assemblies);
         console.log("AssemblyRegistry:       ", _assemblies);
 
-        // Seller stake at the mainnet value; cooldown compressed (divergence 2).
+        // Seller stake and cooldown at the mainnet values.
         MembersRegistry members = new MembersRegistry(0.05 ether, MEMBER_COOLDOWN);
         _members = address(members);
         console.log("MembersRegistry:       ", _members);

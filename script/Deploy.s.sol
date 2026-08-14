@@ -352,8 +352,9 @@ contract Deploy is Script {
         // TIME IS COMPRESSED ON DEVNET — minutes, not years. The claim path
         // gates on `periodClosed`, so a schedule measured in days makes the
         // whole reward leg undrivable in a test run: usage accrues and nothing
-        // can ever be claimed. (Testnet compresses years to weeks; this
-        // compresses further.)
+        // can ever be claimed. (Devnet is the ONLY compressed deployment —
+        // public networks, Sepolia included, run the real annual schedule;
+        // the testnet weekly compression was reverted 2026-08-14.)
         //
         // Thirty-minute periods, not seconds or ten minutes: deploy + clause
         // population alone takes over a minute, and RESOLVE-TIME USAGE

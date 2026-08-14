@@ -163,8 +163,11 @@ do". Neither is restated here. This doc owns the ALLOCATION facts:
   1–2, 30% over 3–5, 55% over 6–9, equal slices within each (ruled 2026-07-31: the
   largest share pays on the most-measured evidence; the cold-start years carry the
   smallest budgets, and early evidence-poor funding is the DAO treasury's job).
-  Devnet and testnet compress the schedule (time compresses when time is involved;
-  ruled 2026-07-15).
+  Devnet compresses the schedule to thirty-minute periods (time compresses when
+  time is involved; ruled 2026-07-15). PUBLIC deployments — Sepolia included — run
+  the REAL annual schedule: the testnet weekly compression was reverted before the
+  2026-08-14 Sepolia broadcast (the testnet is the public release, not a
+  compressed rehearsal; `script/DeploySepolia.s.sol` documents it).
 
 The incentive rationale — why the flow-map gets built under a uniform reward — lives in
 `docs/PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built — the geo/coordination incentive under a uniform reward".

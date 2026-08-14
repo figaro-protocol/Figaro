@@ -31,9 +31,10 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///                                it (ends at years 1..9); per-period budgets
 ///                                group into three RISING tranches — 15% over
 ///                                years 1–2, 30% over 3–5, 55% over 6–9, equal
-///                                slices within each (ruled 2026-07-31; testnet
-///                                compresses years to weeks — time compresses
-///                                when time is involved, ruled 2026-07-15)
+///                                slices within each (ruled 2026-07-31). Sepolia
+///                                runs this same real schedule (its weekly
+///                                compression was reverted 2026-08-14); only
+///                                devnet compresses (minutes — Deploy.s.sol)
 ///
 /// florin allocation (1B cap):
 ///    70M   (7%)  founders   — genesis mint to FOUNDER_WALLET    (no vesting, no unlock)
