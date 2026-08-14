@@ -40,6 +40,14 @@
  *   ASSEMBLY_TOKEN_ADDRESS        — settlement token substituted for the
  *                                   checked-in ZERO_ADDRESS sentinel (Sepolia:
  *                                   USDC, ruled 2026-08-14)
+ *
+ * INCREMENTAL RELEASE controls (the nudge-per-session Sepolia rollout):
+ *   SEED_LIMIT            — cap NEW registrations this run (one shared budget:
+ *                           clauses first, assemblies get the remainder)
+ *   IPFS_PIN_SERVICE_JWT  — pin via a managed pinning service instead of local
+ *                           Kubo (public seeding: the Pinata DAO key, so seed
+ *                           specs outlive the maintainer's laptop)
+ *   IPFS_PIN_SERVICE_API  — service API base (default https://api.pinata.cloud)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -163,22 +171,45 @@ export function readEnvLocal() {
     return out;
 }
 
-/** Pin an already-serialized JSON string to Kubo; return the ipfs:// URI.
- *  Mirror-by-necessity of the browser pin path (`lib/shared/ipfsService.ts`):
- *  the SDK is viem-only (no IPFS surface, by doctrine) and .mjs cannot import
- *  frontend TS — keep the two in lockstep when the add-endpoint shape changes. */
+/** The pin backend, resolved from env once per run. Public (testnet/mainnet)
+ *  seeding pins through a managed pinning service under the DAO's OWN
+ *  credential (`IPFS_PIN_SERVICE_JWT` — pass the Pinata DAO key), so seed
+ *  specs survive the maintainer's laptop; devnet leaves it unset and pins to
+ *  local Kubo. Mirrors the two-backend adapter in `lib/shared/ipfsService.ts`
+ *  (mirror-by-necessity: the SDK is viem-only and .mjs cannot import frontend
+ *  TS — keep the endpoint shapes in lockstep). */
+function pinService() {
+    const jwt = process.env.IPFS_PIN_SERVICE_JWT ?? '';
+    if (!jwt) return null;
+    const api = (process.env.IPFS_PIN_SERVICE_API ?? 'https://api.pinata.cloud').replace(/\/$/, '');
+    return { api, jwt };
+}
+
+async function pinForm(apiUrl, form) {
+    const service = pinService();
+    const res = service
+        ? await fetch(`${service.api}/pinning/pinFileToIPFS`, {
+              method: 'POST', headers: { Authorization: `Bearer ${service.jwt}` }, body: form,
+          })
+        : await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
+    if (!res.ok) {
+        throw new Error(service
+            ? `pin service pin failed: ${res.status} ${res.statusText} (${service.api})`
+            : `IPFS pin failed: ${res.status} ${res.statusText} (is Kubo running at ${apiUrl}?)`);
+    }
+    const result = await res.json();
+    const cid = service ? result?.IpfsHash : result?.Hash;
+    if (typeof cid !== 'string' || !cid) {
+        throw new Error('IPFS pin returned no CID');
+    }
+    return cid;
+}
+
+/** Pin an already-serialized JSON string; return the ipfs:// URI. */
 export async function pinJSON(apiUrl, json) {
     const form = new FormData();
     form.append('file', new Blob([json], { type: 'application/json' }), 'doc.json');
-    const res = await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
-    if (!res.ok) {
-        throw new Error(`IPFS pin failed: ${res.status} ${res.statusText} (is Kubo running at ${apiUrl}?)`);
-    }
-    const result = await res.json();
-    if (!result || typeof result.Hash !== 'string' || !result.Hash) {
-        throw new Error('IPFS pin returned no CID');
-    }
-    return `ipfs://${result.Hash}`;
+    return `ipfs://${await pinForm(apiUrl, form)}`;
 }
 
 /** Pin a file's RAW BYTES (byte-exact — an affixed document's keccak and CID
@@ -186,15 +217,7 @@ export async function pinJSON(apiUrl, json) {
 export async function pinFile(apiUrl, filePath) {
     const form = new FormData();
     form.append('file', new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
-    const res = await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
-    if (!res.ok) {
-        throw new Error(`IPFS pin failed: ${res.status} ${res.statusText} (is Kubo running at ${apiUrl}?)`);
-    }
-    const result = await res.json();
-    if (!result || typeof result.Hash !== 'string' || !result.Hash) {
-        throw new Error('IPFS pin returned no CID');
-    }
-    return result.Hash;
+    return pinForm(apiUrl, form);
 }
 
 /** Resolve the signing account: REGISTRAR_PRIVATE_KEY, else anvil[0] (devnet). */
@@ -208,10 +231,10 @@ export function registrarAccount() {
  * Pin + register every clause spec. Reusable from the test-data script.
  * @returns the number of clauses newly registered.
  */
-export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients, log = console.log }) {
+export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients, limit, log = console.log }) {
     const files = fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort();
     // First pass: what actually needs registering (idempotent skips are free).
-    const pending = [];
+    let pending = [];
     for (const file of files) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         const clauseIdStr = spec.clauseId;
@@ -226,6 +249,13 @@ export async function populateClauses({ publicClient, walletClient, account, reg
             continue;
         }
         pending.push({ spec, clauseIdStr, version, clauseId });
+    }
+    // SEED_LIMIT: the incremental release registers a NUDGE per session — cap
+    // this run to what the session's ETH covers. Never a silent cap: the
+    // deferred remainder is named.
+    if (limit != null && pending.length > limit) {
+        log(`  · SEED_LIMIT ${limit}: registering ${limit} of ${pending.length} outstanding clauses (${pending.length - limit} deferred to a later run)`);
+        pending = pending.slice(0, limit);
     }
     let registered = 0;
     if (treasury && pending.length > 0) {
@@ -339,7 +369,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
     });
     if (registeredAt !== 0n && registeredAt !== 0) {
         log(`  · ${slug} — already anchored, skipped`);
-        return slug;
+        return { slug, anchored: false };
     }
 
     const contentURI = await pinJSON(ipfsApiUrl, canonicalize(template));
@@ -370,7 +400,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
         await publicClient.waitForTransactionReceipt({ hash });
     }
     log(`  ✓ ${slug} — anchored; template ${contentURI}`);
-    return slug;
+    return { slug, anchored: true };
 }
 
 /** Pin the affixed documents, then anchor every reference assembly
@@ -378,7 +408,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
  *  checked-in sentinel. The ONE reference-assembly population path —
  *  devnet (EOA, mock token) and testnet/mainnet (treasury, ruled token)
  *  differ only in the arguments. */
-export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, treasury, ownerClients, log = console.log }) {
+export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, treasury, ownerClients, limit, log = console.log }) {
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -386,12 +416,18 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
             log(`  · document ${file} — pinned ipfs://${cid}`);
         }
     }
+    // SEED_LIMIT counts NEW anchors only — already-anchored skips are free.
     let anchored = 0;
-    for (const file of fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()) {
+    const files = fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort();
+    for (const file of files) {
+        if (limit != null && anchored >= limit) {
+            log(`  · SEED_LIMIT ${limit} reached — remaining reference assemblies deferred to a later run`);
+            break;
+        }
         const raw = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
         const template = fillDeployTimeCurrency(raw, tokenAddress);
-        await anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, treasury, ownerClients, log });
-        anchored += 1;
+        const result = await anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, treasury, ownerClients, log });
+        if (result.anchored) anchored += 1;
     }
     return anchored;
 }
@@ -417,10 +453,18 @@ async function main() {
         ownerClients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC_URL) }));
     }
 
+    // SEED_LIMIT: one shared budget per run — clauses consume first (they must
+    // exist before assemblies that compose them can resolve), assemblies get
+    // the remainder.
+    const seedLimit = process.env.SEED_LIMIT ? Number(process.env.SEED_LIMIT) : undefined;
+    if (seedLimit !== undefined && (!Number.isInteger(seedLimit) || seedLimit < 0)) {
+        throw new Error(`SEED_LIMIT must be a non-negative integer, got "${process.env.SEED_LIMIT}"`);
+    }
+
     console.log(`Populating clauses → ClauseRegistry ${registry} (chain ${chain.id})`);
     console.log(treasury ? `  registrar (treasury) ${treasury}` : `  registrar ${account.address}`);
-    console.log(`  IPFS      ${ipfsApiUrl}\n`);
-    const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients });
+    console.log(`  IPFS      ${pinService() ? `pin service (${pinService().api})` : ipfsApiUrl}\n`);
+    const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients, limit: seedLimit });
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
 
     // Reference assemblies ride the same invocation when the registry and the
@@ -429,12 +473,17 @@ async function main() {
     const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
     if (assemblyRegistry && assemblyToken) {
-        console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
-        const a = await populateReferenceAssemblies({
-            publicClient, walletClient, account, registry: assemblyRegistry, ipfsApiUrl,
-            tokenAddress: assemblyToken, treasury, ownerClients,
-        });
-        console.log(`Done — ${a} reference assembly(ies) processed.`);
+        const remaining = seedLimit === undefined ? undefined : Math.max(0, seedLimit - n);
+        if (remaining === 0) {
+            console.log(`\nSEED_LIMIT ${seedLimit} exhausted by clauses — reference assemblies deferred to a later run.`);
+        } else {
+            console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
+            const a = await populateReferenceAssemblies({
+                publicClient, walletClient, account, registry: assemblyRegistry, ipfsApiUrl,
+                tokenAddress: assemblyToken, treasury, ownerClients, limit: remaining,
+            });
+            console.log(`Done — ${a} reference assembly(ies) newly anchored.`);
+        }
     }
 }
 
