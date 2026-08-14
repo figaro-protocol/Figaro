@@ -6,8 +6,11 @@ name: Devnet E2E CI
 # layer was maintainer-discipline-only — nothing exercised action→reaction across
 # the whole stack on push.
 #
-# Scope: the `orders-accept` spec (the bilateral spine). Broader devnet specs
-# stay maintainer-run for now; this proves the spine can't silently break.
+# Scope: the `orders-accept` spec (the bilateral spine), then the three
+# origination proofs (in-process / HTTP socket / multi-order chain) against the
+# same live stack. The proofs were operator-manual scripts before — which is
+# how they rotted dead undetected, twice; broader devnet specs stay
+# maintainer-run for now.
 
 on:
     workflow_dispatch:
@@ -128,6 +131,18 @@ jobs:
                   npx playwright test --project=devnet orders-accept.devnet --workers=1
               env:
                   CI: true
+
+            # ── The three origination proofs, same live stack ────────────
+            # Autonomous agents (keys only, no browser): in-process channel,
+            # real HTTP socket, and the multi-order value-added chain. Each is
+            # a full sign/validate/bond/commit cycle landing on the devnet
+            # chain; the stack and seed data are the e2e step's.
+            - name: Run origination proofs
+              run: |
+                  cd sdk
+                  node scripts/verify-origination.devnet.mjs
+                  node scripts/verify-origination-http.devnet.mjs
+                  node scripts/verify-origination-chain.devnet.mjs
 
             - name: Upload Playwright report
               if: failure()
