@@ -27,7 +27,7 @@ import { verifyCommitmentSignature } from "@figaro/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { type IpfsService } from "@/lib/shared/ipfsService";
-import { MAX_INLINE_PAYLOAD_BYTES } from "@/lib/checkout/orderSignedAndShared";
+import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro/sdk/agent";
 import type { Hex } from "viem";
 
 /**
@@ -169,7 +169,7 @@ export function usePendingSellerSignature(
                         // coordination channel (audit F Arm 2), not IPFS — no
                         // fetch. Cap its size defensively: a counterparty's inbox
                         // can deliver an oversize message; oversize → ignored.
-                        if (new TextEncoder().encode(payloadJson).length > MAX_INLINE_PAYLOAD_BYTES) return;
+                        if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
                         const payload = deserializeCommitmentPayload(payloadJson);
                         if (cancelled) return;
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;

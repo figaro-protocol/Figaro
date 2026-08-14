@@ -26,7 +26,7 @@
 
 import type { Hex } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { serializeCommitmentPayload, deserializeCommitmentPayload } from "./coordination.js";
+import { serializeCommitmentPayload, deserializeCommitmentPayload, MAX_COMMITMENT_PAYLOAD_BYTES } from "./coordination.js";
 import type { EndpointResolver } from "./httpChannel.js";
 import { readCappedResponseText } from "./httpChannel.js";
 
@@ -147,8 +147,9 @@ export class A2aChannel implements CoordinationChannel {
         if (!res.ok) throw new Error(`A2aChannel: offer to ${url} failed — HTTP ${res.status}`);
         // The endpoint is an attacker-authorable advertised URL: cap the body
         // read exactly as the HTTP sibling does (same threat, same mitigation —
-        // frontend security audit 2026-07-22 finding 6).
-        const reply = JSON.parse(await readCappedResponseText(res)) as A2aResponse;
+        // frontend security audit 2026-07-22 finding 6). The cap is the ONE
+        // payload ceiling; the JSON-RPC wrapper is bytes of overhead, not scale.
+        const reply = JSON.parse(await readCappedResponseText(res, MAX_COMMITMENT_PAYLOAD_BYTES)) as A2aResponse;
         if (reply.error) {
             throw new Error(`A2aChannel: offer rejected — ${reply.error.message} (code ${reply.error.code})`);
         }

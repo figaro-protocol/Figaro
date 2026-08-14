@@ -15,6 +15,7 @@ import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
 import {
     serializeCommitmentPayload,
+    MAX_COMMITMENT_PAYLOAD_BYTES,
     type CommitmentPayload,
 } from "@figaro/sdk/agent";
 import type { IpfsService } from "@/lib/shared/ipfsService";
@@ -35,15 +36,11 @@ export interface CommitmentPayloadRelay {
     }): Promise<void>;
 }
 
-/** Ceiling for a payload delivered INLINE over the coordination channel. The
- *  relayed payload is one order's agreement — KB-scale in every real case — so
- *  this generous bound is only ever crossed by a pathological order carrying
- *  megabytes of inline field content, which belongs behind a content-handoff
- *  clause (already encrypted), not inline in the signed agreement. We error
- *  loudly rather than fall back to a public IPFS pin: a plaintext pin is the
- *  exact leak this seam closes, and a withheld pin cannot carry the private
- *  plaintext the counterparty needs to sign. */
-export const MAX_INLINE_PAYLOAD_BYTES = 256 * 1024;
+// The payload byte ceiling is the SDK codec's ONE constant
+// (MAX_COMMITMENT_PAYLOAD_BYTES) — wherever the payload travels, the same cap.
+// The error-loudly posture stands: never fall back to a public IPFS pin — a
+// plaintext pin is the exact leak this seam closes, and a withheld pin cannot
+// carry the private plaintext the counterparty needs to sign.
 
 /**
  * Relay the signed `payload` to the seller over the E2E-encrypted coordination
@@ -76,7 +73,7 @@ export async function shareSignedOrder(params: {
 
     const orderId = commitmentOrderHash(payload.commitment, chainId);
     const serialized = serializeCommitmentPayload(payload);
-    if (new TextEncoder().encode(serialized).length > MAX_INLINE_PAYLOAD_BYTES) {
+    if (new TextEncoder().encode(serialized).length > MAX_COMMITMENT_PAYLOAD_BYTES) {
         throw new Error(
             "Order payload too large to relay privately over the coordination channel — " +
                 "large content belongs behind a content-handoff clause, not inline in the agreement.",

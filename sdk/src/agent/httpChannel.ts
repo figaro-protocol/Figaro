@@ -18,7 +18,7 @@
 
 import type { Hex } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { serializeCommitmentPayload, deserializeCommitmentPayload } from "./coordination.js";
+import { serializeCommitmentPayload, deserializeCommitmentPayload, MAX_COMMITMENT_PAYLOAD_BYTES } from "./coordination.js";
 import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "./did.js";
 
 /**
@@ -153,15 +153,35 @@ export class HttpChannel implements CoordinationChannel {
     async sendOffer(seller: Hex, offer: CommitmentPayload): Promise<CommitmentPayload | null> {
         const url = await this.resolveEndpoint(seller);
         if (!url) return null;
-        const res = await this.fetchFn(url, {
-            method: "POST",
-            headers: { "content-type": "application/json", accept: "application/json" },
-            body: serializeCommitmentPayload(offer),
-        });
-        if (res.status === 204) return null;
-        if (!res.ok) throw new Error(`HttpChannel: offer to ${url} failed — HTTP ${res.status}`);
-        return deserializeCommitmentPayload(await readCappedResponseText(res));
+        return postOffer(url, offer, { fetchFn: this.fetchFn });
     }
+}
+
+/**
+ * THE offer wire, as a free function: POST the serialized envelope to an
+ * endpoint URL — 200-with-body = the counter-signed reply, 204 (or an empty
+ * body) = a clean decline, any other non-2xx = a thrown transport/protocol
+ * error. `HttpChannel.sendOffer` is this plus the `EndpointResolver` seam;
+ * the frontend race's agent leg is this plus its browser-edge https guard
+ * (endpoint POLICY lives at each caller's edge — a browser guards in code,
+ * an autonomous agent's egress is its sandbox's job; the WIRE lives once —
+ * the channel-seam audit's finding 1, consolidated).
+ */
+export async function postOffer(
+    url: string,
+    offer: CommitmentPayload,
+    opts: { fetchFn?: typeof fetch } = {},
+): Promise<CommitmentPayload | null> {
+    const fetchFn = opts.fetchFn ?? globalThis.fetch;
+    const res = await fetchFn(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: serializeCommitmentPayload(offer),
+    });
+    if (res.status === 204) return null;
+    if (!res.ok) throw new Error(`offer to ${url} failed — HTTP ${res.status}`);
+    const text = await readCappedResponseText(res, MAX_COMMITMENT_PAYLOAD_BYTES);
+    return text ? deserializeCommitmentPayload(text) : null;
 }
 
 // ── Seller side: the responder ────────────────────────────────────────────────

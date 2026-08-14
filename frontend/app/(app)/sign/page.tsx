@@ -39,7 +39,7 @@ import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { maxUint256 } from "viem";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { MAX_INLINE_PAYLOAD_BYTES } from "@/lib/checkout/orderSignedAndShared";
+import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro/sdk/agent";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 type ChannelStatus = "idle" | "listening" | "received" | "error";
@@ -126,7 +126,7 @@ function SignPageContent() {
                 // The payload arrives INLINE over the E2E-encrypted coordination
                 // channel (audit F Arm 2), not IPFS — no fetch. Cap defensively:
                 // an unauthenticated inbox can deliver an oversize message.
-                if (new TextEncoder().encode(payloadJson).length > MAX_INLINE_PAYLOAD_BYTES) return;
+                if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
                 if (cancelled) return;
 
                 // The subscription is wallet-wide and the transport may not be

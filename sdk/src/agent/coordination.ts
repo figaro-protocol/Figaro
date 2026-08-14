@@ -70,6 +70,19 @@ export interface QuoteRequestTerms {
 }
 
 /** Serialize a payload to compact JSON (bigints → hex strings). */
+/**
+ * THE serialized-`CommitmentPayload` byte ceiling — one constant for one
+ * concern, wherever the payload travels (offer-endpoint responses on the
+ * HTTP and A2A channels, inline relay delivery in the frontend race). A real
+ * payload is KB-scale; this generous bound is only ever crossed by a
+ * pathological order carrying megabytes of inline field content, which
+ * belongs behind a content-handoff clause (already encrypted), not inline in
+ * the signed agreement. Two divergent caps (8 MiB response read vs 256 KiB
+ * inline) previously guarded different legs of the same race — the
+ * channel-seam audit's finding 3; this is the consolidation.
+ */
+export const MAX_COMMITMENT_PAYLOAD_BYTES = 256 * 1024;
+
 export function serializeCommitmentPayload(p: CommitmentPayload): string {
     return JSON.stringify(p, (_k, v) => (typeof v === "bigint" ? `0x${v.toString(16)}` : v));
 }

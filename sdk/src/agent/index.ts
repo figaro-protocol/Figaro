@@ -69,6 +69,7 @@ export type { TxResult, ActionExecutionInputs, UsageRecordingEntry, UsageRecordi
 export {
     serializeCommitmentPayload,
     deserializeCommitmentPayload,
+    MAX_COMMITMENT_PAYLOAD_BYTES,
     InProcessChannel,
 } from "./coordination.js";
 export type { CommitmentPayload, CoordinationChannel, OfferHandler, PricedField, QuoteRequestTerms } from "./coordination.js";
@@ -76,6 +77,7 @@ export type { CommitmentPayload, CoordinationChannel, OfferHandler, PricedField,
 // HTTP transport — the first real (off-process) CoordinationChannel
 export {
     HttpChannel,
+    postOffer,
     makeHttpOfferResponder,
     didWebEndpointResolver,
     readCappedResponseText,

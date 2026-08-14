@@ -49,7 +49,8 @@ import {
     selectRaceWinner,
     verifyQuoteReply,
     verifyRaceReply,
-    readCappedResponseText,
+    postOffer,
+    MAX_COMMITMENT_PAYLOAD_BYTES,
     type CommitmentPayload,
     type RaceReply,
 } from "@figaro/sdk/agent";
@@ -57,7 +58,6 @@ import { generateSalt } from "@figaro/sdk";
 import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
-import { MAX_INLINE_PAYLOAD_BYTES } from "@/lib/checkout/orderSignedAndShared";
 import type { CommitmentPayloadRelay } from "@/lib/checkout/orderSignedAndShared";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -100,7 +100,7 @@ export async function relayRacePayload(params: {
     // Delivered INLINE over the E2E-encrypted channel (audit F Arm 2), not
     // pinned to public IPFS — the race payload is one drafted order, KB-scale.
     const serialized = serializeCommitmentPayload(params.payload);
-    if (new TextEncoder().encode(serialized).length > MAX_INLINE_PAYLOAD_BYTES) {
+    if (new TextEncoder().encode(serialized).length > MAX_COMMITMENT_PAYLOAD_BYTES) {
         throw new Error("Race payload too large to relay over the coordination channel.");
     }
     await params.coordinationMessaging.sendCommitmentPayload({
@@ -169,18 +169,10 @@ export async function postToAgentEndpoint(
     if (parsed.protocol !== "https:" && !testSession) {
         throw new Error(`Agent endpoint must be https — refusing ${parsed.protocol}//`);
     }
-    const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: serializeCommitmentPayload(payload),
-    });
-    if (res.status === 204) return null;
-    if (!res.ok) throw new Error(`Agent endpoint ${endpoint} refused the payload — HTTP ${res.status}`);
-    // Size-capped, streamed read (finding 6): the endpoint is the candidate's
-    // own advertised URL, so an unbounded body would OOM the buyer's tab before
-    // reply-verification ever runs.
-    const text = await readCappedResponseText(res);
-    return text ? deserializeCommitmentPayload(text) : null;
+    // The wire itself is the SDK's — one implementation of the offer POST
+    // (204 = decline, capped read, empty = decline); only the browser-edge
+    // https policy above is this caller's own.
+    return postOffer(endpoint, payload);
 }
 
 interface RaceCandidateState {
@@ -450,7 +442,7 @@ export function useDispatchRace() {
                             try {
                                 // Delivered inline over the E2E channel (F Arm 2);
                                 // cap defensively, then deserialize — no IPFS fetch.
-                                if (new TextEncoder().encode(payloadJson).length > MAX_INLINE_PAYLOAD_BYTES) return;
+                                if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
                                 await recordReply(d, deserializeCommitmentPayload(payloadJson));
                             } catch {
                                 // Malformed reply — ignore; the window closes the
