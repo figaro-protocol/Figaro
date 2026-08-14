@@ -134,7 +134,15 @@ fi
 
 # ── Write deployments/<chainId>.json ─────────────────────────────────────────
 # Same shape as deployments/1.json plus the one testnet-only entry: the mock
-# DAO treasury (mainnet uses a canonical Safe, never recorded here — config).
+# DAO vault (mainnet uses a canonical Safe, never recorded here — config).
+# A FORK REHEARSAL (SKIP_VERIFY=1) must never clobber the real record — an
+# Anvil fork keeps Sepolia's chain id, so without this branch a rehearsal
+# writes fork addresses over the deployed truth (it did, 2026-08-14).
+if [ "${SKIP_VERIFY:-}" = "1" ]; then
+  DEPLOY_DIR="${TMPDIR:-/tmp}/figaro-rehearsal-deployments"
+  echo ""
+  echo "ℹ️  Fork rehearsal — record diverted to $DEPLOY_DIR (deployments/ untouched)"
+fi
 echo ""
 echo "✍️  Writing $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json ..."
 mkdir -p "$DEPLOY_DIR"
