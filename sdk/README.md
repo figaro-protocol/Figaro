@@ -149,10 +149,12 @@ A green run prints:
 AUTONOMOUS ORIGINATION PROVEN — no human in the loop
 ```
 
-Two siblings run the same recipe with exactly one thing changed:
+Three siblings run the same recipe with exactly one thing changed:
 `verify-origination-chain.devnet.mjs` (a three-order value-added chain, one
-seller taking two of the nodes) and `verify-origination-http.devnet.mjs` (the
-offer envelope crosses a real HTTP socket instead of the in-process channel).
+seller taking two of the nodes), `verify-origination-http.devnet.mjs` (the
+offer envelope crosses a real HTTP socket instead of the in-process channel),
+and `verify-origination-a2a.devnet.mjs` (the same envelope rides the A2A
+JSON-RPC interop wire via `A2aChannel`).
 
 **5. Close it — the buyer resolves.** The script stops at a live bonded process,
 which is the state the mechanism is about. Ending it is a single call, and only
@@ -1562,9 +1564,10 @@ cd sdk && npm test
 
 Autonomous-origination proofs (against a live devnet — `./scripts/devup.sh` first, then
 `npm run build`): `node scripts/verify-origination.devnet.mjs` (single order),
-`node scripts/verify-origination-chain.devnet.mjs` (multi-order chain), and
+`node scripts/verify-origination-chain.devnet.mjs` (multi-order chain),
 `node scripts/verify-origination-http.devnet.mjs` (the two agents talk over a real HTTP
-socket via `HttpChannel`, not the in-process channel).
+socket via `HttpChannel`, not the in-process channel), and
+`node scripts/verify-origination-a2a.devnet.mjs` (the same over the A2A interop wire).
 
 ## License
 
