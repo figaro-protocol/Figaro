@@ -49,7 +49,7 @@ fi
 #   PRIVATE_KEY            — run(): vm.envUint("PRIVATE_KEY")
 #   FOUNDER_WALLET          — _validateEnv(): nonzero, distinct
 #   SUPPORTERS_WALLET       — _validateEnv(): nonzero, distinct
-#   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 7 days > now
+#   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now
 #   SP1_VERIFIER_GATEWAY    — _deployProtocol(): must be nonzero
 #   SP1_PROGRAM_VKEY        — _deployProtocol(): must be nonzero
 # Required by this script for the target/verification:

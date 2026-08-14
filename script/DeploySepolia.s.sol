@@ -21,18 +21,12 @@ import "../src/mocks/MockTreasuryMultisig.sol";
 ///         deviation from the mainnet script is a TESTNET DIVERGENCE listed here;
 ///         anything not listed is byte-for-byte the mainnet parameterization.
 ///
-/// TESTNET DIVERGENCES (each carries its ruling):
-///   1. Accrual periods are nine WEEKLY periods, not annual — "testnet
-///      compresses years to weeks; time compresses when time is involved"
-///      (ruled 2026-07-15). Period budgets do NOT compress: the same nine
-///      florin tranches pay out, one per week, so a full RPGF claim cycle is
-///      rehearsable inside the testnet's life.
-///   2. MembersRegistry withdrawal cooldown compresses by the same 365d→7d
-///      factor: 28 days → 13 hours, preserving the P/T ≈ 13 identity-recycle
-///      ratio the 2026-07-31 stake sizing derived. Deposits do NOT compress
-///      (0.05 ether everywhere — capital is not time; the spam floor is
-///      gas-relative and Sepolia meters gas identically).
-///   3. DAO_WALLET is not read from env. The script deploys
+/// TESTNET DIVERGENCE (exactly one; ruled 2026-08-14 — the weekly-period
+/// compression originally carried here was REVERTED the same day it landed:
+/// this Sepolia deployment is the public incremental release, so it runs the
+/// REAL yearly schedule and the real 28-day cooldown; compressed-time claim
+/// rehearsal is devnet's job):
+///   1. DAO_WALLET is not read from env. The script deploys
 ///      `MockTreasuryMultisig([FOUNDER_WALLET, SUPPORTERS_WALLET, deployer], 2)`
 ///      and mints the 300M DAO allocation to it — the mock-as-code divergence
 ///      (mainnet: a canonical Safe at DAO_WALLET, config never code —
@@ -43,7 +37,7 @@ import "../src/mocks/MockTreasuryMultisig.sol";
 ///   FOUNDER_WALLET             — address receiving the 70M founder allocation
 ///   SUPPORTERS_WALLET          — address receiving the 30M supporters allocation
 ///   RPGF_GENESIS               — unix timestamp anchoring the reward schedule
-///                                (nine WEEKLY periods derived from it)
+///                                (nine ANNUAL periods derived from it, as mainnet)
 ///   SP1_VERIFIER_GATEWAY       — Succinct's canonical gateway on Sepolia
 ///   SP1_PROGRAM_VKEY           — the guest program's verification key
 contract DeploySepolia is Script {
@@ -52,10 +46,11 @@ contract DeploySepolia is Script {
     uint256 constant DAO_ALLOC = 300_000_000 ether; // 30%
     uint256 constant RPGF_ALLOC = 600_000_000 ether; // 60%
 
-    /// @dev Testnet divergence 1: the compressed accrual period.
-    uint64 constant PERIOD = 7 days;
-    /// @dev Testnet divergence 2: 28 days compressed by the same 365d→7d factor.
-    uint256 constant MEMBER_COOLDOWN = 13 hours;
+    /// @dev The REAL accrual period — mainnet's value (weekly compression
+    ///      reverted by ruling 2026-08-14; this deployment is the release).
+    uint64 constant PERIOD = 365 days;
+    /// @dev Mainnet's cooldown — its compression fell with the period's.
+    uint256 constant MEMBER_COOLDOWN = 28 days;
 
     address internal _core;
     address internal _attestation;
@@ -98,7 +93,7 @@ contract DeploySepolia is Script {
         );
         require(
             vm.envUint("RPGF_GENESIS") + PERIOD > block.timestamp,
-            "RPGF_GENESIS must place the first weekly period end in the future"
+            "RPGF_GENESIS must place the first annual period end in the future"
         );
     }
 

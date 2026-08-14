@@ -171,8 +171,8 @@ Required output:
    the Deployment Targets section: Sepolia first, Polygon second). Sepolia prerequisites
    landed 2026-08-14:
    - ~~Per-network deploy config/env~~ — DONE: `script/DeploySepolia.s.sol` (mirror of
-     mainnet with three documented testnet divergences: weekly periods per the
-     compression ruling, 13h member cooldown, mock treasury as DAO wallet) +
+     mainnet with ONE testnet divergence: mock treasury as DAO wallet; the weekly-period
+     compression was reverted 2026-08-14 — real yearly schedule, Sepolia is the release) +
      `scripts/deploy-sepolia.sh` (chain-id 11155111 read-back; `SKIP_VERIFY=1` for the
      Anvil-fork rehearsal). Fork-rehearsed end-to-end the same day: full stack (11.5M
      gas), 27 clauses + 9 reference assemblies registered THROUGH the mock treasury
