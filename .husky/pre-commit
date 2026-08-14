@@ -19,6 +19,10 @@ bash scripts/lint-claude-md.sh
 # (the 2026-08-12 agent-seam audit's useDidVerification/DesignDraft class).
 bash scripts/lint-agent-surface-refs.sh
 bash scripts/lint-clause-counts.sh
+# /security's per-harness verification counts are derived from the tree —
+# 299 drifted to 301 unnoticed before this guard; the page must cite exactly
+# what the tree derives (Foundry/Halmos/Certora/Echidna).
+bash scripts/lint-security-counts.sh
 # Nesting guard: block.nestsUnder must name a STRUCTURED field (enum/array/object) of another
 # clause — never a scalar, never a non-existent field. Kills the article-vs-nestsUnder
 # conflation (grouping is article's job; nestsUnder is sub-clause refinement). Whole-tree:
