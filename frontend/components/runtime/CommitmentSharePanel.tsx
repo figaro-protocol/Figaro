@@ -92,7 +92,7 @@ export function CommitmentSharePanel({
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const chainId = useChainId();
-    const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
+    const { handoffMessaging, evidenceTransport } = useRuntimeServices();
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [qrUnavailable, setQrUnavailable] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -161,7 +161,7 @@ export function CommitmentSharePanel({
                 senderAddress: address,
                 walletClient,
                 chainId,
-                coordinationMessaging,
+                handoffMessaging,
                 evidenceTransport,
             });
             setTransportRecipient(recipientAddress);
@@ -170,7 +170,7 @@ export function CommitmentSharePanel({
             setTransportStatus("error");
             setTransportError(extractErrorMessage(error, "Failed to send the commitment payload over XMTP."));
         }
-    }, [address, chainId, coordinationMessaging, evidenceTransport, payload, recipientAddress, walletClient]);
+    }, [address, chainId, handoffMessaging, evidenceTransport, payload, recipientAddress, walletClient]);
 
     if (!payload) return null;
 

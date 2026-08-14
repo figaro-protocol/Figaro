@@ -22,7 +22,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
-import { getCoordinationChannel } from "@/lib/handoff/channel";
+import { getHandoffChannel } from "@/lib/handoff/channel";
 import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro/sdk/handoff";
 import {
     addressDetailAnchorRef,
@@ -84,7 +84,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
             if (!hexEqual(msg.senderAddress, counterparty)) return false;
             return verifyEcdhMessageAuth(msg);
         };
-        void getCoordinationChannel(address).then((ch) => {
+        void getHandoffChannel(address).then((ch) => {
             if (disposed) return;
             setChannel(ch);
             unsubs.push(ch.onEcdhPubkey(orderHash, (msg) => {

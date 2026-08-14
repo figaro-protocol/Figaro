@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { keccak256 } from "viem";
-import { getCoordinationChannel } from "@/lib/handoff/channel";
+import { getHandoffChannel } from "@/lib/handoff/channel";
 import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro/sdk/handoff";
 import { encodeContentFromSpec } from "@figaro/sdk/clauses";
 import {
@@ -84,7 +84,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
             if (!hexEqual(msg.senderAddress, counterparty)) return false;
             return verifyEcdhMessageAuth(msg);
         };
-        void getCoordinationChannel(address).then((ch) => {
+        void getHandoffChannel(address).then((ch) => {
             if (disposed) return;
             setChannel(ch);
             unsubs.push(ch.onEcdhPubkey(ceremonyId, (msg) => {
