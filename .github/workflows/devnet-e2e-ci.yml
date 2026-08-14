@@ -132,16 +132,18 @@ jobs:
               env:
                   CI: true
 
-            # ── The three origination proofs, same live stack ────────────
+            # ── The four origination proofs, same live stack ─────────────
             # Autonomous agents (keys only, no browser): in-process channel,
-            # real HTTP socket, and the multi-order value-added chain. Each is
-            # a full sign/validate/bond/commit cycle landing on the devnet
-            # chain; the stack and seed data are the e2e step's.
+            # real HTTP socket, the A2A interop wire, and the multi-order
+            # value-added chain. Each is a full sign/validate/bond/commit
+            # cycle landing on the devnet chain; the stack and seed data are
+            # the e2e step's.
             - name: Run origination proofs
               run: |
                   cd sdk
                   node scripts/verify-origination.devnet.mjs
                   node scripts/verify-origination-http.devnet.mjs
+                  node scripts/verify-origination-a2a.devnet.mjs
                   node scripts/verify-origination-chain.devnet.mjs
 
             - name: Upload Playwright report

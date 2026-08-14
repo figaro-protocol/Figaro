@@ -1,6 +1,6 @@
 /**
  * handoffChannelSingleFlight.test.ts — the channel factory's single-flight
- * gate. Concurrent `getCoordinationChannel` calls for one address must share
+ * gate. Concurrent `getHandoffChannel` calls for one address must share
  * ONE creation: XMTP's OPFS store uses exclusive sync access handles, so two
  * concurrent `Client.create` calls fight over the same database (relay smoke
  * 2026-07-23). A failed flight must clear so a later caller — e.g. one that
@@ -13,20 +13,18 @@ vi.mock("@/lib/shared/e2e", () => ({
     isE2EMockSession: () => false,
     isE2EDevnetSession: () => false,
 }));
-vi.mock("@/lib/handoff/userTransport", () => ({
-    readUserTransport: () => "xmtp",
-}));
-
 const createXmtpChannelMock = vi.fn();
+const walletHasXmtpInboxMock = vi.fn(async (_address: string) => true);
 vi.mock("@/lib/handoff/xmtpChannel", () => ({
     createXmtpChannel: (...args: unknown[]) => createXmtpChannelMock(...args),
+    walletHasXmtpInbox: (address: string) => walletHasXmtpInboxMock(address),
 }));
 
-import { getCoordinationChannel } from "@/lib/handoff/channel";
+import { getHandoffChannel } from "@/lib/handoff/channel";
 
 const signMessage = async () => "0xsig" as `0x${string}`;
 
-describe("getCoordinationChannel single-flight", () => {
+describe("getHandoffChannel single-flight", () => {
     beforeEach(() => {
         createXmtpChannelMock.mockReset();
     });
@@ -40,8 +38,8 @@ describe("getCoordinationChannel single-flight", () => {
 
         // Both requests arrive while creation is in flight (the header badge
         // and the /orders subscriptions retrying on the same render pass).
-        const a = getCoordinationChannel("0xAaAa000000000000000000000000000000000001", signMessage);
-        const b = getCoordinationChannel("0xaaaa000000000000000000000000000000000001", signMessage);
+        const a = getHandoffChannel("0xAaAa000000000000000000000000000000000001", signMessage);
+        const b = getHandoffChannel("0xaaaa000000000000000000000000000000000001", signMessage);
         // The flight reaches Client.create only after its lazy import resolves.
         await vi.waitFor(() => expect(createXmtpChannelMock).toHaveBeenCalledTimes(1));
         release(channel);
@@ -58,24 +56,30 @@ describe("getCoordinationChannel single-flight", () => {
             .mockResolvedValueOnce(channel);
 
         const addr = "0xBbBb000000000000000000000000000000000002";
-        const a = getCoordinationChannel(addr, signMessage);
-        const b = getCoordinationChannel(addr, signMessage);
+        const a = getHandoffChannel(addr, signMessage);
+        const b = getHandoffChannel(addr, signMessage);
         await expect(a).rejects.toThrow("network down");
         await expect(b).rejects.toThrow("network down");
 
-        expect(await getCoordinationChannel(addr, signMessage)).toBe(channel);
+        expect(await getHandoffChannel(addr, signMessage)).toBe(channel);
         expect(createXmtpChannelMock).toHaveBeenCalledTimes(2);
     });
 
-    it("a signer-less caller throws without starting a flight; the signered retry succeeds", async () => {
+    it("a signer-less caller lands on the links-only floor without an XMTP flight (derived, never a setting)", async () => {
         const channel = { tag: "three" } as unknown as HandoffChannel;
         createXmtpChannelMock.mockResolvedValue(channel);
 
         const addr = "0xCcCc000000000000000000000000000000000003";
-        await expect(getCoordinationChannel(addr)).rejects.toThrow(/signMessage callback required/);
+        const floor = await getHandoffChannel(addr);
         expect(createXmtpChannelMock).not.toHaveBeenCalled();
+        // The inert floor still satisfies the channel surface.
+        expect(typeof floor.destroy).toBe("function");
+    });
 
-        expect(await getCoordinationChannel(addr, signMessage)).toBe(channel);
-        expect(createXmtpChannelMock).toHaveBeenCalledTimes(1);
+    it("a wallet with no XMTP inbox stays on the floor even with a signer", async () => {
+        walletHasXmtpInboxMock.mockResolvedValueOnce(false);
+        const addr = "0xDdDd000000000000000000000000000000000004";
+        await getHandoffChannel(addr, signMessage);
+        expect(createXmtpChannelMock).not.toHaveBeenCalled();
     });
 });

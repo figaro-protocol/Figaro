@@ -149,10 +149,11 @@ export {
     verifyQuoteReply,
     requestQuotes,
     requestCounterSignatures,
+    startRace,
     makeSellerRaceHandler,
     makeSellerQuoteHandler,
 } from "./dispatchRace.js";
-export type { RaceReply, BuildQuoteRequestParams } from "./dispatchRace.js";
+export type { RaceReply, BuildQuoteRequestParams, ChannelFor, RaceOutcome, RaceRun, StartRaceOptions } from "./dispatchRace.js";
 
 // did:web identity — agents bind their on-chain address to a resolvable DID
 export {

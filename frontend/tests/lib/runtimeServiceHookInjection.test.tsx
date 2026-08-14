@@ -78,8 +78,8 @@ vi.mock("@/lib/shared/ipfsService", () => ({
     },
 }));
 
-vi.mock("@/lib/handoff/coordinationMessagingService", () => ({
-    DEFAULT_COORDINATION_MESSAGING_SERVICE: {
+vi.mock("@/lib/handoff/handoffMessagingService", () => ({
+    DEFAULT_HANDOFF_MESSAGING_SERVICE: {
         sendHandoffKey: (...args: unknown[]) => defaultSendHandoffKeyMock(...args),
         subscribeHandoffKey: (...args: unknown[]) => defaultSubscribeHandoffKeyMock(...args),
         subscribeEcdhPubkey: (...args: unknown[]) => defaultSubscribeEcdhPubkeyMock(...args),
@@ -139,7 +139,7 @@ function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): Runtim
             resolveFetchUrl: vi.fn(),
             buildGatewayUrl: vi.fn(),
         } as unknown as RuntimeServices["evidenceTransport"],
-        coordinationMessaging: {} as RuntimeServices["coordinationMessaging"],
+        handoffMessaging: {} as RuntimeServices["handoffMessaging"],
         handoffPersistence: {} as RuntimeServices["handoffPersistence"],
         tokenConversion: {} as RuntimeServices["tokenConversion"],
         ...overrides,
@@ -229,7 +229,7 @@ describe("runtime service hook injection", () => {
             catalogue: {} as RuntimeServices["catalogue"],
             discovery: {} as RuntimeServices["discovery"],
             evidenceTransport,
-            coordinationMessaging: {} as RuntimeServices["coordinationMessaging"],
+            handoffMessaging: {} as RuntimeServices["handoffMessaging"],
             handoffPersistence: {} as RuntimeServices["handoffPersistence"],
             tokenConversion: {} as RuntimeServices["tokenConversion"],
         } satisfies RuntimeServices;

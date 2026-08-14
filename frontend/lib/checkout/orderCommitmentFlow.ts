@@ -49,7 +49,7 @@ import {
     type SwapConfirmationDetails,
 } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
-import { relayRacePayload } from "@/lib/checkout/dispatchRace";
+import { relayCommitmentPayload } from "@/lib/handoff/relayChannel";
 import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
@@ -240,7 +240,7 @@ export function useOrderCommitmentFlow() {
                 senderAddress: address,
                 walletClient: walletClient ?? null,
                 chainId,
-                coordinationMessaging: services.coordinationMessaging,
+                handoffMessaging: services.handoffMessaging,
                 evidenceTransport: services.evidenceTransport,
             });
 
@@ -376,13 +376,13 @@ export function useOrderCommitmentFlow() {
             const sellerSig = await signAs(incoming.commitment, incoming.agreement);
             const returned: CommitmentPayload = { ...incoming, sellerSig };
             setStep("sharing");
-            await relayRacePayload({
+            await relayCommitmentPayload({
                 payload: returned,
                 recipientAddress: incoming.commitment.buyer,
                 senderAddress: address,
                 walletClient: walletClient ?? null,
                 chainId,
-                coordinationMessaging: services.coordinationMessaging,
+                handoffMessaging: services.handoffMessaging,
             });
             setStep("awaiting-buyer");
             return returned;
@@ -425,13 +425,13 @@ export function useOrderCommitmentFlow() {
             const sellerSig = await signAs(counter.commitment, counter.agreement);
             const returned: CommitmentPayload = { commitment: counter.commitment, agreement: counter.agreement, sellerSig };
             setStep("sharing");
-            await relayRacePayload({
+            await relayCommitmentPayload({
                 payload: returned,
                 recipientAddress: incoming.commitment.buyer,
                 senderAddress: address,
                 walletClient: walletClient ?? null,
                 chainId,
-                coordinationMessaging: services.coordinationMessaging,
+                handoffMessaging: services.handoffMessaging,
                 // A quote is a DIFFERENT struct than the request (the whole
                 // point) — it answers on the REQUEST's conversation id, where
                 // the buyer is listening.

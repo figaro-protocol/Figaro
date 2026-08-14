@@ -1,7 +1,7 @@
 import type { CatalogueService } from "@/lib/member/catalogueService";
 import { DEFAULT_CATALOGUE_SERVICE } from "@/lib/member/catalogueService";
-import type { CoordinationMessagingService } from "@/lib/handoff/coordinationMessagingService";
-import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/handoff/coordinationMessagingService";
+import type { HandoffMessagingService } from "@/lib/handoff/handoffMessagingService";
+import { DEFAULT_HANDOFF_MESSAGING_SERVICE } from "@/lib/handoff/handoffMessagingService";
 import type { DiscoveryService } from "@/lib/member/discoveryService";
 import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/member/discoveryService";
 import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
@@ -16,7 +16,7 @@ type RuntimeServiceKey =
     | "catalogue"
     | "discovery"
     | "evidenceTransport"
-    | "coordinationMessaging"
+    | "handoffMessaging"
     | "handoffPersistence"
     | "tokenConversion";
 
@@ -24,7 +24,7 @@ export interface RuntimeServices {
     catalogue: CatalogueService;
     discovery: DiscoveryService;
     evidenceTransport: IpfsService;
-    coordinationMessaging: CoordinationMessagingService;
+    handoffMessaging: HandoffMessagingService;
     handoffPersistence: HandoffPersistenceService;
     tokenConversion: TokenConversionService;
 }
@@ -35,7 +35,7 @@ const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, string> =
     catalogue: "default-catalogue",
     discovery: "default-discovery",
     evidenceTransport: "default-ipfs",
-    coordinationMessaging: "default-coordination-messaging",
+    handoffMessaging: "default-coordination-messaging",
     handoffPersistence: "default-handoff-persistence",
     tokenConversion: "default-token-conversion",
 };
@@ -44,7 +44,7 @@ export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
     catalogue: DEFAULT_CATALOGUE_SERVICE,
     discovery: DEFAULT_DISCOVERY_SERVICE,
     evidenceTransport: DEFAULT_IPFS_SERVICE,
-    coordinationMessaging: DEFAULT_COORDINATION_MESSAGING_SERVICE,
+    handoffMessaging: DEFAULT_HANDOFF_MESSAGING_SERVICE,
     handoffPersistence: DEFAULT_HANDOFF_PERSISTENCE_SERVICE,
     tokenConversion: DEFAULT_TOKEN_CONVERSION_SERVICE,
 };
@@ -58,7 +58,7 @@ function createRuntimeServiceProviderRegistry(): RuntimeServiceProviderRegistry 
         catalogue: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.catalogue, DEFAULT_RUNTIME_SERVICES.catalogue]]),
         discovery: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.discovery, DEFAULT_RUNTIME_SERVICES.discovery]]),
         evidenceTransport: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.evidenceTransport, DEFAULT_RUNTIME_SERVICES.evidenceTransport]]),
-        coordinationMessaging: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.coordinationMessaging, DEFAULT_RUNTIME_SERVICES.coordinationMessaging]]),
+        handoffMessaging: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.handoffMessaging, DEFAULT_RUNTIME_SERVICES.handoffMessaging]]),
         handoffPersistence: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.handoffPersistence, DEFAULT_RUNTIME_SERVICES.handoffPersistence]]),
         tokenConversion: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.tokenConversion, DEFAULT_RUNTIME_SERVICES.tokenConversion]]),
     };

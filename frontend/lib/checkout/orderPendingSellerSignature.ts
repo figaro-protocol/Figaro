@@ -158,7 +158,7 @@ export function usePendingSellerSignature(
         let cleanup: (() => void) | null = null;
         let cancelled = false;
 
-        void services.coordinationMessaging
+        void services.handoffMessaging
             .subscribeAnyCommitmentPayload({
                 address,
                 walletClient: walletClientRef.current ?? null,

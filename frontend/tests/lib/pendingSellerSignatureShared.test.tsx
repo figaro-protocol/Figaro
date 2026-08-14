@@ -61,7 +61,7 @@ function makeServices(): RuntimeServices {
         evidenceTransport: {
             resolveFetchUrl: (uri: string) => `https://gateway.test/${uri}`,
         } as unknown as RuntimeServices["evidenceTransport"],
-        coordinationMessaging: {
+        handoffMessaging: {
             subscribeAnyCommitmentPayload: ({
                 callback,
             }: {
@@ -70,7 +70,7 @@ function makeServices(): RuntimeServices {
                 callbacks.push(callback);
                 return Promise.resolve(() => undefined);
             },
-        } as unknown as RuntimeServices["coordinationMessaging"],
+        } as unknown as RuntimeServices["handoffMessaging"],
         handoffPersistence: {} as RuntimeServices["handoffPersistence"],
         tokenConversion: {} as RuntimeServices["tokenConversion"],
     };
@@ -131,7 +131,7 @@ describe("usePendingSellerSignature wallet-arrival resubscription", () => {
         // counting 1 while /orders rendered its empty state.)
         const services = makeServices();
         const subscribeAttempts: Array<unknown> = [];
-        services.coordinationMessaging = {
+        services.handoffMessaging = {
             subscribeAnyCommitmentPayload: (params: {
                 walletClient: unknown;
                 callback: (cid: string, orderId: string) => Promise<void> | void;
@@ -143,7 +143,7 @@ describe("usePendingSellerSignature wallet-arrival resubscription", () => {
                 callbacks.push(params.callback);
                 return Promise.resolve(() => undefined);
             },
-        } as unknown as RuntimeServices["coordinationMessaging"];
+        } as unknown as RuntimeServices["handoffMessaging"];
 
         const h = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), {
             wrapper: wrapper(services),

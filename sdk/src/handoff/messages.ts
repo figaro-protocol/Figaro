@@ -12,10 +12,12 @@
  *      secret and sends the blob publicly (`ECDH_WRAPPED_KEY`).
  *   4. The receiver unwraps → holds the AES key → opens the sealed payload.
  *
- * `COMMITMENT_PAYLOAD` carries only an IPFS CID: the sender pins the
- * serialized `CommitmentPayload` (see `@figaro/sdk/agent`) at share time and
- * the receiver dereferences it, keeping the envelope small and giving late
- * subscribers a durable retrieval path.
+ * `COMMITMENT_PAYLOAD` carries the serialized `CommitmentPayload` (see
+ * `@figaro/sdk/agent`) INLINE, capped at `MAX_COMMITMENT_PAYLOAD_BYTES` by
+ * receivers — never a public IPFS pin: the payload can carry the private
+ * plaintext the counterparty needs to sign, and a plaintext pin is the exact
+ * leak this channel exists to close (audit F Arm 2 replaced the earlier
+ * CID-pointer model).
  *
  * Every shape is safe to expose on a public transport: keys travel either
  * as ephemeral public keys or wrapped under the ECDH secret.

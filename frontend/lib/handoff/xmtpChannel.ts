@@ -65,6 +65,27 @@ function isInstallationCapError(err: unknown): boolean {
     );
 }
 
+/**
+ * Does this wallet already have an XMTP inbox? A static, signature-free
+ * network read (`Client.canMessage`) — THE derived fact that replaces the
+ * deleted per-wallet transport toggle (one-seam ruling 2026-08-14): a wallet
+ * with an inbox chose XMTP somewhere, so connecting it here is continuation,
+ * not seizure; a wallet without one stays on the links-only floor. Fails
+ * CLOSED (no inbox) on network errors — the floor always works.
+ */
+export async function walletHasXmtpInbox(address: string): Promise<boolean> {
+    try {
+        const { Client, IdentifierKind } = await import("@xmtp/browser-sdk");
+        const result = await Client.canMessage(
+            [{ identifier: address.toLowerCase(), identifierKind: IdentifierKind.Ethereum }],
+            "dev",
+        );
+        return result.get(address.toLowerCase()) === true;
+    } catch {
+        return false;
+    }
+}
+
 /** Create a real XMTP-backed coordination channel. */
 export async function createXmtpChannel(
     address: string,

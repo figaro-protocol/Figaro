@@ -8,7 +8,7 @@
  * (orderPendingSellerSignature) surfaces it to counter-sign.
  *
  * The relay capability is a minimal STRUCTURAL type (CommitmentPayloadRelay),
- * satisfied by the handoff CoordinationMessagingService at the call site — so
+ * satisfied by the handoff HandoffMessagingService at the call site — so
  * checkout stays decoupled from the handoff layer's concrete transport.
  */
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
@@ -25,7 +25,7 @@ interface WalletMessageSigner {
 }
 
 /** The one transport capability this module needs — structural, so this module
- *  names no concrete transport. `CoordinationMessagingService` (handoff/) satisfies it. */
+ *  names no concrete transport. `HandoffMessagingService` (handoff/) satisfies it. */
 export interface CommitmentPayloadRelay {
     sendCommitmentPayload(params: {
         address: string;
@@ -56,12 +56,12 @@ export async function shareSignedOrder(params: {
     senderAddress: string;
     walletClient?: WalletMessageSigner | null;
     chainId: number;
-    coordinationMessaging: CommitmentPayloadRelay;
+    handoffMessaging: CommitmentPayloadRelay;
     evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI" | "resolveFetchUrl">;
 }): Promise<string> {
     const {
         payload, recipientAddress, senderAddress, walletClient, chainId,
-        coordinationMessaging, evidenceTransport,
+        handoffMessaging, evidenceTransport,
     } = params;
 
     // Pin the agreement body STANDALONE — WITHHELD of any private-disposition
@@ -79,7 +79,7 @@ export async function shareSignedOrder(params: {
                 "large content belongs behind a content-handoff clause, not inline in the agreement.",
         );
     }
-    await coordinationMessaging.sendCommitmentPayload({
+    await handoffMessaging.sendCommitmentPayload({
         address: senderAddress,
         walletClient,
         recipientAddress,

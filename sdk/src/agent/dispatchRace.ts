@@ -413,31 +413,125 @@ export async function verifyQuoteReply(
     return { ok: true };
 }
 
+// ── THE race engine — one choreography, every surface (ruled 2026-08-14) ────
+//
+// The dispatch race races over the CoordinationChannel interface, period: the
+// same fan-out / verify / arrival-order accumulation / selection runs whether
+// the candidates are autonomous agents (HTTP, A2A), wallet humans reached
+// through a relay adapter, or in-process test doubles — and whether the caller
+// is a batch script or an interactive checkout. Surface concerns stay with the
+// caller: WINDOW duration (call `finish()` on a timer), buyer overrides
+// (`finish(pick)`), and progressive UI (`onReply`). A second authored loop is
+// the drift the 2026-08-14 channel-seam audit exists to prevent — extend this
+// engine, never re-author it.
+
+/** Per-candidate channel selection — the profile-keyed routing rule lives in
+ *  the caller (declared service endpoint → HTTP/A2A; none → relay adapter);
+ *  the engine only asks "which channel carries THIS draft?". */
+export type ChannelFor = (draft: CommitmentPayload) => CoordinationChannel;
+
+/** The closed race: verified replies in arrival order, and the winner. */
+export interface RaceOutcome {
+    replies: RaceReply[];
+    winner: RaceReply | null;
+}
+
+/** A live race. `finish` closes it NOW (explicit pick by candidate address,
+ *  or cheapest verified — idempotent; late replies are ignored); `done`
+ *  resolves at finish, which happens automatically once every candidate has
+ *  settled (replied, declined, or errored). */
+export interface RaceRun {
+    finish(pick?: Address): RaceOutcome;
+    done: Promise<RaceOutcome>;
+}
+
+export interface StartRaceOptions {
+    /** RFQ leg: verify replies by RECONSTRUCTION (`verifyQuoteReply`) instead
+     *  of exact match — the drafts carry `quoteRequest` terms. */
+    quote?: boolean;
+    /** Progressive-surface hook: called once per VERIFIED reply, in arrival
+     *  order (a UI marks the candidate answered; a script may ignore it). */
+    onReply?: (reply: RaceReply) => void;
+}
+
+/**
+ * Start the race: send every draft over its candidate's channel, verify each
+ * reply (exact match on the race leg, reconstruction on the quote leg), and
+ * accumulate verified replies in arrival order — the selection tie-break.
+ * One verified reply per candidate: a well-formed but unverifiable reply
+ * settles (and thereby burns) that candidate's slot — a countersignature that
+ * fails recovery is not a counterparty worth re-awaiting. Unreachable or
+ * declining candidates settle silently; when every candidate has settled the
+ * race closes itself.
+ */
+export function startRace(
+    channelFor: ChannelFor,
+    drafts: readonly CommitmentPayload[],
+    ctx: { chainId: number; core: Address },
+    opts: StartRaceOptions = {},
+): RaceRun {
+    const replies: RaceReply[] = [];
+    let settledCount = 0;
+    let finished = false;
+    let outcome: RaceOutcome | null = null;
+    let resolveDone: (o: RaceOutcome) => void;
+    const done = new Promise<RaceOutcome>((resolve) => { resolveDone = resolve; });
+
+    const finish = (pick?: Address): RaceOutcome => {
+        if (outcome) return outcome;
+        finished = true;
+        const winner = pick
+            ? replies.find((r) => r.draft.commitment.seller.toLowerCase() === pick.toLowerCase()) ?? null
+            : selectRaceWinner(replies);
+        outcome = { replies: [...replies], winner };
+        resolveDone(outcome);
+        return outcome;
+    };
+
+    const settle = () => {
+        settledCount += 1;
+        if (settledCount === drafts.length && !finished) finish();
+    };
+
+    for (const draft of drafts) {
+        void (async () => {
+            try {
+                const reply = await channelFor(draft).sendOffer(draft.commitment.seller, draft);
+                if (finished || !reply) return;
+                const check = opts.quote
+                    ? await verifyQuoteReply(reply, draft, ctx)
+                    : await verifyRaceReply(reply, draft, ctx);
+                if (finished || !check.ok) return;
+                const seller = draft.commitment.seller.toLowerCase();
+                if (replies.some((r) => r.draft.commitment.seller.toLowerCase() === seller)) return;
+                const entry = { draft, reply };
+                replies.push(entry);
+                opts.onReply?.(entry);
+            } catch {
+                // Unreachable/refusing candidate — settles without a reply.
+            } finally {
+                settle();
+            }
+        })();
+    }
+    if (drafts.length === 0) finish();
+    return { finish, done };
+}
+
 /**
  * Send one quote request per candidate over the coordination channel, verify
  * every reply by reconstruction, and rank — cheapest verified quote first
  * (`selectRaceWinner`; the buyer may still pick any reply). Unreachable or
  * declining candidates simply drop out; an unverifiable quote is discarded,
  * never surfaced. Losing quotes need no cancellation — countersignatures
- * expire inert at the struct deadline.
+ * expire inert at the struct deadline. Batch wrapper over `startRace`.
  */
 export async function requestQuotes(
     channel: CoordinationChannel,
     drafts: readonly CommitmentPayload[],
     ctx: { chainId: number; core: Address },
-): Promise<{ replies: RaceReply[]; winner: RaceReply | null }> {
-    const settled = await Promise.all(drafts.map(async (draft) => {
-        try {
-            const reply = await channel.sendOffer(draft.commitment.seller, draft);
-            if (!reply) return null;
-            const check = await verifyQuoteReply(reply, draft, ctx);
-            return check.ok ? { draft, reply } : null;
-        } catch {
-            return null;
-        }
-    }));
-    const replies = settled.filter((r): r is RaceReply => r !== null);
-    return { replies, winner: selectRaceWinner(replies) };
+): Promise<RaceOutcome> {
+    return startRace(() => channel, drafts, ctx, { quote: true }).done;
 }
 
 /**
@@ -447,24 +541,14 @@ export async function requestQuotes(
  * sibling of `requestQuotes`: same fan-out, exact-match verification instead
  * of reconstruction (the draft already carries the candidate's price).
  * Unreachable, declining, or unverifiable candidates drop out silently.
+ * Batch wrapper over `startRace`.
  */
 export async function requestCounterSignatures(
     channel: CoordinationChannel,
     drafts: readonly CommitmentPayload[],
     ctx: { chainId: number; core: Address },
-): Promise<{ replies: RaceReply[]; winner: RaceReply | null }> {
-    const settled = await Promise.all(drafts.map(async (draft) => {
-        try {
-            const reply = await channel.sendOffer(draft.commitment.seller, draft);
-            if (!reply) return null;
-            const check = await verifyRaceReply(reply, draft, ctx);
-            return check.ok ? { draft, reply } : null;
-        } catch {
-            return null;
-        }
-    }));
-    const replies = settled.filter((r): r is RaceReply => r !== null);
-    return { replies, winner: selectRaceWinner(replies) };
+): Promise<RaceOutcome> {
+    return startRace(() => channel, drafts, ctx).done;
 }
 
 /**

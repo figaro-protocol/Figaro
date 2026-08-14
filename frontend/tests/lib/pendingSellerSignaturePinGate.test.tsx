@@ -71,7 +71,7 @@ function makeServices(): RuntimeServices {
         evidenceTransport: {
             resolveFetchUrl: (uri: string) => `https://gateway.test/${uri}`,
         } as unknown as RuntimeServices["evidenceTransport"],
-        coordinationMessaging: {
+        handoffMessaging: {
             subscribeAnyCommitmentPayload: ({
                 callback,
             }: {
@@ -80,7 +80,7 @@ function makeServices(): RuntimeServices {
                 callbacks.push(callback);
                 return Promise.resolve(() => undefined);
             },
-        } as unknown as RuntimeServices["coordinationMessaging"],
+        } as unknown as RuntimeServices["handoffMessaging"],
         handoffPersistence: {} as RuntimeServices["handoffPersistence"],
         tokenConversion: {} as RuntimeServices["tokenConversion"],
     };

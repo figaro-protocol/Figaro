@@ -28,12 +28,15 @@
  * The race window and the candidate count are checkout-time buyer policy —
  * never a stored field on the payload, the template, or any profile.
  *
- * RELAY LEG — deliberately NOT `shareSignedOrder` (whose documented
- * precondition is a BUYER-signed, final, pinnable order): a race payload is
- * either an unsigned draft (buyer → candidate) or a countersigned-only reply
- * (candidate → buyer). Neither is final; the pin is ephemeral coordination
- * state, not evidence. Both legs share one mechanic: pin the payload, relay
- * its CID keyed by the commitment's order hash.
+ * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one authored loop, ruled
+ * 2026-08-14): this surface drafts the candidates, supplies each one's
+ * channel (declared `services.rest` endpoint → the offer wire behind the
+ * browser-edge https guard; wallet candidate → the relay adapter,
+ * `@/lib/handoff/relayChannel`), renders progress, and owns the window timer
+ * and the buyer's overrides. Race payloads travel INLINE over the relay —
+ * deliberately NOT `shareSignedOrder` (whose documented precondition is a
+ * BUYER-signed, final order): a draft or countersigned-only reply is
+ * ephemeral coordination state, not evidence.
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -44,21 +47,17 @@ import {
     resolveSubOrderPricing,
 } from "@figaro/sdk";
 import {
-    deserializeCommitmentPayload,
-    serializeCommitmentPayload,
-    selectRaceWinner,
-    verifyQuoteReply,
-    verifyRaceReply,
+    startRace,
     postOffer,
-    MAX_COMMITMENT_PAYLOAD_BYTES,
     type CommitmentPayload,
-    type RaceReply,
+    type RaceOutcome,
+    type RaceRun,
 } from "@figaro/sdk/agent";
 import { generateSalt } from "@figaro/sdk";
 import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
-import type { CommitmentPayloadRelay } from "@/lib/checkout/orderSignedAndShared";
+import { createRelayCoordinationChannel, type RelayCoordinationChannel } from "@/lib/handoff/relayChannel";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { specSource } from "@/lib/shared/clauseSpecSource";
@@ -66,52 +65,8 @@ import { formatToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
 import { getE2EModeSession } from "@/lib/shared/e2e";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { IpfsService } from "@/lib/shared/ipfsService";
 
 type Hex = `0x${string}`;
-
-interface WalletMessageSigner {
-    signMessage(params: { message: string }): Promise<Hex>;
-}
-
-/**
- * Pin a race payload and relay its CID — the ONE mechanic under both race
- * legs (draft out, countersigned reply back). See the module doc for why this
- * is not `shareSignedOrder`. Returns the coordination-channel order id.
- *
- * The channel key is the CONVERSATION's order id — by default the payload's
- * own commitment hash, but a QUOTE must answer under the REQUEST's id
- * (`threadOrderId`): a counter-draft is a different struct by construction
- * (the candidate re-priced it), and the buyer listens on the id of the draft
- * they sent, not on a struct they cannot know in advance.
- */
-export async function relayRacePayload(params: {
-    payload: CommitmentPayload;
-    recipientAddress: string;
-    senderAddress: string;
-    walletClient?: WalletMessageSigner | null;
-    chainId: number;
-    coordinationMessaging: CommitmentPayloadRelay;
-    /** The conversation's order id, when the payload's own struct is not the
-     *  thread (a quote answering a request). Defaults to the payload's. */
-    threadOrderId?: string;
-}): Promise<string> {
-    const orderId = params.threadOrderId ?? commitmentOrderHash(params.payload.commitment, params.chainId);
-    // Delivered INLINE over the E2E-encrypted channel (audit F Arm 2), not
-    // pinned to public IPFS — the race payload is one drafted order, KB-scale.
-    const serialized = serializeCommitmentPayload(params.payload);
-    if (new TextEncoder().encode(serialized).length > MAX_COMMITMENT_PAYLOAD_BYTES) {
-        throw new Error("Race payload too large to relay over the coordination channel.");
-    }
-    await params.coordinationMessaging.sendCommitmentPayload({
-        address: params.senderAddress,
-        walletClient: params.walletClient,
-        recipientAddress: params.recipientAddress,
-        orderId,
-        payload: serialized,
-    });
-    return orderId;
-}
 
 export type DispatchRaceStep = "idle" | "drafting" | "racing" | "done" | "error";
 
@@ -201,11 +156,14 @@ export function useDispatchRace() {
     const [candidates, setCandidates] = useState<RaceCandidateView[]>([]);
     const [result, setResult] = useState<DispatchRaceResult | null>(null);
 
-    // Mutable race state for the async reply callbacks — arrival order matters
-    // (the selection tie-break), so replies accumulate in an array.
+    // The choreography lives in the SDK's race engine (`startRace` — the one
+    // authored loop, ruled 2026-08-14); these refs hold only SURFACE state:
+    // the drafted candidates (render + winner mapping), the run handle (buyer
+    // overrides call its finish), the relay adapter (closed on cleanup), and
+    // the window timer (window duration is checkout policy).
     const draftsRef = useRef<RaceCandidateState[]>([]);
-    const repliesRef = useRef<Array<RaceReply & { candidate: Hex }>>([]);
-    const unsubsRef = useRef<Array<() => void>>([]);
+    const runRef = useRef<RaceRun | null>(null);
+    const relayRef = useRef<RelayCoordinationChannel | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const ctxRef = useRef<{ nodeId: string; salts: Map<string, bigint>; deadline: bigint; decimals: number } | null>(null);
     const finishedRef = useRef(false);
@@ -214,26 +172,23 @@ export function useDispatchRace() {
     const [quoting, setQuoting] = useState(false);
 
     const cleanup = useCallback(() => {
-        for (const unsub of unsubsRef.current) unsub();
-        unsubsRef.current = [];
+        relayRef.current?.close();
+        relayRef.current = null;
         if (timerRef.current !== null) {
             clearTimeout(timerRef.current);
             timerRef.current = null;
         }
     }, []);
 
-    /** Close the race: the buyer's explicit pick, or the cheapest valid
-     *  countersigner. Losing countersignatures need no cancellation — they
-     *  expire inert at the struct deadline. */
-    const finish = useCallback((pickedAddress?: Hex) => {
+    /** Render the engine's outcome: the winner becomes the node selection.
+     *  Losing countersignatures need no cancellation — they expire inert at
+     *  the struct deadline. */
+    const applyOutcome = useCallback((outcome: RaceOutcome) => {
         if (finishedRef.current) return;
         finishedRef.current = true;
         cleanup();
         const ctx = ctxRef.current;
-        const replies = repliesRef.current;
-        const winner = pickedAddress
-            ? replies.find((r) => hexEqual(r.candidate, pickedAddress)) ?? null
-            : selectRaceWinner(replies);
+        const winner = outcome.winner;
         if (!ctx || !winner || !winner.reply.sellerSig) {
             setError("No candidate countersigned within the race window — try again, or pick a seller directly.");
             setStep("error");
@@ -295,7 +250,7 @@ export function useDispatchRace() {
         setError(null);
         setResult(null);
         finishedRef.current = false;
-        repliesRef.current = [];
+        runRef.current = null;
         try {
             setStep("drafting");
             const template = checkout.assembly.assemblyTemplate;
@@ -388,98 +343,63 @@ export function useDispatchRace() {
             draftsRef.current = drafts;
             setCandidates(drafts.map((d) => ({ address: d.address, itemName: d.item.name, payment: d.payment, replied: false })));
 
-            // Verify and record a countersigned reply — ONE path for both
-            // transports. Race leg: exact-match against the sent draft.
-            // Quotes leg: reconstruction — the same substitution applied to
-            // OUR draft must reproduce the reply hash-for-hash.
-            const recordReply = async (d: RaceCandidateState, reply: CommitmentPayload) => {
-                if (finishedRef.current) return;
-                if (!reply.sellerSig) return;
-                const check = args.quote
-                    ? await verifyQuoteReply(reply, d.draft, { chainId, core })
-                    : await verifyRaceReply(reply, d.draft, { chainId, core });
-                if (!check.ok) return;
-                if (repliesRef.current.some((r) => hexEqual(r.candidate, d.address))) return;
-                repliesRef.current.push({ candidate: d.address, draft: d.draft, reply });
-                setCandidates((prev) => prev.map((c) =>
-                    hexEqual(c.address, d.address)
-                        ? { ...c, replied: true, payment: reply.commitment.payment }
-                        : c,
-                ));
-                if (repliesRef.current.length === draftsRef.current.length) finish();
-            };
-
-            // Send every draft — per-candidate transport, one choreography:
-            //   - AGENT candidate (declared `services.rest`): POST the draft
-            //     to their endpoint; the HTTP response IS the reply (or a
-            //     decline). Mixed pairings are exactly this branch — the
-            //     artifacts never change, only the wire.
-            //   - wallet candidate: relay over the coordination channel and
-            //     listen for the countersigned return on the same order id.
-            //     The buyer's own relay echoes back on the mock bus — a
-            //     payload without a seller signature is ignored.
+            // THE race — the SDK engine runs the one authored choreography
+            // (fan-out, verification, arrival-order accumulation, selection);
+            // this surface supplies only the per-candidate channel and renders
+            // progress. Candidate routing is the profile-keyed rule:
+            //   - AGENT candidate (declared `services.rest`): the offer wire —
+            //     POST to their endpoint behind the browser-edge https guard.
+            //     Mixed pairings are exactly this branch.
+            //   - wallet candidate: the relay adapter — the handoff family's
+            //     pre-commit cell speaking `CoordinationChannel`.
             setStep("racing");
-            for (const d of drafts) {
-                if (d.endpoint) {
+            const relay = createRelayCoordinationChannel({
+                handoffMessaging: services.handoffMessaging,
+                senderAddress: checkout.buyer,
+                walletClient: walletClient ?? null,
+                chainId,
+            });
+            relayRef.current = relay;
+            const channelFor = (draft: CommitmentPayload) => {
+                const d = draftsRef.current.find((s) => s.draft === draft);
+                if (d?.endpoint) {
                     const endpoint = d.endpoint;
-                    void (async () => {
-                        try {
-                            const reply = await postToAgentEndpoint(endpoint, d.draft);
-                            if (reply) await recordReply(d, reply);
-                        } catch {
-                            // Unreachable or refusing endpoint — the candidate
-                            // simply never replies; the window closes the race.
-                        }
-                    })();
-                    continue;
+                    return { sendOffer: (_seller: Hex, dr: CommitmentPayload) => postToAgentEndpoint(endpoint, dr) };
                 }
-                const unsub = await services.coordinationMessaging.subscribeCommitmentPayload({
-                    address: checkout.buyer,
-                    walletClient: walletClient ?? null,
-                    orderId: d.orderId,
-                    callback: (payloadJson: string) => {
-                        void (async () => {
-                            try {
-                                // Delivered inline over the E2E channel (F Arm 2);
-                                // cap defensively, then deserialize — no IPFS fetch.
-                                if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
-                                await recordReply(d, deserializeCommitmentPayload(payloadJson));
-                            } catch {
-                                // Malformed reply — ignore; the window closes the
-                                // race regardless.
-                            }
-                        })();
-                    },
-                });
-                unsubsRef.current.push(unsub);
-                await relayRacePayload({
-                    payload: d.draft,
-                    recipientAddress: d.address,
-                    senderAddress: checkout.buyer,
-                    walletClient: walletClient ?? null,
-                    chainId,
-                    coordinationMessaging: services.coordinationMessaging,
-                });
-            }
-            timerRef.current = setTimeout(() => finish(), args.windowMs ?? DEFAULT_RACE_WINDOW_MS);
+                return relay;
+            };
+            const run = startRace(channelFor, drafts.map((d) => d.draft), { chainId, core }, {
+                quote: !!args.quote,
+                onReply: (r) => {
+                    const seller = r.draft.commitment.seller as Hex;
+                    setCandidates((prev) => prev.map((c) =>
+                        hexEqual(c.address, seller)
+                            ? { ...c, replied: true, payment: r.reply.commitment.payment }
+                            : c,
+                    ));
+                },
+            });
+            runRef.current = run;
+            void run.done.then(applyOutcome);
+            timerRef.current = setTimeout(() => run.finish(), args.windowMs ?? DEFAULT_RACE_WINDOW_MS);
         } catch (e: unknown) {
             cleanup();
             finishedRef.current = true;
             setError(extractErrorMessage(e, "The race could not start"));
             setStep("error");
         }
-    }, [chainId, walletClient, services, finish, cleanup]);
+    }, [chainId, walletClient, services, applyOutcome, cleanup]);
 
     /** Buyer override: close the race now on the best reply so far. */
-    const selectNow = useCallback(() => finish(), [finish]);
+    const selectNow = useCallback(() => { runRef.current?.finish(); }, []);
     /** Buyer override: choose a specific countersigner instead of the cheapest. */
-    const pick = useCallback((candidate: Hex) => finish(candidate), [finish]);
+    const pick = useCallback((candidate: Hex) => { runRef.current?.finish(candidate); }, []);
 
     const reset = useCallback(() => {
         cleanup();
         finishedRef.current = false;
         draftsRef.current = [];
-        repliesRef.current = [];
+        runRef.current = null;
         ctxRef.current = null;
         setStep("idle");
         setError(null);

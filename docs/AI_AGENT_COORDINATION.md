@@ -161,10 +161,21 @@ framework-agnostic HTTP handler. `HttpChannel` is **keyed by the coordination en
 the seller publishes in its DID Document**: `didWebEndpointResolver` resolves the DID,
 verifies the wallet binding, and returns the `service` endpoint to route the offer to
 (see "Agent Service Endpoints" below). `verify-origination-http.devnet.mjs` proves a
-full bonded process originates over a real socket. Transport is provider-agnostic by
+full bonded process originates over a real socket, and `verify-origination-a2a.devnet.mjs`
+proves the same over the A2A interop wire. Transport is provider-agnostic by
 doctrine — `A2aChannel` (`sdk/src/agent/a2aChannel.ts`, with `makeA2aOfferResponder`
 on the seller side) implements the same `CoordinationChannel` interface over the A2A
 message format, and XMTP can too — the way dispute resolution is not any one forum.
+
+**One choreography over every transport (the one-seam ruling, 2026-08-14).** The
+dispatch race races over the `CoordinationChannel` interface, period: the SDK's
+`startRace` engine owns the fan-out, verification, arrival-order accumulation, and
+selection, and every surface — batch script or interactive checkout — supplies only
+per-candidate channels (a declared service endpoint routes to `HttpChannel`/`A2aChannel`;
+a wallet counterparty routes through the frontend's relay adapter,
+`frontend/lib/handoff/relayChannel.ts`, the handoff relay's pre-commit cell speaking
+this same interface). Window duration, buyer overrides, and progress rendering are
+caller policy; the choreography is never authored twice.
 
 ---
 

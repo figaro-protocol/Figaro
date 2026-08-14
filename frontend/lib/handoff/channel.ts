@@ -2,15 +2,16 @@
  * Handoff-channel factory — which transport a wallet's `HandoffChannel`
  * (the wire protocol in `@figaro/sdk/handoff`) actually runs over.
  *
- * Three implementations:
- *   - Real: XMTP DM via @xmtp/browser-sdk (devnet opt-in via stored transport; the picker is gone — the network channel is a testnet-planning decision)
- *   - Null: inert links-only floor (the default outside test mode)
+ * Three implementations, chosen by DERIVED facts, never a setting (the
+ * one-seam ruling, 2026-08-14):
+ *   - Real: XMTP DM via @xmtp/browser-sdk — engaged iff the wallet already
+ *     has an XMTP inbox (`walletHasXmtpInbox`, a signature-free probe)
+ *   - Null: inert links-only floor (no signer, or no inbox)
  *   - Mock: in-memory message bus for e2e tests
  */
 
 import type { HandoffChannel } from "@figaro/sdk/handoff";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
-import { readUserTransport } from "@/lib/handoff/userTransport";
 
 /** Cached channel instances keyed by address. */
 const channelCache = new Map<string, HandoffChannel>();
@@ -50,7 +51,7 @@ function sharedCreate(key: string, create: () => Promise<HandoffChannel>): Promi
  * @param address  Wallet address (checksummed or lowercase).
  * @param signMessage  Wallet signing capability for XMTP auth.
  */
-export async function getCoordinationChannel(
+export async function getHandoffChannel(
     address: string,
     signMessage?: (message: string) => Promise<`0x${string}`>,
 ): Promise<HandoffChannel> {
@@ -68,31 +69,34 @@ export async function getCoordinationChannel(
         });
     }
 
-    // Outside test mode the transport is the WALLET'S choice, defaulting to
-    // `links-only` (the share/receive URI flow — no push transport, no
-    // broker). Return an inert channel so callers keep working and the XMTP
-    // chunk is NEVER loaded or initialized unless the wallet opted in on
-    // the stored transport preference. (Applies on reload — cached singleton.)
-    if (readUserTransport() !== "xmtp") {
+    // Outside test mode the transport is DERIVED, never a setting (the
+    // one-seam ruling, 2026-08-14 — the per-wallet toggle is deleted): a
+    // wallet that already has an XMTP inbox chose XMTP somewhere, so its
+    // channel connects there (continuation, not seizure — the signature on
+    // first connect re-establishes the wallet's own chosen channel on this
+    // device); a wallet with no inbox — or no signer to connect one — stays
+    // on the links-only floor (the share/receive URI flow: no push
+    // transport, no broker, always works). In-app inbox CREATION is a
+    // deliberate future flow, an action rather than a setting.
+    if (!signMessage) {
         return sharedCreate(key, async () => {
             const { createNullChannel } = await import("./nullChannel");
             return createNullChannel();
         });
     }
-
-    if (!signMessage) {
-        throw new Error("signMessage callback required for XMTP channel outside test mode");
-    }
-
-    // A normal lazy import — webpack emits ./xmtpChannel as its own chunk.
-    // (It carried `webpackIgnore: true` from the V5 baseline, which told
-    // webpack to emit NO chunk and left the browser resolving a raw
-    // relative URL against /_next/static/chunks/… — a guaranteed 404, so
-    // the real XMTP path never worked in any bundled build. The module
-    // itself already lazy-imports @xmtp/browser-sdk to keep WASM out of
-    // the server bundle; no pragma is needed for that.)
+    // ONE flight covers probe + creation: the derived-transport probe is an
+    // async gap, and a probe outside the gate would let two concurrent
+    // callers each start an XMTP creation — the exact OPFS double-flight the
+    // gate exists to prevent (caught by the single-flight suite, 2026-08-14).
+    // The xmtpChannel import is lazy — webpack emits it as its own chunk; the
+    // module itself lazy-imports @xmtp/browser-sdk, keeping WASM out of the
+    // server bundle.
     return sharedCreate(key, async () => {
-        const { createXmtpChannel } = await import("./xmtpChannel");
+        const { walletHasXmtpInbox, createXmtpChannel } = await import("@/lib/handoff/xmtpChannel");
+        if (!(await walletHasXmtpInbox(address))) {
+            const { createNullChannel } = await import("./nullChannel");
+            return createNullChannel();
+        }
         return createXmtpChannel(address, signMessage);
     });
 }

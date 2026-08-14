@@ -48,7 +48,7 @@ function SignPageContent() {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const searchParams = useSearchParams();
-    const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
+    const { handoffMessaging, evidenceTransport } = useRuntimeServices();
     const { acceptOrder, counterSignAndReturn, quoteAndReturn, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
@@ -115,7 +115,7 @@ function SignPageContent() {
         setChannelStatus("listening");
         setChannelError(null);
 
-        void coordinationMessaging.subscribeAnyCommitmentPayload({
+        void handoffMessaging.subscribeAnyCommitmentPayload({
             address,
             walletClient,
             callback: async (payloadJson, orderId) => {
@@ -178,7 +178,7 @@ function SignPageContent() {
             cancelled = true;
             cleanup?.();
         };
-    }, [address, coordinationMessaging, evidenceTransport, parsed, parseSerializedPayload, rawInput, searchParams, walletClient]);
+    }, [address, handoffMessaging, evidenceTransport, parsed, parseSerializedPayload, rawInput, searchParams, walletClient]);
 
     const handleCounterSign = async () => {
         if (!parsed) return;

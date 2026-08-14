@@ -11,7 +11,7 @@
  * against XMTP's hosted `dev` network, exactly what production uses.
  *
  * How this stays the REAL path (the devnet suite deliberately mocks it):
- *  - Navigation carries NO `?e2e=` param, so `getCoordinationChannel` selects
+ *  - Navigation carries NO `?e2e=` param, so `getHandoffChannel` selects
  *    the real XMTP transport — the in-memory mock is keyed on the e2e session.
  *  - The parties are DEVICE-UNIQUE wallets, not anvil accounts. Anvil's
  *    junk-mnemonic wallets are a GLOBAL COMMONS on XMTP's hosted dev network

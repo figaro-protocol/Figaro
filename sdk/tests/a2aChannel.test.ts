@@ -179,3 +179,82 @@ describe("A2aChannel over a real socket", () => {
         }
     });
 });
+
+// ── didWebEndpointResolver over A2A — discovery closes the loop here too ─────
+//
+// The HTTP sibling proves the resolver; this proves the COMPOSITION the
+// A2aChannelOptions doc promises (`didWebEndpointResolver(...,
+// { serviceType: "A2AEndpoint" })`): a seller's DID document declares its A2A
+// endpoint, the resolver verifies the wallet binding, and a full offer →
+// counter-sign handshake rides the resolved endpoint. Before 2026-08-14 the
+// A2A leg had no resolver coverage at all (channel-seam audit, finding 10).
+
+import { didWebEndpointResolver } from "../src/agent/httpChannel.js";
+import type { DIDDocument } from "../src/agent/did.js";
+
+describe("A2aChannel + didWebEndpointResolver", () => {
+    it("resolves the seller's declared A2AEndpoint and completes the handshake over it", async () => {
+        const responder = makeA2aOfferResponder(sellerHandler);
+        const { url, stop } = await startSellerServer(responder);
+        try {
+            const didDoc: DIDDocument = {
+                "@context": ["https://www.w3.org/ns/did/v1"],
+                id: "did:web:seller.example.com",
+                verificationMethod: [{
+                    id: "did:web:seller.example.com#controller",
+                    type: "EcdsaSecp256k1RecoveryMethod2020",
+                    controller: "did:web:seller.example.com",
+                    blockchainAccountId: `eip155:${CHAIN_ID}:${SELLER.address.toLowerCase()}`,
+                }],
+                service: [{ id: "did:web:seller.example.com#a2a", type: "A2AEndpoint", serviceEndpoint: url }],
+            };
+            // The DID document is served over the injected fetch; the OFFER
+            // rides the real socket — only discovery is stubbed, the wire is not.
+            const didFetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+                const target = String(input);
+                if (target.includes("did.json")) return new Response(JSON.stringify(didDoc), { status: 200 });
+                return fetch(input, init);
+            }) as typeof fetch;
+            const channel = new A2aChannel({
+                resolveEndpoint: didWebEndpointResolver(() => "did:web:seller.example.com", {
+                    serviceType: "A2AEndpoint", chainId: CHAIN_ID, fetchFn: didFetch,
+                }),
+                fetchFn: didFetch,
+            });
+            const offer = await buildOffer();
+            const reply = await channel.sendOffer(SELLER.address, offer);
+            expect(reply?.sellerSig).toBeTruthy();
+            const domain = buildDomain(CHAIN_ID, CORE);
+            expect(await verifyTypedData({
+                address: SELLER.address, domain, types: COMMITMENT_TYPES,
+                primaryType: "Commitment", message: reply!.commitment, signature: reply!.sellerSig as `0x${string}`,
+            })).toBe(true);
+        } finally {
+            await stop();
+        }
+    });
+
+    it("refuses to route when the DID does not bind the seller address", async () => {
+        const didDoc: DIDDocument = {
+            "@context": ["https://www.w3.org/ns/did/v1"],
+            id: "did:web:other.example.com",
+            verificationMethod: [{
+                id: "did:web:other.example.com#controller",
+                type: "EcdsaSecp256k1RecoveryMethod2020",
+                controller: "did:web:other.example.com",
+                blockchainAccountId: `eip155:${CHAIN_ID}:${BUYER.address.toLowerCase()}`,
+            }],
+            service: [{ id: "did:web:other.example.com#a2a", type: "A2AEndpoint", serviceEndpoint: "https://other.example.com/a2a" }],
+        };
+        const fetchFn = (async () => new Response(JSON.stringify(didDoc), { status: 200 })) as unknown as typeof fetch;
+        const channel = new A2aChannel({
+            resolveEndpoint: didWebEndpointResolver(() => "did:web:other.example.com", {
+                serviceType: "A2AEndpoint", chainId: CHAIN_ID, fetchFn,
+            }),
+            fetchFn,
+        });
+        const offer = await buildOffer();
+        // Unresolvable endpoint = absence, no counterparty — null, never a throw.
+        expect(await channel.sendOffer(SELLER.address, offer)).toBeNull();
+    });
+});
