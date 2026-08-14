@@ -23,6 +23,10 @@ bash scripts/lint-clause-counts.sh
 # 299 drifted to 301 unnoticed before this guard; the page must cite exactly
 # what the tree derives (Foundry/Halmos/Certora/Echidna).
 bash scripts/lint-security-counts.sh
+# The tracked abi/ bundle (non-TS integrator surface) must equal what the
+# build emits — a stale tracked ABI is worse than none. Runs after forge
+# build above, so the artifacts it re-emits from are fresh.
+bash scripts/lint-abi-bundle.sh
 # Nesting guard: block.nestsUnder must name a STRUCTURED field (enum/array/object) of another
 # clause — never a scalar, never a non-existent field. Kills the article-vs-nestsUnder
 # conflation (grouping is article's job; nestsUnder is sub-clause refinement). Whole-tree:

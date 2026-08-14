@@ -46,3 +46,12 @@ here rather than repeat them in prose — the same discipline
 `.deployments/local.json` already follows for the devnet (`docs/LOCAL_DEV.md`
 documents the local record; `sdk/README.md` documents the record's key → SDK
 mapping — `addressesFromDeploymentRecord`).
+
+## ABIs (`abi/`)
+
+The tracked `abi/` bundle at the repo root carries the bare ABI array for
+every contract in the record shape above — the surface a non-TS integrator
+needs (the TS SDK exports the same ABIs as constants). Emitted from the
+forge build artifacts by `scripts/emit-abi-bundle.sh`; pre-commit's
+`lint-abi-bundle.sh` fails any commit where the tracked bundle drifts from
+the build, so `abi/` is always the deployed truth, never a stale copy.
