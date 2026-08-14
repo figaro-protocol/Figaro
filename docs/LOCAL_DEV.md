@@ -47,6 +47,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 # …or the individual steps it wraps:
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology) — self-sufficient
 ./scripts/deploy-mainnet.sh              # MAINNET wrapper for script/DeployMainnet.s.sol — refuses without MAINNET_DEPLOY_CONFIRM=yes + all env vars + chain-id 1 read-back; never run casually
+./scripts/deploy-sepolia.sh              # SEPOLIA wrapper for script/DeploySepolia.s.sol — same guard structure (SEPOLIA_DEPLOY_CONFIRM=yes + chain-id 11155111 read-back); SKIP_VERIFY=1 for the Anvil-fork rehearsal only
 ```
 
 Full harness inventory (file lists, property names, rule counts) → `TESTING.md`.
@@ -57,6 +58,7 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 - `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
 - `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `SUPPORTERS_WALLET`, `DAO_WALLET`, `SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`, `RPGF_GENESIS`). Deploys the kernel, all three registries (Clause / Members / Assembly), the coordinators, `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/supporters/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
+- `script/DeploySepolia.s.sol` — Sepolia; mirror of `DeployMainnet.s.sol` with exactly three documented testnet divergences (weekly accrual periods per the 2026-07-15 compression ruling; members cooldown 13h by the same factor; `MockTreasuryMultisig` deployed as the DAO wallet — mock-as-code, mainnet Safe = config). Env contract = mainnet's minus `DAO_WALLET`.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.
 
 `forge script` is harness-denied; deploy via the `.sh` wrappers, not by calling `forge script` directly.
