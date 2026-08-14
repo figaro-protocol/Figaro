@@ -34,6 +34,12 @@
  * treasury's own ETH balance — fund it first):
  *   DAO_TREASURY          — treasury (multisig) address; registrar-of-record
  *   TREASURY_OWNER_KEYS   — comma-separated owner private keys (threshold many)
+ *
+ * REFERENCE ASSEMBLIES ride the same invocation when both are set:
+ *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — the AssemblyRegistry address
+ *   ASSEMBLY_TOKEN_ADDRESS        — settlement token substituted for the
+ *                                   checked-in ZERO_ADDRESS sentinel (Sepolia:
+ *                                   USDC, ruled 2026-08-14)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -45,7 +51,10 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro/sdk, file:../sdk — the
 // compiled dist resolves from plain node ESM): the registry ABI, the clause
 // key, and the canonical-JSON convention. Nothing is re-implemented here.
-import { CLAUSE_REGISTRY_ABI, computeClauseKey, canonicalize, canonicalContentHash } from '@figaro/sdk';
+import {
+    CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey, canonicalize,
+    canonicalContentHash, templateCompositionHash, deriveAssemblySlug,
+} from '@figaro/sdk';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
@@ -201,20 +210,8 @@ export function registrarAccount() {
  */
 export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients, log = console.log }) {
     const files = fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort();
-    let registered = 0;
-    if (treasury) {
-        // Genesis-seed preflight: deposits are paid from the treasury's own
-        // balance (execute forwards value), so an underfunded treasury fails
-        // here with arithmetic, not mid-run with a revert.
-        const deposit = await publicClient.readContract({
-            address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
-        });
-        const balance = await publicClient.getBalance({ address: treasury });
-        const need = deposit * BigInt(files.length);
-        if (balance < need) {
-            throw new Error(`treasury ${treasury} holds ${balance} wei but the ${files.length} clause deposits need up to ${need} wei — fund it first`);
-        }
-    }
+    // First pass: what actually needs registering (idempotent skips are free).
+    const pending = [];
     for (const file of files) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         const clauseIdStr = spec.clauseId;
@@ -222,13 +219,30 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const version = BigInt(spec.version ?? 1);
         // On-chain identity is keccak256(abi.encode(name, version)).
         const clauseId = computeClauseKey(clauseIdStr, version);
-
         if (await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [clauseId],
         })) {
             log(`  · ${clauseIdStr} — already registered, skipped`);
             continue;
         }
+        pending.push({ spec, clauseIdStr, version, clauseId });
+    }
+    let registered = 0;
+    if (treasury && pending.length > 0) {
+        // Genesis-seed preflight: deposits are paid from the treasury's own
+        // balance (execute forwards value), so an underfunded treasury fails
+        // here with arithmetic, not mid-run with a revert. Only UNREGISTERED
+        // clauses cost a deposit.
+        const deposit = await publicClient.readContract({
+            address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
+        });
+        const balance = await publicClient.getBalance({ address: treasury });
+        const need = deposit * BigInt(pending.length);
+        if (balance < need) {
+            throw new Error(`treasury ${treasury} holds ${balance} wei but the ${pending.length} outstanding clause deposits need ${need} wei — fund it first`);
+        }
+    }
+    for (const { spec, clauseIdStr, version, clauseId } of pending) {
 
         // Pin the spec to IPFS (the pointer readers fetch from), and anchor its
         // content digest (integrity) + that pointer on-chain. The digest is over
@@ -281,6 +295,107 @@ export async function populateClauses({ publicClient, walletClient, account, reg
     return registered;
 }
 
+// ── Reference assemblies (`assemblies/*.json`, `clauses/`' sibling) ─────────
+
+/** The codebase's standing sentinel for an unset address-hex value (mirrors
+ *  `ZERO_ADDRESS` in frontend/lib/shared/evm.ts). A checked-in reference
+ *  assembly cannot ship a real token address, so the seed path substitutes
+ *  the live deployment's token at anchor time. */
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+/** Fill the deploy-time currency pin: any assembly-scoped figaro-utility-token
+ *  composed with the ZERO_ADDRESS sentinel gets the live token address
+ *  substituted before anchoring. Templates that don't compose the clause, or
+ *  that already pin a real address, pass through unchanged. */
+export function fillDeployTimeCurrency(template, tokenAddress) {
+    const pin = template.assemblyClauses?.['figaro-utility-token'];
+    if (!pin || pin.currency !== ZERO_ADDRESS) return template;
+    return {
+        ...template,
+        assemblyClauses: {
+            ...template.assemblyClauses,
+            'figaro-utility-token': { ...pin, currency: tokenAddress },
+        },
+    };
+}
+
+/** Anchor one AssemblyTemplate (idempotent — compositionHash is content-derived,
+ *  first-write-wins). In treasury mode the multisig is msg.sender, so the DAO
+ *  becomes the author-of-record for the anchored binding. */
+export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, treasury, ownerClients, log = console.log }) {
+    // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
+    // is presentation, derived off-chain. Both from the SDK single home — the
+    // registry keys bindings by compositionHash.
+    const compositionHash = templateCompositionHash(template);
+    const slug = deriveAssemblySlug(compositionHash);
+
+    // Idempotency via STATE, not an event scan: `bindings[hash].registeredAt`
+    // is the contract's own already-registered test. A fromBlock:0 log scan
+    // works on devnet's short chain but exceeds every public provider's
+    // getLogs range cap on a real network (caught on the Sepolia fork,
+    // 2026-08-14).
+    const [, registeredAt] = await publicClient.readContract({
+        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [compositionHash],
+    });
+    if (registeredAt !== 0n && registeredAt !== 0) {
+        log(`  · ${slug} — already anchored, skipped`);
+        return slug;
+    }
+
+    const contentURI = await pinJSON(ipfsApiUrl, canonicalize(template));
+    const deposit = await publicClient.readContract({
+        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
+    });
+    if (treasury) {
+        // Nonce = the compositionHash itself: unique per assembly,
+        // deterministic across re-runs.
+        await treasuryExecute({
+            publicClient, treasury, ownerClients,
+            to: registry,
+            value: deposit,
+            data: encodeFunctionData({
+                abi: ASSEMBLY_REGISTRY_ABI,
+                functionName: 'registerAssembly',
+                args: [compositionHash, contentURI],
+            }),
+            nonce: BigInt(compositionHash),
+            log,
+        });
+    } else {
+        const { request } = await publicClient.simulateContract({
+            account: account.address, address: registry, abi: ASSEMBLY_REGISTRY_ABI,
+            functionName: 'registerAssembly', args: [compositionHash, contentURI], value: deposit,
+        });
+        const hash = await walletClient.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash });
+    }
+    log(`  ✓ ${slug} — anchored; template ${contentURI}`);
+    return slug;
+}
+
+/** Pin the affixed documents, then anchor every reference assembly
+ *  (`assemblies/*.json`) with the live settlement token substituted for the
+ *  checked-in sentinel. The ONE reference-assembly population path —
+ *  devnet (EOA, mock token) and testnet/mainnet (treasury, ruled token)
+ *  differ only in the arguments. */
+export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, treasury, ownerClients, log = console.log }) {
+    const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
+    if (fs.existsSync(documentsDir)) {
+        for (const file of fs.readdirSync(documentsDir).sort()) {
+            const cid = await pinFile(ipfsApiUrl, path.join(documentsDir, file));
+            log(`  · document ${file} — pinned ipfs://${cid}`);
+        }
+    }
+    let anchored = 0;
+    for (const file of fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()) {
+        const raw = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
+        const template = fillDeployTimeCurrency(raw, tokenAddress);
+        await anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, treasury, ownerClients, log });
+        anchored += 1;
+    }
+    return anchored;
+}
+
 async function main() {
     const env = readEnvLocal();
     const registry = process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? env.NEXT_PUBLIC_CLAUSE_REGISTRY;
@@ -307,6 +422,20 @@ async function main() {
     console.log(`  IPFS      ${ipfsApiUrl}\n`);
     const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, treasury, ownerClients });
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
+
+    // Reference assemblies ride the same invocation when the registry and the
+    // settlement-token fill are both provided (testnet/mainnet: Sepolia USDC
+    // ruled 2026-08-14; devnet's populate-test-data passes its mock instead).
+    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
+    if (assemblyRegistry && assemblyToken) {
+        console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
+        const a = await populateReferenceAssemblies({
+            publicClient, walletClient, account, registry: assemblyRegistry, ipfsApiUrl,
+            tokenAddress: assemblyToken, treasury, ownerClients,
+        });
+        console.log(`Done — ${a} reference assembly(ies) processed.`);
+    }
 }
 
 // Run as a script (not when imported).
