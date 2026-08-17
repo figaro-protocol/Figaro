@@ -281,7 +281,7 @@ export function readEnvLocal() {
 export function pinService() {
     const jwt = process.env.IPFS_PIN_SERVICE_JWT ?? '';
     if (!jwt) return null;
-    const api = (process.env.IPFS_PIN_SERVICE_API ?? 'https://api.pinata.cloud').replace(/\/$/, '');
+    const api = (process.env.IPFS_PIN_SERVICE_API || 'https://api.pinata.cloud').replace(/\/$/, '');
     return { api, jwt };
 }
 

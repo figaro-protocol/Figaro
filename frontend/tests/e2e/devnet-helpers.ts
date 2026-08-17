@@ -23,8 +23,16 @@ import { ZERO_ADDRESS } from '@/lib/shared/evm';
  *  against Sepolia unchanged. */
 export const E2E_CHAIN: 'devnet' | 'sepolia' = process.env.E2E_CHAIN === 'sepolia' ? 'sepolia' : 'devnet';
 export const RPC_URL = E2E_CHAIN === 'sepolia'
-    ? (process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com')
+    // The public keyless endpoint the site itself reads through — never the
+    // deploy key's SEPOLIA_RPC_URL (keyed; rate-limited under a long run).
+    ? (process.env.E2E_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com')
     : 'http://127.0.0.1:8545';
+/** Where out-of-band event scans start: the deployment block on a public
+ *  network (public gateways cap eth_getLogs ranges — a from-genesis scan is
+ *  refused), block 0 on the devnet. */
+export const SCAN_FROM_BLOCK: bigint = E2E_CHAIN === 'sepolia'
+    ? BigInt((JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../deployments/11155111.json'), 'utf8')) as { deploymentBlock?: number }).deploymentBlock ?? 0)
+    : 0n;
 /** The active e2e chain — Anvil unless `E2E_CHAIN=sepolia`. (The identifier
  *  predates the switch; it names the devnet default every spec assumes.) */
 export const LOCAL_ANVIL = defineChain({
@@ -336,7 +344,7 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
         await expect.poll(async () => {
             const res = await fetch(`${gateway}/ipfs/${cid}`).catch(() => null);
             return res?.ok ?? false;
-        }, { timeout: 120_000, intervals: [5_000], message: `CID ${cid} resolves on ${gateway}` }).toBe(true);
+        }, { timeout: 420_000, intervals: [10_000], message: `CID ${cid} resolves on ${gateway}` }).toBe(true);
         return;
     }
     const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';

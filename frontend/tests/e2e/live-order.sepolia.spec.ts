@@ -36,7 +36,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
-    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, referenceAssemblySlug, waitForConnected,
+    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, SCAN_FROM_BLOCK, assertPinnedInIpfs, readLocalDeploymentConfig, referenceAssemblySlug, waitForConnected,
 } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { gotoAsWallet } from './devnet-multi-test';
@@ -141,6 +141,33 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             // ═══ 1. SELLER — the wizard ═══════════════════════════════════════
             const posSlug = referenceAssemblySlug('pos.json');
             const sellerName = `Smoke counter ${seller.address.slice(2, 8)}`;
+            const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
+            const latestUri = async () => {
+                const [reg, upd] = await Promise.all([
+                    publicClient.getContractEvents({ address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered', args: { member: seller.address }, fromBlock: SCAN_FROM_BLOCK }),
+                    publicClient.getContractEvents({ address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberProfileUpdated', args: { member: seller.address }, fromBlock: SCAN_FROM_BLOCK }),
+                ]);
+                const all = [...reg, ...upd].sort((a, b) => Number(a.blockNumber - b.blockNumber));
+                return String((all[all.length - 1]?.args as { metadataURI?: string })?.metadataURI ?? '');
+            };
+            // Idempotent on a persisted network: a rerun must NOT walk the
+            // wizard again — every publish mints a fresh catalogue item id, so
+            // "the same" profile re-pins under a new CID and the pointer moves
+            // to content the public gateway has not propagated yet (the member
+            // vanishes from /discover until it does). Skip when the chain
+            // already shows this seller registered AND its served profile
+            // binds `pos`.
+            let alreadyBound = false;
+            if (alreadyRegistered) {
+                const uri = await latestUri();
+                const doc = uri.startsWith('ipfs://')
+                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; assemblyBindings?: Array<{ assemblySlug?: string }> } | null
+                    : null;
+                alreadyBound = !!doc && doc.name === sellerName && (doc.assemblyBindings ?? []).some((b) => b.assemblySlug === posSlug);
+            }
+            if (alreadyBound) {
+                testInfo.annotations.push({ type: 'wizard', description: 'skipped — seller already registered and bound to pos (idempotent rerun)' });
+            } else {
             await switchTo(seller.address, '/members/identity?e2e=devnet');
             await expect(page.locator('#profile-name')).toBeVisible({ timeout: 60_000 });
             await page.locator('#profile-name').fill(sellerName);
@@ -183,20 +210,48 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await expect(page.getByText(sellerName)).toBeVisible();
             await page.getByTestId('review-confirm-publish').click();
             await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 300_000 });
+            }
             // Chain fact: registered, stake held, profile URI on the registry.
             expect(await publicClient.readContract({ address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'registered', args: [seller.address] }), 'MembersRegistry.registered(seller)').toBe(true);
+            // The profile the app pinned must be READABLE where the site reads
+            // it (the public gateway) — on a public network that is minutes of
+            // propagation after the pin; the out-of-band proof is the gateway
+            // serving the URI the chain points at.
+            const profileUri = await latestUri();
+            expect(profileUri.startsWith('ipfs://'), 'the registry points at a pinned profile').toBe(true);
+            await assertPinnedInIpfs(profileUri.slice('ipfs://'.length));
+            // …and the catalogue the profile points at (a second pinned
+            // document — the seller page's item list reads it).
+            const profileDoc = await (await fetch(`${gateway}/ipfs/${profileUri.slice('ipfs://'.length)}`)).json() as { catalogueURI?: string };
+            expect(String(profileDoc.catalogueURI ?? '').startsWith('ipfs://'), 'the profile points at a pinned catalogue').toBe(true);
+            await assertPinnedInIpfs(String(profileDoc.catalogueURI).slice('ipfs://'.length));
 
             // ═══ 2. DISCOVER — the buyer's surface lists the seller ═══════════
+            // Poll with reloads: a profile read that 504'd before propagation
+            // is not cached, so the next load picks it up.
             await switchTo(buyer.address, '/discover?e2e=devnet');
-            await expect(page.getByText(sellerName).first(), 'the seller surfaces on /discover').toBeVisible({ timeout: 180_000 });
+            await expect.poll(async () => {
+                if (await page.getByText(sellerName).first().isVisible().catch(() => false)) return true;
+                await page.reload({ waitUntil: 'domcontentloaded' });
+                await page.waitForTimeout(10_000);
+                return page.getByText(sellerName).first().isVisible().catch(() => false);
+            }, { timeout: E2E_CHAIN === 'sepolia' ? 420_000 : 60_000, intervals: [1_000], message: 'the seller surfaces on /discover' }).toBe(true);
 
             // ═══ 3. BUYER — order → checkout → sign → relay ═══════════════════
-            const committedBefore = (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: 0n })).length;
+            const committedBefore = (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK })).length;
             const [buyerT0, sellerT0, coreT0] = await Promise.all([balanceOf(buyer.address), balanceOf(seller.address), balanceOf(core)]);
             await switchTo(buyer.address, `/s/view?seller=${seller.address}&e2e=devnet`);
             await page.getByTestId('member-detail-view').waitFor({ timeout: 120_000 });
             const addBtn = page.locator('[data-testid^="btn-add-"]').first();
-            await addBtn.waitFor({ state: 'visible', timeout: 120_000 });
+            // The catalogue may still be settling on the gateway for the
+            // browser's own read — reload until the item renders.
+            await expect.poll(async () => {
+                if (await addBtn.isVisible().catch(() => false)) return true;
+                await page.reload({ waitUntil: 'domcontentloaded' });
+                await page.getByTestId('member-detail-view').waitFor({ timeout: 60_000 }).catch(() => {});
+                await page.waitForTimeout(8_000);
+                return addBtn.isVisible().catch(() => false);
+            }, { timeout: E2E_CHAIN === 'sepolia' ? 300_000 : 60_000, intervals: [1_000], message: 'the catalogue item renders on the seller page' }).toBe(true);
             await addBtn.click();
             await page.getByTestId('btn-review-order').click();
             await page.getByTestId('checkout-view').waitFor({ timeout: 60_000 });
@@ -219,7 +274,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await page.getByTestId('btn-accept-order').first().click();
             await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 120_000 });
             await page.getByTestId('preview-confirm').click();
-            const queryCommitted = () => publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: 0n });
+            const queryCommitted = () => publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK });
             await expect.poll(async () => (await queryCommitted()).length, { timeout: 600_000, intervals: [5_000], message: 'OrderCommitted lands on-chain' }).toBe(committedBefore + 1);
             const all = await queryCommitted();
             const event = all[all.length - 1];
@@ -236,13 +291,13 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await expect(page.getByTestId(`order-status-${processId}`), 'the order shows In progress').toHaveText('In progress', { timeout: 60_000 });
 
             // ═══ 5. BUYER — resolve (buyer dominance) ═════════════════════════
-            const resolvedBefore = (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address }, fromBlock: 0n })).length;
+            const resolvedBefore = (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK })).length;
             await switchTo(buyer.address, `/orders/view?process=${processId}&e2e=devnet`);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 120_000 });
             const resolveBtn = page.getByTestId('capability-execute-resolve-process');
             await expect(resolveBtn, 'the buyer can resolve').toBeEnabled({ timeout: 120_000 });
             await resolveBtn.click();
-            await expect.poll(async () => (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address }, fromBlock: 0n })).length, { timeout: 600_000, intervals: [5_000], message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+            await expect.poll(async () => (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK })).length, { timeout: 600_000, intervals: [5_000], message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
             const [buyerT2, sellerT2, coreT2] = await Promise.all([balanceOf(buyer.address), balanceOf(seller.address), balanceOf(core)]);
             expect(buyerT0 - buyerT2, 'buyer net paid exactly the payment').toBe(event.args.payment!);
             expect(sellerT2 - sellerT0, 'seller net earned exactly the payment').toBe(event.args.payment!);

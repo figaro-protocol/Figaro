@@ -42,8 +42,30 @@ function activePinService(): { api: string; jwt: string } | null {
     if (readUserEndpoints().ipfsApiUrl) return null;
     const jwt = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? "";
     if (!jwt) return null;
-    const api = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_API ?? "https://api.pinata.cloud";
+    // `||`, not `??`: an EMPTY env value (a devnet .env.local read by
+    // `next build`) must mean the default, never a relative "/pinning/…".
+    const api = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_API || "https://api.pinata.cloud";
     return { api: api.replace(/\/$/, ""), jwt };
+}
+
+/** Best-effort gateway warm after a pin-service pin: up to three reads,
+ *  each bounded, spaced for the gateway's own provider lookup; a miss is
+ *  silent (the content is pinned regardless; the gateway serves it later). */
+async function warmPublicGateway(cid: string, gatewayUrl: string): Promise<void> {
+    if (typeof window === "undefined" || /^https?:\/\/(127\.0\.0\.1|localhost)/.test(gatewayUrl)) return;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 60_000);
+        try {
+            const res = await fetch(`${gatewayUrl}/ipfs/${cid}`, { signal: controller.signal, cache: "no-store" });
+            if (res.ok) return;
+        } catch {
+            // timeout / network — retry below
+        } finally {
+            clearTimeout(timer);
+        }
+        await new Promise((r) => setTimeout(r, 10_000));
+    }
 }
 
 /**
@@ -497,6 +519,12 @@ class DefaultIpfsService implements IpfsService {
         if (typeof cid !== "string" || cid.length === 0) {
             throw new Error(emptyCidMessage);
         }
+        // A pin-service pin is durable at once but a PUBLIC gateway serves it
+        // only after finding the provider — minutes of "504" for the first
+        // reader (the member's own profile on /discover). Ask the gateway for
+        // the CID now, in the background, so it fetches and caches before
+        // anyone else asks; best-effort, never awaited by the caller.
+        if (service) void warmPublicGateway(cid, this.gatewayUrl);
 
         return cid;
     }

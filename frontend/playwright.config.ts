@@ -29,11 +29,19 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_BATCH_VERIFIER: String(record.batchVerifier),
         NEXT_PUBLIC_DAO_TREASURY: String(record.daoTreasury),
         NEXT_PUBLIC_DEPLOYMENT_BLOCK: String(record.deploymentBlock ?? ''),
-        NEXT_PUBLIC_RPC_URL: process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
+        // The PUBLIC, keyless read endpoint — never SEPOLIA_RPC_URL (the deploy
+        // key's Infura endpoint: keyed, and rate-limited under a long run).
+        NEXT_PUBLIC_RPC_URL: process.env.E2E_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
         NEXT_PUBLIC_PERMIT2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
         NEXT_PUBLIC_MULTISENDER: '0xD152f549545093347A162Dce210e7293f1452150',
         NEXT_PUBLIC_IPFS_GATEWAY_URL: 'https://ipfs.io',
         NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT: process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? process.env.IPFS_PIN_SERVICE_JWT ?? '',
+        // `next build` reads frontend/.env.local on its own; its devnet EMPTY
+        // values would otherwise inline as "" (`??` keeps an empty string) —
+        // the pin-service base then posts to a relative URL and 404s. Set the
+        // public-network values explicitly.
+        NEXT_PUBLIC_IPFS_PIN_SERVICE_API: 'https://api.pinata.cloud',
+        NEXT_PUBLIC_IPFS_API_URL: 'http://127.0.0.1:5001',
         NEXT_PUBLIC_ENABLE_TEST_HELPERS: 'true',
         NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1',
         // Devnet-only mocks stay unset on Sepolia — the frontend feature-gates absence.
@@ -41,7 +49,6 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS: '',
         NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR: '',
         NEXT_PUBLIC_SWAP_ROUTER: '',
-        NEXT_PUBLIC_IPFS_API_URL: '',
         NEXT_PUBLIC_BATCH_RELAY_URL: '',
     });
     for (const [k, v] of Object.entries(SEPOLIA_ENV)) process.env[k] = v;
