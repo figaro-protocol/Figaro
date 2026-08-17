@@ -145,6 +145,14 @@ NEXT_PUBLIC_BATCH_RELAY_URL=
 # connector; there is no WalletConnect project id to configure.
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 
+# Chain reads — public networks only. NEXT_PUBLIC_RPC_URL is the DEFAULT read
+# endpoint (a connected wallet's provider takes over); NEXT_PUBLIC_DEPLOYMENT_BLOCK
+# is where every event scan starts (the deployment record's `deploymentBlock`) —
+# public gateways cap eth_getLogs ranges, so the event cache scans from here in
+# adaptive chunks. Devnet leaves both unset (Anvil, block 0).
+NEXT_PUBLIC_RPC_URL=
+NEXT_PUBLIC_DEPLOYMENT_BLOCK=
+
 # IPFS — used by ipfsService.ts + memberBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080

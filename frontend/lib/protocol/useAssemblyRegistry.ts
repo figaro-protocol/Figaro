@@ -16,7 +16,8 @@ import { toError } from "@/lib/shared/errors";
 import { hexEqual, isValidAddress } from "@/lib/shared/evm";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { parseAssemblyRegistryLogs } from "@figaro/sdk";
-import { publicClient } from "@/lib/shared/wagmi";
+import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
@@ -168,25 +169,29 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         // which mounts no wallet provider. App-tier callers see no
         // behavioural change: the standalone client uses the same chain
         // config wagmi's provider is built from.
+        // Both scans ride the event cache: from the deployment block,
+        // adaptively chunked (public gateways cap `eth_getLogs` ranges),
+        // cached across renders; the author narrowing is client-side over
+        // the one cached scan.
+        const chainId = publicClient.chain?.id ?? activeChain.id;
         Promise.all([
-            publicClient.getContractEvents({
+            cachedGetContractEvents(publicClient, chainId, {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 eventName: "AssemblyRegistered",
-                args: author ? { author } : undefined,
-                fromBlock: 0n,
-                toBlock: "latest",
             }),
-            publicClient.getContractEvents({
+            cachedGetContractEvents(publicClient, chainId, {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 eventName: "DepositWithdrawn",
-                fromBlock: 0n,
-                toBlock: "latest",
             }),
         ])
-            .then(([logs, withdrawnLogs]) => {
+            .then(([allLogs, withdrawnLogsRaw]) => {
                 if (cancelled) return;
+                const logs = (author
+                    ? allLogs.filter((l) => hexEqual(String((l as { args?: { author?: string } }).args?.author ?? ""), author))
+                    : allLogs) as Parameters<typeof parseAssemblyRegistryLogs>[0];
+                const withdrawnLogs = withdrawnLogsRaw as Parameters<typeof parseAssemblyRegistryLogs>[0];
                 // Decoding is the SDK's — one parse per family.
                 const withdrawn = new Set(
                     parseAssemblyRegistryLogs(withdrawnLogs).withdrawn

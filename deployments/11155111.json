@@ -9,5 +9,6 @@
   "usageCounter": "0x5366A2dB46Bf03a1c20dC3071FB40c38848E16a0",
   "rpgfMinter": "0x76a1e71372Bf3484E4b4149b2f36cc2870766A64",
   "batchVerifier": "0x2d91FeD3De395B6aBCC315F07de9476528692C08",
-  "daoTreasury": "0x50FEc084Cc883b0D7EebeaE8cFD15593C66bc069"
+  "daoTreasury": "0x50FEc084Cc883b0D7EebeaE8cFD15593C66bc069",
+  "deploymentBlock": 11488797
 }

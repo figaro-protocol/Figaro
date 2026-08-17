@@ -20,7 +20,8 @@ import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsServ
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
-import { publicClient } from "@/lib/shared/wagmi";
+import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 
 const URI_PREFIX = "figaro:agreement-uri:";
@@ -165,14 +166,12 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
         // parser (kernel-layer legal — no protocol/ import). The withdraw fold is
         // irrelevant here: a committed agreement resolves its clauses regardless
         // of whether the registration stake was later reclaimed.
-        const logs = await publicClient.getContractEvents({
+        const logs = await cachedGetContractEvents(publicClient, publicClient.chain?.id ?? activeChain.id, {
             address: addr,
             abi: CLAUSE_REGISTRY_ABI,
             eventName: "ClauseRegistered",
-            fromBlock: 0n,
-            toBlock: "latest",
         });
-        registered = parseClauseRegistryLogs(logs).registered;
+        registered = parseClauseRegistryLogs(logs as Parameters<typeof parseClauseRegistryLogs>[0]).registered;
     } catch {
         return; // can't warm → publicForm withholds the unknown specs (safe)
     }

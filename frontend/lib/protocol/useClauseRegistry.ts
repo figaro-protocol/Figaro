@@ -22,7 +22,8 @@ import { BaseError, ContractFunctionRevertedError, type Abi, type Log } from "vi
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
-import { publicClient } from "@/lib/shared/wagmi";
+import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { toError } from "@/lib/shared/errors";
@@ -86,18 +87,35 @@ function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): 
     });
 }
 
-/** Read all `DepositWithdrawn` logs, raw — decoded by the SDK parser above. */
+/** Read all `DepositWithdrawn` logs, raw — decoded by the SDK parser above.
+ *  Through the event cache: from the deployment block, adaptively chunked
+ *  (public gateways cap `eth_getLogs` ranges), cached across renders. */
 async function fetchWithdrawnClauseLogs(
-    client: { getContractEvents: typeof publicClient.getContractEvents },
+    client: typeof publicClient,
     addr: `0x${string}`,
 ): Promise<Log[]> {
-    return client.getContractEvents({
+    return cachedGetContractEvents(client, client.chain?.id ?? activeChain.id, {
         address: addr,
         abi: CLAUSE_REGISTRY_ABI,
         eventName: "DepositWithdrawn",
-        fromBlock: 0n,
-        toBlock: "latest",
-    });
+    }) as Promise<Log[]>;
+}
+
+/** Read all `ClauseRegistered` logs, raw, optionally narrowed to one
+ *  registrar — the narrowing is client-side over the ONE cached scan. */
+async function fetchRegisteredClauseLogs(
+    client: typeof publicClient,
+    addr: `0x${string}`,
+    registrar?: `0x${string}`,
+): Promise<Log[]> {
+    const logs = (await cachedGetContractEvents(client, client.chain?.id ?? activeChain.id, {
+        address: addr,
+        abi: CLAUSE_REGISTRY_ABI,
+        eventName: "ClauseRegistered",
+    })) as Log[];
+    if (!registrar) return logs;
+    const want = registrar.toLowerCase();
+    return logs.filter((l) => String((l as { args?: { registrar?: string } }).args?.registrar ?? "").toLowerCase() === want);
 }
 
 /** Read all `ClauseRegistered` events filtered by registrar wallet. Sorts
@@ -118,15 +136,8 @@ export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefine
         setIsLoading(true);
 
         Promise.all([
-            client.getContractEvents({
-                address: addr,
-                abi: CLAUSE_REGISTRY_ABI,
-                eventName: "ClauseRegistered",
-                args: { registrar },
-                fromBlock: 0n,
-                toBlock: "latest",
-            }),
-            fetchWithdrawnClauseLogs(client, addr),
+            fetchRegisteredClauseLogs(client as typeof publicClient, addr, registrar),
+            fetchWithdrawnClauseLogs(client as typeof publicClient, addr),
         ])
             .then(([logs, withdrawn]) => {
                 if (cancelled) return;
@@ -178,13 +189,7 @@ export function useAllRegisteredClauses() {
         setFailed(false);
 
         Promise.all([
-            publicClient.getContractEvents({
-                address: addr,
-                abi: CLAUSE_REGISTRY_ABI,
-                eventName: "ClauseRegistered",
-                fromBlock: 0n,
-                toBlock: "latest",
-            }),
+            fetchRegisteredClauseLogs(publicClient, addr),
             fetchWithdrawnClauseLogs(publicClient, addr),
         ])
             .then(([logs, withdrawn]) => {

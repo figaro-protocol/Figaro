@@ -165,6 +165,10 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_MULTISENDER"               "$MULTISENDER_ADD
 # absent, so a custom endpoint configured by hand survives a redeploy.
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_API_URL"     "http://127.0.0.1:5001"
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_GATEWAY_URL" "http://127.0.0.1:8080"
+# Chain-read defaults — devnet reads Anvil from block 0, so both stay empty;
+# public builds set them from the deployment record (LOCAL_DEV.md).
+default_env "$CORE_ENV" "NEXT_PUBLIC_RPC_URL"          ""
+default_env "$CORE_ENV" "NEXT_PUBLIC_DEPLOYMENT_BLOCK" ""
 
 # ── Write deployment record ─────────────────────────────────────────────────
 echo "✍️  Writing $CORE_DEPLOYMENT ..."

@@ -19,7 +19,9 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { hexEqual } from "@/lib/shared/evm";
 import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro/sdk";
 import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
@@ -76,6 +78,7 @@ export function useRpgfRewards() {
     const minter = getRpgfMinter();
     const counter = getUsageCounter();
     const publicClient = usePublicClient();
+    const chainId = useChainId();
     const { address: account } = useAccount();
     const { writeContractAsync } = useWriteContract();
 
@@ -93,32 +96,34 @@ export function useRpgfRewards() {
         Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>
     > => {
         if (!publicClient || !account) return [];
-        const [clauseEvents, assemblyEvents] = await Promise.all([
-            publicClient.getContractEvents({
+        // Through the event cache (deployment block, adaptive chunks); the
+        // wallet narrowing is client-side over the one cached scan per event.
+        const [allClauseEvents, allAssemblyEvents] = await Promise.all([
+            cachedGetContractEvents(publicClient, chainId, {
                 address: CONTRACTS.clauseRegistry,
                 abi: CLAUSE_REGISTRY_ABI,
                 eventName: "ClauseRegistered",
-                args: { registrar: account },
-                fromBlock: 0n,
             }),
-            publicClient.getContractEvents({
+            cachedGetContractEvents(publicClient, chainId, {
                 address: CONTRACTS.assemblyRegistry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 eventName: "AssemblyRegistered",
-                args: { author: account },
-                fromBlock: 0n,
             }),
         ]);
+        type ClauseArgs = { registrar?: string; clauseId?: string; version?: bigint };
+        type AssemblyArgs = { author?: string; compositionHash?: `0x${string}` };
+        const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registrar ?? ""), account));
+        const assemblyEvents = allAssemblyEvents.filter((l) => hexEqual(String((l.args as AssemblyArgs | undefined)?.author ?? ""), account));
         const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>();
         for (const ev of clauseEvents) {
-            const clauseId = ev.args.clauseId;
-            const version = ev.args.version;
+            const clauseId = (ev.args as ClauseArgs | undefined)?.clauseId;
+            const version = (ev.args as ClauseArgs | undefined)?.version;
             if (!clauseId || version === undefined) continue;
             const clauseOrAssembly = computeClauseKey(clauseId, version);
             out.set(clauseOrAssembly.toLowerCase(), { clauseOrAssembly, label: clauseId, family: "clause" });
         }
         for (const ev of assemblyEvents) {
-            const clauseOrAssembly = ev.args.compositionHash;
+            const clauseOrAssembly = (ev.args as AssemblyArgs | undefined)?.compositionHash;
             if (!clauseOrAssembly) continue;
             out.set(clauseOrAssembly.toLowerCase(), {
                 clauseOrAssembly,
@@ -127,7 +132,7 @@ export function useRpgfRewards() {
             });
         }
         return [...out.values()];
-    }, [publicClient, account]);
+    }, [publicClient, chainId, account]);
 
     useEffect(() => {
         if (!minter || !counter || !publicClient) return;

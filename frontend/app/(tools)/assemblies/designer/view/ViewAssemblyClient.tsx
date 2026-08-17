@@ -28,7 +28,8 @@ import Link from "next/link";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, usePublicClient } from "wagmi";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
@@ -72,6 +73,7 @@ type ResolvedSource =
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
     const client = usePublicClient();
+    const chainId = useChainId();
     const searchParams = useSearchParams();
     const isPublishReview = searchParams.get("intent") === "publish";
     /** Hint set by the publish-receipt's "Open public read-only view" link.
@@ -154,16 +156,16 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     // The slug is not on-chain — it is derived from the
                     // indexed compositionHash, so resolution scans the event
                     // log for the binding whose derived slug matches.
-                    const allLogs = await client.getContractEvents({
+                    // Through the event cache (deployment block, adaptive
+                    // chunks — public gateways cap `eth_getLogs` ranges).
+                    const allLogs = await cachedGetContractEvents(client, chainId, {
                         address: registry,
                         abi: ASSEMBLY_REGISTRY_ABI,
                         eventName: "AssemblyRegistered",
-                        fromBlock: 0n,
-                        toBlock: "latest",
                     });
                     if (cancelled) return;
                     const logs = allLogs.filter(
-                        (l) => deriveAssemblySlug(l.args.compositionHash as `0x${string}`) === slug,
+                        (l) => deriveAssemblySlug((l.args as { compositionHash?: `0x${string}` } | undefined)?.compositionHash as `0x${string}`) === slug,
                     );
                     if (logs.length === 0) {
                         // Last attempt — surface not-found. Earlier attempts
@@ -176,7 +178,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         }
                         continue;
                     }
-                    const log = logs[0];
+                    const log = logs[0] as { args: { contentURI?: string; compositionHash?: `0x${string}`; author?: `0x${string}` } };
                     const contentURI = (log.args.contentURI ?? "") as string;
                     const compositionHash = log.args.compositionHash as `0x${string}`;
                     const assemblyTemplate = await fetchAssemblyTemplate(
@@ -241,7 +243,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         return () => {
             cancelled = true;
         };
-    }, [slug, client, justPublished, clauseSpecsLoaded]);
+    }, [slug, client, chainId, justPublished, clauseSpecsLoaded]);
 
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;

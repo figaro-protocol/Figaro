@@ -100,7 +100,12 @@ echo "   dao wallet                  = $DAO_WALLET"
 echo "   rpgf genesis (unix)         = $RPGF_GENESIS"
 echo ""
 
-echo "📝 Running forge script..."
+# The block the scan window starts at: read BEFORE broadcasting, so it is at
+# or below every contract's creation block. Frontends read events from here
+# (NEXT_PUBLIC_DEPLOYMENT_BLOCK) — public gateways cap eth_getLogs ranges, and
+# a from-genesis scan of a real network never loads.
+DEPLOYMENT_BLOCK=$(cast block-number --rpc-url "$RPC_URL")
+echo "📝 Running forge script (deployment block $DEPLOYMENT_BLOCK)..."
 # --slow: wait for each transaction's receipt before sending the next — see
 # deploy-local.sh's identical rationale (nonce-tracking race under
 # pipelined broadcast). --verify: always on for mainnet, using the
@@ -148,7 +153,8 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
-  "batchVerifier": "$BATCH_VERIFIER_ADDR"
+  "batchVerifier": "$BATCH_VERIFIER_ADDR",
+  "deploymentBlock": $DEPLOYMENT_BLOCK
 }
 EOF
 

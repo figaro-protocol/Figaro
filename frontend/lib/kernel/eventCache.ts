@@ -15,7 +15,7 @@
  * (Sequence, Envio, etc.) when the time comes.
  */
 
-import type { Hex, PublicClient } from "viem";
+import { getAbiItem, type Abi, type Hex, type PublicClient } from "viem";
 
 type PublicGetLogsParams = NonNullable<Parameters<PublicClient["getLogs"]>[0]>;
 
@@ -147,6 +147,75 @@ async function idbWrite(key: string, logs: CachedLog[], cursor: bigint): Promise
 }
 
 // ---------------------------------------------------------------------------
+// Adaptive range scan
+// ---------------------------------------------------------------------------
+
+/** The smallest sub-range worth asking for; below it the provider's cap is
+ *  not a range cap and the error is real. */
+const MIN_LOG_CHUNK = 500n;
+
+/** A provider refusing a range for its size, in the wording each gateway
+ *  uses today (thirdweb: "Maximum allowed number of requested blocks";
+ *  drpc: "ranges over N blocks are not supported"; publicnode: "exceed
+ *  maximum block range"; 1rpc: "limited to 0 - 50 blocks range"; Alchemy /
+ *  Infura: "block range" / "query returned more than"). Matched on the full
+ *  error text so viem's wrapping never hides it. */
+export function isLogRangeCapError(err: unknown): boolean {
+    const text = err instanceof Error
+        ? `${err.message} ${(err as { details?: string }).details ?? ""} ${(err as { shortMessage?: string }).shortMessage ?? ""}`
+        : String(err);
+    return /block range|requested blocks|blocks range|ranges? over \d+ blocks|range too large|response size exceeded|query returned more than|too many results|exceed maximum/i.test(text);
+}
+
+/**
+ * `client.getLogs` over `[fromBlock, latest]`, in ONE call when the provider
+ * allows it and in sequential sub-ranges when it does not: on a range-cap
+ * error the current window halves (down to `MIN_LOG_CHUNK`) and the scan
+ * continues from where it stopped; every other error propagates. `latest`
+ * is resolved once so the sub-ranges chunk against one snapshot. Exported
+ * for the cache and its test — the cache is the ONE place logs are read.
+ */
+/** The two calls the scan needs — structural, so a viem `PublicClient` and
+ *  a test double both fit. */
+export type LogScanClient = {
+    getBlockNumber(): Promise<bigint>;
+    getLogs(params: {
+        address: `0x${string}`;
+        event: PublicGetLogsParams["event"];
+        fromBlock: bigint;
+        toBlock: bigint;
+    }): Promise<readonly unknown[]>;
+};
+
+export async function getLogsAdaptive(
+    client: LogScanClient,
+    params: { address: `0x${string}`; event: PublicGetLogsParams["event"]; fromBlock: bigint },
+): Promise<CachedLog[]> {
+    const toBlock = await client.getBlockNumber();
+    if (params.fromBlock > toBlock) return [];
+    const logs: CachedLog[] = [];
+    let from = params.fromBlock;
+    let window = toBlock - from + 1n;
+    while (from <= toBlock) {
+        const to = from + window - 1n < toBlock ? from + window - 1n : toBlock;
+        try {
+            const chunk = await client.getLogs({
+                address: params.address,
+                event: params.event,
+                fromBlock: from,
+                toBlock: to,
+            });
+            logs.push(...(chunk as CachedLog[]));
+            from = to + 1n;
+        } catch (err) {
+            if (!isLogRangeCapError(err) || window <= MIN_LOG_CHUNK) throw err;
+            window = window / 2n < MIN_LOG_CHUNK ? MIN_LOG_CHUNK : window / 2n;
+        }
+    }
+    return logs;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -181,6 +250,23 @@ export async function cachedGetLogs(
     }
 }
 
+/**
+ * `publicClient.getContractEvents` shaped over the cache: resolves the event
+ * from the ABI and returns EVERY log of that event for the contract, from
+ * the deployment block, adaptively chunked and cached. Callers that used to
+ * pass RPC-side `args` filters filter the returned array instead — one cache
+ * per (contract, event) serves every query shape (see `cachedGetLogs`).
+ */
+export async function cachedGetContractEvents(
+    client: PublicClient,
+    chainId: number,
+    params: { address: `0x${string}`; abi: Abi | readonly unknown[]; eventName: string },
+): Promise<CachedLog[]> {
+    const event = getAbiItem({ abi: params.abi as Abi, name: params.eventName });
+    if (!event) throw new Error(`cachedGetContractEvents: ${params.eventName} is not in the given ABI`);
+    return cachedGetLogs(client, chainId, { address: params.address, event, eventName: params.eventName });
+}
+
 async function _fetchAndCache(
     client: PublicClient,
     _chainId: number,
@@ -210,12 +296,14 @@ async function _fetchAndCache(
     // 4. Determine start block
     const startBlock = entry ? entry.cursor + 1n : deploymentBlock();
 
-    // 5. Fetch incremental logs
-    const fresh = await client.getLogs({
+    // 5. Fetch incremental logs — adaptively chunked: public providers cap
+    //    an eth_getLogs block range (1 000 / 10 000 / 50 000 blocks depending
+    //    on the gateway) and refuse the whole-range read a devnet answers in
+    //    one call; the first visit to a public network otherwise never loads.
+    const fresh = await getLogsAdaptive(client as unknown as LogScanClient, {
         address: params.address,
         event: params.event as PublicGetLogsParams["event"],
         fromBlock: startBlock,
-        toBlock: "latest",
     });
 
     // 6. Current block for cursor (use the max blockNumber from fresh logs

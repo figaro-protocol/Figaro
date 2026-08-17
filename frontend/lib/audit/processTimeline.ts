@@ -21,6 +21,7 @@ import type { PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 
 // ---------------------------------------------------------------------------
@@ -128,15 +129,23 @@ export async function buildProcessTimeline(
     let totalSellerPayout = 0n;
     let totalBuyerPayout = 0n;
 
+    // Every scan below rides the event cache (deployment block, adaptive
+    // chunks, cached across renders — the same cache the kernel indexer
+    // fills); the processId narrowing is client-side over it.
+    // Cached logs type blockNumber as number | bigint (the IDB round-trip is
+    // bigint-tagged, but the type stays open); normalise once here.
+    type ScanLog = { args?: Record<string, unknown>; blockNumber?: number | bigint | null; transactionHash?: `0x${string}` | null };
+    const byProcess = (logs: ScanLog[]) =>
+        logs
+            .filter((l) => String(l.args?.processId ?? "").toLowerCase() === processId.toLowerCase())
+            .map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber ?? 0), transactionHash: l.transactionHash ?? undefined }));
+
     // ── OrderCommitted ─────────────────────────────────────────────
-    const committedLogs = await client.getContractEvents({
+    const committedLogs = byProcess(await cachedGetContractEvents(client, chainId, {
         address: coreAddress,
         abi: CORE_ABI,
         eventName: "OrderCommitted",
-        args: { processId },
-        fromBlock: 0n,
-        toBlock: "latest",
-    });
+    }));
 
     for (const log of committedLogs) {
         const a = log.args as Partial<{
@@ -174,14 +183,11 @@ export async function buildProcessTimeline(
     // Live kernel: no OrderCancelled event — orders resolve or stay active.
 
     // ── OrderResolved ───────────────────────────────────────────────
-    const resolvedLogs = await client.getContractEvents({
+    const resolvedLogs = byProcess(await cachedGetContractEvents(client, chainId, {
         address: coreAddress,
         abi: CORE_ABI,
         eventName: "OrderResolved",
-        args: { processId },
-        fromBlock: 0n,
-        toBlock: "latest",
-    });
+    }));
 
     for (const log of resolvedLogs) {
         const a = log.args as Partial<{
@@ -219,14 +225,11 @@ export async function buildProcessTimeline(
     // digest, not an off-chain pointer.
     const coordinatorAddr = getAttestationCoordinator();
     if (coordinatorAddr) {
-        const attestLogs = await client.getContractEvents({
+        const attestLogs = byProcess(await cachedGetContractEvents(client, chainId, {
             address: coordinatorAddr,
             abi: ATTESTATION_COORDINATOR_ABI,
             eventName: "Attestation",
-            args: { processId },
-            fromBlock: 0n,
-            toBlock: "latest",
-        });
+        }));
         for (const log of attestLogs) {
             const a = log.args as Partial<{
                 clauseId: string;

@@ -20,9 +20,16 @@ One file per network, named `<chainId>.json`, in the same shape
   "florinToken": "0x...",
   "usageCounter": "0x...",
   "rpgfMinter": "0x...",
-  "batchVerifier": "0x..."
+  "batchVerifier": "0x...",
+  "deploymentBlock": 0
 }
 ```
+
+`deploymentBlock` is the block the deploy script read just before
+broadcasting — at or below every contract's creation block. Frontends and
+agents start their event scans there (`NEXT_PUBLIC_DEPLOYMENT_BLOCK`): public
+RPC gateways cap an `eth_getLogs` range (1 000 / 10 000 / 50 000 blocks by
+gateway), so a from-genesis scan of a real network never completes.
 
 A public deployment's record carries only the contracts
 `script/DeployMainnet.s.sol` actually deploys — no devnet mocks

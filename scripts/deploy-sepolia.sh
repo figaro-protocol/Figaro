@@ -100,7 +100,12 @@ if [ "${SKIP_VERIFY:-}" = "1" ]; then
 fi
 echo ""
 
-echo "📝 Running forge script..."
+# The block the scan window starts at: read BEFORE broadcasting, so it is at
+# or below every contract's creation block. Frontends read events from here
+# (NEXT_PUBLIC_DEPLOYMENT_BLOCK) — public gateways cap eth_getLogs ranges, and
+# a from-genesis scan of a real network never loads.
+DEPLOYMENT_BLOCK=$(cast block-number --rpc-url "$RPC_URL")
+echo "📝 Running forge script (deployment block $DEPLOYMENT_BLOCK)..."
 # --slow: wait for each transaction's receipt before sending the next — see
 # deploy-local.sh's identical rationale (nonce-tracking race under
 # pipelined broadcast).
@@ -158,7 +163,8 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
-  "daoTreasury": "$DAO_TREASURY_ADDR"
+  "daoTreasury": "$DAO_TREASURY_ADDR",
+  "deploymentBlock": $DEPLOYMENT_BLOCK
 }
 EOF
 
