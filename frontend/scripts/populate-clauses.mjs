@@ -77,6 +77,12 @@
  *                           Kubo (public seeding: the Pinata DAO key, so seed
  *                           specs outlive the maintainer's laptop)
  *   IPFS_PIN_SERVICE_API  — service API base (default https://api.pinata.cloud)
+ *   IPFS_WARM_GATEWAY_URL — after every pin-service pin, fetch the CID once
+ *                           through this public gateway so it resolves and
+ *                           caches the content BEFORE a visitor asks (a fresh
+ *                           pin otherwise 504s on public gateways until the
+ *                           provider record propagates). Default https://ipfs.io
+ *                           when a pin service is used; empty disables.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -296,7 +302,35 @@ async function pinForm(apiUrl, form) {
     if (typeof cid !== 'string' || !cid) {
         throw new Error('IPFS pin returned no CID');
     }
+    if (service) await warmGateway(cid);
     return cid;
+}
+
+/** The public gateway a pin is warmed through (pin-service runs only). */
+function warmGatewayUrl() {
+    if (!pinService()) return null;
+    const url = process.env.IPFS_WARM_GATEWAY_URL ?? 'https://ipfs.io';
+    return url ? url.replace(/\/$/, '') : null;
+}
+
+/** Ask the public gateway for the CID once so it fetches + caches it now.
+ *  Best-effort: a gateway timeout is logged, never fatal — the pin itself is
+ *  already durable and any gateway serves it once the record propagates. */
+export async function warmGateway(cid, log = console.log) {
+    const base = warmGatewayUrl();
+    if (!base) return false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90_000);
+    try {
+        const res = await fetch(`${base}/ipfs/${cid}`, { signal: controller.signal });
+        if (res.ok) { log(`  · warmed ${base}/ipfs/${cid}`); return true; }
+        log(`  · warm ${cid} via ${base}: HTTP ${res.status} (gateway will fetch on first visit)`);
+    } catch (err) {
+        log(`  · warm ${cid} via ${base}: ${err?.name === 'AbortError' ? 'timed out' : err?.message} (gateway will fetch on first visit)`);
+    } finally {
+        clearTimeout(timer);
+    }
+    return false;
 }
 
 /** Pin an already-serialized JSON string; return the ipfs:// URI. */
