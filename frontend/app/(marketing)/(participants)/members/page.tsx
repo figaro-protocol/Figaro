@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 export const metadata: Metadata = withOg({
     title: "Members — Figaro Protocol",
@@ -68,6 +69,9 @@ export default function Join() {
                 <p className="text-sm text-ink-muted mb-4">
                     Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, claim a released deposit.
                 </p>
+                <div className="mb-8">
+                    <RegistryCountLink family="members" />
+                </div>
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Link
                         href="/members/identity"

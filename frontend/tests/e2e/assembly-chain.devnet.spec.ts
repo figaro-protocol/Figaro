@@ -399,11 +399,15 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await page.getByTestId(`funding-token-option-${permitToken.toLowerCase()}`).click();
             // Permit2 authorization is conditional on the persisted chain
             // (prior runs' approvals survive) AND its button can re-render as
-            // the quote settles — the click may race a detach, so the asserted
-            // POSTCONDITION is the button going hidden, not the click landing.
+            // the quote settles — `needsApproval` reads true until the
+            // allowance resolves, so the button can flash and vanish. The click
+            // may race that detach; it is BOUNDED (an unbounded click would wait
+            // for a locator that never returns and burn the whole test budget)
+            // and the asserted POSTCONDITION is the button going hidden, not
+            // the click landing.
             const authorize = page.getByTestId('funding-authorize');
             if (await authorize.isVisible().catch(() => false)) {
-                await authorize.click().catch(() => {});
+                await authorize.click({ timeout: 5000 }).catch(() => {});
                 await authorize.waitFor({ state: 'hidden', timeout: 30000 });
             }
             await counterSign.waitFor({ state: 'visible', timeout: 60000 });

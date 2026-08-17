@@ -3,12 +3,14 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { ClauseInventory } from "./_components/ClauseInventory";
+import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 // RULED 2026-08-06 (maintainer), AMENDED 2026-08-12 (maintainer): this page holds
 // FIVE things and nothing else — what a clause IS (a contract clause,
 // verifiable; it may include attestations but is NOT an attestation), the
-// writing requirements as BULLETS (never an exposé), the live inventory, the
+// writing requirements as BULLETS (never an exposé), the live registry COUNT
+// + a link into /registries (the inventory itself moved to the registry
+// explorer, maintainer ruling 2026-08-17), the
 // hash-identity reference (§ "What the hash covers", the clause mirror of
 // /assemblies' § "What the composition hash covers" — it lives on the concept
 // page, never forked onto the register tool), and the add-your-own + RPGF
@@ -41,17 +43,17 @@ export default function Clauses() {
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Registered clauses, by article.">
+            <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.
+                    For agents: the registry explorer derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    There is no static roster of clauses &mdash; the count is derived, never stored. The canonical spec source for the reference set is the <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/</code> directory</a> in the repository; on chain, discover every registered clause (reference or third-party) the same way this inventory does &mdash; by reading the <code>ClauseRegistry</code>&apos;s <code>ClauseRegistered</code> event stream.
+                    There is no static roster of clauses &mdash; the count is derived, never stored. The canonical spec source for the reference set is the <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/</code> directory</a> in the repository; on chain, discover every registered clause (reference or third-party) the same way the registry explorer does &mdash; by reading the <code>ClauseRegistry</code>&apos;s <code>ClauseRegistered</code> event stream.
                 </p>
-                <ClauseInventory />
+                <RegistryCountLink family="clauses" />
             </MarketingSection>
 
             <MarketingSection title="What the hash covers." sectionId="what-the-hash-covers">

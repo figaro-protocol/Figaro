@@ -171,10 +171,10 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         });
 
         // ── INVENTORY REACTION (the CTA's round-trip promise): the live
-        //    /clauses inventory — ClauseRegistered events → IPFS specs — now
+        //    registry explorer — ClauseRegistered events → IPFS specs — now
         //    lists the new clause under its article, no rebuild, no bundled
         //    copy. ──
-        await page.goto('/clauses?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/registries?family=clauses&e2e=devnet', { waitUntil: 'domcontentloaded' });
         const inventoryRow = page.locator(`#clause-${CLAUSE_ID}`);
         await expect(
             inventoryRow,

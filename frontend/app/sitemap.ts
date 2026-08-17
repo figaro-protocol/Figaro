@@ -59,6 +59,7 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/rpgf", changeFrequency: "monthly", priority: 0.7 },
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/assemblies", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/registries", changeFrequency: "daily", priority: 0.7 },
     { path: "/discover", changeFrequency: "weekly", priority: 0.6 },
     // (app)-tier landings the nav/footer lists. What each renders in detail
     // is scoped to the connected wallet, but the page itself is a linked,

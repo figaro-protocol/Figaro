@@ -251,10 +251,11 @@ acceptance specs (`clause-coverage`, `permissionless-clause`,
 `npx playwright test --project=devnet-standalone --workers=1` — before any
 "full e2e green" claim. A `devnet`-only run is NOT the whole suite.
 
-**One smoke per event-driven inventory page** (`/clauses`, `/assemblies`, …):
-navigate → assert the resolved-state count line + a few row ids. A marketing
-inventory has no user action — the navigation IS the read — so a smoke, not a
-scenario; it catches the read path breaking or silently reverting to bundled data.
+**One smoke per event-driven inventory family** (`/registries` — clauses,
+assemblies, members): navigate → assert the resolved-state count line + a few
+row ids discovered from chain. A marketing inventory has no user action — the
+navigation IS the read — so a smoke, not a scenario; it catches the read path
+breaking or silently reverting to bundled data.
 
 **e2e means end-to-end: action → reaction, both in the UI** (the canonical
 definition — CLAUDE.md points here). A genuine e2e test performs an action

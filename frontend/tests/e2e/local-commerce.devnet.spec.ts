@@ -198,8 +198,8 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    first-write-wins — the mainnet ensure-exists semantics). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
 
-        // The public inventory carries it — author → pin → anchor → visible.
-        await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        // The registry explorer carries it — author → pin → anchor → visible.
+        await page.goto('/registries?family=assemblies&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await expect(page.locator(`#assembly-${deliverySlug}`)).toBeVisible({ timeout: 30000 });
 
         // ── BIND (idempotent): the merchant pins the assembly + designates its

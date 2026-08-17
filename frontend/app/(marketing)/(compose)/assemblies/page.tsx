@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { AssemblyInventory } from "./_components/AssemblyInventory";
+import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 export const metadata: Metadata = withOg({
     title: "Assemblies — Figaro Protocol",
@@ -158,14 +158,14 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
 
             <MarketingSection title="Registered assemblies." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Each row is one assembly, sorted by registration block (most recent
-                    first). Assembly templates fetch lazily from IPFS &mdash; the on-chain
-                    identity (slug, author, content hash) renders regardless.
+                    Every registered assembly is searchable in the registry explorer &mdash; each
+                    row one on-chain binding keyed by its composition hash, its template fetched
+                    from IPFS, its author the wallet that anchored it.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: this inventory derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
+                    For agents: the registry explorer derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
                 </p>
-                <AssemblyInventory />
+                <RegistryCountLink family="assemblies" />
             </MarketingSection>
 
         </>
