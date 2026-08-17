@@ -269,6 +269,7 @@ export {
     templateParentOrderHashes,
     templateClauseVersion,
     templateClauseVersionMap,
+    templateComposedClauseIds,
 } from "./assembly.js";
 export type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
 

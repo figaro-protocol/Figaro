@@ -179,6 +179,10 @@ Required output:
      (DAO = author-of-record, chain-verified), DAO member via treasury execute, founder
      member direct. Seeding is `populate-clauses.mjs` treasury mode (Sepolia USDC
      `0x1c7D…7238` as the reference-assembly settlement fill, ruled 2026-08-14).
+     Live nudge 2 landed 2026-08-17: `pos` + `local-commerce` (their 9 clauses + 2
+     anchors) registered through the vault with the founder's Ledger approving on
+     the device (`VAULT_LEDGER_HD_PATH` → `cast send --ledger`, one tap per
+     registration; `SEED_ASSEMBLIES` names the nudge), chain-verified.
    - A funded deployer key: Sepolia deployer `0xaB6002…647c` live, accumulating via
      faucets toward ~2.1 ETH (1.90 ETH of registry deposits dominate; deploy gas ≈
      0.025). SP1 verifier gateway confirmed deployed on Sepolia (item 3c) at the

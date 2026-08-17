@@ -92,6 +92,18 @@ export function templateClauseVersionMap(agreement: TemplateAgreement): Record<s
     );
 }
 
+/** Every clause a template composes — the assembly-scoped sections plus each
+ *  agreement's own — as one sorted, de-duplicated id list. The registration
+ *  prerequisite of an assembly: `AssemblyRegistry` anchors a composition, so
+ *  each of these must be live on `ClauseRegistry` before the anchor resolves. */
+export function templateComposedClauseIds(template: AssemblyTemplate): string[] {
+    const ids = new Set<string>(Object.keys(template.assemblyClauses ?? {}));
+    for (const agreement of template.agreements) {
+        for (const clauseId of Object.keys(agreement.clauses)) ids.add(clauseId);
+    }
+    return Array.from(ids).sort();
+}
+
 /** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
  *  the template (the composed agreements: their clauses, values, and topology;
  *  editorial prose excluded, so renaming never forks identity). This is the

@@ -34,7 +34,15 @@
  *   REGISTRAR_VAULT    — the vault's address; it becomes msg.sender/registrar
  *                        via its approve/execute cycle, staking deposits from
  *                        its own ETH balance (fund it first)
- *   VAULT_OWNER_KEYS   — comma-separated owner private keys (threshold many)
+ *   VAULT_OWNER_KEYS   — comma-separated owner private keys (threshold many,
+ *                        or threshold-minus-one alongside a Ledger owner)
+ *   VAULT_LEDGER_HD_PATH — an owner whose key lives on a Ledger device: its
+ *                        approvals are signed ON THE DEVICE through Foundry's
+ *                        `cast send --ledger` (one tap per registration; the
+ *                        device screen shows the vault address). The path is
+ *                        the Ledger Live account path `m/44'/60'/N'/0/0`. The
+ *                        script refuses a path that does not resolve to a
+ *                        vault owner (a wrong N signs nothing).
  * The vault confers no special role: any wallet — the founder's address, a
  * stranger's — is registrar of its own artifacts through the same registries.
  *
@@ -45,6 +53,13 @@
  *                                   USDC, ruled 2026-08-14)
  *
  * INCREMENTAL RELEASE controls (the nudge-per-session Sepolia rollout):
+ *   SEED_ASSEMBLIES       — comma-separated reference-assembly names (the
+ *                           `assemblies/<name>.json` basenames): anchor ONLY
+ *                           these, and register ONLY the clauses they compose
+ *                           (`templateComposedClauseIds`) — a nudge is a
+ *                           usable assembly plus its prerequisites, not an
+ *                           alphabetical prefix of the clause set. Unset =
+ *                           everything.
  *   SEED_LIMIT            — cap NEW registrations this run (one shared budget:
  *                           clauses first, assemblies get the remainder)
  *   IPFS_PIN_SERVICE_JWT  — pin via a managed pinning service instead of local
@@ -52,6 +67,7 @@
  *                           specs outlive the maintainer's laptop)
  *   IPFS_PIN_SERVICE_API  — service API base (default https://api.pinata.cloud)
  */
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,6 +81,7 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey, canonicalize,
     canonicalContentHash, templateCompositionHash, deriveAssemblySlug,
+    templateComposedClauseIds,
 } from '@figaro/sdk';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -126,7 +143,53 @@ export const VAULT_ABI = [
         inputs: [{ type: 'bytes32' }, { type: 'address' }], outputs: [{ type: 'bool' }],
     },
     { type: 'function', name: 'executed', stateMutability: 'view', inputs: [{ type: 'bytes32' }], outputs: [{ type: 'bool' }] },
+    { type: 'function', name: 'isOwner', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
 ];
+
+/** A vault owner whose key never leaves a Ledger device. Same shape as the
+ *  viem wallet clients `vaultExecute` drives (`account.address` +
+ *  `writeContract` resolving to a tx hash), so the approval loop is
+ *  signer-agnostic; the signing itself is Foundry's `cast send --ledger` —
+ *  the device prompts, the maintainer verifies the vault address on its
+ *  screen and taps. The address is read from the device at construction,
+ *  so a wrong derivation index surfaces before anything is signed. */
+export function ledgerOwnerClient({ hdPath, rpcUrl, log = console.log }) {
+    const address = execFileSync('cast', ['wallet', 'address', '--ledger', '--hd-path', hdPath], {
+        stdio: ['inherit', 'pipe', 'inherit'],
+    }).toString().trim();
+    return {
+        account: { address },
+        async writeContract({ address: to, functionName, args }) {
+            if (functionName !== 'approveHash') {
+                throw new Error(`Ledger owner signs vault approvals only (asked for ${functionName})`);
+            }
+            log(`  ⧗ Ledger ${hdPath} (${address}): approve ${args[0]} on the device — the screen must show vault ${to}`);
+            // The device locks itself between the chain confirmations that
+            // pace the taps; an unreachable device is a wait, not a failure
+            // of the nudge (every step before this one is already on-chain and
+            // idempotent). Retry until it answers or the maintainer gives up.
+            for (let attempt = 1; ; attempt++) {
+                try {
+                    const out = execFileSync('cast', [
+                        'send', '--ledger', '--hd-path', hdPath, '--rpc-url', rpcUrl, '--json',
+                        to, 'approveHash(bytes32)', args[0],
+                    ], { stdio: ['inherit', 'pipe', 'pipe'] }).toString();
+                    return JSON.parse(out).transactionHash;
+                } catch (err) {
+                    const stderr = (err.stderr ?? '').toString();
+                    if (!/Could not connect to Ledger device/.test(stderr) || attempt >= LEDGER_RETRIES) {
+                        // Never echo cast's command line: it carries the RPC URL (a keyed endpoint).
+                        throw new Error(`Ledger approval failed after ${attempt} attempt(s): ${stderr.trim() || err.message.split('\n')[0]}`);
+                    }
+                    log(`  … Ledger not reachable (attempt ${attempt}/${LEDGER_RETRIES}) — unlock it, open the Ethereum app, quit Ledger Live; retrying in ${LEDGER_RETRY_MS / 1000}s`);
+                    await new Promise((r) => setTimeout(r, LEDGER_RETRY_MS));
+                }
+            }
+        },
+    };
+}
+const LEDGER_RETRIES = 60;
+const LEDGER_RETRY_MS = 10_000;
 
 /** Route one call through the vault multisig: threshold approvals from the
  *  owner wallets, then a single execute. Idempotent — approvals and the
@@ -234,7 +297,7 @@ export function registrarAccount() {
  * Pin + register every clause spec. Reusable from the test-data script.
  * @returns the number of clauses newly registered.
  */
-export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit, log = console.log }) {
+export async function populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit, only, log = console.log }) {
     const files = fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort();
     // First pass: what actually needs registering (idempotent skips are free).
     let pending = [];
@@ -242,6 +305,8 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         const clauseIdStr = spec.clauseId;
         if (!clauseIdStr) throw new Error(`${file} has no clauseId`);
+        // SEED_ASSEMBLIES: only the clauses the selected assemblies compose.
+        if (only && !only.has(clauseIdStr)) continue;
         const version = BigInt(spec.version ?? 1);
         // On-chain identity is keccak256(abi.encode(name, version)).
         const clauseId = computeClauseKey(clauseIdStr, version);
@@ -412,7 +477,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
  *  checked-in sentinel. The ONE reference-assembly population path —
  *  devnet (EOA, mock token) and testnet/mainnet (vault, ruled token)
  *  differ only in the arguments. */
-export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, vault, ownerClients, limit, log = console.log }) {
+export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, vault, ownerClients, limit, only, log = console.log }) {
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -422,7 +487,8 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
     }
     // SEED_LIMIT counts NEW anchors only — already-anchored skips are free.
     let anchored = 0;
-    const files = fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort();
+    const files = fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()
+        .filter((f) => !only || only.has(path.basename(f, '.json')));
     for (const file of files) {
         if (limit != null && anchored >= limit) {
             log(`  · SEED_LIMIT ${limit} reached — remaining reference assemblies deferred to a later run`);
@@ -454,7 +520,34 @@ async function main() {
         if (keys.length === 0) {
             throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing — the multisig needs threshold-many owner keys to approve');
         }
+        // Key owners first: ownerClients[0] executes (and pays that gas); the
+        // Ledger owner, when configured, only ever approves.
         ownerClients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC_URL) }));
+        if (process.env.VAULT_LEDGER_HD_PATH) {
+            ownerClients.push(ledgerOwnerClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl: RPC_URL }));
+        }
+        // Every configured signer must be a vault owner — a non-owner's
+        // approveHash reverts, but only after the device tap; refuse up front.
+        for (const c of ownerClients) {
+            const ok = await publicClient.readContract({ address: vault, abi: VAULT_ABI, functionName: 'isOwner', args: [c.account.address] });
+            if (!ok) throw new Error(`${c.account.address} is not an owner of vault ${vault} — check VAULT_OWNER_KEYS / VAULT_LEDGER_HD_PATH`);
+        }
+    }
+
+    // SEED_ASSEMBLIES: a nudge = named reference assemblies + exactly the
+    // clauses they compose. Resolved from the templates themselves, so the
+    // prerequisite set can never drift from the composition.
+    let onlyAssemblies;
+    let onlyClauses;
+    if (process.env.SEED_ASSEMBLIES) {
+        onlyAssemblies = new Set(process.env.SEED_ASSEMBLIES.split(',').map((s) => s.trim()).filter(Boolean));
+        onlyClauses = new Set();
+        for (const name of onlyAssemblies) {
+            const file = path.join(ASSEMBLIES_DIR, `${name}.json`);
+            if (!fs.existsSync(file)) throw new Error(`SEED_ASSEMBLIES names "${name}" but ${file} does not exist`);
+            for (const id of templateComposedClauseIds(JSON.parse(fs.readFileSync(file, 'utf8')))) onlyClauses.add(id);
+        }
+        console.log(`SEED_ASSEMBLIES ${[...onlyAssemblies].join(', ')} → clause set ${[...onlyClauses].sort().join(', ')}`);
     }
 
     // SEED_LIMIT: one shared budget per run — clauses consume first (they must
@@ -468,7 +561,7 @@ async function main() {
     console.log(`Populating clauses → ClauseRegistry ${registry} (chain ${chain.id})`);
     console.log(vault ? `  registrar (vault) ${vault}` : `  registrar ${account.address}`);
     console.log(`  IPFS      ${pinService() ? `pin service (${pinService().api})` : ipfsApiUrl}\n`);
-    const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit: seedLimit });
+    const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit: seedLimit, only: onlyClauses });
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
 
     // Reference assemblies ride the same invocation when the registry and the
@@ -484,7 +577,7 @@ async function main() {
             console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
             const a = await populateReferenceAssemblies({
                 publicClient, walletClient, account, registry: assemblyRegistry, ipfsApiUrl,
-                tokenAddress: assemblyToken, vault, ownerClients, limit: remaining,
+                tokenAddress: assemblyToken, vault, ownerClients, limit: remaining, only: onlyAssemblies,
             });
             console.log(`Done — ${a} reference assembly(ies) newly anchored.`);
         }
