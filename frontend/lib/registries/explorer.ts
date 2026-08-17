@@ -131,7 +131,7 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
 }
 
 /** Filter + sort in one pass — the explorer's whole read model. */
-export function selectRows(rows: readonly ExplorerRow[], state: ExplorerQuery): ExplorerRow[] {
+export function selectRows<T extends ExplorerRow>(rows: readonly T[], state: ExplorerQuery): T[] {
     return rows.filter((r) => matchesQuery(r, state)).sort((a, b) => compareRows(a, b, state.sort));
 }
 
