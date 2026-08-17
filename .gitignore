@@ -16,6 +16,7 @@ yarn-error.log*
 # Next.js
 frontend/.next/
 frontend/.next-e2e/
+frontend/.next-e2e-sepolia/
 frontend/.next-export/
 frontend/.next-probe/
 frontend/out/

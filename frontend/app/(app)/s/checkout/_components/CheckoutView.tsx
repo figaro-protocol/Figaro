@@ -909,7 +909,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 decimals={tokenDecimals}
                                 fundingToken={fundingToken}
                                 onSelect={setFundingToken}
-                                needsAuthorization={permit2Funding.needsApproval(lockedTotal)}
+                                needsAuthorization={permit2Funding.allowanceKnown && permit2Funding.needsApproval(lockedTotal)}
                                 onAuthorize={() => permit2Funding.approve(maxUint256)}
                                 isAuthorizing={permit2Funding.isApprovePending || permit2Funding.isApproveConfirming}
                             />

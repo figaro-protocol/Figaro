@@ -488,7 +488,7 @@ function SignPageContent() {
                                     decimals={tokenDecimals}
                                     fundingToken={sellerFundingToken}
                                     onSelect={setSellerFundingToken}
-                                    needsAuthorization={permit2SellerFunding.needsApproval(myBondAmount)}
+                                    needsAuthorization={permit2SellerFunding.allowanceKnown && permit2SellerFunding.needsApproval(myBondAmount)}
                                     onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
                                     isAuthorizing={permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming}
                                 />

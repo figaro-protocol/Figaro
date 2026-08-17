@@ -5,7 +5,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 
 function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
-    const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    const { data: allowance, isFetched: allowanceKnown, refetch: refetchAllowance } = useReadContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "allowance",
@@ -25,6 +25,11 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
         }
     }, [isApproveSuccess, refetchAllowance]);
 
+    // `needsApproval` answers "must an approve precede the act?" — and while
+    // the allowance is still UNKNOWN the safe answer is yes (an approve is
+    // idempotent; acting without one reverts). Surfaces that only DISPLAY an
+    // authorize step must gate on `allowanceKnown` too, or the button flashes
+    // for every wallet whose allowance turns out sufficient.
     const needsApproval = useCallback((amount?: bigint) => {
         if (!allowance) return true;
         if (!amount) return false;
@@ -47,6 +52,9 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
 
     return {
         allowance,
+        /** True once the allowance read has settled (a value, or a confirmed
+         *  zero) — the display gate for any authorize affordance. */
+        allowanceKnown,
         needsApproval,
         approve,
         isApprovePending,

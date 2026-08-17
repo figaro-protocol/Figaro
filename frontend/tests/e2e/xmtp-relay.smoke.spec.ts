@@ -49,7 +49,8 @@ import fs from 'fs';
 import path from 'path';
 import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
-import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from 'viem/accounts';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { makeLocalSignHandler } from './local-signer';
 import { test, expect, gotoAsWallet, newWalletPage } from './devnet-multi-test';
 import {
     LOCAL_ANVIL,
@@ -88,45 +89,6 @@ function loadOrCreateSmokeKeys(): { buyer: Hex; seller: Hex } {
     return keys;
 }
 
-/** Node-side wallet for the injected provider's local-signer bridge: handles
- *  the signing methods inject-ethereum-multi.js routes here for announced
- *  local accounts. viem fills nonce/gas for sendTransaction. */
-function makeLocalSignHandler(accounts: PrivateKeyAccount[]) {
-    const byAddress = new Map(accounts.map((a) => [a.address.toLowerCase(), a]));
-    const resolve = (addr: unknown): PrivateKeyAccount => {
-        const account = byAddress.get(String(addr).toLowerCase());
-        if (!account) throw new Error(`local signer bridge: unknown account ${String(addr)}`);
-        return account;
-    };
-    return async (method: string, params: unknown[]): Promise<string> => {
-        if (method === 'personal_sign' || method === 'eth_sign') {
-            // personal_sign: [data, address]; eth_sign: [address, data].
-            const [data, addr] = method === 'personal_sign' ? [params[0], params[1]] : [params[1], params[0]];
-            const message = typeof data === 'string' && data.startsWith('0x')
-                ? { raw: data as Hex }
-                : String(data);
-            return resolve(addr).signMessage({ message });
-        }
-        if (method === 'eth_signTypedData' || method === 'eth_signTypedData_v4') {
-            const [addr, json] = params as [string, string];
-            const typed = typeof json === 'string' ? JSON.parse(json) : json;
-            return resolve(addr).signTypedData(typed);
-        }
-        if (method === 'eth_sendTransaction') {
-            const tx = params[0] as { from: string; to?: Hex; data?: Hex; value?: Hex; gas?: Hex };
-            const account = resolve(tx.from);
-            const client = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-            return client.sendTransaction({
-                to: tx.to,
-                data: tx.data,
-                value: tx.value ? BigInt(tx.value) : undefined,
-                gas: tx.gas ? BigInt(tx.gas) : undefined,
-            });
-        }
-        throw new Error(`local signer bridge: unhandled method ${method}`);
-    };
-}
-
 /** Fund a device-unique wallet with ETH (anvil cheatcode) — the seller pays
  *  the MembersRegistry registration deposit; both parties stay funded so no
  *  future gas-bearing step starts from zero. */
@@ -163,7 +125,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         const sellerAccount = privateKeyToAccount(keys.seller);
         const BUYER = buyerAccount.address;
         const SELLER = sellerAccount.address;
-        const signHandler = makeLocalSignHandler([buyerAccount, sellerAccount]);
+        const signHandler = makeLocalSignHandler([buyerAccount, sellerAccount], LOCAL_ANVIL, RPC_URL);
         const localAccounts = [BUYER.toLowerCase(), SELLER.toLowerCase()];
         await Promise.all([fundWithEth(BUYER), fundWithEth(SELLER)]);
 

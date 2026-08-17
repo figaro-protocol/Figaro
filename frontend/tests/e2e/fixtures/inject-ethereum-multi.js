@@ -19,12 +19,19 @@
 (function () {
     'use strict';
 
-    let ACCOUNT = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    const CHAIN_ID_HEX = '0x7a69'; // 31337 decimal
-    // Direct Anvil URL — NOT the dev server's '/rpc' proxy: the e2e webServer
+    // The chain this wallet speaks for. Anvil by default; a spec that drives a
+    // PUBLIC network (the Sepolia smoke) sets `window.__FIGARO_E2E_CHAIN__`
+    // in an earlier addInitScript — { chainIdHex, networkVersion, rpcUrl,
+    // defaultAccount } — and pairs it with the local-key signer bridge below
+    // (no unlocked accounts exist off Anvil).
+    var CHAIN_CFG = window.__FIGARO_E2E_CHAIN__ || {};
+    let ACCOUNT = CHAIN_CFG.defaultAccount || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    const CHAIN_ID_HEX = CHAIN_CFG.chainIdHex || '0x7a69'; // 31337 decimal
+    const NETWORK_VERSION = CHAIN_CFG.networkVersion || '31337';
+    // Direct node URL — NOT the dev server's '/rpc' proxy: the e2e webServer
     // is a production build (no rewrites), and the prod CSP already allows
     // connect-src http://127.0.0.1:*. Anvil answers CORS with allow-origin *.
-    const RPC_URL = 'http://127.0.0.1:8545';
+    const RPC_URL = CHAIN_CFG.rpcUrl || 'http://127.0.0.1:8545';
 
     let _reqId = 1;
 
@@ -55,7 +62,7 @@
         isConnected: function () { return true; },
         get selectedAddress() { return ACCOUNT; },
         chainId: CHAIN_ID_HEX,
-        networkVersion: '31337',
+        networkVersion: NETWORK_VERSION,
 
         request: async function (args) {
             const method = args.method;
@@ -65,12 +72,12 @@
                 return [ACCOUNT];
             }
             if (method === 'eth_chainId') return CHAIN_ID_HEX;
-            if (method === 'net_version') return '31337';
+            if (method === 'net_version') return NETWORK_VERSION;
             if (method === 'wallet_switchEthereumChain') {
                 const targetChain = params && params[0] && params[0].chainId;
                 if (targetChain) {
                     const targetId = parseInt(targetChain, 16);
-                    if (targetId !== 31337) {
+                    if (targetId !== parseInt(CHAIN_ID_HEX, 16)) {
                         throw Object.assign(
                             new Error('wallet_switchEthereumChain: unsupported chain ' + targetChain),
                             { code: 4902 }

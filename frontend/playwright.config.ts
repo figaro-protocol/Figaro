@@ -7,9 +7,48 @@ import * as path from 'path';
 // values from the latest ./deploy-local.sh run instead of hard-coded
 // fallbacks. Next.js's dev server loads .env.local on its own; this
 // makes the Playwright test process see the same values.
+// E2E_CHAIN=sepolia — the PUBLIC rehearsal (the Sepolia smoke): the site is
+// built against the committed Sepolia record + the public RPC + the same
+// test-helper opt-in the devnet export carries, into its own dist dir and
+// port; the test process reads the record, never .env.local (whose values
+// are the devnet's). Everything else stays the devnet default.
+const E2E_CHAIN = process.env.E2E_CHAIN === 'sepolia' ? 'sepolia' : 'devnet';
+const SEPOLIA_ENV: Record<string, string> = {};
+if (E2E_CHAIN === 'sepolia') {
+    const record = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../deployments/11155111.json'), 'utf8')) as Record<string, string | number>;
+    Object.assign(SEPOLIA_ENV, {
+        NEXT_PUBLIC_CHAIN: 'sepolia',
+        NEXT_PUBLIC_FIGARO_CORE: String(record.figaroCore),
+        NEXT_PUBLIC_ATTESTATION_COORDINATOR: String(record.attestationCoordinator),
+        NEXT_PUBLIC_CLAUSE_REGISTRY: String(record.clauseRegistry),
+        NEXT_PUBLIC_MEMBERS_REGISTRY: String(record.membersRegistry),
+        NEXT_PUBLIC_ASSEMBLY_REGISTRY: String(record.assemblyRegistry),
+        NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS: String(record.florinToken),
+        NEXT_PUBLIC_USAGE_COUNTER: String(record.usageCounter),
+        NEXT_PUBLIC_RPGF_MINTER: String(record.rpgfMinter),
+        NEXT_PUBLIC_BATCH_VERIFIER: String(record.batchVerifier),
+        NEXT_PUBLIC_DAO_TREASURY: String(record.daoTreasury),
+        NEXT_PUBLIC_DEPLOYMENT_BLOCK: String(record.deploymentBlock ?? ''),
+        NEXT_PUBLIC_RPC_URL: process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
+        NEXT_PUBLIC_PERMIT2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+        NEXT_PUBLIC_MULTISENDER: '0xD152f549545093347A162Dce210e7293f1452150',
+        NEXT_PUBLIC_IPFS_GATEWAY_URL: 'https://ipfs.io',
+        NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT: process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? process.env.IPFS_PIN_SERVICE_JWT ?? '',
+        NEXT_PUBLIC_ENABLE_TEST_HELPERS: 'true',
+        NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1',
+        // Devnet-only mocks stay unset on Sepolia — the frontend feature-gates absence.
+        NEXT_PUBLIC_TOKEN_ADDRESS: '',
+        NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS: '',
+        NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR: '',
+        NEXT_PUBLIC_SWAP_ROUTER: '',
+        NEXT_PUBLIC_IPFS_API_URL: '',
+        NEXT_PUBLIC_BATCH_RELAY_URL: '',
+    });
+    for (const [k, v] of Object.entries(SEPOLIA_ENV)) process.env[k] = v;
+}
 try {
     const envPath = path.resolve(__dirname, '.env.local');
-    if (fs.existsSync(envPath)) {
+    if (E2E_CHAIN === 'devnet' && fs.existsSync(envPath)) {
         for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
             const trimmed = line.trim();
             if (!trimmed || trimmed.startsWith('#')) continue;
@@ -24,7 +63,9 @@ try {
     // .env.local missing is fine — fallback addresses kick in.
 }
 
-const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT ?? '3100');
+const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT ?? (E2E_CHAIN === 'sepolia' ? '3200' : '3100'));
+const DIST_DIR = E2E_CHAIN === 'sepolia' ? '.next-e2e-sepolia' : '.next-e2e';
+const BUILD_ENV_PREFIX = Object.entries(SEPOLIA_ENV).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ');
 const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 
 // Web-server mode. Default = production (`next build` → static export, served
@@ -80,8 +121,8 @@ export default defineConfig({
                 // .next-e2e after source renames corrupts it (PageNotFoundError:
                 // /_document — three occurrences on 2026-08-06), and the build is
                 // full-cost either way.
-                ? `rm -rf .next-e2e && FIGARO_ALLOW_TEST_HELPERS=1 NEXT_DISTDIR=.next-e2e npm run build && SERVE_DIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run serve:export`
-                : `rm -rf .next-e2e && NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
+                ? `rm -rf ${DIST_DIR} && ${BUILD_ENV_PREFIX} FIGARO_ALLOW_TEST_HELPERS=1 NEXT_DISTDIR=${DIST_DIR} npm run build && SERVE_DIR=${DIST_DIR} PORT=${PLAYWRIGHT_PORT} npm run serve:export`
+                : `rm -rf ${DIST_DIR} && ${BUILD_ENV_PREFIX} NEXT_DISTDIR=${DIST_DIR} PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,
         // prod mode runs a full `next build` (~90 s) before the server answers.
@@ -162,6 +203,22 @@ export default defineConfig({
             testMatch: /\.smoke\.spec\.ts$/,
             fullyParallel: false,
             workers: 1,
+            use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            // MAINTAINER-MANUAL — the PUBLIC rehearsal (RELEASE_READINESS 7.3):
+            //     E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… \
+            //       npx playwright test --project=sepolia
+            // Drives the live Sepolia contracts through the real UI with the
+            // local-key signer bridge (no unlocked accounts off Anvil), asserting
+            // every step out-of-band from Sepolia. Costs real testnet ETH + USDC:
+            // the spec preflights both wallets and names what to fund. Without
+            // E2E_CHAIN=sepolia the same spec rehearses on the devnet (self-funded).
+            name: 'sepolia',
+            testMatch: /\.sepolia\.spec\.ts$/,
+            fullyParallel: false,
+            workers: 1,
+            retries: 0,
             use: { ...devices['Desktop Chrome'] },
         },
     ],

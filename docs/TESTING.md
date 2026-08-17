@@ -243,6 +243,19 @@ Five projects:
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
   suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a
   maintainer observation, not a CI gate.
+- **`sepolia`** — MAINTAINER-MANUAL: the PUBLIC rehearsal (RELEASE_READINESS
+  Task 7.3), `frontend/tests/e2e/live-order.sepolia.spec.ts` — one trade through
+  the real UI against the live Sepolia deployment (wizard registration → discover →
+  order → accept/commit → resolve → audit), every step asserted out-of-band from
+  Sepolia. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
+  test --project=sepolia` builds the site from the committed record
+  (`deployments/11155111.json`, publicnode RPC, test helpers on, dist
+  `.next-e2e-sepolia`, port 3200) and drives it with the local-key signer bridge
+  (`frontend/tests/e2e/local-signer.ts` — the injected wallet signs in Node with viem
+  accounts; no unlocked accounts exist off Anvil). It costs real testnet ETH +
+  USDC: the spec preflights both wallets and names what to fund. Without
+  `E2E_CHAIN=sepolia` the SAME spec rehearses on the devnet with throwaway keys
+  (self-funded) — the devnet rehearsal of the bridge.
 
 **⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
 acceptance specs (`clause-coverage`, `permissionless-clause`,

@@ -16,10 +16,20 @@ import { encodeGeohash } from '@figaro/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
 
-export const RPC_URL = 'http://127.0.0.1:8545';
+/** Which network the e2e run reads and drives: Anvil (the default; mainnet
+ *  on a laptop) or Sepolia (`E2E_CHAIN=sepolia` — the public rehearsal, the
+ *  Sepolia smoke). ONE switch: every helper below takes its RPC, chain, and
+ *  deployment record from here, so a spec written against devnet runs
+ *  against Sepolia unchanged. */
+export const E2E_CHAIN: 'devnet' | 'sepolia' = process.env.E2E_CHAIN === 'sepolia' ? 'sepolia' : 'devnet';
+export const RPC_URL = E2E_CHAIN === 'sepolia'
+    ? (process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com')
+    : 'http://127.0.0.1:8545';
+/** The active e2e chain — Anvil unless `E2E_CHAIN=sepolia`. (The identifier
+ *  predates the switch; it names the devnet default every spec assumes.) */
 export const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
+    id: E2E_CHAIN === 'sepolia' ? 11155111 : 31337,
+    name: E2E_CHAIN === 'sepolia' ? 'Sepolia' : 'Localhost',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: {
         default: { http: [RPC_URL] },
@@ -57,6 +67,17 @@ type DeploymentConfig = {
 };
 
 export function readLocalDeploymentConfig(): DeploymentConfig {
+    // Sepolia: the committed public record is the source (never .env.local,
+    // which is the devnet's); the ruled settlement token rides SEPOLIA_USDC.
+    if (E2E_CHAIN === 'sepolia') {
+        const recordPath = path.resolve(__dirname, '../../../deployments/11155111.json');
+        const record = JSON.parse(fs.readFileSync(recordPath, 'utf8')) as DeploymentConfig;
+        return {
+            ...record,
+            tokenAddress: (process.env.SEPOLIA_USDC ?? process.env.SMOKE_TOKEN) as `0x${string}` | undefined,
+            permit2: (process.env.NEXT_PUBLIC_PERMIT2 ?? '0x000000000022D473030F116dDEE9F6B43aC78BA3') as `0x${string}`,
+        };
+    }
     const envPath = path.resolve(__dirname, '../../.env.local');
     const deploymentPath = path.resolve(__dirname, '../../../.deployments/local.json');
     const config: DeploymentConfig = {};
@@ -269,9 +290,21 @@ export async function seedRegisteredMember(opts: {
  * full onboarding wizard.
  */
 export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
-    const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
     const form = new FormData();
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    // A public network pins through the managed pin service (the same
+    // two-backend adapter `lib/shared/ipfsService.ts` and the seeding scripts
+    // use); the devnet pins to local Kubo.
+    const jwt = process.env.IPFS_PIN_SERVICE_JWT ?? '';
+    if (E2E_CHAIN === 'sepolia' && jwt) {
+        const api = (process.env.IPFS_PIN_SERVICE_API ?? 'https://api.pinata.cloud').replace(/\/$/, '');
+        const res = await fetch(`${api}/pinning/pinFileToIPFS`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
+        if (!res.ok) throw new Error(`pin service pin failed: ${res.status} ${res.statusText}`);
+        const result = await res.json() as { IpfsHash?: string };
+        if (typeof result.IpfsHash !== 'string' || !result.IpfsHash) throw new Error('pin service returned no CID');
+        return { cid: result.IpfsHash, uri: `ipfs://${result.IpfsHash}` };
+    }
+    const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
     const res = await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
     if (!res.ok) {
         throw new Error(`IPFS pin failed: ${res.status} ${res.statusText}`);
@@ -295,6 +328,17 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
  * from cache. Mirrors `ipfs pin ls <cid>` against the Kubo HTTP API.
  */
 export async function assertPinnedInIpfs(cid: string): Promise<void> {
+    if (E2E_CHAIN === 'sepolia') {
+        // No pin/ls on a managed service from a scoped key: the out-of-band
+        // proof is the PUBLIC gateway serving the bytes (the site's own read
+        // path), which a merely-computed CID never passes.
+        const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'https://ipfs.io').replace(/\/$/, '');
+        await expect.poll(async () => {
+            const res = await fetch(`${gateway}/ipfs/${cid}`).catch(() => null);
+            return res?.ok ?? false;
+        }, { timeout: 120_000, intervals: [5_000], message: `CID ${cid} resolves on ${gateway}` }).toBe(true);
+        return;
+    }
     const apiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
     const res = await fetch(`${apiUrl}/api/v0/pin/ls?arg=${encodeURIComponent(cid)}`, { method: 'POST' });
     if (!res.ok) {
