@@ -172,12 +172,14 @@ Required output:
    landed 2026-08-14:
    - ~~Per-network deploy config/env~~ — DONE: `script/DeploySepolia.s.sol` (mirror of
      mainnet with ONE testnet divergence: mock treasury as DAO wallet; the weekly-period
-     compression was reverted 2026-08-14 — real yearly schedule, Sepolia is the release) +
+     compression was reverted 2026-08-14 — real yearly schedule: the testnet rehearses
+     mainnet's real parameters) +
      `scripts/deploy-sepolia.sh` (chain-id 11155111 read-back; `SKIP_VERIFY=1` for the
      Anvil-fork rehearsal). Fork-rehearsed end-to-end the same day: full stack (11.5M
      gas), 27 clauses + 9 reference assemblies registered THROUGH the mock treasury
-     (DAO = author-of-record, chain-verified), DAO member via treasury execute, founder
-     member direct. Seeding is `populate-clauses.mjs` treasury mode (Sepolia USDC
+     (chain-verified — a rehearsal of the vault mechanism only: the ownership rule is
+     mandatory-clauses-only under the DAO, Task 13), DAO member via treasury execute,
+     founder member direct. Seeding is `populate-clauses.mjs` treasury mode (Sepolia USDC
      `0x1c7D…7238` as the reference-assembly settlement fill, ruled 2026-08-14).
      Live nudge 2 landed 2026-08-17: `pos` + `local-commerce` (their 9 clauses + 2
      anchors) registered through the vault with the founder's Ledger approving on
@@ -293,6 +295,40 @@ alternate). Item statuses:
 4. **Repo metadata at creation.** Description, topics, default branch `main`; issues on.
    Recorded check (2026-08-07): `.git` is 247M, no tracked secrets/`.env`/keys/broadcast
    artifacts, `LICENSE` + root `README.md` present — no large-file surgery needed.
+
+### Task 13: Genesis Registration Ownership — MAINNET GATE (opened 2026-08-17)
+
+The first mainnet-readiness item produced by the Sepolia rehearsal, and the reason
+the rehearsal exists. **The rule (maintainer, 2026-08-17):** the DAO treasury
+vault is author-of-record for the **mandatory clauses only** (`figaro-commerce`,
+`figaro-topology`, `figaro-assembly-provenance`) plus any clause a stranger donates
+under it. **Every other reference clause and every reference assembly is registered
+by the founder's wallet, from the founder's own balance; each member profile is
+registered by its own wallet from its own balance** (founder direct; the DAO through
+its vault). Registrar = author-of-record = who the 600M RPGF pays
+(`RpgfMinter._isAuthor` reads `depositOf(...).registrar`); it is first-write-wins
+and permanent per id — `withdrawDeposit` only de-surfaces.
+
+**What Sepolia recorded (nudge 2, 2026-08-17):** the vault-registrar seeding mode,
+following the over-broad "genesis seed set" wording of the 08-13 endowment record,
+registered 6 non-mandatory clauses (`figaro-courier-process`, `figaro-merchant-process`,
+`figaro-geolocation`, `figaro-handoff`, `figaro-modalities`, `figaro-proximity-policy`)
+and both assemblies (`pos` `asm-33ce205ea77e79e8`, `local-commerce`
+`asm-9398dfdc16ea296b`) under the vault. On Sepolia they stay there for life —
+accepted as the testnet lesson, not repaired. From nudge 3 on, the founder registers.
+
+**Gate criteria before mainnet genesis seeding:**
+1. Ratify the mandatory-only rule above (this section is the record; the 08-13
+   endowment memory carries the correction).
+2. The genesis seeding run is a written registration plan — each id with its registrar — that
+   the maintainer reviews BEFORE the first broadcast; the vault-registrar mode is
+   invoked with `SEED_CLAUSES` naming exactly the mandatory three, and every other
+   run uses the founder's Ledger as direct registrar.
+3. Doc sweep done: `CONTRACTS.md` § RPGF, `LEXICON.md` vault-registrar seam, and
+   `FLORIN_TOKEN.md` state the mandatory-only ownership (swept 2026-08-17 — keep
+   them in sync if the rule moves).
+4. Rehearsed end to end on an Anvil fork with the real devices, then on Sepolia
+   (nudge 3 onward is that rehearsal), before mainnet.
 
 ## Validation Commands
 
@@ -514,7 +550,7 @@ Post-Audit Policy rather than slipped through.
 Post-stamp record #2 (2026-08-13, evening — a CONFIG change, maintainer-ruled):
 the RPGF exclusion list shrank from three entries to one — the mandatory pair
 (`figaro-commerce`, `figaro-topology`) now EARNS for its author-of-record (the DAO
-treasury under the ruled genesis registration); only `figaro-assembly-provenance`
+treasury, which registers exactly the mandatory clauses — Task 13); only `figaro-assembly-provenance`
 stays excluded (attribution plumbing). Scope: both deploy scripts' `excluded`
 arrays + comment-only NatSpec in `UsageCounter.sol`; no contract bytecode changed.
 Formal re-run per the Post-Audit Policy, all green: Foundry 301/301 (fork suite

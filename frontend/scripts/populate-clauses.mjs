@@ -23,6 +23,13 @@
  *   NEXT_PUBLIC_IPFS_API_URL     — Kubo API (default http://127.0.0.1:5001)
  *   RPC_URL                      — chain RPC (default http://127.0.0.1:8545)
  *   REGISTRAR_PRIVATE_KEY        — signer; defaults to anvil[0] (devnet only)
+ *   REGISTRAR_LEDGER_HD_PATH     — instead of a key: the registrar is a Ledger
+ *                                  account (Ledger Live path `m/44'/60'/N'/0/0`);
+ *                                  every registration is signed ON THE DEVICE via
+ *                                  Foundry's `cast send --ledger`, its stake paid
+ *                                  from that account (the founder's own artifacts:
+ *                                  the reference clauses + assemblies that are not
+ *                                  the mandatory pair — RELEASE_READINESS Task 13)
  *
  * VAULT-REGISTRAR MODE (the LEXICON vault-registrar seam). This script always
  * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET
@@ -60,6 +67,10 @@
  *                           usable assembly plus its prerequisites, not an
  *                           alphabetical prefix of the clause set. Unset =
  *                           everything.
+ *   SEED_CLAUSES          — comma-separated clause ids: register ONLY these
+ *                           (unioned with the SEED_ASSEMBLIES-derived set when
+ *                           both are given). The vault-registrar genesis run
+ *                           names exactly the mandatory clauses here.
  *   SEED_LIMIT            — cap NEW registrations this run (one shared budget:
  *                           clauses first, assemblies get the remainder)
  *   IPFS_PIN_SERVICE_JWT  — pin via a managed pinning service instead of local
@@ -146,24 +157,41 @@ export const VAULT_ABI = [
     { type: 'function', name: 'isOwner', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
 ];
 
-/** A vault owner whose key never leaves a Ledger device. Same shape as the
- *  viem wallet clients `vaultExecute` drives (`account.address` +
- *  `writeContract` resolving to a tx hash), so the approval loop is
- *  signer-agnostic; the signing itself is Foundry's `cast send --ledger` —
- *  the device prompts, the maintainer verifies the vault address on its
- *  screen and taps. The address is read from the device at construction,
- *  so a wrong derivation index surfaces before anything is signed. */
-export function ledgerOwnerClient({ hdPath, rpcUrl, log = console.log }) {
-    const address = execFileSync('cast', ['wallet', 'address', '--ledger', '--hd-path', hdPath], {
-        stdio: ['inherit', 'pipe', 'inherit'],
-    }).toString().trim();
+/** A wallet whose key never leaves a Ledger device — usable both as a vault
+ *  OWNER (approvals) and as a direct REGISTRAR (registrations, stake attached).
+ *  Same shape as the viem wallet clients the rest of this script drives
+ *  (`account.address` + `writeContract` resolving to a tx hash), so every
+ *  caller is signer-agnostic; the signing itself is Foundry's
+ *  `cast send --ledger` — the device prompts, the maintainer verifies the
+ *  target address (and value) on its screen and taps. The address is read
+ *  from the device at construction, so a wrong derivation index surfaces
+ *  before anything is signed. */
+export function ledgerWalletClient({ hdPath, rpcUrl, log = console.log }) {
+    let address;
+    for (let attempt = 1; ; attempt++) {
+        try {
+            address = execFileSync('cast', ['wallet', 'address', '--ledger', '--hd-path', hdPath], {
+                stdio: ['inherit', 'pipe', 'pipe'],
+            }).toString().trim();
+            break;
+        } catch (err) {
+            const stderr = (err.stderr ?? '').toString();
+            if (!/Could not connect to Ledger device/.test(stderr) || attempt >= LEDGER_RETRIES) {
+                throw new Error(`Ledger address read failed after ${attempt} attempt(s): ${stderr.trim() || err.message.split('\n')[0]}`);
+            }
+            log(`  … Ledger not reachable (attempt ${attempt}/${LEDGER_RETRIES}) — unlock it, open the Ethereum app, quit Ledger Live; retrying in ${LEDGER_RETRY_MS / 1000}s`);
+            execFileSync('sleep', [String(LEDGER_RETRY_MS / 1000)]);
+        }
+    }
     return {
         account: { address },
-        async writeContract({ address: to, functionName, args }) {
-            if (functionName !== 'approveHash') {
-                throw new Error(`Ledger owner signs vault approvals only (asked for ${functionName})`);
-            }
-            log(`  ⧗ Ledger ${hdPath} (${address}): approve ${args[0]} on the device — the screen must show vault ${to}`);
+        async writeContract({ address: to, abi, functionName, args = [], value }) {
+            const fn = abi.find((item) => item.type === 'function' && item.name === functionName);
+            if (!fn) throw new Error(`ledgerWalletClient: ${functionName} is not in the given ABI`);
+            const sig = `${functionName}(${fn.inputs.map((input) => input.type).join(',')})`;
+            const argv = args.map((a) => (typeof a === 'bigint' ? a.toString() : String(a)));
+            const valueArgs = value ? ['--value', value.toString()] : [];
+            log(`  ⧗ Ledger ${hdPath} (${address}): sign ${sig} → ${to}${value ? ` with ${value} wei` : ''} on the device — verify the address on its screen`);
             // The device locks itself between the chain confirmations that
             // pace the taps; an unreachable device is a wait, not a failure
             // of the nudge (every step before this one is already on-chain and
@@ -171,15 +199,15 @@ export function ledgerOwnerClient({ hdPath, rpcUrl, log = console.log }) {
             for (let attempt = 1; ; attempt++) {
                 try {
                     const out = execFileSync('cast', [
-                        'send', '--ledger', '--hd-path', hdPath, '--rpc-url', rpcUrl, '--json',
-                        to, 'approveHash(bytes32)', args[0],
+                        'send', '--ledger', '--hd-path', hdPath, '--rpc-url', rpcUrl, '--json', ...valueArgs,
+                        to, sig, ...argv,
                     ], { stdio: ['inherit', 'pipe', 'pipe'] }).toString();
                     return JSON.parse(out).transactionHash;
                 } catch (err) {
                     const stderr = (err.stderr ?? '').toString();
                     if (!/Could not connect to Ledger device/.test(stderr) || attempt >= LEDGER_RETRIES) {
                         // Never echo cast's command line: it carries the RPC URL (a keyed endpoint).
-                        throw new Error(`Ledger approval failed after ${attempt} attempt(s): ${stderr.trim() || err.message.split('\n')[0]}`);
+                        throw new Error(`Ledger signing failed after ${attempt} attempt(s): ${stderr.trim() || err.message.split('\n')[0]}`);
                     }
                     log(`  … Ledger not reachable (attempt ${attempt}/${LEDGER_RETRIES}) — unlock it, open the Ethereum app, quit Ledger Live; retrying in ${LEDGER_RETRY_MS / 1000}s`);
                     await new Promise((r) => setTimeout(r, LEDGER_RETRY_MS));
@@ -244,7 +272,7 @@ export function readEnvLocal() {
  *  local Kubo. Mirrors the two-backend adapter in `lib/shared/ipfsService.ts`
  *  (mirror-by-necessity: the SDK is viem-only and .mjs cannot import frontend
  *  TS — keep the endpoint shapes in lockstep). */
-function pinService() {
+export function pinService() {
     const jwt = process.env.IPFS_PIN_SERVICE_JWT ?? '';
     if (!jwt) return null;
     const api = (process.env.IPFS_PIN_SERVICE_API ?? 'https://api.pinata.cloud').replace(/\/$/, '');
@@ -301,11 +329,13 @@ export async function populateClauses({ publicClient, walletClient, account, reg
     const files = fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort();
     // First pass: what actually needs registering (idempotent skips are free).
     let pending = [];
+    const seen = new Set();
     for (const file of files) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         const clauseIdStr = spec.clauseId;
         if (!clauseIdStr) throw new Error(`${file} has no clauseId`);
-        // SEED_ASSEMBLIES: only the clauses the selected assemblies compose.
+        seen.add(clauseIdStr);
+        // SEED_ASSEMBLIES / SEED_CLAUSES: only the selected clauses.
         if (only && !only.has(clauseIdStr)) continue;
         const version = BigInt(spec.version ?? 1);
         // On-chain identity is keccak256(abi.encode(name, version)).
@@ -317,6 +347,10 @@ export async function populateClauses({ publicClient, walletClient, account, reg
             continue;
         }
         pending.push({ spec, clauseIdStr, version, clauseId });
+    }
+    if (only) {
+        const unknown = [...only].filter((id) => !seen.has(id));
+        if (unknown.length) throw new Error(`selected clause id(s) have no spec in clauses/: ${unknown.join(', ')}`);
     }
     // SEED_LIMIT: the incremental release registers a NUDGE per session — cap
     // this run to what the session's ETH covers. Never a silent cap: the
@@ -508,12 +542,18 @@ async function main() {
     const ipfsApiUrl = process.env.NEXT_PUBLIC_IPFS_API_URL ?? env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
     if (!registry) throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY missing — deploy the contracts first.');
 
-    const account = registrarAccount();
     const chain = await resolveChain();
     const publicClient = createPublicClient({ chain, transport: http(RPC_URL) });
-    const walletClient = createWalletClient({ account, chain, transport: http(RPC_URL) });
-
+    // ONE registrar per invocation: a key, a Ledger account, or a vault.
     const vault = process.env.REGISTRAR_VAULT;
+    if (vault && process.env.REGISTRAR_LEDGER_HD_PATH) {
+        throw new Error('REGISTRAR_VAULT and REGISTRAR_LEDGER_HD_PATH are two registrars — this script acts for exactly one per invocation');
+    }
+    const walletClient = process.env.REGISTRAR_LEDGER_HD_PATH
+        ? ledgerWalletClient({ hdPath: process.env.REGISTRAR_LEDGER_HD_PATH, rpcUrl: RPC_URL })
+        : createWalletClient({ account: registrarAccount(), chain, transport: http(RPC_URL) });
+    const account = walletClient.account;
+
     let ownerClients;
     if (vault) {
         const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -524,7 +564,7 @@ async function main() {
         // Ledger owner, when configured, only ever approves.
         ownerClients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC_URL) }));
         if (process.env.VAULT_LEDGER_HD_PATH) {
-            ownerClients.push(ledgerOwnerClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl: RPC_URL }));
+            ownerClients.push(ledgerWalletClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl: RPC_URL }));
         }
         // Every configured signer must be a vault owner — a non-owner's
         // approveHash reverts, but only after the device tap; refuse up front.
@@ -548,6 +588,11 @@ async function main() {
             for (const id of templateComposedClauseIds(JSON.parse(fs.readFileSync(file, 'utf8')))) onlyClauses.add(id);
         }
         console.log(`SEED_ASSEMBLIES ${[...onlyAssemblies].join(', ')} → clause set ${[...onlyClauses].sort().join(', ')}`);
+    }
+    if (process.env.SEED_CLAUSES) {
+        onlyClauses ??= new Set();
+        for (const id of process.env.SEED_CLAUSES.split(',').map((s) => s.trim()).filter(Boolean)) onlyClauses.add(id);
+        console.log(`SEED_CLAUSES → ${[...onlyClauses].sort().join(', ')}`);
     }
 
     // SEED_LIMIT: one shared budget per run — clauses consume first (they must

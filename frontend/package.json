@@ -20,6 +20,7 @@
         "test:e2e:report": "playwright show-report",
         "test:e2e:mobile": "playwright test --project=mobile",
         "populate:clauses": "node scripts/populate-clauses.mjs",
+        "populate:members": "node scripts/populate-members.mjs",
         "populate:test-data": "node scripts/populate-test-data.mjs",
         "test:e2e:devnet": "node scripts/verify-devnet-deployment.mjs && node scripts/populate-test-data.mjs && playwright test --project=devnet --workers=1",
         "test:e2e:smoke": "playwright test --project=smoke"

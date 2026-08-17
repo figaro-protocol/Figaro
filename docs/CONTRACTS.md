@@ -307,10 +307,12 @@ clause in the agreement, no process can credit its designer.
 credit-carrying leaf would double-pay every assembly-composed process). The two
 order-mandatory clauses (`figaro-commerce`, `figaro-topology`) EARN under the uniform
 rule: they ride every order, so scoring them levies every settled process for their
-author-of-record — the DAO treasury Safe under the genesis registration, the commons
-taxing its own unavoidable usage into the commons pot (a usage-indexed endowment that
-outlives the nine-period sunset; competition with and donation to the DAO's
-registrations are both permissionless). The provenance clause's exclusion is what makes
+author-of-record — the DAO treasury Safe, which registers exactly the mandatory
+clauses at genesis (every other reference clause and assembly is the founder's; a
+stranger's is theirs — `RELEASE_READINESS.md` Task 13), the commons taxing its own
+unavoidable usage into the commons pot (a usage-indexed endowment that outlives the
+nine-period sunset; competition with and donation to the DAO's registrations are
+both permissionless). The provenance clause's exclusion is what makes
 the resolve-time recording loop's clause leg and assembly leg independent: the clause
 record on provenance always reverts while `recordAssemblyUsage` still credits the
 assembly's designer of record.

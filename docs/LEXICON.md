@@ -71,9 +71,10 @@ registration deposits NEVER go to it — stakes sit in the registry that took th
 reclaimable only by their registrar (withdraw = de-surface). **registrar** = a
 PER-WALLET role, never a global one: the wallet that registered an artifact and
 holds its live stake. Every wallet is registrar of ONLY what it claims ownership
-of — the DAO's vault for the genesis seed set and donated keys (the 2026-08-13
-endowment ruling), the founder's address for the founder's own artifacts, any
-stranger's wallet for theirs. "The registrar" without an owner qualifier is the
+of — the DAO's vault for the MANDATORY clauses and donated keys ONLY (the 2026-08-13
+endowment ruling as clarified 2026-08-17), the founder's address for every other
+reference clause, assembly, and the founder's profile, any stranger's wallet for
+theirs; each member profile from its own wallet. "The registrar" without an owner qualifier is the
 drift tell; seeding tooling acts FOR one designated registrar per invocation
 (an EOA key, or a vault via its owners' approvals) and confers no special role.
 

@@ -166,8 +166,8 @@ do". Neither is restated here. This doc owns the ALLOCATION facts:
   Devnet compresses the schedule to thirty-minute periods (time compresses when
   time is involved; ruled 2026-07-15). PUBLIC deployments — Sepolia included — run
   the REAL annual schedule: the testnet weekly compression was reverted before the
-  2026-08-14 Sepolia broadcast (the testnet is the public release, not a
-  compressed rehearsal; `script/DeploySepolia.s.sol` documents it).
+  2026-08-14 Sepolia broadcast (the testnet is the full-dress rehearsal for
+  mainnet and runs mainnet's real schedule; `script/DeploySepolia.s.sol` documents it).
 
 The incentive rationale — why the flow-map gets built under a uniform reward — lives in
 `docs/PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built — the geo/coordination incentive under a uniform reward".
