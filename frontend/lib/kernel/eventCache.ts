@@ -178,7 +178,7 @@ export function isLogRangeCapError(err: unknown): boolean {
 /** The two calls the scan needs — structural, so a viem `PublicClient` and
  *  a test double both fit. */
 export type LogScanClient = {
-    getBlockNumber(): Promise<bigint>;
+    getBlockNumber(args?: { cacheTime?: number }): Promise<bigint>;
     getLogs(params: {
         address: `0x${string}`;
         event: PublicGetLogsParams["event"];
@@ -191,7 +191,10 @@ export async function getLogsAdaptive(
     client: LogScanClient,
     params: { address: `0x${string}`; event: PublicGetLogsParams["event"]; fromBlock: bigint },
 ): Promise<CachedLog[]> {
-    const toBlock = await client.getBlockNumber();
+    // Uncached: viem memoises getBlockNumber for `cacheTime` (4 s default);
+    // a read fired right after a receipt would otherwise bound the range
+    // BELOW the block that just landed and miss its events.
+    const toBlock = await client.getBlockNumber({ cacheTime: 0 });
     if (params.fromBlock > toBlock) return [];
     const logs: CachedLog[] = [];
     let from = params.fromBlock;
@@ -286,7 +289,7 @@ async function _fetchAndCache(
     //    cached cursor, the node was likely restarted (e.g. Anvil). Discard
     //    the stale cache and re-scan from the deployment block.
     if (entry) {
-        const latestBlock = await client.getBlockNumber();
+        const latestBlock = await client.getBlockNumber({ cacheTime: 0 });
         if (latestBlock < entry.cursor) {
             entry = null;
             mem.delete(key);
@@ -320,9 +323,9 @@ async function _fetchAndCache(
     } else if (entry) {
         // No new logs — keep cursor but advance to latest so we don't re-query
         // the same empty range next time.
-        newCursor = await client.getBlockNumber();
+        newCursor = await client.getBlockNumber({ cacheTime: 0 });
     } else {
-        newCursor = await client.getBlockNumber();
+        newCursor = await client.getBlockNumber({ cacheTime: 0 });
     }
 
     // 7. Merge with dedup — use (blockNumber, txHash, logIndex) as fingerprint
