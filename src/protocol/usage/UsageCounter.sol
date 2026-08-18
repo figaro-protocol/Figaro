@@ -13,7 +13,9 @@ interface IFigaroCore {
 }
 
 /// @notice The one MembersRegistry field this contract reads — whether an
-///         address holds a LIVE registration stake (the seller-side gate).
+///         address holds a LIVE MEMBER stake. The stake is a member's (buyers
+///         and sellers register alike); this contract applies it to the SELLER
+///         of record — the seller-side gate.
 interface IMemberStake {
     function registered(address member) external view returns (bool);
 }
@@ -246,8 +248,9 @@ contract UsageCounter {
     ///         to `d` in this period. Its only job is the distinct-staked-seller
     ///         count.
     /// @dev    Breadth counted (buyer, seller) PAIRS until 2026-07-31. Pairs are
-    ///         the wrong statistic because they cannot be priced: the buyer side
-    ///         has no stake, so one staked seller plus N free buyer wallets was
+    ///         the wrong statistic because they cannot be priced: the buyer's
+    ///         member stake, if any, is not what breadth prices, so one staked
+    ///         seller plus N free buyer wallets was
     ///         N units of `d` — the score's dominant term, manufacturable at gas
     ///         cost — and even staking BOTH sides prices pairs sublinearly (k
     ///         staked buyers × m staked sellers mint k·m pairs from k+m
@@ -319,7 +322,7 @@ contract UsageCounter {
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _core        FigaroCore — the order-status and domain source.
-    /// @param _members     MembersRegistry — the seller-side live-stake gate.
+    /// @param _members     MembersRegistry — the member stake, applied to the seller of record (the seller-side gate).
     /// @param _clauses     ClauseRegistry — the clause-side stake gate.
     /// @param _assemblies  AssemblyRegistry — the assembly-side stake gate.
     /// @param _batchVerifier  FigaroBatchVerifier — the proof-gated writer of
@@ -633,7 +636,8 @@ contract UsageCounter {
         // deny a specific author must therefore stay unstaked through the period
         // end, forfeiting their own eligibility and locking their deposit — a
         // self-limiting grief accepted by design (DESIGN_DECISIONS "retroactive
-        // seller-stake gate"). Because `d` counts distinct STAKED sellers, this one gate
+        // member-stake gate on the seller of record"). Because `d` counts distinct
+        // STAKED sellers, this one gate
         // prices breadth itself: n units of the score's dominant term cost n
         // live stakes. Identity cost is the only place Sybil resistance can
         // live (no scoring shape can separate a fabricated counterparty from a

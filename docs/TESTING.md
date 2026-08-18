@@ -28,7 +28,7 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
 inclusion against the signed `agreementHash`, per-(clause-or-assembly, process) GLOBAL idempotence (a
 process counts once ever — re-recording it in a later period reverts, and a later period
-counts only trade new to it), the **live-seller-stake gate** (`SellerNotStaked` when the seller-of-record is
+counts only trade new to it), the **member-stake gate on the seller of record** (`SellerNotStaked` when the seller-of-record is
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses and assemblies** (no
 category, tag, or weight), period boundaries and `periodClosed`, `totalScoreIn` delta
 maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`

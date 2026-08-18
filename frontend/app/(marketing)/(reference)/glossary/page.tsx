@@ -162,6 +162,13 @@ const TERMS: Term[] = [
         readMore: <Link href="/kernel" className="hover:underline">Kernel</Link>,
     },
     {
+        id: "member",
+        term: "Member",
+        definition:
+            "A wallet that has published its profile on the members registry with a live ETH deposit &mdash; the same one deposit whether it buys, sells, or both. A member's profile carries both sides: what it offers as a seller, and, as a buyer, which of the data its own deals produce it offers for sale. The deposit is a member's, never a seller's alone; the reward mechanism reads it on the seller of record of each settled deal.",
+        readMore: <Link href="/members" className="hover:underline">Members</Link>,
+    },
+    {
         id: "operator",
         term: "Operator",
         definition:

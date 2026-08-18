@@ -251,7 +251,7 @@ that hash from calldata before forwarding to `applyBatchAccrual`. **Both array
 lengths are in the hash preimage** — an accrual record is 48 bytes and a
 seller 20, so without them the same preimage could be re-split, presenting
 accruals whose sellers were never stake-checked. The gates the proof cannot
-see (open period, live seller stake, excluded clauses or assemblies) belong to the counter
+see (open period, the seller of record's live member stake, excluded clauses or assemblies) belong to the counter
 and are checked there, not here. A batch that credits no usage passes empty
 arrays; that call is a no-op, which is what lets trade keep settling after the
 reward's last period closes.

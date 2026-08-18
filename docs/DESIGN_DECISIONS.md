@@ -605,7 +605,7 @@ registry. A settled, proven use that earns nothing reads like lost accrual.
 merkle-leaf key a self-authored agreement chooses freely, so without this gate a self-dealt
 process could accrue score to ANY `bytes32` and inflate `totalScoreIn` — the shared payout
 denominator — at gas cost, diluting every honest author. The gate is the CLAUSE-OR-ASSEMBLY-SIDE twin
-of the seller-side stake gate: score counts only what a live ETH deposit has priced. It does
+of the member-stake gate on the seller of record: score counts only what a live ETH deposit has priced. It does
 not eliminate the paid replication lever (register N keys for N deposits) — that is the
 accepted, deposit-priced cost the reward's uniform pro-rata already dilutes — it closes the
 FREE variant. Direct path reverts (a standalone tx with nothing to unwind); the batch path
@@ -629,7 +629,7 @@ cumulative overwrite) or forgone — conservative under-pay, never over-pay, the
 the per-path floor (§17). The sequencer additionally pre-filters poison claims so the catch
 only ever fires on the genuine stake-race.
 
-## 21. The seller-stake gate is retroactive — usage must be recorded while the stake is live
+## 21. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
 **Looks wrong because:** a seller who requests withdrawal doesn't merely stop FUTURE trades
 counting — every one of their settled-but-not-yet-recorded processes becomes permanently
@@ -672,4 +672,4 @@ the cost of the stateless kernel.
 | 18 | No per-record fee or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed fee inserts an institution + usage-coupled revenue into an identity-free mechanism |
 | 19 | Usage needs a live clause-or-assembly registration deposit | reward-path | A proven, settled use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted deposit-priced replication lever |
 | 20 | RPGF accrual never reverts settlement (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind settlement-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
-| 21 | Seller-stake gate is retroactive | reward-path | A withdrawal makes settled-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-settlement closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
+| 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes settled-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-settlement closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |

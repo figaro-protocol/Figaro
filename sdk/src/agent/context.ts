@@ -163,7 +163,8 @@ export class FigaroContext {
         return this.discovery.getClauses();
     }
 
-    /** All live-staked sellers on the network. */
+    /** Every live-staked member on the network — buyers and sellers alike (the
+     *  member stake is one deposit for both postures). */
     getMembers(): RegisteredMember[] {
         return this.discovery.getMembers();
     }

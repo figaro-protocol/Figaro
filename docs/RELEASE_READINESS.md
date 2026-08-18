@@ -81,7 +81,7 @@ breadth statistic is what makes possible. Capturing a share `φ` of a period cos
    is a forecast).
 2. **`ClauseRegistry(0.05 ether)` / `AssemblyRegistry(0.05 ether)`, no cooldown** —
    withdrawal is one-shot per key with a permanent binding, so nothing recycles. These
-   stakes do MORE work than the seller stake per unit: author-side RPGF eligibility
+   stakes do MORE work than the member stake per unit: author-side RPGF eligibility
    requires the deposit live AT CLAIM, so the capital is held for the whole period,
    undiscounted — and it prices the clause-or-assembly-replication lever (an adversary multiplying
    score across `m` self-authored clauses in the same fabricated agreements holds `m`
@@ -346,8 +346,11 @@ vault is author-of-record for the **mandatory clauses only** (`figaro-commerce`,
 `figaro-topology`, `figaro-assembly-provenance`) plus any clause a stranger donates
 under it. **Every other reference clause and every reference assembly is registered
 by the founder's wallet, from the founder's own balance; each member profile is
-registered by its own wallet from its own balance** (founder direct; the DAO through
-its vault). Registrar = author-of-record = who the 600M RPGF pays
+registered by its own wallet from its own balance** (founder direct — as a BUYER-side
+member: subscriptions + data-disclosure toggles, ruled 2026-08-18; the DAO under its
+EIP-7702-delegated OPERATOR EOA, never the vault address — `FLORIN_TOKEN.md` § DAO
+custody, ruled 2026-08-18; the 08-17 Sepolia profiles were bare and the DAO's sits under
+the vault — both corrected at the redeploy). Registrar = author-of-record = who the 600M RPGF pays
 (`RpgfMinter._isAuthor` reads `depositOf(...).registrar`); it is first-write-wins
 and permanent per id — `withdrawDeposit` only de-surfaces.
 
@@ -383,6 +386,12 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   body) is superseded; recompute at redeploy time (`SP1_VKEY_ONLY=1 cargo run -p
   figaro-prove-test --release`, or read the next release tag's body) and never reuse the
   old value;
+- **the DAO's operator EOA + its EIP-7702 delegation** created BEFORE the DAO's member
+  profile is registered (under the operator, not the vault — `FLORIN_TOKEN.md` § DAO
+  custody): the delegate contract the multisig controls (a composition-tier contract or an
+  audited off-the-shelf 7702 account — the maintainer rules which), the operator's key
+  custody, per-procurement funding from the vault. Then the founder's profile as a
+  buyer-side member; both from committed reference profiles pinned under each owner's key;
 - ~~`WitnessSwapAndCommitCoordinator`~~ — DONE 2026-08-18 without a redeploy (it points at
   the kernel and nothing points back, so it deployed ALONE onto the live stack:
   `0xdfF381730811CDec3518FA38B14f92219c5127B6`, bound to canonical Permit2 and Uniswap

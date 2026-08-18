@@ -124,16 +124,27 @@ deployment config via `DAO_WALLET`, never authored code). The concrete custody d
 signer set, threshold, and the founder/supporter wallet addresses — is deployment
 configuration and will be disclosed in the deployment record when a public deployment
 exists; none is named now because none exists yet, not because any is withheld. *No vault contract exists or is
-needed* — custody is composed, not authored. For path 3 the DAO **procures** through a
-**per-procurement funded operator-EOA** (it *procures services*; it never buys tokens —
-the issuer never touches a market) — the treasury itself can never sign kernel
-commitments (the kernel is ECDSA-only), so governance gates the *funding* and the EOA's
-blast radius is only ever the current procurement. Devnet rehearses the whole shape:
-`Deploy.s.sol` stands up `MockTreasuryMultisig` (anvil-placeholder 2-of-3) as the 300M
-mint target, and `test/florin/TreasuryProcurement.t.sol` drives fund → bonded commit →
-resolve → sweep-back, asserting the treasury's net spend is exactly the payment.
-Threshold-ECDSA (a multisig in cryptography, an EOA on-chain) is the recorded custody
-upgrade for the buyer key, rehearsed on testnet before adoption.
+needed* — custody is composed, not authored. **The DAO meets the ecosystem through ONE
+account: its operator EOA, an externally-owned account carrying an EIP-7702 delegation to
+governance-controlled code** (ruled 2026-08-18; the same delegation shape
+`DESIGN_DECISIONS.md` § key-loss records for any buyer). The treasury contract itself can
+never sign kernel commitments (the kernel is ECDSA-only), so the multisig authorises
+*upstream* — it funds the operator per procurement, and through the delegated code it can
+act from the operator's address for `msg.sender`-authorised calls (resolution, recovery)
+and bound what the operator may do — while the operator's own key produces the EIP-712
+signatures. That operator EOA is the DAO's identity in every registry and every deal: it
+holds the DAO's member profile (buyer side and, when the DAO sells — merchandise, tickets,
+its co-produced data — seller side), it is the buyer of record when the DAO **procures**
+through the protocol (path 3: it *procures services*; the issuer never buys tokens or
+touches a market), and its blast radius is bounded by the delegation and by per-procurement
+funding. Devnet rehearses the shape: `Deploy.s.sol` stands up `MockTreasuryMultisig`
+(anvil-placeholder 2-of-3) as the 300M mint target, and `test/florin/TreasuryProcurement.t.sol`
+drives fund → bonded commit → resolve → sweep-back, asserting the treasury's net spend is
+exactly the payment. Threshold-ECDSA (a multisig in cryptography, an EOA on-chain) is the
+recorded custody upgrade for the operator's key, rehearsed on testnet before adoption. On
+Sepolia the operator EOA and its delegation are created BEFORE the DAO's member profile is
+registered under it (RELEASE_READINESS Task 13's redeploy list); the vault address itself
+holds no profile.
 
 ### The 600M RPGF allocation
 

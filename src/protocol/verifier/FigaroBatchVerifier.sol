@@ -64,7 +64,7 @@ interface IUsageCounter {
 ///         this contract carries the accrual across: the guest proves
 ///         each clause or assembly's cumulative `(c, d)`, and one write
 ///         per clause or assembly per batch lands it. The gates the proof
-///         cannot see (open period, live seller stake, exclusions) are the
+///         cannot see (open period, the seller of record's live member stake, exclusions) are the
 ///         counter's own and are checked there, not here.
 ///
 ///         Public values (ABI-encoded, 8 × 32-byte words):
@@ -294,7 +294,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
         // ── 7. Carry the RPGF accrual across the settlement crease ─
         //    The numbers are the proof's; the reward's own gates (open
-        //    period, live seller stake, registration, exclusions)
+        //    period, the seller of record's live member stake, registration, exclusions)
         //    are the counter's and are enforced there. A batch with no usage
         //    claims passes empty arrays and the call is a no-op — which is
         //    what keeps trade settling after accrual closes.
