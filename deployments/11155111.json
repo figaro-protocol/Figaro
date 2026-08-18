@@ -10,5 +10,8 @@
   "rpgfMinter": "0x76a1e71372Bf3484E4b4149b2f36cc2870766A64",
   "batchVerifier": "0x2d91FeD3De395B6aBCC315F07de9476528692C08",
   "daoTreasury": "0x50FEc084Cc883b0D7EebeaE8cFD15593C66bc069",
-  "deploymentBlock": 11488797
+  "deploymentBlock": 11488797,
+  "witnessSwapAndCommitCoordinator": "0xdfF381730811CDec3518FA38B14f92219c5127B6",
+  "swapRouter": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+  "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
 }

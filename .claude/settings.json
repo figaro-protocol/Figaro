@@ -35,7 +35,8 @@
       "Edit(./frontend/**)",
       "Write(./frontend/**)",
       "Edit(/Users/adaliana/Figaro/.claude/agents/**)",
-      "Write(/Users/adaliana/Figaro/.claude/agents/**)"
+      "Write(/Users/adaliana/Figaro/.claude/agents/**)",
+      "Bash(npx wrangler pages deploy out --project-name figaro-protocol*)"
     ],
     "deny": [
       "Bash(git push --force*)",
