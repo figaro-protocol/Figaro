@@ -166,6 +166,11 @@ NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 # leaves it unset (an EMPTY value means none).
 NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL=
 
+# XMTP coordination network — DEPLOYMENT CONFIG: `dev` (XMTP's public dev network;
+# devnet + testnet builds; empty = dev) or `production` (mainnet). Anything else is
+# refused at first use. The dev-only installation housekeeping runs only on `dev`.
+NEXT_PUBLIC_XMTP_ENV=
+
 # Managed pinning service — DEPLOY BUILDS ONLY (testnet tier, RELEASE_READINESS
 # Task 6.1). Presence of the JWT switches ipfsService add/unpin to a
 # Pinata-style pinning API; a user's own endpoint override still wins; dev and

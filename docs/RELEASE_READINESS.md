@@ -375,6 +375,18 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   under the founder; the vault keeps the mandatory three);
 - the SP1 verifier gateway rebound to Succinct's Groth16 gateway (Task 7.3(c) lesson;
   Guard 4 enforces);
+- **`WitnessSwapAndCommitCoordinator` deployed** (maintainer, 2026-08-18: YES on testnet,
+  then mainnet). Audit finding: the coordinator landed 2026-07-12 (`a401e93c`) in the
+  devnet script, the TLA+ model, the Foundry suite, and the frontend, but was never added
+  to `DeployMainnet.s.sol` (older than the coordinator) nor to its Sepolia mirror, nor to
+  the frozen-scope table below — an omission, not a decision. To do before the redeploy:
+  add it to both public scripts against the chain's canonical Permit2
+  (`0x000000000022D473030F116dDEE9F6B43aC78BA3`, live on Sepolia) and Uniswap's Universal
+  Router on that chain (address read from Uniswap's deployment docs and verified by CODE +
+  interface probe before broadcast — the gateway lesson: never existence alone); bake
+  `NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR` / `NEXT_PUBLIC_SWAP_ROUTER` /
+  `NEXT_PUBLIC_PERMIT2` into the site; run `swap-funded-checkout` against Sepolia; amend the
+  frozen scope (maintainer/auditor act) to list the coordinator.
 - anything else this list accumulates before the redeploy day. The redeploy is also when
   Task 7.3(b) — one real Groth16 batch settling — is done, on the corrected stack.
 

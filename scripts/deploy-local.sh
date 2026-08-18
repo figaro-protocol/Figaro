@@ -167,6 +167,8 @@ default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_API_URL"     "http://127.0.0.1:5001"
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_GATEWAY_URL" "http://127.0.0.1:8080"
 # Devnet has no second gateway — the local Kubo node is the whole chain.
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL" ""
+# XMTP network: the public dev network on the devnet (empty = dev).
+default_env "$CORE_ENV" "NEXT_PUBLIC_XMTP_ENV" ""
 # Chain-read defaults — devnet reads Anvil from block 0, so both stay empty;
 # public builds set them from the deployment record (LOCAL_DEV.md).
 default_env "$CORE_ENV" "NEXT_PUBLIC_RPC_URL"          ""

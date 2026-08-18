@@ -36,6 +36,21 @@ function parseChannelMessage(content: unknown): ChannelMessage | null {
 /** Messages fetched per conversation poll. */
 const XMTP_MESSAGE_FETCH_LIMIT = 50n;
 
+/**
+ * The XMTP network this deployment coordinates over — DEPLOYMENT CONFIG, not
+ * code: `NEXT_PUBLIC_XMTP_ENV` = `dev` (XMTP's public dev network — devnet and
+ * testnet builds; inboxes there are shared by every developer on earth) or
+ * `production` (mainnet). `||`, not `??`: an EMPTY env value (a devnet
+ * .env.local read by `next build`) means the default. Anything else is
+ * refused at first use rather than silently sent to the wrong network.
+ */
+export type XmtpNetworkEnv = "dev" | "production";
+export function xmtpNetworkEnv(): XmtpNetworkEnv {
+    const raw = (process.env.NEXT_PUBLIC_XMTP_ENV || "dev").trim();
+    if (raw === "dev" || raw === "production") return raw;
+    throw new Error(`NEXT_PUBLIC_XMTP_ENV must be "dev" or "production", got "${raw}"`);
+}
+
 /** Retry an async operation with exponential backoff. */
 async function withRetry<T>(
     fn: () => Promise<T>,
@@ -78,7 +93,7 @@ export async function walletHasXmtpInbox(address: string): Promise<boolean> {
         const { Client, IdentifierKind } = await import("@xmtp/browser-sdk");
         const result = await Client.canMessage(
             [{ identifier: address.toLowerCase(), identifierKind: IdentifierKind.Ethereum }],
-            "dev",
+            xmtpNetworkEnv(),
         );
         return result.get(address.toLowerCase()) === true;
     } catch {
@@ -115,8 +130,9 @@ export async function createXmtpChannel(
     // (ephemeral) minted a NEW installation keypair on every page session
     // and exhausted the inbox's 10-installation network cap within a day
     // of dev use.
+    const env = xmtpNetworkEnv();
     const createClient = () => Client.create(signer, {
-        env: "dev",
+        env,
         disableAutoRegister: false,
         dbEncryptionKey,
     } as Parameters<typeof Client.create>[1]);
@@ -131,11 +147,11 @@ export async function createXmtpChannel(
         // a fresh installation is created right after, and ephemeral-era
         // installations have no surviving local state worth keeping).
         const inboxId = await generateInboxId(signer.getIdentifier());
-        const [state] = await Client.fetchInboxStates([inboxId], "dev");
+        const [state] = await Client.fetchInboxStates([inboxId], env);
         const installationIds = (state?.installations ?? []).map((inst) => inst.bytes);
         if (installationIds.length === 0) throw err;
         console.warn(`[xmtp] installation cap hit — revoking ${installationIds.length} stale installations for inbox ${inboxId}`);
-        await Client.revokeInstallations(signer, inboxId, installationIds, "dev");
+        await Client.revokeInstallations(signer, inboxId, installationIds, env);
         client = await withRetry(createClient);
     }
 
@@ -145,18 +161,20 @@ export async function createXmtpChannel(
     // Group] Failed to verify all installations") — and only the owning
     // wallet can revoke its own. One wallet, one browser, one installation
     // is the dev model; a production policy must never silently revoke a
-    // user's other devices, which is why this runs only against env "dev".
-    try {
-        const ownState = await client.preferences.inboxState();
-        const stale = (ownState?.installations ?? []).filter((inst) => inst.id !== client.installationId);
-        if (stale.length > 0) {
-            console.warn(`[xmtp] revoking ${stale.length} stale installations (dev housekeeping)`);
-            await client.revokeInstallations(stale.map((inst) => inst.bytes));
+    // user's other devices, which is why this runs ONLY against env "dev".
+    if (env === "dev") {
+        try {
+            const ownState = await client.preferences.inboxState();
+            const stale = (ownState?.installations ?? []).filter((inst) => inst.id !== client.installationId);
+            if (stale.length > 0) {
+                console.warn(`[xmtp] revoking ${stale.length} stale installations (dev housekeeping)`);
+                await client.revokeInstallations(stale.map((inst) => inst.bytes));
+            }
+        } catch (housekeepingErr) {
+            // Housekeeping is best-effort — the channel still works for inboxes
+            // that were already clean.
+            console.warn("[xmtp] stale-installation housekeeping failed (continuing)", housekeepingErr);
         }
-    } catch (housekeepingErr) {
-        // Housekeeping is best-effort — the channel still works for inboxes
-        // that were already clean.
-        console.warn("[xmtp] stale-installation housekeeping failed (continuing)", housekeepingErr);
     }
 
     // ── THE ONE MESSAGE PUMP ────────────────────────────────────────────
