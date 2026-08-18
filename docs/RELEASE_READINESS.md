@@ -251,6 +251,18 @@ At publish (testnet tier): establish published-package ↔ audited-repo traceabi
 (npm provenance attestation) so a consumer can verify the SDK on npm was built from
 this repo.
 
+**BUILT 2026-08-18 — `.github/workflows/sdk-release.yml`:** a tag `sdk-v<version>`
+(refused unless it equals `sdk/package.json`'s version) type-checks, tests the pure
+surface (`SKIP_ANVIL=1`), builds, and runs `npm publish --provenance --access public`
+with `id-token: write` — npm records the Sigstore attestation binding the tarball to
+this repo, workflow, and commit (`npm audit signatures` verifies it downstream). The
+package is unpublished today; the maintainer's one-time acts before the first tag:
+create the npm organisation that owns the `@figaro` scope, mint a granular publish
+token for `@figaro/sdk` (2FA bypass for automation) as the repo secret `NPM_TOKEN`;
+after the first publish, optionally move to npm Trusted Publishing (OIDC — this
+workflow as the trusted publisher) and delete the token. Then `git tag sdk-v0.1.0 &&
+git push origin sdk-v0.1.0` (tags only on the maintainer's instruction).
+
 ### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
 
 Sequenced after the GitHub remote/CI item (publishing hashes and proving rebuilds

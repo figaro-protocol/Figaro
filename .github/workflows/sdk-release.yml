@@ -1,0 +1,84 @@
+name: SDK Release
+
+# Publishes `@figaro/sdk` to npm WITH PROVENANCE (RELEASE_READINESS Task 10):
+# the npm registry records a Sigstore attestation binding the published tarball
+# to this repository, this workflow file, and the exact commit — so a consumer
+# can verify the package on npm was built from the audited tree
+# (`npm audit signatures`, or the "Provenance" panel on npmjs.com).
+#
+# Trigger: a tag `sdk-v<version>` whose <version> equals sdk/package.json's
+# `version` — the workflow refuses a mismatch, so a tag can never publish
+# something other than what the tree names.
+#
+# What the maintainer sets up once (never automated — account acts):
+#   1. an npm organisation that owns the `@figaro` scope;
+#   2. a GRANULAR access token on that account, scoped to publish `@figaro/sdk`,
+#      with "bypass 2FA" for automation, stored as the repo secret `NPM_TOKEN`;
+#   3. after the first publish, optionally replace the token with npm Trusted
+#      Publishing (OIDC — no long-lived secret; configure this workflow as the
+#      trusted publisher on the package's npm settings) and delete NPM_TOKEN.
+# Provenance requires `id-token: write` (the Sigstore OIDC identity) — the ONLY
+# extra permission this workflow takes.
+
+on:
+    push:
+        tags:
+            - "sdk-v*"
+
+permissions:
+    contents: read
+
+jobs:
+    publish:
+        name: Test, build, publish with provenance
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: "npm"
+                  cache-dependency-path: package-lock.json
+                  registry-url: "https://registry.npmjs.org"
+
+            - name: Install dependencies
+              run: npm ci --workspace sdk
+
+            - name: Tag names the version the tree names
+              working-directory: ./sdk
+              run: |
+                  TAG_VERSION="${GITHUB_REF_NAME#sdk-v}"
+                  PKG_VERSION="$(node -p "require('./package.json').version")"
+                  echo "tag: $TAG_VERSION  package.json: $PKG_VERSION"
+                  if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+                    echo "::error::tag sdk-v$TAG_VERSION does not match sdk/package.json version $PKG_VERSION"
+                    exit 1
+                  fi
+
+            - name: Type check
+              working-directory: ./sdk
+              run: npm run lint
+
+            # The chain-touching tests (integration / batch e2e) are skipIf-gated
+            # behind a live Anvil; the release proves the pure surface only.
+            - name: Tests
+              working-directory: ./sdk
+              env:
+                  SKIP_ANVIL: "1"
+              run: npm test -- --run
+
+            - name: Build
+              working-directory: ./sdk
+              run: npm run build
+
+            - name: Publish to npm with provenance
+              working-directory: ./sdk
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: npm publish --provenance --access public
