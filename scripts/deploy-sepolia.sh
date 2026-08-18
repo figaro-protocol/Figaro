@@ -44,6 +44,9 @@ if [ "${SEPOLIA_DEPLOY_CONFIRM:-}" != "yes" ]; then
   exit 1
 fi
 
+# The swap-funded on-ramp's Permit2: canonical on Ethereum + Sepolia (override for a chain that differs).
+export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
+
 # ── Guard 2: every required env var present ─────────────────────────────────
 # Required by script/DeploySepolia.s.sol itself:
 #   PRIVATE_KEY            — run(): vm.envUint("PRIVATE_KEY")
@@ -56,7 +59,7 @@ fi
 #   RPC_URL                 — Sepolia RPC endpoint (or an Anvil fork of it)
 #   ETHERSCAN_API_KEY       — unless SKIP_VERIFY=1 (fork rehearsal)
 REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
-          SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL)
+          SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER)
 if [ "${SKIP_VERIFY:-}" != "1" ]; then
   REQUIRED+=(ETHERSCAN_API_KEY)
 fi
@@ -136,6 +139,7 @@ FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"    | grep 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRES
 USAGE_COUNTER_ADDR=$(echo "$FORGE_OUT"   | grep 'NEXT_PUBLIC_USAGE_COUNTER='           | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT"     | grep 'NEXT_PUBLIC_RPGF_MINTER='             | grep -oE '0x[0-9a-fA-F]+')
 BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT"  | grep 'NEXT_PUBLIC_BATCH_VERIFIER='          | grep -oE '0x[0-9a-fA-F]+')
+SWAP_COORD_ADDR=$(echo "$FORGE_OUT"      | grep 'NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=' | grep -oE '0x[0-9a-fA-F]+')
 DAO_TREASURY_ADDR=$(echo "$FORGE_OUT"    | grep 'NEXT_PUBLIC_DAO_TREASURY='            | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
@@ -171,6 +175,9 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
+  "witnessSwapAndCommitCoordinator": "$SWAP_COORD_ADDR",
+  "swapRouter": "$SWAP_ROUTER",
+  "permit2": "$PERMIT2",
   "daoTreasury": "$DAO_TREASURY_ADDR",
   "deploymentBlock": $DEPLOYMENT_BLOCK
 }
@@ -188,6 +195,7 @@ echo "   FlorinToken             = $FLORIN_TOKEN_ADDR"
 echo "   UsageCounter            = $USAGE_COUNTER_ADDR"
 echo "   RpgfMinter              = $RPGF_MINTER_ADDR"
 echo "   FigaroBatchVerifier     = $BATCH_VERIFIER_ADDR"
+echo "   WitnessSwapAndCommitCoordinator = $SWAP_COORD_ADDR (router $SWAP_ROUTER, permit2 $PERMIT2)"
 echo "   MockTreasuryMultisig    = $DAO_TREASURY_ADDR"
 echo "   Record: $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
 echo ""

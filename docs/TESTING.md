@@ -261,9 +261,18 @@ Five projects:
   member from the chain and holds the `/registries` explorer to exactly that
   row set with every row's pinned content RESOLVED through the site's gateway
   chain (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
-  as the deploy bakes them). Free to run after every nudge. Both specs' out-of-band
-  scans go through `scanContractEvents` (`devnet-helpers.ts`) — chunked under the
-  public gateways' ~50k-block `eth_getLogs` cap, from the deployment block.
+  as the deploy bakes them). Free to run after every nudge. The project's third spec,
+  `swap-funded-order.sepolia.spec.ts` — the on-ramp: a buyer holding none of the
+  denomination funds their bond from another token the seller accepts, through
+  `WitnessSwapAndCommitCoordinator` and the chain's real venue (Sepolia: Uniswap
+  SwapRouter02 + a real WETH/USDC pool; devnet: the mock venue); runs after the smoke
+  on the same chain (same keys — `live-order-shared.ts`; the seller's profile is edited
+  through `/members/edit/identity` to accept the funding token when it does not yet);
+  chain facts: the commit went THROUGH the coordinator, funding token spent ≤ the signed
+  cap, both bonds in the kernel, the coordinator empty. Passed live 2026-08-18. Every
+  spec's out-of-band scans go through `scanContractEvents` (`devnet-helpers.ts`) —
+  chunked under the public gateways' ~50k-block `eth_getLogs` cap, from the deployment
+  block.
 
 **⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
 acceptance specs (`clause-coverage`, `permissionless-clause`,

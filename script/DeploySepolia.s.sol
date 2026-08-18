@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 
 import "../src/kernel/FigaroCore.sol";
 import "../src/protocol/coordinators/AttestationCoordinator.sol";
+import {WitnessSwapAndCommitCoordinator} from "../src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol";
 import "../src/protocol/registries/ClauseRegistry.sol";
 import "../src/protocol/registries/MembersRegistry.sol";
 import "../src/florin/FlorinToken.sol";
@@ -54,6 +55,7 @@ contract DeploySepolia is Script {
 
     address internal _core;
     address internal _attestation;
+    address internal _swapCoordinator;
     address internal _clauses;
     address internal _members;
     address internal _florin;
@@ -107,6 +109,34 @@ contract DeploySepolia is Script {
         AttestationCoordinator attestation = new AttestationCoordinator(_core);
         _attestation = address(attestation);
         console.log("AttestationCoordinator: ", _attestation);
+
+        // ── WitnessSwapAndCommitCoordinator (the swap-funded on-ramp) ──────
+        // Composition, not kernel: points at the kernel, canonical Permit2 and
+        // the chain's Uniswap SwapRouter02 (env — from Uniswap's deployment docs).
+        // The router is probed for BEHAVIOUR (factory() + WETH9() answer with
+        // contracts): an address is never trusted for existing alone (the SP1
+        // gateway lesson, RELEASE_READINESS 7.3(c)). Omitted from this script
+        // until 2026-08-18 — an omission, not a decision; deployed alone onto
+        // the live Sepolia stack that day (script/DeploySwapCoordinator.s.sol).
+        {
+            address permit2 = vm.envAddress("PERMIT2");
+            address router = vm.envAddress("SWAP_ROUTER");
+            require(permit2.code.length != 0, "PERMIT2 has no code on this chain");
+            (bool okF, bytes memory f) = router.staticcall(abi.encodeWithSignature("factory()"));
+            (bool okW, bytes memory w) = router.staticcall(abi.encodeWithSignature("WETH9()"));
+            require(
+                okF && f.length == 32 && abi.decode(f, (address)).code.length != 0,
+                "SWAP_ROUTER: factory() is not a contract - not SwapRouter02"
+            );
+            require(
+                okW && w.length == 32 && abi.decode(w, (address)).code.length != 0,
+                "SWAP_ROUTER: WETH9() is not a contract - not SwapRouter02"
+            );
+            WitnessSwapAndCommitCoordinator swapCoordinator =
+                new WitnessSwapAndCommitCoordinator(_core, permit2, router);
+            _swapCoordinator = address(swapCoordinator);
+            console.log("WitnessSwapAndCommitCoordinator:", _swapCoordinator);
+        }
 
         // Author-side stakes — the ratified mainnet values (0.05 ether, sized
         // 2026-07-31 from RPGF paper §7; deposits do not compress).
@@ -232,6 +262,9 @@ contract DeploySepolia is Script {
         console.log("Set these in your .env:");
         console.log("  NEXT_PUBLIC_FIGARO_CORE=              ", _core);
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
+        console.log("  NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=", _swapCoordinator);
+        console.log("  NEXT_PUBLIC_SWAP_ROUTER=", vm.envAddress("SWAP_ROUTER"));
+        console.log("  NEXT_PUBLIC_PERMIT2=", vm.envAddress("PERMIT2"));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=        ", _assemblies);
         console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=       ", _members);

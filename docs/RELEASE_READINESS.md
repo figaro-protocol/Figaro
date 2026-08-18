@@ -375,18 +375,17 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   under the founder; the vault keeps the mandatory three);
 - the SP1 verifier gateway rebound to Succinct's Groth16 gateway (Task 7.3(c) lesson;
   Guard 4 enforces);
-- **`WitnessSwapAndCommitCoordinator` deployed** (maintainer, 2026-08-18: YES on testnet,
-  then mainnet). Audit finding: the coordinator landed 2026-07-12 (`a401e93c`) in the
-  devnet script, the TLA+ model, the Foundry suite, and the frontend, but was never added
-  to `DeployMainnet.s.sol` (older than the coordinator) nor to its Sepolia mirror, nor to
-  the frozen-scope table below — an omission, not a decision. To do before the redeploy:
-  add it to both public scripts against the chain's canonical Permit2
-  (`0x000000000022D473030F116dDEE9F6B43aC78BA3`, live on Sepolia) and Uniswap's Universal
-  Router on that chain (address read from Uniswap's deployment docs and verified by CODE +
-  interface probe before broadcast — the gateway lesson: never existence alone); bake
-  `NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR` / `NEXT_PUBLIC_SWAP_ROUTER` /
-  `NEXT_PUBLIC_PERMIT2` into the site; run `swap-funded-checkout` against Sepolia; amend the
-  frozen scope (maintainer/auditor act) to list the coordinator.
+- ~~`WitnessSwapAndCommitCoordinator`~~ — DONE 2026-08-18 without a redeploy (it points at
+  the kernel and nothing points back, so it deployed ALONE onto the live stack:
+  `0xdfF381730811CDec3518FA38B14f92219c5127B6`, bound to canonical Permit2 and Uniswap
+  SwapRouter02 `0x3bFA…48E` — the venue whose pull-by-allowance shape the coordinator
+  needs; the router probed for behaviour before broadcast). Both public deploy scripts
+  now deploy it (`SWAP_ROUTER` env, same probe); the frozen scope lists it; the site
+  bakes the swap composition; `swap-funded-order.sepolia.spec.ts` PASSED LIVE (commit
+  `0xc15aedc6…583c`, block 11516595, through the coordinator, a Uniswap V3 `Swap` in the
+  WETH/USDC 0.01% pool in its receipt). Audit finding for the record: the coordinator
+  landed 2026-07-12 (`a401e93c`) in the devnet script, TLA+, Foundry and the frontend but
+  never in the public scripts or the scope table — an omission, not a decision.
 - anything else this list accumulates before the redeploy day. The redeploy is also when
   Task 7.3(b) — one real Groth16 batch settling — is done, on the corrected stack.
 
@@ -571,13 +570,14 @@ directory IS the tier map); the frozen *contracts* are unchanged by the move.
 |---|---|
 | `src/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
 | `src/protocol/registries/` | `ClauseRegistry.sol`, `MembersRegistry.sol`, `AssemblyRegistry.sol` |
-| `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol` |
+| `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol`, `WitnessSwapAndCommitCoordinator.sol` (amendment 2026-08-18, maintainer-ruled: landed 2026-07-12 after the freeze and was never listed nor deployed publicly — deployed alone onto Sepolia that day; `script/DeploySwapCoordinator.s.sol` joins the scripts row) |
 | `src/protocol/usage/` | `UsageCounter.sol` |
 | `src/protocol/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` |
 | `src/rpgf/` | `RpgfMinter.sol` |
 | `src/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
-| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
+| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface; deploys the swap coordinator since 2026-08-18) |
+| `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone onto a LIVE stack (Sepolia 2026-08-18; the mainnet route is `DeployMainnet.s.sol`) |
 
 The Task-8 re-establishment landed 2026-08-03: `src/protocol/usage/`,
 `src/rpgf/`, and `src/protocol/verifier/` entered the frozen scope after the

@@ -28,11 +28,11 @@
  * MAINTAINER-MANUAL (Playwright project `sepolia`): costs real testnet funds
  * and takes minutes of chain confirmations; never part of a suite run.
  */
-import fs from 'fs';
+
 import path from 'path';
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { createPublicClient, createWalletClient, formatUnits, http, parseAbi, parseUnits, type Hex } from 'viem';
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
@@ -40,28 +40,8 @@ import {
 } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { gotoAsWallet } from './devnet-multi-test';
+import { ITEM_PRICE, smokeKeys, smokeProfileDir } from './live-order-shared';
 import { ANVIL_KEYS } from '../anvilAccounts';
-
-const PROFILES_DIR = path.resolve(__dirname, '../../.smoke-profiles');
-const DEVNET_KEYS_PATH = path.join(PROFILES_DIR, 'live-order-devnet-keys.json');
-const ITEM_PRICE = '1'; // one whole unit of the settlement token
-
-/** The two smoke wallets. Sepolia: from env, funded by the maintainer.
- *  Devnet: generated once and persisted, so re-runs hit the wizard's update
- *  path like a returning member would. */
-function smokeKeys(): { seller: Hex; buyer: Hex } {
-    if (E2E_CHAIN === 'sepolia') {
-        const seller = process.env.SMOKE_SELLER_KEY as Hex | undefined;
-        const buyer = process.env.SMOKE_BUYER_KEY as Hex | undefined;
-        if (!seller || !buyer) throw new Error('E2E_CHAIN=sepolia needs SMOKE_SELLER_KEY and SMOKE_BUYER_KEY (funded testnet-only keys)');
-        return { seller, buyer };
-    }
-    if (fs.existsSync(DEVNET_KEYS_PATH)) return JSON.parse(fs.readFileSync(DEVNET_KEYS_PATH, 'utf8'));
-    const keys = { seller: generatePrivateKey(), buyer: generatePrivateKey() };
-    fs.mkdirSync(PROFILES_DIR, { recursive: true });
-    fs.writeFileSync(DEVNET_KEYS_PATH, `${JSON.stringify(keys, null, 4)}\n`);
-    return keys;
-}
 
 test.describe('LIVE ORDER — a public deployment traded through the real UI', () => {
     test.setTimeout(E2E_CHAIN === 'sepolia' ? 1_500_000 : 420_000);
@@ -121,7 +101,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
         // ── Browser: the injected wallet + the local-key signer bridge ──
         const baseURL = testInfo.project.use.baseURL as string;
         const ctx: BrowserContext = await chromium.launchPersistentContext(
-            path.join(PROFILES_DIR, `live-order-${E2E_CHAIN}-${seller.address.slice(2, 10).toLowerCase()}`),
+            smokeProfileDir(seller.address),
             { baseURL, args: ['--disk-cache-size=1'] },
         );
         try {
