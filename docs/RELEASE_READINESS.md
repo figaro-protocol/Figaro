@@ -194,7 +194,7 @@ Required output:
    The proof needs a host this repo's laptop is not (Succinct's floor for the Groth16
    wrap: ~14 GB RAM, through the `sp1-gnark` Docker image unless `native-gnark`): whoever
    requests a proof pays for it — the relay operator, on rented hardware or the Succinct
-   Prover Network (the sequencer's `network` backend waits on its alloy 1.x bump) — never
+   Prover Network (`SP1_PROVER=network`, live since the 2026-08-18 alloy 1.x bump) — never
    the protocol and never its users (the ruled cost model). For the rehearsal that is the
    maintainer, once, as the relay operator of the day.
 4. Testnet setup — the two networks, in order (maintainer-ruled 2026-08-12; targets per
