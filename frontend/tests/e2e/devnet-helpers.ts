@@ -88,6 +88,8 @@ type DeploymentConfig = {
     witnessSwapAndCommitCoordinator?: `0x${string}`;
     permit2?: `0x${string}`;
     swapRouter?: `0x${string}`;
+    swapQuoter?: `0x${string}`;
+    multisender?: `0x${string}`;
     clauseRegistry?: `0x${string}`;
     clauseRegistrationHelper?: `0x${string}`;
     membersRegistry?: `0x${string}`;
@@ -130,6 +132,8 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR') config.witnessSwapAndCommitCoordinator = value;
             if (key === 'NEXT_PUBLIC_PERMIT2') config.permit2 = value;
             if (key === 'NEXT_PUBLIC_SWAP_ROUTER') config.swapRouter = value;
+            if (key === 'NEXT_PUBLIC_SWAP_QUOTER') config.swapQuoter = value;
+            if (key === 'NEXT_PUBLIC_MULTISENDER') config.multisender = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
             if (key === 'NEXT_PUBLIC_MEMBERS_REGISTRY') config.membersRegistry = value;

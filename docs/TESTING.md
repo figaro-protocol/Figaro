@@ -269,7 +269,15 @@ Five projects:
   on the same chain (same keys — `live-order-shared.ts`; the seller's profile is edited
   through `/members/edit/identity` to accept the funding token when it does not yet);
   chain facts: the commit went THROUGH the coordinator, funding token spent ≤ the signed
-  cap, both bonds in the kernel, the coordinator empty. Passed live 2026-08-18. Every
+  cap, both bonds in the kernel, the coordinator empty. Passed live 2026-08-18. The
+  fourth, `payout-routing.sepolia.spec.ts` — a settled seller splits receipts through the
+  composed public multisender (the canonical Disperse `0xD152…2150`, same runtime on
+  Sepolia and mainnet; devnet: `MockDisperse`): two earmarked legs, one atomic
+  `disperseToken`; chain facts: each leg landed exactly, the seller paid exactly the
+  total, the multisender retains nothing (its bytecode carries the selector the panel
+  calls — behaviour on the public chain, never the mirror alone). Passed live 2026-08-18.
+  All four run after each other on one chain (the smoke first: it registers the seller
+  and leaves the resolved process the others start from). Every
   spec's out-of-band scans go through `scanContractEvents` (`devnet-helpers.ts`) —
   chunked under the public gateways' ~50k-block `eth_getLogs` cap, from the deployment
   block.
