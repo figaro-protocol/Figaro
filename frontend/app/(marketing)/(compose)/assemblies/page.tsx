@@ -160,7 +160,12 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered assembly is searchable in the registry explorer &mdash; each
                     row one on-chain binding keyed by its composition hash, its template fetched
-                    from IPFS, its author the wallet that anchored it.
+                    from IPFS, its author the wallet that anchored it. There is no static roster of
+                    assemblies &mdash; the count is derived, never stored. The canonical templates of
+                    the reference set are the <a href="https://github.com/figaro-protocol/Figaro/tree/main/assemblies" target="_blank" rel="noopener noreferrer" className="underline"><code>assemblies/</code> directory</a> in
+                    the repository; on chain, discover every anchored assembly (reference or
+                    third-party) the same way the registry explorer does &mdash; by reading the{" "}
+                    <code>AssemblyRegistry</code>&apos;s <code>AssemblyRegistered</code> event stream.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     For agents: the registry explorer derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.

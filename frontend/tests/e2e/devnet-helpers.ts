@@ -9,6 +9,11 @@ import {
     http,
     parseAbi,
     parseEther,
+    type Abi,
+    type ContractEventName,
+    type GetContractEventsParameters,
+    type GetContractEventsReturnType,
+    type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, templateCompositionHash } from '@figaro/sdk';
@@ -30,9 +35,28 @@ export const RPC_URL = E2E_CHAIN === 'sepolia'
 /** Where out-of-band event scans start: the deployment block on a public
  *  network (public gateways cap eth_getLogs ranges — a from-genesis scan is
  *  refused), block 0 on the devnet. */
-export const SCAN_FROM_BLOCK: bigint = E2E_CHAIN === 'sepolia'
+const SCAN_FROM_BLOCK: bigint = E2E_CHAIN === 'sepolia'
     ? BigInt((JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../deployments/11155111.json'), 'utf8')) as { deploymentBlock?: number }).deploymentBlock ?? 0)
     : 0n;
+/** Public gateways cap one `eth_getLogs` at ~50k blocks (publicnode); a
+ *  from-deployment scan outgrows a single call within days of a public
+ *  deploy (Sepolia: ~7,200 blocks/day). Every out-of-band scan walks the
+ *  range in chunks under the cap; on the devnet (block 0, short chain) the
+ *  first chunk is the whole chain. */
+const SCAN_CHUNK_BLOCKS = 40_000n;
+export async function scanContractEvents<const TAbi extends Abi | readonly unknown[], TEventName extends ContractEventName<TAbi> | undefined = undefined>(
+    publicClient: PublicClient,
+    params: Omit<GetContractEventsParameters<TAbi, TEventName>, 'fromBlock' | 'toBlock'>,
+): Promise<GetContractEventsReturnType<TAbi, TEventName>> {
+    const latest = await publicClient.getBlockNumber();
+    const out: GetContractEventsReturnType<TAbi, TEventName>[number][] = [];
+    for (let from = SCAN_FROM_BLOCK; from <= latest; from += SCAN_CHUNK_BLOCKS) {
+        const to = from + SCAN_CHUNK_BLOCKS - 1n < latest ? from + SCAN_CHUNK_BLOCKS - 1n : latest;
+        const page = await publicClient.getContractEvents<TAbi, TEventName>({ ...params, fromBlock: from, toBlock: to } as GetContractEventsParameters<TAbi, TEventName>);
+        out.push(...page);
+    }
+    return out as GetContractEventsReturnType<TAbi, TEventName>;
+}
 /** The active e2e chain — Anvil unless `E2E_CHAIN=sepolia`. (The identifier
  *  predates the switch; it names the devnet default every spec assumes.) */
 export const LOCAL_ANVIL = defineChain({

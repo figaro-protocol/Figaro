@@ -1,11 +1,12 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
+const replaceMock = vi.fn();
 vi.mock("next/navigation", () => ({
     usePathname: () => "/registries",
-    useRouter: () => ({ replace: vi.fn() }),
+    useRouter: () => ({ replace: replaceMock }),
     useSearchParams: () => new URLSearchParams(searchParams),
 }));
 let searchParams = "family=clauses";
@@ -56,6 +57,24 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         expect(unclassified.textContent).not.toContain("figaro-fresh");
         expect(screen.getAllByTestId("content-resolving")).toHaveLength(1);
         expect(screen.getAllByTestId("content-unavailable")).toHaveLength(1);
+    });
+
+    it("\"assemblies composing it\" carries the clause facet INTO the assemblies family — the family change resets only what the click did not set", async () => {
+        searchParams = "family=clauses&article=logistics";
+        setClauseSpecFetcher(async () => ({ clauseId: "figaro-cargo", version: 1, title: "Cargo", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } }));
+        await loadClauseSpec("figaro-cargo", 1, "ipfs://figaro-cargo");
+        clauseEventsMock.mockReturnValue({ data: [ev("figaro-cargo")], failed: false });
+        replaceMock.mockClear();
+
+        render(<RegistryExplorer />);
+        fireEvent.click(screen.getByRole("button", { name: "assemblies composing it" }));
+
+        expect(replaceMock).toHaveBeenCalledTimes(1);
+        const url = String(replaceMock.mock.calls[0][0]);
+        expect(url).toContain("family=assemblies");
+        expect(url).toContain("clause=figaro-cargo");
+        // The clauses-only article facet is dropped by the family change.
+        expect(url).not.toContain("article=");
     });
 
     it("an assembly whose template has not resolved shows its slug with the unserved note; a resolved one shows its name, no note", () => {

@@ -36,7 +36,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
-    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, SCAN_FROM_BLOCK, assertPinnedInIpfs, readLocalDeploymentConfig, referenceAssemblySlug, waitForConnected,
+    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readLocalDeploymentConfig, referenceAssemblySlug, scanContractEvents, waitForConnected,
 } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { gotoAsWallet } from './devnet-multi-test';
@@ -144,8 +144,8 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
             const latestUri = async () => {
                 const [reg, upd] = await Promise.all([
-                    publicClient.getContractEvents({ address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered', args: { member: seller.address }, fromBlock: SCAN_FROM_BLOCK }),
-                    publicClient.getContractEvents({ address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberProfileUpdated', args: { member: seller.address }, fromBlock: SCAN_FROM_BLOCK }),
+                    scanContractEvents(publicClient, { address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered', args: { member: seller.address } }),
+                    scanContractEvents(publicClient, { address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberProfileUpdated', args: { member: seller.address } }),
                 ]);
                 const all = [...reg, ...upd].sort((a, b) => Number(a.blockNumber - b.blockNumber));
                 return String((all[all.length - 1]?.args as { metadataURI?: string })?.metadataURI ?? '');
@@ -238,7 +238,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             }, { timeout: E2E_CHAIN === 'sepolia' ? 420_000 : 60_000, intervals: [1_000], message: 'the seller surfaces on /discover' }).toBe(true);
 
             // ═══ 3. BUYER — order → checkout → sign → relay ═══════════════════
-            const committedBefore = (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK })).length;
+            const committedBefore = (await scanContractEvents(publicClient, { address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address } })).length;
             const [buyerT0, sellerT0, coreT0] = await Promise.all([balanceOf(buyer.address), balanceOf(seller.address), balanceOf(core)]);
             await switchTo(buyer.address, `/s/view?seller=${seller.address}&e2e=devnet`);
             await page.getByTestId('member-detail-view').waitFor({ timeout: 120_000 });
@@ -274,7 +274,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await page.getByTestId('btn-accept-order').first().click();
             await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 120_000 });
             await page.getByTestId('preview-confirm').click();
-            const queryCommitted = () => publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK });
+            const queryCommitted = () => scanContractEvents(publicClient, { address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address } });
             await expect.poll(async () => (await queryCommitted()).length, { timeout: 600_000, intervals: [5_000], message: 'OrderCommitted lands on-chain' }).toBe(committedBefore + 1);
             const all = await queryCommitted();
             const event = all[all.length - 1];
@@ -291,13 +291,13 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await expect(page.getByTestId(`order-status-${processId}`), 'the order shows In progress').toHaveText('In progress', { timeout: 60_000 });
 
             // ═══ 5. BUYER — resolve (buyer dominance) ═════════════════════════
-            const resolvedBefore = (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK })).length;
+            const resolvedBefore = (await scanContractEvents(publicClient, { address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address } })).length;
             await switchTo(buyer.address, `/orders/view?process=${processId}&e2e=devnet`);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 120_000 });
             const resolveBtn = page.getByTestId('capability-execute-resolve-process');
             await expect(resolveBtn, 'the buyer can resolve').toBeEnabled({ timeout: 120_000 });
             await resolveBtn.click();
-            await expect.poll(async () => (await publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address }, fromBlock: SCAN_FROM_BLOCK })).length, { timeout: 600_000, intervals: [5_000], message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+            await expect.poll(async () => (await scanContractEvents(publicClient, { address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address } })).length, { timeout: 600_000, intervals: [5_000], message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
             const [buyerT2, sellerT2, coreT2] = await Promise.all([balanceOf(buyer.address), balanceOf(seller.address), balanceOf(core)]);
             expect(buyerT0 - buyerT2, 'buyer net paid exactly the payment').toBe(event.args.payment!);
             expect(sellerT2 - sellerT0, 'seller net earned exactly the payment').toBe(event.args.payment!);

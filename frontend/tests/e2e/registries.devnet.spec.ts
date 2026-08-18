@@ -19,7 +19,7 @@
 import { test, expect } from '@playwright/test';
 import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
-import { localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
+import { localPublicClient, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
 test.describe('Registry explorer (devnet)', () => {
     test('clauses: every surfaced row is an on-chain registration, grouped by article by default', async ({ page }) => {
@@ -70,6 +70,44 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(row).toContainText(slug);
         // The row links to the assembly's existing detail route.
         await expect(row.getByTestId(`assembly-view-${slug}`)).toHaveAttribute('href', /\/assemblies\/designer\/view\/?\?slug=/);
+    });
+
+    test('"assemblies composing it" keeps its promise — only the assemblies whose template composes the clause remain', async ({ page }) => {
+        // Truth from chain → IPFS: every anchored template, and which compose the chosen clause.
+        const publicClient = localPublicClient();
+        const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? readLocalDeploymentConfig().assemblyRegistry) as `0x${string}`;
+        const events = await publicClient.getContractEvents({
+            address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
+        });
+        expect(events.length).toBeGreaterThan(1);
+        const templates = await Promise.all(events.map(async (e) => {
+            const res = await fetch(resolveIpfsURI(String(e.args.contentURI)));
+            const t = (await res.json()) as { agreements: Array<{ clauses: Record<string, unknown> }>; assemblyClauses?: Record<string, unknown> };
+            const clauses = new Set<string>(Object.keys(t.assemblyClauses ?? {}));
+            for (const a of t.agreements) for (const id of Object.keys(a.clauses)) clauses.add(id);
+            return { slug: deriveAssemblySlug(e.args.compositionHash as `0x${string}`), clauses };
+        }));
+        // Pick a clause composed by SOME but not ALL assemblies — the facet must narrow.
+        const counts = new Map<string, number>();
+        for (const t of templates) for (const id of t.clauses) counts.set(id, (counts.get(id) ?? 0) + 1);
+        const clauseId = [...counts.entries()].find(([, n]) => n > 0 && n < templates.length)?.[0];
+        expect(clauseId, 'a clause composed by a strict subset of the anchored assemblies').toBeTruthy();
+        const composing = templates.filter((t) => t.clauses.has(clauseId!)).map((t) => t.slug).sort();
+
+        await page.goto('/registries?family=clauses');
+        const row = page.locator(`#clause-${clauseId}`);
+        await expect(row).toBeVisible({ timeout: 30_000 });
+        await row.getByRole('button', { name: 'assemblies composing it' }).click();
+
+        // The URL carries the facet INTO the assemblies family (the click's promise).
+        await expect(page).toHaveURL(new RegExp(`family=assemblies.*clause=${clauseId}|clause=${clauseId}.*family=assemblies`));
+        await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(`composing ${clauseId}`);
+        // Templates resolve from the local node; the row set settles to exactly the composing slugs.
+        await expect.poll(async () => {
+            const ids = await page.locator('li[id^="assembly-"]').evaluateAll((els) => els.map((e) => e.id.replace(/^assembly-/, '')));
+            return ids.sort();
+        }, { timeout: 30_000 }).toEqual(composing);
+        expect(composing.length).toBeLessThan(templates.length);
     });
 
     test('members: every registered wallet surfaces — the registry, not the buyer list', async ({ page }) => {

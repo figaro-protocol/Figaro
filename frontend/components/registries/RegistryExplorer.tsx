@@ -50,10 +50,15 @@ export function RegistryExplorer() {
 
     const setState = useCallback((patch: Partial<ExplorerQuery>) => {
         const next = { ...state, ...patch };
-        // A family change resets family-specific facets; a hand-typed
-        // article on the members family means nothing.
+        // A family change resets the family-specific facets the patch does not
+        // itself set (a hand-typed article on the members family means
+        // nothing) — a cross-family link like "assemblies composing it"
+        // carries its facet INTO the new family; wiping it would land the
+        // reader on every assembly and break the button's promise.
         if (patch.family && patch.family !== state.family) {
-            next.article = ""; next.clause = ""; next.sort = parseExplorerQuery({ family: patch.family }).sort;
+            if (patch.article === undefined) next.article = "";
+            if (patch.clause === undefined) next.clause = "";
+            if (patch.sort === undefined) next.sort = parseExplorerQuery({ family: patch.family }).sort;
         }
         router.replace(`${pathname}?${serializeExplorerQuery(next)}`, { scroll: false });
     }, [state, router, pathname]);

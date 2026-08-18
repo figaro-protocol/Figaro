@@ -255,7 +255,15 @@ Five projects:
   accounts; no unlocked accounts exist off Anvil). It costs real testnet ETH +
   USDC: the spec preflights both wallets and names what to fund. Without
   `E2E_CHAIN=sepolia` the SAME spec rehearses on the devnet with throwaway keys
-  (self-funded) — the devnet rehearsal of the bridge.
+  (self-funded) — the devnet rehearsal of the bridge. The project's second
+  spec, `registries.sepolia.spec.ts`, is the WALLETLESS half — no key, no
+  stake: it discovers every registered clause / anchored assembly / registered
+  member from the chain and holds the `/registries` explorer to exactly that
+  row set with every row's pinned content RESOLVED through the site's gateway
+  chain (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
+  as the deploy bakes them). Free to run after every nudge. Both specs' out-of-band
+  scans go through `scanContractEvents` (`devnet-helpers.ts`) — chunked under the
+  public gateways' ~50k-block `eth_getLogs` cap, from the deployment block.
 
 **⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
 acceptance specs (`clause-coverage`, `permissionless-clause`,
