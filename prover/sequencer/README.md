@@ -148,12 +148,17 @@ cargo run -p figaro-sequencer --bin sequencer
 
 The devnet build uses the SP1 mock prover against `MockSP1Verifier`. For a
 real verifier, set `SP1_PROVER=cpu` (or `cuda`) so the sequencer self-proves
-locally, and `SP1_PROOF_MODE` to the proof FORM the deployed
+locally — or `SP1_PROVER=network` with `NETWORK_PRIVATE_KEY` to have the
+Succinct Prover Network prove it (a relay operator without hardware; paid per
+proof in PROVE by that operator; liveness only — the proof still verifies
+against the vkey) — and `SP1_PROOF_MODE` to the proof FORM the deployed
 `FigaroBatchVerifier`'s SP1 gateway routes — `groth16` (default) or `plonk`.
 Succinct runs one gateway per form (their `contracts/deployments/<chainId>.json`
 names both); a proof of the other form reverts `RouteNotFound` on-chain, so
 check `gateway.routes(bytes4(SP1Verifier<Form>.VERIFIER_HASH()))` for the
-sdk version you compiled with BEFORE proving. Hardware (Succinct's stated
+CIRCUIT version the SP1 prover you compiled with embeds (`SP1_CIRCUIT_VERSION`
+at the SP1 repo tag — `scripts/check-sp1-gateway-route.sh` does exactly this)
+BEFORE proving. Hardware (Succinct's stated
 floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 `sp1-gnark` Docker image unless sp1-sdk's `native-gnark` feature is on.
 
@@ -169,7 +174,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter |
 | `ASSEMBLY_REGISTRY_ADDRESS` | zero | `AssemblyRegistry`, read by the usage-claim pre-filter |
 | `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; all three zero disables the filter |
-| `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` — who proves |
+| `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves |
 | `SP1_PROOF_MODE` | `groth16` | `groth16` or `plonk` — the on-chain proof form; must match the deployed gateway |
 | `SEQUENCER_PRIVATE_KEY` | anvil account 0 | Settlement tx signer (pays gas; no protocol privilege) |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |

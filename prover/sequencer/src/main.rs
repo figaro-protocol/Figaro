@@ -5,8 +5,10 @@
 /// to FigaroBatchVerifier on Anvil.
 ///
 /// This is Phase 1 (devnet). For testnet and mainnet, swap MockSP1Verifier
-/// for the real SP1 verifier and set SP1_PROVER=cpu/cuda so the sequencer
-/// self-proves with the local SP1 prover — no external proving service.
+/// for the real SP1 verifier gateway and set SP1_PROVER=cpu/cuda so the
+/// sequencer self-proves with the local SP1 prover, or SP1_PROVER=network to
+/// buy the proof from the Succinct Prover Network (the relay operator pays;
+/// liveness only — the proof still verifies against the vkey).
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 

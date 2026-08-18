@@ -553,15 +553,18 @@ Figaro is therefore not chain-constrained — the deployment target is a
 Figaro decision, not an SP1 limit.
 
 **Proof generation — the Succinct Prover Network.** The sequencer's
-`prove_groth16` (`prover/sequencer/src/prover.rs`) proves locally today;
-Groth16 wrapping is RAM-heavy. The Succinct Prover Network is a
-decentralised proof marketplace — submit program + inputs, receive a
-proof. Adding a network prover mode alongside the existing mock and
-local-Groth16 modes is a contained change to the sequencer's prover
-module. It is a liveness dependency only: the proof still verifies
-against the program vkey, so a faulty or adversarial prover cannot forge
-a settling proof — the same liveness-not-safety boundary the sequencer
-trust model already draws.
+`prove_wrapped` (`prover/sequencer/src/prover.rs`) proves with the backend
+`SP1_PROVER` names: `cpu`/`cuda` locally (Groth16 wrapping is RAM-heavy —
+~14 GB), or `network` (since 2026-08-18, the alloy 1.x bump that let
+sp1-sdk's `network` feature compile) — the Succinct Prover Network, a
+decentralised proof marketplace: submit program + inputs, receive a proof,
+paid per proof in PROVE by the REQUESTER (the relay operator; never the
+protocol, never its users — the ruled cost model). It is a liveness
+dependency only: the proof still verifies against the program vkey, so a
+faulty or adversarial prover cannot forge a settling proof — the same
+liveness-not-safety boundary the sequencer trust model already draws.
+`SP1_PROOF_MODE` (`groth16` default | `plonk`) picks the form; it must be
+the form the deployed verifier's gateway routes.
 
 **Connection to the clause engine.** The generic clause engine carries
 in-circuit cost (generic spec parsing is heavier than a specialised

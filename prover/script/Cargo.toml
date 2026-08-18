@@ -2,6 +2,7 @@
 name = "figaro-prove-test"
 version = "0.1.0"
 edition = "2021"
+rust-version.workspace = true
 
 [[bin]]
 name = "prove"
@@ -14,7 +15,7 @@ figaro-kernel = { path = "../lib" }
 figaro-clause = { path = "../clause" }
 sp1-sdk = "6.0"
 serde_json = "1"
-alloy-primitives = { version = "0.8", features = ["serde"] }
+alloy-primitives = { version = "1", features = ["serde"] }
 k256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }
 tokio = { version = "1", features = ["full"] }
 # Used to size the generated proof after Stage 2 succeeds.

@@ -171,10 +171,12 @@ Required output:
    Succinct runs one gateway per proof form per chain and each routes by the proof's
    verifier-version selector (`bytes4(SP1Verifier<Form>.VERIFIER_HASH())`). The Sepolia
    stack bound `0x3B60…185e` — the RETIRED PLONK gateway (`OLD_SP1_VERIFIER_GATEWAY_PLONK`
-   in Succinct's `deployments/11155111.json`): it routes v6.0.0 **PLONK**
-   (`0x8a0f…Fc5C`), not v6.0.0 Groth16 — so on Sepolia only a PLONK proof settles
-   through the deployed `FigaroBatchVerifier`; a Groth16 proof (the sequencer's default)
-   reverts `RouteNotFound`. Immutable pointers (verifier→gateway, UsageCounter→verifier,
+   in Succinct's `deployments/11155111.json`): it routes PLONK verifiers only — no
+   Groth16 route at all — so a Groth16 proof (the sequencer's form) reverts
+   `RouteNotFound` on the deployed `FigaroBatchVerifier`. (The proof's selector is the
+   CIRCUIT version the locked SP1 prover embeds — `SP1_CIRCUIT_VERSION`, v6.1.0 for sp1
+   6.3–6.4 — not the sdk version and not `v<major>.0.0`; the guard reads it from the SP1
+   repo at the locked tag.) Immutable pointers (verifier→gateway, UsageCounter→verifier,
    RpgfMinter→UsageCounter, florin minters at genesis) mean the fix is a whole-stack
    redeploy. **Ruled 2026-08-18: the design is Groth16 and stays Groth16 — no PLONK
    workaround on the testnet; the gateway rebinding joins the redeploy list (Task 13's
@@ -183,8 +185,9 @@ Required output:
    (Succinct's original PLONK-only gateway, labelled Groth16 in the deploy env; verified
    for code existence, never for routing) — never a design choice. **Mainnet gate and
    the redeploy's value:** `SP1_VERIFIER_GATEWAY` = Succinct's Groth16 gateway
-   `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` (routes v6.0.0 Groth16 → `0x99A7…2508`,
-   verified live 2026-08-18 on Sepolia and mainnet) with `SP1_PROOF_MODE=groth16` — the
+   `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` (routes the embedded circuit's Groth16
+   verifier — v6.1.0 → `0xb69f…4e2`, verified live 2026-08-18 on Sepolia and mainnet)
+   with `SP1_PROOF_MODE=groth16` — the
    deploy wrappers' Guard 4 (`scripts/check-sp1-gateway-route.sh`) refuses to broadcast
    otherwise; correct the value in the deploy env before that run.
    **(b) sequencing:** one real batch settling happens on the REDEPLOYED stack, Groth16.
@@ -374,7 +377,12 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
 - registration ownership per the rule above (nudge-2's 8 vault-registered ids re-registered
   under the founder; the vault keeps the mandatory three);
 - the SP1 verifier gateway rebound to Succinct's Groth16 gateway (Task 7.3(c) lesson;
-  Guard 4 enforces);
+  Guard 4 enforces) — AND `SP1_PROGRAM_VKEY` set to the CURRENT guest's vkey: the
+  2026-08-18 alloy 1.x bump (which let sp1-sdk's `network` backend compile) rebuilt the
+  guest ELF, so the vkey the 08-14 stack pins (`0x00368d…1f83`, the `v0.1.0` release
+  body) is superseded; recompute at redeploy time (`SP1_VKEY_ONLY=1 cargo run -p
+  figaro-prove-test --release`, or read the next release tag's body) and never reuse the
+  old value;
 - ~~`WitnessSwapAndCommitCoordinator`~~ — DONE 2026-08-18 without a redeploy (it points at
   the kernel and nothing points back, so it deployed ALONE onto the live stack:
   `0xdfF381730811CDec3518FA38B14f92219c5127B6`, bound to canonical Permit2 and Uniswap

@@ -11,8 +11,8 @@
 # (`bytes4(SP1Verifier<Form>.VERIFIER_HASH())`). Bind the wrong gateway and
 # every real proof reverts `RouteNotFound`; the pointer is immutable and
 # UsageCounter is bound to the verifier, so the whole stack redeploys. The
-# Sepolia stack of 2026-08-14 bound the OLD PLONK gateway (v6.0.0 PLONK routed,
-# Groth16 not) — this guard is that lesson.
+# Sepolia stack of 2026-08-14 bound the OLD PLONK gateway (PLONK routes only,
+# no Groth16) — this guard is that lesson.
 #
 # Inputs (env): SP1_VERIFIER_GATEWAY, RPC_URL; SP1_PROOF_MODE (groth16|plonk,
 # default groth16); the sp1-sdk version is read from prover/Cargo.lock.
@@ -32,13 +32,18 @@ case "$MODE" in
   *) echo "❌ SP1_PROOF_MODE must be groth16 or plonk (got '$MODE')"; exit 1 ;;
 esac
 
-SDK_VERSION=$(awk '/^name = "sp1-sdk"$/{getline; sub(/version = "/,""); sub(/"/,""); print; exit}' "$ROOT/prover/Cargo.lock")
-[ -n "$SDK_VERSION" ] || { echo "❌ cannot read the sp1-sdk version from prover/Cargo.lock"; exit 1; }
-# sp1-contracts publishes verifiers per MINOR line (v6.0.0 serves every 6.x sdk).
-CONTRACTS_TAG="v${SDK_VERSION%%.*}.0.0"
+# The proof's selector is the CIRCUIT version the locked SP1 prover embeds
+# (`SP1_CIRCUIT_VERSION` at the SP1 repo tag of that version — e.g. sdk 6.3.1
+# and 6.4.0 both embed v6.1.0), NOT the sdk's own version and NOT `v<major>.0.0`
+# (that guess would have pointed the 6.x line at the v6.0.0 verifier: wrong).
+PROVER_VERSION=$(awk '/^name = "sp1-prover"$/{getline; sub(/version = "/,""); sub(/"/,""); print; exit}' "$ROOT/prover/Cargo.lock")
+[ -n "$PROVER_VERSION" ] || { echo "❌ cannot read the sp1-prover version from prover/Cargo.lock"; exit 1; }
+CONTRACTS_TAG=$(curl -sf -m 30 "https://raw.githubusercontent.com/succinctlabs/sp1/v${PROVER_VERSION}/SP1_CIRCUIT_VERSION" | tr -d '[:space:]') \
+  || { echo "❌ cannot read SP1_CIRCUIT_VERSION for sp1 v${PROVER_VERSION} from the SP1 repo — refusing to guess"; exit 1; }
+[ -n "$CONTRACTS_TAG" ] || { echo "❌ empty SP1_CIRCUIT_VERSION for sp1 v${PROVER_VERSION}"; exit 1; }
 BASE="https://raw.githubusercontent.com/succinctlabs/sp1-contracts/main"
 
-echo "🔎 SP1 gateway route preflight: sdk $SDK_VERSION → verifiers $CONTRACTS_TAG, form $FORM"
+echo "🔎 SP1 gateway route preflight: sp1 $PROVER_VERSION embeds circuit $CONTRACTS_TAG → verifiers $CONTRACTS_TAG, form $FORM"
 SRC=$(curl -sf -m 30 "$BASE/contracts/src/$CONTRACTS_TAG/SP1Verifier${FORM}.sol") \
   || { echo "❌ cannot fetch SP1Verifier${FORM}.sol ($CONTRACTS_TAG) from sp1-contracts — refusing to guess"; exit 1; }
 VERIFIER_HASH=$(printf '%s' "$SRC" | awk '/function VERIFIER_HASH/{f=1} f && match($0,/0x[0-9a-fA-F]{64}/){print substr($0,RSTART,RLENGTH); exit}')
@@ -54,8 +59,8 @@ echo "   gateway (Succinct) = ${CANONICAL:-<none for $KEY on chain $CHAIN_ID>} (
 echo "   verifier hash      = $VERIFIER_HASH  selector $SELECTOR"
 
 lower() { printf '%s' "$1" | tr 'A-F' 'a-f'; }
-# The ROUTE is the truth (the record's names lag: on Sepolia the v6.0.0 PLONK
-# verifier is routed on the record's OLD_ PLONK gateway, not its current one).
+# The ROUTE is the truth (the record's names lag: on Sepolia older PLONK
+# verifiers are routed on the record's OLD_ PLONK gateway, not its current one).
 ROUTE=$(cast call "$SP1_VERIFIER_GATEWAY" "routes(bytes4)(address,bool)" "$SELECTOR" --rpc-url "$RPC_URL")
 ROUTE_ADDR=$(printf '%s\n' "$ROUTE" | sed -n 1p)
 ROUTE_FROZEN=$(printf '%s\n' "$ROUTE" | sed -n 2p)

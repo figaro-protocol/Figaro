@@ -2,6 +2,7 @@
 name = "figaro-sequencer"
 version = "0.1.0"
 edition = "2021"
+rust-version.workspace = true
 
 [[bin]]
 name = "sequencer"
@@ -9,13 +10,14 @@ path = "src/main.rs"
 
 [dependencies]
 figaro-kernel = { path = "../lib" }
-# sp1-sdk's `network` feature (SP1_PROVER=network — the Succinct Prover
-# Network as a liveness-only proof source) needs alloy 1.x; this crate is on
-# alloy 0.8 (c-kzg `links` conflict). Enable it with the alloy bump.
-sp1-sdk = "6.0"
-alloy-primitives = { version = "0.8", features = ["serde"] }
-alloy-sol-types = "0.8"
-alloy = { version = "0.8", features = ["full", "node-bindings"] }
+# `network`: `SP1_PROVER=network` submits program + inputs to the Succinct
+# Prover Network and receives the proof — a liveness-only proof source (the
+# proof still verifies against the program vkey; no prover can forge one).
+# Local `cpu`/`cuda` proving is unchanged. Needs alloy 1.x (the 2026-08-18 bump).
+sp1-sdk = { version = "6.0", features = ["network"] }
+alloy-primitives = { version = "1", features = ["serde"] }
+alloy-sol-types = "1"
+alloy = { version = "1", features = ["full", "node-bindings"] }
 axum = { version = "0.7", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }

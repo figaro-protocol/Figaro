@@ -142,11 +142,11 @@ pub async fn read_usage_context(
     if usage_counter == Address::ZERO {
         return None;
     }
-    let provider = ProviderBuilder::new().on_http(rpc_url.parse().ok()?);
+    let provider = ProviderBuilder::new().connect_http(rpc_url.parse().ok()?);
     let contract = IUsageCounter::new(usage_counter, &provider);
     let period = contract.currentPeriod().call().await.ok()?;
     let provenance = contract.provenanceClause().call().await.ok()?;
-    Some((period._0, provenance._0))
+    Some((period, provenance))
 }
 
 /// Drop usage claims the `UsageCounter` would reject at settlement, BEFORE they
@@ -186,7 +186,7 @@ pub async fn filter_usage_claims(
         .rpc_url
         .parse()
         .ok()
-        .map(|u| ProviderBuilder::new().on_http(u))
+        .map(|u| ProviderBuilder::new().connect_http(u))
     {
         Some(p) => p,
         None => return (claims, Vec::new()), // unparsable RPC — leave to the on-chain backstop
@@ -211,7 +211,7 @@ pub async fn filter_usage_claims(
                 .call()
                 .await
             {
-                Ok(r) if r._0 => {
+                Ok(true) => {
                     return Err("clause or assembly is excluded from scoring".to_string())
                 }
                 Ok(_) => {}
@@ -242,8 +242,8 @@ pub async fn filter_usage_claims(
 
             // Seller-side stake gate: the order's seller of record must be live-staked.
             match members.registered(claim.order.seller).call().await {
-                Ok(r) if r._0 => Ok(()),
-                Ok(_) => Err("seller is not live-staked".to_string()),
+                Ok(true) => Ok(()),
+                Ok(false) => Err("seller is not live-staked".to_string()),
                 Err(e) => Err(format!("member registered read failed: {e}")),
             }
         }
@@ -269,10 +269,11 @@ pub async fn submit_batch(
         .map_err(|e| format!("invalid private key: {e}"))?;
     let wallet = EthereumWallet::from(signer);
 
+    // alloy 1.x: the recommended fillers (nonce, gas, chain id) are the
+    // builder's default; only the wallet is added.
     let provider = ProviderBuilder::new()
-        .with_recommended_fillers()
         .wallet(wallet)
-        .on_http(
+        .connect_http(
             config
                 .rpc_url
                 .parse()
@@ -382,7 +383,7 @@ pub async fn read_state_root(
     rpc_url: &str,
     verifier_address: Address,
 ) -> Result<alloy::primitives::B256, String> {
-    let provider = ProviderBuilder::new().on_http(
+    let provider = ProviderBuilder::new().connect_http(
         rpc_url
             .parse()
             .map_err(|e| format!("invalid rpc url: {e}"))?,
@@ -395,7 +396,7 @@ pub async fn read_state_root(
         .await
         .map_err(|e| format!("stateRoot() call failed: {e}"))?;
 
-    Ok(root._0)
+    Ok(root)
 }
 
 #[cfg(test)]

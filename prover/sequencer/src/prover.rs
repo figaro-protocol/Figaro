@@ -31,10 +31,12 @@ pub struct ProveResult {
 /// The prover backend is selected by the `SP1_PROVER` environment variable:
 /// unset or `mock` runs the mock prover (devnet — emits no proof, accepted by
 /// the on-chain `MockSP1Verifier`); `cpu` / `cuda` run the real local SP1
-/// prover (sp1-sdk's `network` backend — the Succinct Prover Network as a
-/// liveness-only proof source — waits on this crate's alloy 1.x bump; the
-/// proof would still verify against the program vkey, so no prover can forge
-/// a settling proof). The proof FORM is `SP1_PROOF_MODE`:
+/// prover; `network` submits the same program + inputs to the Succinct Prover
+/// Network (`NETWORK_PRIVATE_KEY` = the requester key that pays, in PROVE) and
+/// receives the proof — a LIVENESS dependency only: the proof still verifies
+/// against the program vkey, so no prover can forge a settling proof. Whoever
+/// requests a proof pays for it (the relay operator) — never the protocol,
+/// never its users. The proof FORM is `SP1_PROOF_MODE`:
 /// `groth16` (default) or `plonk` — it must match the SP1 verifier gateway
 /// `FigaroBatchVerifier` was deployed against (Succinct runs one gateway per
 /// form; a proof of the other form is `RouteNotFound` on-chain).
@@ -122,7 +124,7 @@ async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<
 
 /// Real prover (testnet / mainnet). Generates a WRAPPED proof — Groth16 or
 /// PLONK per `mode`, the two forms an SP1 verifier gateway verifies on-chain —
-/// with the prover backend named by `SP1_PROVER` (`cpu`, `cuda`).
+/// with the prover backend named by `SP1_PROVER` (`cpu`, `cuda`, `network`).
 async fn prove_wrapped(elf: Elf, stdin: SP1Stdin, pv: &PublicValues, mode: ProofMode) -> Result<Vec<u8>, String> {
     let client = ProverClient::from_env().await;
     let pk = client

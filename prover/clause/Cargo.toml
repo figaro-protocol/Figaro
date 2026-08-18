@@ -2,6 +2,7 @@
 name = "figaro-clause"
 version = "0.1.0"
 edition = "2021"
+rust-version.workspace = true
 description = "Generic clause-validation engine — the Rust mirror of @figaro/sdk/clauses (TS Layer A). Used by the SP1 zkVM prover and the sequencer; validates any clause spec supplied as witness input."
 
 [dependencies]
@@ -16,5 +17,5 @@ regex = "1"
 # the validated JSON content. Output is byte-for-byte identical to viem's
 # encodeAbiParameters in `sdk/src/clauses/encode.ts` — this is the
 # cross-form binding the kernel uses to bind content_ref to content_json.
-alloy-primitives = "0.8"
-alloy-dyn-abi = "0.8"
+alloy-primitives = "1"
+alloy-dyn-abi = "1"

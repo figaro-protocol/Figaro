@@ -3,7 +3,14 @@
 # guest program, prove-script, and sequencer crates rejoin as each is
 # realigned to the current contract ABIs.
 members = ["clause", "lib", "program", "script", "sequencer"]
-resolver = "2"
+# Resolver 3 honours `rust-version`: with the host toolchain pinned to 1.93.0
+# (rust-toolchain.toml — the release's reproducibility pin), dependency
+# resolution picks the newest versions that still build on it (the AWS SDK
+# behind sp1-sdk's `network` feature moved its floor past 1.93 in 2026-07).
+resolver = "3"
+
+[workspace.package]
+rust-version = "1.93.0"
 
 # SP1 accelerates secp256k1 via a precompile. The kernel ELF verifies ~7
 # EIP-712 ECDSA signatures per batch; unpatched, that dominates the cycle
