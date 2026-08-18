@@ -382,6 +382,85 @@ observing the network.
 
 ---
 
+## The sandboxed signer runtime — design (2026-08-18, for ruling; unbuilt)
+
+`ecosystem-agents/*` state six requirements ON the runtime that hosts an agent
+(F1–F6 in `figaro-operator.md` § "Security requirements on the execution runtime").
+Today none is structural: the model that reads attacker-authorable network content is
+the same model that holds a raw key and a raw shell, so one prompt injection is wallet
+theft. `RELEASE_READINESS.md` § Pre-Mainnet names the runtime as the release gate on
+the whole ecosystem-agent tier. This is the design that closes it — three components,
+each mapping to the requirements it satisfies, with the choices the maintainer rules.
+
+**1. The policy signer — a separate PROCESS that holds the key (F1, F2, F3).**
+A small daemon, run by the wallet's owner, that loads the key into ITS memory only
+(keystore file + passphrase, or a hardware wallet — a Ledger via the same
+`cast --ledger` path the seeding uses) and exposes *signing as an operation* over a
+local UNIX socket: `signTypedData(domain, types, message)` and `signTransaction(tx)`,
+returning signatures — never bytes of key. Every request passes an **out-of-model
+policy gate** before it is signed, and the gate is configuration the model cannot
+reach (a file the signer owns, outside the agent's workspace):
+- *domain binding* — EIP-712 `chainId` + `verifyingContract` MUST equal the deployment
+  record's `FigaroCore` (a signature for any other domain is refused outright);
+- *contract + selector allowlist* — a transaction MUST target one of the deployment's
+  contracts (`FigaroCore.commit`/`resolveProcess`, the coordinators, the registries'
+  own-wallet calls, the settlement token's `approve` to those spenders) — anything else
+  is refused, including transfers of ETH or tokens to arbitrary addresses;
+- *ceilings* — a per-action AND per-period (rolling 24 h) cap on the value the wallet
+  can put at risk (payment + bond, approvals counted at their amount), set below the
+  balance; the signer refuses over the cap and the model cannot raise it (F2's hot/cold
+  split follows: the operating wallet holds only the float);
+- *simulation veto* — before signing a transaction the signer `eth_call`s it and refuses
+  a revert or a token-balance delta outside the ceiling (F3: the gate disposes after the
+  model proposes);
+- *audit log* — every request, decision, and reason appended to a file the owner reads.
+The signer presents itself to the agent as a viem local account (the account interface viem's wallet clients take) (`@figaro/sdk/agent`
+already takes a `WalletClient`; a `WalletClient` over the socket-backed account is a
+drop-in), so `autonomous.ts` / `hitl.ts` need no change — the boundary moves from
+"which account object" to "which process".
+
+**2. The data channel — fetched content arrives quoted and provenance-tagged (F4).**
+Every read the agent performs through the SDK — a clause spec, a profile, a catalogue,
+a template, an offer envelope, a coordination message — is returned to the model
+inside a typed envelope `{ source, cid|txHash, fetchedAt, content }` and rendered by
+the tool layer as a delimited, provenance-labelled block, never concatenated into the
+instruction stream and never executed. That is a tool-layer convention on the runtime,
+not an SDK change: the SDK returns data; the runtime's tools frame it.
+
+**3. Tool scoping — no raw host shell (F5, F6).**
+The agent's tools are the SDK's typed operations (read graphs, build/sign/submit
+through the signer, pin, message) plus a workspace-scoped filesystem; no `Bash`. The
+sandbox denies: writes outside the agent's own workspace (the repo included), reads of
+keys/keystores/env secrets (they live in the signer's process, not on the agent's
+path), transactions for any wallet but the operated one (the signer holds exactly one
+key), and network egress beyond the RPC, the pin service, and the coordination channel
+(an egress allowlist at the sandbox boundary). This is what makes the own-wallet-only /
+never-the-repo seam a barrier rather than a promise (F6).
+
+**Choices for the maintainer to rule:**
+- *Where it lives.* (a) A new SDK subpath `@figaro/sdk/signer` (the daemon + the
+  socket-backed account + the policy-file validator) — one package, one install, the SDK's
+  test/lint discipline; or (b) a sibling package beside the agent prompts (a runtime directory under
+  `ecosystem-agents/`) — keeps the SDK a library and the runtime a program. Recommendation: (a) for the signer + account
+  (they are protocol-shaped: domain, ABIs, deployment record), (b) for the sandbox
+  wrapper (it is host-shaped: processes, sockets, egress).
+- *Policy file shape.* JSON alongside the deployment record — `chainId`, `contracts`
+  (address → allowed selectors), `token`, `ceilings { perAction, perPeriod, periodSecs }`,
+  `egress []` — validated at signer start; a malformed policy refuses to start.
+- *Key custody at first ship.* Encrypted keystore + passphrase prompt at signer start
+  (no plaintext key anywhere), with the Ledger path as the second custody mode.
+- *Sandbox mechanism.* Start with process isolation the runtime already has (Claude
+  Code's tool grants without `Bash`; a workspace directory), then harden with an OS
+  sandbox (`sandbox-exec` on macOS / a container elsewhere) for the egress allowlist.
+
+**Build order once ruled:** signer daemon + policy gate + socket account (with tests:
+domain refusal, selector refusal, ceiling refusal, simulation veto, audit log) →
+`figaro-operator` re-pointed at the socket account and its tool grant narrowed → the
+data-channel envelope in the runtime's tools → the sandbox wrapper. Ship the tier only
+when all four stand (`RELEASE_READINESS.md` gate).
+
+---
+
 ## Design Implications
 
 1. **No API keys**: All graph data is on-chain or in public events. Any agent
