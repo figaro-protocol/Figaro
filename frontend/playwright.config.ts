@@ -32,7 +32,13 @@ if (E2E_CHAIN === 'sepolia') {
         // The PUBLIC, keyless read endpoint — never SEPOLIA_RPC_URL (the deploy
         // key's Infura endpoint: keyed, and rate-limited under a long run).
         NEXT_PUBLIC_RPC_URL: process.env.E2E_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
-        NEXT_PUBLIC_PERMIT2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+        NEXT_PUBLIC_PERMIT2: String(record.permit2 ?? '0x000000000022D473030F116dDEE9F6B43aC78BA3'),
+        // The swap-funded on-ramp (deployed alone onto the live stack 2026-08-18): the
+        // coordinator, Uniswap SwapRouter02, and QuoterV2 — read from the record; absent
+        // entries stay empty and the frontend gates the feature off (resolved-empty).
+        NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR: String(record.witnessSwapAndCommitCoordinator ?? ''),
+        NEXT_PUBLIC_SWAP_ROUTER: String(record.swapRouter ?? ''),
+        NEXT_PUBLIC_SWAP_QUOTER: String(record.swapQuoter ?? ''),
         NEXT_PUBLIC_MULTISENDER: '0xD152f549545093347A162Dce210e7293f1452150',
         // The read chain of the deployed site: a dedicated gateway on the
         // site's pin service first when the deploy env names one, the public
@@ -53,8 +59,6 @@ if (E2E_CHAIN === 'sepolia') {
         // Devnet-only mocks stay unset on Sepolia — the frontend feature-gates absence.
         NEXT_PUBLIC_TOKEN_ADDRESS: '',
         NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS: '',
-        NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR: '',
-        NEXT_PUBLIC_SWAP_ROUTER: '',
         NEXT_PUBLIC_BATCH_RELAY_URL: '',
     });
     for (const [k, v] of Object.entries(SEPOLIA_ENV)) process.env[k] = v;

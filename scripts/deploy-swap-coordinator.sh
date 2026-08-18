@@ -26,6 +26,9 @@ cd "$ROOT"
 : "${RPC_URL:?RPC_URL not set}"
 : "${SWAP_ROUTER:?SWAP_ROUTER not set (Uniswap SwapRouter02 on the target chain, from the Uniswap deployment docs)}"
 export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
+# Uniswap QuoterV2 on the target chain — the frontend's Uniswap venue quotes
+# through it (the coordinator never touches it). Optional here; recorded when given.
+SWAP_QUOTER="${SWAP_QUOTER:-}"
 
 CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
 RECORD="deployments/${CHAIN_ID}.json"
@@ -66,8 +69,8 @@ if [ "${SKIP_VERIFY:-}" = "1" ]; then
   cp "$RECORD" "$OUT"; echo "ℹ️  Fork rehearsal — record diverted to $OUT"
 fi
 TMP=$(mktemp)
-jq --arg c "$COORD" --arg r "$SWAP_ROUTER" --arg p "$PERMIT2" \
-   '. + {witnessSwapAndCommitCoordinator: $c, swapRouter: $r, permit2: $p}' "$OUT" > "$TMP" && mv "$TMP" "$OUT"
+jq --arg c "$COORD" --arg r "$SWAP_ROUTER" --arg p "$PERMIT2" --arg q "$SWAP_QUOTER" \
+   '. + {witnessSwapAndCommitCoordinator: $c, swapRouter: $r, permit2: $p} + (if $q == "" then {} else {swapQuoter: $q} end)' "$OUT" > "$TMP" && mv "$TMP" "$OUT"
 echo ""
 echo "✅ WitnessSwapAndCommitCoordinator = $COORD  (record: $OUT)"
-echo "   Bake NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR / NEXT_PUBLIC_SWAP_ROUTER / NEXT_PUBLIC_PERMIT2 into the site build."
+echo "   Bake NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR / NEXT_PUBLIC_SWAP_ROUTER / NEXT_PUBLIC_PERMIT2 / NEXT_PUBLIC_SWAP_QUOTER into the site build."

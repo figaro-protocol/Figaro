@@ -18,6 +18,7 @@ const COMPOSITION_CONTRACTS = {
     witnessSwapAndCommitCoordinator: (process.env.NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR || "") as `0x${string}`,
     permit2: (process.env.NEXT_PUBLIC_PERMIT2 || "") as `0x${string}`,
     swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
+    swapQuoter: (process.env.NEXT_PUBLIC_SWAP_QUOTER || "") as `0x${string}`,
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
     batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
     multisender: (process.env.NEXT_PUBLIC_MULTISENDER || "") as `0x${string}`,
@@ -52,6 +53,12 @@ export function getPermit2(): `0x${string}` | null {
 /** The coordinator's immutable swap venue (devnet: the mock venue). */
 export function getSwapRouter(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.swapRouter);
+}
+
+/** The venue's quoter (Uniswap QuoterV2) — needed only by the Uniswap v3
+ *  venue; the devnet mock quotes from its own rate. Resolved-empty = unset. */
+export function getSwapQuoter(): `0x${string}` | null {
+    return resolveAddress(COMPOSITION_CONTRACTS.swapQuoter);
 }
 
 /** The RPGF minter — the 600M distribution's claim surface. Each period's budget pays

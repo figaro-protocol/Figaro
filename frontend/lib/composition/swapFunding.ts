@@ -13,13 +13,12 @@
  * route is bound into the signing party's signature, so the relayer is
  * untrusted by construction).
  *
- * Route building is inherently VENUE-specific: this is the devnet venue
- * (`MockUniversalRouter` — `swap(tokenIn, tokenOut, amountIn, recipient)` at a
- * settable rate). A production venue (the Uniswap Universal Router) plugs in
- * as a sibling route builder against the same coordinator surface — growth is
- * parallel venues/coordinators, never a clause.
+ * Route building is inherently VENUE-specific and lives behind
+ * `lib/composition/swapVenue.ts` (the devnet mock and Uniswap v3 through
+ * SwapRouter02 as siblings, the venue DERIVED by probing the router). This
+ * module owns what is venue-neutral: the quote → witness → leg choreography.
  */
-import { encodeFunctionData, parseAbi, type PublicClient } from "viem";
+import { parseAbi, type PublicClient } from "viem";
 import {
     buildSwapWitnessTypedData,
     type Hex,
@@ -30,14 +29,10 @@ import {
     getSwapRouter,
     getWitnessSwapAndCommitCoordinator,
 } from "@/lib/composition/contracts";
+import { capWithSlippage, detectSwapVenue } from "@/lib/composition/swapVenue";
 import { bytesToHex } from "@/lib/shared/evm";
 
-/** The devnet swap venue's surface (MockUniversalRouter). */
-const SWAP_VENUE_ABI = parseAbi([
-    "function swap(address tokenIn, address tokenOut, uint256 amountIn, address recipient) returns (uint256)",
-    "function rateNumerator() view returns (uint256)",
-    "function rateDenominator() view returns (uint256)",
-]);
+const ERC20_DECIMALS_ABI = parseAbi(["function decimals() view returns (uint8)"]);
 
 /** All three composition addresses, or null if any is unconfigured —
  *  resolved-empty means the swap-funded path is unavailable. */
@@ -53,24 +48,29 @@ export function resolveSwapFundingContracts(): {
     return { coordinator, permit2, router };
 }
 
-/** The venue's live rate (amountOut = amountIn·num/den). */
+/** The venue's live rate for one pair (amountOut = amountIn·num/den). */
 export interface VenueRate {
     num: bigint;
     den: bigint;
 }
 
-/** Read the devnet venue's live rate. Throws on a zero numerator (a venue
- *  that yields nothing can neither fund a bond nor quote a price). */
+/** Read the venue's live rate for `tokenIn → tokenOut`: the input one whole
+ *  unit of the output token costs right now (`10^decimals(tokenOut)` quoted
+ *  exact-output). On the fixed-rate mock this IS the global rate; on a live
+ *  pool it is the marginal rate at one unit — the DISPLAY conversion — while
+ *  a funding leg always quotes its own exact amount at signing time. Throws
+ *  when the venue cannot quote the pair (no pool, zero rate). */
 export async function readVenueRate(
     publicClient: PublicClient,
     router: `0x${string}`,
+    pair: { tokenIn: Hex; tokenOut: Hex },
 ): Promise<VenueRate> {
-    const [num, den] = await Promise.all([
-        publicClient.readContract({ address: router, abi: SWAP_VENUE_ABI, functionName: "rateNumerator" }),
-        publicClient.readContract({ address: router, abi: SWAP_VENUE_ABI, functionName: "rateDenominator" }),
-    ]);
-    if (num === 0n) throw new Error("Swap venue rate is zero — cannot fund or quote through it.");
-    return { num, den };
+    const venue = await detectSwapVenue(publicClient, router);
+    const decimals = await publicClient.readContract({ address: pair.tokenOut, abi: ERC20_DECIMALS_ABI, functionName: "decimals" });
+    const unit = 10n ** BigInt(decimals);
+    const { amountIn } = await venue.quote(pair.tokenIn, pair.tokenOut, unit);
+    if (amountIn === 0n) throw new Error("Swap venue quotes zero input — cannot fund or quote through it.");
+    return { num: unit, den: amountIn };
 }
 
 /** Input amount the venue needs to yield at least `amountOut` of the target
@@ -82,15 +82,6 @@ export function inputForOutput(amountOut: bigint, rate: VenueRate): bigint {
     return (amountOut * rate.den + rate.num - 1n) / rate.num;
 }
 
-/** Input amount the venue needs to yield at least `bondAmount` of the bond
- *  currency, from the live rate. */
-async function quoteInputForBond(
-    publicClient: PublicClient,
-    router: `0x${string}`,
-    bondAmount: bigint,
-): Promise<bigint> {
-    return inputForOutput(bondAmount, await readVenueRate(publicClient, router));
-}
 
 /** A never-used unordered Permit2 nonce: 256 bits of client randomness. */
 function randomPermitNonce(): bigint {
@@ -143,15 +134,15 @@ export async function quoteFundingLeg(
             "Swap funding is not available: coordinator, Permit2, or venue address is unconfigured.",
         );
     }
-    const maxInput = await quoteInputForBond(args.publicClient, contracts.router, args.bondAmount);
-    // The exact route the witness binds: input → the process denomination,
+    // The venue quotes the exact bond as output; the cap the party signs is
+    // that quote plus the venue's headroom (0 on the fixed-rate mock). The
+    // exact route the witness binds: input → the process denomination,
     // proceeds to the coordinator (it forwards them to the funded party
-    // before the kernel pull).
-    const swapData = encodeFunctionData({
-        abi: SWAP_VENUE_ABI,
-        functionName: "swap",
-        args: [args.inputToken, args.currency, maxInput, contracts.coordinator],
-    });
+    // before the kernel pull, and refunds any input the swap did not spend).
+    const venue = await detectSwapVenue(args.publicClient, contracts.router);
+    const quote = await venue.quote(args.inputToken, args.currency, args.bondAmount);
+    const maxInput = capWithSlippage(quote.amountIn, venue.slippageBps);
+    const swapData = quote.route(maxInput, contracts.coordinator);
     return {
         inputToken: args.inputToken,
         currency: args.currency,
