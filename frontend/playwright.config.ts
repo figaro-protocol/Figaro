@@ -39,6 +39,8 @@ if (E2E_CHAIN === 'sepolia') {
         // gateway as fallback — so the smoke exercises the same chain visitors get.
         NEXT_PUBLIC_IPFS_GATEWAY_URL: process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL || 'https://ipfs.io',
         NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL: process.env.NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL || '',
+        // Testnet coordinates over XMTP's production network — the one mainnet uses.
+        NEXT_PUBLIC_XMTP_ENV: 'production',
         NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT: process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? process.env.IPFS_PIN_SERVICE_JWT ?? '',
         // `next build` reads frontend/.env.local on its own; its devnet EMPTY
         // values would otherwise inline as "" (`??` keeps an empty string) —

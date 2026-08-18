@@ -8,7 +8,7 @@ describe("xmtpNetworkEnv — the XMTP network is deployment config, never a lite
         vi.stubEnv("NEXT_PUBLIC_XMTP_ENV", "");
         expect(xmtpNetworkEnv()).toBe("dev");
     });
-    it("production for mainnet builds", () => {
+    it("production for testnet and mainnet builds — the testnet rehearses mainnet's network", () => {
         vi.stubEnv("NEXT_PUBLIC_XMTP_ENV", "production");
         expect(xmtpNetworkEnv()).toBe("production");
     });

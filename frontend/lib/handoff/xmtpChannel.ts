@@ -38,11 +38,13 @@ const XMTP_MESSAGE_FETCH_LIMIT = 50n;
 
 /**
  * The XMTP network this deployment coordinates over — DEPLOYMENT CONFIG, not
- * code: `NEXT_PUBLIC_XMTP_ENV` = `dev` (XMTP's public dev network — devnet and
- * testnet builds; inboxes there are shared by every developer on earth) or
- * `production` (mainnet). `||`, not `??`: an EMPTY env value (a devnet
- * .env.local read by `next build`) means the default. Anything else is
- * refused at first use rather than silently sent to the wrong network.
+ * code: `NEXT_PUBLIC_XMTP_ENV` = `dev` (XMTP's public dev network — the DEVNET
+ * build only; inboxes there are shared by every developer on earth) or
+ * `production` (TESTNET and MAINNET — the testnet rehearses mainnet, so it
+ * coordinates over the same network mainnet will). `||`, not `??`: an EMPTY
+ * env value (a devnet .env.local read by `next build`) means the default.
+ * Anything else is refused at first use rather than silently sent to the
+ * wrong network.
  */
 export type XmtpNetworkEnv = "dev" | "production";
 export function xmtpNetworkEnv(): XmtpNetworkEnv {
