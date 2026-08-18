@@ -95,7 +95,10 @@ function cacheSpec(spec: ClauseSpecWithBlock): void {
  * Async load — fetch a spec from its IPFS locator, parse, cache, and return it.
  * Idempotent: a spec already cached resolves immediately. Throws on parse /
  * network failure / clauseId mismatch / integrity mismatch (no silent
- * fallback). When `expectedContentHash` is provided (the `ClauseRegistered`
+ * fallback). PERMANENT failures — the document is wrong, not merely not served
+ * yet: integrity mismatch, unparseable spec or block, id/version mismatch —
+ * are recorded under `getClauseSpecLoadError`, so a re-reading consumer can
+ * leave them alone; a network miss records nothing and is re-read. When `expectedContentHash` is provided (the `ClauseRegistered`
  * event's digest), the fetched document is verified by recomputing the
  * canonical content hash — a drifted or tampered pin never enters the cache.
  */
@@ -123,10 +126,14 @@ export async function loadClauseSpec(
         throw new Error(`Clause spec at ${uri} failed to parse: ${detail}`);
     }
     if (parsed.spec.clauseId !== clauseId) {
-        throw new Error(`Clause spec at ${uri} declares clauseId "${parsed.spec.clauseId}", expected "${clauseId}"`);
+        const detail = `spec at ${uri} declares clauseId "${parsed.spec.clauseId}", expected "${clauseId}"`;
+        SPEC_LOAD_ERRORS.set(clauseId, detail);
+        throw new Error(`Clause ${detail}`);
     }
     if (parsed.spec.version !== version) {
-        throw new Error(`Clause spec at ${uri} declares version ${parsed.spec.version}, expected ${version} (the registered version)`);
+        const detail = `spec at ${uri} declares version ${parsed.spec.version}, expected ${version} (the registered version)`;
+        SPEC_LOAD_ERRORS.set(clauseId, detail);
+        throw new Error(`Clause ${detail}`);
     }
     // Parse the `block` presentation slice off the SAME spec JSON (the SDK parser
     // ignores it — it's content-only). A malformed block is a hard parse failure,

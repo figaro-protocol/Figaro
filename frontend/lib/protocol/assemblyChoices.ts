@@ -16,6 +16,7 @@ import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
+import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
     fetchAssemblyTemplate,
@@ -143,17 +144,20 @@ export function useAssemblyChoices(
      *  because we want to guard against double-fetch without retriggering
      *  the effect every time we add an entry. */
     const inFlightRef = useRef<Set<string>>(new Set());
+    /** Re-read timers for templates no gateway has served yet — cleared on
+     *  unmount so a departed surface never sets state. */
+    const retryTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
     useEffect(() => {
         if (!events || events.length === 0) return;
-        for (const event of events) {
-            if (inFlightRef.current.has(event.compositionHash)) continue;
-            inFlightRef.current.add(event.compositionHash);
-            setAssemblyTemplateState((prev) => {
-                const next = new Map(prev);
-                next.set(event.compositionHash, { state: "loading", assemblyTemplate: null });
-                return next;
-            });
+        const timers = retryTimersRef.current;
+        /** Fetch one template; on a miss, re-read on `contentRetryDelayMs`'s
+         *  schedule (a public gateway finds a fresh pin minutes after the
+         *  anchor — the row shows its slug until then, then names itself
+         *  without a reload). `fetchAssemblyTemplate` reports a mismatched
+         *  pin exactly like an unreachable one (absence, by its contract), so
+         *  absence is re-checked the same way. */
+        const read = (event: (typeof events)[number], attempt: number) => {
             fetchAssemblyTemplate(event.contentURI, event.compositionHash).then(
                 (assemblyTemplate) => {
                     setAssemblyTemplateState((prev) => {
@@ -166,6 +170,7 @@ export function useAssemblyChoices(
                         );
                         return next;
                     });
+                    if (!assemblyTemplate) schedule(event, attempt);
                 },
                 () => {
                     setAssemblyTemplateState((prev) => {
@@ -173,10 +178,36 @@ export function useAssemblyChoices(
                         next.set(event.compositionHash, { state: "error", assemblyTemplate: null });
                         return next;
                     });
+                    schedule(event, attempt);
                 },
             );
+        };
+        const schedule = (event: (typeof events)[number], attempt: number) => {
+            const timer = setTimeout(() => {
+                timers.delete(timer);
+                read(event, attempt + 1);
+            }, contentRetryDelayMs(attempt));
+            timers.add(timer);
+        };
+        for (const event of events) {
+            if (inFlightRef.current.has(event.compositionHash)) continue;
+            inFlightRef.current.add(event.compositionHash);
+            setAssemblyTemplateState((prev) => {
+                const next = new Map(prev);
+                next.set(event.compositionHash, { state: "loading", assemblyTemplate: null });
+                return next;
+            });
+            read(event, 0);
         }
     }, [events]);
+
+    useEffect(() => {
+        const timers = retryTimersRef.current;
+        return () => {
+            for (const timer of timers) clearTimeout(timer);
+            timers.clear();
+        };
+    }, []);
 
     // Memoize the derived array so its reference is stable across renders
     // when none of its inputs (events, assemblyTemplateState, chainId) have changed.

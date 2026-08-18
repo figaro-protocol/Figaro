@@ -99,7 +99,10 @@ function ReclaimClauseRow({
     const [locallyWithdrawn, setLocallyWithdrawn] = useState(false);
     const withdrawn = clause.stakeWithdrawn || locallyWithdrawn;
 
-    const article = getClauseSpec(clause.clauseId, clause.version)?.block?.design.article ?? "(unclassified)";
+    // "(unclassified)" is a RESOLVED spec declaring no article; a spec the
+    // gateway has not served yet is not unclassified — its article is unknown here.
+    const spec = getClauseSpec(clause.clauseId, clause.version);
+    const article = spec ? spec.block?.design.article ?? "(unclassified)" : "(spec not resolved yet)";
     // Unverifiable in-flight deals are informational only (party-private terms),
     // never disabling — shown while the reclaim is still available.
     const caveat = !withdrawn ? withdrawUnverifiedCaveat(gate) : null;

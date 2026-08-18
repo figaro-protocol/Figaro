@@ -21,11 +21,19 @@
  * (dead URI, hash mismatch, unparseable spec) must degrade to "skip that one,
  * render the rest," never wedge every clause surface for every user. Consumers
  * read each spec via `getClauseSpec` (undefined = skipped) and fall back per-clause.
+ *
+ * A skip is not final: a spec whose gateway read failed (the public gateway
+ * has not found a fresh pin yet) is re-read on `contentRetryDelayMs`'s
+ * schedule while any consumer is mounted, and `version` bumps as it lands —
+ * so a freshly registered clause fills in without a reload. Only PERMANENT
+ * failures (`getClauseSpecLoadError`: integrity mismatch, unparseable spec)
+ * are excluded from the re-read.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { useAllRegisteredClauses } from "./useClauseRegistry";
-import { getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, getClauseSpecLoadError, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 
 export interface ClauseSpecsState {
     /** True once the registry has been read AND every registered clause's spec
@@ -54,16 +62,28 @@ export function useClauseSpecs(): ClauseSpecsState {
     useEffect(() => {
         if (!events) return;
         let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         setSettled(false);
         const pending = events.filter((e) => e.contentURI && e.clauseId);
-        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseId, e.version, e.contentURI, e.contentHash))).then((results) => {
-            if (cancelled) return;
-            setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
-            setSettled(true);
-            setVersion((v) => v + 1);
-        });
+        /** One read pass over `batch`; the first pass settles `loaded`, later
+         *  passes re-read what is still unresolved and stop when nothing is. */
+        const pass = (batch: typeof pending, attempt: number) => {
+            Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseId, e.version, e.contentURI, e.contentHash))).then((results) => {
+                if (cancelled) return;
+                setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
+                setSettled(true);
+                setVersion((v) => v + 1);
+                const unresolved = batch.filter(
+                    (e) => getClauseSpec(e.clauseId, e.version) === undefined && getClauseSpecLoadError(e.clauseId) === undefined,
+                );
+                if (unresolved.length === 0) return;
+                timer = setTimeout(() => pass(unresolved, attempt + 1), contentRetryDelayMs(attempt));
+            });
+        };
+        pass(pending, 0);
         return () => {
             cancelled = true;
+            if (timer !== undefined) clearTimeout(timer);
         };
     }, [events]);
 

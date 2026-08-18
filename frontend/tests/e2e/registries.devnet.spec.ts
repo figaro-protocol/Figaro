@@ -46,6 +46,11 @@ test.describe('Registry explorer (devnet)', () => {
         }
         // Default sort is by article: each list sits under its article heading.
         await expect(rows.first().locator('xpath=ancestor::ul[1]/preceding-sibling::h3[1]')).toBeVisible();
+        // A row whose spec the gateway has not served yet says so (never
+        // "(unclassified)"); on devnet's local node every spec resolves, so the
+        // note clears for every row and every heading is a real article.
+        await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: 30_000 });
+        await expect(page.getByTestId('content-unavailable')).toHaveCount(0);
         // The count line reflects the same read.
         await expect(page.getByTestId('registry-count')).toContainText(/of \d+ clauses/);
     });

@@ -34,7 +34,11 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_RPC_URL: process.env.E2E_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
         NEXT_PUBLIC_PERMIT2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
         NEXT_PUBLIC_MULTISENDER: '0xD152f549545093347A162Dce210e7293f1452150',
-        NEXT_PUBLIC_IPFS_GATEWAY_URL: 'https://ipfs.io',
+        // The read chain of the deployed site: a dedicated gateway on the
+        // site's pin service first when the deploy env names one, the public
+        // gateway as fallback — so the smoke exercises the same chain visitors get.
+        NEXT_PUBLIC_IPFS_GATEWAY_URL: process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL || 'https://ipfs.io',
+        NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL: process.env.NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL || '',
         NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT: process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? process.env.IPFS_PIN_SERVICE_JWT ?? '',
         // `next build` reads frontend/.env.local on its own; its devnet EMPTY
         // values would otherwise inline as "" (`??` keeps an empty string) —

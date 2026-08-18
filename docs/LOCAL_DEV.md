@@ -157,6 +157,13 @@ NEXT_PUBLIC_DEPLOYMENT_BLOCK=
 # IPFS — used by ipfsService.ts + memberBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
+# Optional second gateway for READS: tried when the primary fails a read (non-OK
+# or network error). Public deployments pair a dedicated gateway on the site's
+# own pin service (primary — instant for everything that service pinned) with a
+# public gateway (fallback — reaches content pinned anywhere; finds a fresh pin
+# only after minutes). A user's own gateway override is the whole chain. Devnet
+# leaves it unset (an EMPTY value means none).
+NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL=
 
 # Managed pinning service — DEPLOY BUILDS ONLY (testnet tier, RELEASE_READINESS
 # Task 6.1). Presence of the JWT switches ipfsService add/unpin to a

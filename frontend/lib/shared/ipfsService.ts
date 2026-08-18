@@ -27,6 +27,49 @@ function activeIpfsGatewayUrl(): string {
 }
 
 /**
+ * The gateway CHAIN a read walks: the primary first, then the build's fallback
+ * gateway when the primary fails the read. The split exists because no single
+ * gateway serves both halves of an open registry well — a dedicated gateway on
+ * the site's own pin service answers instantly for everything that service
+ * pinned but knows nothing else, while a public gateway reaches content anyone
+ * pinned anywhere yet can take many minutes to find a fresh pin. A user's own
+ * node override is the whole chain (their node, their choice — no read leaks
+ * past it). Read at call time, like the pin-service JWT. `||`, not `??`: an
+ * EMPTY env value (a devnet .env.local read by `next build`) means "no fallback".
+ */
+function activeIpfsGatewayUrls(): string[] {
+    const override = readUserEndpoints().ipfsGatewayUrl;
+    if (override) return [override];
+    const fallback = (process.env.NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL || "").replace(/\/$/, "");
+    return fallback && fallback !== IPFS_GATEWAY_URL ? [IPFS_GATEWAY_URL, fallback] : [IPFS_GATEWAY_URL];
+}
+
+/**
+ * Delay before the n-th RE-READ of pinned content no gateway has served yet:
+ * 10 s, 20 s, 40 s, then every 60 s for as long as the reader is mounted. A
+ * public gateway finds a fresh pin minutes after it is made (measured on
+ * ipfs.io: minutes for a profile, ~30 min for a template), so a surface that
+ * read once and gave up shows an identity in place of a name until the user
+ * reloads. Readers keep asking on this schedule instead; the content arrives
+ * without a reload. Permanent failures (integrity mismatch, unparseable
+ * document) are the reader's to exclude — re-reading those changes nothing.
+ */
+export function contentRetryDelayMs(attempt: number): number {
+    return Math.min(10_000 * 2 ** Math.max(0, attempt), 60_000);
+}
+
+/** The same `/ipfs/<path>` on every OTHER gateway of the chain, in chain
+ *  order — empty when `url` is not a gateway URL of the chain (an http(s)
+ *  passthrough locator has no alternate: it names its own host). */
+function gatewayAlternates(url: string): string[] {
+    const chain = activeIpfsGatewayUrls();
+    const owner = chain.find((g) => url.startsWith(`${g}/ipfs/`));
+    if (!owner) return [];
+    const path = url.slice(owner.length);
+    return chain.filter((g) => g !== owner).map((g) => `${g}${path}`);
+}
+
+/**
  * Managed pinning service (testnet tier — `RELEASE_READINESS.md` Task 6.1).
  * When a JWT is baked into the deploy build, `add`/`unpin` target a service
  * speaking the Pinata-style pinning API instead of a Kubo node; gateway reads
@@ -214,6 +257,43 @@ export async function fetchCappedContent(
     url: string,
     options: CappedFetchOptions = {},
 ): Promise<CappedContentResponse> {
+    return walkGatewayChain(url, (u) => fetchCappedContentOnce(u, options));
+}
+
+/**
+ * Try `url`, then the same path on each other gateway of the chain, until one
+ * read succeeds. A failed read is a non-OK status or a thrown network error —
+ * a gateway that has not found the content yet answers 504 after its own
+ * deadline (ipfs.io: ~30 s), so the fallback engages within that. The size
+ * cap's own rejection (`documentTooLargeError`) is NOT a gateway failure and
+ * propagates at once: the content is what it is on every gateway. When every
+ * gateway fails, the LAST outcome is returned/rethrown, so callers' existing
+ * `!ok → null` branches and error handling see exactly what they saw before.
+ */
+async function walkGatewayChain<T extends { ok: boolean }>(url: string, attempt: (u: string) => Promise<T>): Promise<T> {
+    const candidates = [url, ...gatewayAlternates(url)];
+    let last: T | undefined;
+    let lastError: unknown;
+    for (const candidate of candidates) {
+        try {
+            const res = await attempt(candidate);
+            if (res.ok) return res;
+            last = res;
+            lastError = undefined;
+        } catch (err) {
+            if (err instanceof Error && err.message.startsWith("IPFS document exceeds")) throw err;
+            lastError = err;
+            last = undefined;
+        }
+    }
+    if (last !== undefined) return last;
+    throw lastError;
+}
+
+async function fetchCappedContentOnce(
+    url: string,
+    options: CappedFetchOptions,
+): Promise<CappedContentResponse> {
     const cap = options.cap ?? MAX_IPFS_DOCUMENT_BYTES;
     const doFetch = options.fetch ?? ((u: string, init?: RequestInit) => fetch(u, init));
     const controller = new AbortController();
@@ -241,6 +321,13 @@ export async function fetchCappedContent(
 export async function fetchCappedBinary(
     url: string,
     options: CappedFetchOptions = {},
+): Promise<{ ok: boolean; status: number; statusText: string; bytes: Uint8Array | null }> {
+    return walkGatewayChain(url, (u) => fetchCappedBinaryOnce(u, options));
+}
+
+async function fetchCappedBinaryOnce(
+    url: string,
+    options: CappedFetchOptions,
 ): Promise<{ ok: boolean; status: number; statusText: string; bytes: Uint8Array | null }> {
     const cap = options.cap ?? MAX_IPFS_DOCUMENT_BYTES;
     const doFetch = options.fetch ?? ((u: string, init?: RequestInit) => fetch(u, init));
@@ -521,10 +608,10 @@ class DefaultIpfsService implements IpfsService {
         }
         // A pin-service pin is durable at once but a PUBLIC gateway serves it
         // only after finding the provider — minutes of "504" for the first
-        // reader (the member's own profile on /discover). Ask the gateway for
-        // the CID now, in the background, so it fetches and caches before
-        // anyone else asks; best-effort, never awaited by the caller.
-        if (service) void warmPublicGateway(cid, this.gatewayUrl);
+        // reader (the member's own profile on /discover). Ask every gateway of
+        // the read chain for the CID now, in the background, so each fetches
+        // and caches before anyone else asks; best-effort, never awaited.
+        if (service) for (const gateway of activeIpfsGatewayUrls()) void warmPublicGateway(cid, gateway);
 
         return cid;
     }

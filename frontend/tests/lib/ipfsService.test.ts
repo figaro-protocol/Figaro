@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_IPFS_SERVICE,
     MAX_IPFS_DOCUMENT_BYTES,
+    contentRetryDelayMs,
     extractIpfsCid,
     fetchCappedContent,
     ipfsTimeoutForBytes,
@@ -478,6 +479,118 @@ describe("ipfsService", () => {
             expect(res.ok).toBe(false);
             expect(res.status).toBe(404);
             expect(await res.text()).toBe("");
+        });
+    });
+
+    describe("the gateway chain (primary, then the build's fallback gateway)", () => {
+        afterEach(() => {
+            vi.unstubAllEnvs();
+            localStorage.removeItem("figaro.user-endpoints");
+        });
+
+        const okResponse = (text: string) =>
+            ({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                headers: { get: () => null },
+                text: async () => text,
+            }) as unknown as Response;
+        const failedResponse = (status: number) =>
+            ({ ok: false, status, statusText: "Gateway Time-out", headers: { get: () => null }, text: async () => "" }) as unknown as Response;
+
+        it("re-reads the same /ipfs/ path on the fallback gateway when the primary read fails", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
+            const seen: string[] = [];
+            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh/spec.json", {
+                fetch: async (u) => {
+                    seen.push(u);
+                    return u.startsWith("https://public.example") ? okResponse("{}") : failedResponse(504);
+                },
+            });
+            expect(res.ok).toBe(true);
+            expect(seen).toEqual(["http://127.0.0.1:8080/ipfs/QmFresh/spec.json", "https://public.example/ipfs/QmFresh/spec.json"]);
+        });
+
+        it("a thrown network error on the primary also walks to the fallback", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
+            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh", {
+                fetch: async (u) => {
+                    if (u.startsWith("http://127.0.0.1:8080")) throw new TypeError("Failed to fetch");
+                    return okResponse("{}");
+                },
+            });
+            expect(res.ok).toBe(true);
+        });
+
+        it("returns the LAST outcome when every gateway fails — callers' !ok branch is unchanged", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
+            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmMissing", {
+                fetch: async (u) => failedResponse(u.startsWith("https://public.example") ? 404 : 504),
+            });
+            expect(res.ok).toBe(false);
+            expect(res.status).toBe(404);
+        });
+
+        it("no fallback configured → exactly one read", async () => {
+            const seen: string[] = [];
+            await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmX", {
+                fetch: async (u) => {
+                    seen.push(u);
+                    return failedResponse(504);
+                },
+            });
+            expect(seen).toHaveLength(1);
+        });
+
+        it("a user's own gateway override is the whole chain — no read leaks past it", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
+            localStorage.setItem("figaro.user-endpoints", JSON.stringify({ ipfsGatewayUrl: "http://my-node:8080" }));
+            const seen: string[] = [];
+            await fetchCappedContent("http://my-node:8080/ipfs/QmX", {
+                fetch: async (u) => {
+                    seen.push(u);
+                    return failedResponse(504);
+                },
+            });
+            expect(seen).toEqual(["http://my-node:8080/ipfs/QmX"]);
+        });
+
+        it("an http(s) passthrough locator names its own host — no alternate", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
+            const seen: string[] = [];
+            await fetchCappedContent("https://cdn.example.com/doc.json", {
+                fetch: async (u) => {
+                    seen.push(u);
+                    return failedResponse(500);
+                },
+            });
+            expect(seen).toEqual(["https://cdn.example.com/doc.json"]);
+        });
+
+        it("the size-cap rejection propagates at once — the content is the same on every gateway", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
+            const seen: string[] = [];
+            await expect(
+                fetchCappedContent("http://127.0.0.1:8080/ipfs/QmHuge", {
+                    fetch: async (u) => {
+                        seen.push(u);
+                        return {
+                            ok: true,
+                            status: 200,
+                            statusText: "OK",
+                            headers: { get: (k: string) => (k.toLowerCase() === "content-length" ? String(MAX_IPFS_DOCUMENT_BYTES + 1) : null) },
+                            body: new ReadableStream<Uint8Array>({ pull(c) { c.close(); } }),
+                            text: async () => "",
+                        } as unknown as Response;
+                    },
+                }),
+            ).rejects.toThrow(/exceeds the maximum size/);
+            expect(seen).toHaveLength(1);
+        });
+
+        it("contentRetryDelayMs: 10 s, 20 s, 40 s, then a 60 s ceiling", () => {
+            expect([0, 1, 2, 3, 4, 9].map(contentRetryDelayMs)).toEqual([10_000, 20_000, 40_000, 60_000, 60_000, 60_000]);
         });
     });
 });

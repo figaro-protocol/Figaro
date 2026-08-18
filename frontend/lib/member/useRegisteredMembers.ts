@@ -23,6 +23,7 @@ import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getActiveMembers, getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 export interface RegisteredMemberRow {
@@ -48,6 +49,7 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
             return;
         }
         let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
         setFailed(false);
         const chainId = publicClient.chain?.id ?? activeChain.id;
         Promise.all([getAllMemberRegistered(publicClient, chainId), getActiveMembers(publicClient, chainId)])
@@ -74,12 +76,24 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
                 }));
                 setData(rows);
                 // Profiles resolve lazily and independently — one slow gateway
-                // read never blocks the list.
-                await Promise.all(rows.map(async (row) => {
+                // read never blocks the list. A profile no gateway has served
+                // yet (a public gateway finds a fresh pin minutes after the
+                // wizard pinned it) is re-read on `contentRetryDelayMs`'s
+                // schedule, so the member names itself without a reload.
+                const read = async (row: RegisteredMemberRow, attempt: number) => {
                     const profile = await fetchMemberProfile(row.metadataURI).catch(() => null);
-                    if (cancelled || !profile) return;
+                    if (cancelled) return;
+                    if (!profile) {
+                        const timer = setTimeout(() => {
+                            timers.delete(timer);
+                            void read(row, attempt + 1);
+                        }, contentRetryDelayMs(attempt));
+                        timers.add(timer);
+                        return;
+                    }
                     setData((prev) => prev?.map((p) => (p.address === row.address ? { ...p, profile } : p)) ?? prev);
-                }));
+                };
+                await Promise.all(rows.map((row) => read(row, 0)));
             })
             .catch((err) => {
                 if (cancelled) return;
@@ -87,7 +101,11 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
                 setFailed(true);
                 setData([]);
             });
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+            for (const timer of timers) clearTimeout(timer);
+            timers.clear();
+        };
     }, [generation]);
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);

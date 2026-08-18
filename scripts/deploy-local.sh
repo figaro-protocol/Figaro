@@ -165,6 +165,8 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_MULTISENDER"               "$MULTISENDER_ADD
 # absent, so a custom endpoint configured by hand survives a redeploy.
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_API_URL"     "http://127.0.0.1:5001"
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_GATEWAY_URL" "http://127.0.0.1:8080"
+# Devnet has no second gateway — the local Kubo node is the whole chain.
+default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL" ""
 # Chain-read defaults — devnet reads Anvil from block 0, so both stay empty;
 # public builds set them from the deployment record (LOCAL_DEV.md).
 default_env "$CORE_ENV" "NEXT_PUBLIC_RPC_URL"          ""
@@ -212,7 +214,7 @@ echo "   NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=$FLORIN_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_USAGE_COUNTER=$USAGE_COUNTER_ADDR"
 echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
 echo "   NEXT_PUBLIC_DAO_TREASURY=$DAO_TREASURY_ADDR"
-echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
+echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL / NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Deployment: $CORE_DEPLOYMENT"
 
 # ── Clauses — pin specs to IPFS + anchor on ClauseRegistry ───────────────────

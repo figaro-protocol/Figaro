@@ -19,7 +19,7 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, getClauseSpecLoadError } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
@@ -71,8 +71,9 @@ export function RegistryExplorer() {
             const article = spec?.block?.design?.article ?? "";
             const name = spec?.title ?? e.clauseId;
             const description = spec?.description ?? "";
+            const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseId) ? "unavailable" : "resolving";
             out.push({
-                family: "clauses", key: `clause-${e.clauseId}`, id: e.clauseId, name, article, description,
+                family: "clauses", key: `clause-${e.clauseId}`, id: e.clauseId, name, article, description, content,
                 registrar: e.registrar, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
                 text: [e.clauseId, name, description, article, e.registrar].join(" "),
             });
@@ -81,6 +82,7 @@ export function RegistryExplorer() {
             const description = a.assemblyTemplate?.summary ?? a.assemblyTemplate?.description ?? "";
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
+                content: a.state === "loaded" ? "resolved" : "resolving",
                 registrar: a.author, blockNumber: a.blockNumber, stakeWithdrawn: false, clauses: a.clauses ?? [],
                 text: [a.slug, a.name, description, a.author, ...(a.clauses ?? [])].join(" "),
             });
@@ -89,6 +91,7 @@ export function RegistryExplorer() {
             const name = m.profile?.name ?? truncateHex(m.address);
             out.push({
                 family: "members", key: `member-${m.address.toLowerCase()}`, id: m.address, name, article: "", description: m.profile?.description ?? "",
+                content: m.profile ? "resolved" : "resolving",
                 registrar: m.address, blockNumber: m.blockNumber, stakeWithdrawn: m.stakeWithdrawn, clauses: [],
                 text: [m.address, name, m.profile?.description ?? "", m.profile?.specialty ?? ""].join(" "),
             });
@@ -225,7 +228,10 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
     const groups: Array<{ label: string; items: Array<ExplorerRow & RowText> }> = [];
     if (state.sort === "article") {
         for (const r of rows) {
-            const label = r.article || "(unclassified)";
+            // "(unclassified)" is a RESOLVED spec that declares no article. A
+            // spec not resolved yet is not unclassified — its article is
+            // simply not known here yet — so it groups by that state instead.
+            const label = r.content === "resolved" ? r.article || "(unclassified)" : contentStateLabel(r.content);
             const g = groups[groups.length - 1];
             if (g && g.label === label) g.items.push(r); else groups.push({ label, items: [r] });
         }
@@ -252,6 +258,7 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                                             registered by {truncateHex(r.registrar)}
                                         </button>
                                         {r.stakeWithdrawn ? <span className="ml-2">(stake withdrawn)</span> : null}
+                                        <ContentStateNote content={r.content} />
                                     </span>
                                 </span>
                             </li>
@@ -289,6 +296,7 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
                             <button type="button" className="font-mono underline" onClick={() => onFacet({ registrar: r.registrar })}>
                                 {truncateHex(r.registrar)}
                             </button>
+                            <ContentStateNote content={r.content} />
                         </p>
                     </li>
                 );
@@ -323,12 +331,25 @@ function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; mem
                             {m?.profile?.specialty ? <>{m.profile.specialty} · </> : null}
                             {offers ? "offers assemblies — orderable on /discover" : "registered; not offering assemblies"}
                             {r.stakeWithdrawn ? " · stake withdrawn" : ""}
+                            <ContentStateNote content={r.content} />
                         </p>
                     </li>
                 );
             })}
         </ul>
     );
+}
+
+/** The state of a row whose pinned content has not resolved, in words. */
+function contentStateLabel(content: ExplorerRow["content"]): string {
+    return content === "unavailable" ? "(content unavailable — the pinned document failed verification)" : "(content not served by the gateway yet — re-reading)";
+}
+
+/** Inline note on any row whose name/description are not to be trusted
+ *  yet: the on-chain identity is real, the content behind it is not here. */
+function ContentStateNote({ content }: { content: ExplorerRow["content"] }) {
+    if (content === "resolved") return null;
+    return <span className="ml-2" data-testid={`content-${content}`}>{contentStateLabel(content)}</span>;
 }
 
 function Empty({ family }: { family: RegistryFamily }) {

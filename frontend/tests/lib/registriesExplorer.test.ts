@@ -6,7 +6,7 @@ import {
 
 const row = (over: Partial<ExplorerRow>): ExplorerRow => ({
     family: "clauses", key: "k", name: "n", id: "i", article: "", registrar: "0xA",
-    blockNumber: 1n, stakeWithdrawn: false, clauses: [], text: "", ...over,
+    blockNumber: 1n, stakeWithdrawn: false, clauses: [], content: "resolved", text: "", ...over,
 });
 
 const ROWS: ExplorerRow[] = [

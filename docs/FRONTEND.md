@@ -168,7 +168,16 @@ Y", not as an open-ended build.)
   (`frontend/components/registries/RegistryExplorer.tsx` over the pure
   `frontend/lib/registries/explorer.ts`) with
   `frontend/tests/e2e/registries.devnet.spec.ts` (one test per family + a
-  facet deep link).
+  facet deep link). Every row carries the state of the pinned content behind
+  its on-chain pointer (`ExplorerRow.content`: resolved / resolving /
+  unavailable) and renders an unresolved row as unresolved — the identity
+  alone, never a name or article it does not have; "(unclassified)" is a
+  RESOLVED spec that declares no article. Content the gateway has not served
+  yet is re-read on `contentRetryDelayMs`'s schedule (10 s, 20 s, 40 s, then
+  every 60 s) by the three pointer readers — `useClauseSpecs`,
+  `useAssemblyChoices`, `useRegisteredMembers` — so a fresh registration names
+  itself without a reload; reads walk the gateway chain (`ipfsService.ts`:
+  `NEXT_PUBLIC_IPFS_GATEWAY_URL`, then `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`).
 - **Scenario e2e** — `frontend/tests/e2e/local-commerce.devnet.spec.ts` is the
   live exemplar (authors on the canvas, pins to IPFS + anchors on-chain, then
   consumes from chain + IPFS — discovers, never imports a roster).
