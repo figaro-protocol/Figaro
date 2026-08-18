@@ -346,7 +346,10 @@ sequencer by submitting directly to `FigaroCore` on-chain.
 2. **State representation**: BTree-based kernel state with 6 members.
    Deterministic `compute_root()` produces a bytes32 state root by
    hashing sorted key-value pairs from each mapping. On-chain state
-   root chain prevents fabricated state transitions.
+   root chain prevents fabricated state transitions. Known cost,
+   accepted: `compute_root()` rehashes the ENTIRE state every batch (a
+   flat hash); the bridge's usage maps raise the constant, not the class —
+   the merkle/incremental successor takes them along.
 
 3. **Sequencing**: Single-instance sequencer for devnet. Collects
    EIP-712 signed operations, validates pre-checks (approvals, state

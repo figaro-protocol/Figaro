@@ -226,6 +226,12 @@ Both assumptions ship TRUE in the `.cfg`; flipping either to FALSE is the
 model's experiment and is EXPECTED to fail. Mutation-checked 2026-08-04
 (5 mutations + 7 non-vacuity witnesses, each caught).
 
+Known cost, accepted: `SettlementUniverses.cfg` ships `MinSellers=1`; the
+minimum-support floor case runs as a second green pass at `MinSellers=2`
+(both at once needs >31M states). `AssumeAccrualGatesAligned` is not
+contract-enforced — a dropped batch's accrual is forgone at process granularity,
+under-pay only.
+
 ---
 
 ## 8) Echidna fuzzing — current posture
