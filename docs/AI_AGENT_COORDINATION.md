@@ -382,7 +382,7 @@ observing the network.
 
 ---
 
-## The sandboxed signer runtime — design (2026-08-18, for ruling; unbuilt)
+## The sandboxed signer runtime — design (ruled 2026-08-18 as recommended; unbuilt)
 
 `ecosystem-agents/*` state six requirements ON the runtime that hosts an agent
 (F1–F6 in `figaro-operator.md` § "Security requirements on the execution runtime").
@@ -437,7 +437,8 @@ key), and network egress beyond the RPC, the pin service, and the coordination c
 (an egress allowlist at the sandbox boundary). This is what makes the own-wallet-only /
 never-the-repo seam a barrier rather than a promise (F6).
 
-**Choices for the maintainer to rule:**
+**Choices — RULED 2026-08-18 (maintainer: "apply all the agent recommendations"), each
+as recommended below:**
 - *Where it lives.* (a) A new SDK subpath `@figaro/sdk/signer` (the daemon + the
   socket-backed account + the policy-file validator) — one package, one install, the SDK's
   test/lint discipline; or (b) a sibling package beside the agent prompts (a runtime directory under
