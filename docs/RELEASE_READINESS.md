@@ -167,6 +167,29 @@ Required output:
    value — treat one REAL batch settling cleanly post-deploy as the genesis-root proof, not
    the deploy transaction succeeding; (c) confirm Succinct publishes an SP1 verifier gateway
    on Sepolia (or self-deploy one) before setting `SP1_VERIFIER_GATEWAY`.
+   **(c) LESSON, 2026-08-18 — the gateway must ROUTE the proof form, not merely exist.**
+   Succinct runs one gateway per proof form per chain and each routes by the proof's
+   verifier-version selector (`bytes4(SP1Verifier<Form>.VERIFIER_HASH())`). The Sepolia
+   stack bound `0x3B60…185e` — the RETIRED PLONK gateway (`OLD_SP1_VERIFIER_GATEWAY_PLONK`
+   in Succinct's `deployments/11155111.json`): it routes v6.0.0 **PLONK**
+   (`0x8a0f…Fc5C`), not v6.0.0 Groth16 — so on Sepolia only a PLONK proof settles
+   through the deployed `FigaroBatchVerifier`; a Groth16 proof (the sequencer's default)
+   reverts `RouteNotFound`. Immutable pointers (verifier→gateway, UsageCounter→verifier,
+   RpgfMinter→UsageCounter, florin minters at genesis) mean the fix is a whole-stack
+   redeploy — accepted as the testnet lesson, not repaired: Sepolia's batch path is
+   exercised with `SP1_PROOF_MODE=plonk`. **Mainnet gate:** `SP1_VERIFIER_GATEWAY` =
+   Succinct's Groth16 gateway `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` (routes v6.0.0
+   Groth16 → `0x99A7…2508`, verified live 2026-08-18) with `SP1_PROOF_MODE=groth16` — the
+   deploy wrappers' Guard 4 (`scripts/check-sp1-gateway-route.sh`) refuses to broadcast
+   otherwise; correct the value in the deploy env before the mainnet run.
+   **(b) what one real batch settling on Sepolia needs:** a wrapped proof this repo's
+   laptop cannot make (Succinct's floors: Groth16 wrap ~14 GB RAM, PLONK ~60 GB; both
+   through the `sp1-gnark` Docker image unless `native-gnark`) — either a rented Linux
+   host (≥64 GB for PLONK, the form Sepolia routes) running the sequencer with
+   `SP1_PROVER=cpu SP1_PROOF_MODE=plonk`, or the Succinct Prover Network (the sequencer's
+   `network` backend waits on its alloy 1.x bump). A Groth16 proof from a ≥16 GB host
+   settles only on an Anvil FORK of Sepolia with the v6.0.0 Groth16 route added to the
+   old gateway by its impersonated owner — a rehearsal of everything but the live tx.
 4. Testnet setup — the two networks, in order (maintainer-ruled 2026-08-12; targets per
    the Deployment Targets section: Sepolia first, Polygon second). Sepolia prerequisites
    landed 2026-08-14:

@@ -49,6 +49,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology) — self-sufficient
 ./scripts/deploy-mainnet.sh              # MAINNET wrapper for script/DeployMainnet.s.sol — refuses without MAINNET_DEPLOY_CONFIRM=yes + all env vars + chain-id 1 read-back; never run casually
 ./scripts/deploy-sepolia.sh              # SEPOLIA wrapper for script/DeploySepolia.s.sol — same guard structure (SEPOLIA_DEPLOY_CONFIRM=yes + chain-id 11155111 read-back); SKIP_VERIFY=1 for the Anvil-fork rehearsal only
+./scripts/check-sp1-gateway-route.sh     # both wrappers' Guard 4 (also standalone): SP1_VERIFIER_GATEWAY must ROUTE the proof form (SP1_PROOF_MODE groth16|plonk) for the sp1-sdk version prover/Cargo.lock pins — read live from the gateway + Succinct's sp1-contracts; fails closed offline
 ```
 
 Full harness inventory (file lists, property names, rule counts) → `TESTING.md`.

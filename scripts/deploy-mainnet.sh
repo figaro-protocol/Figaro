@@ -91,6 +91,14 @@ if [ "$ACTUAL_CHAIN_ID" != "$MAINNET_CHAIN_ID" ]; then
   exit 1
 fi
 
+# ── Guard 4: the SP1 verifier gateway routes the proof form we will produce ──
+# FigaroBatchVerifier binds the gateway IMMUTABLY and UsageCounter binds the
+# verifier — a gateway that does not route our sdk version's Groth16 (or PLONK,
+# per SP1_PROOF_MODE) verifier means every real proof reverts RouteNotFound and
+# the whole stack redeploys. The 2026-08-14 Sepolia deploy bound the retired
+# PLONK gateway; this guard is that lesson.
+bash "$(dirname "$0")/check-sp1-gateway-route.sh" || exit 1
+
 echo ""
 echo "🚀 Deploying Figaro Protocol stack to MAINNET (chain id $ACTUAL_CHAIN_ID)..."
 echo "   deployer (from PRIVATE_KEY) = $(cast wallet address --private-key "$PRIVATE_KEY")"

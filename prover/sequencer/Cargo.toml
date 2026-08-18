@@ -9,6 +9,9 @@ path = "src/main.rs"
 
 [dependencies]
 figaro-kernel = { path = "../lib" }
+# sp1-sdk's `network` feature (SP1_PROVER=network — the Succinct Prover
+# Network as a liveness-only proof source) needs alloy 1.x; this crate is on
+# alloy 0.8 (c-kzg `links` conflict). Enable it with the alloy bump.
 sp1-sdk = "6.0"
 alloy-primitives = { version = "0.8", features = ["serde"] }
 alloy-sol-types = "0.8"

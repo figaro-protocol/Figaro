@@ -30,10 +30,14 @@ pub struct ProveResult {
 ///
 /// The prover backend is selected by the `SP1_PROVER` environment variable:
 /// unset or `mock` runs the mock prover (devnet — emits no proof, accepted by
-/// the on-chain `MockSP1Verifier`); any other value (`cpu`, `cuda`) runs the
-/// real local SP1 prover and emits a Groth16 proof for on-chain verification
-/// by `FigaroBatchVerifier`. The protocol depends on no external proving
-/// service — a sequencer self-proves with the open-source SP1 prover.
+/// the on-chain `MockSP1Verifier`); `cpu` / `cuda` run the real local SP1
+/// prover (sp1-sdk's `network` backend — the Succinct Prover Network as a
+/// liveness-only proof source — waits on this crate's alloy 1.x bump; the
+/// proof would still verify against the program vkey, so no prover can forge
+/// a settling proof). The proof FORM is `SP1_PROOF_MODE`:
+/// `groth16` (default) or `plonk` — it must match the SP1 verifier gateway
+/// `FigaroBatchVerifier` was deployed against (Succinct runs one gateway per
+/// form; a proof of the other form is `RouteNotFound` on-chain).
 pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
     // First: execute the kernel locally to get positions and events.
     // The SP1 guest program only commits PublicValues; positions and events
@@ -54,7 +58,7 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
     stdin.write(batch);
 
     let proof_bytes = if real_prover_selected() {
-        prove_groth16(elf, stdin, &pv).await?
+        prove_wrapped(elf, stdin, &pv, proof_mode()?).await?
     } else {
         prove_mock(elf, stdin, &pv).await?
     };
@@ -73,11 +77,28 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
 }
 
 /// Whether to generate a real proof, per the `SP1_PROVER` env var. Unset or
-/// `mock` → mock prover (devnet); any other value → real Groth16 prover.
+/// `mock` → mock prover (devnet); any other value → a real, wrapped proof.
 fn real_prover_selected() -> bool {
     match std::env::var("SP1_PROVER") {
         Ok(v) => !v.is_empty() && !v.eq_ignore_ascii_case("mock"),
         Err(_) => false,
+    }
+}
+
+/// The on-chain proof form, per `SP1_PROOF_MODE`: `groth16` (default) or
+/// `plonk`. Anything else is a configuration error, refused before proving.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProofMode {
+    Groth16,
+    Plonk,
+}
+
+pub fn proof_mode() -> Result<ProofMode, String> {
+    match std::env::var("SP1_PROOF_MODE") {
+        Err(_) => Ok(ProofMode::Groth16),
+        Ok(v) if v.is_empty() || v.eq_ignore_ascii_case("groth16") => Ok(ProofMode::Groth16),
+        Ok(v) if v.eq_ignore_ascii_case("plonk") => Ok(ProofMode::Plonk),
+        Ok(v) => Err(format!("SP1_PROOF_MODE must be `groth16` or `plonk`, got `{v}`")),
     }
 }
 
@@ -99,21 +120,21 @@ async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<
     Ok(Vec::new())
 }
 
-/// Real prover (testnet / mainnet). Generates a Groth16 proof — the only
-/// proof form `FigaroBatchVerifier` can verify on-chain — using the local SP1
-/// prover backend named by `SP1_PROVER` (`cpu`, `cuda`). No external service.
-async fn prove_groth16(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<u8>, String> {
+/// Real prover (testnet / mainnet). Generates a WRAPPED proof — Groth16 or
+/// PLONK per `mode`, the two forms an SP1 verifier gateway verifies on-chain —
+/// with the prover backend named by `SP1_PROVER` (`cpu`, `cuda`).
+async fn prove_wrapped(elf: Elf, stdin: SP1Stdin, pv: &PublicValues, mode: ProofMode) -> Result<Vec<u8>, String> {
     let client = ProverClient::from_env().await;
     let pk = client
         .setup(elf)
         .await
         .map_err(|e| format!("SP1 setup failed: {e}"))?;
-    info!("Generating Groth16 proof (this can take minutes)");
-    let mut proof = client
-        .prove(&pk, stdin)
-        .groth16()
-        .await
-        .map_err(|e| format!("SP1 Groth16 proving failed: {e}"))?;
+    info!(?mode, "Generating wrapped proof (this can take minutes)");
+    let request = client.prove(&pk, stdin);
+    let mut proof = match mode {
+        ProofMode::Groth16 => request.groth16().await.map_err(|e| format!("SP1 Groth16 proving failed: {e}"))?,
+        ProofMode::Plonk => request.plonk().await.map_err(|e| format!("SP1 PLONK proving failed: {e}"))?,
+    };
     let verified_pv: PublicValues = proof.public_values.read();
     check_state_roots(&verified_pv, pv)?;
     Ok(proof.bytes())
@@ -147,4 +168,26 @@ fn encode_public_values(pv: &PublicValues) -> Vec<u8> {
     data.extend_from_slice(pv.spec_bindings_hash.as_slice());
     data.extend_from_slice(pv.usage_accrual_hash.as_slice());
     data
+}
+
+#[cfg(test)]
+mod proof_mode_tests {
+    use super::{proof_mode, ProofMode};
+
+    /// One test walks every case: the env var is process-global, so parallel
+    /// tests over the same variable would race.
+    #[test]
+    fn proof_mode_reads_sp1_proof_mode() {
+        std::env::remove_var("SP1_PROOF_MODE");
+        assert_eq!(proof_mode(), Ok(ProofMode::Groth16));
+        std::env::set_var("SP1_PROOF_MODE", "");
+        assert_eq!(proof_mode(), Ok(ProofMode::Groth16));
+        std::env::set_var("SP1_PROOF_MODE", "Groth16");
+        assert_eq!(proof_mode(), Ok(ProofMode::Groth16));
+        std::env::set_var("SP1_PROOF_MODE", "plonk");
+        assert_eq!(proof_mode(), Ok(ProofMode::Plonk));
+        std::env::set_var("SP1_PROOF_MODE", "stark");
+        assert!(proof_mode().unwrap_err().contains("stark"));
+        std::env::remove_var("SP1_PROOF_MODE");
+    }
 }
