@@ -127,7 +127,12 @@ exists; none is named now because none exists yet, not because any is withheld. 
 needed* — custody is composed, not authored. **The DAO meets the ecosystem through ONE
 account: its operator EOA, an externally-owned account carrying an EIP-7702 delegation to
 governance-controlled code** (ruled 2026-08-18; the same delegation shape
-`DESIGN_DECISIONS.md` § key-loss records for any buyer). The treasury contract itself can
+`DESIGN_DECISIONS.md` § key-loss records for any buyer). The delegated code is
+**MetaMask Delegation Framework's `EIP7702StatelessDeleGator`** at its canonical CREATE2
+address (ruled 2026-08-19 — audited, off-the-shelf, the same address on Sepolia and
+mainnet; `RELEASE_READINESS.md` Task 13 carries the addresses): the multisig's authority
+is an ERC-7710 delegation the operator grants it, bounded by caveat enforcers, redeemed
+through the framework's `DelegationManager` to act from the operator's address. The treasury contract itself can
 never sign kernel commitments (the kernel is ECDSA-only), so the multisig authorises
 *upstream* — it funds the operator per procurement, and through the delegated code it can
 act from the operator's address for `msg.sender`-authorised calls (resolution, recovery)

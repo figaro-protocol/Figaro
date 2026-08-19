@@ -99,11 +99,16 @@ async function main() {
             nonce: BigInt(member),
         });
     } else {
-        const { request } = await publicClient.simulateContract({
+        await publicClient.simulateContract({
             account: walletClient.account.address, address: registry, abi: MEMBERS_REGISTRY_ABI,
             functionName: 'register', args: [metadataURI], value: deposit,
         });
-        const hash = await walletClient.writeContract(request);
+        // Write through the client's own shape (never the simulated request —
+        // that carries a JSON-RPC account and needs the node to hold the key).
+        const hash = await walletClient.writeContract({
+            address: registry, abi: MEMBERS_REGISTRY_ABI,
+            functionName: 'register', args: [metadataURI], value: deposit,
+        });
         await publicClient.waitForTransactionReceipt({ hash });
     }
     console.log(`  ✓ ${profile.name} (${member}) — registered; profile ${metadataURI}`);

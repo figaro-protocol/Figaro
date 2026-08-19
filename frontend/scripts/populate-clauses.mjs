@@ -445,7 +445,7 @@ export async function populateClauses({ publicClient, walletClient, account, reg
                 log,
             });
         } else {
-            const { request } = await publicClient.simulateContract({
+            await publicClient.simulateContract({
                 account: account.address,
                 address: registry,
                 abi: CLAUSE_REGISTRY_ABI,
@@ -453,7 +453,13 @@ export async function populateClauses({ publicClient, walletClient, account, reg
                 args: [clauseIdStr, version, contentHash, contentURI],
                 value: deposit,
             });
-            const hash = await walletClient.writeContract(request);
+            // Write through the client's own shape (never the simulated
+            // request — it carries a JSON-RPC account and needs the node to
+            // hold the key; the devnet's unlocked accounts masked this).
+            const hash = await walletClient.writeContract({
+                address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registerClause',
+                args: [clauseIdStr, version, contentHash, contentURI], value: deposit,
+            });
             await publicClient.waitForTransactionReceipt({ hash });
         }
         registered += 1;
@@ -529,11 +535,14 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
             log,
         });
     } else {
-        const { request } = await publicClient.simulateContract({
+        await publicClient.simulateContract({
             account: account.address, address: registry, abi: ASSEMBLY_REGISTRY_ABI,
             functionName: 'registerAssembly', args: [compositionHash, contentURI], value: deposit,
         });
-        const hash = await walletClient.writeContract(request);
+        const hash = await walletClient.writeContract({
+            address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registerAssembly',
+            args: [compositionHash, contentURI], value: deposit,
+        });
         await publicClient.waitForTransactionReceipt({ hash });
     }
     log(`  ✓ ${slug} — anchored; template ${contentURI}`);

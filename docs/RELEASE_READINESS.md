@@ -388,8 +388,13 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   old value;
 - **the DAO's operator EOA + its EIP-7702 delegation** created BEFORE the DAO's member
   profile is registered (under the operator, not the vault — `FLORIN_TOKEN.md` § DAO
-  custody): the delegate contract the multisig controls (a composition-tier contract or an
-  audited off-the-shelf 7702 account — the maintainer rules which), the operator's key
+  custody): the delegate is **MetaMask Delegation Framework's `EIP7702StatelessDeleGator`**
+  (RULED 2026-08-19, off-the-shelf over authored code; OZ offers no turnkey delegate) at
+  its canonical CREATE2 address `0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (v1.3.0 —
+  the SAME address on Sepolia and mainnet, so the testnet rehearses mainnet literally;
+  `DelegationManager` `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`): the operator signs a
+  7702 authorization at the canonical impl and grants the VAULT an ERC-7710 delegation
+  bounded by caveat enforcers — nothing is deployed by us; plus the operator's key
   custody, per-procurement funding from the vault. Then the founder's profile as a
   buyer-side member; both from committed reference profiles pinned under each owner's key;
 - ~~`WitnessSwapAndCommitCoordinator`~~ — DONE 2026-08-18 without a redeploy (it points at
