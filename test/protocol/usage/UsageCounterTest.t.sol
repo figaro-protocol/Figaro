@@ -563,10 +563,16 @@ contract UsageCounterTest is Test {
 
     /// Strict separation: a thousandfold difference in real usage must show up in
     /// the score, or pro rata pays adoption and farming the same.
-    function testFuzz_scoreSeparatesRealUsage(uint32 c, uint32 d) public view {
-        vm.assume(c > 0 && d > 0);
-        assertGe(_score(uint64(c) + 1, d), _score(c, d));
-        assertGt(_score(uint64(c) * 1000 + 1, d), _score(c, d));
+    /// Sampled over the FULL field domain — `Accrual.c` / `Accrual.d` are
+    /// uint64, and the saturation bug survived a fuzz that sampled a narrower
+    /// width than the function's own; the ×1000 arm bounds c only for the
+    /// test's multiplication, never the domain.
+    function testFuzz_scoreSeparatesRealUsage(uint64 c, uint64 d) public view {
+        vm.assume(d > 0);
+        c = uint64(bound(c, 1, type(uint64).max - 1));
+        assertGe(_score(c + 1, d), _score(c, d));
+        uint64 cThousandable = uint64(bound(c, 1, (type(uint64).max - 1) / 1000));
+        assertGt(_score(cThousandable * 1000 + 1, d), _score(cThousandable, d));
     }
 
     function test_totalScoreIsTheSumOfClauseAndAssemblyScores() public {

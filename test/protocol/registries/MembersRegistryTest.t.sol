@@ -322,9 +322,17 @@ contract MembersRegistryTest is Test {
 
     // ── No funds are strandable ─────────────────────────────────────────
 
-    function testFuzz_everyDepositIsEventuallyClaimable(uint96 deposit, uint32 cooldown) public {
+    /// Sampled over the FULL constructor domain (both params are uint256);
+    /// each bound below is a test-arithmetic edge, never a domain narrowing:
+    /// vm.deal computes deposit + 1 ether, and the contract's own
+    /// `block.timestamp + cooldown` (checked add) defines the largest cooldown
+    /// whose withdrawal request does not revert — beyond it a deposit IS
+    /// unrequestable, an accepted deploy-config edge (immutable, deployer-set).
+    function testFuzz_everyDepositIsEventuallyClaimable(uint256 deposit, uint256 cooldown) public {
+        deposit = bound(deposit, 0, type(uint256).max - 1 ether);
+        cooldown = bound(cooldown, 0, type(uint256).max - block.timestamp);
         MembersRegistry r = new MembersRegistry(deposit, cooldown);
-        vm.deal(alice, uint256(deposit) + 1 ether);
+        vm.deal(alice, deposit + 1 ether);
 
         vm.prank(alice);
         r.register{value: deposit}("ipfs://fuzz");
