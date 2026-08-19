@@ -1,0 +1,17 @@
+{
+  "delegate": "0xfAc5C273DeeBd5D7aA670401205A4AcA44563685",
+  "delegator": "0xCfb4F5cb3D6A9861d657541Dde1bf0DE7E6Cfed9",
+  "authority": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "caveats": [
+    {
+      "enforcer": "0x7F20f61b1f09b08D970938F6fa563634d65c4EeB",
+      "terms": "0x366f43Aa5656869167aFB2b1cFC62318460D123F",
+      "args": "0x"
+    }
+  ],
+  "salt": "0",
+  "signature": "0xab1f2c29cad054268bf81274ce5175d919f6bb5228095b6040617c0d4f9035cc266f805e81558eb90b244c0ca36d37aa26161bb9a11ab59f6b1fdc6392af3dfe1b",
+  "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+  "chainId": 11155111,
+  "note": "ERC-7710 delegation: the vault (delegate) may act from the operator (delegator) via DelegationManager.redeemDelegations, bounded by the caveats. Redemption is the vault's multisig act."
+}
