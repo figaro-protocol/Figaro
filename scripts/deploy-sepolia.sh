@@ -59,7 +59,7 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 #   RPC_URL                 — Sepolia RPC endpoint (or an Anvil fork of it)
 #   ETHERSCAN_API_KEY       — unless SKIP_VERIFY=1 (fork rehearsal)
 REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
-          SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER)
+          SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER SWAP_QUOTER)
 if [ "${SKIP_VERIFY:-}" != "1" ]; then
   REQUIRED+=(ETHERSCAN_API_KEY)
 fi
@@ -177,6 +177,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
   "witnessSwapAndCommitCoordinator": "$SWAP_COORD_ADDR",
   "swapRouter": "$SWAP_ROUTER",
+  "swapQuoter": "$SWAP_QUOTER",
   "permit2": "$PERMIT2",
   "daoTreasury": "$DAO_TREASURY_ADDR",
   "deploymentBlock": $DEPLOYMENT_BLOCK
