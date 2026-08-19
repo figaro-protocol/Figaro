@@ -1,0 +1,33 @@
+{
+  "subjectAddress": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
+  "name": "Figaro Founder",
+  "description": "Founder of the Figaro protocol. A buyer-side member: procures work through the freelancer assembly and subscribes to live records through the data-stream-subscription assembly. The buyer's copies of co-produced records are offered under the disclosure policy below — every buyer is a seller of its data. The seller side of this profile (consulting, speaking, books) follows later on the same wallet.",
+  "specialty": "protocol design — digital contracts, mechanism design",
+  "acceptedTokens": [
+    {
+      "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "symbol": "USDC",
+      "name": "USD Coin (Sepolia)"
+    }
+  ],
+  "defaultTokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+  "buyerAssemblies": [
+    { "compositionHash": "0x21d67b42ec7e021351e041f37cd51351fdf84faa556aebf6ff3feddb5f669c6e" },
+    { "compositionHash": "0x463769715709ddfecbfc817e5f0707e5947b558c40570340f7f03daccd938fe1" }
+  ],
+  "disclosurePolicy": [
+    {
+      "compositionHash": "0x463769715709ddfecbfc817e5f0707e5947b558c40570340f7f03daccd938fe1",
+      "clauseId": "figaro-data-license",
+      "posture": "buyer",
+      "offered": true,
+      "calendar": { "embargoDaysAfterSettlement": 30 }
+    },
+    {
+      "compositionHash": "0x21d67b42ec7e021351e041f37cd51351fdf84faa556aebf6ff3feddb5f669c6e",
+      "clauseId": "figaro-content-handoff",
+      "posture": "buyer",
+      "offered": false
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Figaro DAO",
+  "description": "The commons' treasury, met through its operator account — an EOA carrying an EIP-7702 delegation to governance-controlled code; the multisig vault authorises upstream and funds per procurement. Author-of-record of the mandatory clauses (figaro-commerce, figaro-topology, figaro-assembly-provenance) and of any clause donated to the commons. Identity now; the buyer side (procurement through bonded processes) and the seller side (merchandise, co-produced data) follow on this same profile.",
+  "specialty": "commons treasury — retroactive public-goods funding",
+  "acceptedTokens": [
+    {
+      "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "symbol": "USDC",
+      "name": "USD Coin (Sepolia)"
+    }
+  ],
+  "defaultTokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+}
