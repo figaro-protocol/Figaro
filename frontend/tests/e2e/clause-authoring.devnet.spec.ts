@@ -111,7 +111,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         // prose CTA, earlier in DOM order).
         const cta = page.getByRole('link', { name: 'Register a clause' }).first();
         await cta.waitFor({ state: 'visible', timeout: 30000 });
-        await expect(cta).toHaveAttribute('href', '/clauses/register');
+        await expect(cta).toHaveAttribute('href', /^\/clauses\/register\/?$/);
         await cta.click();
         await page.waitForURL(/\/clauses\/register/, { timeout: 15000 });
 
