@@ -31,6 +31,13 @@
  *   NEXT_PUBLIC_CLAUSE_REGISTRY   — falls back to frontend/.env.local
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — falls back to frontend/.env.local
  *   SCAN_FROM_BLOCK               — first block to scan (default 0)
+ *   WITHDRAW_CLAUSES              — csv of clauseId[@version] (default v1):
+ *                                   build the manifest from these EXPLICIT ids
+ *                                   instead of the event scan (public gateways'
+ *                                   log indexes are load-balanced and flaky —
+ *                                   state reads are not). WITHDRAW_ASSEMBLIES
+ *                                   is its sibling (csv of compositionHashes);
+ *                                   either alone skips the other family's scan.
  *   DRY_RUN                       — print the manifest, send nothing
  *   ACTOR                         — DRY_RUN only: manifest for this address
  *                                   without constructing a signer (no device)
@@ -102,34 +109,46 @@ async function main() {
     const clauseDeposit = await publicClient.readContract({
         address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
-    const clauseEvents = await scanContractEvents(publicClient, {
-        address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered',
-    }, fromBlock);
-    for (const e of clauseEvents) {
-        if (String(e.args.registeredBy ?? '').toLowerCase() !== actor) continue;
-        const key = computeClauseKey(e.args.clauseId, BigInt(e.args.version));
-        const [, withdrawn] = await publicClient.readContract({
+    const explicitClauses = (process.env.WITHDRAW_CLAUSES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const explicitAssemblies = (process.env.WITHDRAW_ASSEMBLIES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const explicit = explicitClauses.length || explicitAssemblies.length;
+    const clauseRows = explicit
+        ? explicitClauses.map((s) => { const [id, v] = s.split('@'); return { clauseId: id, version: BigInt(v ?? 1) }; })
+        : (await scanContractEvents(publicClient, {
+            address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered',
+        }, fromBlock))
+            .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
+            .map((e) => ({ clauseId: e.args.clauseId, version: BigInt(e.args.version) }));
+    for (const r of clauseRows) {
+        const key = computeClauseKey(r.clauseId, r.version);
+        const [registeredBy, withdrawn] = await publicClient.readContract({
             address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'depositOf', args: [key],
         });
-        if (withdrawn) { console.log(`  · clause ${e.args.clauseId} v${e.args.version} — already withdrawn, skipped`); continue; }
+        // Explicit ids are still gated by state: never withdraw what the actor
+        // does not hold (the contract would revert; refusing here is cheaper).
+        if (registeredBy.toLowerCase() !== actor) { console.log(`  · clause ${r.clauseId} v${r.version} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
+        if (withdrawn) { console.log(`  · clause ${r.clauseId} v${r.version} — already withdrawn, skipped`); continue; }
         manifest.push({
             registry: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, key, stake: clauseDeposit,
-            label: `clause ${e.args.clauseId} v${e.args.version}`,
+            label: `clause ${r.clauseId} v${r.version}`,
         });
     }
 
     const assemblyDeposit = await publicClient.readContract({
         address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
-    const assemblyEvents = await scanContractEvents(publicClient, {
-        address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
-    }, fromBlock);
-    for (const e of assemblyEvents) {
-        if (String(e.args.registeredBy ?? '').toLowerCase() !== actor) continue;
-        const key = e.args.compositionHash;
-        const [, , depositWithdrawn] = await publicClient.readContract({
+    const assemblyKeys = explicit
+        ? explicitAssemblies
+        : (await scanContractEvents(publicClient, {
+            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
+        }, fromBlock))
+            .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
+            .map((e) => e.args.compositionHash);
+    for (const key of assemblyKeys) {
+        const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
             address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [key],
         });
+        if (registeredBy.toLowerCase() !== actor) { console.log(`  · assembly ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
         if (depositWithdrawn) { console.log(`  · assembly ${key} — already withdrawn, skipped`); continue; }
         manifest.push({
             registry: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, key, stake: assemblyDeposit,
