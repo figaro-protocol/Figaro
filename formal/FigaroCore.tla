@@ -15,6 +15,10 @@
  *   Cumulative integrity    — cumulativeValue = sum of all order payments in process
  *   Active count            — activeCount matches count of committed orders
  *   Resolution possible     — contract always has sufficient funds to resolve
+ *   Deterrent magnitudes    — held escrow is exactly 2×payment (buyer) +
+ *                             2×cumulativeValue (seller) per committed order
+ *   Settled net positions   — resolution moves exactly `payment` buyer →
+ *                             seller; both bonds return whole
  *
  * WHAT IS ABSTRACTED:
  *   EIP-712 signatures      — assumed correct if both parties participate
@@ -362,6 +366,53 @@ ResolutionAlwaysPossible ==
     IsActive(pid) => contractBalance >= ProcessTotalPayout(pid)
 
 
+\* ── The equilibrium proof's payoff table ─────────────────────
+\* `docs/THEORY.md` § "Nash Equilibrium Analysis" reasons over two
+\* numbers: while a process is unresolved each side stands to lose its
+\* whole bond (buyer 2×payment, seller 2×cumulativeValue), and resolving
+\* moves exactly `payment` from buyer to seller with both bonds returned
+\* whole. Conservation and solvency pin NEITHER — a kernel that paid the
+\* seller 3× would satisfy every other invariant in this file while
+\* invalidating every step of the proof. These two tie the table the
+\* proof reasons over to the machine that ships.
+
+\* Escrow a participant currently has locked in COMMITTED orders.
+LockedEscrow(p) ==
+  SetSum({ oid \in 1 .. MaxTotalOrders: orderStatus[oid] = "Committed" },
+    [oid \in 1 .. MaxTotalOrders |->
+      ( IF p = orderRecords[oid].buyer
+        THEN 2 * orderRecords[oid].payment
+        ELSE 0 ) +
+      ( IF p = orderRecords[oid].seller
+        THEN 2 * orderRecords[oid].cumulativeValue
+        ELSE 0 )])
+
+\* Net value a participant has settled through RESOLVED orders.
+SettledNet(p) ==
+  SetSum({ oid \in 1 .. MaxTotalOrders: orderStatus[oid] = "Resolved" },
+    [oid \in 1 .. MaxTotalOrders |->
+      ( IF p = orderRecords[oid].seller
+        THEN orderRecords[oid].payment
+        ELSE 0 ) -
+      ( IF p = orderRecords[oid].buyer
+        THEN orderRecords[oid].payment
+        ELSE 0 )])
+
+\* Everything the contract holds is the two bonds of the committed
+\* orders, at 2× on both sides — the deterrent magnitude, not merely
+\* "enough to pay out".
+DeterrentEscrowMagnitudes ==
+  contractBalance =
+    SetSum(Participants, [p \in Participants |-> LockedEscrow(p)])
+
+\* Every wallet equals its starting balance, less what it currently has
+\* locked, plus what it has settled — so resolution moved exactly
+\* `payment` buyer → seller and returned both bonds whole.
+SettledNetPositions ==
+  \A p \in Participants:
+    wallets[p] = InitialBalance - LockedEscrow(p) + SettledNet(p)
+
+
 \* ── Composite safety invariant ───────────────────────────────
 SafetyInvariant ==
   /\ TypeOK
@@ -371,5 +422,7 @@ SafetyInvariant ==
   /\ CumulativeIntegrity
   /\ ActiveCountCorrect
   /\ ResolutionAlwaysPossible
+  /\ DeterrentEscrowMagnitudes
+  /\ SettledNetPositions
 
 ====

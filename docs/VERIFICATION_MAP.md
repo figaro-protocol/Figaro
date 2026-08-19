@@ -60,6 +60,8 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 - `A-5` **Active count**: per-process $activeCount = count(committed\ orders)$
 - `A-6` **Resolution always possible**: contract can always pay out every active process
 - `A-7` **Fee-on-transfer rejection**: `_pullExact` reverts if received ≠ amount
+- `A-8` **Deterrent escrow magnitudes**: held escrow = 2×payment (buyer) + 2×cumulativeValue (seller) for every committed order — the bond is the *deterrent* the equilibrium argument reasons over, not merely enough to pay out
+- `A-9` **Settled net positions**: resolution moves exactly `payment` from buyer to seller per order and returns both bonds whole
 
 ### Composition invariants
 
@@ -100,6 +102,8 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 | A-4 | Per-process $cumulativeValue = \sum(order.payment)$ | `actualCumulative = ps.cumulativeValue + c.payment` with mismatch revert | `FigaroCoreTest`: accumulator arithmetic | `CumulativeIntegrity` — verified | `echidna_cumulative_accounting` | `/spec` → Kernel (`FigaroCore.sol`) |
 | A-5 | Per-process $activeCount = count(committed)$ | `ps.activeOrderCount++` on commit, `ps.activeOrderCount--` on resolve with count match | `FigaroCoreTest`: multi-order lifecycle | `ActiveCountCorrect` — verified | `echidna_active_count_consistent` | Not directly presented |
 | A-6 | Contract can resolve any active process | Follows from A-1 + A-2 + bond calculation | `GasCeilingTest`: max orders under 30M gas | `ResolutionAlwaysPossible` — verified | — | Not directly presented |
+| A-8 | Held escrow = 2×payment (buyer) + 2×cumulativeValue (seller) per committed order | `commit`: `_pullExact` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller | `FigaroCoreTest`: `test_sellerBond_scalesWithCumulativeValue` | `DeterrentEscrowMagnitudes` — verified | — | `/invariants`, `/kernel` |
+| A-9 | Resolution moves exactly `payment` buyer → seller; both bonds return whole | `resolveProcess`: seller receives `2*cumulativeValue + payment`, buyer receives `payment` | `FigaroCoreTest`: `test_resolution_payouts_progressiveCollateral`, `test_solvency_contractBalanceZeroAfterResolve` | `SettledNetPositions` — verified | — | `/invariants`, `/kernel` |
 | A-7 | Fee-on-transfer token rejection | `_pullExact`: `uint256 received = after - before; if (received != amount) revert FeeOnTransferDetected()` | `FigaroCoreRevertBranchTest`: fee-on-transfer token test (`MockERC20FeeOnTransfer`) | Not modeled (TLA+ abstracts ERC-20 mechanics) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 
 ---
@@ -149,7 +153,10 @@ invariants are the E-6 rows), and — added 2026-08-04 —
 
 Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — all four models,
 every invariant, TLC exit 0 (SettlementUniverses explored 7.46M states, no error);
-the freeze-stamp re-run.
+the freeze-stamp re-run. `FigaroCore.tla` re-run **2026-08-19** after `A-8`/`A-9`
+were added: 9/9, 8,380,329 states generated / 6,087,113 distinct, depth 9, TLC exit 0
+(the state space is unchanged — the two new invariants observe it, they do not
+extend it).
 
 ### Model file: `formal/FigaroCore.tla`
 
@@ -168,10 +175,10 @@ the freeze-stamp re-run.
 **Configuration (`MC.tla` + `MC.cfg`):**
 - Buyers: 2, Sellers: 2–3, InitialBalance: 30, Payments: 1–3
 - MaxProcesses: 2, MaxSubOrders: 2
-- All 7 invariants enabled, deadlock checking disabled (bounded slots)
+- All 9 invariants enabled, deadlock checking disabled (bounded slots)
 
 **Verification result (2026):**
-- 7/7 invariants verified, exit code 0
+- 9/9 invariants verified, exit code 0
 - 6M+ states explored, all distinct states checked
 
 ### Invariants verified
@@ -185,6 +192,8 @@ the freeze-stamp re-run.
 | `CumulativeIntegrity` | A-4 ($cumVal = \sum payment$) | ✅ Verified |
 | `ActiveCountCorrect` | A-5 ($activeCount = count(committed)$) | ✅ Verified |
 | `ResolutionAlwaysPossible` | A-6 (solvency + atomic resolution guaranteed) | ✅ Verified |
+| `DeterrentEscrowMagnitudes` | A-8 (escrow is 2× on both sides) | ✅ Verified |
+| `SettledNetPositions` | A-9 (exactly `payment` moves; bonds return whole) | ✅ Verified |
 
 ### Model file: `formal/WitnessSwapAndCommitCoordinator.tla` (2026-08-04)
 

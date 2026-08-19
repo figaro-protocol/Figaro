@@ -106,11 +106,15 @@ Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — decla
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 46 invariants across 4 models (FigaroCore 7 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + SettlementUniverses 21)
+## TLA+ (`formal/`) — 48 invariants across 4 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + SettlementUniverses 21)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
-`ResolutionAlwaysPossible`, `TypeOK`.
+`ResolutionAlwaysPossible`, `TypeOK`, and the two that tie the equilibrium
+proof's payoff table to the machine — `DeterrentEscrowMagnitudes` (held escrow
+is exactly 2×payment from the buyer + 2×cumulativeValue from the seller of every
+committed order) and `SettledNetPositions` (resolution moves exactly `payment`
+buyer → seller and returns both bonds whole).
 
 FlorinToken (`FlorinToken.tla` + `FlorinToken.cfg`): `Inv_MaxSupply`,
 `Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,

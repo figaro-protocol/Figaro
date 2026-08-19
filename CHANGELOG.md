@@ -36,8 +36,8 @@ ahead of the first public push:
 - **Certora**: 6 specs / 37 rules (FigaroCore, AttestationCoordinator,
   TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter).
 - **Echidna**: 2 harnesses / 15 properties (kernel + FlorinToken).
-- **TLA+**: 4 models / 49 invariants (FigaroCore 7, FlorinToken 8,
-  WitnessSwapAndCommitCoordinator 10, SettlementUniverses 24).
+- **TLA+**: 4 models / 48 invariants (FigaroCore 9, FlorinToken 8,
+  WitnessSwapAndCommitCoordinator 10, SettlementUniverses 21).
 - **SDK (Vitest)** and **Frontend (Vitest + Playwright)**: component, unit,
   and end-to-end coverage — see `docs/TESTING.md` for the full harness
   inventory.
@@ -51,9 +51,9 @@ ahead of the first public push:
 
 ### Infrastructure
 
-- Six GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
-  `devnet-e2e-ci`, `guards-ci` (the whole-tree guard battery), and
-  `sequencer-release` (publishes the prebuilt `figaro-sequencer` relay
-  binary on tag push).
+- Eight GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
+  `devnet-e2e-ci`, `prover-ci`, `guards-ci` (the whole-tree guard battery),
+  `sdk-release`, and `sequencer-release` (publishes the prebuilt
+  `figaro-sequencer` relay binary on tag push).
 
 [Unreleased]: https://github.com/figaro-protocol/Figaro

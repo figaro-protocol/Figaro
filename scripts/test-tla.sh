@@ -5,11 +5,12 @@
 #
 #   1. FigaroCore kernel — via formal/MC.tla + formal/MC.cfg
 #      (2 buyers, 2-3 sellers, InitialBalance 30, Payments 1-3, MaxProcesses 2,
-#       MaxSubOrders 2). Verifies all 7 safety invariants exhaustively:
+#       MaxSubOrders 2). Verifies all 9 safety invariants exhaustively:
 #        TypeOK                     CumulativeIntegrity
 #        TokenConservation          ActiveCountCorrect
 #        ContractSolvency           ResolutionAlwaysPossible
-#        WalletNonNegative
+#        WalletNonNegative          DeterrentEscrowMagnitudes
+#                                   SettledNetPositions
 #
 #   2. FlorinToken — via formal/FlorinToken.tla + formal/FlorinToken.cfg
 #      (MAX_SUPPLY=5, 3 minters, 6 recipients). Verifies 8 safety invariants:
@@ -99,7 +100,7 @@ echo ""
 # without fragile absolute paths.
 cd formal
 
-echo "▶ Pass 1/4 — FigaroCore kernel (7 invariants)"
+echo "▶ Pass 1/4 — FigaroCore kernel (9 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config MC.cfg \

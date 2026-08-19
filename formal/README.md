@@ -6,7 +6,7 @@ invariant → protocol-property mapping by `docs/VERIFICATION_MAP.md` §7):
 
 | Model | Scope | Invariants |
 |---|---|---|
-| `FigaroCore.tla` + `MC.tla`/`MC.cfg` | Kernel economic mechanism (detailed below) | 7 |
+| `FigaroCore.tla` + `MC.tla`/`MC.cfg` | Kernel economic mechanism (detailed below) | 9 |
 | `FlorinToken.tla` + `.cfg` | Token supply cap + minter registry | 8 |
 | `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | Swap-funded on-ramp: zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel escrow | 10 |
 | `SettlementUniverses.tla` + `.cfg` | CROSS-CONTRACT: FigaroCore + FigaroBatchVerifier + UsageCounter + guest kernel under arbitrary interleavings — no cross-universe double payout, per-pool escrow, score composition, kernel blindness. Carries two named assumption constants (`AssumeDomainSeparation`, `AssumeAccrualGatesAligned`); flipping either to FALSE is the experiment and is EXPECTED to fail | 21 |
@@ -25,6 +25,8 @@ resolution correctness) across all reachable states.
 | **CumulativeIntegrity** | Process cumulativeValue = sum of all order payments in the process. |
 | **ActiveCountCorrect** | Process activeCount = number of committed (not yet resolved) orders. |
 | **ResolutionAlwaysPossible** | Contract always holds sufficient funds to resolve any active process. |
+| **DeterrentEscrowMagnitudes** | Everything the contract holds is the two bonds of the committed orders, at 2× on both sides — the deterrent magnitude the equilibrium argument reasons over, not merely "enough to pay out". |
+| **SettledNetPositions** | Every wallet = its starting balance − what it currently has locked + what it has settled. Resolution moved exactly `payment` buyer → seller and returned both bonds whole. |
 | **TypeOK** | All variables stay within their expected domains. |
 
 ## What Is Abstracted
@@ -48,8 +50,8 @@ These concerns are orthogonal to the economic mechanism and are omitted:
 ```
 States generated:  8,380,329
 Distinct states:   6,087,113
-Invariants:        7/7 verified ✓
-Time:              ~19 minutes
+Invariants:        9/9 verified ✓
+Time:              7–19 minutes (hardware-dependent)
 TLC exit code:     0 (no errors)
 ```
 

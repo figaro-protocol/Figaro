@@ -21,8 +21,15 @@ consequence: each process assembles a temporary institution of directly bonded
 contributors — independent value-adders who bond and settle independently —
 then dissolves at settlement.
 
-**Status:** contracts complete, machine-checked by the authoring project; no
-external audit yet; no public deployment (local devnet only); the SDK is not
+**Status:** contracts complete; their *safety* properties — conservation,
+solvency, non-negativity, accumulator integrity, atomic resolution — are
+machine-checked by the authoring project (Foundry, Halmos, Certora, Echidna,
+TLA+). The equilibrium result itself is an analytic proof
+([docs/THEORY.md](docs/THEORY.md) § "Nash Equilibrium Analysis"), not a
+machine-checked one: a model checker explores reachable states and has no
+notion of a rational agent choosing. What the models do check is that the
+payoffs the proof reasons over are exactly the payoffs the kernel produces.
+No external audit yet; no public deployment (local devnet only); the SDK is not
 yet on npm. The release gates live in
 [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
 
