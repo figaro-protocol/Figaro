@@ -234,7 +234,7 @@ export interface RpgfAllocation {
  *  every wallet's period entitlement — UNIFORM pro rata,
  *  `floor(periodAmount * score / total)`, with no cap.
  *
- *  `authorOf` maps clause-or-assembly key → author of record (clause registrar or
+ *  `authorOf` maps clause-or-assembly key → author of record (each registry's `registeredBy` — clause or
  *  assembly author); a clause or assembly with no author is unclaimable and its score
  *  still counts toward the denominator, exactly as on chain. Author-of-record
  *  eligibility is gated on a LIVE stake ON CHAIN (`RpgfMinter._isAuthor`); pass

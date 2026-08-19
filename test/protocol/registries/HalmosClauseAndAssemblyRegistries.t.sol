@@ -33,8 +33,8 @@ import {AssemblyRegistry} from "src/protocol/registries/AssemblyRegistry.sol";
 ///                                            (including the original
 ///                                            registrant) and in ANY
 ///                                            withdrawn state, and the stored
-///                                            binding (contentHash/registrar
-///                                            or author/contentURI) never
+///                                            binding (contentHash/registeredBy
+///                                            or registeredBy/contentURI) never
 ///                                            changes.
 ///           P3  withdrawal is one-shot     — a second withdraw for an
 ///                                            already-withdrawn key cannot
@@ -168,15 +168,15 @@ contract HalmosClauseRegistry is Test {
 
         assertFalse(ok, "no second registration for this key ever succeeds, withdrawn or not, original caller or not");
         assertEq(r.contentHashOf(KEY_A), contentHashA, "the content-hash binding never changes");
-        (address registrar,) = r.depositOf(KEY_A);
-        assertEq(registrar, ALICE, "the registrar of record is permanent");
+        (address registeredBy,) = r.depositOf(KEY_A);
+        assertEq(registeredBy, ALICE, "the registeredBy of record is permanent");
         assertTrue(r.registered(KEY_A), "and the binding stays registered forever");
     }
 
     // ── P3: withdrawal is one-shot ───────────────────────────────────
 
     /// A second withdraw for an already-withdrawn key cannot move ETH,
-    /// for the registrar or anyone else.
+    /// for the registering wallet or anyone else.
     function check_withdrawalIsOneShot_secondWithdrawCannotMoveEth(uint96 deposit, bytes32 contentHash) public {
         vm.assume(contentHash != bytes32(0));
 
@@ -270,7 +270,7 @@ contract HalmosClauseRegistry is Test {
         vm.prank(BOB);
         r.registerClause{value: deposit}(CLAUSE_B_ID, VERSION, contentHashB, "ipfs://b");
 
-        (address registrarB0, bool withdrawnB0) = r.depositOf(KEY_B);
+        (address registeredByB0, bool withdrawnB0) = r.depositOf(KEY_B);
         bytes32 contentHashOfB0 = r.contentHashOf(KEY_B);
         bool registeredB0 = r.registered(KEY_B);
 
@@ -287,8 +287,8 @@ contract HalmosClauseRegistry is Test {
             );
         }
 
-        (address registrarB1, bool withdrawnB1) = r.depositOf(KEY_B);
-        assertEq(registrarB1, registrarB0, "B's registrar is untouched by anything done to A");
+        (address registeredByB1, bool withdrawnB1) = r.depositOf(KEY_B);
+        assertEq(registeredByB1, registeredByB0, "B's registeredBy is untouched by anything done to A");
         assertEq(withdrawnB1, withdrawnB0, "B's withdrawn flag is untouched by anything done to A");
         assertEq(r.contentHashOf(KEY_B), contentHashOfB0, "B's content hash is untouched by anything done to A");
         assertEq(r.registered(KEY_B), registeredB0, "B's registered flag is untouched by anything done to A");
@@ -402,8 +402,8 @@ contract HalmosAssemblyRegistry is Test {
             address(r).call{value: deposit}(abi.encodeCall(AssemblyRegistry.registerAssembly, (hashA, "ipfs://hijack")));
 
         assertFalse(ok, "no second registration for this compositionHash ever succeeds, withdrawn or not");
-        (address author, uint64 registeredAt,, string memory uri) = r.bindings(hashA);
-        assertEq(author, ALICE, "the author of record is permanent");
+        (address registeredBy, uint64 registeredAt,, string memory uri) = r.bindings(hashA);
+        assertEq(registeredBy, ALICE, "the registeredBy of record is permanent");
         assertEq(uri, "ipfs://original", "contentURI never changes on a failed hijack");
         assertGt(registeredAt, 0, "and the binding stays registered forever");
     }
@@ -479,14 +479,14 @@ contract HalmosAssemblyRegistry is Test {
     ///      stack limit with 5 symbolic parameters already live (same
     ///      technique as `HalmosUsageCounter.t.sol`'s `Snapshot`).
     struct Binding {
-        address author;
+        address registeredBy;
         uint64 registeredAt;
         bool withdrawn;
         string uri;
     }
 
     function _binding(AssemblyRegistry r, bytes32 hash) internal view returns (Binding memory b) {
-        (b.author, b.registeredAt, b.withdrawn, b.uri) = r.bindings(hash);
+        (b.registeredBy, b.registeredAt, b.withdrawn, b.uri) = r.bindings(hash);
     }
 
     function check_crossKeyIsolation_keyATouchesNothingOfKeyB(
@@ -522,7 +522,7 @@ contract HalmosAssemblyRegistry is Test {
         }
 
         Binding memory afterOps = _binding(r, hashB);
-        assertEq(afterOps.author, before.author, "B's author is untouched by anything done to A");
+        assertEq(afterOps.registeredBy, before.registeredBy, "B's registeredBy is untouched by anything done to A");
         assertEq(afterOps.registeredAt, before.registeredAt, "B's registeredAt is untouched by anything done to A");
         assertEq(afterOps.withdrawn, before.withdrawn, "B's withdrawn flag is untouched by anything done to A");
         assertEq(afterOps.uri, before.uri, "B's contentURI is untouched by anything done to A");

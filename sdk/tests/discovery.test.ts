@@ -14,8 +14,8 @@ import type { Address, FigaroAddresses, Hex } from "../src/types.js";
 
 const MEMBER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const MEMBER_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
-const AUTHOR = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
-const REGISTRAR = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
+const ASM_REGISTERED_BY = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
+const CLAUSE_REGISTERED_BY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
 const COMP_1 = "0x0000000000000000000000000000000000000000000000000000000000000011" as Hex;
 const COMP_2 = "0x0000000000000000000000000000000000000000000000000000000000000012" as Hex;
 const CONTENT_HASH = "0x0000000000000000000000000000000000000000000000000000000000000099" as Hex;
@@ -52,7 +52,7 @@ describe("DiscoveryGraph — clauses", () => {
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [{
                 clauseId: "figaro-courier-process", version: 1,
-                contentHash: CONTENT_HASH, contentURI: "ipfs://spec", registrar: REGISTRAR,
+                contentHash: CONTENT_HASH, contentURI: "ipfs://spec", registeredBy: CLAUSE_REGISTERED_BY,
                 blockNumber: 1, logIndex: 0,
             }],
         }));
@@ -68,10 +68,10 @@ describe("DiscoveryGraph — clauses", () => {
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [{
                 clauseId: "figaro-emissions", version: 2,
-                contentHash: CONTENT_HASH, contentURI: "ipfs://ghg", registrar: REGISTRAR,
+                contentHash: CONTENT_HASH, contentURI: "ipfs://ghg", registeredBy: CLAUSE_REGISTERED_BY,
                 blockNumber: 1, logIndex: 0,
             }],
-            clauseWithdrawn: [{ idHash, registrar: REGISTRAR, blockNumber: 5, logIndex: 0 }],
+            clauseWithdrawn: [{ idHash, registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 5, logIndex: 0 }],
         }));
         expect(g.getClauses()).toHaveLength(0);
         expect(g.getClause(idHash)).toBeUndefined();
@@ -80,8 +80,8 @@ describe("DiscoveryGraph — clauses", () => {
     it("same name, different version = two distinct live clauses", () => {
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [
-                { clauseId: "figaro-proximity", version: 1, contentHash: CONTENT_HASH, contentURI: "ipfs://v1", registrar: REGISTRAR, blockNumber: 1, logIndex: 0 },
-                { clauseId: "figaro-proximity", version: 2, contentHash: CONTENT_HASH, contentURI: "ipfs://v2", registrar: REGISTRAR, blockNumber: 2, logIndex: 0 },
+                { clauseId: "figaro-proximity", version: 1, contentHash: CONTENT_HASH, contentURI: "ipfs://v1", registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 1, logIndex: 0 },
+                { clauseId: "figaro-proximity", version: 2, contentHash: CONTENT_HASH, contentURI: "ipfs://v2", registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 2, logIndex: 0 },
             ],
         }));
         expect(g.getClauses()).toHaveLength(2);
@@ -92,10 +92,10 @@ describe("DiscoveryGraph — assemblies", () => {
     it("surfaces registered assemblies and de-surfaces on withdraw", () => {
         const g = reconstructDiscovery(mkEvents({
             assemblyRegistered: [
-                { compositionHash: COMP_1, author: AUTHOR, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
-                { compositionHash: COMP_2, author: AUTHOR, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
+                { compositionHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
+                { compositionHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
             ],
-            assemblyWithdrawn: [{ compositionHash: COMP_1, author: AUTHOR, blockNumber: 9, logIndex: 0 }],
+            assemblyWithdrawn: [{ compositionHash: COMP_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
         }));
         const live = g.getAssemblies();
         expect(live).toHaveLength(1);
@@ -180,10 +180,10 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
 
     it("parses ClauseRegistered + DepositWithdrawn with the idHash key", () => {
         const idHash = computeClauseKey("figaro-cargo", 1);
-        const reg = mkLog("ClauseRegistered(string,uint64,bytes32,string,address)", [addrTopic(REGISTRAR)],
+        const reg = mkLog("ClauseRegistered(string,uint64,bytes32,string,address)", [addrTopic(CLAUSE_REGISTERED_BY)],
             [{ type: "string" }, { type: "uint64" }, { type: "bytes32" }, { type: "string" }],
             ["figaro-cargo", 1n, CONTENT_HASH, "ipfs://c"], 1n, 0);
-        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [idHash, addrTopic(REGISTRAR)],
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [idHash, addrTopic(CLAUSE_REGISTERED_BY)],
             [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseClauseRegistryLogs([reg, wd]);
         expect(parsed.registered[0].clauseId).toBe("figaro-cargo");
@@ -215,9 +215,9 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
     });
 
     it("parses AssemblyRegistered + DepositWithdrawn keyed by compositionHash", () => {
-        const reg = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_1, addrTopic(AUTHOR)],
+        const reg = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://a"], 1n, 0);
-        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [COMP_1, addrTopic(AUTHOR)],
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseAssemblyRegistryLogs([reg, wd]);
         expect(parsed.registered[0].compositionHash).toBe(COMP_1);
@@ -226,7 +226,7 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
     });
 
     it("end-to-end: decoded logs fold to the correct live view", () => {
-        const regLog = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_2, addrTopic(AUTHOR)],
+        const regLog = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_2, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://live"], 1n, 0);
         const { registered, withdrawn } = parseAssemblyRegistryLogs([regLog]);
         const g = reconstructDiscovery({

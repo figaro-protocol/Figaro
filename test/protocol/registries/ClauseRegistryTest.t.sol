@@ -50,8 +50,8 @@ contract ClauseRegistryTest is Test {
         // The integrity anchor is stored, not just emitted — the batch
         // verifier checks proof spec-bindings against it.
         assertEq(registry.contentHashOf(MODALITIES_HASH), MODALITIES_CONTENT);
-        (address registrar, bool withdrawn) = registry.depositOf(MODALITIES_HASH);
-        assertEq(registrar, alice);
+        (address registeredBy, bool withdrawn) = registry.depositOf(MODALITIES_HASH);
+        assertEq(registeredBy, alice);
         assertFalse(withdrawn);
     }
 
@@ -137,12 +137,12 @@ contract ClauseRegistryTest is Test {
         registry.withdrawDeposit(MODALITIES_HASH);
     }
 
-    function test_withdrawDeposit_registrarOnly() public {
+    function test_withdrawDeposit_registeredByOnly() public {
         vm.prank(alice);
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegistrar.selector, bob, alice));
+        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegisteredBy.selector, bob, alice));
         registry.withdrawDeposit(MODALITIES_HASH);
     }
 
@@ -190,7 +190,7 @@ contract ClauseRegistryTest is Test {
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
     }
 
-    function test_emitsClauseRegistered_withRegistrar() public {
+    function test_emitsClauseRegistered_withRegisteredBy() public {
         vm.prank(alice);
         vm.expectEmit(true, true, true, true);
         emit ClauseRegistry.ClauseRegistered(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, alice);

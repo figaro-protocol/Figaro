@@ -42,8 +42,8 @@ export interface InitiateProcessAction extends BaseAction {
     /** Pointer to the assembly document; the agent hydrates it (off-SDK) to
      *  build the agreement(s) the parties sign. */
     contentURI: string;
-    /** Author-of-record of the assembly. */
-    author: Address;
+    /** Author-of-record of the assembly (its registry `registeredBy`). */
+    registeredBy: Address;
 }
 
 export interface ResolveProcessAction extends BaseAction {
@@ -222,7 +222,7 @@ export function proposeInitiations(
         buyer: myAddress,
         compositionHash: a.compositionHash,
         contentURI: a.contentURI,
-        author: a.author,
+        registeredBy: a.registeredBy,
     }));
 }
 

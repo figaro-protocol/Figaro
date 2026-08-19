@@ -191,7 +191,7 @@ validator — there is none, by design.
 - contentHash:  0x…
 - contentURI:   ipfs://…
 - on-chain id:  keccak256(abi.encode("<clauseId>", <version>))
-- tx:           0x…  (registrar = <user wallet>)
+- tx:           0x…  (registeredBy = <user wallet>)
 - block hints declared: <parseProjectionHints output — the five, or "none">
 - Discoverable now in any UI that reads the registry.
 ```

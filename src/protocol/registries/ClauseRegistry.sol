@@ -18,7 +18,7 @@ pragma solidity 0.8.26;
 ///         because committed agreements reference it forever; only the
 ///         stake and the surfacing move.
 ///
-///         WITHDRAW GATE (commits == resolves): a registrar should not
+///         WITHDRAW GATE (commits == resolves): the registering wallet should not
 ///         withdraw while processes composed from the clause are in
 ///         flight. The usage count lives in the indexer — the same count
 ///         the RPGF program pays on — so the gate is enforced at the
@@ -60,7 +60,7 @@ pragma solidity 0.8.26;
 contract ClauseRegistry {
     /// @notice Deposit amount in wei required at registration. Immutable at
     ///         deploy. Sybil-resistance stake, not a fee — no party can
-    ///         seize it; the registrar reclaims it via `withdrawDeposit`.
+    ///         seize it; the registering wallet reclaims it via `withdrawDeposit`.
     uint256 public immutable registrationDeposit;
 
     /// @notice Dedup guard — true if clauseId (by keccak256 hash) has been registered.
@@ -78,10 +78,11 @@ contract ClauseRegistry {
     ///         Never cleared — committed agreements reference it forever.
     mapping(bytes32 => bytes32) public contentHashOf;
 
-    /// @dev Stake accounting per clause key. `registrar` is the depositor
-    ///      of record; `withdrawn` marks the stake reclaimed (= de-surfaced).
+    /// @dev Stake accounting per clause key. `registeredBy` is the depositor
+    ///      of record (the same role AssemblyRegistry records under the same
+    ///      name); `withdrawn` marks the stake reclaimed (= de-surfaced).
     struct DepositState {
-        address registrar;
+        address registeredBy;
         bool withdrawn;
     }
 
@@ -102,19 +103,19 @@ contract ClauseRegistry {
     ///                    pinned document IS the content, hence not "metadataURI" —
     ///                    MembersRegistry keeps that name because its mutable profile
     ///                    genuinely is metadata about a wallet-keyed identity.)
-    /// @param registrar   Address that registered the clause.
+    /// @param registeredBy   Address that registered the clause.
     event ClauseRegistered(
-        string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar
+        string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registeredBy
     );
 
-    /// @notice Emitted when a registrar withdraws their deposit. The clause
+    /// @notice Emitted when the registering wallet withdraws its deposit. The clause
     ///         binding stays in place; only the stake moves — readers
     ///         de-surface the clause for NEW compositions, while committed
     ///         agreements keep resolving it.
     /// @param clauseId  The clause key (keccak256(abi.encode(clauseId, version))).
-    /// @param registrar Address that withdrew.
+    /// @param registeredBy Address that withdrew.
     /// @param amount    Deposit returned (always equals `registrationDeposit`).
-    event DepositWithdrawn(bytes32 indexed clauseId, address indexed registrar, uint256 amount);
+    event DepositWithdrawn(bytes32 indexed clauseId, address indexed registeredBy, uint256 amount);
 
     /// @notice Emitted when a mechanism declares which clause it uses.
     /// @param mechanism  The declaring contract address (msg.sender).
@@ -131,7 +132,7 @@ contract ClauseRegistry {
     error EmptyContentURI();
     error ZeroContentHash();
     error WrongDeposit(uint256 provided, uint256 required);
-    error NotRegistrar(address caller, address registrar);
+    error NotRegisteredBy(address caller, address registeredBy);
     error AlreadyWithdrawn();
     error TransferFailed();
 
@@ -166,16 +167,16 @@ contract ClauseRegistry {
         if (registered[idHash]) revert AlreadyRegistered(idHash);
         registered[idHash] = true;
         contentHashOf[idHash] = contentHash;
-        depositOf[idHash] = DepositState({registrar: msg.sender, withdrawn: false});
+        depositOf[idHash] = DepositState({registeredBy: msg.sender, withdrawn: false});
         emit ClauseRegistered(clauseId, version, contentHash, contentURI, msg.sender);
     }
 
-    // ── Deposit withdrawal (registrar-only) ─────────────────────────
+    // ── Deposit withdrawal (registeredBy-only) ──────────────────────
 
     /// @notice Reclaim the registration deposit. The clause binding is NOT
     ///         cleared — only the stake moves; readers de-surface the
-    ///         clause for new compositions. Callable only by the original
-    ///         registrar, once. Version migration = withdraw the old
+    ///         clause for new compositions. Callable only by the recorded
+    ///         `registeredBy`, once. Version migration = withdraw the old
     ///         version's stake + register the new version.
     /// @dev The commits == resolves gate is protocol-surface (indexer
     ///      count; see the contract notice) — the chain carries no
@@ -184,7 +185,7 @@ contract ClauseRegistry {
     function withdrawDeposit(bytes32 idHash) external {
         DepositState storage state = depositOf[idHash];
         if (!registered[idHash]) revert NotRegistered(idHash);
-        if (msg.sender != state.registrar) revert NotRegistrar(msg.sender, state.registrar);
+        if (msg.sender != state.registeredBy) revert NotRegisteredBy(msg.sender, state.registeredBy);
         if (state.withdrawn) revert AlreadyWithdrawn();
 
         // Checks-effects-interactions: flag THEN transfer.

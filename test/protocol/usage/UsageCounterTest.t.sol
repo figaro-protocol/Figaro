@@ -379,7 +379,7 @@ contract UsageCounterTest is Test {
     }
 
     function test_exclusionIsDeployFrozenNotSelfDeclared() public view {
-        // A registrar cannot opt their own clause out or in — the set is fixed
+        // A registering wallet cannot opt their own clause out or in — the set is fixed
         // at deploy, because a self-declared exclusion would never be declared.
         assertFalse(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-commerce", uint64(1)))));
         assertFalse(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-topology", uint64(1)))));

@@ -22,7 +22,7 @@
     ],
     "outputs": [
       {
-        "name": "author",
+        "name": "registeredBy",
         "type": "address",
         "internalType": "address"
       },
@@ -99,7 +99,7 @@
         "internalType": "bytes32"
       },
       {
-        "name": "author",
+        "name": "registeredBy",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -124,7 +124,7 @@
         "internalType": "bytes32"
       },
       {
-        "name": "author",
+        "name": "registeredBy",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -161,7 +161,12 @@
   },
   {
     "type": "error",
-    "name": "NotAuthor",
+    "name": "NotRegistered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotRegisteredBy",
     "inputs": [
       {
         "name": "caller",
@@ -169,16 +174,11 @@
         "internalType": "address"
       },
       {
-        "name": "author",
+        "name": "registeredBy",
         "type": "address",
         "internalType": "address"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "NotRegistered",
-    "inputs": []
   },
   {
     "type": "error",

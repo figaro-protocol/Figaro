@@ -73,7 +73,7 @@ describe("executeAction — honest input gates (never fabricate)", () => {
     });
 
     it("throws on initiate-process without a counterparty signature", async () => {
-        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, compositionHash: "0xab" as Hex, contentURI: "ipfs://x", author: SELLER } as InitiateProcessAction;
+        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, compositionHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
         await expect(executeAction(wallet, pub, addresses, action)).rejects.toThrow(/two-party handshake|counterparty/i);
     });
 

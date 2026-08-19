@@ -83,7 +83,7 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
                     version: Number(a.version),
                     contentHash: a.contentHash as Hex,
                     contentURI: a.contentURI as string,
-                    registrar: a.registrar as Address,
+                    registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
                     transactionHash: (log.transactionHash ?? null) as Hex | null,
@@ -91,7 +91,7 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
                     idHash: a.clauseId as Hex, // the withdraw event's `clauseId` IS the key hash
-                    registrar: a.registrar as Address,
+                    registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
                 });
@@ -158,7 +158,7 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
             if (decoded.eventName === "AssemblyRegistered") {
                 registered.push({
                     compositionHash: a.compositionHash as Hex,
-                    author: a.author as Address,
+                    registeredBy: a.registeredBy as Address,
                     contentURI: a.contentURI as string,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
@@ -167,7 +167,7 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
                     compositionHash: a.compositionHash as Hex,
-                    author: a.author as Address,
+                    registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
                 });
@@ -342,7 +342,7 @@ export class DiscoveryGraph {
                         idHash,
                         contentHash: e.contentHash,
                         contentURI: e.contentURI,
-                        registrar: e.registrar,
+                        registeredBy: e.registeredBy,
                     },
                     withdrawn: false,
                 });
@@ -361,7 +361,7 @@ export class DiscoveryGraph {
                 this.assemblies.set(e.compositionHash, {
                     assembly: {
                         compositionHash: e.compositionHash,
-                        author: e.author,
+                        registeredBy: e.registeredBy,
                         contentURI: e.contentURI,
                     },
                     withdrawn: false,

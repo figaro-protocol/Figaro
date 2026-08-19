@@ -308,7 +308,7 @@ HalmosMembersRegistry).
 **HalmosClauseRegistry + HalmosAssemblyRegistry (6 properties each, one file:
 `HalmosClauseAndAssemblyRegistries.t.sol`, 2026-08-03)** — the author-side stake machines
 `RpgfMinter._isAuthor` reads at claim: deposit solvency under arbitrary
-two-registrar interleavings; live deposits withdrawable in full; first-write-wins
+interleavings by two registering wallets; live deposits withdrawable in full; first-write-wins
 permanence (no second registration ever succeeds, for ANY caller); one-shot
 withdrawal; eligibility ends at withdraw with nothing restoring it; cross-key
 isolation. Solvency and first-write-wins MUTATION-CHECKED on both contracts

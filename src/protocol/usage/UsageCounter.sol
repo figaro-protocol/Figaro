@@ -22,10 +22,10 @@ interface IMemberStake {
 
 /// @notice The ClauseRegistry field the clause-or-assembly-side gate reads — the clause's
 ///         stake state. A clause earns only while its registration deposit is
-///         un-withdrawn; the binding survives withdrawal, so `registrar != 0`
+///         un-withdrawn; the binding survives withdrawal, so `registeredBy != 0`
 ///         alone is not liveness.
 interface IClauseStake {
-    function depositOf(bytes32 idHash) external view returns (address registrar, bool withdrawn);
+    function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
 }
 
 /// @notice The AssemblyRegistry field the clause-or-assembly-side gate reads — the
@@ -35,7 +35,7 @@ interface IAssemblyStake {
     function bindings(bytes32 compositionHash)
         external
         view
-        returns (address author, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
+        returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
 }
 
 /// @title UsageCounter — verified clause or assembly usage, counted when it happens
@@ -158,7 +158,7 @@ contract UsageCounter {
     ///         registration, a usage-indexed endowment of the commons.
     ///         This is deploy-frozen: WHICH clauses and assemblies the reward
     ///         ignores is a reward decision, not something a
-    ///         registrar declares about itself — a self-declared exclusion would
+    ///         registering wallet declares about itself — a self-declared exclusion would
     ///         simply never be declared.
     mapping(bytes32 => bool) public excludedClauseOrAssembly;
 
@@ -724,18 +724,18 @@ contract UsageCounter {
 
     /// @dev Whether `clauseOrAssembly` holds a LIVE ClauseRegistry stake — registered
     ///      and its deposit un-withdrawn. The binding survives withdrawal
-    ///      (committed agreements reference it forever), so a non-zero registrar
+    ///      (committed agreements reference it forever), so a non-zero registeredBy
     ///      is not liveness; `!withdrawn` is.
     function _clauseLive(bytes32 clauseOrAssembly) internal view returns (bool) {
-        (address registrar, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
-        return registrar != address(0) && !withdrawn;
+        (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
+        return registeredBy != address(0) && !withdrawn;
     }
 
     /// @dev Whether `clauseOrAssembly` holds a LIVE AssemblyRegistry binding —
     ///      registered and its deposit un-withdrawn.
     function _assemblyLive(bytes32 clauseOrAssembly) internal view returns (bool) {
-        (address author, uint64 registeredAt, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
-        return author != address(0) && registeredAt != 0 && !depositWithdrawn;
+        (address registeredBy, uint64 registeredAt, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
+        return registeredBy != address(0) && registeredAt != 0 && !depositWithdrawn;
     }
 
     /// @dev Recompute the order hash from the signed struct and require the

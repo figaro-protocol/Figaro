@@ -68,15 +68,21 @@ keeps collapsing into a phantom protocol object and a phantom global role):
 stand-in) holding the DAO's 300M-florin allocation plus whatever ETH it chooses
 to stake. It is NOT a protocol contract: no protocol flow pays into it, and
 registration deposits NEVER go to it — stakes sit in the registry that took them,
-reclaimable only by their registrar (withdraw = de-surface). **registrar** = a
-PER-WALLET role, never a global one: the wallet that registered an artifact and
-holds its live stake. Every wallet is registrar of ONLY what it claims ownership
-of — the DAO's vault for the MANDATORY clauses and donated keys ONLY (the 2026-08-13
-endowment ruling as clarified 2026-08-17), the founder's address for every other
-reference clause, assembly, and the founder's profile, any stranger's wallet for
-theirs; each member profile from its own wallet. "The registrar" without an owner qualifier is the
-drift tell; seeding tooling acts FOR one designated registrar per invocation
-(an EOA key, or a vault via its owners' approvals) and confers no special role.
+reclaimable only by their `registeredBy` (withdraw = de-surface). **registeredBy**
+(maintainer-ruled 2026-08-18, like the frontend's "Registered by" — both registries
+spell the role field and event arg this way; `DepositState.registrar` and
+`AssemblyBinding.author` are the superseded spellings) = a PER-WALLET role, never a
+global one: the wallet that registered an artifact and holds its live stake. Every
+wallet is `registeredBy` of ONLY what it claims ownership of — the DAO's vault for
+the MANDATORY clauses and donated keys ONLY (the 2026-08-13 endowment ruling as
+clarified 2026-08-17), the founder's address for every other reference clause,
+assembly, and the founder's profile, any stranger's wallet for theirs; each member
+profile from its own wallet. A registering role without an owner qualifier is the
+drift tell. "Registrar" survives ONLY in the ACTOR sense — the wallet a seeding run
+acts for (the `REGISTRAR_*` env knobs, this seam's name): tooling acts FOR one
+designated registrar per invocation (an EOA key, or a vault via its owners'
+approvals) and confers no special role; the chain records that actor as
+`registeredBy`.
 
 **SYSTEM A (trade) ≠ SYSTEM B (funding) — three words the deleted optimistic/QF apparatus
 overloaded, now SINGLE-REFERENT** (the System-B meanings were deleted, so each word has ONE

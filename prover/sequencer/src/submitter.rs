@@ -89,7 +89,7 @@ sol! {
 sol! {
     #[sol(rpc)]
     interface IClauseRegistry {
-        function depositOf(bytes32 idHash) external view returns (address registrar, bool withdrawn);
+        function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
     }
 }
 
@@ -99,7 +99,7 @@ sol! {
         function bindings(bytes32 compositionHash)
             external
             view
-            returns (address author, uint64 registeredAt, bool depositWithdrawn, string contentURI);
+            returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI);
     }
 }
 
@@ -223,14 +223,14 @@ pub async fn filter_usage_claims(
             let live = match claim.kind {
                 UsageClaimKind::Clause { .. } => {
                     match clauses.depositOf(claim.clause_or_assembly).call().await {
-                        Ok(d) => d.registrar != Address::ZERO && !d.withdrawn,
+                        Ok(d) => d.registeredBy != Address::ZERO && !d.withdrawn,
                         Err(e) => return Err(format!("clause depositOf read failed: {e}")),
                     }
                 }
                 UsageClaimKind::Assembly => {
                     match assemblies.bindings(claim.clause_or_assembly).call().await {
                         Ok(b) => {
-                            b.author != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
+                            b.registeredBy != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
                         }
                         Err(e) => return Err(format!("assembly bindings read failed: {e}")),
                     }

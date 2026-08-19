@@ -351,7 +351,7 @@ member: subscriptions + data-disclosure toggles, ruled 2026-08-18; the DAO under
 EIP-7702-delegated OPERATOR EOA, never the vault address — `FLORIN_TOKEN.md` § DAO
 custody, ruled 2026-08-18; the 08-17 Sepolia profiles were bare and the DAO's sits under
 the vault — both corrected at the redeploy). Registrar = author-of-record = who the 600M RPGF pays
-(`RpgfMinter._isAuthor` reads `depositOf(...).registrar`); it is first-write-wins
+(`RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`); it is first-write-wins
 and permanent per id — `withdrawDeposit` only de-surfaces.
 
 **What Sepolia recorded (nudge 2, 2026-08-17):** the vault-registrar seeding mode,
@@ -586,7 +586,7 @@ directory IS the tier map); the frozen *contracts* are unchanged by the move.
 | Directory / file | Contents |
 |---|---|
 | `src/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
-| `src/protocol/registries/` | `ClauseRegistry.sol`, `MembersRegistry.sol`, `AssemblyRegistry.sol` |
+| `src/protocol/registries/` | `ClauseRegistry.sol`, `MembersRegistry.sol`, `AssemblyRegistry.sol` (amendment 2026-08-19, maintainer-ruled 2026-08-18: the registering-role field/event arg renamed to `registeredBy` on both Clause and Assembly registries — `DepositState.registrar` and `AssemblyBinding.author` unified, error `NotRegisteredBy`; landed with the Sepolia-redeploy group so the redeployed stack carries the final ABI) |
 | `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol`, `WitnessSwapAndCommitCoordinator.sol` (amendment 2026-08-18, maintainer-ruled: landed 2026-07-12 after the freeze and was never listed nor deployed publicly — deployed alone onto Sepolia that day; `script/DeploySwapCoordinator.s.sol` joins the scripts row) |
 | `src/protocol/usage/` | `UsageCounter.sol` |
 | `src/protocol/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` |

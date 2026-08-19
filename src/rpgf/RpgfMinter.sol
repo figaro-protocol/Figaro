@@ -16,7 +16,7 @@ interface IUsageCounter {
 
 /// @notice Author of record for a clause — `ClauseRegistry.depositOf`.
 interface IClauseAuthor {
-    function depositOf(bytes32 idHash) external view returns (address registrar, bool withdrawn);
+    function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
 }
 
 /// @notice Author of record for an assembly — `AssemblyRegistry.bindings`.
@@ -24,7 +24,7 @@ interface IAssemblyAuthor {
     function bindings(bytes32 compositionHash)
         external
         view
-        returns (address author, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
+        returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
 }
 
 /// @title RpgfMinter — the 600M retroactive distribution
@@ -230,8 +230,8 @@ contract RpgfMinter {
         amount = (periodAmount[periodId] * score) / total;
     }
 
-    /// @dev Author of record with a LIVE stake — the clause registrar or the
-    ///      assembly author, each only while their registration deposit is
+    /// @dev Author of record with a LIVE stake — the wallet each registry
+    ///      records as `registeredBy`, only while its registration deposit is
     ///      un-withdrawn. A key is one or the other; both registries are
     ///      consulted because the families are parallel and neither knows the
     ///      other exists.
@@ -245,9 +245,9 @@ contract RpgfMinter {
     ///      every registry staker), not a cost, so keeping it live is the honest
     ///      author's default.
     function _isAuthor(bytes32 clauseOrAssembly, address account) internal view returns (bool) {
-        (address registrar, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
-        if (registrar != address(0)) return registrar == account && !withdrawn;
-        (address author,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
-        return author != address(0) && author == account && !depositWithdrawn;
+        (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
+        if (registeredBy != address(0)) return registeredBy == account && !withdrawn;
+        (address assemblyRegisteredBy,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
+        return assemblyRegisteredBy != address(0) && assemblyRegisteredBy == account && !depositWithdrawn;
     }
 }

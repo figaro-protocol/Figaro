@@ -2,7 +2,7 @@
  * @figaro/sdk/derive — Withdraw gate (commits==resolves)
  *
  * The off-chain, advisory half of the K4 staked-intent model: a clause-or-assembly
- * author (clause registrar / assembly author) must not reclaim their
+ * author (each registry's `registeredBy`) must not reclaim their
  * registration stake while deals COMPOSED FROM that clause or assembly are still in
  * flight. This is the read-side derivation RPGF attribution pays on — the same
  * count. It is ADVISORY today (surfaced as a disabled affordance); an on-chain

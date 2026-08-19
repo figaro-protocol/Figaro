@@ -128,11 +128,11 @@ describe("proposeActions", () => {
 
 describe("proposeInitiations", () => {
     const COMP = "0x00000000000000000000000000000000000000000000000000000000000000ab" as Hex;
-    const AUTHOR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as Address;
+    const REGISTERED_BY = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as Address;
 
     it("proposes one initiate-process per discovered assembly, buyer = me", () => {
         const assemblies: RegisteredAssembly[] = [
-            { compositionHash: COMP, author: AUTHOR, contentURI: "ipfs://asm" },
+            { compositionHash: COMP, registeredBy: REGISTERED_BY, contentURI: "ipfs://asm" },
         ];
         const inits = proposeInitiations(assemblies, BUYER);
         expect(inits).toHaveLength(1);

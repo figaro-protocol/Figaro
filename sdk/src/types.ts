@@ -119,7 +119,7 @@ export interface ClauseRegisteredEvent {
     version: number;
     contentHash: Hex;
     contentURI: string;
-    registrar: Address;
+    registeredBy: Address;
     blockNumber: number;
     logIndex: number;
     /** Set when the source log carries it. */
@@ -130,7 +130,7 @@ export interface ClauseRegisteredEvent {
  *  name — the withdraw path keys on `keccak256(abi.encode(clauseId, version))`. */
 export interface ClauseWithdrawnEvent {
     idHash: Hex;
-    registrar: Address;
+    registeredBy: Address;
     blockNumber: number;
     logIndex: number;
 }
@@ -163,7 +163,7 @@ export interface MemberWithdrawnEvent {
  *  human slug is derived off-chain (AssemblyRegistry.sol:16-21). */
 export interface AssemblyRegisteredEvent {
     compositionHash: Hex;
-    author: Address;
+    registeredBy: Address;
     contentURI: string;
     blockNumber: number;
     logIndex: number;
@@ -174,7 +174,7 @@ export interface AssemblyRegisteredEvent {
 /** AssemblyRegistry `DepositWithdrawn` — keyed by `compositionHash` directly. */
 export interface AssemblyWithdrawnEvent {
     compositionHash: Hex;
-    author: Address;
+    registeredBy: Address;
     blockNumber: number;
     logIndex: number;
 }
@@ -192,7 +192,7 @@ export interface RegisteredClause {
     idHash: Hex;
     contentHash: Hex;
     contentURI: string;
-    registrar: Address;
+    registeredBy: Address;
 }
 
 export interface RegisteredMember {
@@ -203,7 +203,7 @@ export interface RegisteredMember {
 
 export interface RegisteredAssembly {
     compositionHash: Hex;
-    author: Address;
+    registeredBy: Address;
     contentURI: string;
 }
 

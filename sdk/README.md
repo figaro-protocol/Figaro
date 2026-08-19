@@ -1501,18 +1501,18 @@ capital stays committed. **Anything tracking who is currently surfaced must fold
 event and can arrive a whole cooldown later. `reconstructDiscovery` already does.
 
 **Reading an assembly binding.** `AssemblyRegistry.bindings(compositionHash)` returns
-the tuple `(address author, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
+the tuple `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
 The existence check is `registeredAt != 0`, NOT the bool: after a normal registration
 `depositWithdrawn` is `false` and stays false while the deposit is still staked (the
-surfaced state) — it flips to `true` only once the author reclaims the deposit. So a
+surfaced state) — it flips to `true` only once the registering wallet reclaims the deposit. So a
 freshly registered assembly correctly reads `depositWithdrawn == false`; that false is
 "deposit still held," not "registration failed."
 
 `ClauseRegistry`'s parallel stake struct (`depositOf[idHash]`, surfaced to the SDK as
-`RegisteredClause.registrar`) names the same field `registrar` rather than `author` — the
-two names identify the same concept under each registry's own vocabulary (the
-registering wallet), and `RpgfMinter._isAuthor` treats both as the clause-or-assembly's author for
-600M reward eligibility.
+`RegisteredClause.registeredBy`) spells the same field the same way — both registries
+name the registering wallet `registeredBy` (one role, one name), and
+`RpgfMinter._isAuthor` treats it as the clause-or-assembly's author for 600M reward
+eligibility.
 
 The catalogue follows the same shape: `parseMemberCatalogueDocument(cat)` →
 `pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and

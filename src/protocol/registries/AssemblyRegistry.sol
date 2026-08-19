@@ -50,7 +50,7 @@ pragma solidity 0.8.26;
 ///         assembly rely on its content staying stable; only the stake
 ///         and the surfacing move.
 ///
-///         WITHDRAW GATE (commits == resolves): an author should not
+///         WITHDRAW GATE (commits == resolves): the registering wallet should not
 ///         withdraw while processes composed from the assembly are in
 ///         flight. The usage count lives in the indexer — the same count
 ///         the RPGF program pays on — so the gate is enforced at the
@@ -78,16 +78,16 @@ contract AssemblyRegistry {
     ///         at deploy.
     /// @dev Sybil-resistance stake, not a fee. The protocol does not
     ///      redistribute it; no party has authority to seize it. The
-    ///      author reclaims the exact amount via `withdrawDeposit` —
+    ///      registering wallet reclaims the exact amount via `withdrawDeposit` —
     ///      which de-surfaces the assembly (readers filter on the live
     ///      stake), so spam costs deposit × time-surfaced plus an
     ///      irrevocably burned composition binding. No time lock.
     uint256 public immutable registrationDeposit;
 
     struct AssemblyBinding {
-        address author;
+        address registeredBy;
         uint64 registeredAt;
-        // 8-byte register; packs into the first storage slot with author + bool.
+        // 8-byte register; packs into the first storage slot with registeredBy + bool.
         bool depositWithdrawn;
         string contentURI;
     }
@@ -102,18 +102,18 @@ contract AssemblyRegistry {
     /// @param compositionHash keccak256 of the canonical composition subset
     ///                        of the off-chain assembly template — the
     ///                        assembly's identity.
-    /// @param author          Address that registered the assembly.
+    /// @param registeredBy    Address that registered the assembly.
     /// @param contentURI      Full off-chain assembly-template document URI
     ///                        (typically IPFS).
-    event AssemblyRegistered(bytes32 indexed compositionHash, address indexed author, string contentURI);
+    event AssemblyRegistered(bytes32 indexed compositionHash, address indexed registeredBy, string contentURI);
 
-    /// @notice Emitted when an author withdraws their deposit. The
+    /// @notice Emitted when the registering wallet withdraws its deposit. The
     ///         composition binding stays in place; only the deposit moves.
     /// @param compositionHash The composition whose deposit was withdrawn.
-    /// @param author          Address that withdrew.
+    /// @param registeredBy    Address that withdrew.
     /// @param amount          Deposit amount returned (always equals
     ///                        `registrationDeposit`).
-    event DepositWithdrawn(bytes32 indexed compositionHash, address indexed author, uint256 amount);
+    event DepositWithdrawn(bytes32 indexed compositionHash, address indexed registeredBy, uint256 amount);
 
     // ── Errors ──────────────────────────────────────────────────────────
 
@@ -122,7 +122,7 @@ contract AssemblyRegistry {
     error CompositionAlreadyRegistered(bytes32 compositionHash);
     error WrongDeposit(uint256 provided, uint256 required);
     error NotRegistered();
-    error NotAuthor(address caller, address author);
+    error NotRegisteredBy(address caller, address registeredBy);
     error AlreadyWithdrawn();
     error TransferFailed();
 
@@ -153,18 +153,21 @@ contract AssemblyRegistry {
         if (bindings[compositionHash].registeredAt != 0) revert CompositionAlreadyRegistered(compositionHash);
 
         bindings[compositionHash] = AssemblyBinding({
-            author: msg.sender, registeredAt: uint64(block.timestamp), depositWithdrawn: false, contentURI: contentURI
+            registeredBy: msg.sender,
+            registeredAt: uint64(block.timestamp),
+            depositWithdrawn: false,
+            contentURI: contentURI
         });
 
         emit AssemblyRegistered(compositionHash, msg.sender, contentURI);
     }
 
-    // ── Deposit withdrawal (author-only, post-lock) ─────────────────────
+    // ── Deposit withdrawal (registeredBy-only, post-lock) ───────────────
 
     /// @notice Reclaim the registration deposit. The composition binding
     ///         is NOT cleared — only the deposit moves, and readers
     ///         de-surface the assembly for new orders. Callable only by
-    ///         the original author, and only once per binding.
+    ///         the recorded `registeredBy`, and only once per binding.
     /// @dev The commits == resolves gate is protocol-surface (indexer
     ///      count; see the contract notice) — the chain carries no
     ///      composition provenance to enforce it here.
@@ -172,7 +175,7 @@ contract AssemblyRegistry {
     function withdrawDeposit(bytes32 compositionHash) external {
         AssemblyBinding storage binding = bindings[compositionHash];
         if (binding.registeredAt == 0) revert NotRegistered();
-        if (msg.sender != binding.author) revert NotAuthor(msg.sender, binding.author);
+        if (msg.sender != binding.registeredBy) revert NotRegisteredBy(msg.sender, binding.registeredBy);
         if (binding.depositWithdrawn) revert AlreadyWithdrawn();
 
         // Checks-effects-interactions: flag THEN transfer.

@@ -33,7 +33,7 @@ The three registry-family anchors — **parallel, not nested**. Each has its own
 reclaimable ETH deposit (staked intent — K4).
 `clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from. `contentHashOf[idHash]` stores the anchor (never cleared) — the trust anchor the batch verifier checks each proof's witness-spec binding against when the proof apparatus lands.
 `registerClause` is first-write-wins, immutable, and `payable` (requires the
-immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registrar-only,
+immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registeredBy-only,
 once, no time lock) returns the stake and emits `DepositWithdrawn` — the
 binding stays permanent, but readers DE-SURFACE the clause for new
 compositions (surfacing derives from the live stake; committed agreements
@@ -103,7 +103,7 @@ clauses; this registry is the assembly registry family's anchor, parallel to
 separation-of-concerns doctrine. Two external functions:
 `registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
 immutable `registrationDeposit`, emits `AssemblyRegistered`) and
-`withdrawDeposit(compositionHash)` (author-only, callable once, no time lock —
+`withdrawDeposit(compositionHash)` (registeredBy-only, callable once, no time lock —
 K4: withdrawing DE-SURFACES the assembly; the commits == resolves gate is
 protocol-surface against the indexer's count, emits `DepositWithdrawn`). Identity IS the
 composition: `compositionHash` = keccak256 of the template's canonical
@@ -112,7 +112,7 @@ editorial prose excluded), so identical compositions collapse to one binding
 and no caller-chosen name exists on-chain to squat; the human-readable slug is
 presentation, derived off-chain as a pure function of the hash
 (`deriveAssemblySlug`). State is one mapping `bindings: compositionHash →
-AssemblyBinding` {author, registeredAt, depositWithdrawn, contentURI}. The
+AssemblyBinding` {registeredBy, registeredAt, depositWithdrawn, contentURI}. The
 composition binding is permanent — `withdrawDeposit` returns only the ETH and
 never clears the binding, because buyers and sellers that reference the
 assembly rely on its content staying stable; the deposit is a reclaimable
@@ -494,7 +494,7 @@ with distinct clauses and assemblies `score ≤ total` holds structurally, so th
 (The test that was supposed to cover this passed a SOLE clause or assembly, where taking 100% is the
 correct answer either way — a case that cannot distinguish inflation from correctness.)
 
-Each clause or assembly in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registrar == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (author == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your clause's or assembly's stake stays live. Payout is **UNIFORM pro rata with no cap** — `periodAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
+Each clause or assembly in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registeredBy == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (registeredBy == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your clause's or assembly's stake stays live. Payout is **UNIFORM pro rata with no cap** — `periodAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
 
 No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per period here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` + `test/rpgf/RpgfIntegrationTest.t.sol` (no stubs — real process → real counter → real mint).
 

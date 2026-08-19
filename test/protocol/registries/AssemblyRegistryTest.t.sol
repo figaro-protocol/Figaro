@@ -26,9 +26,10 @@ contract AssemblyRegistryTest is Test {
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
-        (address author, uint64 registeredAt, bool withdrawn, string memory uri) = registry.bindings(COMPOSITION_HASH);
+        (address registeredBy, uint64 registeredAt, bool withdrawn, string memory uri) =
+            registry.bindings(COMPOSITION_HASH);
 
-        assertEq(author, alice);
+        assertEq(registeredBy, alice);
         assertGt(registeredAt, 0);
         assertEq(withdrawn, false);
         assertEq(uri, CONTENT_URI);
@@ -102,10 +103,10 @@ contract AssemblyRegistryTest is Test {
         vm.prank(bob);
         registry.registerAssembly{value: DEPOSIT}(bobComposition, "ipfs://B");
 
-        (address aliceAuthor,,,) = registry.bindings(aliceComposition);
-        (address bobAuthor,,,) = registry.bindings(bobComposition);
-        assertEq(aliceAuthor, alice);
-        assertEq(bobAuthor, bob);
+        (address aliceRegisteredBy,,,) = registry.bindings(aliceComposition);
+        (address bobRegisteredBy,,,) = registry.bindings(bobComposition);
+        assertEq(aliceRegisteredBy, alice);
+        assertEq(bobRegisteredBy, bob);
         assertEq(address(registry).balance, DEPOSIT * 2);
     }
 
@@ -123,8 +124,8 @@ contract AssemblyRegistryTest is Test {
         assertEq(address(registry).balance, 0);
 
         // Binding stays — only the withdrawn flag flips.
-        (address author,, bool withdrawn, string memory uri) = registry.bindings(COMPOSITION_HASH);
-        assertEq(author, alice, "author preserved after withdraw");
+        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(COMPOSITION_HASH);
+        assertEq(registeredBy, alice, "registeredBy preserved after withdraw");
         assertEq(withdrawn, true);
         assertEq(uri, CONTENT_URI, "contentURI preserved after withdraw");
     }
@@ -163,12 +164,12 @@ contract AssemblyRegistryTest is Test {
         registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
-    function test_withdrawDeposit_revertsByNonAuthor() public {
+    function test_withdrawDeposit_revertsByNonRegisteredBy() public {
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.NotAuthor.selector, bob, alice));
+        vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.NotRegisteredBy.selector, bob, alice));
         registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
