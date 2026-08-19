@@ -14,7 +14,7 @@
  * The one act is `claim`.
  *
  * The wallet's clauses and assemblies are DISCOVERED from the two registries' own event
- * streams (clauses by registrar, assemblies by author) — the same open-world
+ * streams (both keyed by registeredBy) — the same open-world
  * read the minter's `_isAuthor` performs on chain, never a bundled list.
  */
 
@@ -110,10 +110,10 @@ export function useRpgfRewards() {
                 eventName: "AssemblyRegistered",
             }),
         ]);
-        type ClauseArgs = { registrar?: string; clauseId?: string; version?: bigint };
-        type AssemblyArgs = { author?: string; compositionHash?: `0x${string}` };
-        const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registrar ?? ""), account));
-        const assemblyEvents = allAssemblyEvents.filter((l) => hexEqual(String((l.args as AssemblyArgs | undefined)?.author ?? ""), account));
+        type ClauseArgs = { registeredBy?: string; clauseId?: string; version?: bigint };
+        type AssemblyArgs = { registeredBy?: string; compositionHash?: `0x${string}` };
+        const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registeredBy ?? ""), account));
+        const assemblyEvents = allAssemblyEvents.filter((l) => hexEqual(String((l.args as AssemblyArgs | undefined)?.registeredBy ?? ""), account));
         const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>();
         for (const ev of clauseEvents) {
             const clauseId = (ev.args as ClauseArgs | undefined)?.clauseId;

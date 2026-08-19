@@ -4,7 +4,7 @@
  * ClausesList — renders the connected wallet's registered clauses.
  *
  * Reads from `useRegisteredClausesByWallet(address)` which filters the
- * `ClauseRegistered` event log by registrar. For most wallets the list is
+ * `ClauseRegistered` event log by registeredBy. For most wallets the list is
  * empty; the empty state points at `/clauses/register` (the clause authoring
  * surface — paste a spec and register it) and at the marketing /clauses page
  * so users can see what clauses exist protocol-wide. For the deployer wallet

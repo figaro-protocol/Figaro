@@ -32,11 +32,10 @@ import {
 } from "@/lib/registries/explorer";
 
 const FAMILY_LABEL: Record<RegistryFamily, string> = { clauses: "Clauses", assemblies: "Assemblies", members: "Members" };
-// ONE role, plainly phrased: the wallet that registered the row (the
-// contracts spell it `registrar` on ClauseRegistry and `author` on
-// AssemblyRegistry — the same per-wallet role, LEXICON's vault-registrar
-// seam; the reader sees one expression).
-const SORT_LABEL: Record<(typeof REGISTRY_SORTS)[number], string> = { article: "Article", name: "Name", block: "Most recent", registrar: "Registered by" };
+// ONE role, plainly phrased: the wallet that registered the row — both
+// contracts spell it `registeredBy` (ClauseRegistry and AssemblyRegistry,
+// the same per-wallet role); the reader sees one expression.
+const SORT_LABEL: Record<(typeof REGISTRY_SORTS)[number], string> = { article: "Article", name: "Name", block: "Most recent", registeredBy: "Registered by" };
 const STAKE_LABEL: Record<(typeof STAKE_VIEWS)[number], string> = { live: "Live stake", withdrawn: "Stake withdrawn", all: "All" };
 
 /** Row descriptions — the spec's / template's / profile's own short words. */
@@ -79,8 +78,8 @@ export function RegistryExplorer() {
             const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseId) ? "unavailable" : "resolving";
             out.push({
                 family: "clauses", key: `clause-${e.clauseId}`, id: e.clauseId, name, article, description, content,
-                registrar: e.registrar, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
-                text: [e.clauseId, name, description, article, e.registrar].join(" "),
+                registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
+                text: [e.clauseId, name, description, article, e.registeredBy].join(" "),
             });
         }
         for (const a of assemblies ?? []) {
@@ -88,8 +87,8 @@ export function RegistryExplorer() {
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
                 content: a.state === "loaded" ? "resolved" : "resolving",
-                registrar: a.author, blockNumber: a.blockNumber, stakeWithdrawn: false, clauses: a.clauses ?? [],
-                text: [a.slug, a.name, description, a.author, ...(a.clauses ?? [])].join(" "),
+                registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: false, clauses: a.clauses ?? [],
+                text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? [])].join(" "),
             });
         }
         for (const m of members ?? []) {
@@ -97,7 +96,7 @@ export function RegistryExplorer() {
             out.push({
                 family: "members", key: `member-${m.address.toLowerCase()}`, id: m.address, name, article: "", description: m.profile?.description ?? "",
                 content: m.profile ? "resolved" : "resolving",
-                registrar: m.address, blockNumber: m.blockNumber, stakeWithdrawn: m.stakeWithdrawn, clauses: [],
+                registeredBy: m.address, blockNumber: m.blockNumber, stakeWithdrawn: m.stakeWithdrawn, clauses: [],
                 text: [m.address, name, m.profile?.description ?? "", m.profile?.specialty ?? ""].join(" "),
             });
         }
@@ -194,11 +193,11 @@ export function RegistryExplorer() {
                 ) : null}
             </div>
 
-            {(state.registrar || state.clause) ? (
+            {(state.registeredBy || state.clause) ? (
                 <p className="text-sm text-ink-muted">
-                    {state.registrar ? <>Registered by <code className="font-mono">{truncateHex(state.registrar)}</code>{" "}</> : null}
+                    {state.registeredBy ? <>Registered by <code className="font-mono">{truncateHex(state.registeredBy)}</code>{" "}</> : null}
                     {state.clause ? <>Composing <code className="font-mono">{state.clause}</code>{" "}</> : null}
-                    <button type="button" className="underline" onClick={() => setState({ registrar: "", clause: "" })}>clear</button>
+                    <button type="button" className="underline" onClick={() => setState({ registeredBy: "", clause: "" })}>clear</button>
                 </p>
             ) : null}
 
@@ -212,7 +211,7 @@ export function RegistryExplorer() {
                     <p className="text-sm text-ink-body" data-testid="registry-count">
                         {selected.length} of {familyTotal} {FAMILY_LABEL[state.family].toLowerCase()}
                         {state.stake === "live" ? " with a live stake" : state.stake === "withdrawn" ? " whose stake was withdrawn" : ""}
-                        {state.q || state.article || state.registrar || state.clause ? " match" : ""}.
+                        {state.q || state.article || state.registeredBy || state.clause ? " match" : ""}.
                     </p>
                     {state.family === "clauses" ? <ClauseRows rows={selected} state={state} onFacet={setState} /> : null}
                     {state.family === "assemblies" ? <AssemblyRows rows={selected} assemblies={assemblies ?? []} onFacet={setState} /> : null}
@@ -259,8 +258,8 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                                         <button type="button" className="underline mr-2" onClick={() => onFacet({ family: "assemblies", clause: r.id })}>
                                             assemblies composing it
                                         </button>
-                                        <button type="button" className="underline" onClick={() => onFacet({ registrar: r.registrar })}>
-                                            registered by {truncateHex(r.registrar)}
+                                        <button type="button" className="underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
+                                            registered by {truncateHex(r.registeredBy)}
                                         </button>
                                         {r.stakeWithdrawn ? <span className="ml-2">(stake withdrawn)</span> : null}
                                         <ContentStateNote content={r.content} />
@@ -298,8 +297,8 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
                         {choice ? <AssemblyShapeLine choice={choice} /> : null}
                         <p className="text-xs text-ink-muted">
                             Registered by{" "}
-                            <button type="button" className="font-mono underline" onClick={() => onFacet({ registrar: r.registrar })}>
-                                {truncateHex(r.registrar)}
+                            <button type="button" className="font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
+                                {truncateHex(r.registeredBy)}
                             </button>
                             <ContentStateNote content={r.content} />
                         </p>

@@ -1,12 +1,12 @@
 /**
  * assembly-withdraw.devnet.spec.ts — the commits==resolves withdraw gate,
- * end to end: an assembly author must not reclaim the registration stake
+ * end to end: an assembly's registering wallet must not reclaim the registration stake
  * while a deal composed from the assembly is in flight; once every composed
  * deal settles, the reclaim goes through and the registry refunds exactly
  * the deposit.
  *
- * ONE spec, author-driven (not a scenario/runtime pair): the subject is the
- * AUTHOR's registration lifecycle — publish (staked intent) → verified
+ * ONE spec, registeredBy-driven (not a scenario/runtime pair): the subject is the
+ * REGISTERED_BY's registration lifecycle — publish (staked intent) → verified
  * in-flight deal blocks → atomic settle unblocks → reclaim + exact refund.
  * `AssemblyRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
  * nothing survives for a runtime spec to consume (the assembly ends
@@ -38,7 +38,7 @@
  *   commit  — buyer ↓ buyerBond, seller ↓ sellerBond, FigaroCore escrow ↑ both
  *   resolve — buyer net −payment, seller net +payment, escrow to baseline
  *   reclaim — registry ETH escrow ↓ exactly registrationDeposit;
- *             author ETH ↑ exactly (deposit − gasUsed×effectiveGasPrice)
+ *             registeredBy ETH ↑ exactly (deposit − gasUsed×effectiveGasPrice)
  *
  * Requires Anvil + ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
@@ -64,9 +64,9 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 
 // anvil[0] — the fixture's default buyer (serial project: no cross-spec races).
 const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
-// anvil[18] — the assembly AUTHOR, used by no other spec: each run leaves a
+// anvil[18] — the assembly REGISTERED_BY, used by no other spec: each run leaves a
 // fresh binding of theirs withdrawn.
-const AUTHOR = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 18 }).address as Hex;
+const REGISTERED_BY = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 18 }).address as Hex;
 // anvil[19] — the seller bound to the per-run probe assembly, used by no other
 // spec (its profile binding is rewritten every run).
 const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address as Hex;
@@ -74,7 +74,7 @@ const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address a
 test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)', () => {
     test.setTimeout(360_000);
 
-    test('author reclaims the stake only after every composed deal settles; registry refunds exactly the deposit', async ({ page }) => {
+    test('registeredBy reclaims the stake only after every composed deal settles; registry refunds exactly the deposit', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -85,19 +85,19 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
-        // ── PUBLISH (the author's staked intent): the author registers a
+        // ── PUBLISH (the registeredBy's staked intent): the registeredBy registers a
         //    per-run probe clause and publishes a single-node assembly carrying
         //    it through the REAL designer canvas. The nonce guarantees a fresh
         //    binding, so the once-only withdraw is drivable every run. The
         //    slug is the network's answer (publish receipt). ──
-        await gotoAsWallet(page, AUTHOR, '/?e2e=devnet');
+        await gotoAsWallet(page, REGISTERED_BY, '/?e2e=devnet');
         const { slug } = await publishProbeAssembly(page);
 
         // The binding this run anchors — compositionHash found by deriving each
         // AssemblyRegistered event's slug (the slug exists nowhere on-chain).
         const registered = await publicClient.getContractEvents({
             address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
-            args: { author: AUTHOR }, fromBlock: 0n,
+            args: { registeredBy: REGISTERED_BY }, fromBlock: 0n,
         });
         const binding = registered.find((e) => deriveAssemblySlug(e.args.compositionHash as Hex) === slug);
         expect(binding, 'the publish anchored a binding whose derived slug matches the receipt').toBeTruthy();
@@ -140,7 +140,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
 
         // ── COMMIT (the deal that must block the reclaim): buyer orders from
         //    the bound seller, signs, relays; seller accepts on /orders. This
-        //    context WITNESSES the agreement at checkout, so the author's gate
+        //    context WITNESSES the agreement at checkout, so the registeredBy's gate
         //    can verify it. ──
         const committedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
@@ -195,12 +195,12 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         expect(sellerBefore - sellerMid, 'seller balance decreased by the seller bond').toBe(sellerBond);
         expect(coreMid - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
-        // ── GATE, BLOCKED: the author opens their own published-assembly view.
-        //    The reclaim affordance renders (author-only) but is DISABLED, its
+        // ── GATE, BLOCKED: the registeredBy opens their own published-assembly view.
+        //    The reclaim affordance renders (registeredBy-only) but is DISABLED, its
         //    reason naming the ONE verified in-flight deal — the buyer's
         //    unresolved process, verified through this context's witnessed
         //    agreement. ──
-        await gotoAsWallet(page, AUTHOR, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
+        await gotoAsWallet(page, REGISTERED_BY, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
         await page.getByTestId('assembly-view-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const withdrawBtn = page.getByTestId('view-withdraw-button');
@@ -240,12 +240,12 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
 
-        // ── GATE, OPEN: back on the author view, the reclaim is enabled. Any
+        // ── GATE, OPEN: back on the registeredBy view, the reclaim is enabled. Any
         //    OTHER unresolved processes on the persisted devnet are foreign
         //    (party-private, never witnessed here) → the caveat strip renders
         //    iff such deals exist — informational, never blocking. Determined
         //    out of band from the same chain state the gate reads. ──
-        await gotoAsWallet(page, AUTHOR, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
+        await gotoAsWallet(page, REGISTERED_BY, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
         await page.getByTestId('assembly-view-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const reclaimBtn = page.getByTestId('view-withdraw-button');
@@ -279,7 +279,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         }
 
         // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands; the registry
-        //    escrow drops by exactly the deposit and the author's ETH rises by
+        //    escrow drops by exactly the deposit and the registeredBy's ETH rises by
         //    exactly deposit − gas (both read from the chain). ──
         const deposit = await publicClient.readContract({
             address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
@@ -287,7 +287,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         const blockBefore = await publicClient.getBlockNumber();
         const [registryEthBefore, authorEthBefore] = await Promise.all([
             publicClient.getBalance({ address: registry }),
-            publicClient.getBalance({ address: AUTHOR }),
+            publicClient.getBalance({ address: REGISTERED_BY }),
         ]);
 
         await reclaimBtn.click();
@@ -304,22 +304,22 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
             args: { compositionHash }, fromBlock: blockBefore + 1n,
         });
         expect(withdrawnEvents, 'exactly one DepositWithdrawn for this binding').toHaveLength(1);
-        expect((withdrawnEvents[0].args.author as string).toLowerCase()).toBe(AUTHOR.toLowerCase());
+        expect((withdrawnEvents[0].args.registeredBy as string).toLowerCase()).toBe(REGISTERED_BY.toLowerCase());
         expect(withdrawnEvents[0].args.amount, 'the event carries the exact deposit').toBe(deposit);
 
         // Registry escrow: exact, gas-free side.
         const registryEthAfter = await publicClient.getBalance({ address: registry });
         expect(registryEthBefore - registryEthAfter, 'registry escrow decreased by exactly the deposit').toBe(deposit);
 
-        // Author wallet: exact, gas-accounted — the withdraw is the author's
+        // RegisteredBy wallet: exact, gas-accounted — the withdraw is the registeredBy's
         // only transaction between the two reads.
         const receipt = await publicClient.getTransactionReceipt({ hash: withdrawnEvents[0].transactionHash });
         expect(receipt.status, 'the withdraw transaction succeeded').toBe('success');
         const gasCost = receipt.gasUsed * receipt.effectiveGasPrice;
-        const authorEthAfter = await publicClient.getBalance({ address: AUTHOR });
+        const authorEthAfter = await publicClient.getBalance({ address: REGISTERED_BY });
         expect(
             authorEthAfter - authorEthBefore,
-            'author received exactly the deposit minus gas',
+            'registeredBy received exactly the deposit minus gas',
         ).toBe(deposit - gasCost);
         test.info().annotations.push({
             type: 'DepositWithdrawn',

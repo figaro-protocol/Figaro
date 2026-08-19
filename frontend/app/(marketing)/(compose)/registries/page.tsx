@@ -13,7 +13,7 @@ import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
 export const metadata: Metadata = withOg({
     title: "Registries — Figaro Protocol",
     description:
-        "Search what is registered on the network: every clause, assembly, and member, read live from the three registries' event streams and IPFS — faceted by article, registrar, composed clause, and live stake. Nothing bundled, nothing ranked.",
+        "Search what is registered on the network: every clause, assembly, and member, read live from the three registries' event streams and IPFS — faceted by article, registeredBy, composed clause, and live stake. Nothing bundled, nothing ranked.",
 });
 
 export default function Registries() {

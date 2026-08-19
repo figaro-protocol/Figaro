@@ -5,7 +5,7 @@
  *
  * The on-chain event carries the readable `clauseId` and a `contentURI` (the
  * IPFS locator) directly — so both the human name and the spec location come
- * straight off the chain. No preimage table, no bundled spec set. `registrar` is
+ * straight off the chain. No preimage table, no bundled spec set. `registeredBy` is
  * indexed. (Grouping is `block.design.article` in the spec JSON — no on-chain group field.)
  *
  * Two readers:
@@ -53,10 +53,10 @@ export interface RegisteredClauseEvent {
     contentHash: `0x${string}`;
     /** IPFS locator for the spec; `loadClauseSpec` fetches the spec from here. */
     contentURI: string;
-    registrar: `0x${string}`;
+    registeredBy: `0x${string}`;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
-    /** True when the registrar reclaimed the registration deposit (K4:
+    /** True when the registeredBy reclaimed the registration deposit (K4:
      *  surfacing derives from the live stake — withdraw = de-surface for
      *  NEW compositions). The binding is permanent: committed agreements
      *  keep resolving the clause, so spec-loading NEVER filters on this;
@@ -79,7 +79,7 @@ function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): 
             version: row.version,
             contentHash: row.contentHash,
             contentURI: row.contentURI,
-            registrar: row.registrar,
+            registeredBy: row.registeredBy,
             blockNumber: BigInt(row.blockNumber),
             transactionHash: row.transactionHash ?? "0x",
             stakeWithdrawn: withdrawnKeys.has(idHash.toLowerCase()),
@@ -102,25 +102,25 @@ async function fetchWithdrawnClauseLogs(
 }
 
 /** Read all `ClauseRegistered` logs, raw, optionally narrowed to one
- *  registrar — the narrowing is client-side over the ONE cached scan. */
+ *  registeredBy — the narrowing is client-side over the ONE cached scan. */
 async function fetchRegisteredClauseLogs(
     client: typeof publicClient,
     addr: `0x${string}`,
-    registrar?: `0x${string}`,
+    registeredBy?: `0x${string}`,
 ): Promise<Log[]> {
     const logs = (await cachedGetContractEvents(client, client.chain?.id ?? activeChain.id, {
         address: addr,
         abi: CLAUSE_REGISTRY_ABI,
         eventName: "ClauseRegistered",
     })) as Log[];
-    if (!registrar) return logs;
-    const want = registrar.toLowerCase();
-    return logs.filter((l) => String((l as { args?: { registrar?: string } }).args?.registrar ?? "").toLowerCase() === want);
+    if (!registeredBy) return logs;
+    const want = registeredBy.toLowerCase();
+    return logs.filter((l) => String((l as { args?: { registeredBy?: string } }).args?.registeredBy ?? "").toLowerCase() === want);
 }
 
-/** Read all `ClauseRegistered` events filtered by registrar wallet. Sorts
+/** Read all `ClauseRegistered` events filtered by the registering wallet. Sorts
  *  most-recent block first. Call `refetch` to pick up newly registered clauses. */
-export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefined) {
+export function useRegisteredClausesByWallet(registeredBy: `0x${string}` | undefined) {
     const client = usePublicClient();
     const [data, setData] = useState<RegisteredClauseEvent[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +128,7 @@ export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefine
 
     useEffect(() => {
         const addr = CONTRACTS.clauseRegistry;
-        if (!client || !addr || addr.length !== 42 || !registrar) {
+        if (!client || !addr || addr.length !== 42 || !registeredBy) {
             setData(null);
             return;
         }
@@ -136,7 +136,7 @@ export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefine
         setIsLoading(true);
 
         Promise.all([
-            fetchRegisteredClauseLogs(client as typeof publicClient, addr, registrar),
+            fetchRegisteredClauseLogs(client as typeof publicClient, addr, registeredBy),
             fetchWithdrawnClauseLogs(client as typeof publicClient, addr),
         ])
             .then(([logs, withdrawn]) => {
@@ -156,7 +156,7 @@ export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefine
         return () => {
             cancelled = true;
         };
-    }, [client, registrar, generation]);
+    }, [client, registeredBy, generation]);
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
     const memoized = useMemo(() => ({ data, isLoading, refetch }), [data, isLoading, refetch]);
@@ -248,13 +248,13 @@ export function clauseRegisterRevertMessage(
 
 /** Map a decoded `withdrawDeposit` error name to a human-readable message, or
  *  null when unrecognized. The commits==resolves gate is off-chain/advisory
- *  (`useWithdrawGate`), so these are the on-chain guards only: registrar-only,
+ *  (`useWithdrawGate`), so these are the on-chain guards only: registeredBy-only,
  *  once-only, must-exist. Mirrors assembly `assemblyWithdrawRevertMessage`. */
 export function clauseWithdrawRevertMessage(errorName: string | undefined): string | null {
     switch (errorName) {
         case "AlreadyWithdrawn":
             return "This clause's registration stake has already been reclaimed.";
-        case "NotRegistrar":
+        case "NotRegisteredBy":
             return "Only the wallet that registered this clause can reclaim its stake.";
         case "NotRegistered":
             return "No registration binding exists for this clause.";
@@ -372,7 +372,7 @@ export function useRegisterClause() {
  * only moves the deposit and de-surfaces the clause for NEW compositions;
  * committed agreements keep resolving the clause. Gating on in-flight deals is
  * the caller's job via `useWithdrawGate` (advisory, off-chain); this hook is the
- * plain registrar-only write. Simulates first to surface a typed revert before
+ * plain registeredBy-only write. Simulates first to surface a typed revert before
  * opening the wallet, sends, then waits for a `success` receipt. Throws on any
  * failure.
  */

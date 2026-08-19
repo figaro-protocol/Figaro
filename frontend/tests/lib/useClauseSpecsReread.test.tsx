@@ -21,7 +21,7 @@ const event = (clauseId: string) => ({
     version: 1,
     contentHash: undefined,
     contentURI: `ipfs://${clauseId}`,
-    registrar: "0xA" as `0x${string}`,
+    registeredBy: "0xA" as `0x${string}`,
     blockNumber: 1n,
     stakeWithdrawn: false,
 });

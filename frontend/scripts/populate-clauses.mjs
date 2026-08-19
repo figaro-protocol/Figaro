@@ -37,7 +37,7 @@
  * registrar is an EOA (REGISTRAR_PRIVATE_KEY). When the registrar is a
  * multisig VAULT — the DAO's vault for the genesis seed set (endowment ruling
  * 2026-08-13: author-of-record is the literal registrar,
- * `RpgfMinter._isAuthor` reads `depositOf(...).registrar`) — set:
+ * `RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`) — set:
  *   REGISTRAR_VAULT    — the vault's address; it becomes msg.sender/registrar
  *                        via its approve/execute cycle, staking deposits from
  *                        its own ETH balance (fund it first)

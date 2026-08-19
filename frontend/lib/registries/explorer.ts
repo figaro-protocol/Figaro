@@ -3,13 +3,13 @@
  * protocol registries (clauses, assemblies, members) and lets a reader
  * search, facet, and sort what is registered. Everything here is DERIVED
  * from event streams and pinned content: the family, an article
- * (`block.design.article`), a registrar/author wallet, the live-stake
+ * (`block.design.article`), a registeredBy wallet, the live-stake
  * state, the clauses an assembly composes. Nothing is a stored taxonomy or
  * a bundled roster, and no sort key ranks by usage or popularity — that
  * would fork the UNIFORM reward's doctrine into the optics of a list.
  *
  * The URL query IS the state (permalinkable: `?family=clauses&article=…`,
- * `?registrar=0x…`, `?family=assemblies&clause=figaro-schedule`), parsed
+ * `?registeredBy=0x…`, `?family=assemblies&clause=figaro-schedule`), parsed
  * and serialised here so the page, the marketing count-links, and agents all
  * speak one shape.
  */
@@ -17,7 +17,7 @@
 export const REGISTRY_FAMILIES = ["clauses", "assemblies", "members"] as const;
 export type RegistryFamily = (typeof REGISTRY_FAMILIES)[number];
 
-export const REGISTRY_SORTS = ["article", "name", "block", "registrar"] as const;
+export const REGISTRY_SORTS = ["article", "name", "block", "registeredBy"] as const;
 type RegistrySort = (typeof REGISTRY_SORTS)[number];
 
 export const STAKE_VIEWS = ["live", "withdrawn", "all"] as const;
@@ -30,8 +30,8 @@ export interface ExplorerQuery {
     sort: RegistrySort;
     /** Clauses only — `block.design.article`. */
     article: string;
-    /** The registrar (clauses) / author (assemblies) / member wallet. */
-    registrar: string;
+    /** The registeredBy (clauses and assemblies) / member wallet. */
+    registeredBy: string;
     /** K4 de-surfacing: the DEFAULT view is the live stake set; withdrawn
      *  is an opt-in archival view, never a silent resurrection. */
     stake: StakeView;
@@ -60,7 +60,7 @@ export function parseExplorerQuery(params: URLSearchParams | Record<string, stri
         q: get("q").trim(),
         sort: pick(REGISTRY_SORTS, get("sort"), defaultSortFor(family)),
         article: get("article").trim(),
-        registrar: get("registrar").trim(),
+        registeredBy: get("registeredBy").trim(),
         stake: pick(STAKE_VIEWS, get("stake"), "live"),
         clause: get("clause").trim(),
     };
@@ -74,7 +74,7 @@ export function serializeExplorerQuery(state: ExplorerQuery): string {
     if (state.q) p.set("q", state.q);
     if (state.sort !== defaultSortFor(state.family)) p.set("sort", state.sort);
     if (state.article) p.set("article", state.article);
-    if (state.registrar) p.set("registrar", state.registrar);
+    if (state.registeredBy) p.set("registeredBy", state.registeredBy);
     if (state.stake !== "live") p.set("stake", state.stake);
     if (state.clause) p.set("clause", state.clause);
     return p.toString();
@@ -91,7 +91,7 @@ export interface ExplorerRow {
     /** Clauses: the clause id; assemblies: the slug; members: the address. */
     id: string;
     article: string;
-    registrar: string;
+    registeredBy: string;
     blockNumber: bigint;
     stakeWithdrawn: boolean;
     /** Assemblies: composed clause ids. Clauses/members: empty. */
@@ -111,7 +111,7 @@ function matchesQuery(row: ExplorerRow, state: ExplorerQuery): boolean {
     if (state.stake === "live" && row.stakeWithdrawn) return false;
     if (state.stake === "withdrawn" && !row.stakeWithdrawn) return false;
     if (state.article && row.article !== state.article) return false;
-    if (state.registrar && row.registrar.toLowerCase() !== state.registrar.toLowerCase()) return false;
+    if (state.registeredBy && row.registeredBy.toLowerCase() !== state.registeredBy.toLowerCase()) return false;
     if (state.clause && !row.clauses.includes(state.clause)) return false;
     if (state.q) {
         const needle = state.q.toLowerCase();
@@ -128,8 +128,8 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
         }
         case "name":
             return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
-        case "registrar":
-            return a.registrar.toLowerCase().localeCompare(b.registrar.toLowerCase()) || a.name.localeCompare(b.name);
+        case "registeredBy":
+            return a.registeredBy.toLowerCase().localeCompare(b.registeredBy.toLowerCase()) || a.name.localeCompare(b.name);
         case "block":
         default:
             // Most recent first; ties by name for a stable order.
@@ -144,12 +144,12 @@ export function selectRows<T extends ExplorerRow>(rows: readonly T[], state: Exp
 
 /** The distinct values a facet can take within a family — derived from the
  *  rows themselves (never a list the frontend knows in advance). */
-export function facetValues(rows: readonly ExplorerRow[], family: RegistryFamily, facet: "article" | "registrar"): string[] {
+export function facetValues(rows: readonly ExplorerRow[], family: RegistryFamily, facet: "article" | "registeredBy"): string[] {
     const set = new Set<string>();
     for (const r of rows) {
         if (r.family !== family) continue;
         const v = r[facet];
-        if (v) set.add(facet === "registrar" ? v.toLowerCase() : v);
+        if (v) set.add(facet === "registeredBy" ? v.toLowerCase() : v);
     }
     return Array.from(set).sort();
 }
@@ -162,10 +162,10 @@ export function explorerBreadcrumb(state: ExplorerQuery): Array<{ label: string;
         { label: "Builders", href: "/clauses" },
         { label: "Registries", href: "/registries" },
     ];
-    const facetLeaf = state.article || state.clause || state.registrar;
+    const facetLeaf = state.article || state.clause || state.registeredBy;
     if (facetLeaf) {
         trail.push({ label: familyLabel, href: `/registries?family=${state.family}` });
-        trail.push({ label: state.article || (state.clause ? `composing ${state.clause}` : state.registrar) });
+        trail.push({ label: state.article || (state.clause ? `composing ${state.clause}` : state.registeredBy) });
     } else {
         trail.push({ label: familyLabel });
     }

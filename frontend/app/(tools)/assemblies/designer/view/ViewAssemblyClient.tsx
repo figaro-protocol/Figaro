@@ -62,8 +62,8 @@ type ResolvedSource =
         name: string;
         orders: Order[];
         assemblyTemplate: AssemblyTemplate;
-        /** The on-chain binding — needed to gate the author-only reclaim. */
-        author: `0x${string}`;
+        /** The on-chain binding — needed to gate the registeredBy-only reclaim. */
+        registeredBy: `0x${string}`;
         compositionHash: `0x${string}`;
         /** Whether the registration stake has already been reclaimed. */
         stakeWithdrawn: boolean;
@@ -178,7 +178,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         }
                         continue;
                     }
-                    const log = logs[0] as { args: { contentURI?: string; compositionHash?: `0x${string}`; author?: `0x${string}` } };
+                    const log = logs[0] as { args: { contentURI?: string; compositionHash?: `0x${string}`; registeredBy?: `0x${string}` } };
                     const contentURI = (log.args.contentURI ?? "") as string;
                     const compositionHash = log.args.compositionHash as `0x${string}`;
                     const assemblyTemplate = await fetchAssemblyTemplate(
@@ -194,12 +194,12 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    // The binding is authoritative for author + withdrawn state
-                    // (the author is also an indexed event topic, but reading the
+                    // The binding is authoritative for registeredBy + withdrawn state
+                    // (registeredBy is also an indexed event topic, but reading the
                     // binding also tells us whether the stake was already
-                    // reclaimed). A read failure falls back to the event author
+                    // reclaimed). A read failure falls back to the event's registeredBy
                     // and a not-yet-withdrawn assumption.
-                    let author = log.args.author as `0x${string}`;
+                    let registeredBy = log.args.registeredBy as `0x${string}`;
                     let stakeWithdrawn = false;
                     try {
                         const binding = (await client.readContract({
@@ -208,10 +208,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             functionName: "bindings",
                             args: [compositionHash],
                         })) as readonly [`0x${string}`, bigint, boolean, string];
-                        author = binding[0];
+                        registeredBy = binding[0];
                         stakeWithdrawn = binding[2];
                     } catch {
-                        /* fall back to the event author, stakeWithdrawn=false */
+                        /* fall back to the event's registeredBy, stakeWithdrawn=false */
                     }
                     if (cancelled) return;
                     const orders = templateToOrders(assemblyTemplate);
@@ -222,7 +222,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         name: assemblyTemplate.name ?? slug,
                         orders,
                         assemblyTemplate,
-                        author,
+                        registeredBy,
                         compositionHash,
                         stakeWithdrawn,
                     });
@@ -386,7 +386,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // The connected wallet authored this published assembly — the reclaim
     // affordance (and its caveat strip) renders only for them.
     const isAuthor =
-        resolved.kind === "published" && !!address && hexEqual(resolved.author, address);
+        resolved.kind === "published" && !!address && hexEqual(resolved.registeredBy, address);
     // Unverifiable in-flight deals: informational only (party-private terms),
     // never disabling. Shown visibly while the reclaim is still available.
     const withdrawCaveat =

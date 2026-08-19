@@ -5,8 +5,8 @@
  * with a stake-reclaim affordance.
  *
  * Derived from chain events only: `useRegisteredClausesByWallet` filters
- * `ClauseRegistered` to `registrar == connected wallet` and folds
- * `DepositWithdrawn` in as `stakeWithdrawn` (the author-scoped read KEEPS
+ * `ClauseRegistered` to `registeredBy == connected wallet` and folds
+ * `DepositWithdrawn` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
  * withdrawn rows, flagged). The article is read from the warm clause-spec cache
  * (`block.design.article`) — never a stored field. Each row owns its own
  * `useWithdrawGate({ kind: "clause", clauseId })`, so the reclaim disables while
@@ -147,7 +147,7 @@ function ReclaimClauseRow({
                 <button
                     type="button"
                     onClick={handleWithdraw}
-                    // Registrar-only reclaim, gated by the advisory commits==resolves
+                    // RegisteredBy-only reclaim, gated by the advisory commits==resolves
                     // gate: disabled while any VERIFIED in-flight deal composes this
                     // clause, while the gate is unknown (loading / chain-read
                     // failure), or once already reclaimed. Unverified deals never

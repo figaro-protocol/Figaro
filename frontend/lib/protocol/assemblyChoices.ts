@@ -102,7 +102,7 @@ type AssemblyTemplateFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
     slug: string;
-    author: `0x${string}`;
+    registeredBy: `0x${string}`;
     compositionHash: `0x${string}`;
     contentURI: string;
     blockNumber: bigint;
@@ -120,7 +120,7 @@ export interface AssemblyChoice {
 }
 
 /**
- * Lists every published assembly (optionally filtered to one author)
+ * Lists every published assembly (optionally filtered to one registering wallet)
  * enriched with assemblyTemplate data — name, order count, clause set.
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
@@ -129,9 +129,9 @@ export interface AssemblyChoice {
  * strategy and one enriched shape means they can't drift apart.
  */
 export function useAssemblyChoices(
-    author?: `0x${string}` | undefined,
+    registeredBy?: `0x${string}` | undefined,
 ): { data: AssemblyChoice[] | null; isLoading: boolean; refetch: () => void } {
-    const { data: events, isLoading, refetch } = usePublishedAssemblies(author);
+    const { data: events, isLoading, refetch } = usePublishedAssemblies(registeredBy);
     // `activeChain` is env-determined; the read uses the standalone public
     // client bound to it. Wagmi's `useChainId` would reflect the connected
     // wallet's chain, which is irrelevant for a read against a fixed chain
@@ -225,7 +225,7 @@ export function useAssemblyChoices(
             const assemblyTemplate = entry?.assemblyTemplate ?? null;
             return {
                 slug: event.slug,
-                author: event.author,
+                registeredBy: event.registeredBy,
                 compositionHash: event.compositionHash,
                 contentURI: event.contentURI,
                 blockNumber: event.blockNumber,

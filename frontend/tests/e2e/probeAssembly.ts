@@ -131,19 +131,19 @@ export async function registerProbeClause(
     });
     if (already) return;
 
-    const registrar = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
-    const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const registeredBy = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
+    const wallet = createWalletClient({ account: registeredBy, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const { uri } = await pinJSONToIPFS(spec);
     // Digest over the CANONICAL form — the same convention populate-clauses.mjs
     // anchors and loadClauseSpec verifies after fetch.
     const contentHash = canonicalContentHash(spec);
     // Registering = staked intent (K4): the probe posts the registry's
-    // deposit like any registrar.
+    // deposit like any registeredBy.
     const deposit = await pub.readContract({
         address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
     const { request } = await pub.simulateContract({
-        account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
+        account: registeredBy.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',
         args: [clauseId, BigInt(version), contentHash, uri],
         value: deposit,

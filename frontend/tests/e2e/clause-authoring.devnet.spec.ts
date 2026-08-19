@@ -152,7 +152,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         // pre-click head (pattern 17), its tx receipt for the exact gas.
         const registeredEvents = await publicClient.getContractEvents({
             address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered',
-            args: { registrar: AUTHOR }, fromBlock: registerBlockBefore + 1n,
+            args: { registeredBy: AUTHOR }, fromBlock: registerBlockBefore + 1n,
         });
         expect(registeredEvents, 'exactly one ClauseRegistered for the author this run').toHaveLength(1);
         expect(registeredEvents[0].args.clauseId).toBe(CLAUSE_ID);
@@ -418,7 +418,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             args: { clauseId: idHash }, fromBlock: withdrawBlockBefore + 1n,
         });
         expect(withdrawnEvents, 'exactly one DepositWithdrawn for this binding').toHaveLength(1);
-        expect((withdrawnEvents[0].args.registrar as string).toLowerCase()).toBe(AUTHOR.toLowerCase());
+        expect((withdrawnEvents[0].args.registeredBy as string).toLowerCase()).toBe(AUTHOR.toLowerCase());
         expect(withdrawnEvents[0].args.amount, 'the event carries the exact deposit').toBe(deposit);
 
         const withdrawReceipt = await publicClient.getTransactionReceipt({ hash: withdrawnEvents[0].transactionHash });

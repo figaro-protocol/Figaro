@@ -73,7 +73,7 @@ async function waitForConnected(page: Page) {
 }
 
 // The author of record: populate-clauses registers every clause from anvil[0],
-// so it is the registrar the minter would pay — and the wallet whose /rewards
+// so it is the registeredBy the minter would pay — and the wallet whose /rewards
 // view shows the accrual.
 const AUTHOR = ANVIL_ACCOUNTS[0] as Hex;
 // Scenario-dedicated wallets: buyer anvil[18]; the three floor sellers are

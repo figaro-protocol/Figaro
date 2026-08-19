@@ -50,18 +50,18 @@ export interface PublishOutcome {
 
 /**
  * A single registered assembly, reconstructed from an `AssemblyRegistered`
- * event. compositionHash + author come from indexed topics; contentURI is
+ * event. compositionHash + registeredBy come from indexed topics; contentURI is
  * event data. The slug exists nowhere on-chain — it is derived here as a
  * pure function of compositionHash (`deriveAssemblySlug`).
  */
 interface PublishedAssembly {
     slug: string;
-    author: `0x${string}`;
+    registeredBy: `0x${string}`;
     compositionHash: `0x${string}`;
     contentURI: string;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
-    /** True when the author reclaimed the registration deposit (K4:
+    /** True when the registeredBy reclaimed the registration deposit (K4:
      *  surfacing derives from the live stake — withdraw = de-surface).
      *  The binding itself is permanent; committed processes are
      *  unaffected. */
@@ -101,13 +101,13 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
 /** Map an `AssemblyRegistry.withdrawDeposit` revert's errorName to a
  *  human-readable message. The commits==resolves gate is off-chain/advisory
  *  (the chain carries no composition provenance), so these are the on-chain
- *  guards only: author-only, once-only, must-exist. */
+ *  guards only: registeredBy-only, once-only, must-exist. */
 function assemblyWithdrawRevertMessage(errorName: string | undefined): string | null {
     switch (errorName) {
         case "AlreadyWithdrawn":
             return "This assembly's registration stake has already been reclaimed.";
-        case "NotAuthor":
-            return "Only the assembly's author can reclaim its registration stake.";
+        case "NotRegisteredBy":
+            return "Only the wallet that registered this assembly can reclaim its registration stake.";
         case "NotRegistered":
             return "No registration binding exists for this composition.";
         case "TransferFailed":
@@ -122,7 +122,7 @@ function assemblyWithdrawRevertMessage(errorName: string | undefined): string | 
  * The binding is permanent — withdraw only moves the deposit and de-surfaces
  * the assembly for NEW orders; committed processes keep resolving. Gating on
  * in-flight deals is the caller's job via `useWithdrawGate` (advisory,
- * off-chain); this hook is the plain author-only write. Simulates first to
+ * off-chain); this hook is the plain registeredBy-only write. Simulates first to
  * surface a typed revert before opening the wallet, sends, then waits for a
  * `success` receipt. Throws on any failure.
  */
@@ -135,22 +135,22 @@ export const useWithdrawAssembly = createUseWithdrawStake({
 
 /**
  * Reads `AssemblyRegistered` events from the registry, optionally filtered
- * to a specific author. Returns the most-recent-first list — the
+ * to a specific registering wallet. Returns the most-recent-first list — the
  * composition binding is first-write-wins on-chain, so duplicates per
  * compositionHash shouldn't occur, but if they do (e.g. a stale fork
  * chain), the most-recent block wins.
  *
  * SURFACING DERIVES FROM THE LIVE STAKE (K4): `DepositWithdrawn` events
- * fold in as `stakeWithdrawn`. The network-wide read (author === undefined
+ * fold in as `stakeWithdrawn`. The network-wide read (registeredBy === undefined
  * — every discovery/inventory/checkout surface) DROPS withdrawn
- * assemblies: withdraw = de-surface. The author-scoped read keeps them,
- * flagged — an author must still see (and reason about) their own
+ * assemblies: withdraw = de-surface. The registeredBy-scoped read keeps them,
+ * flagged — a registering wallet must still see (and reason about) their own
  * withdrawn bindings.
  *
  * No caching, no auto-refresh. To pick up a newly published assembly
  * after mount, call `refetch`.
  */
-export function usePublishedAssemblies(author: `0x${string}` | undefined) {
+export function usePublishedAssemblies(registeredBy: `0x${string}` | undefined) {
     const [data, setData] = useState<PublishedAssembly[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [generation, setGeneration] = useState(0);
@@ -171,7 +171,7 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         // config wagmi's provider is built from.
         // Both scans ride the event cache: from the deployment block,
         // adaptively chunked (public gateways cap `eth_getLogs` ranges),
-        // cached across renders; the author narrowing is client-side over
+        // cached across renders; the registeredBy narrowing is client-side over
         // the one cached scan.
         const chainId = publicClient.chain?.id ?? activeChain.id;
         Promise.all([
@@ -188,8 +188,8 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         ])
             .then(([allLogs, withdrawnLogsRaw]) => {
                 if (cancelled) return;
-                const logs = (author
-                    ? allLogs.filter((l) => hexEqual(String((l as { args?: { author?: string } }).args?.author ?? ""), author))
+                const logs = (registeredBy
+                    ? allLogs.filter((l) => hexEqual(String((l as { args?: { registeredBy?: string } }).args?.registeredBy ?? ""), registeredBy))
                     : allLogs) as Parameters<typeof parseAssemblyRegistryLogs>[0];
                 const withdrawnLogs = withdrawnLogsRaw as Parameters<typeof parseAssemblyRegistryLogs>[0];
                 // Decoding is the SDK's — one parse per family.
@@ -199,7 +199,7 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
                 );
                 const items: PublishedAssembly[] = parseAssemblyRegistryLogs(logs).registered.map((row) => ({
                     slug: deriveAssemblySlug(row.compositionHash),
-                    author: row.author,
+                    registeredBy: row.registeredBy,
                     compositionHash: row.compositionHash,
                     contentURI: row.contentURI,
                     blockNumber: BigInt(row.blockNumber),
@@ -208,9 +208,9 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
                 }));
                 items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
                 // Withdraw = de-surface: the network-wide read powers every
-                // surfacing path, so it drops withdrawn stakes; the author's
+                // surfacing path, so it drops withdrawn stakes; the registering wallet's
                 // own read keeps them, flagged.
-                setData(author ? items : items.filter((i) => !i.stakeWithdrawn));
+                setData(registeredBy ? items : items.filter((i) => !i.stakeWithdrawn));
                 setIsLoading(false);
             })
             .catch((err) => {
@@ -223,7 +223,7 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         return () => {
             cancelled = true;
         };
-    }, [author, generation]);
+    }, [registeredBy, generation]);
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
     return { data, isLoading, refetch };
@@ -232,7 +232,7 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
 /**
  * Convenience wrapper for the unfiltered "all published assemblies" case.
  * Used by surfaces like the onboarding assembly-picker that need every
- * registered assembly regardless of author.
+ * registered assembly regardless of who registered it.
  */
 export function useAllPublishedAssemblies() {
     return usePublishedAssemblies(undefined);
@@ -258,8 +258,8 @@ export async function fetchAssemblyTemplate(
         // the catch below → null) before the hash check would buffer it.
         const response = await fetchCappedContent(url);
         if (!response.ok) return null;
-        // Reviver-backed parse: the compositionHash proves author-INTEGRITY,
-        // not prototype-pollution safety — the author is untrusted (the
+        // Reviver-backed parse: the compositionHash proves AUTHOR-integrity,
+        // not prototype-pollution safety — the registering wallet is untrusted (the
         // AssemblyRegistry is permissionless), so a hostile template can be
         // anchored under its own hash and pass verification (audit 2026-07-23).
         // Matches the clause-spec path; strips __proto__/constructor/prototype.

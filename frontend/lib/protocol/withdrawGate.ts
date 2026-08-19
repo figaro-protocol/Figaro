@@ -3,7 +3,7 @@
 /**
  * withdrawGate — the ADVISORY, off-chain half of the K4 commits==resolves gate.
  *
- * A clause registrar or assembly author must not reclaim their registration
+ * A clause registeredBy or assembly author must not reclaim their registration
  * stake while deals COMPOSED FROM that clause or assembly are still in
  * flight. The whole join lives in `@figaro/sdk/derive` (`deriveInFlightOrders`
  * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does

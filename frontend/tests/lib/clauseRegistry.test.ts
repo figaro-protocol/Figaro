@@ -48,8 +48,8 @@ describe("clauseWithdrawRevertMessage", () => {
         expect(clauseWithdrawRevertMessage("AlreadyWithdrawn")).toMatch(/already been reclaimed/i);
     });
 
-    it("NotRegistrar names that only the registrar can reclaim", () => {
-        expect(clauseWithdrawRevertMessage("NotRegistrar")).toMatch(/only the wallet that registered/i);
+    it("NotRegisteredBy names that only the registeredBy can reclaim", () => {
+        expect(clauseWithdrawRevertMessage("NotRegisteredBy")).toMatch(/only the wallet that registered/i);
     });
 
     it("NotRegistered", () => {

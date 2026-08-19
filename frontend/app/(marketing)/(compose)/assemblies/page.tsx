@@ -61,7 +61,7 @@ export default function Assemblies() {
                     The registry keys every binding by <code>compositionHash</code>, and stores
                     exactly four things under it &mdash; call{" "}
                     <code>bindings(compositionHash)</code> yourself and you get back{" "}
-                    <code>(address author, uint64 registeredAt, bool depositWithdrawn, string
+                    <code>(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string
                     contentURI)</code>. That is the whole on-chain record. <strong>There is no
                     slug on chain, and no name.</strong> The <code>contentURI</code> points at
                     the off-chain assembly template, which carries the topology &mdash; the

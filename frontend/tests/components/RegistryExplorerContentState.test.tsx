@@ -23,7 +23,7 @@ import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
 
 const ev = (clauseId: string) => ({
     idHash: "0x01", clauseId, version: 1, contentHash: undefined, contentURI: `ipfs://${clauseId}`,
-    registrar: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", blockNumber: 1n, stakeWithdrawn: false,
+    registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", blockNumber: 1n, stakeWithdrawn: false,
 });
 
 describe("RegistryExplorer — the state of the content behind a pointer is shown, never mistaken for its absence", () => {
@@ -81,8 +81,8 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         searchParams = "family=assemblies";
         clauseEventsMock.mockReturnValue({ data: [], failed: false });
         assembliesMock.mockReturnValue({ data: [
-            { slug: "asm-fresh", author: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "error", name: "asm-fresh", agreementCount: null, clauses: null, assemblyTemplate: null },
-            { slug: "asm-named", author: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerised import chain", agreementCount: 3, clauses: [], assemblyTemplate: { name: "Containerised import chain", agreements: [] } },
+            { slug: "asm-fresh", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "error", name: "asm-fresh", agreementCount: null, clauses: null, assemblyTemplate: null },
+            { slug: "asm-named", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerised import chain", agreementCount: 3, clauses: [], assemblyTemplate: { name: "Containerised import chain", agreements: [] } },
         ] });
 
         render(<RegistryExplorer />);

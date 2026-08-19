@@ -79,7 +79,7 @@ const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author + registrar
+const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author + registeredBy
 const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }); // anvil[14] — shared only with rate-pricing (both self-establish idempotently)
 const SELLER = seller.address;
 

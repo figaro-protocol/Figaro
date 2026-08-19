@@ -12,7 +12,7 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 
 const EVENT = {
-    slug: "asm-fresh", author: "0xA", compositionHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,
+    slug: "asm-fresh", registeredBy: "0xA", compositionHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,
 };
 const TEMPLATE = { name: "Containerised import chain", agreements: [], assemblyClauses: {} };
 
