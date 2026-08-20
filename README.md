@@ -34,7 +34,9 @@ same payoff table the TLA⁺ invariants pin to the shipped kernel. A model
 checker explores reachable states and has no notion of choice; the models
 check that the payoffs the proof reasons over are exactly the payoffs the
 kernel produces, and Lean checks the choosing.
-No external audit yet; the SDK is not yet on npm. The public testnet
+No external audit yet. The SDK is published: `npm install @figaro-protocol/sdk`
+— with an npm provenance attestation binding every tarball to this repo and
+the release commit (`npm audit signatures` verifies it). The public testnet
 deployment is LIVE on Sepolia — every contract Etherscan-verified, addresses
 committed at [deployments/11155111.json](deployments/11155111.json), and both
 settlement universes exercised on the public chain: the direct-path e2e suite

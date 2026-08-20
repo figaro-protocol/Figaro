@@ -274,13 +274,18 @@ this repo.
 (refused unless it equals `sdk/package.json`'s version) type-checks, tests the pure
 surface (`SKIP_ANVIL=1`), builds, and runs `npm publish --provenance --access public`
 with `id-token: write` — npm records the Sigstore attestation binding the tarball to
-this repo, workflow, and commit (`npm audit signatures` verifies it downstream). The
-package is unpublished today; the maintainer's one-time acts before the first tag:
-create the npm organisation that owns the `@figaro` scope, mint a granular publish
-token for `@figaro-protocol/sdk` (2FA bypass for automation) as the repo secret `NPM_TOKEN`;
-after the first publish, optionally move to npm Trusted Publishing (OIDC — this
-workflow as the trusted publisher) and delete the token. Then `git tag sdk-v0.1.0 &&
-git push origin sdk-v0.1.0` (tags only on the maintainer's instruction).
+this repo, workflow, and commit (`npm audit signatures` verifies it downstream).
+
+**DONE 2026-08-20 — `@figaro-protocol/sdk@0.1.0` is LIVE on the registry** with the
+provenance attestation in the public transparency log (Sigstore logIndex
+2537865210). Scope note: npm's `figaro` scope was squatted, and converting the
+maintainer's personal account was refused on doctrine (no personal identity in
+public content) — the scope is the GitHub organisation's own name, which is the
+stronger identity anyway: the attestation binds to `github.com/figaro-protocol`, so
+scope and provenance agree. Verified downstream: cold `npm install` into a scratch
+project, `npm audit signatures` ("verified attestations"), root + `/signer` subpath
+import smoke. Remaining optional hardening: move to npm Trusted Publishing (OIDC —
+this workflow as the trusted publisher) and delete `NPM_TOKEN`.
 
 ### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
 
