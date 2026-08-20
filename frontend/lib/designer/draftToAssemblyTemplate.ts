@@ -9,13 +9,13 @@
  * anchors — a readout derived by a second, near-identical walk could disagree
  * with the assembly, which is worse than showing nothing.
  *
- * The walk itself is `buildAssemblyTemplate` (`@figaro/sdk`), fed by the
+ * The walk itself is `buildAssemblyTemplate` (`@figaro-protocol/sdk`), fed by the
  * live-cache `specSource()` adapter. It VERIFIES scope placement and throws on
  * a cold spec cache — both are loud failures the callers surface, never
  * silently swallowed here.
  */
 
-import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
+import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { extractErrorMessage } from "@/lib/shared/errors";

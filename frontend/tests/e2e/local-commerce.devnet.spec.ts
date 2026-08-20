@@ -96,10 +96,10 @@ import {
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { computeClauseKey } from '@figaro/sdk';
-import { ATTESTATION_COORDINATOR_ABI } from '@figaro/sdk';
-import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/sdk';
-import { encodeGeohash } from '@figaro/sdk/derive';
+import { computeClauseKey } from '@figaro-protocol/sdk';
+import { ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
+import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro-protocol/sdk';
+import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';

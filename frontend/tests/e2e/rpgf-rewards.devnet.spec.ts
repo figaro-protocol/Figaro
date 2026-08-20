@@ -49,12 +49,12 @@ import {
     generateSalt,
     sectionDataHash,
     type Agreement,
-} from '@figaro/sdk';
+} from '@figaro-protocol/sdk';
 import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { specSource } from '@/lib/shared/clauseSpecSource';
-import { RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro/sdk";
+import { RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
 import { primeClauseSpecs } from '../lib/primeClauseSpecs';
 import type { Page } from '@playwright/test';
 

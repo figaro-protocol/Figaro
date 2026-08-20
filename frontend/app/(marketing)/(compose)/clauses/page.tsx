@@ -37,7 +37,7 @@ export default function Clauses() {
             <MarketingSection title="Writing a clause.">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed list-disc pl-5">
                     <li>One canonical JSON document: <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, and the <code>fields</code> the clause carries.</li>
-                    <li>It passes the public well-formedness check &mdash; <code>parseClauseSpec</code> from <code>@figaro/sdk/clauses</code>, the same validator the registration form runs.</li>
+                    <li>It passes the public well-formedness check &mdash; <code>parseClauseSpec</code> from <code>@figaro-protocol/sdk/clauses</code>, the same validator the registration form runs.</li>
                     <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless, permanent per <code>(name, version)</code> &mdash; staking a small reclaimable ETH deposit (<Link href="/faq#builders-registries" className="underline">the registry terms in full</Link>).</li>
                     <li>Nothing else, ever: a clause is data, not code. No per-clause contract exists, and a registered clause is immediately usable in agreements and settleable.</li>
                 </ul>
@@ -48,7 +48,7 @@ export default function Clauses() {
                     The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: the registry explorer derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.
+                    For agents: the registry explorer derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro-protocol/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     There is no static roster of clauses &mdash; the count is derived, never stored. The canonical spec source for the reference set is the <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/</code> directory</a> in the repository; on chain, discover every registered clause (reference or third-party) the same way the registry explorer does &mdash; by reading the <code>ClauseRegistry</code>&apos;s <code>ClauseRegistered</code> event stream.
@@ -128,10 +128,10 @@ export default function Clauses() {
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
-                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the five hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the section a party would sign; <code>canonicalContentHash</code> is the registry anchor. All from <code>@figaro/sdk</code>, no chain needed:
+                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the five hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the section a party would sign; <code>canonicalContentHash</code> is the registry anchor. All from <code>@figaro-protocol/sdk</code>, no chain needed:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { parseProjectionHints, buildOrderAgreement,
-         canonicalContentHash } from "@figaro/sdk";
+         canonicalContentHash } from "@figaro-protocol/sdk";
 
 parseProjectionHints(spec);
 // → { article, scope, designFills, catalogueFills, profileFills }

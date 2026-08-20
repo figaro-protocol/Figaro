@@ -10,10 +10,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { FieldSpec } from "@figaro/sdk/clauses";
+import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
-import { encodeGeohash } from "@figaro/sdk/derive";
+import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 const geohashField: FieldSpec = {

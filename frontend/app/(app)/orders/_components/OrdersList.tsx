@@ -25,7 +25,7 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
-import { calculateBonds } from "@figaro/sdk";
+import { calculateBonds } from "@figaro-protocol/sdk";
 import { formatToken } from "@/lib/shared/utils";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -33,8 +33,8 @@ import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
-import { type CommitmentPayload } from "@figaro/sdk/agent";
-import { computeOrderHash } from "@figaro/sdk";
+import { type CommitmentPayload } from "@figaro-protocol/sdk/agent";
+import { computeOrderHash } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import {

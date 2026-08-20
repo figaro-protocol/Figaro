@@ -30,7 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createPublicClient, createWalletClient, encodeFunctionData, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { MEMBERS_REGISTRY_ABI, parseMemberProfileDocument } from '@figaro/sdk';
+import { MEMBERS_REGISTRY_ABI, parseMemberProfileDocument } from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, pinJSON, pinService, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';

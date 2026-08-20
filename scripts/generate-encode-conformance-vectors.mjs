@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // generate-encode-conformance-vectors.mjs — regenerate the expected-hex
 // conformance vectors in prover/clause/tests/encode_conformance.rs from
-// the LIVE Layer A encoder (`@figaro/sdk/clauses`, executed from sdk/dist).
+// the LIVE Layer A encoder (`@figaro-protocol/sdk/clauses`, executed from sdk/dist).
 //
 // The vectors lock the Rust clause engine to the TS encoder, so they are
 // generated FROM THE TS SIDE, never from Rust — regenerating from the side

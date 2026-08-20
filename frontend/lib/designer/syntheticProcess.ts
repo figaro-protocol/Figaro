@@ -15,7 +15,7 @@ import type { Hex } from "viem";
 import { Order, OrderState } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
-import { buildOrderAgreement } from "@figaro/sdk";
+import { buildOrderAgreement } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { saveAgreement } from "@/lib/designer/syntheticAgreementStore";
 import { draftOrderTopology } from "@/lib/shared/orderTopology";

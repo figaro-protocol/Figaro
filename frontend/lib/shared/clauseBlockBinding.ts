@@ -37,7 +37,7 @@
  * standard: zero, empty, or null — never absent), enforced by test.
  */
 
-import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro/sdk/clauses";
+import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 
 /** Drawer article a clause composes into on the designer canvas. A free-form
  *  string read straight from the spec — the set of articles and their grouping

@@ -21,7 +21,7 @@
  * modes, where the stage-1 witness form is the whole path.
  */
 import { fromHex, keccak256, toHex } from "viem";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import {
     decryptCeremonyBlob,
     requestCeremonyKey,

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { OrderState } from "@figaro/sdk";
+import { OrderState } from "@figaro-protocol/sdk";
 
 // Re-export so existing consumers keep working
 export { OrderState };
@@ -8,7 +8,7 @@ export { OrderState };
 // Domain types (exported for use in hooks, components, tests)
 // ---------------------------------------------------------------------------
 
-// The UI projection of the SDK `Order` (@figaro/sdk): same field names,
+// The UI projection of the SDK `Order` (@figaro-protocol/sdk): same field names,
 // deliberately looser types (plain strings; optionals for designer drafts)
 // plus UI-derived fields (bonds, topology edges, resolvedAt).
 export interface Order {

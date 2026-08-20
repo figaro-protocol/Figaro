@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk — Assembly identity
+ * @figaro-protocol/sdk — Assembly identity
  *
  * The AssemblyRegistry keys bindings by `compositionHash`, exactly as the
  * ClauseRegistry keys clauses by `keccak256(abi.encode(name, version))`
@@ -26,7 +26,7 @@ export interface TemplateAgreement {
      *  DAG, the design itself) and clauses declaring `block.design.fills`
      *  (the designer's tailoring — a pinned consent document, a pinned
      *  settlement token) whose values are the designer's fills.
-     *  `buildAssemblyTemplate` (exported from the root `@figaro/sdk`; defined
+     *  `buildAssemblyTemplate` (exported from the root `@figaro-protocol/sdk`; defined
      *  in `projection.ts`, not here) enforces this by construction. */
     clauses: Record<string, Record<string, unknown>>;
     /** clauseId → the registered VERSION composed, when it isn't 1. A clause's

@@ -15,7 +15,7 @@ import {
     computeOrderHash,
     restoreSignedProcessId as sdkRestoreSignedProcessId,
     type Commitment,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 
 function configuredCore(): `0x${string}` {

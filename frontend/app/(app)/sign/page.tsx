@@ -19,11 +19,11 @@ import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { validateCommitmentAgreement } from "@figaro/sdk";
+import { validateCommitmentAgreement } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
@@ -39,7 +39,7 @@ import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { maxUint256 } from "viem";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro/sdk/agent";
+import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 type ChannelStatus = "idle" | "listening" | "received" | "error";

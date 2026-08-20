@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk — Agent SDK for Figaro Protocol
+ * @figaro-protocol/sdk — Agent SDK for Figaro Protocol
  *
  * Standalone TypeScript SDK for reading, analyzing, and proposing
  * Figaro transactions. Works with any ECDSA signing key — human wallets
@@ -9,7 +9,7 @@
  *
  * @example
  * ```ts
- * import { fetchCoreEvents, reconstruct, buildCommitment, calculateBonds } from "@figaro/sdk";
+ * import { fetchCoreEvents, reconstruct, buildCommitment, calculateBonds } from "@figaro-protocol/sdk";
  *
  * // 1. Fetch events
  * const events = await fetchCoreEvents(client, addresses, 0n);

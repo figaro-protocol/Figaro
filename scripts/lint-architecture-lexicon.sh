@@ -85,13 +85,13 @@ for file in "$@"; do
         "retired: 'asymmetric bonding' is the mechanism; its N-party scaling face is 'cumulative upstream bonding' (each seller bonds against cumulative upstream value)."
     # 'core' is the KERNEL's reserved tier-word (FigaroCore, frozen). The SDK is
     # the protocol/runtime client and MUST NOT wear it — the package renamed
-    # @figaro/core → @figaro/sdk (98bf52d3) precisely so an agent can't
+    # @figaro/core → @figaro-protocol/sdk (98bf52d3) precisely so an agent can't
     # pattern-match "import from core ⇒ kernel-tier code" (the layer-collapse
     # gradient). Any reappearance as an import specifier / package name is drift.
     # Exempt = the doc that STATES the prohibition (LEXICON.md's Verifiers list
     # names the banned term to ban it, same as the sibling checks above).
     check "$file" FAIL "@figaro/core" '(^|/)(docs/LEXICON\.md)$' "" \
-        "retired package name: the SDK is '@figaro/sdk' — '@figaro/core' misapplies the kernel tier-word 'core' to the runtime client."
+        "retired package name: the SDK is '@figaro-protocol/sdk' — '@figaro/core' misapplies the kernel tier-word 'core' to the runtime client."
 
     # ── clause vocabulary (cross-tier) ─────────────────────────────
     # Canonical: the protocol registry family is the 'clause' (`ClauseRegistry`,

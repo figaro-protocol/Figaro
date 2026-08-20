@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the socket-backed account.
+ * @figaro-protocol/sdk/signer — the socket-backed account.
  *
  * The agent side of the boundary: a viem local account whose signing methods
  * round-trip the UNIX socket. Dropping it into the `WalletClient` the agent

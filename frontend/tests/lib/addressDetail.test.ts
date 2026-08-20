@@ -1,7 +1,7 @@
 /**
  * addressDetail — the private-address ceremony, lib tier.
  *
- * Real crypto end to end (@figaro/sdk/handoff ECDH + WebCrypto AES-GCM +
+ * Real crypto end to end (@figaro-protocol/sdk/handoff ECDH + WebCrypto AES-GCM +
  * EIP-191 wallet auth; no mocks): the seller requests (ephemeral pubkey out,
  * wallet-signed), the buyer answers (encrypted addressee block + own pubkey,
  * both wallet-signed), the seller decrypts; the anchored hash matches the
@@ -21,7 +21,7 @@ import {
 } from "@/lib/handoff/addressDetail";
 import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro/sdk/handoff";
+import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro-protocol/sdk/handoff";
 
 // Deterministic test wallets (anvil #1 / #2) — addresses DERIVED from the
 // keys so the wallet auth in every message is real and verifiable.

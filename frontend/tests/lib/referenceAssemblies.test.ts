@@ -11,7 +11,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
-import { planTemplateOrders, templateCompositionHash } from "@figaro/sdk";
+import { planTemplateOrders, templateCompositionHash } from "@figaro-protocol/sdk";
 import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 

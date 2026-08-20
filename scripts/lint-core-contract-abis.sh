@@ -10,7 +10,7 @@
 # Any OTHER contract ABI — dutch auction, offset receipt, attestation
 # coordinator, … — is a contract the frontend COMPOSES with, not core. It does
 # not belong in lib/kernel/, and no ABI may be DEFINED here (parseAbi). Non-core
-# ABIs live in lib/composition/ — NOT in core, and NOT in @figaro/sdk either
+# ABIs live in lib/composition/ — NOT in core, and NOT in @figaro-protocol/sdk either
 # (the SDK is core too). The composition layer carries no prior knowledge a
 # clause/assembly spec can't supply at runtime.
 #

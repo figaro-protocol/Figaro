@@ -7,7 +7,7 @@ the SP1 guest (`prover/program`; a real local Core proof of the canonical batch
 generates and verifies, ~1.2M cycles), the `FigaroBatchVerifier` Solidity
 contract (devnet-deployed by `Deploy.s.sol`; mainnet wires Succinct's gateway +
 program vkey by env), and the devnet sequencer (`prover/sequencer`) with its
-SDK client (`@figaro/sdk/agent` `SequencerClient`) — proven end to end by
+SDK client (`@figaro-protocol/sdk/agent` `SequencerClient`) — proven end to end by
 `sdk/tests/batch-e2e.test.ts`. The rebuild landed the "Prover Clause
 Architecture" end-state below on day one: the guest embeds NO clauses — specs
 are witness inputs bound on-chain to `ClauseRegistry.contentHashOf`, so the
@@ -171,7 +171,7 @@ EIP-712 signature verification with byte-exact parity to the Solidity kernel.
 
 **Generic clause engine** (`prover/clause/`): parse + validate + encode over
 any clause spec supplied as witness input — the Rust mirror of
-`@figaro/sdk/clauses` (Layer A), conformance-locked against the TypeScript
+`@figaro-protocol/sdk/clauses` (Layer A), conformance-locked against the TypeScript
 side. No per-clause code, by design ("Prover Clause Architecture" below).
 
 **SP1 guest program** (`prover/program/`): Executes `apply_batch()` in
@@ -468,7 +468,7 @@ changes.
 
 The engine exists once in each of the two lockstep languages: Rust
 (`prover/clause`, used by the SP1 guest and the sequencer) and
-TypeScript (`@figaro/sdk/clauses`, Layer A) — parse/validate behavior
+TypeScript (`@figaro-protocol/sdk/clauses`, Layer A) — parse/validate behavior
 locked by `prover/clause/tests/conformance.rs` against the canonical
 clause JSONs, encoding locked byte-for-byte against Layer A vectors by
 `prover/clause/tests/encode_conformance.rs`.

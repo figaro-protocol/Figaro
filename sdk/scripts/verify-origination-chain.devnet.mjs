@@ -17,9 +17,9 @@ import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
-import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro/sdk";
-import { parseClauseSpec } from "@figaro/sdk/clauses";
+import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
+import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro-protocol/sdk";
+import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(

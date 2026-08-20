@@ -1,7 +1,7 @@
 # Clause Validation Architecture
 
 Figaro validates clause content in ONE place: an off-chain TypeScript layer
-(`@figaro/sdk/clauses`, "Layer A") that parses the canonical JSON spec and
+(`@figaro-protocol/sdk/clauses`, "Layer A") that parses the canonical JSON spec and
 checks content against it. On the DIRECT path there is **no on-chain content
 validation** — the chain merkle-binds each attestation to its signed agreement
 and content-hashes the evidence (`AttestationCoordinator`), but validates no
@@ -38,7 +38,7 @@ and is wrong on sight.)
 
 ## Layer A — the off-chain validation layer (TypeScript)
 
-`@figaro/sdk/clauses` subpath:
+`@figaro-protocol/sdk/clauses` subpath:
 - `parseClauseSpec(json)` — meta-clause validator (closed subset of JSON Schema:
   `string`, `integer`, `bigint` (decimal string), `boolean`, `enum`, `array`,
   `object`). A string field's `format` is an **open axis**: any non-empty string
@@ -114,7 +114,7 @@ Two on-chain touch points remain:
   first-write-wins registry a compatibility claim is unverifiable data. If compatibility
   between two versions ever matters it is **derived** by diffing the two immutable specs,
   never stored in the author's numbering. Assemblies follow the same rule. The npm
-  packages (`@figaro/sdk`, the frontend) are conventional mutable-name software and keep
+  packages (`@figaro-protocol/sdk`, the frontend) are conventional mutable-name software and keep
   semver; the project as a whole versions by deployment lineage (V3/V4/V5). Three layers,
   three conventions — never collapsed.
 - **`AttestationCoordinator`** merkle-binds each attestation: it verifies an OZ-style
@@ -279,7 +279,7 @@ seller Y performed after X and before Z. It is *not* off-chain-only, either
 way. Like every agreement section, a committed topology section is a merkle
 leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
 `MerkleProof` (`computeSectionLeaf` / `buildSectionInclusionProof` in
-`sdk/src/agreement.ts` (@figaro/sdk)). "Not yet attested at runtime" is not
+`sdk/src/agreement.ts` (@figaro-protocol/sdk)). "Not yet attested at runtime" is not
 "no on-chain verification": the DAG is reconstructed off-chain by indexers
 reading topology sections from the signed agreement.
 

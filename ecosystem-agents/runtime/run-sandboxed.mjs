@@ -24,7 +24,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { validatePolicy } from "@figaro/sdk/signer";
+import { validatePolicy } from "@figaro-protocol/sdk/signer";
 import { startEgressProxy } from "./egress-proxy.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

@@ -34,10 +34,10 @@
  * via Zod / parseClauseSpec / hand-rolled checks.
  */
 
-import { strippingReviver } from "@figaro/sdk";
+import { strippingReviver } from "@figaro-protocol/sdk";
 
 /**
- * The reviver itself lives in `@figaro/sdk` (it guards the relayed
+ * The reviver itself lives in `@figaro-protocol/sdk` (it guards the relayed
  * commitment envelope there too); re-exported here so frontend callers that
  * need the original parse-error to propagate (rather than being swallowed
  * into `null` like `safeJsonParse`) can pass it directly:

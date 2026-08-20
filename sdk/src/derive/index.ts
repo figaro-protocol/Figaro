@@ -1,9 +1,9 @@
 /**
- * @figaro/sdk/derive — Clause-agnostic SDK utilities
+ * @figaro-protocol/sdk/derive — Clause-agnostic SDK utilities
  *
  * Generic helpers layered on top of the core SDK, carrying no knowledge of any
  * specific clause, mechanism, or provider.
- * Import via: `import { ... } from "@figaro/sdk/derive"`
+ * Import via: `import { ... } from "@figaro-protocol/sdk/derive"`
  *
  * Modules:
  * - Attestation: clause-agnostic event filtering (clause-key derivation is

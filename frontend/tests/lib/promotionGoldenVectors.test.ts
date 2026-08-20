@@ -2,16 +2,16 @@
  * SDK-promotion golden vectors — Phase 0 of the promotion plan.
  *
  * Freezes the exact bytes the LIVE frontend implementations produce for every
- * hash/serialization surface the promotion moves into `@figaro/sdk`:
+ * hash/serialization surface the promotion moves into `@figaro-protocol/sdk`:
  *
  *   1. ECDH shared secrets + AES-GCM wrap (lib/handoff/ecdh.ts — direction-
  *      sensitive; the wrap blob is frozen once and proven through unwrap,
  *      since encryption draws a random IV),
  *   2. CommitmentPayload serialization (lib/kernel/signedCommitment.ts —
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
- *   3. agreement projection → agreementHash (since Phase 3: @figaro/sdk
+ *   3. agreement projection → agreementHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, section sort),
- *   4. template composition → compositionHash (since Phase 3: @figaro/sdk
+ *   4. template composition → compositionHash (since Phase 3: @figaro-protocol/sdk
  *      projection — mandatory auto-fold, sparse-version normalization,
  *      editorial exclusion).
  *
@@ -27,19 +27,19 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import type { Agreement, Commitment } from "@figaro/sdk";
+import type { Agreement, Commitment } from "@figaro-protocol/sdk";
 import {
     deriveSharedSecretAsReceiver,
     deriveSharedSecretAsSender,
     unwrapWithSharedSecret,
     wrapWithSharedSecret,
-} from "@figaro/sdk/handoff";
+} from "@figaro-protocol/sdk/handoff";
 import {
     deserializeCommitmentPayload,
     serializeCommitmentPayload,
     type CommitmentPayload,
-} from "@figaro/sdk/agent";
-import { buildOrderAgreement, buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
+} from "@figaro-protocol/sdk/agent";
+import { buildOrderAgreement, buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { canonicalize } from "@/lib/shared/canonicalJson";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";

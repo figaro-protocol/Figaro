@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/agent — A2A coordination transport
+ * @figaro-protocol/sdk/agent — A2A coordination transport
  *
  * The Agent2Agent-shaped `CoordinationChannel`: the SAME one-method seam as
  * `HttpChannel` (transport is provider-agnostic by doctrine), speaking the

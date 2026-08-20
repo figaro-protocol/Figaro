@@ -12,7 +12,7 @@ import {
 } from "@/lib/composition/indexer";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
-import { decodeContentFromSpec } from "@figaro/sdk/clauses";
+import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { WitnessPinErasure } from "@/components/runtime/WitnessPinErasure";
 import {
     verifyOrderCommitSignatures,

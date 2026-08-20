@@ -3,7 +3,7 @@
 /**
  * RegisterClauseForm — paste a clause spec, validate it, register it.
  *
- * Validation is the generic Layer-A surface from `@figaro/sdk/clauses`
+ * Validation is the generic Layer-A surface from `@figaro-protocol/sdk/clauses`
  * (`parseClauseSpec`) — the SAME well-formedness gate that runs at sign-time,
  * no per-clause code and no bundled clause list. It runs live (walletless): a
  * visitor can check a spec without connecting. Only the register WRITE needs a
@@ -18,7 +18,7 @@
 import { useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
-import { parseClauseSpec, type SpecParseError } from "@figaro/sdk/clauses";
+import { parseClauseSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";

@@ -16,7 +16,7 @@
  * (`draftToAssemblyTemplate` — the one walk publish uses).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { serializeAssemblyTemplate } from "@figaro/sdk";
+import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import {
     loadNamedDraft,
     saveNamedDraft,

@@ -8,7 +8,7 @@
         "src/handoff/index.ts"
     ],
     "out": "../frontend/public/sdk-api",
-    "name": "@figaro/sdk",
+    "name": "@figaro-protocol/sdk",
     "readme": "README.md",
     "includeVersion": false,
     "excludePrivate": true,

@@ -11,7 +11,7 @@ tests.
 
 | Crate (dir) | Package name | What it is |
 |---|---|---|
-| `clause/` | `figaro-clause` | Generic clause-validation engine — the Rust mirror of `@figaro/sdk/clauses` (TS Layer A). Validates any clause spec supplied as witness input; used by both the guest program and the sequencer. No per-clause code, by design. |
+| `clause/` | `figaro-clause` | Generic clause-validation engine — the Rust mirror of `@figaro-protocol/sdk/clauses` (TS Layer A). Validates any clause spec supplied as witness input; used by both the guest program and the sequencer. No per-clause code, by design. |
 | `lib/` | `figaro-kernel` | The off-chain mirror of `FigaroCore`'s commit/resolve logic plus the witness gates (spec-identity substitution, content-hash mismatch, inclusion failure, attest-after-resolve) and the RPGF usage bridge. Depends on `figaro-clause` for Layer B content validation. |
 | `program/` | `figaro-prover` | The SP1 guest program — `figaro-kernel` compiled to the RISC-V zkVM target. Its compiled ELF's hash IS the verification key `FigaroBatchVerifier` pins as `programVKey`, so this crate's toolchain determines whether a proof verifies at all. |
 | `script/` | `figaro-prove-test` | Host-side proving harness (binary `prove`): SP1 mock-executor guest tests, in-VM gate-rejection tests, and (`SP1_REAL_PROOF=1`) a real local SP1 Core proof of the canonical batch. |

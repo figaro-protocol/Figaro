@@ -42,7 +42,7 @@ jobs:
                       package-lock.json
                       frontend/package-lock.json
 
-            # verify-guards.sh needs sdk/dist (knip/tsc resolve @figaro/sdk) and
+            # verify-guards.sh needs sdk/dist (knip/tsc resolve @figaro-protocol/sdk) and
             # both workspaces' node_modules. Build the SDK before installing the
             # frontend, which consumes it via file:../sdk.
             - name: Install + build SDK

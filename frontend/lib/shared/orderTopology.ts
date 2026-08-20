@@ -3,14 +3,14 @@
  *
  * Topology is organizational (UI reconstruction + seller coordination) and
  * independent of bonding, which is ALWAYS linear and on-chain. The generic
- * topological sort lives in `@figaro/sdk` (`topologicalOrder`) — the ONE home
+ * topological sort lives in `@figaro-protocol/sdk` (`topologicalOrder`) — the ONE home
  * the template walk, the sub-order plan, and the depth derivation below all
  * order by. Reading a COMMITTED order's edges out of its agreement's
  * mandatory topology section is a runtime concern and lives in
  * `lib/semantic/processTopology.ts`.
  */
 
-import { topologicalOrder } from "@figaro/sdk";
+import { topologicalOrder } from "@figaro-protocol/sdk";
 
 /** Topology read from first-class draft edges: order id → parent order ids.
  *  A designer draft ALWAYS carries its edges directly on the order

@@ -5,7 +5,7 @@
  *
  * A clause registeredBy or assembly author must not reclaim their registration
  * stake while deals COMPOSED FROM that clause or assembly are still in
- * flight. The whole join lives in `@figaro/sdk/derive` (`deriveInFlightOrders`
+ * flight. The whole join lives in `@figaro-protocol/sdk/derive` (`deriveInFlightOrders`
  * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does
  * ONLY the I/O the SDK deliberately does not: read the kernel event log from
  * the chain, then fetch each in-flight order's pinned agreement from IPFS. It
@@ -30,14 +30,14 @@ import {
     parseOrderCommittedLogs,
     parseOrderResolvedLogs,
     parseProcessResolvedLogs,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
     deriveAssemblyWithdrawGate,
     type InFlightAgreement,
     type WithdrawGate,
-} from "@figaro/sdk/derive";
+} from "@figaro-protocol/sdk/derive";
 import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";

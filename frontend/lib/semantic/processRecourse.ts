@@ -18,7 +18,7 @@
  * code, so a never-seen `figaro-arbitration-<provider>` surfaces its own forum.
  */
 import type { Order } from "@/lib/kernel/store";
-import type { Agreement } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 /** The article every dispute-resolution clause declares. Grouping is `article`'s

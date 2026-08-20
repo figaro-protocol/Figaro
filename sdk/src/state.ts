@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk — State Reconstructor
+ * @figaro-protocol/sdk — State Reconstructor
  *
  * Builds a typed in-memory process topology from parsed events.
  * Stateless by default — call reconstruct() with events, get state out.

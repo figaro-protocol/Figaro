@@ -29,7 +29,7 @@
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI, calculateBonds } from '@figaro/sdk';
+import { ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI, calculateBonds } from '@figaro-protocol/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import type { Page } from '@playwright/test';

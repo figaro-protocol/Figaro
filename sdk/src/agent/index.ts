@@ -1,12 +1,12 @@
 /**
- * @figaro/sdk/agent — Agent Coordination Layer
+ * @figaro-protocol/sdk/agent — Agent Coordination Layer
  *
- * Stateful agent loop on top of @figaro/sdk primitives.
+ * Stateful agent loop on top of @figaro-protocol/sdk primitives.
  * Provides: sync → analyze → propose → (approve) → execute.
  *
  * @example
  * ```ts
- * import { FigaroContext, proposeActions, ActionQueue, executeAction } from "@figaro/sdk/agent";
+ * import { FigaroContext, proposeActions, ActionQueue, executeAction } from "@figaro-protocol/sdk/agent";
  *
  * // 1. Sync
  * const ctx = new FigaroContext(publicClient, addresses);

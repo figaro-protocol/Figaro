@@ -14,11 +14,11 @@
  * nesting) live here so there is one source and no parallel taxonomy module.
  */
 
-import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro/sdk/clauses";
-import type { ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro/sdk";
+import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
+import type { ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
-import { computeClauseKey } from "@figaro/sdk";
+import { computeClauseKey } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";

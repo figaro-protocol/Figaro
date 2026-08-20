@@ -15,7 +15,7 @@
 //   4. optionally — given the buyer/seller signatures — whether each address
 //      really signed the commitment struct hash (`verifyCommitmentSignature`).
 //
-// Everything cryptographic comes from @figaro/sdk (the same primitives the
+// Everything cryptographic comes from @figaro-protocol/sdk (the same primitives the
 // kernel mirrors); this script only reads files, calls them, and prints.
 //
 // Usage:

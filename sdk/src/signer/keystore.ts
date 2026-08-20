@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — encrypted keystore custody (first custody mode).
+ * @figaro-protocol/sdk/signer — encrypted keystore custody (first custody mode).
  *
  * Web3 Secret Storage (V3) decrypt using node:crypto only — scrypt or
  * pbkdf2-sha256 KDF, aes-128-ctr cipher, keccak256 MAC. The key exists

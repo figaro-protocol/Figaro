@@ -264,7 +264,7 @@ with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet fi
 Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
 Custody posture and treasury discipline: `docs/FLORIN_TOKEN.md`.
 
-### Task 10: npm package provenance for `@figaro/sdk`
+### Task 10: npm package provenance for `@figaro-protocol/sdk`
 
 At publish (testnet tier): establish published-package ↔ audited-repo traceability
 (npm provenance attestation) so a consumer can verify the SDK on npm was built from
@@ -277,7 +277,7 @@ with `id-token: write` — npm records the Sigstore attestation binding the tarb
 this repo, workflow, and commit (`npm audit signatures` verifies it downstream). The
 package is unpublished today; the maintainer's one-time acts before the first tag:
 create the npm organisation that owns the `@figaro` scope, mint a granular publish
-token for `@figaro/sdk` (2FA bypass for automation) as the repo secret `NPM_TOKEN`;
+token for `@figaro-protocol/sdk` (2FA bypass for automation) as the repo secret `NPM_TOKEN`;
 after the first publish, optionally move to npm Trusted Publishing (OIDC — this
 workflow as the trusted publisher) and delete the token. Then `git tag sdk-v0.1.0 &&
 git push origin sdk-v0.1.0` (tags only on the maintainer's instruction).
@@ -581,7 +581,7 @@ external-audit gates above:
 - `next` npm advisories are static-export-INAPPLICABLE (this deploy ships no Next server: `output:'export'`, no middleware/rewrites/RSC-server/Server-Actions). They are build-host hygiene, NOT runtime blockers — do not conflate with the wagmi-2 gate (Task 7.2), which IS runtime-reachable. A patched 14.2.x bump is advisable for the build host.
 - Ecosystem-agent tier (`ecosystem-agents/`) ships ONLY behind the sandboxed signer
   runtime — **BUILT 2026-08-20, all four components** (`AI_AGENT_COORDINATION.md` § the
-  design owns per-component status): the policy signer (`@figaro/sdk/signer` — key
+  design owns per-component status): the policy signer (`@figaro-protocol/sdk/signer` — key
   custody, out-of-model gate, F1–F3), the operator re-pointed at the socket account,
   the data channel (`ecosystem-agents/runtime/` — framed, nonce-bounded fetches, F4 at
   the fetch boundary), and the sandbox wrapper (`run-sandboxed` — loopback-only OS
@@ -754,7 +754,7 @@ ecosystem-agent tier.
 | Directory | Contents |
 |---|---|
 | `frontend/` | The static-export client — routes, components, `lib/`, `shared/`, `public/_headers` |
-| `sdk/` | `@figaro/sdk` — all six subpath exports |
+| `sdk/` | `@figaro-protocol/sdk` — all six subpath exports |
 | `ecosystem-agents/` | Public ecosystem-agent specifications |
 
 ### Not freeze violations

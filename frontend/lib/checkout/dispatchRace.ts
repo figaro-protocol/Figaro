@@ -47,7 +47,7 @@ import {
     derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
     startRace,
     postOffer,
@@ -56,9 +56,9 @@ import {
     type CommitmentPayload,
     type RaceOutcome,
     type RaceRun,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
-import { generateSalt } from "@figaro/sdk";
+import { generateSalt } from "@figaro-protocol/sdk";
 import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";

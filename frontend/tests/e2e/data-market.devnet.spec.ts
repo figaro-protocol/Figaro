@@ -64,8 +64,8 @@ import {
     verifyInclusionProof,
     type AssemblyTemplate,
     type ReconstructedOrder,
-} from '@figaro/sdk';
-import { encodeContentFromSpec, parseClauseSpec } from '@figaro/sdk/clauses';
+} from '@figaro-protocol/sdk';
+import { encodeContentFromSpec, parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { LOCAL_ANVIL, RPC_URL, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';

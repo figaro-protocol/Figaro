@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the sandboxed signer runtime's protocol-shaped half.
+ * @figaro-protocol/sdk/signer — the sandboxed signer runtime's protocol-shaped half.
  *
  * The policy signer (daemon + out-of-model gate + keystore custody) and the
  * socket-backed account the agent layer consumes. Design and requirements:

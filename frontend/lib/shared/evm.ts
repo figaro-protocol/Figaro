@@ -3,7 +3,7 @@ import { isAddress, getAddress, type Address, type Hex } from "viem";
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 // The kernel's root-commitment sentinel — single home is the SDK.
-export { ZERO_PROCESS_ID } from "@figaro/sdk";
+export { ZERO_PROCESS_ID } from "@figaro-protocol/sdk";
 
 /**
  * Case-insensitive equality for any 0x-hex value: addresses (which

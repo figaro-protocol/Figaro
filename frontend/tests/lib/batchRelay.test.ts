@@ -23,7 +23,7 @@ import {
     computeCommitmentProcessId,
     computeOrderHash,
     type Commitment,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
     toSequencerCommitment,
     toSequencerSig,
@@ -31,7 +31,7 @@ import {
     fromSequencerCommitment,
     type SequencerBatchRef,
     type SequencerOrderView,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 
 const CHAIN_ID = 31337;
 /** Batch-path signatures are over the VERIFIER's domain, not FigaroCore's. */

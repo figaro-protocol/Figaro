@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/agent — Assembly instantiation + origination handshake
+ * @figaro-protocol/sdk/agent — Assembly instantiation + origination handshake
  *
  * Turns a DISCOVERED assembly (its template, hydrated off-SDK from the
  * registry's contentURI) into a signable root order, and drives the two-party

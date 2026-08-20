@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @figaro/sdk/signer — the daemon entrypoint.
+ * @figaro-protocol/sdk/signer — the daemon entrypoint.
  *
  *   figaro-signer --policy <policy.json> --keystore <keystore.json> \
  *     --socket <path> [--audit <file>] [--journal <file>]

@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk — swap-funded bond legs (WitnessSwapAndCommitCoordinator)
+ * @figaro-protocol/sdk — swap-funded bond legs (WitnessSwapAndCommitCoordinator)
  *
  * A party who does not hold the process bond currency funds their bond from a
  * token they do hold: the coordinator pulls the input token via a Permit2

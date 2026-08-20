@@ -26,7 +26,7 @@ import { expect } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, readLocalDeploymentConfig } from "./devnet-helpers";
-import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = "http://127.0.0.1:8545";

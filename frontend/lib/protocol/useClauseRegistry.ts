@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BaseError, ContractFunctionRevertedError, type Abi, type Log } from "viem";
-import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
+import { computeClauseKey, parseClauseRegistryLogs } from "@figaro-protocol/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
@@ -306,7 +306,7 @@ export interface RegisterClauseOutcome {
  * deposit ON DEMAND, simulate to surface a typed revert before opening the
  * wallet, send, then wait for a `success` receipt.
  *
- * The caller validates well-formedness via `@figaro/sdk/clauses`
+ * The caller validates well-formedness via `@figaro-protocol/sdk/clauses`
  * (`parseClauseSpec`) BEFORE calling this — the same off-chain gate that runs
  * at sign-time. This hook takes the already-parsed raw document and does the
  * pin + anchor. Throws on any failure (no wallet, IPFS down, wrong deposit,

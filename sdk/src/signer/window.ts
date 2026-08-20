@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the rolling spend window.
+ * @figaro-protocol/sdk/signer — the rolling spend window.
  *
  * An append-only JSONL journal the signer owns. Replayed at start so a
  * restart cannot reset the per-period ceiling — the window survives the

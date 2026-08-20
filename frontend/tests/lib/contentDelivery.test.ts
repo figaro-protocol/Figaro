@@ -11,7 +11,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { keccak256 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import {
     CONTENT_DELIVERY_MAX_BYTES,
     contentCeremonyId,

@@ -7,7 +7,7 @@
  */
 
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
-import type { CommitmentPayload } from "@figaro/sdk/agent";
+import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import type { BuyerFundingRequest, OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 
 // ── Identity ────────────────────────────────────────────────────

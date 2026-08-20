@@ -25,7 +25,7 @@
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
-import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { discoverAnchoredAssemblies, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';

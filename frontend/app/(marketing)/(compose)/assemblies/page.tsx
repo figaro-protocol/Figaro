@@ -73,7 +73,7 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The slug is <em>derived</em>, not stored: it is a pure function of the
                     composition hash, <code>deriveAssemblySlug(compositionHash)</code> from{" "}
-                    <code>@figaro/sdk</code>, and every reader computes it from the registry
+                    <code>@figaro-protocol/sdk</code>, and every reader computes it from the registry
                     event&apos;s own hash. Identical compositions produce an identical slug;
                     distinct compositions, distinct slugs. Nothing is squattable, because no
                     caller-chosen name exists to squat.
@@ -144,10 +144,10 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
                     Both halves are pure functions you can call without a chain &mdash;{" "}
                     <code>templateCompositionHash(template)</code> and{" "}
-                    <code>deriveAssemblySlug(hash)</code>, from <code>@figaro/sdk</code>:
+                    <code>deriveAssemblySlug(hash)</code>, from <code>@figaro-protocol/sdk</code>:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { templateCompositionHash,
-         deriveAssemblySlug } from "@figaro/sdk";
+         deriveAssemblySlug } from "@figaro-protocol/sdk";
 
 const h = templateCompositionHash(template);   // the registry key
 deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
@@ -168,7 +168,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                     <code>AssemblyRegistry</code>&apos;s <code>AssemblyRegistered</code> event stream.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: the registry explorer derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
+                    For agents: the registry explorer derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro-protocol/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
                 </p>
                 <RegistryCountLink family="assemblies" />
             </MarketingSection>

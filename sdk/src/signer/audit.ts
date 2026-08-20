@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the audit log.
+ * @figaro-protocol/sdk/signer — the audit log.
  *
  * Every request, decision, and reason, appended as one JSONL line to a file
  * the owner reads. The log carries WHAT was decided and WHY — never key

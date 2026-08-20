@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/agent — Context Provider
+ * @figaro-protocol/sdk/agent — Context Provider
  *
  * Stateful wrapper around Topology + PublicClient.
  * Handles sync, incremental updates, and structured briefings.

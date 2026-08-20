@@ -153,7 +153,7 @@ canonical across kernel + SDK + frontend, rivals (`agreementId`/`Ref`/`Cid`) = 0
 - **`lint-architecture-lexicon.sh`** — cross-cutting retired terms (`process tree`, `progressive
   collateralization`, `schema`, `order-received`, the retired clause tiers `category-1/2` /
   `manifest-only`, `manifest` as off-chain-content, and the retired package name `@figaro/core` —
-  the SDK is `@figaro/sdk`) plus the token-concept coupling bans
+  the SDK is `@figaro-protocol/sdk`) plus the token-concept coupling bans
   (florin↔`figaro-utility-token`, florin↔privileged-token, "florin structural demand"); grows
   tier by tier.
 - **synonym-audit reasoning pass (future work)** — a reasoning backstop for a *newly-minted* synonym

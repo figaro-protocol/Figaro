@@ -1,5 +1,5 @@
 //! Figaro clause engine — Rust mirror of the TypeScript Layer A
-//! (`@figaro/sdk/clauses`).
+//! (`@figaro-protocol/sdk/clauses`).
 //!
 //! The clause stack has two live surfaces that MUST agree on
 //! interpretation:

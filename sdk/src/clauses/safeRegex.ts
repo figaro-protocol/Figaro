@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/clauses — ReDoS-safe matching of an attacker-authored clause
+ * @figaro-protocol/sdk/clauses — ReDoS-safe matching of an attacker-authored clause
  * `pattern` against a value.
  *
  * A clause spec is permissionless: any author registers one, so a field's

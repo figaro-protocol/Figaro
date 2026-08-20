@@ -72,9 +72,9 @@ import {
     buildCommitment, buildDomain, calculateBonds, computeOrderHash,
     computeAgreementHash, computeClauseKey, canonicalize,
     fetchUsageClaimContext, buildUsageClaims,
-} from '@figaro/sdk';
-import { parseClauseSpec, encodeContentFromSpec } from '@figaro/sdk/clauses';
-import { SequencerClient } from '@figaro/sdk/agent';
+} from '@figaro-protocol/sdk';
+import { parseClauseSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
+import { SequencerClient } from '@figaro-protocol/sdk/agent';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

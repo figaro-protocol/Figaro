@@ -13,7 +13,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { readLocalDeploymentConfig } from './devnet-helpers';

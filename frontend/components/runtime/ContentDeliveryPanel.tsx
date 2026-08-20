@@ -24,8 +24,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { keccak256 } from "viem";
 import { getHandoffChannel } from "@/lib/handoff/channel";
-import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro/sdk/handoff";
-import { encodeContentFromSpec } from "@figaro/sdk/clauses";
+import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro-protocol/sdk/handoff";
+import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import {
     CONTENT_DELIVERY_MAX_BYTES,
     contentCeremonyId,
@@ -38,7 +38,7 @@ import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { attestationAnchorMatches, type AnchorVerificationState } from "@/components/runtime/handoffAnchorState";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { computeClauseKey } from "@figaro/sdk";
+import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";

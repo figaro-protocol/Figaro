@@ -22,7 +22,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
-import type { Agreement } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
 
 // Singleton cache shared by every consumer. localStorage is the cache's
 // own write surface (via hydrateAgreement); this Map gives React a reactive

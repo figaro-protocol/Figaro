@@ -13,7 +13,7 @@ import {
     profileValuesFor,
     resolveSubOrderPricing,
     type SubOrderPricing,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import {

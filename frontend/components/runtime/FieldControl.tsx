@@ -34,8 +34,8 @@
  */
 
 import { useRef } from "react";
-import type { FieldSpec } from "@figaro/sdk/clauses";
-import { safeRegexTest } from "@figaro/sdk/clauses";
+import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
+import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { getFieldFormatInput } from "@/components/runtime/fieldFormatInputs";
 

@@ -26,7 +26,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
-import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing } from "@figaro/sdk";
+import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { deriveAgreementGroups, deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
@@ -43,7 +43,7 @@ import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
-import { calculateBonds } from "@figaro/sdk";
+import { calculateBonds } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -53,7 +53,7 @@ import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
-import type { FieldSpec } from "@figaro/sdk/clauses";
+import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 
 interface Props {
     sellerAddress: string;

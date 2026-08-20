@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/handoff — the handoff coordination wire protocol.
+ * @figaro-protocol/sdk/handoff — the handoff coordination wire protocol.
  *
  * The message shapes and channel interface two wallets speak when a pending
  * commitment (or a sealed handoff key) travels between them at runtime:
@@ -13,7 +13,7 @@
  *   4. The receiver unwraps → holds the AES key → opens the sealed payload.
  *
  * `COMMITMENT_PAYLOAD` carries the serialized `CommitmentPayload` (see
- * `@figaro/sdk/agent`) INLINE, capped at `MAX_COMMITMENT_PAYLOAD_BYTES` by
+ * `@figaro-protocol/sdk/agent`) INLINE, capped at `MAX_COMMITMENT_PAYLOAD_BYTES` by
  * receivers — never a public IPFS pin: the payload can carry the private
  * plaintext the counterparty needs to sign, and a plaintext pin is the exact
  * leak this channel exists to close (audit F Arm 2 replaced the earlier
@@ -25,7 +25,7 @@
  * `HandoffChannel` is the transport seam — implementations (XMTP, an
  * in-memory test bus, an inert links-only null channel) live with the
  * consumer; the SDK owns only the wire vocabulary. Distinct from
- * `@figaro/sdk/agent`'s `CoordinationChannel`, which carries the bilateral
+ * `@figaro-protocol/sdk/agent`'s `CoordinationChannel`, which carries the bilateral
  * OFFER exchange between agents — different exchange, different vocabulary.
  */
 
@@ -74,7 +74,7 @@ export interface EcdhWrappedKeyMessage {
 }
 
 /** Commitment payload delivery: the JSON-serialized `CommitmentPayload`
- *  (`@figaro/sdk/agent`) carried INLINE over the coordination channel, which is
+ *  (`@figaro-protocol/sdk/agent`) carried INLINE over the coordination channel, which is
  *  end-to-end encrypted (XMTP). Carrying it here rather than pinning it to
  *  public IPFS is the paid-edge seam's transport half: a `private`-disposition
  *  section's plaintext reaches only the counterparty, never a public surface

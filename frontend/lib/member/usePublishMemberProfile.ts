@@ -46,7 +46,7 @@ import type {
     UnitSystem,
 } from "@/lib/member/memberCatalogueMetadata";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
-import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
+import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
 export interface PublishMemberInput {
     /** Profile fields collected by the wizard, MINUS the catalogueURI

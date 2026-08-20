@@ -20,7 +20,7 @@
  * never a clause.
  */
 import { encodeFunctionData, decodeFunctionResult, parseAbi, type PublicClient } from "viem";
-import type { Hex } from "@figaro/sdk";
+import type { Hex } from "@figaro-protocol/sdk";
 import { getSwapQuoter } from "@/lib/composition/contracts";
 
 type SwapVenueKind = "devnet-mock" | "uniswap-v3";

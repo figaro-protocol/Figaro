@@ -49,12 +49,12 @@ awaits the external audit. The release gates live in
 - **Kernel** — `FigaroCore.sol`: two state-changing entry points (`commit`, `resolveProcess`), 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, members registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
 - **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
-- **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
+- **SDK** — `@figaro-protocol/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Papers** — web-native academic papers at `frontend/app/(marketing)/papers/<slug>/page.tsx` (server-rendered KaTeX)
 - **The data layer** — the platform allocation inverted: the aggregate map (registries, usage, the settlement record) is public and derivable by anyone; the private detail lives sealed in merkle-committed agreements, disclosed or sold only on its owner's terms. See `docs/PUBLIC_GRAPH_MODEL.md` and the site's Data page.
-- **Two agent worlds, one clean seam.** *(1) Maintainer-private repo agents* — `.claude/agents/`, the Claude Code subagents used to build Figaro itself (reviews, audits, runtime UI, communications, operations). *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet via `@figaro/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-designer`. See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
+- **Two agent worlds, one clean seam.** *(1) Maintainer-private repo agents* — `.claude/agents/`, the Claude Code subagents used to build Figaro itself (reviews, audits, runtime UI, communications, operations). *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet via `@figaro-protocol/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-designer`. See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
 
 Start with [docs/README.md](docs/README.md) for the doc map + reading path.
 Building on it? `sdk/README.md` opens with **Your first commit** — a linear
@@ -84,7 +84,7 @@ prover/                     Rust proof apparatus (guest kernel, clause engine, s
 certora/                    Certora CVL specs (6) + token-ops inventory
 script/ + scripts/          Foundry deploy scripts + the sanctioned .sh wrappers/guards
 
-sdk/                        TypeScript SDK (@figaro/sdk)
+sdk/                        TypeScript SDK (@figaro-protocol/sdk)
   src/                      Event parsing, state reconstruction, agent coordination
   tests/                    Vitest tests
 

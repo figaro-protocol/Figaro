@@ -41,8 +41,8 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
-import { encodeContentFromSpec, parseClauseSpec } from '@figaro/sdk/clauses';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { encodeContentFromSpec, parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';

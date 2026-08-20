@@ -5,7 +5,7 @@ import { useReadContract } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
 import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
-import type { CommitmentPayload } from "@figaro/sdk/agent";
+import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";

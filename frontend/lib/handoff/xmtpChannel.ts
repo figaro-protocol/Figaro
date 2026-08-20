@@ -6,7 +6,7 @@
  * `import('./xmtpChannel')` inside the channel factory.
  */
 
-import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "@figaro/sdk/handoff";
+import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "@figaro-protocol/sdk/handoff";
 import { keccak256 } from "viem";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import { hexToBytes } from "@/lib/shared/evm";

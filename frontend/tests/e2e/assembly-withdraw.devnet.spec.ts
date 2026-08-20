@@ -47,7 +47,7 @@ import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { publishProbeAssembly } from './probeAssembly';
-import { calculateBonds, ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
+import { calculateBonds, ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 

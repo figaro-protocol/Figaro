@@ -76,7 +76,7 @@ cannot hold it (the kernel is frozen, with no composition provenance), so the
 gate has no on-chain hardening. There is **no on-chain
 clause-content validation** — registration anchors the spec locator (IPFS) +
 content hash, and well-formedness is the off-chain Layer-A SDK's job
-(`@figaro/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
+(`@figaro-protocol/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
 
 Note: `figaro-topology` is an **agreement-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement, and it's
@@ -229,7 +229,7 @@ one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2
 **witness** signature. Deploy-wired on devnet (`Deploy.s.sol`, composed with
 `MockWitnessPermit2` + `MockUniversalRouter`; mainnet uses the canonical Permit2
 and a real venue) and UI-wired: the checkout's swap-funding panel builds the
-witness-signed buyer leg (`@figaro/sdk` `buildSwapWitnessTypedData` +
+witness-signed buyer leg (`@figaro-protocol/sdk` `buildSwapWitnessTypedData` +
 `lib/composition/swapFunding.ts`), and any payload carrying one broadcasts
 through `swapAndCommit` (`lib/composition/useSwapAndCommitActions.ts`). Its two
 token-forwarding sites are tracked in `certora/token-ops.inventory` — both

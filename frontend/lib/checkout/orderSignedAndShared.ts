@@ -17,7 +17,7 @@ import {
     serializeCommitmentPayload,
     MAX_COMMITMENT_PAYLOAD_BYTES,
     type CommitmentPayload,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 
 interface WalletMessageSigner {

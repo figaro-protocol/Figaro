@@ -33,9 +33,9 @@ import {
     type Commitment,
     type Hex,
     type SwapFundingLeg,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { assertAgreementSignable } from "@figaro/sdk";
+import { assertAgreementSignable } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -50,7 +50,7 @@ import {
 } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { relayCommitmentPayload } from "@/lib/handoff/relayChannel";
-import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro/sdk/agent";
+import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
 import { quoteFundingLeg, signFundingLeg } from "@/lib/composition/swapFunding";

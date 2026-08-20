@@ -6,7 +6,7 @@
  *      sends its public key across the order edge (wallet-signed).
  *   2. The ANSWERING party derives the ECDH shared secret, AES-GCM-encrypts
  *      its payload, and sends (own public key, encrypted blob) back — both
- *      wallet-signed; the transport proves nothing (`@figaro/sdk/handoff`
+ *      wallet-signed; the transport proves nothing (`@figaro-protocol/sdk/handoff`
  *      auth), so the receiver verifies each message's signature against the
  *      order's counterparty and skips failures.
  *   3. The receiver derives the same secret and decrypts.
@@ -24,8 +24,8 @@ import {
     ecdhAuthText,
     unwrapWithSharedSecret,
     wrapWithSharedSecret,
-} from "@figaro/sdk/handoff";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+} from "@figaro-protocol/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { getOrCreateOrderEcdhKeypair } from "./ecdh";
 
 /** Wallet capability that signs the EIP-191 auth text for a channel message

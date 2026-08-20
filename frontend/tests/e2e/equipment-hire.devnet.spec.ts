@@ -36,7 +36,7 @@
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { calculateBonds } from '@figaro/sdk';
+import { calculateBonds } from '@figaro-protocol/sdk';
 import {
     discoverAnchoredAssemblies,
     referenceAssemblySlugWithLiveCurrency,

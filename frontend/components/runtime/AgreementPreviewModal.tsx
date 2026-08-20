@@ -19,7 +19,7 @@
  * the provider opens this modal and resolves your promise on confirm/cancel.
  */
 
-import type { Commitment, Agreement } from "@figaro/sdk";
+import type { Commitment, Agreement } from "@figaro-protocol/sdk";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";

@@ -22,7 +22,7 @@
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
-import { calculateBonds } from '@figaro/sdk';
+import { calculateBonds } from '@figaro-protocol/sdk';
 import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 

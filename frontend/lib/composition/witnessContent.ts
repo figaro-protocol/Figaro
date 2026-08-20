@@ -23,7 +23,7 @@
  * payload.
  */
 import { bytesToHex, hexToBytes, keccak256, type Hex } from "viem";
-import { contentFieldsFor } from "@figaro/sdk/clauses";
+import { contentFieldsFor } from "@figaro-protocol/sdk/clauses";
 import {
     DEFAULT_IPFS_SERVICE,
     fetchCappedBinary,

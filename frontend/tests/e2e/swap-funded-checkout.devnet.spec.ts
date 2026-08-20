@@ -28,7 +28,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createWalletClient, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { calculateBonds } from '@figaro/sdk';
+import { calculateBonds } from '@figaro-protocol/sdk';
 import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';

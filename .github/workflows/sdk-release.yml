@@ -1,6 +1,6 @@
 name: SDK Release
 
-# Publishes `@figaro/sdk` to npm WITH PROVENANCE (RELEASE_READINESS Task 10):
+# Publishes `@figaro-protocol/sdk` to npm WITH PROVENANCE (RELEASE_READINESS Task 10):
 # the npm registry records a Sigstore attestation binding the published tarball
 # to this repository, this workflow file, and the exact commit — so a consumer
 # can verify the package on npm was built from the audited tree
@@ -12,7 +12,7 @@ name: SDK Release
 #
 # What the maintainer sets up once (never automated — account acts):
 #   1. an npm organisation that owns the `@figaro` scope;
-#   2. a GRANULAR access token on that account, scoped to publish `@figaro/sdk`,
+#   2. a GRANULAR access token on that account, scoped to publish `@figaro-protocol/sdk`,
 #      with "bypass 2FA" for automation, stored as the repo secret `NPM_TOKEN`;
 #   3. after the first publish, optionally replace the token with npm Trusted
 #      Publishing (OIDC — no long-lived secret; configure this workflow as the

@@ -58,7 +58,7 @@ import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { makeProbeSpec } from './probeAssembly';
-import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);

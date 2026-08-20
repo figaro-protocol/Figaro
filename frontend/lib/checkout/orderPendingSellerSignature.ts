@@ -22,12 +22,12 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@figaro/sdk/agent";
-import { verifyCommitmentSignature } from "@figaro/sdk";
+} from "@figaro-protocol/sdk/agent";
+import { verifyCommitmentSignature } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { type IpfsService } from "@/lib/shared/ipfsService";
-import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro/sdk/agent";
+import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
 import type { Hex } from "viem";
 
 /**

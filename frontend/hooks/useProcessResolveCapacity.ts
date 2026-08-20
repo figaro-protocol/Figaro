@@ -2,7 +2,7 @@
 
 /**
  * useProcessResolveCapacity — a live process's position against the chain's
- * atomic-resolve ceiling (`readProcessResolveCapacity`, @figaro/sdk).
+ * atomic-resolve ceiling (`readProcessResolveCapacity`, @figaro-protocol/sdk).
  *
  * Null while loading, for root commitments (zero processId — a fresh process
  * trivially fits), and on read failure (resolved-empty = absence; no
@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { readProcessResolveCapacity, type ProcessResolveCapacity } from "@figaro/sdk";
+import { readProcessResolveCapacity, type ProcessResolveCapacity } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 

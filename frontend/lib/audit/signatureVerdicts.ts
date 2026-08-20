@@ -56,7 +56,7 @@ import {
     computeOrderHash,
     verifyCommitmentSignature,
     type Commitment,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
 import { getBatchVerifier } from "@/lib/composition/contracts";

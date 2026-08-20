@@ -22,10 +22,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createPublicClient, createWalletClient, http } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-// Protocol canonicals come from the SDK (@figaro/sdk, file:../sdk): the
+// Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk): the
 // registry + ERC-20 ABIs, the canonical-JSON convention, and the assembly
 // identity (compositionHash + slug). Nothing is re-implemented here.
-import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro/sdk';
+import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     ASSEMBLIES_DIR, CLAUSES_DIR, LOCAL_ANVIL, anchorAssembly, pinFile, pinJSON,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,

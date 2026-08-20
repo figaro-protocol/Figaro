@@ -16,8 +16,8 @@ import {
     type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, templateCompositionHash } from '@figaro/sdk';
-import { encodeGeohash } from '@figaro/sdk/derive';
+import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, templateCompositionHash } from '@figaro-protocol/sdk';
+import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
 

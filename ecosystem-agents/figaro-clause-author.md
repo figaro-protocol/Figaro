@@ -64,7 +64,7 @@ belongs to, or argue for a new one.
 
 ## Step 3 — Design the Layer-A spec
 
-A closed JSON-Schema-subset per `parseClauseSpec` (`@figaro/sdk/clauses` — the
+A closed JSON-Schema-subset per `parseClauseSpec` (`@figaro-protocol/sdk/clauses` — the
 published Layer-A source of truth): field
 types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint`, `boolean`, `enum`, `array`, `object`; per-stage overrides via
@@ -79,7 +79,7 @@ of them. Write the spec as the **user's** document (their workspace).
 registered `contentHash` covers the WHOLE canonical document, `block` included — so every
 character of `block` moves the clause's anchor. And five hints inside it change what a
 designer's *template* and a party's *signed agreement* actually contain. Verify what your
-spec declares with `parseProjectionHints(spec)` from `@figaro/sdk` — it returns exactly
+spec declares with `parseProjectionHints(spec)` from `@figaro-protocol/sdk` — it returns exactly
 these five and nothing else:
 
 | Hint | Reaches | Effect |
@@ -105,7 +105,7 @@ never makes sense: declaring content pins (`design.fills`, or
 (`"attestations"`). A process-log section is committed as an unvalidated empty anchor —
 content validation is SKIPPED for it and field defaults are never filled — so a pin declared
 there is content the author believes is checked and that in fact never is. Run
-`warnProcessLogFillsTrap(spec)` from `@figaro/sdk` on the finished spec and read back what
+`warnProcessLogFillsTrap(spec)` from `@figaro-protocol/sdk` on the finished spec and read back what
 it returns to the user. It is a WARNING, not a parse error, and deliberately so: the article
 is free text and a third-party clause may declare anything, and `"attestations"` is correct
 and meaningful for a genuine process-log clause — the two shipped ones,
@@ -125,7 +125,7 @@ Public statement of all of this, for the user: `/clauses` § "What the hash cove
 ## Step 4 — Validate off-chain
 
 Run the Layer-A validator (`parseClauseSpec`) and the content encoder round-trip from
-`@figaro/sdk/clauses`. Off-chain well-formedness is the gate that runs at author time and
+`@figaro-protocol/sdk/clauses`. Off-chain well-formedness is the gate that runs at author time and
 before every signature; get it green here. It is not the only content check that exists —
 the batched, proof-based settlement path re-validates the clause IN-PROOF against the
 spec anchored at `ClauseRegistry.contentHashOf`, so a spec that is wrong is wrong on both
@@ -142,7 +142,7 @@ validator — there is none, by design.
    hashes and read the dedup guard:
 
    ```ts
-   import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro/sdk";
+   import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
    const key = computeClauseKey(clauseId, version); // keccak256(abi.encode(clauseId, version))
    const taken = await client.readContract({
@@ -155,7 +155,7 @@ validator — there is none, by design.
    `registered` takes the bytes32 KEY, not the name. Do this first; everything after it
    costs the user something.
 1. Pin the **canonical serialization** to IPFS → `contentURI` (`ipfs://…`): the exact
-   bytes `canonicalize(spec)` returns from `@figaro/sdk` (sorted keys at every depth, no
+   bytes `canonicalize(spec)` returns from `@figaro-protocol/sdk` (sorted keys at every depth, no
    whitespace). Anchor `contentHash = canonicalContentHash(spec)`. Pin *that* serialization,
    never a pretty-printed variant — readers re-canonicalize the fetched JSON and recompute
    the hash to verify it, so pinned bytes must equal the hashed form or the clause never
@@ -235,7 +235,7 @@ requirements ON it, written now so the floor is never mistaken for the ceiling.)
 - **F5 — Tool scoping (no raw host Bash).** `tools: Read, Bash` grants full host filesystem
   write, arbitrary network egress, and secret reads — strictly LARGER than every boundary
   this spec asserts ("never the repo", "only the user's own workspace", "register under the
-  user's key"). The runtime MUST scope execution to the specific `@figaro/sdk/clauses`
+  user's key"). The runtime MUST scope execution to the specific `@figaro-protocol/sdk/clauses`
   validation, canonicalization, IPFS pinning, and `ClauseRegistry.registerClause` calls this
   role needs — a sandboxed workspace with a command allowlist, not raw shell. The sandbox
   MUST deny: writes to the Figaro repo (`clauses/`, `src/`, `frontend/`, docs — or any path

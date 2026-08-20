@@ -1,4 +1,4 @@
-import { geohashCommonPrefix } from "@figaro/sdk/derive";
+import { geohashCommonPrefix } from "@figaro-protocol/sdk/derive";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { hexEqual } from "@/lib/shared/evm";

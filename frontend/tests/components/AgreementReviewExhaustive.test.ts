@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Agreement } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
 import { commerceLineItems, fullDumpSections } from "@/components/runtime/AgreementReview";
 
 /**

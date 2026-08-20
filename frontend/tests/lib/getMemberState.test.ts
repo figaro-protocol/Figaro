@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeAbiParameters, encodeEventTopics } from 'viem';
-import { MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { getMemberState } from '@/lib/protocol/membersRegistryIndexer';
 
 // ── Mock the event cache and contract addresses ───────────────────────────────

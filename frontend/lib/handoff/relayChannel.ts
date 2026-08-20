@@ -22,7 +22,7 @@ import {
     MAX_COMMITMENT_PAYLOAD_BYTES,
     type CommitmentPayload,
     type CoordinationChannel,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
 import type { HandoffMessagingService, WalletMessageSigner } from "./handoffMessagingService";
 

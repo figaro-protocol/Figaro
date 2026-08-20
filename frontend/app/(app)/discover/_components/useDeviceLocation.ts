@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { encodeGeohash } from "@figaro/sdk/derive";
+import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 
 type DeviceLocationStatus = "idle" | "requesting" | "granted" | "denied" | "unsupported" | "error";
 

@@ -1,5 +1,5 @@
 {
-    "name": "@figaro/sdk",
+    "name": "@figaro-protocol/sdk",
     "version": "0.1.0",
     "description": "Figaro Protocol SDK \u2014 event parsing, state reconstruction, EIP-712 commitment building, and bond math for agents and integrations.",
     "type": "module",

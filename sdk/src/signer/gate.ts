@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the policy gate.
+ * @figaro-protocol/sdk/signer — the policy gate.
  *
  * Pure decision core: policy + request + window state in, decision out. No
  * I/O, no key, no clock reads — the daemon supplies `nowSecs` and the spent

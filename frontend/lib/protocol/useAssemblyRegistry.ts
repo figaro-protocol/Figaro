@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
 import { hexEqual, isValidAddress } from "@/lib/shared/evm";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { parseAssemblyRegistryLogs } from "@figaro/sdk";
+import { parseAssemblyRegistryLogs } from "@figaro-protocol/sdk";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";

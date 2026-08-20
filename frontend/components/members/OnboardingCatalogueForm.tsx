@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
-import { listRateQuantitySources } from "@figaro/sdk";
+import { listRateQuantitySources } from "@figaro-protocol/sdk";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";

@@ -9,7 +9,7 @@
  * `links-only` floor WITHOUT loading or initializing the XMTP chunk, while
  * callers keep the same interface they use for the mock and XMTP channels.
  */
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 
 /** Create an inert coordination channel (no push transport). */
 export function createNullChannel(): HandoffChannel {

@@ -5,8 +5,8 @@
  * Everything here is derived from (payload, address) alone — never stored,
  * never React — so the sign page renders it and a test drives it directly.
  */
-import type { CommitmentPayload, QuoteRequestTerms } from "@figaro/sdk/agent";
-import { calculateBonds } from "@figaro/sdk";
+import type { CommitmentPayload, QuoteRequestTerms } from "@figaro-protocol/sdk/agent";
+import { calculateBonds } from "@figaro-protocol/sdk";
 import { hexEqual, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 
 export interface SignState {

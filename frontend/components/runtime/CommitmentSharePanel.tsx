@@ -22,7 +22,7 @@ import {
 import {
     serializeCommitmentPayload,
     type CommitmentPayload,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";

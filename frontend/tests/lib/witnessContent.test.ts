@@ -11,7 +11,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { hexToBytes, keccak256, toHex, type Hex } from "viem";
-import { encodeContentFromSpec } from "@figaro/sdk/clauses";
+import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import {
     fetchWitnessContent,
     publishWitnessContent,

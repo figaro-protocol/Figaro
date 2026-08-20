@@ -9,7 +9,7 @@
  * denomination, never the order's denomination itself. This module quotes the
  * venue, builds the exact swap route, and produces the witness-signed
  * `SwapFundingLeg` that rides the `CommitmentPayload` to whoever broadcasts
- * (`@figaro/sdk` owns the leg type and the Permit2 witness typed data; the
+ * (`@figaro-protocol/sdk` owns the leg type and the Permit2 witness typed data; the
  * route is bound into the signing party's signature, so the relayer is
  * untrusted by construction).
  *
@@ -23,7 +23,7 @@ import {
     buildSwapWitnessTypedData,
     type Hex,
     type SwapFundingLeg,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
     getPermit2,
     getSwapRouter,

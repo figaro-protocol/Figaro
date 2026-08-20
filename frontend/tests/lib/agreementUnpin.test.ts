@@ -8,7 +8,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { fetchAgreement, publishAgreement, unpinAgreement } from "@/lib/kernel/agreementFetch";
-import type { Agreement } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
 
 const AGREEMENT: Agreement = {
     version: "a1",

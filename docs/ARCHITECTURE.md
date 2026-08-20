@@ -121,7 +121,7 @@ learns from what only the parties learn. The rule, stated once and owned here:
 > requires** (a neighborhood geohash cell, never a door; a keccak hash, never the
 > plaintext). **A datum only the counterparty operationally needs** (door-grade address,
 > addressee name, floor, instructions) **travels the per-order ECDH channel**
-> (`@figaro/sdk/handoff`), **with a wallet-signed hash anchor on-chain for tamper
+> (`@figaro-protocol/sdk/handoff`), **with a wallet-signed hash anchor on-chain for tamper
 > evidence** — revealed to a dispute forum by the party who holds it, verifiable against
 > the anchor, and crypto-shreddable until then.
 

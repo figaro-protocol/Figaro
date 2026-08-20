@@ -14,8 +14,8 @@ import {
     type Agreement,
     type AgreementSection,
     computeSectionLeaf,
-} from "@figaro/sdk";
-import { sectionByField } from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
+import { sectionByField } from "@figaro-protocol/sdk";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -87,7 +87,7 @@ export interface ContractDocument extends ExtractedDocument {
 function clauseFromSection(section: AgreementSection): ContractClause {
     // Agreements are cleartext: the IPFS body carries every section in full and
     // the audit recomputes each leaf. Selective disclosure, if ever needed, is a
-    // merkle inclusion proof (@figaro/sdk), not a redacted distribution form.
+    // merkle inclusion proof (@figaro-protocol/sdk), not a redacted distribution form.
     return {
         clauseKey: section.clause,
         title: clauseTitle(section.clause),

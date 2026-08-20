@@ -1,7 +1,7 @@
 /** Semantic-model union types — the runtime semantic layer's canonical
  *  taxonomy for truth class, mechanism risk, scope, and roles. */
 
-import type { FieldSpec } from "@figaro/sdk/clauses";
+import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 type TruthClass =

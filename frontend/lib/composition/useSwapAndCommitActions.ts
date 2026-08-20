@@ -18,7 +18,7 @@ import {
     type Commitment,
     type Hex,
     type SwapFundingLeg,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { activeChain } from "@/lib/shared/chains";
 import { getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
 

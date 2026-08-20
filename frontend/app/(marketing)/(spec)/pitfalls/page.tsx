@@ -48,13 +48,13 @@ export default function Pitfalls() {
                     <LabelledListRow label="Sub-order approval" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">There is no incremental approval anywhere in the kernel.</strong> Every <code>commit</code> &mdash; root or sub-order &mdash; pulls the FULL per-order bond, not the increment over what the kernel already holds; approve only the increment and <code>commit</code> reverts inside the settlement token with <code>ERC20InsufficientAllowance</code>. Use <code>calculateSubOrderApproval</code>, never hand-roll the number.
                         <div className="mt-2 text-sm">
-                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/bonds.ts" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; <code>calculateSubOrderApproval</code> in <code>@figaro/sdk</code></a>
+                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/bonds.ts" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; <code>calculateSubOrderApproval</code> in <code>@figaro-protocol/sdk</code></a>
                         </div>
                     </LabelledListRow>
                     <LabelledListRow label="Provenance pre-merge" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">Compute <code>compositionHash</code> from the raw template, never from checkout-filled clauses.</strong> Call <code>templateCompositionHash(template)</code> before any buyer, catalogue, or pricing fill touches it &mdash; compute it after merging those fills instead and you get a hash that never matches what <code>AssemblyRegistry</code> anchored.
                         <div className="mt-2 text-sm">
-                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; <code>fillProvenanceSection</code> in <code>@figaro/sdk</code></a>
+                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; <code>fillProvenanceSection</code> in <code>@figaro-protocol/sdk</code></a>
                             {" · "}
                             <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">what the composition hash covers</Link>
                         </div>

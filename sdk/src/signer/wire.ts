@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the socket wire protocol.
+ * @figaro-protocol/sdk/signer — the socket wire protocol.
  *
  * JSON lines over a local UNIX socket: one request object per line, one
  * response per line, correlated by `id`. Quantities travel as strings

@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import type { WatchContractEventOnLogsParameter } from "viem";
-import { calculateBonds } from "@figaro/sdk";
+import { calculateBonds } from "@figaro-protocol/sdk";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
 import { hexEqual } from "@/lib/shared/evm";

@@ -28,7 +28,7 @@ import path from 'path';
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { createPublicClient, createWalletClient, formatUnits, http, parseAbi, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import { E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, scanContractEvents, waitForConnected } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
-import { FLORIN_TOKEN_ABI } from "@figaro/sdk";
+import { FLORIN_TOKEN_ABI } from "@figaro-protocol/sdk";
 import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";

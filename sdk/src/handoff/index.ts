@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/handoff — the runtime handoff wire protocol.
+ * @figaro-protocol/sdk/handoff — the runtime handoff wire protocol.
  *
  * Message shapes + the `HandoffChannel` transport seam (`./messages.js`) and
  * the ECDH key agreement + AES-GCM wrapping they carry (`./ecdh.js`). A

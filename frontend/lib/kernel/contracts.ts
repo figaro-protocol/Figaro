@@ -1,7 +1,7 @@
 // Figaro contract configuration — the five core Figaro contracts only
 // (kernel + Clause/Seller/Assembly registries + florin token) plus the agnostic ERC-20.
 // Addresses are sourced from environment variables written by deploy-local.sh.
-// ABIs are re-exported from the canonical SDK (@figaro/sdk).
+// ABIs are re-exported from the canonical SDK (@figaro-protocol/sdk).
 // Any contract the frontend merely COMPOSES with lives in lib/composition/, not here.
 //
 // NOTE: Next.js/SWC only statically inlines process.env.NEXT_PUBLIC_* with
@@ -13,7 +13,7 @@ import { isValidAddress } from "@/lib/shared/evm";
 
 // The frontend imports these from here (the allowlisted core-ABI home). The
 // other core ABIs (FLORIN_TOKEN_ABI) are equally canonical but currently imported
-// straight from `@figaro/sdk` by their few consumers — they re-enter this
+// straight from `@figaro-protocol/sdk` by their few consumers — they re-enter this
 // barrel the moment a frontend surface needs them from here.
 export {
     CORE_ABI,
@@ -23,7 +23,7 @@ export {
     // Generic ERC-20 standard — the core contracts are ERC-20-agnostic, so the
     // token interface lives here too. Not a Figaro contract.
     ERC20_ABI,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 
 export interface ChainConfig {
     /** FigaroCore — the kernel. */

@@ -17,7 +17,7 @@
  * never-seen format degrades to text.
  */
 import type { ComponentType } from "react";
-import type { FieldSpec, FieldDisposition } from "@figaro/sdk/clauses";
+import type { FieldSpec, FieldDisposition } from "@figaro-protocol/sdk/clauses";
 import { GeohashFieldInput } from "@/components/runtime/GeohashFieldInput";
 import { ContentAnchorFieldInput } from "@/components/runtime/ContentAnchorFieldInput";
 import { EvidenceCaptureInput } from "@/components/runtime/EvidenceCaptureInput";

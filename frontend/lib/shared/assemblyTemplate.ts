@@ -4,7 +4,7 @@
  * The shared source every tier reads (the assembly-family mirror of
  * `clauseSpecSource.ts`): the template types, the one accessor for a template
  * agreement's topology edges, and the content-derived slug. AUTHORING lives in
- * `@figaro/sdk` projection — `buildAssemblyTemplate` (designers build); this module is
+ * `@figaro-protocol/sdk` projection — `buildAssemblyTemplate` (designers build); this module is
  * for everyone who READS published assemblies — checkout instantiates,
  * sellers bind, inventories list, view pages inspect. SoC: design is design,
  * checkout is checkout; both speak this vocabulary, neither owns the other.
@@ -23,10 +23,10 @@
  * clause fields.
  */
 
-// The template SHAPE's single home is the SDK (`@figaro/sdk` — assembly.ts):
+// The template SHAPE's single home is the SDK (`@figaro-protocol/sdk` — assembly.ts):
 // one shape, one nested-type name (`TemplateAgreement`). `clauses` is the same
 // per-order bag `ClauseFields` names (`Record<string, Record<string, unknown>>`).
-export type { AssemblyTemplate } from "@figaro/sdk";
+export type { AssemblyTemplate } from "@figaro-protocol/sdk";
 
 // The shape's accessors (topology parents, composed clause versions), the
 // assembly's identity (the AssemblyRegistry key), and its derived slug —
@@ -35,8 +35,8 @@ export {
     templateParentOrderHashes,
     templateCompositionHash,
     deriveAssemblySlug,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 
 /** @public pending consumer: per-clause version display on the drawer/audit
  *  read surfaces. */
-export { templateClauseVersion } from "@figaro/sdk";
+export { templateClauseVersion } from "@figaro-protocol/sdk";

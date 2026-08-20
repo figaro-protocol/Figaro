@@ -24,7 +24,7 @@ that any agent can read, analyze, and act on.
 Pre-defined agents are **maintainer-facing by default** — they act on this repo, for its maintainer; "public ecosystem" is the exception, only when explicitly designed for it.
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
-  - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
+  - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro-protocol/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
   - **`figaro-clause-author` / `figaro-assembly-designer`** — author or **fork** a clause/assembly and register it on the permissionless registries (a Layer-A `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user (RPGF rewards it).
 - **Maintainer-facing repo agents** (the Claude Code subagents that build THIS repo, acting only for the maintainer): definitions live in `.claude/agents/*.md` and ship with the repo. They touch the repo (that is their job); nothing in this document applies to them.
 
@@ -32,7 +32,7 @@ Pre-defined agents are **maintainer-facing by default** — they act on this rep
 
 ## The operator — how an agent transacts
 
-The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how* to this document's *what*: it directs an agent to wire `@figaro/sdk/agent` to a wallet, infer role binding from process state, and act under the owner's policy (HITL by default; a refuse-all floor). The same primitives serve a human at a keyboard and an autonomous agent — a wallet, EIP-712 signatures, on-chain commitments. Any runtime works; the protocol does not care which. Autonomous-vs-HITL is a policy choice, never structural.
+The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how* to this document's *what*: it directs an agent to wire `@figaro-protocol/sdk/agent` to a wallet, infer role binding from process state, and act under the owner's policy (HITL by default; a refuse-all floor). The same primitives serve a human at a keyboard and an autonomous agent — a wallet, EIP-712 signatures, on-chain commitments. Any runtime works; the protocol does not care which. Autonomous-vs-HITL is a policy choice, never structural.
 
 ---
 
@@ -41,7 +41,7 @@ The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how
 Discovery (below) tells an agent *what exists* and *where to reach* a counterparty.
 Starting a bonded process together is a second thing: a two-party exchange with a
 defined message, defined validation, and a defined transport seam — **a wire
-protocol, not a library**. `@figaro/sdk/agent` is one implementation of it
+protocol, not a library**. `@figaro-protocol/sdk/agent` is one implementation of it
 (`sdk/src/agent/coordination.ts`, `originate.ts`); any runtime that speaks the same
 envelope and the same rules interoperates without importing it — the same way a
 contract integrates through a wire ABI, not a shared codebase.
@@ -187,8 +187,8 @@ the documents those events commit to.
 
 ### Process graph — events, reconstructed
 
-`fetchCoreEvents(client, addresses, fromBlock)` then `reconstruct(events)` (`@figaro/sdk`)
-returns the processes as a map; `FigaroContext.sync()` (`@figaro/sdk/agent`) does both and
+`fetchCoreEvents(client, addresses, fromBlock)` then `reconstruct(events)` (`@figaro-protocol/sdk`)
+returns the processes as a map; `FigaroContext.sync()` (`@figaro-protocol/sdk/agent`) does both and
 adds the live registry catalogue. What a wallet may then DO is read off that state
 (`proposeActions` / `proposeInitiations`, above), never off a stored role.
 
@@ -219,7 +219,7 @@ one value of the field — the built frontend's default — never the model. So 
 on any locality read is the standard the leaf DECLARES; a reader that speaks one standard
 skips the leaves it cannot parse rather than misreading them.
 
-Where the declared standard is geohash, `@figaro/sdk/derive` ships the readers:
+Where the declared standard is geohash, `@figaro-protocol/sdk/derive` ships the readers:
 `geohashCommonPrefix` (shared-prefix length as coarse proximity), `geohashesMatch(a, b,
 precision)` — **the precision is the caller's parameter, not a protocol constant** —
 `geohashCentroidDistanceKm`, `encodeGeohash` / `decodeGeohash`, `haversineDistance`.
@@ -241,7 +241,7 @@ routes to the stage fields, and the identical content fails against the committe
 shape, which is the point.
 
 The stream is `fetchAttestationRecords` (both universes), sliced by `filterByClause` /
-`filterByStage` / `filterByProcess` / `filterByOrder` (`@figaro/sdk/derive`). Of the
+`filterByStage` / `filterByProcess` / `filterByOrder` (`@figaro-protocol/sdk/derive`). Of the
 evidence itself a record carries only `contentRef = keccak256(content)`, so a report is
 assembled by fetching pre-images and checking them against the anchors —
 `/audit/view?process=` is the built example of that assembly.
@@ -309,7 +309,7 @@ What is emitted, and what each thing is evidence of:
 - **Work advanced.** `AttestationCoordinator.Attestation(orderHash, processId, attester,
   clauseId, stage, contentRef)`. `clauseId` and `stage` are what make the stream readable
   without knowing any clause in advance — `filterByClause` / `filterByStage` /
-  `filterByProcess` (`@figaro/sdk/derive`) slice it. `contentRef` is `keccak256(content)`;
+  `filterByProcess` (`@figaro-protocol/sdk/derive`) slice it. `contentRef` is `keccak256(content)`;
   the pre-image never enters calldata.
 - **A process ended.** `OrderResolved` and `ProcessResolved` — the whole process settling
   at once on the buyer's single call, atomically and terminally.
@@ -347,7 +347,7 @@ several at once — buyer in one process, seller in another, author of the claus
 composes.
 
 - **Buyer** — derived as `process.rootBuyer == my address`; nothing configures it.
-  `proposeActions(process, myAddress)` (`@figaro/sdk/agent`) returns the buyer's actions on
+  `proposeActions(process, myAddress)` (`@figaro-protocol/sdk/agent`) returns the buyer's actions on
   a synced process — `resolve-process` (only the buyer can end one, atomically and
   terminally) and `attest-as-buyer`; `proposeInitiations(ctx.getAssemblies(), myAddress)`
   returns the processes the wallet could START, one per discovered assembly. Origination is
@@ -376,7 +376,7 @@ composes.
   what the composed clause DECLARES — which is why a forum, a swap route or a fiscal leg it
   has never heard of still resolves.
 
-Reading needs none of this and no wallet: `fetchCoreEvents` + `reconstruct` (`@figaro/sdk`)
+Reading needs none of this and no wallet: `fetchCoreEvents` + `reconstruct` (`@figaro-protocol/sdk`)
 run against an RPC endpoint and an IPFS gateway, which is the whole permission model for
 observing the network.
 
@@ -414,7 +414,7 @@ reach (a file the signer owns, outside the agent's workspace):
   a revert or a token-balance delta outside the ceiling (F3: the gate disposes after the
   model proposes);
 - *audit log* — every request, decision, and reason appended to a file the owner reads.
-The signer presents itself to the agent as a viem local account (the account interface viem's wallet clients take) (`@figaro/sdk/agent`
+The signer presents itself to the agent as a viem local account (the account interface viem's wallet clients take) (`@figaro-protocol/sdk/agent`
 already takes a `WalletClient`; a `WalletClient` over the socket-backed account is a
 drop-in), so `autonomous.ts` / `hitl.ts` need no change — the boundary moves from
 "which account object" to "which process".
@@ -439,7 +439,7 @@ never-the-repo seam a barrier rather than a promise (F6).
 
 **Choices — RULED 2026-08-18 (maintainer: "apply all the agent recommendations"), each
 as recommended below:**
-- *Where it lives.* (a) A new SDK subpath `@figaro/sdk/signer` (the daemon + the
+- *Where it lives.* (a) A new SDK subpath `@figaro-protocol/sdk/signer` (the daemon + the
   socket-backed account + the policy-file validator) — one package, one install, the SDK's
   test/lint discipline; or (b) a sibling package beside the agent prompts (a runtime directory under
   `ecosystem-agents/`) — keeps the SDK a library and the runtime a program. Recommendation: (a) for the signer + account
@@ -460,7 +460,7 @@ domain refusal, selector refusal, ceiling refusal, simulation veto, audit log) �
 data-channel envelope in the runtime's tools → the sandbox wrapper. Ship the tier only
 when all four stand (`RELEASE_READINESS.md` gate).
 
-**Component 1 BUILT 2026-08-20** — `@figaro/sdk/signer` (daemon + gate + keystore +
+**Component 1 BUILT 2026-08-20** — `@figaro-protocol/sdk/signer` (daemon + gate + keystore +
 socket account + `figaro-signer` bin; `sdk/README.md` § "The Policy Signer" is the
 manual), with the ruled test list green plus keystore custody and a
 restart-surviving rolling window. Two same-day rulings refined the policy shape:
@@ -646,7 +646,7 @@ the on-chain seller address.
 ```
 
 The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`,
-`extractServiceEndpoints()`, and `buildSellerDidDocument()` in `@figaro/sdk/agent`
+`extractServiceEndpoints()`, and `buildSellerDidDocument()` in `@figaro-protocol/sdk/agent`
 (did:web is an agent-identity concern). Together these close the discovery→handshake
 loop: resolve the DID, verify the wallet binding with `didDocumentMatchesAddress()`,
 then pull the coordination endpoint with `extractServiceEndpoints(doc, "MCPEndpoint")`

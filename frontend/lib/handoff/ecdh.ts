@@ -1,7 +1,7 @@
 /**
  * Per-order ECDH keypair persistence — the device-local half of the handoff
  * key exchange. The key agreement itself (derivation, AES-GCM wrapping) is
- * the wire protocol and lives in `@figaro/sdk/handoff`; this module only
+ * the wire protocol and lives in `@figaro-protocol/sdk/handoff`; this module only
  * keeps the receiving side's ephemeral keypair across page reloads.
  *
  * Stored in sessionStorage so the shared secret can be re-derived across
@@ -10,7 +10,7 @@
  * keys.
  */
 
-import { generateOrderKeypair, type EphemeralKeypair } from "@figaro/sdk/handoff";
+import { generateOrderKeypair, type EphemeralKeypair } from "@figaro-protocol/sdk/handoff";
 import { readSessionStorage, writeSessionStorage } from "@/lib/shared/storage";
 
 const ECDH_KEYS_STORAGE_KEY = "figaro-ecdh-keys";

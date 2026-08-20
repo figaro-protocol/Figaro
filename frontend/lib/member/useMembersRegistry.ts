@@ -16,7 +16,7 @@ import type { Abi } from "viem";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
-import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
+import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";

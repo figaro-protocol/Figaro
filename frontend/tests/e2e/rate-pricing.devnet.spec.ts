@@ -29,7 +29,7 @@ import {
     memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
-import { geohashCentroidDistanceKm } from '@figaro/sdk/derive';
+import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
 import type { Page } from '@playwright/test';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';

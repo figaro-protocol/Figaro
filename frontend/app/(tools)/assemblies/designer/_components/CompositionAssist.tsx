@@ -24,7 +24,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { serializeAssemblyTemplate } from "@figaro/sdk";
+import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";

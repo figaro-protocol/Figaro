@@ -2,7 +2,7 @@
  * reconstructOrders.ts — ONE walk from an assembly template to its orders.
  *
  * Every consumer that turns a template into kernel orders — an agent
- * originating a chain (`@figaro/sdk/agent` `buildChainOffers`), a checkout
+ * originating a chain (`@figaro-protocol/sdk/agent` `buildChainOffers`), a checkout
  * realizing a bound assembly, a designer displaying a draft — performs the
  * same walk: order the template agreements so parents precede children,
  * detect the root, replace template-local parent ids with real EIP-712 order

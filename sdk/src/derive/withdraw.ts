@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/derive — Withdraw gate (commits==resolves)
+ * @figaro-protocol/sdk/derive — Withdraw gate (commits==resolves)
  *
  * The off-chain, advisory half of the K4 staked-intent model: a clause-or-assembly
  * author (each registry's `registeredBy`) must not reclaim their

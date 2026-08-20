@@ -195,7 +195,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 - `POST /submit` — body `{ "operation": <KernelOp> }` where `KernelOp` is the
   serde externally-tagged enum (`{"Commit":{…}}`, `{"Resolve":{…}}`,
   `{"AttestAsSeller":{…}}`, `{"AttestAsBuyer":{…}}`); the SDK's
-  `SequencerClient` (`@figaro/sdk/agent`) emits exactly this wire format.
+  `SequencerClient` (`@figaro-protocol/sdk/agent`) emits exactly this wire format.
   `200 {"id": n}` on admission — idempotent: re-submitting the same semantic
   operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. `400` on signature or witness-gate

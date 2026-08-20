@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serializeAssemblyTemplate } from "@figaro/sdk";
+import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 // Construct templates directly (no spec cache needed) to test the

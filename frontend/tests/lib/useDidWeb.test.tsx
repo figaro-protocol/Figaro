@@ -25,8 +25,8 @@ const doc = {
 vi.mock("wagmi", () => ({ useChainId: () => 1 }));
 
 // Keep the real didDocumentMatchesAddress / isDidWeb; only stub the network fetch.
-vi.mock("@figaro/sdk/agent", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@figaro/sdk/agent")>();
+vi.mock("@figaro-protocol/sdk/agent", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@figaro-protocol/sdk/agent")>();
     return {
         ...actual,
         isDidWeb: () => true,

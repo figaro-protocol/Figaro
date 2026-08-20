@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the policy signer daemon.
+ * @figaro-protocol/sdk/signer — the policy signer daemon.
  *
  * A separate PROCESS that holds the key (F1) and exposes signing as an
  * operation over a local UNIX socket. Every request passes the out-of-model

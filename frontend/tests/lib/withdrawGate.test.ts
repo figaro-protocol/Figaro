@@ -3,7 +3,7 @@
  * commits==resolves gate: the user-facing reason a stake can't be reclaimed,
  * and the informational caveat for unverifiable (party-private) deals.
  *
- * The join + count itself is the SDK's (`@figaro/sdk/derive`, tested there);
+ * The join + count itself is the SDK's (`@figaro-protocol/sdk/derive`, tested there);
  * this asserts only the messages the affordance shows. Ruled semantics: only
  * VERIFIED in-flight deals block; unverified deals surface a caveat next to an
  * ENABLED affordance; a null gate (loading / chain-read failure) still reads
@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
-import type { WithdrawGate } from "@figaro/sdk/derive";
+import type { WithdrawGate } from "@figaro-protocol/sdk/derive";
 
 describe("withdrawBlockedReason", () => {
     it("null gate (loading / chain-read failure) is treated as not-safe-to-reclaim", () => {

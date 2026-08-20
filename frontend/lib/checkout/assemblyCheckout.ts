@@ -1,7 +1,7 @@
 /**
  * assemblyCheckout — the buyer-side commit sequencing for a bound assembly.
  *
- * The protocol algorithm lives in `@figaro/sdk`: `reconstructOrdersFromTemplate`
+ * The protocol algorithm lives in `@figaro-protocol/sdk`: `reconstructOrdersFromTemplate`
  * is the ONE template→orders walk (real parent hashes, running cumulative
  * value, root-derived processId), and the checkout planning vocabulary
  * (fill-where-composed section writers, the sub-order seller plan, live
@@ -42,8 +42,8 @@ import {
     type ReconstructNodeSpec,
     type ReconstructedOrder,
     type SpecSource,
-} from "@figaro/sdk";
-import type { CommitmentPayload } from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk";
+import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { chainDeadline, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { ClauseFields } from "@/lib/shared/clauseFields";

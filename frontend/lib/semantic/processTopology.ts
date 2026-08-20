@@ -14,9 +14,9 @@
  * The agreements Map is supplied by the caller (render path:
  * `useProcessAgreements`); this module never fetches.
  */
-import type { Agreement } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
-import { sectionByField } from "@figaro/sdk";
+import { sectionByField } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 
 // ── By-field reads of the topology clause (no clause id named) ────────────────

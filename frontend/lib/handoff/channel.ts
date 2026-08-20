@@ -1,6 +1,6 @@
 /**
  * Handoff-channel factory — which transport a wallet's `HandoffChannel`
- * (the wire protocol in `@figaro/sdk/handoff`) actually runs over.
+ * (the wire protocol in `@figaro-protocol/sdk/handoff`) actually runs over.
  *
  * Three implementations, chosen by DERIVED facts, never a setting (the
  * one-seam ruling, 2026-08-14):
@@ -10,7 +10,7 @@
  *   - Mock: in-memory message bus for e2e tests
  */
 
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
 
 /** Cached channel instances keyed by address. */

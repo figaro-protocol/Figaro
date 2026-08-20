@@ -1,4 +1,4 @@
-# @figaro/sdk
+# @figaro-protocol/sdk
 
 TypeScript SDK for the Figaro Protocol — self-enforcing agreements between strangers.
 
@@ -10,7 +10,7 @@ key-agreement. Three runtime dependencies: `viem`, plus `@noble/curves` +
 ## Install
 
 ```bash
-npm install @figaro/sdk viem
+npm install @figaro-protocol/sdk viem
 ```
 
 `viem` is a **peer dependency**, not a bundled one (`sdk/package.json` declares
@@ -18,9 +18,9 @@ npm install @figaro/sdk viem
 the SDK, or the first chain call throws a missing-module error rather than a
 Figaro-shaped one.
 
-> **Honest scope:** `@figaro/sdk` is not yet published to the npm registry —
+> **Honest scope:** `@figaro-protocol/sdk` is not yet published to the npm registry —
 > publication (with provenance attestation) is a tracked pre-release task.
-> Until then, install from a repo checkout: `"@figaro/sdk": "file:../sdk"`
+> Until then, install from a repo checkout: `"@figaro-protocol/sdk": "file:../sdk"`
 > (build it first: `npm run build --workspace sdk` from the repo root).
 
 **Trap — a consumer `npm install` can DELETE the SDK's `dist/`.** Read this
@@ -33,7 +33,7 @@ dependency's `prepare` on **every** consumer install. `build` is
 from the SDK's own directory, the rebuild dies with `sh: tsc: command not found`,
 the install exits `127`, and `dist/` is **gone** — the package the README just
 told you to install no longer has an entry point (`Cannot find package
-'@figaro/sdk'`). `--ignore-scripts` does **not** save you: measured, npm runs the
+'@figaro-protocol/sdk'`). `--ignore-scripts` does **not** save you: measured, npm runs the
 linked package's `prepare` regardless and `dist/` still goes.
 
 `tsc` is a devDependency of the `sdk` workspace, hoisted to the **checkout
@@ -161,7 +161,7 @@ which is the state the mechanism is about. Ending it is a single call, and only
 the buyer can make it:
 
 ```ts
-import { proposeActions, executeAction } from "@figaro/sdk/agent";
+import { proposeActions, executeAction } from "@figaro-protocol/sdk/agent";
 
 // The proposer rebuilds the commitment structs resolveProcess needs from the
 // events themselves — nothing had to be stored client-side.
@@ -176,7 +176,7 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // headless twin of what the frontend does at the same moment; excluded
 // protocol-floor clauses reverting inside it is routine, and the report says
 // what landed:
-import { recordProcessUsage } from "@figaro/sdk/agent";
+import { recordProcessUsage } from "@figaro-protocol/sdk/agent";
 const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter, [
   { commitment: resolve.commitments[0], agreement }, // the agreement each order signed
 ]);
@@ -241,7 +241,7 @@ with `npm run docs` from `sdk/`). This README stays the manual — recipes,
 traps, and the order to do things in; the reference is where you look a
 signature up.
 
-### `@figaro/sdk` — Protocol Primitives
+### `@figaro-protocol/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the distribution mirror —
@@ -274,7 +274,7 @@ import {
   buildDomain,
   Topology,
   maxOrdersResolvablePerProcess,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 
 // `addresses` everywhere below is a `FigaroAddresses` ({ core, token, … }).
 // A PUBLISHED DEPLOYMENT RECORD uses different key names (`figaroCore`,
@@ -285,7 +285,7 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // object — { orderCommitted, orderResolved, processResolved }, each a typed
 // array — NOT one flat log list. (Attestations are NOT in here: they live on
 // the AttestationCoordinator, a separate contract — read those with
-// EV_ATTESTATION + parseAttestationLogs; see @figaro/sdk/derive.)
+// EV_ATTESTATION + parseAttestationLogs; see @figaro-protocol/sdk/derive.)
 // `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`,
 // `fetchBatchUsageRecords`) chunk `getLogs` internally in sub-ranges of
 // `DEFAULT_LOG_CHUNK_SIZE` (9,500 blocks) so a wide range doesn't exceed a
@@ -315,7 +315,7 @@ const cap = await maxOrdersResolvablePerProcess(client);
 // (`src/kernel/CommitmentTypes.sol:31-33`), the type string the kernel hashes
 // and recovers both signatures against. The SDK derives its own typehash from
 // the same field list and exports it — `COMMITMENT_TYPEHASH` (a root
-// `@figaro/sdk` export) is
+// `@figaro-protocol/sdk` export) is
 // 0xea70b4a1b704921c6919c3e8358981256c050e862e155886edf8828ee897f75c.
 // Anything that transcribes the struct (the `cast` tuple below, a non-JS
 // client, a Rust signer) must reproduce that order: permute two fields and the
@@ -378,7 +378,7 @@ are the authority for it. Approve the settlement ERC-20 for both legs before
 each commit:
 
 ```ts
-import { calculateRootApproval, calculateSubOrderApproval } from "@figaro/sdk";
+import { calculateRootApproval, calculateSubOrderApproval } from "@figaro-protocol/sdk";
 
 // Root order:
 const { buyerApproval, sellerApproval } = calculateRootApproval(payment);
@@ -423,7 +423,7 @@ it throws with the specific "never approve only the increment" message
 instead of leaving you to decode `ERC20InsufficientAllowance`.
 
 ```ts
-import { assertApprovalCoversBond } from "@figaro/sdk";
+import { assertApprovalCoversBond } from "@figaro-protocol/sdk";
 
 const required = calculateSubOrderApproval(payment, newCumulativeValue);
 assertApprovalCoversBond({ buyerApproval, sellerApproval }, required); // throws if either falls short
@@ -442,7 +442,7 @@ digest Permit2 verifies:
 
 ```ts
 import { buildSwapWitnessTypedData, DISABLED_SWAP_FUNDING_LEG,
-         WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI } from "@figaro/sdk";
+         WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 
 // The witness binds { router, inputToken, maxInput, keccak256(swapData) } into
 // the digest, so a relayer cannot substitute the swap route and skim the
@@ -483,7 +483,7 @@ yourself, off-origin, before signing:
 
 ```ts
 import { computeAgreementHash, computeSectionLeaf,
-         sectionDataHash, verifyCommitmentSignature } from "@figaro/sdk";
+         sectionDataHash, verifyCommitmentSignature } from "@figaro-protocol/sdk";
 
 // `shown` — the agreement JSON you were displayed.
 // `typedData` — the EIP-712 payload the WALLET displayed (domain + message).
@@ -530,7 +530,7 @@ salt, deadline` — everything except the two signatures).
    that DID commit. Nothing the chain can't re-derive is stranded; the bonds the
    kernel already pulled stay against their orders until the buyer resolves.
 
-### `@figaro/sdk/agent` — Agent Coordination
+### `@figaro-protocol/sdk/agent` — Agent Coordination
 
 Context sync, network discovery, action proposer, human-in-the-loop queue,
 autonomous execution, did:web identity, and the coordination transports that
@@ -538,8 +538,8 @@ carry an offer between two agents — `InProcessChannel`, `HttpChannel`, and
 `A2aChannel` (the Agent2Agent wire), all one interface.
 
 ```ts
-import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "@figaro/sdk/agent";
-import { commit, executeAction } from "@figaro/sdk/agent";
+import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "@figaro-protocol/sdk/agent";
+import { commit, executeAction } from "@figaro-protocol/sdk/agent";
 
 // Sync on-chain state into a live context — the agent's own processes AND the
 // live-staked network catalogue (clauses, sellers, assemblies).
@@ -550,9 +550,9 @@ await ctx.sync();
 const assemblies = ctx.getAssemblies();
 
 // FigaroContext wraps the low-level discovery primitives, which are ROOT
-// `@figaro/sdk` exports — NOT `@figaro/sdk/agent`. Use them directly for a
+// `@figaro-protocol/sdk` exports — NOT `@figaro-protocol/sdk/agent`. Use them directly for a
 // one-shot catalogue read without a context:
-import { fetchDiscoveryEvents, reconstructDiscovery } from "@figaro/sdk";
+import { fetchDiscoveryEvents, reconstructDiscovery } from "@figaro-protocol/sdk";
 const discovery = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n));
 
 // Propose actions on a process the agent is in, and originations from discovery
@@ -587,9 +587,9 @@ const result = await executeAction(walletClient, publicClient, addresses, approv
 
 // Attest one clause end-to-end from a hydrated Agreement. Pick the clause from
 // the agreement's OWN sections — never a bundled list.
-import { buildSectionInclusionProof, sectionDataHash, computeClauseKey } from "@figaro/sdk";
-import { attestAsSeller } from "@figaro/sdk/agent";
-import { parseClauseSpec, encodeContentFromSpec } from "@figaro/sdk/clauses";
+import { buildSectionInclusionProof, sectionDataHash, computeClauseKey } from "@figaro-protocol/sdk";
+import { attestAsSeller } from "@figaro-protocol/sdk/agent";
+import { parseClauseSpec, encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { keccak256 } from "viem";
 
 const section = agreement.sections[0]; // e.g. { clause: "figaro-assembly-provenance", version, data }
@@ -633,12 +633,12 @@ await attestAsSeller(
 //                          isAuthorized(orderHash, caller): delegated attestation
 //                          for contract-seller mechanisms.
 // The SDK ships wrappers for the first two (attestAsSeller / attestAsBuyer, both
-// from @figaro/sdk/agent); attestViaResolver is in ATTESTATION_COORDINATOR_ABI —
+// from @figaro-protocol/sdk/agent); attestViaResolver is in ATTESTATION_COORDINATOR_ABI —
 // call it directly (writeContract) when the seller is a resolver contract.
 
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
-import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
+import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
 // REFUSE-ALL FLOOR, BOTH HALVES: with no `accept` business rule OR no economic
 // `policy` the handler declines EVERY offer. Autonomy is opt-in — these are
 // where you bound currency/magnitude before the seller bonds against them.
@@ -671,7 +671,7 @@ const tx = await originateProcess(buyerWallet, publicClient, addresses, {
 // request/response IS the handshake's request/response — so a third-party A2A
 // agent interoperates WITHOUT importing this SDK: it sees an ordinary message
 // whose data part carries the envelope, counter-signs, and replies in kind.
-import { A2aChannel, makeA2aOfferResponder, didWebEndpointResolver } from "@figaro/sdk/agent";
+import { A2aChannel, makeA2aOfferResponder, didWebEndpointResolver } from "@figaro-protocol/sdk/agent";
 // BUYER: resolve the seller's A2A endpoint — a did:web service entry of type
 // "A2AEndpoint", a static map, or a read of the seller's published profile
 // (`projectAgentServices(profileJson).services.a2a`, below) — then originate
@@ -712,14 +712,14 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // at the struct deadline. Same two candidate-side floors as counterSignOffer,
 // and the same optional `specs` merkle-leaf gate: with a SpecSource, a draft
 // whose commerce leaf contradicts the struct is refused before any signature.
-import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro/sdk/agent";
+import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro-protocol/sdk/agent";
 const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs);
 // Buyer side: exact struct-hash equality against the SENT draft, then recovery —
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
 // Packaged fan-out + mountable responder (the RFQ leg below has the same pair):
-import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro/sdk/agent";
+import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro-protocol/sdk/agent";
 channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs }));
 const race = await requestCounterSignatures(channel, drafts, { chainId, core }); // { replies, winner }
 
@@ -732,7 +732,7 @@ const race = await requestCounterSignatures(channel, drafts, { chainId, core });
 // by RECONSTRUCTION: the same substitution applied to their OWN draft must
 // reproduce the reply hash-for-hash — a quote can change the price and
 // nothing else. Cheapest verified quote wins; the buyer signs exactly one.
-import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figaro/sdk/agent";
+import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figaro-protocol/sdk/agent";
 channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, core }, {
     quote: (draft) => myPriceFor(draft),           // null declines; > ceiling declines
     policy: { requireRootShape: true, currencyAllowlist: [myToken], maxValue: myMaxBond },
@@ -751,8 +751,8 @@ const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core 
 // envelope cannot pollute the prototype chain of the receiving agent. Reuse
 // `strippingReviver` for any other untrusted JSON you parse (IPFS bodies,
 // channel payloads): `JSON.parse(body, strippingReviver)`.
-import { strippingReviver } from "@figaro/sdk";
-import { deserializeCommitmentPayload } from "@figaro/sdk/agent";
+import { strippingReviver } from "@figaro-protocol/sdk";
+import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 
 // Submitting to the BATCH path — SequencerClient. `FigaroBatchVerifier.
 // settleBatch` is PERMISSIONLESS (no caller gate, no owner, no fee), but it
@@ -773,7 +773,7 @@ import { deserializeCommitmentPayload } from "@figaro/sdk/agent";
 // do not hold means swapping in your own WALLET first, then submitting; and
 // settleBatch pulls your net deposit, so approve FigaroBatchVerifier, not the
 // kernel. (See "Bonding in a token you do not hold" above.)
-import { SequencerClient } from "@figaro/sdk/agent";
+import { SequencerClient } from "@figaro-protocol/sdk/agent";
 const seq = new SequencerClient({ url: SEQUENCER_URL });
 if (!(await seq.isAvailable())) { /* direct path instead */ }
 const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
@@ -797,13 +797,13 @@ await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches
 // did:web: an agent resolves a counterparty's DID Document, verifies the on-chain
 // address it binds, and reads the coordination endpoint to route an offer to
 // (build your own with buildSellerDidDocument).
-import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "@figaro/sdk/agent";
+import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "@figaro-protocol/sdk/agent";
 const { document } = await resolveDidWeb("did:web:seller.example.com");
 const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) : false;
 const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
 ```
 
-### `@figaro/sdk/derive` — Clause-Agnostic Derivations
+### `@figaro-protocol/sdk/derive` — Clause-Agnostic Derivations
 
 Clause-agnostic attestation filtering, geo math, and the commits==resolves
 withdraw gate.
@@ -811,7 +811,7 @@ withdraw gate.
 ```ts
 import {
   computeClauseKey, fetchCoreEvents, EV_ATTESTATION, parseAttestationLogs,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
   filterByClause,
   haversineDistance,
@@ -819,7 +819,7 @@ import {
   deriveInFlightOrders,
   deriveClauseWithdrawGate,
   deriveAssemblyWithdrawGate,
-} from "@figaro/sdk/derive";
+} from "@figaro-protocol/sdk/derive";
 
 // Attestations live on the AttestationCoordinator, NOT in fetchCoreEvents
 // (which returns only orderCommitted / orderResolved / processResolved). Read
@@ -857,7 +857,7 @@ const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
 // gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat
 ```
 
-### `@figaro/sdk/clauses` — Clause-Spec Format + Content Encoding
+### `@figaro-protocol/sdk/clauses` — Clause-Spec Format + Content Encoding
 
 The single off-chain source of truth for clause-content well-formedness and
 canonical ABI encoding. It is **fully generic**: it parses a clause's spec JSON
@@ -889,7 +889,7 @@ import {
   validateContent,
   encodeContentFromSpec,
   decodeContentFromSpec,
-} from "@figaro/sdk/clauses";
+} from "@figaro-protocol/sdk/clauses";
 
 // 1. Parse a clause spec (typically fetched from ClauseRegistry → IPFS)
 const parsed = parseClauseSpec(specJson);
@@ -926,7 +926,7 @@ is `docs/CLAUSES.md`). Compute the exact key the registry hashes and read
 whether it is already live BEFORE spending the registration deposit:
 
 ```ts
-import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro/sdk";
+import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
 const key = computeClauseKey("figaro-my-new-clause", 1); // keccak256(abi.encode(clauseId, version))
 const taken = await client.readContract({
@@ -939,11 +939,11 @@ if (taken) throw new Error("this id+version is already registered — pick anoth
 ```
 
 The same `computeClauseKey` reappears later (below, and in
-`@figaro/sdk/agent`) as the `clauseId` argument to `attestAs{Seller,Buyer}` —
+`@figaro-protocol/sdk/agent`) as the `clauseId` argument to `attestAs{Seller,Buyer}` —
 one function, two moments: before registering (is this slot free?) and at
 attestation time (which registered clause does this section attest?).
 
-### `@figaro/sdk/handoff` — Runtime Handoff Wire Protocol
+### `@figaro-protocol/sdk/handoff` — Runtime Handoff Wire Protocol
 
 The wire vocabulary two wallets speak when a pending commitment (or a sealed
 handoff key) travels between them at runtime. The SDK owns only the message
@@ -958,9 +958,9 @@ itself confidential), `EcdhPubkeyMessage` (`ECDH_PUBKEY`, the receiver's
 per-order ephemeral public key), `EcdhWrappedKeyMessage` (`ECDH_WRAPPED_KEY`,
 the AES key wrapped under the ECDH secret), and `CommitmentSignatureMessage`
 (`COMMITMENT_PAYLOAD`, a **bare IPFS CID** — no `ipfs://` prefix — of a pinned,
-JSON-serialized `CommitmentPayload` from `@figaro/sdk/agent`; the envelope stays
+JSON-serialized `CommitmentPayload` from `@figaro-protocol/sdk/agent`; the envelope stays
 small and late subscribers get a durable retrieval path). This is a DIFFERENT
-exchange from `@figaro/sdk/agent`'s `CoordinationChannel`, which carries the
+exchange from `@figaro-protocol/sdk/agent`'s `CoordinationChannel`, which carries the
 bilateral OFFER between agents — different vocabulary, different seam.
 
 The ECDH secret reproduces `eciesjs@0.5`'s `encapsulate`/`decapsulate` byte-for-
@@ -979,8 +979,8 @@ import {
   deriveSharedSecretAsReceiver,
   wrapWithSharedSecret,
   unwrapWithSharedSecret,
-} from "@figaro/sdk/handoff";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+} from "@figaro-protocol/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 
 // RECEIVER: mint a per-order ephemeral keypair, publish the public key.
 const kp = generateOrderKeypair(); // { privateKeyHex, publicKeyHex } — compressed 66-char pub
@@ -1007,7 +1007,7 @@ in each callback is transport-specific (an XMTP inbox id, a wallet address) — 
 SDK does not constrain it. Full signatures: `dist/handoff/messages.d.ts` +
 `dist/handoff/ecdh.d.ts`.
 
-### `@figaro/sdk/signer` — The Policy Signer
+### `@figaro-protocol/sdk/signer` — The Policy Signer
 
 The protocol-shaped half of the sandboxed signer runtime
 (`docs/AI_AGENT_COORDINATION.md` § "The sandboxed signer runtime"): a daemon
@@ -1037,7 +1037,7 @@ Consume it — the account drops into the `WalletClient` the agent layer
 already takes; the agent's code path is unchanged and the key is unreachable:
 
 ```ts
-import { socketSignerAccount } from "@figaro/sdk/signer";
+import { socketSignerAccount } from "@figaro-protocol/sdk/signer";
 import { createWalletClient, http } from "viem";
 
 const account = socketSignerAccount({ socketPath: "/tmp/figaro-signer.sock", address: operated });
@@ -1066,9 +1066,9 @@ you no longer hand-assemble sections.
 — the consumer's window onto its loaded `ClauseRegistry → IPFS` specs:
 
 ```ts
-import { parseClauseSpec } from "@figaro/sdk/clauses";
-import { parseProjectionHints } from "@figaro/sdk";
-import type { SpecSource, ProjectionSpecView } from "@figaro/sdk";
+import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
+import { parseProjectionHints } from "@figaro-protocol/sdk";
+import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 
 // Build a SpecSource from the raw spec JSON you fetched from the registry.
 // A view is the Layer-A spec PLUS the hash-load-bearing `block` hints
@@ -1151,7 +1151,7 @@ can still produce a signable-looking object with content that violates its own
 clause specs.
 
 ```ts
-import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@figaro/sdk";
+import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@figaro-protocol/sdk";
 
 // clauses: clauseId → field values (design-time ∪ runtime fill); clauseVersions:
 // clauseId → the registered version composed (template-sourced; absent entries
@@ -1172,7 +1172,7 @@ const commerce = sectionByField(agreement, "lineItems", specs);
 ## From Adopted Template to Signed Agreement — the ONE walk
 
 Every consumer that turns a template into kernel orders — an agent originating a
-chain (`@figaro/sdk/agent` `buildChainOffers`), a checkout realizing a bound
+chain (`@figaro-protocol/sdk/agent` `buildChainOffers`), a checkout realizing a bound
 assembly, a designer displaying a draft — performs the same walk: order the
 template agreements so parents precede children, detect the root, replace
 template-local parent ids with real EIP-712 order hashes, accumulate cumulative
@@ -1192,8 +1192,8 @@ signature — the caller signs each node's `typedData` (per node via `onOrder`).
 import {
   fetchDiscoveryEvents, reconstructDiscovery,
   reconstructOrdersFromTemplate, planTemplateOrders,
-} from "@figaro/sdk";
-import type { AssemblyTemplate } from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
+import type { AssemblyTemplate } from "@figaro-protocol/sdk";
 
 // 1. Hydrate the adopted template: discovery → the assembly pointer → IPFS.
 const graph = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n));
@@ -1237,13 +1237,13 @@ const orders = await reconstructOrdersFromTemplate(template, {
     // sub-orders carry the root's derived processId and their parents' REAL
     // order hashes. order.cumulativeValue is the running total AFTER this order.
     // Pin order.agreement (party-private evidence, referenced on-chain by hash),
-    // collect the seller counter-signature, then commit (see @figaro/sdk/agent).
+    // collect the seller counter-signature, then commit (see @figaro-protocol/sdk/agent).
   },
 });
 ```
 
 For a single non-templated order, use `buildOrderAgreement` (above) directly and
-feed its `agreementHash` into `buildCommitment` as in the `@figaro/sdk` entry
+feed its `agreementHash` into `buildCommitment` as in the `@figaro-protocol/sdk` entry
 point. The empty agreement hashes to `bytes32(0)`; there is no separate "root"
 object — the `agreementHash` IS the merkle root over the section leaves.
 
@@ -1265,7 +1265,7 @@ import {
   fillCargoSection, fillClassSections, fillProfileSections, fillDimweightSection,
   planSubOrderSellers, resolveSubOrderPricing, profileValuesFor,
   registerRateQuantitySource, getRateQuantityResolver, topologicalOrder,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 ```
 
 - **Section fills** (by declared field): `fillCommerceSection` (settlement
@@ -1311,7 +1311,7 @@ import {
   reconstructOrdersFromTemplate, fillCommerceSection, fillClassSections,
   fillProfileSections, fillProvenanceSection, profileValuesFor,
   templateCompositionHash, type AssemblyCheckoutLineItem, type PlannedTemplateOrder,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 
 // Hardcoded here for brevity. Building `lineItems` from a fetched
 // `MemberCatalogueMetadata` item has no exported helper — there is no
@@ -1376,7 +1376,7 @@ creditable to its assembly's designer of record
 ## Member Profile + Catalogue Documents
 
 Two off-chain JSON documents describe a participant. Both are **Layer-A** — their
-types and strict parsers are exported from the ROOT `@figaro/sdk` (next to
+types and strict parsers are exported from the ROOT `@figaro-protocol/sdk` (next to
 `RegisteredMember` / `reconstructDiscovery`), so an integrator reading a
 participant learns the shape from the SDK instead of the frontend bundle. Neither
 document is bundled — each is pinned to IPFS and read at runtime.
@@ -1459,8 +1459,8 @@ import {
   tryParseMemberProfileDocument,    // returns null on malformed input
   parseMemberCatalogueDocument,
   projectAgentServices,             // pull ERC-8004 agent endpoints from a profile
-} from "@figaro/sdk";
-import type { MemberProfileMetadata, MemberCatalogueMetadata } from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
+import type { MemberProfileMetadata, MemberCatalogueMetadata } from "@figaro-protocol/sdk";
 
 // 1. Discovery hands you the metadataURI for each registered seller.
 const graph = reconstructDiscovery(events);
@@ -1485,7 +1485,7 @@ if (profile.catalogueURI) {
 it through the strict parser, pin it, then anchor the URI on-chain:
 
 ```ts
-import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
+import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
 const doc: MemberProfileMetadata = { name: "Bob Pizza", catalogueURI: "ipfs://Qm…" };
 parseMemberProfileDocument(doc);                 // throws if malformed — validate before pinning
@@ -1589,7 +1589,7 @@ The event log is the read path: verify an update landed by re-running discovery
 
 ## Versioning & stability
 
-`@figaro/sdk` is pre-1.0 (currently `0.1.0`). Per semver's pre-1.0 convention,
+`@figaro-protocol/sdk` is pre-1.0 (currently `0.1.0`). Per semver's pre-1.0 convention,
 **minor version bumps may include breaking changes** — there is no stable
 public API yet. Pin an exact version or a narrow range if you need
 reproducible builds against this package.

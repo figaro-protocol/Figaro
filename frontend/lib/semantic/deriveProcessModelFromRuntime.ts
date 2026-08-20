@@ -1,11 +1,11 @@
 import { Order, OrderState } from "@/lib/kernel/store";
-import type { Agreement } from "@figaro/sdk";
-import { sectionByField } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
+import { sectionByField } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { PartyRole, ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
-import { computeClauseKey } from "@figaro/sdk";
+import { computeClauseKey } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
     AttachmentModel,

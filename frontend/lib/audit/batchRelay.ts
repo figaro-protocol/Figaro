@@ -75,7 +75,7 @@ import {
     verifyCommitmentSignature,
     verifyResolveProcessSignature,
     type Commitment,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
     SequencerClient,
     fromSequencerCommitment,
@@ -85,7 +85,7 @@ import {
     type SequencerOrderView,
     type SequencerProcessView,
     type SequencerRetentionWindow,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import type { PublicClient, Hex } from "viem";
 import { getBatchVerifier } from "@/lib/composition/contracts";
 import { getAllBatchSettled } from "@/lib/composition/indexer";

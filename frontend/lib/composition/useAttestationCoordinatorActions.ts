@@ -4,17 +4,17 @@ import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import type { Hex } from "viem";
-import { ATTESTATION_COORDINATOR_ABI } from "@figaro/sdk";
+import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { keccak256 } from "viem";
-import { computeClauseKey } from "@figaro/sdk";
+import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro/sdk";
+import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro-protocol/sdk";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
 
 type SellerAttestationInput = {

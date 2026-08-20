@@ -92,14 +92,14 @@ import {
     createPublicClient, createWalletClient, defineChain, encodeFunctionData, http,
 } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-// Protocol canonicals come from the SDK (@figaro/sdk, file:../sdk — the
+// Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk — the
 // compiled dist resolves from plain node ESM): the registry ABI, the clause
 // key, and the canonical-JSON convention. Nothing is re-implemented here.
 import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey, canonicalize,
     canonicalContentHash, templateCompositionHash, deriveAssemblySlug,
     templateComposedClauseIds,
-} from '@figaro/sdk';
+} from '@figaro-protocol/sdk';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,

@@ -29,7 +29,7 @@
  * carries the value legs.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { planSubOrderSellers } from '@figaro/sdk';
+import { planSubOrderSellers } from '@figaro-protocol/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import {

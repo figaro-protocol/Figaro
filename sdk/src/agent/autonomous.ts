@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/agent — Autonomous Gateway
+ * @figaro-protocol/sdk/agent — Autonomous Gateway
  *
  * Direct execution module for agents that hold their own keys.
  * Signs and submits transactions via a viem WalletClient.

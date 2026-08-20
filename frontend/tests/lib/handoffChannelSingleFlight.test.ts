@@ -7,7 +7,7 @@
  * now has the wallet signer — retries cleanly.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 
 vi.mock("@/lib/shared/e2e", () => ({
     isE2EMockSession: () => false,

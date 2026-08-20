@@ -2,7 +2,7 @@
  * Public-surface geohash policy — the geohash arm of the data seam's grain cap.
  *
  * Geohash encode/decode is generic geo math and lives in the SDK
- * (`@figaro/sdk/derive`). This module owns the frontend's precision cap by
+ * (`@figaro-protocol/sdk/derive`). This module owns the frontend's precision cap by
  * DISPOSITION: a PUBLIC geohash (the coordination commons — a pinned seller
  * profile, a plaintext agreement field) is neighborhood-grade, never
  * door-grade; a PRIVATE one (encrypted / content-withheld — the factory /
@@ -15,7 +15,7 @@
  * bounded only by the field's `maxLength`.
  */
 
-import type { FieldDisposition } from "@figaro/sdk/clauses";
+import type { FieldDisposition } from "@figaro-protocol/sdk/clauses";
 
 /** 6 chars ≈ 1.2 km × 0.6 km — the neighborhood cell (the PUBLIC grain cap). */
 export const PUBLIC_GEOHASH_MAX_PRECISION = 6;

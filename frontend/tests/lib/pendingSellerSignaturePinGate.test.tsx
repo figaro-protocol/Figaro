@@ -49,8 +49,8 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
 // party (audit 2026-07-23, pin-amplification) — `isCommitmentParty` alone
 // trusts sender-controlled buyer/seller fields. We control recovery here.
 const verifyCommitmentSignatureMock = vi.fn();
-vi.mock("@figaro/sdk", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@figaro/sdk")>();
+vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@figaro-protocol/sdk")>();
     return {
         ...actual,
         verifyCommitmentSignature: (...args: unknown[]) => verifyCommitmentSignatureMock(...args),

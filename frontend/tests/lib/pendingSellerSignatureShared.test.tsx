@@ -29,8 +29,8 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
 });
-vi.mock("@figaro/sdk", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@figaro/sdk")>();
+vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@figaro-protocol/sdk")>();
     return { ...actual, verifyCommitmentSignature: vi.fn().mockResolvedValue(true) };
 });
 

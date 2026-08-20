@@ -15,7 +15,7 @@
  */
 
 import { useAccount, useWriteContract } from "wagmi";
-import { USAGE_COUNTER_ABI, type Commitment } from "@figaro/sdk";
+import { USAGE_COUNTER_ABI, type Commitment } from "@figaro-protocol/sdk";
 import { getUsageCounter } from "@/lib/kernel/contracts";
 import { activeChain } from "@/lib/shared/chains";
 

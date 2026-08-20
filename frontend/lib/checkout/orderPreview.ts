@@ -18,7 +18,7 @@ import {
     type Agreement,
     type Commitment,
     type Hex,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 
 // ── The buyer's preview (what the confirm gate + sign flow consume) ─────────

@@ -29,7 +29,7 @@
         "test:e2e:smoke": "playwright test --project=smoke"
     },
     "dependencies": {
-        "@figaro/sdk": "file:../sdk",
+        "@figaro-protocol/sdk": "file:../sdk",
         "@react-pdf/renderer": "^4.5.1",
         "@tanstack/react-query": "^5.28.0",
         "@xmtp/browser-sdk": "^7.0.0",

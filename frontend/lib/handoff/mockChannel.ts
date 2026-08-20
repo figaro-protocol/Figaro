@@ -6,7 +6,7 @@
  * XMTP network.
  */
 
-import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage } from "@figaro/sdk/handoff";
+import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage } from "@figaro-protocol/sdk/handoff";
 
 type StoredHandoffKeyMessage = HandoffKeyMessage & { senderIdentity: string };
 type StoredEcdhPubkeyMessage = EcdhPubkeyMessage & { senderIdentity: string };

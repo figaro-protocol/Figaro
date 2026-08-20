@@ -33,7 +33,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, computeSectionLeaf } from '@figaro/sdk';
+import { calculateBonds, computeSectionLeaf } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';

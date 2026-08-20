@@ -24,9 +24,9 @@ import { dirname, resolve } from "node:path";
 import {
     FigaroContext, originateProcess, makeSellerOfferHandler,
     A2aChannel, makeA2aOfferResponder,
-} from "@figaro/sdk/agent";
-import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro/sdk";
-import { parseClauseSpec } from "@figaro/sdk/clauses";
+} from "@figaro-protocol/sdk/agent";
+import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro-protocol/sdk";
+import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(

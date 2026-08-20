@@ -45,7 +45,7 @@
 
 import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey } from '@figaro/sdk';
+import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey } from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';

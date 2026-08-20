@@ -7,9 +7,9 @@
  * reader can verify any fetched document by re-canonicalizing the parsed
  * JSON — no dependence on the pinned byte formatting or the transport.
  *
- * The convention's single home is the SDK (`@figaro/sdk`); this file is the
+ * The convention's single home is the SDK (`@figaro-protocol/sdk`); this file is the
  * frontend barrel. The node-side seed scripts (`populate-clauses.mjs`,
  * `populate-test-data.mjs`) import the same SDK functions.
  */
 
-export { canonicalize, canonicalContentHash } from "@figaro/sdk";
+export { canonicalize, canonicalContentHash } from "@figaro-protocol/sdk";

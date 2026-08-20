@@ -13,7 +13,7 @@
  * `clausesByOrderId` so re-opening the fork shows them.
  */
 
-import { planTemplateOrders } from "@figaro/sdk";
+import { planTemplateOrders } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";

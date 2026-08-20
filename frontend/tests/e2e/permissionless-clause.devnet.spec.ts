@@ -47,7 +47,7 @@ import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers'
 import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds } from '@figaro/sdk';
+import { calculateBonds } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';

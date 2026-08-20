@@ -30,7 +30,7 @@ import type { Abi } from "viem";
 import { publishTail } from "@/lib/protocol/publishTail";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { serializeAssemblyTemplate } from "@figaro/sdk";
+import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";

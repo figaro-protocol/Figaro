@@ -32,7 +32,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredMember,
 } from './devnet-helpers';
-import { MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';

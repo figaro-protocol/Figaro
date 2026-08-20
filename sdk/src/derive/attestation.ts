@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/derive — Attestation filtering
+ * @figaro-protocol/sdk/derive — Attestation filtering
  *
  * Clause-agnostic attestation-event filtering. Carries no knowledge of any
  * specific clause: the stage, contentRef shape, and meaning of an attestation

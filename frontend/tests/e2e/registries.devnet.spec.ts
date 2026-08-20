@@ -17,7 +17,7 @@
  * the reference assemblies and registers the seeded members).
  */
 import { test, expect } from '@playwright/test';
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { localPublicClient, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 

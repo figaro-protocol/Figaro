@@ -20,7 +20,7 @@ import * as fs from "node:fs";
 import { createPublicClient, http } from "viem";
 import {
     fetchDiscoveryEvents, reconstructDiscovery, computeClauseKey,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import { frame } from "./dataChannel.mjs";
 
 function fail(message) {

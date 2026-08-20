@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk — Bond Calculator
+ * @figaro-protocol/sdk — Bond Calculator
  *
  * Pure functions for the 2× asymmetric bonding math.
  * No chain access needed — just arithmetic.

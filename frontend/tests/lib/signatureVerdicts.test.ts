@@ -19,7 +19,7 @@ import {
     buildDomain,
     computeOrderHash,
     type Commitment,
-} from "@figaro/sdk";
+} from "@figaro-protocol/sdk";
 import {
     decodeCommitCalldata,
     verdictsForCommitCalldata,

@@ -20,7 +20,7 @@
 
 import { formatToken } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import type { Commitment, Agreement, AgreementSection } from "@figaro/sdk";
+import type { Commitment, Agreement, AgreementSection } from "@figaro-protocol/sdk";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { resolveContentUri } from "@/lib/shared/ipfsService";

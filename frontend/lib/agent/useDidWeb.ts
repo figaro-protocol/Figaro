@@ -11,7 +11,7 @@
  *
  * ALL did:web logic — resolution algorithm, URL derivation, document validation,
  * Ethereum-address extraction, and the DID Document types — lives ONCE in
- * `@figaro/sdk/agent` (`sdk/src/agent/did.ts`). This file is ONLY the
+ * `@figaro-protocol/sdk/agent` (`sdk/src/agent/did.ts`). This file is ONLY the
  * React-state wrapper; it re-implements nothing.
  */
 import { useState, useEffect } from "react";
@@ -21,7 +21,7 @@ import {
     didDocumentMatchesAddress,
     isDidWeb,
     type DIDDocument,
-} from "@figaro/sdk/agent";
+} from "@figaro-protocol/sdk/agent";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 export type { DIDDocument };

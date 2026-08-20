@@ -17,7 +17,7 @@
  * The 2-message ceremony over the coordination channel (all channel data safe
  * to expose publicly — no transport-layer trust; sender identity rides IN each
  * message as a wallet signature the receiver verifies against the order's
- * counterparty, `@figaro/sdk/handoff` auth):
+ * counterparty, `@figaro-protocol/sdk/handoff` auth):
  *
  *   1. The order's SELLER (e.g. the courier), after accepting, requests the
  *      detail: generates a per-order ephemeral keypair and sends its public
@@ -39,7 +39,7 @@
  * accepting (it is bonded on); the exact door AFTER.
  */
 import { keccak256, toHex } from "viem";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { decryptCeremonyBlob, requestCeremonyKey, sendCeremonyBlob, type SignChannelAuth } from "./ceremony";
 
 export type { SignChannelAuth };

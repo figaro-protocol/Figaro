@@ -11,7 +11,7 @@
  * applies to attestation timelines.
  */
 
-import type { Agreement } from "@figaro/sdk";
+import type { Agreement } from "@figaro-protocol/sdk";
 import { describeClause, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "./types";

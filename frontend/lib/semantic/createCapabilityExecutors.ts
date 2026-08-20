@@ -14,8 +14,8 @@
  * copy; this factory only decides WHEN to ask.
  */
 import { type Hex } from "viem";
-import { buildSectionInclusionProof, computeClauseKey, sectionDataHash, type Agreement, type Commitment } from "@figaro/sdk";
-import { encodeContentFromSpec, validateContent } from "@figaro/sdk/clauses";
+import { buildSectionInclusionProof, computeClauseKey, sectionDataHash, type Agreement, type Commitment } from "@figaro-protocol/sdk";
+import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";

@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/agent — Sequencer Client
+ * @figaro-protocol/sdk/agent — Sequencer Client
  *
  * Submits signed kernel operations to the off-chain batch sequencer
  * for proof-based settlement via FigaroBatchVerifier.

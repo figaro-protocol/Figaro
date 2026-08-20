@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/signer — the out-of-model policy.
+ * @figaro-protocol/sdk/signer — the out-of-model policy.
  *
  * The policy is CONFIGURATION THE MODEL CANNOT REACH: a JSON file the signer
  * process owns, loaded at start, validated strictly — a malformed policy

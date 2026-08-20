@@ -25,7 +25,7 @@ import type { Page } from '@playwright/test';
 import { expect } from './devnet-multi-test';
 import { readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { canonicalContentHash } from '@/lib/shared/canonicalJson';
 
 const RPC_URL = 'http://127.0.0.1:8545';

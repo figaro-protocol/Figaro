@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/agent — Action Proposer
+ * @figaro-protocol/sdk/agent — Action Proposer
  *
  * Analyzes process state and proposes valid next actions.
  * Pure function — no side effects, no signing, no submission.

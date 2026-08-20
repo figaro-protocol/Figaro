@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk — Commitment Builder
+ * @figaro-protocol/sdk — Commitment Builder
  *
  * Produces EIP-712 typed data payloads for the unified Commitment struct.
  * These are ready to be signed by any wallet (MetaMask, Safe, programmatic signer).

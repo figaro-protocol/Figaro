@@ -4,7 +4,7 @@ The pieces that live OUTSIDE the model and OUTSIDE the SDK: the data channel
 and the sandbox wrapper (components 3 and 4 of the design in
 `docs/AI_AGENT_COORDINATION.md` § "The sandboxed signer runtime"). The
 protocol-shaped half — the policy signer and the socket-backed account — is
-`@figaro/sdk/signer`.
+`@figaro-protocol/sdk/signer`.
 
 ## The data channel — why a frame
 
@@ -22,7 +22,7 @@ restating the rule, so it rides wherever the block is pasted.
 ## Use
 
 ```sh
-npm install   # once; pulls @figaro/sdk from ../../sdk
+npm install   # once; pulls @figaro-protocol/sdk from ../../sdk
 
 RPC_URL=… DEPLOYMENT_RECORD=…/deployments/11155111.json \
 IPFS_GATEWAY_URL=… npx figaro-fetch clause figaro-modalities
