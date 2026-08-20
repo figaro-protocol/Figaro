@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
@@ -13,6 +15,18 @@ export const metadata: Metadata = withOg({
 });
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
+
+/** The committed Sepolia deployment record, read at build time — the record is
+ *  the canonical address source (`deployments/README.md`), never hand-typed
+ *  constants. Absent record (a fork without the deploy) renders no row. */
+function sepoliaRecord(): Record<string, string | number> | null {
+    try {
+        return JSON.parse(fs.readFileSync(
+            path.join(process.cwd(), "../deployments/11155111.json"), "utf-8"));
+    } catch {
+        return null;
+    }
+}
 
 const JUMP_LINKS: { href: string; label: string }[] = [
     { href: "#inheritance", label: "Inheritance" },
@@ -30,6 +44,7 @@ const JUMP_LINKS: { href: string; label: string }[] = [
 ];
 
 export default function Specifications() {
+    const sepolia = sepoliaRecord();
     return (
         <>
             <MarketingHero
@@ -368,12 +383,39 @@ function attestViaResolver(
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default">
                             <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-ink-muted">Devnet (active)</td></tr>
+                            {sepolia && (
+                                <tr><td className="py-2 pr-4">Sepolia</td><td className="py-2 pr-4 font-mono">11155111</td><td className="py-2 text-ink-muted">Deployed &mdash; addresses below</td></tr>
+                            )}
                             <tr><td className="py-2 pr-4">Ethereum mainnet</td><td className="py-2 pr-4 font-mono">1</td><td className="py-2 text-ink-muted"><Link href="/security#audit" className="underline">Pending external audit</Link></td></tr>
                         </tbody>
                     </table>
                 </div>
+                {sepolia && (
+                    <div className="overflow-x-auto -mx-6 px-6 mt-4">
+                        <p className="text-xs text-ink-muted mb-2">
+                            Sepolia addresses, from the committed record{" "}
+                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json" target="_blank" rel="noopener noreferrer" className="underline"><code>deployments/11155111.json</code></a>{" "}
+                            (deployment block <span className="font-mono">{String(sepolia.deploymentBlock)}</span>) &mdash; this table renders the record, it never restates it:
+                        </p>
+                        <table className="w-full text-xs">
+                            <tbody className="[&>tr]:border-b [&>tr]:border-default">
+                                {Object.entries(sepolia)
+                                    .filter((entry): entry is [string, string] =>
+                                        typeof entry[1] === "string" && entry[1].startsWith("0x"))
+                                    .map(([key, address]) => (
+                                        <tr key={key}>
+                                            <td className="py-1.5 pr-4"><code>{key}</code></td>
+                                            <td className="py-1.5 font-mono break-all">
+                                                <a href={`https://sepolia.etherscan.io/address/${address}`} target="_blank" rel="noopener noreferrer" className="underline">{address}</a>
+                                            </td>
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
                 <p className="text-xs text-ink-muted mt-4">
-                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is in the SDK README.
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet, <code>deployments/&lt;chainId&gt;.json</code> committed per public deploy. The record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is in the SDK README.
                 </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
