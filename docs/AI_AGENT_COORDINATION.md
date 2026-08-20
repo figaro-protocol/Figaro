@@ -481,8 +481,19 @@ satisfied when signer-hosted, F4–F6 explicitly still behavioral; the ecosystem
 honest-scope block updated to match. The tool GRANT narrowing is partial by
 construction: execution still rides `Bash` until the runtime's typed tools exist, but
 the launch contract now puts no key material anywhere a shell can read — the full
-de-Bashing lands with the sandbox wrapper. Components 3–4 (data-channel envelope,
-sandbox wrapper) remain open.
+de-Bashing lands with the sandbox wrapper.
+
+**Component 3 DONE 2026-08-20** — the data channel lives at
+`ecosystem-agents/runtime/` (host-shaped, beside the prompts, per the placement
+ruling): `dataChannel.mjs` (`makeEnvelope`/`renderEnvelope`/`frame` — the typed
+envelope rendered with a per-render BOUNDARY NONCE, so content cannot close its own
+block and speak as instructions; a fixed untrusted-data notice rides inside the frame)
+and `figaro-fetch` (clause spec / assembly template / member profile / raw CID, each
+resolved through the live registries and emitted as ONE framed block; smoke-verified
+against the live Sepolia stack). Tested from the attacker's side: a forged closing
+delimiter cannot escape the frame. F4 is structural at the fetch boundary when the
+host wires all network arrivals (coordination messages included) through `frame()`.
+Component 4 (the sandbox wrapper) remains open.
 
 ---
 

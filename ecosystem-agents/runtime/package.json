@@ -1,0 +1,17 @@
+{
+    "name": "figaro-agent-runtime",
+    "private": true,
+    "version": "0.1.0",
+    "description": "Host-shaped half of the sandboxed signer runtime: the data-channel envelope (framed, provenance-tagged fetches) and, later, the sandbox wrapper. The protocol-shaped half is @figaro/sdk/signer.",
+    "type": "module",
+    "bin": {
+        "figaro-fetch": "./figaro-fetch.mjs"
+    },
+    "scripts": {
+        "test": "node --test tests/*.test.mjs"
+    },
+    "dependencies": {
+        "@figaro/sdk": "file:../../sdk",
+        "viem": "^2.55.1"
+    }
+}

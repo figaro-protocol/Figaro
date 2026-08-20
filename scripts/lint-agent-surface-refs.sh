@@ -36,7 +36,12 @@ ALLOWLIST_FILE="scripts/agent-surface-refs-allowlist.txt"
 # CODE only — markdown deliberately excluded from identifier vouching, so a
 # dead symbol cited in prose can never vouch for itself (the docs/ self-match
 # hole the guard's own first self-test exposed).
-CODE_TREES=(sdk/src sdk/scripts frontend/lib frontend/app frontend/components frontend/hooks frontend/scripts frontend/tests src prover scripts clauses assemblies formal)
+CODE_TREES=(sdk/src sdk/scripts frontend/lib frontend/app frontend/components frontend/hooks frontend/scripts frontend/tests src prover scripts clauses assemblies formal ecosystem-agents/runtime)
+# Vendored/build content never vouches for a token (a dependency's code
+# finding a name is not this tree carrying it), and scanning it turns a
+# dead-referent check into a minutes-long grind (prover/target, node_modules).
+GREP_EXCLUDES=(--exclude-dir=node_modules --exclude-dir=target --exclude-dir=dist)
+FIND_EXCLUDES=(-not -path '*/node_modules/*' -not -path '*/target/*' -not -path '*/dist/*')
 
 is_allowed() {
     [[ -f "$ALLOWLIST_FILE" ]] || return 1
@@ -81,16 +86,16 @@ for f in "${FILES[@]}"; do
                     if [[ -e "$base" || -e "frontend/$base" ]]; then :; else err "$f: path \`$tok\` does not exist"; fi ;;
                 *.sol|*.ts|*.tsx|*.mjs|*.sh|*.rs)
                     # Bare filename — must exist somewhere in the tree.
-                    [[ -n "$(find "${CODE_TREES[@]}" -name "$base" -print -quit 2>/dev/null)" ]] || err "$f: file \`$tok\` found nowhere in the tree" ;;
+                    [[ -n "$(find "${CODE_TREES[@]}" "${FIND_EXCLUDES[@]}" -name "$base" -print -quit 2>/dev/null)" ]] || err "$f: file \`$tok\` found nowhere in the tree" ;;
                 *) : ;; # foreign-form path (npm pkg subpath etc.) — skip
             esac
         elif [[ "$tok" =~ ^figaro-[a-z0-9-]+$ ]]; then
             # Protocol names: a clause id, a public prompt, or a repo agent.
             [[ -e "clauses/$tok.json" || -e "ecosystem-agents/$tok.md" || -e ".claude/agents/$tok.md" ]] \
-                || grep -rqlw --include='*.ts' --include='*.tsx' --include='*.json' "$tok" "${CODE_TREES[@]}" 2>/dev/null \
+                || grep -rqlw "${GREP_EXCLUDES[@]}" --include='*.ts' --include='*.tsx' --include='*.json' --include='*.mjs' "$tok" "${CODE_TREES[@]}" 2>/dev/null \
                 || err "$f: name \`$tok\` is no registered clause, prompt, or agent"
         elif [[ "$tok" =~ ^[A-Za-z_][A-Za-z0-9_]{5,}$ && ( "$tok" =~ [A-Z] ) ]]; then
-            grep -rqlw --include='*.ts' --include='*.tsx' --include='*.sol' --include='*.rs' --include='*.mjs' --include='*.json' --include='*.sh' --exclude='lint-agent-surface-refs.sh' --exclude='agent-surface-refs-allowlist.txt' "$tok" "${CODE_TREES[@]}" 2>/dev/null \
+            grep -rqlw "${GREP_EXCLUDES[@]}" --include='*.ts' --include='*.tsx' --include='*.sol' --include='*.rs' --include='*.mjs' --include='*.json' --include='*.sh' --exclude='lint-agent-surface-refs.sh' --exclude='agent-surface-refs-allowlist.txt' "$tok" "${CODE_TREES[@]}" 2>/dev/null \
                 || err "$f: identifier \`$tok\` appears nowhere in the code tree (dead referent)"
         fi
     done <<< "$tokens"
