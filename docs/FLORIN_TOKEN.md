@@ -151,6 +151,65 @@ Sepolia the operator EOA and its delegation are created BEFORE the DAO's member 
 registered under it (RELEASE_READINESS Task 13's redeploy list); the vault address itself
 holds no profile.
 
+### The DAO's income — the endowment logic (ruled 2026-08-13)
+
+The 300M is a grant; the DAO's LIVING is earned. This section states the
+design — never discovered arithmetic: the qualitative structure below carries
+no projected yield, no break-even model, no income forecast, and none should
+ever be added. The mechanism has been live since the 2026-08-19 Sepolia
+redeploy: the DAO Safe registered exactly the mandatory clauses, from its own
+balance.
+
+**The levy.** The DAO Safe is author-of-record of the two *scoring* mandatory
+clauses — `figaro-commerce` and `figaro-topology` — plus any clause DONATED to
+it (donation = registering a clause key under the Safe: permissionless,
+irreversible, first-write-wins; competing under one's own wallet is equally
+welcome). Every settled process composes the mandatory clauses, so their usage
+accrues RPGF to the DAO the way any author's clauses accrue: **the commons
+taxing its own unavoidable usage into the commons pot**. This is NOT a
+protocol fee and NOT a privileged weight — the levy rides the uniform meter
+(`icbrt(c·d²·1e18)`, the 2026-07-29 ratification untouched); "mandatory" is a
+registration-layer convention, nothing on-chain.
+
+**Countercyclical by construction.** Each period's budget divides pro rata
+over every clause and assembly that scored. In a world where third-party
+authorship thrives, the mandatory clauses' share is automatically diluted —
+and little DAO funding is needed, because the ecosystem is flourishing. In a
+world where little else emerged, the mandatory clauses dominate the period's
+score and the endowment income is large — exactly the world where the commons
+still needs the DAO. The sizing is automatic: no parameter, no vote, no one to
+lobby.
+
+**Beyond the sunset.** The RPGF budgets end after the nine periods. What
+continues commons funding afterward is the accumulated levy income plus
+whatever remains of the 300M — an endowment, not an annuity.
+
+**Alignment is the interest structure, not a spending rule.** DAO discretion
+is unrestricted — public goods and private goods both (the three spend paths
+above, unchanged). What aligns the DAO with the network is where its income
+originates: the levy pays only when the network is used, so the DAO's interest
+IS network usage. No spending covenant could add to that, and none exists.
+
+**The mortality doctrine.** The DAO's life IS its treasury. When it runs dry,
+governance exits to the community: donations sustain it if the community wants
+it sustained; otherwise it dies. There is no self-perpetuation right — no fee
+switch to flip, no levy it can raise, no protocol lever reachable by a DAO
+vote (the kernel-governance section above is absolute).
+
+**The boundary — the meter earns nothing.** `figaro-assembly-provenance`, the
+third mandatory clause, stays the ONE entry on the exclusion list. The line is
+TERMS vs METER: commerce and topology are contract *terms* parties agree to,
+and mandatory term levies are disciplined by runtime competition — a runtime
+that piles on levy clauses loses its users, which also answers how many levy
+lines the commons may hold: as many as survive that competition. The
+provenance leaf is the reward system's own attribution plumbing — structurally
+singular, no competing runtime to exit to — so a levy on it would be the meter
+charging for reading itself. It meters; it never earns.
+
+Academic form: `/papers/substrate-broadening-rpgf` §4 ("Why the clauses every
+order carries earn"). On-chain surface: `CONTRACTS.md` § RPGF (the one-entry
+exclusion list, `RpgfMinter._isAuthor` reading `registeredBy`).
+
 ### The 600M RPGF allocation
 
 The *intent* of this allocation is unchanged: 60% of the supply is reserved for
@@ -297,6 +356,10 @@ Each item is a **decision**, not an open question.
 6. **Immutability.** Once deployed, no contract in the florin stack can be
    upgraded, paused, or reconfigured. If any contract is wrong, a new one
    is deployed and the community migrates. There is no admin.
+7. **The DAO earns its living and can die** (ruled 2026-08-13): the mandatory
+   clauses score for the DAO as author-of-record on the uniform meter (the
+   endowment logic above); provenance — the meter itself — stays the one
+   exclusion; when the treasury runs dry, governance exits to the community.
 
 ---
 
