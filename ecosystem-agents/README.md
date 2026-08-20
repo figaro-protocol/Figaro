@@ -15,13 +15,20 @@ the whole model first.
 > document, a clause spec, an offer envelope a counterparty relayed), so a
 > prompt-injection payload hidden in any of it reaches something that can sign:
 > prompt-injection → wallet theft. The mitigation is a sandboxed signer runtime
-> that bounds what a compromised loop can authorize. **It does not exist yet**, and
-> building it is a NAMED release gate on this whole tier, separate from the
+> that bounds what a compromised loop can authorize, and its FIRST component is
+> live: the **policy signer** (`@figaro/sdk/signer` — key custody in a separate
+> daemon behind an out-of-model gate: domain binding, selector allowlist, spend
+> ceilings, simulation veto). Run `figaro-operator` ONLY through it (the
+> operator's own § "The signer is your only pen"); that makes key custody, the
+> ceilings, and the veto STRUCTURAL. The remaining components — the quoted data
+> channel and the sandbox wrapper — **do not exist yet**, and finishing the
+> runtime is a NAMED release gate on this whole tier, separate from the
 > frontend's (`docs/RELEASE_READINESS.md` § "Pre-Mainnet Deployment
-> Verification"). Until it lands, run these against a devnet you own or a key
+> Verification"). Until they land, run these against a devnet you own or a key
 > holding only what you can afford to lose, and leave `figaro-operator`'s
-> human-in-the-loop default on. Every safety rule below is BEHAVIORAL — the prompt
-> asks the agent to refuse; nothing outside the prompt makes it.
+> human-in-the-loop default on. Every safety rule not backed by the signer is
+> BEHAVIORAL — the prompt asks the agent to refuse; nothing outside the prompt
+> makes it.
 
 ## The three capacities
 

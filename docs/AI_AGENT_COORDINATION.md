@@ -473,7 +473,16 @@ restart-surviving rolling window. Two same-day rulings refined the policy shape:
   refused unless the policy grants it explicitly.
 The reference policy for the live Sepolia stack is committed at
 `deployments/signer-policy.11155111.json`, generated from the record + the SDK ABIs.
-Components 2–4 (operator re-point, data-channel envelope, sandbox wrapper) remain open.
+
+**Component 2 DONE 2026-08-20** — `figaro-operator` re-pointed: the socket account is
+the REQUIRED custody (its § "The signer is your only pen" — launch shape, the
+never-accept-a-raw-key rule, signer-refusals-are-final), F1–F3 marked structurally
+satisfied when signer-hosted, F4–F6 explicitly still behavioral; the ecosystem README's
+honest-scope block updated to match. The tool GRANT narrowing is partial by
+construction: execution still rides `Bash` until the runtime's typed tools exist, but
+the launch contract now puts no key material anywhere a shell can read — the full
+de-Bashing lands with the sandbox wrapper. Components 3–4 (data-channel envelope,
+sandbox wrapper) remain open.
 
 ---
 
