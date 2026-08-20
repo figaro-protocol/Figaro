@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { AssetWalletOperatorFigure } from "@/components/figures/AssetWalletOperatorFigure";
 
 export const metadata: Metadata = withOg({
     title: "Agents — Figaro Protocol",
@@ -29,6 +30,7 @@ export default function Agents() {
                 <p className="text-base text-ink-body leading-relaxed">
                     The kernel sees only the wallet &mdash; a signature and a bond. Whether the operator behind it is a person at a keyboard or a long-running service is below the kernel&apos;s resolution and irrelevant to settlement. &ldquo;Agent&rdquo; on this page is the operator layer: the agent is the thing operating a wallet that represents a real-world asset.
                 </p>
+                <AssetWalletOperatorFigure className="mt-6" />
             </MarketingSection>
 
             <MarketingSection title="No API keys, no rate limits, no data moats.">
