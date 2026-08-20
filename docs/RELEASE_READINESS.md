@@ -190,13 +190,25 @@ Required output:
    with `SP1_PROOF_MODE=groth16` — the
    deploy wrappers' Guard 4 (`scripts/check-sp1-gateway-route.sh`) refuses to broadcast
    otherwise; correct the value in the deploy env before that run.
-   **(b) sequencing:** one real batch settling happens on the REDEPLOYED stack, Groth16.
-   The proof needs a host this repo's laptop is not (Succinct's floor for the Groth16
-   wrap: ~14 GB RAM, through the `sp1-gnark` Docker image unless `native-gnark`): whoever
-   requests a proof pays for it — the relay operator, on rented hardware or the Succinct
-   Prover Network (`SP1_PROVER=network`, live since the 2026-08-18 alloy 1.x bump) — never
-   the protocol and never its users (the ruled cost model). For the rehearsal that is the
-   maintainer, once, as the relay operator of the day.
+   **(b) sequencing — DONE LIVE 2026-08-20:** two real Groth16 batches settled on the
+   public Sepolia stack (settle txs `0xa17cbb34…9bf2`, `0x2f81831d…5928`; verifier
+   `0xd503…50B6`, vkey `0x00d992…d178`), driven end-to-end by
+   `frontend/scripts/drive-live-batch.mjs` (`npm run batch:drive`) — commit + witness
+   attestation, then resolve + RPGF usage claim, every chain fact read back out-of-band
+   (bonds pulled, Attestation re-emitted, payout deltas, state roots, batch count,
+   counter accrual under the minSellers floor). The genesis root and the gateway's
+   Groth16 routing are thereby proven on-chain. The layered rehearsal earned its keep
+   first: layer 2 (box-local fork) caught the guest committing bincode public values
+   where the chain hashes ABI words — every proof reverted `ProofInvalid()` on the
+   2026-08-19 stack; fixed in the guest (one canonical `PublicValues.abi_encode`,
+   byte-equality drift gate) and the minimal pair {UsageCounter, FigaroBatchVerifier}
+   redeployed carrying the new vkey (the florin's renounced, fully-allocated minter
+   registry pins the old RpgfMinter — dormant until period 0 closes in 2027, beyond
+   this stack's life; mainnet deploys the corrected code from genesis). Cost posture
+   held: the rehearsal's relay operator proved on a rented 16-core/30 GB box
+   (`SP1_PROVER=cpu`, ~6–7 min per Groth16 wrap, ~18 GB peak — swap required above the
+   ~14 GB floor); production operators use CUDA or the Succinct Prover Network
+   (`SP1_PROVER=network`) — never the protocol and never its users.
 4. Testnet setup — the two networks, in order (maintainer-ruled 2026-08-12; targets per
    the Deployment Targets section: Sepolia first, Polygon second). Sepolia prerequisites
    landed 2026-08-14:
@@ -408,8 +420,9 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   WETH/USDC 0.01% pool in its receipt). Audit finding for the record: the coordinator
   landed 2026-07-12 (`a401e93c`) in the devnet script, TLA+, Foundry and the frontend but
   never in the public scripts or the scope table — an omission, not a decision.
-- anything else this list accumulates before the redeploy day. The redeploy is also when
-  Task 7.3(b) — one real Groth16 batch settling — is done, on the corrected stack.
+- anything else this list accumulates before the redeploy day. Task 7.3(b) — the real
+  Groth16 batch settling — is DONE (2026-08-20, on the minimal-pair-corrected stack;
+  see Task 3(b) above).
 
 ## Validation Commands
 
