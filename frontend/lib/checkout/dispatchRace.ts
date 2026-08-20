@@ -30,8 +30,10 @@
  *
  * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one authored loop, ruled
  * 2026-08-14): this surface drafts the candidates, supplies each one's
- * channel (declared `services.rest` endpoint → the offer wire behind the
- * browser-edge https guard; wallet candidate → the relay adapter,
+ * channel (declared endpoint → the offer wire behind the browser-edge https
+ * guard, resolved through the DID-verifying resolver when the profile
+ * declares `services.did` — see `resolveAgentEndpoint`; no endpoint → the
+ * relay adapter,
  * `@/lib/handoff/relayChannel`), renders progress, and owns the window timer
  * and the buyer's overrides. Race payloads travel INLINE over the relay —
  * deliberately NOT `shareSignedOrder` (whose documented precondition is a
@@ -49,10 +51,13 @@ import {
 import {
     startRace,
     postOffer,
+    didWebEndpointResolver,
+    isDidWeb,
     type CommitmentPayload,
     type RaceOutcome,
     type RaceRun,
 } from "@figaro/sdk/agent";
+import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 import { generateSalt } from "@figaro/sdk";
 import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
@@ -68,6 +73,49 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 
 type Hex = `0x${string}`;
 
+// ── Candidate endpoint routing ──────────────────────────────────────────────
+
+/** did:web resolution runs in the buyer's browser against a candidate-chosen
+ *  host at race start — bound it, or one hostile document host stalls the
+ *  whole draft phase. */
+const DID_RESOLUTION_TIMEOUT_MS = 10_000;
+
+const timedDidFetch: typeof fetch = (input, init) =>
+    fetch(input, { ...init, signal: AbortSignal.timeout(DID_RESOLUTION_TIMEOUT_MS) });
+
+/**
+ * The profile-keyed routing rule's endpoint half (channel-seam ruling,
+ * 2026-08-14): a candidate declaring `services.did` (did:web) routes through
+ * the DID-VERIFYING resolver — document fetched, the address binding checked
+ * on this chain, the `RESTEndpoint` service extracted. A declared did:web
+ * that fails any of it yields NO endpoint — the candidate races over the
+ * relay instead; verification would be decorative if failure fell back to
+ * the raw `services.rest` the DID was supposed to vouch for. A profile with
+ * no DID (or a DID of a method this surface cannot resolve) keeps the raw
+ * `services.rest`, https-guarded at the wire as before.
+ */
+export async function resolveAgentEndpoint(
+    services: MemberAgentServices | undefined,
+    candidate: Hex,
+    chainId: number,
+    fetchFn: typeof fetch = timedDidFetch,
+): Promise<string | undefined> {
+    if (services?.did && isDidWeb(services.did)) {
+        const did = services.did;
+        try {
+            const resolve = didWebEndpointResolver(() => did, {
+                serviceType: "RESTEndpoint",
+                chainId,
+                fetchFn,
+            });
+            return (await resolve(candidate)) ?? undefined;
+        } catch {
+            return undefined;
+        }
+    }
+    return services?.rest;
+}
+
 export type DispatchRaceStep = "idle" | "drafting" | "racing" | "done" | "error";
 
 /** A candidate in the running: their drafted struct + reply state (render model). */
@@ -81,8 +129,8 @@ export interface RaceCandidateView {
 /** What the checkout needs to execute with the race's winner: the node's
  *  selection (the pick IS the winner), the reproduction inputs (salts +
  *  deadline), and the winner's countersignature keyed to the drafted struct.
- *  `endpoint` is present when the winner is an AGENT candidate (their profile
- *  declares `services.rest`) — the fully-signed payload is ALSO delivered
+ *  `endpoint` is present when the winner is an AGENT candidate (an endpoint
+ *  from `resolveAgentEndpoint`) — the fully-signed payload is ALSO delivered
  *  there, so a wallet with no browser open still receives its commit-ready
  *  order and broadcasts it itself. */
 export interface DispatchRaceResult {
@@ -105,8 +153,10 @@ export async function postToAgentEndpoint(
     endpoint: string,
     payload: CommitmentPayload,
 ): Promise<CommitmentPayload | null> {
-    // `endpoint` is an attacker-authorable `services.rest` from a permissionless
-    // member profile — the buyer's browser POSTs to it. Restrict to https so it
+    // `endpoint` comes from an attacker-authorable, permissionless member
+    // profile (raw `services.rest`, or a DID document's `RESTEndpoint` — a
+    // consistent DID vouches for the binding, not for the host) — the buyer's
+    // browser POSTs to it. Restrict to https so it
     // can't be aimed at an internal/loopback/link-local host or a non-http
     // scheme (audit 2026-07-23, SSRF-shaped fan-out). new URL() rejects
     // malformed values; the CORS preflight already blocks reading a cross-origin
@@ -270,7 +320,7 @@ export function useDispatchRace() {
                 .filter((cat) => !hexEqual(cat.address, checkout.buyer))
                 .map((cat) => ({
                     address: cat.address as Hex,
-                    endpoint: cat.agentServices?.rest,
+                    services: cat.agentServices,
                     pricing: resolveSubOrderPricing({
                         node: { ...node, clauses: nodeClauses },
                         seller: cat.address as Hex,
@@ -286,6 +336,13 @@ export function useDispatchRace() {
             if (priced.length === 0) {
                 throw new Error("No registered seller's catalogue can price this order — nothing to race.");
             }
+            // Route each candidate — through the DID-verifying resolver where a
+            // DID is declared — in parallel: a slow or hostile document host
+            // costs its own candidate the endpoint, never the race.
+            const routed = await Promise.all(priced.map(async (c) => ({
+                ...c,
+                endpoint: await resolveAgentEndpoint(c.services, c.address, chainId),
+            })));
             setQuoting(!!args.quote);
 
             // Fix the reproduction inputs ONCE: a salt per template node and a
@@ -307,7 +364,7 @@ export function useDispatchRace() {
             // spec-routed lookup the fills use) and attached as the quote
             // request's terms.
             const drafts: RaceCandidateState[] = [];
-            for (const { address: candidate, endpoint, pricing } of priced) {
+            for (const { address: candidate, endpoint, pricing } of routed) {
                 const item = { id: pricing.item!.id, name: pricing.item!.name };
                 const price = formatToken(args.quote?.ceiling ?? pricing.payment, checkout.tokenDecimals);
                 const orders = await planAssemblyOrders({
@@ -347,9 +404,10 @@ export function useDispatchRace() {
             // (fan-out, verification, arrival-order accumulation, selection);
             // this surface supplies only the per-candidate channel and renders
             // progress. Candidate routing is the profile-keyed rule:
-            //   - AGENT candidate (declared `services.rest`): the offer wire —
-            //     POST to their endpoint behind the browser-edge https guard.
-            //     Mixed pairings are exactly this branch.
+            //   - AGENT candidate (an endpoint from `resolveAgentEndpoint` —
+            //     DID-verified where declared): the offer wire — POST to it
+            //     behind the browser-edge https guard. Mixed pairings are
+            //     exactly this branch.
             //   - wallet candidate: the relay adapter — the handoff family's
             //     pre-commit cell speaking `CoordinationChannel`.
             setStep("racing");
