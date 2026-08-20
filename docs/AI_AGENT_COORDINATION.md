@@ -493,7 +493,22 @@ resolved through the live registries and emitted as ONE framed block; smoke-veri
 against the live Sepolia stack). Tested from the attacker's side: a forged closing
 delimiter cannot escape the frame. F4 is structural at the fetch boundary when the
 host wires all network arrivals (coordination messages included) through `frame()`.
-Component 4 (the sandbox wrapper) remains open.
+
+**Component 4 DONE 2026-08-20** — the sandbox wrapper (`figaro-run-sandboxed`,
+`ecosystem-agents/runtime/`): the OS profile denies all outbound network except
+loopback and all writes outside workspace+temp, the launcher scrubs anything
+key-shaped from the environment and canonicalizes the named unreadable paths, and —
+because an OS sandbox cannot filter egress by hostname — a **policy-driven egress
+proxy** started OUTSIDE the sandbox is the only way out, forwarding solely to the
+policy's `egress` hosts (`proxy-bootstrap.mjs` routes node's fetch through it). Deny
+cases tested on macOS (write escape, secret read, direct outbound — each must fail)
+plus the composed proof: a framed live fetch from inside the sandbox via the proxy
+against the live Sepolia stack. Residuals, stated where they bind: the Linux
+container variant is documented, not exercised on the authoring host; sandboxed reads
+are deny-listed (named secrets), not default-denied — the key itself is never on the
+sandboxed side; `Bash` inside the wrapper persists until the runtime grows typed
+tools. **All four components stand** — the tier-gate criterion and its launch shape
+are recorded in `RELEASE_READINESS.md` § Pre-Mainnet.
 
 ---
 

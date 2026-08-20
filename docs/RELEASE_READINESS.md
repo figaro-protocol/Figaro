@@ -579,7 +579,22 @@ external-audit gates above:
 - Test-helper flags unset in the deploy build: `NEXT_PUBLIC_ENABLE_TEST_HELPERS`, `NEXT_PUBLIC_USE_TEST_SIGNER`, `NEXT_PUBLIC_TEST_PRIVATE_KEY`, `NEXT_PUBLIC_DEV_ADDRESS` must all be unset (else `?e2e=mock` / the injected test signer inline into the bundle). This is now enforced at build time: `frontend/next.config.mjs` ABORTS a `NODE_ENV=production` build with any of these set unless `FIGARO_ALLOW_TEST_HELPERS=1` (the escape only the Playwright e2e build sets). Confirm the CDN build runs without that escape.
 - `public/_headers` CSP/HSTS set is applied at the CDN — verify at the hosting layer (cannot be checked from the repo tree). The CSP ships `'unsafe-inline'` for scripts (a static export cannot do per-request nonces); it is NOT an XSS/exfil backstop — XSS safety rests on React auto-escaping, enforced by `scripts/lint-no-dangerous-html.sh`. The script-hash hardening that removes `'unsafe-inline'` is the standing next step (`public/_headers` documents it).
 - `next` npm advisories are static-export-INAPPLICABLE (this deploy ships no Next server: `output:'export'`, no middleware/rewrites/RSC-server/Server-Actions). They are build-host hygiene, NOT runtime blockers — do not conflate with the wagmi-2 gate (Task 7.2), which IS runtime-reachable. A patched 14.2.x bump is advisable for the build host.
-- Ecosystem-agent tier (`ecosystem-agents/`) ships ONLY behind a sandboxed signer runtime — the F4/F5/F6 requirements those specs document are requirements ON a runtime that does not yet exist. Until it does, `figaro-operator` (raw `Bash` + an ambient signing key + attacker-authorable on-network content it ingests) is a prompt-injection → wallet-theft risk; the guarantee is behavioral-only. This is a SEPARATE release gate on shipping the agent tier, not a frontend gate (frontend+SDK security audit, 2026-07-23).
+- Ecosystem-agent tier (`ecosystem-agents/`) ships ONLY behind the sandboxed signer
+  runtime — **BUILT 2026-08-20, all four components** (`AI_AGENT_COORDINATION.md` § the
+  design owns per-component status): the policy signer (`@figaro/sdk/signer` — key
+  custody, out-of-model gate, F1–F3), the operator re-pointed at the socket account,
+  the data channel (`ecosystem-agents/runtime/` — framed, nonce-bounded fetches, F4 at
+  the fetch boundary), and the sandbox wrapper (`run-sandboxed` — loopback-only OS
+  sandbox + policy-driven egress proxy + scrubbed environment, F5/F6; deny cases
+  tested on macOS). Honest residuals, named where they live: the Linux container
+  variant is documented, not exercised on the authoring host; the read surface inside
+  the sandbox is deny-listed (named secret paths), not default-denied — acceptable
+  because the signing key is never on the sandboxed side at all; and `Bash` remains in
+  the operator's grant *inside* the wrapper until the runtime grows typed tools. The
+  gate CRITERION — no raw host shell + no ambient key + framed content — is met when
+  the operator is launched through `run-sandboxed` with the signer outside; launched
+  bare, the guarantee degrades to behavioral-only and the specs say so. (Separate gate
+  from the frontend's — frontend+SDK security audit, 2026-07-23.)
 - The IPFS gateway the app resolves `ipfs://` documents through MUST be a DIFFERENT origin than the app itself. An affixed consent/criteria document may be pinned as `text/html` (`ipfsService.ts` `ALLOWED_FILE_TYPES`); on click-through the gateway serves it and any script runs in the GATEWAY origin — harmless while that is a separate origin, an app compromise if the app is ever served same-origin as its gateway (audit 2026-07-23).
 - Wallet-security screening: drive one real commit signature through MetaMask against the live deployment and confirm no Blockaid "deceptive request" flag on the EIP-712 request (legitimate contracts get false-flagged — Kleros's escrow did); if flagged, file the MetaMask/Blockaid false-positive report and re-verify before launch. (Surfaced 2026-06-12: the universal Anvil default-deployer addresses tripped the list on devnet; devnet now deploys from a randomized throwaway key.)
 

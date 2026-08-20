@@ -23,8 +23,10 @@ signature you request passes the signer's own gate before it exists.
 
 The owner runs the signer daemon (`npx figaro-signer --policy <policy.json>
 --keystore <keystore> --socket <path>` — the reference policy ships per deployment,
-e.g. `deployments/signer-policy.11155111.json`) and hands you two things: the socket
-path and the operated address. Your wallet object is
+e.g. `deployments/signer-policy.11155111.json`), launches YOU through the sandbox
+wrapper (`figaro-run-sandboxed` in `ecosystem-agents/runtime/` — workspace-scoped
+writes, loopback-only network behind the policy's egress proxy, scrubbed
+environment), and hands you two things: the socket path and the operated address. Your wallet object is
 
 ```ts
 import { socketSignerAccount } from "@figaro/sdk/signer";
@@ -516,16 +518,19 @@ that, a live risk, not a solved problem.
   one this agent operates; and arbitrary network egress beyond the RPC endpoint, the pinning
   service, and the coordination channel. Editing the frontmatter is not the fix — the fix is
   the sandbox denying the above; until it exists, the tool grant over-privileges this agent.
-  *Partially narrowed by the signer: with custody in the daemon, the host holds NO key
-  material for a shell to read — the worst secret read is structurally gone, and the
-  launch contract is that the agent's environment and workspace carry no keystore and no
-  passphrase. The full scoping (typed tools, no Bash, the policy's egress allowlist)
-  lands with the sandbox wrapper.*
+  *Satisfied by the sandbox wrapper (`ecosystem-agents/runtime/` — `figaro-run-sandboxed`):
+  launched through it, writes land only in the agent's workspace, the environment is
+  scrubbed of anything key-shaped, named secret paths are unreadable, and ALL network
+  except loopback is denied at the OS — the policy-driven egress proxy is the only way
+  out. A shell inside those walls is no longer a raw HOST shell. Launched bare, this
+  requirement falls back to behavioral-only.*
 - **F6 — The sandbox is what backs the seam.** The own-wallet-only / never-the-repo seam is
   stated correctly in prose above, but prose does not enforce it — the F5 sandbox is the
   structural backstop that makes the seam real (deny repo writes, deny other wallets'
-  registrations). Until the sandbox exists, the seam is a promise the agent keeps, not a barrier
-  the runtime imposes.
+  registrations). *Backed when launched through the wrapper: repo writes are denied
+  (only the workspace is writable), and the other half — no other wallet's key — is the
+  signer's (it holds exactly one). Launched bare, the seam is a promise the agent keeps,
+  not a barrier the runtime imposes.*
 
 ## Discipline
 

@@ -1,0 +1,37 @@
+;; The sandbox wrapper's macOS profile (component 4, F5/F6) — parameterized,
+;; launched by run-sandboxed.mjs via sandbox-exec.
+;;
+;; Posture: default-deny on the two boundaries prose cannot enforce —
+;;   WRITES  — only the agent's own workspace and the temp dirs;
+;;   NETWORK — loopback only, so the egress proxy (outside the sandbox,
+;;             enforcing the policy's allowlist) and the signer socket are
+;;             the only ways out.
+;; Reads stay default-allow MINUS the named secret paths: the signing key
+;; already lives outside the sandboxed process entirely (the policy signer
+;; holds it), so the residual read surface is deny-listed explicitly here
+;; and shrunk further per deployment via the launcher's parameters.
+
+(version 1)
+(allow default)
+
+;; ── Network: loopback only ─────────────────────────────────────────────
+(deny network-outbound)
+(allow network-outbound (remote ip "localhost:*"))
+;; The signer's UNIX socket — the one signing capability.
+(allow network-outbound (literal (param "SIGNER_SOCKET")))
+
+;; ── Writes: workspace + temp only ──────────────────────────────────────
+(deny file-write*)
+(allow file-write* (subpath (param "WORKSPACE")))
+(allow file-write* (subpath (param "TMPDIR")))
+(allow file-write* (subpath "/private/tmp"))
+(allow file-write-data
+    (literal "/dev/null")
+    (literal "/dev/stdout")
+    (literal "/dev/stderr")
+    (literal "/dev/tty"))
+
+;; ── Reads: named secrets are unreadable ────────────────────────────────
+(deny file-read* (subpath (param "DENY_READ_A")))
+(deny file-read* (subpath (param "DENY_READ_B")))
+(deny file-read* (subpath (param "DENY_READ_C")))

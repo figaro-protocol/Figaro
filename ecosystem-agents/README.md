@@ -20,17 +20,19 @@ the whole model first.
 > daemon behind an out-of-model gate: domain binding, selector allowlist, spend
 > ceilings, simulation veto). Run `figaro-operator` ONLY through it (the
 > operator's own § "The signer is your only pen"); that makes key custody, the
-> ceilings, and the veto STRUCTURAL. The quoted data channel is live too
+> ceilings, and the veto STRUCTURAL. The quoted data channel is live
 > (`ecosystem-agents/runtime/` — `figaro-fetch` frames every network read with
-> provenance and a boundary nonce; fetch through it, never bare). The last
-> component — the sandbox wrapper — **does not exist yet**, and finishing the
-> runtime is a NAMED release gate on this whole tier, separate from the
-> frontend's (`docs/RELEASE_READINESS.md` § "Pre-Mainnet Deployment
-> Verification"). Until it lands, run these against a devnet you own or a key
-> holding only what you can afford to lose, and leave `figaro-operator`'s
-> human-in-the-loop default on. Every safety rule not backed by the signer is
-> BEHAVIORAL — the prompt asks the agent to refuse; nothing outside the prompt
-> makes it.
+> provenance and a boundary nonce; fetch through it, never bare), and so is
+> the sandbox wrapper (`figaro-run-sandboxed` — workspace-scoped writes,
+> loopback-only network behind a policy-driven egress proxy, scrubbed
+> environment; deny cases tested on macOS, Linux variant documented). Run the
+> full shape — signer outside, agent inside the wrapper, reads framed — and
+> the F1–F6 requirements are structural; run any piece bare and that piece
+> falls back to BEHAVIORAL, the prompt asking where nothing outside it makes
+> it. The runtime is the NAMED release gate on this tier
+> (`docs/RELEASE_READINESS.md` § "Pre-Mainnet Deployment Verification");
+> until real-stakes operation has soaked, keep keys sized to what you can
+> afford to lose and leave `figaro-operator`'s human-in-the-loop default on.
 
 ## The three capacities
 
