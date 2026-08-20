@@ -357,14 +357,22 @@ console.log(`submitted AttestAsSeller (op ${attestResult.id})  contentRef ${cont
 
 async function waitForSettled(minSettled) {
     const deadline = Date.now() + BATCH_WAIT_TIMEOUT_MS;
+    const baseDead = (await sequencer.status()).dead_lettered_ops ?? 0;
     let last = '';
     while (Date.now() < deadline) {
         try {
             const s = await sequencer.status();
-            const line = `settled ${s.batches_settled}, pending ${s.pending_ops}, root ${s.state_root}`;
+            const line = `settled ${s.batches_settled}, pending ${s.pending_ops}, dead ${s.dead_lettered_ops ?? 0}, root ${s.state_root}`;
             if (line !== last) { console.log(`  [${new Date().toISOString()}] ${line}`); last = line; }
             if (s.batches_settled >= minSettled) return s;
+            // A death is final — the sequencer dead-letters only failures it
+            // classified as deterministic, so waiting out the window would
+            // wait on a batch that can never come.
+            if ((s.dead_lettered_ops ?? 0) > baseDead) {
+                throw new Error(`the sequencer dead-lettered our ops: ${s.last_settle_error ?? '(no reason surfaced)'}`);
+            }
         } catch (e) {
+            if (/dead-lettered our ops/.test(String(e?.message))) throw e;
             console.log(`  [batch-wait] ${e.message ?? e}`);
         }
         await new Promise((r) => setTimeout(r, 5000));

@@ -141,6 +141,13 @@ export interface SequencerStatus {
     /** Usage claims waiting to ride the next batch. */
     pending_usage_claims: number;
     batches_settled: number;
+    /** Cumulative ops the relay dropped without settling (deterministic
+     *  settle revert, prove failure). A GROWING figure during a wait means
+     *  the wait is over, whatever `batches_settled` says — poll this beside
+     *  it. Absent on a relay predating the failure surface. */
+    dead_lettered_ops?: number;
+    /** The most recent dead-letter reason, verbatim; null while clean. */
+    last_settle_error?: string | null;
     /** The publication window. Absent on a relay predating the read routes. */
     archive?: SequencerRetentionWindow;
 }
