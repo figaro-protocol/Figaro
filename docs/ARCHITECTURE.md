@@ -13,31 +13,31 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 ## The stack
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ FigaroCore — the frozen kernel.  Bonding + buyer-dominance + atomic resolve.  │
-│ Sees only LINEAR commit chains + an opaque `agreementHash` fingerprint.       │  ── protocol
-├─────────────────────────────────────────────────────────────────────────────┤
-│ Registries (Clause / Members / Assembly).  Permissionless, content-addressed  │
+┌────────────────────────────────────────────────────────────────────────────────┐
+│ FigaroCore — the frozen kernel.  Bonding + buyer-dominance + atomic resolve.   │
+│ Sees only LINEAR commit chains + an opaque `agreementHash` fingerprint.        │  ── protocol
+├────────────────────────────────────────────────────────────────────────────────┤
+│ Registries (Clause / Members / Assembly).  Permissionless, content-addressed   │
 │ anchors; first-write-wins.  Coordinators + verifier read the kernel.           │  ── protocol
-├─────────────────────────────────────────────────────────────────────────────┤
+├────────────────────────────────────────────────────────────────────────────────┤
 │ UsageCounter → RpgfMinter.  Verified usage counted as it happens; the florin   │
 │ pays each clause or assembly UNIFORM pro-rata from a closed accrual period —   │  ── protocol
 │ real usage alone, no category or weight. Neutrality is the two-sided live ETH  │
 │ stake.                                                                         │
-├─────────────────────────────────────────────────────────────────────────────┤
+├────────────────────────────────────────────────────────────────────────────────┤
 │ clause.fields  →  the verified substance                                       │
 │   • fields → ABI-encoded → validated (Layer A, off-chain) →                    │  ── protocol
 │     merkle-bound to agreementHash → attested → secured by bonds.               │     (verified)
 │   • verification is UNIFORM — every section is a merkle leaf under             │
 │     the signed agreementHash (the keccak cross-check). No per-clause tier.     │
 │ ═══════════════════════════  THE SEAM  ═══════════════════════════════════════ │
-│ clause.block.{design, checkout, runtime} — phase sections by reader           │  ── presentation
+│ clause.block.{design, checkout, runtime} — phase sections by reader            │  ── presentation
 │   • Layer-A-only metadata.  NO on-chain or verification path reads it.         │     (replaceable)
-├─────────────────────────────────────────────────────────────────────────────┤
-│ UI + IPFS.  Reads registry → IPFS; uses `block` to present (group by article, │
+├────────────────────────────────────────────────────────────────────────────────┤
+│ UI + IPFS.  Reads registry → IPFS; uses `block` to present (group by article,  │
 │ nest sub-clauses, mount capability rails); lets people DO the five nouns.      │  ── presentation
 │ Agreements/clauses/proofs are PINNED in IPFS, never reconstructed on-chain.    │
-└─────────────────────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Arrows point **up**: the UI reads the registries; the registries don't know the UI exists.

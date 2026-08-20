@@ -8,6 +8,38 @@ No contract belongs to a dapp. Every contract is a permissionless primitive.
 
 This file is the canonical inventory. CLAUDE.md indexes it; agents must not reference contracts not listed here.
 
+## The contract-edge graph
+
+Every arrow is an **immutable pointer fixed at construction** (reads, unless
+marked); parenthesized nodes are external canonical contracts, not this repo's.
+Two structural facts the graph makes visible: the kernel is the star's center
+and pins nothing, and the three registries carry ZERO edges among themselves —
+parallel anchors, never nested (§ Separation of Concerns in CLAUDE.md).
+
+```
+AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordinator ──▶ (Permit2)
+                               ▲                                          └──▶ (Uniswap router)
+                               │
+                          UsageCounter ──▶ MembersRegistry
+                            ▲   ▲     └──▶ ClauseRegistry, AssemblyRegistry
+             writes accrual │   │ reads accrual
+                            │   │
+          FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AssemblyRegistry
+              │        │            │              (author of record)
+              ▼        ▼            ▼
+       (SP1 gateway)  ClauseRegistry   FlorinToken
+                      (contentHashOf)  (registered minter at genesis, 600M cap)
+```
+
+- `FigaroCore` — no outbound edges: the kernel reads no contract above it.
+- `UsageCounter.applyBatchAccrual` is the verifier's ONE write edge and the
+  counter's one privileged caller (`DESIGN_DECISIONS.md` §16); everything else
+  on the graph is a read.
+- `FlorinToken` — no outbound edges either: minters point at it, registered by
+  the deployer at genesis before `renounceDeployerMint` closes the registry.
+- Assembly→clause and seller→assembly relationships are OFF-chain (template
+  content, profile bindings) — deliberately absent from this graph.
+
 ## Kernel (`src/kernel/`)
 
 The frozen settlement primitive. Never edited — see CLAUDE.md § Agent Permissions.

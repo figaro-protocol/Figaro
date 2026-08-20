@@ -152,17 +152,17 @@ strangers. The mechanism produces the certainty; the certainty produces the calm
 For a transaction at position `i` in a value chain:
 
 ```
-Seller Bond: Cs(i) = 2 × G(i)
-Buyer Bond:  Cb(i) = 2 × P(i)
+Seller Bond: C_s = 2 × Gᵢ
+Buyer Bond:  C_b = 2 × Pᵢ
 
 Where:
-  G(i) = Cumulative value through position i (all prior work + current)
-  P(i) = Payment for work at position i (local value added)
+  Gᵢ = Cumulative value through position i (all prior work + current)
+  Pᵢ = Payment for work at position i (local value added)
 ```
 
 **Example**: Alice orders $10 goods from Bob, Charlie delivers for $2
 
-| Step | Party | Role | G(i) | P(i) | Seller Bond | Buyer Bond |
+| Step | Party | Role | Gᵢ | Pᵢ | Seller Bond | Buyer Bond |
 |------|-------|------|------|------|-------------|------------|
 | 1 | Bob | Baker | $10 | $10 | $20 | $20 |
 | 1 | Alice | Buyer | - | $10 | - | $20 |
@@ -342,7 +342,7 @@ Position 3: Seller bonds 2×(P₁ + P₂ + P₃)
 Position n: Seller bonds 2×∑Pᵢ
 ```
 
-`G(i) = ∑_{j≤i} P(j)` is **inclusive**: a seller bonds against everything the
+`Gᵢ = ∑_{j≤i} Pⱼ` is **inclusive**: a seller bonds against everything the
 process has accumulated through its link, its own contribution counted, because
 that total is the ceiling on what any defection at that link could carry off.
 And the figure is not a report. `commit` admits exactly one value — the payment
@@ -352,7 +352,7 @@ seller's bond base is fixed by arithmetic against the signed accumulator before
 anything is locked. A seller has no interest in declaring more in any case: the
 declaration is precisely what it must deposit.
 
-**Coordination pressure**: cumulative exposure `2G(i)` is non-decreasing along
+**Coordination pressure**: cumulative exposure `2Gᵢ` is non-decreasing along
 the chain, and the gap a seller weighs against holding out — `Δᵢ = Pᵢ + Gᵢ ≥
 2Pᵢ` — grows with every payment accumulated ahead of it. The risk-to-reward
 ratio `ρᵢ = 2Gᵢ/Pᵢ` rises with what came before while falling in the seller's own
@@ -553,7 +553,7 @@ positions at one order compare with each other. The seller's **risk-to-reward
 ratio** is `ρᵢ = C_s/Pᵢ = 2Gᵢ/Pᵢ` — its own position against its own earnings, and
 twice the first quantity. Everything below is stated for whichever is meant.
 
-**Interpretation**: cumulative exposure `2G(i)` is non-decreasing along the
+**Interpretation**: cumulative exposure `2Gᵢ` is non-decreasing along the
 chain — the deeper party bonds against everything accumulated at its link while
 earning only its own payment. Neither the asymmetry `C_s : C_b` nor `ρᵢ` need
 rise with depth: both fall in the seller's own payment, which is why the third
@@ -668,32 +668,32 @@ Stakes (ρᵢ = C_s/Pᵢ, the risk-to-reward ratio — not the C_s : C_b asymmet
 1. **Each seller's bond exceeds what it could carry off**: Charlie's $24 is twice
    the $12 accumulated at its link, so crediting the retention still leaves it out
    of pocket
-2. **Cumulative exposure is non-decreasing along the chain**: `2G(i)` accumulates
+2. **Cumulative exposure is non-decreasing along the chain**: `2Gᵢ` accumulates
    every payment ahead of it — linear in depth for equal payments, never geometric
 3. **The deterrent holds at EVERY position**: the gap `Δᵢ = Pᵢ + Gᵢ ≥ 2Pᵢ` is
    strictly positive everywhere, and widens with what came before
 4. **Self-enforcing coordination**: every seller's payout waits on every other's
    performance, so each holds a computable interest in the rest of the chain
 
-**The comparison at position `i`**, with cumulative value `G(i)` and local payment
-`P(i)`:
+**The comparison at position `i`**, with cumulative value `Gᵢ` and local payment
+`Pᵢ`:
 
 ```
-Seller bonds:  B(i) = 2×G(i)
-Seller earns:  E(i) = P(i)
+Seller bonds:  Bᵢ = 2×Gᵢ
+Seller earns:  Eᵢ = Pᵢ
 
-Performing, then resolution:   +P(i)             payment earned, bond recovered
-Holding out, no resolution:    −2×G(i) + r(i)    r(i) ≤ G(i) is what it can
-                                                 actually retain off-chain
-                             ≤ −G(i)             at maximal retention
+Performing, then resolution:   +Pᵢ             payment earned, bond recovered
+Holding out, no resolution:    −2×Gᵢ + rᵢ      rᵢ ≤ Gᵢ is what it can
+                                               actually retain off-chain
+                             ≤ −Gᵢ             at maximal retention
 
 Given that the buyer resolves after performance — unconditional, assuming
 nothing about the seller — performing is the seller's strict best response at
 every position. The gap is
 
-  Δ(i) = P(i) + G(i) ≥ 2×P(i)
+  Δᵢ = Pᵢ + Gᵢ ≥ 2×Pᵢ
 
-equal to 2×P(i) only at the root, wider with every payment accumulated ahead of
+equal to 2×Pᵢ only at the root, wider with every payment accumulated ahead of
 the seller, and wider again wherever the seller cannot retain the whole
 accumulated value (a courier holds the meal but cannot retain a delivery it
 never made).
@@ -702,7 +702,7 @@ never made).
 **Not dominance-solvable on the seller side.** The conclusion is conditional and
 must stay so. Where some *other* seller has held out and the process is not going
 to close, `S_i`'s own holding out is strictly better for it than performing:
-performing costs it bond and product together, `−2G(i)`, against `−2G(i) + r(i)`
+performing costs it bond and product together, `−2Gᵢ`, against `−2Gᵢ + rᵢ`
 for keeping what it holds. No bond schedule can make handing goods to a party
 that will not pay attractive. What recommends the cooperative profile to each
 seller is that it is strictly better **provided the others perform** — the
@@ -1049,7 +1049,7 @@ Result: irrational attack; the deterrent prices a grudge, it does not
 
 **Attack**: Split a chain into many small orders to reduce the bond posted at any one link.
 
-**Defense**: the schedule is applied per order and keyed to the accumulator, not to the order's own payment — a seller at position `i` bonds `2G(i)`, everything the process has accumulated at its link. Splitting an order in two leaves the later half bonded against the same accumulated total, so the exposure at the link is unchanged. There is no order bonded on other terms.
+**Defense**: the schedule is applied per order and keyed to the accumulator, not to the order's own payment — a seller at position `i` bonds `2Gᵢ`, everything the process has accumulated at its link. Splitting an order in two leaves the later half bonded against the same accumulated total, so the exposure at the link is unchanged. There is no order bonded on other terms.
 
 ### Liveness Properties
 
@@ -1165,9 +1165,9 @@ accumulator and the bonds it sizes.
 **Bond Formula**:
 ```
 For the seller of the order at position i in a process:
-  G(i) = ∑ payment of every order committed so far, INCLUDING this order's
-         own payment (the live accumulator plus P(i) — what commit checks)
-  Bond(i) = 2 × G(i)
+  Gᵢ = ∑ payment of every order committed so far, INCLUDING this order's
+       own payment (the live accumulator plus Pᵢ — what commit checks)
+  Bondᵢ = 2 × Gᵢ
 ```
 
 **Example**: 3-step chain
