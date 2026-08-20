@@ -34,6 +34,38 @@ pub struct AppState {
     pub archive: Archive,
     /// Cumulative number of batches settled by this sequencer.
     pub batch_count: std::sync::Arc<tokio::sync::RwLock<u64>>,
+    /// Cumulative failure facts — see `FailureLog`.
+    pub failures: FailureLog,
+}
+
+/// Cumulative failure facts, surfaced on `/status` so a polling driver SEES a
+/// death instead of waiting out a batch that will never come (the 2026-08-20
+/// gap: ops were dead-lettered and every observer kept polling a surface that
+/// could not say so). Counts OPS dead-lettered — dropped without settling —
+/// whatever the path (deterministic settle revert, prove failure); the last
+/// error is kept verbatim for the reader.
+#[derive(Clone, Default)]
+pub struct FailureLog {
+    inner: std::sync::Arc<tokio::sync::RwLock<FailureLogInner>>,
+}
+
+#[derive(Default)]
+struct FailureLogInner {
+    dead_lettered_ops: u64,
+    last_error: Option<String>,
+}
+
+impl FailureLog {
+    pub async fn record(&self, ops: u64, error: String) {
+        let mut inner = self.inner.write().await;
+        inner.dead_lettered_ops += ops;
+        inner.last_error = Some(error);
+    }
+
+    pub async fn snapshot(&self) -> (u64, Option<String>) {
+        let inner = self.inner.read().await;
+        (inner.dead_lettered_ops, inner.last_error.clone())
+    }
 }
 
 /// HTTP-boundary limits.
@@ -81,6 +113,11 @@ pub struct StatusResponse {
     pub pending_ops: usize,
     pub pending_usage_claims: usize,
     pub batches_settled: u64,
+    /// Cumulative ops dropped without settling — a growing figure DURING a
+    /// wait means the wait is over, whatever `batches_settled` says.
+    pub dead_lettered_ops: u64,
+    /// The most recent dead-letter reason, verbatim; null while clean.
+    pub last_settle_error: Option<String>,
     /// The publication window — what `/batches` can still serve. A
     /// consumer reads this BEFORE replaying, so a gap between its cursor
     /// and `first_batch` is visible rather than silently skipped.
@@ -218,12 +255,15 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
     let pending_usage = state.mempool.usage_len().await;
     let batches = *state.batch_count.read().await;
     let archive = state.archive.window().await;
+    let (dead_lettered_ops, last_settle_error) = state.failures.snapshot().await;
 
     Json(StatusResponse {
         state_root: format!("{root:?}"),
         pending_ops: pending,
         pending_usage_claims: pending_usage,
         batches_settled: batches,
+        dead_lettered_ops,
+        last_settle_error,
         archive,
     })
 }
@@ -302,4 +342,45 @@ async fn get_batches(
     };
     let page = state.archive.range(range.from, range.limit).await;
     (StatusCode::OK, Json(page)).into_response()
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+
+    /// The failure surface a polling driver reads: ops accumulate across
+    /// dead-letter events and the latest reason replaces the previous one.
+    #[tokio::test]
+    async fn failure_log_accumulates_and_keeps_last_reason() {
+        let log = FailureLog::default();
+        assert_eq!(log.snapshot().await, (0, None));
+        log.record(2, "execution reverted: 0x7fcdd1f4".into()).await;
+        log.record(1, "prove failed: divergence".into()).await;
+        let (ops, last) = log.snapshot().await;
+        assert_eq!(ops, 3);
+        assert_eq!(last.as_deref(), Some("prove failed: divergence"));
+    }
+
+    /// The wire shape: both failure fields serialize, null while clean —
+    /// an old consumer ignores them, a driver keys its abort on them.
+    #[test]
+    fn status_response_carries_failure_fields() {
+        let clean = serde_json::to_value(StatusResponse {
+            state_root: "0x00".into(),
+            pending_ops: 0,
+            pending_usage_claims: 0,
+            batches_settled: 0,
+            dead_lettered_ops: 0,
+            last_settle_error: None,
+            archive: RetentionWindow {
+                first_batch: None,
+                last_batch: None,
+                retained_batches: 0,
+                max_batches: 1,
+            },
+        })
+        .unwrap();
+        assert_eq!(clean["dead_lettered_ops"], 0);
+        assert!(clean["last_settle_error"].is_null());
+    }
 }

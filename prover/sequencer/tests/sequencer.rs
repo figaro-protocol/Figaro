@@ -462,6 +462,7 @@ fn test_app_state() -> AppState {
         state_mirror: StateMirror::genesis(),
         archive: Archive::in_memory(archive::DEFAULT_MAX_BATCHES),
         batch_count: std::sync::Arc::new(tokio::sync::RwLock::new(0)),
+        failures: figaro_sequencer::api::FailureLog::default(),
     }
 }
 

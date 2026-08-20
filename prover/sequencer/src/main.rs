@@ -17,7 +17,7 @@ use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{error, info, warn};
 
-use figaro_sequencer::api::{self, AppState};
+use figaro_sequencer::api::{self, AppState, FailureLog};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig};
 use figaro_sequencer::mempool::Mempool;
@@ -169,10 +169,12 @@ async fn main() {
     };
 
     // ── Spawn batch loop ──────────────────────────────────────────
+    let failures = FailureLog::default();
     let loop_mempool = mempool.clone();
     let loop_state = state_mirror.clone();
     let loop_batch_count = batch_count.clone();
     let loop_archive = archive.clone();
+    let loop_failures = failures.clone();
 
     tokio::spawn(async move {
         batch_loop(
@@ -180,6 +182,7 @@ async fn main() {
             loop_state,
             loop_archive,
             loop_batch_count,
+            loop_failures,
             assembler_config,
             submitter_config,
             chain_id,
@@ -194,6 +197,7 @@ async fn main() {
         state_mirror,
         archive,
         batch_count,
+        failures,
     };
 
     let app = api::router(app_state, api::ApiConfig { max_body_bytes });
@@ -213,6 +217,7 @@ async fn batch_loop(
     state_mirror: StateMirror,
     archive: Archive,
     batch_count: Arc<RwLock<u64>>,
+    failures: FailureLog,
     config: AssemblerConfig,
     submitter_config: SubmitterConfig,
     chain_id: u64,
@@ -364,6 +369,7 @@ async fn batch_loop(
                 // normal poison op. Re-queuing would loop forever, so
                 // dead-letter the batch instead.
                 error!(%e, ops = op_count, "Batch failed to prove after filtering — dead-lettered");
+                failures.record(op_count as u64, format!("prove failed: {e}")).await;
                 continue;
             }
         };
@@ -386,10 +392,19 @@ async fn batch_loop(
                     };
                     publish(&archive, number, &batch, &result, Some(tx_hash)).await;
                 }
+                Err(e) if e.deterministic => {
+                    // The chain EVALUATED the settle and refused — retrying
+                    // re-proves the identical batch (~minutes each) for the
+                    // same refusal. Dead-letter now, loudly; the counter and
+                    // the reason surface on /status so a polling driver sees
+                    // the death instead of waiting it out.
+                    error!(error = %e, ops = op_count, "Deterministic settle revert — dead-lettered, NOT re-proving");
+                    failures.record(op_count as u64, e.message).await;
+                }
                 Err(e) => {
-                    // Submission failure is transient (RPC) — the ops are
-                    // valid, so re-queue them for the next tick.
-                    error!(%e, "On-chain submission failed — re-queuing operations");
+                    // Transport trouble is transient — the ops are valid,
+                    // so re-queue them for the next tick.
+                    error!(error = %e, "On-chain submission failed (transient) — re-queuing operations");
                     mempool.requeue(valid).await;
                 }
             }

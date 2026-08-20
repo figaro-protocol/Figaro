@@ -11,6 +11,33 @@ use figaro_kernel::types::{UsageClaim, UsageClaimKind};
 
 use crate::prover::ProveResult;
 
+/// A settle failure, classified. DETERMINISTIC means the chain evaluated the
+/// transaction and rejected it — a revert reproduces on every retry, so
+/// re-proving the identical batch burns minutes per attempt for the same
+/// refusal (the 2026-08-20 ProofInvalid loop: three ~7-minute proofs before
+/// DeadlineExpired poison-dropped the ops). Deterministic failures are
+/// dead-lettered by the caller; transient transport trouble is re-queued.
+#[derive(Debug)]
+pub struct SettleError {
+    pub message: String,
+    pub deterministic: bool,
+}
+
+impl std::fmt::Display for SettleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+/// Whether a send-path error message is the chain speaking (a revert from
+/// eth_estimateGas / eth_call) rather than transport trouble. String-keyed by
+/// necessity — the JSON-RPC error arrives flattened through alloy's error
+/// chain — on the one phrase every major client emits for an evaluated
+/// rejection.
+pub fn is_deterministic_send_error(message: &str) -> bool {
+    message.contains("execution reverted")
+}
+
 // Generate Rust bindings for the FigaroBatchVerifier contract.
 sol! {
     #[sol(rpc)]
@@ -261,12 +288,13 @@ pub async fn filter_usage_claims(
 pub async fn submit_batch(
     config: &SubmitterConfig,
     result: &ProveResult,
-) -> Result<alloy::primitives::B256, String> {
+) -> Result<alloy::primitives::B256, SettleError> {
+    let transient = |message: String| SettleError { message, deterministic: false };
     // Build provider with signer
     let signer: PrivateKeySigner = config
         .private_key
         .parse()
-        .map_err(|e| format!("invalid private key: {e}"))?;
+        .map_err(|e| transient(format!("invalid private key: {e}")))?;
     let wallet = EthereumWallet::from(signer);
 
     // alloy 1.x: the recommended fillers (nonce, gas, chain id) are the
@@ -277,7 +305,7 @@ pub async fn submit_batch(
             config
                 .rpc_url
                 .parse()
-                .map_err(|e| format!("invalid rpc url: {e}"))?,
+                .map_err(|e| transient(format!("invalid rpc url: {e}")))?,
         );
 
     // Convert kernel types to contract call types
@@ -359,7 +387,12 @@ pub async fn submit_batch(
         Err(e) => {
             let msg = format!("tx submission failed: {e}");
             eprintln!("SUBMIT_ERROR: {msg}");
-            return Err(msg);
+            // A send-path revert is the chain's evaluated refusal (the node
+            // simulates before accepting) — deterministic, never retried.
+            return Err(SettleError {
+                deterministic: is_deterministic_send_error(&msg),
+                message: msg,
+            });
         }
     };
 
@@ -368,11 +401,20 @@ pub async fn submit_batch(
         Err(e) => {
             let msg = format!("tx confirmation failed: {e}");
             eprintln!("RECEIPT_ERROR: {msg}");
-            return Err(msg);
+            return Err(transient(msg));
         }
     };
 
     let tx_hash = receipt.transaction_hash;
+    // A mined-but-reverted settle is DETERMINISTIC failure, not success:
+    // advancing the mirror here would fork it from the chain permanently
+    // (the chain's root did not move) and fail every later batch's
+    // prev-root check.
+    if !receipt.status() {
+        let msg = format!("settleBatch mined but REVERTED: {tx_hash:?}");
+        eprintln!("REVERT_ERROR: {msg}");
+        return Err(SettleError { message: msg, deterministic: true });
+    }
     info!(?tx_hash, "settleBatch confirmed");
 
     Ok(tx_hash)
@@ -404,6 +446,25 @@ mod tests {
     use super::*;
     use alloy::primitives::{B256, U256};
     use figaro_kernel::types::Commitment;
+
+    /// The classifier's whole contract: the chain's evaluated refusal is
+    /// deterministic; everything transport-shaped is not. The first case is
+    /// the exact string of the 2026-08-20 ProofInvalid loop.
+    #[test]
+    fn send_error_classification() {
+        assert!(is_deterministic_send_error(
+            "tx submission failed: server returned an error response: \
+             error code 3: execution reverted: custom error 0x7fcdd1f4"
+        ));
+        for transient in [
+            "tx submission failed: error sending request",
+            "tx submission failed: connection refused",
+            "tx submission failed: nonce too low",
+            "tx confirmation failed: timed out",
+        ] {
+            assert!(!is_deterministic_send_error(transient), "{transient}");
+        }
+    }
 
     fn dummy_config(clause: Address, assembly: Address, members: Address) -> SubmitterConfig {
         SubmitterConfig {

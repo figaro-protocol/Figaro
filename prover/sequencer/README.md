@@ -213,10 +213,15 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
-- `GET /status` — the above plus the sequencer's local `state_root` mirror and
-  the publication window:
+- `GET /status` — the above plus the sequencer's local `state_root` mirror,
+  the failure surface, and the publication window:
   `{ "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
+  "dead_lettered_ops", "last_settle_error",
   "archive": { "first_batch", "last_batch", "retained_batches", "max_batches" } }`.
+  `dead_lettered_ops` counts ops dropped without settling — a GROWING figure
+  during a wait means the wait is over, whatever `batches_settled` says; poll
+  it beside the settle count. `last_settle_error` carries the most recent
+  reason verbatim (null while clean).
   Read `archive` BEFORE replaying: a cursor older than `first_batch` means this
   relay has already dropped the gap.
 
@@ -274,9 +279,14 @@ already published.
 
 Admission is bounded (`MEMPOOL_MAX_OPS` / `MEMPOOL_MAX_USAGE_CLAIMS`).
 Eviction policy is deterministic: **at capacity the arriving submission is
-the one refused** (`503`). An acknowledged submission is never silently
-dropped — it stays queued until a batch drains it, and is re-queued
-(cap-exempt) if settlement fails transiently. Idempotency spans the pending
+the one refused** (`503`). An acknowledged submission is never SILENTLY
+dropped: it stays queued until a batch drains it, and a settle failure is
+CLASSIFIED — transport trouble re-queues the ops (cap-exempt) for the next
+tick, while a **deterministic revert** (the chain evaluated the transaction
+and refused — an `execution reverted` on send, or a mined-but-reverted
+receipt) **dead-letters them immediately** rather than re-proving the
+identical batch for the same refusal, and the drop surfaces on `/status`
+(`dead_lettered_ops`, `last_settle_error`). Idempotency spans the pending
 window; after a batch settles, a re-submission is dropped by the stateful
 assembler filter instead.
 
