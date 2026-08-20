@@ -30,6 +30,11 @@
             "import": "./dist/handoff/index.js",
             "types": "./dist/handoff/index.d.ts",
             "default": "./dist/handoff/index.js"
+        },
+        "./signer": {
+            "import": "./dist/signer/index.js",
+            "types": "./dist/signer/index.d.ts",
+            "default": "./dist/signer/index.js"
         }
     },
     "files": [
@@ -84,5 +89,8 @@
     ],
     "engines": {
         "node": ">=18.0.0"
+    },
+    "bin": {
+        "figaro-signer": "./dist/signer/cli.js"
     }
 }

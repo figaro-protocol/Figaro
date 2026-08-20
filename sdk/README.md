@@ -233,9 +233,9 @@ while the earlier bonds stay locked until the buyer resolves. Size it with
 `calculateSubOrderApproval` and check it with `assertApprovalCoversBond` (both
 below).
 
-## Five Entry Points
+## Six Entry Points
 
-A generated API reference covering every export of all five entry points is
+A generated API reference covering every export of all six entry points is
 served on the site at `/sdk-api` (TypeDoc over the same source; regenerate
 with `npm run docs` from `sdk/`). This README stays the manual — recipes,
 traps, and the order to do things in; the reference is where you look a
@@ -1006,6 +1006,49 @@ plus `onAnyCommitmentPayload` for the connected wallet, and the direct
 in each callback is transport-specific (an XMTP inbox id, a wallet address) — the
 SDK does not constrain it. Full signatures: `dist/handoff/messages.d.ts` +
 `dist/handoff/ecdh.d.ts`.
+
+### `@figaro/sdk/signer` — The Policy Signer
+
+The protocol-shaped half of the sandboxed signer runtime
+(`docs/AI_AGENT_COORDINATION.md` § "The sandboxed signer runtime"): a daemon
+that holds the wallet key in ITS process only (encrypted V3 keystore,
+passphrase at start) and exposes signing as an operation over a local UNIX
+socket — every request passing an out-of-model policy gate before anything is
+signed. The gate enforces: EIP-712 **domain binding** (chainId + a
+verifyingContract on the policy's allowlist — `FigaroCore` and
+`FigaroBatchVerifier`, the batch universe's own domain), a **contract +
+selector allowlist** for transactions, **per-action and rolling-period value
+ceilings** (token risk = the wallet's own bond side of a Commitment plus every
+`approve` at its amount; native risk = a payable call's `value`, refused
+unless the policy grants a native ceiling), a **simulation veto** (`eth_call`
+plus best-effort asset tracing), and an **audit log**. `personal_sign` is
+refused always. The rolling window persists in a signer-owned journal — a
+restart cannot reset the ceiling.
+
+Run it:
+
+```sh
+npx figaro-signer --policy deployments/signer-policy.11155111.json \
+  --keystore ~/operator.keystore.json --socket /tmp/figaro-signer.sock
+# passphrase: FIGARO_SIGNER_PASSPHRASE env, or the hidden prompt
+```
+
+Consume it — the account drops into the `WalletClient` the agent layer
+already takes; the agent's code path is unchanged and the key is unreachable:
+
+```ts
+import { socketSignerAccount } from "@figaro/sdk/signer";
+import { createWalletClient, http } from "viem";
+
+const account = socketSignerAccount({ socketPath: "/tmp/figaro-signer.sock", address: operated });
+const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
+```
+
+A reference policy for the live Sepolia stack ships at
+`deployments/signer-policy.11155111.json`, generated from the deployment
+record and the SDK ABIs — addresses and selectors are derived, never
+hand-typed. The host-shaped half (the sandbox wrapper carrying the policy's
+`egress` allowlist) lives beside the agent prompts, not in this package.
 
 ## Projection: from Composed Clauses to the Hashed Agreement
 

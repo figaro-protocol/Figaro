@@ -44,10 +44,11 @@ ahead of the first public push:
 
 ### SDK
 
-- `@figaro/sdk` at `0.1.0`, pre-1.0: five subpath exports — root (protocol
+- `@figaro/sdk` at `0.1.0`, pre-1.0: six subpath exports — root (protocol
   primitives + the RPGF distribution mirror), `/agent` (agent coordination),
   `/derive` (event derivation), `/clauses` (the Layer-A clause spec
-  source-of-truth), and `/handoff` (the runtime handoff wire protocol).
+  source-of-truth), `/handoff` (the runtime handoff wire protocol), and
+  `/signer` (the policy signer daemon + socket-backed account).
 
 ### Infrastructure
 

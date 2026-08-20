@@ -382,7 +382,7 @@ observing the network.
 
 ---
 
-## The sandboxed signer runtime — design (ruled 2026-08-18 as recommended; unbuilt)
+## The sandboxed signer runtime — design (ruled 2026-08-18; component 1 BUILT 2026-08-20)
 
 `ecosystem-agents/*` state six requirements ON the runtime that hosts an agent
 (F1–F6 in `figaro-operator.md` § "Security requirements on the execution runtime").
@@ -459,6 +459,21 @@ domain refusal, selector refusal, ceiling refusal, simulation veto, audit log) �
 `figaro-operator` re-pointed at the socket account and its tool grant narrowed → the
 data-channel envelope in the runtime's tools → the sandbox wrapper. Ship the tier only
 when all four stand (`RELEASE_READINESS.md` gate).
+
+**Component 1 BUILT 2026-08-20** — `@figaro/sdk/signer` (daemon + gate + keystore +
+socket account + `figaro-signer` bin; `sdk/README.md` § "The Policy Signer" is the
+manual), with the ruled test list green plus keystore custody and a
+restart-surviving rolling window. Two same-day rulings refined the policy shape:
+- *domain binding* is an ALLOWLIST of verifying contracts from the deployment record —
+  `FigaroCore` AND `FigaroBatchVerifier` (the batch universe signs over the VERIFIER's
+  domain; core-only would structurally lock the wallet out of batch trade);
+- *approvals count at face value* stands as ruled; native ETH (payable registry
+  stakes) gets its OWN ceiling pair (`perActionNative`/`perPeriodNative`, wei) rather
+  than sharing the token cap — absent means zero, so a value-carrying transaction is
+  refused unless the policy grants it explicitly.
+The reference policy for the live Sepolia stack is committed at
+`deployments/signer-policy.11155111.json`, generated from the record + the SDK ABIs.
+Components 2–4 (operator re-point, data-channel envelope, sandbox wrapper) remain open.
 
 ---
 

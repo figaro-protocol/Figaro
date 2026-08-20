@@ -389,7 +389,7 @@ e2e-tested → `assemblies/README.md`.
 
 ### Agent SDK
 
-`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions (runtime deps → `sdk/README.md`). ESM; five subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth — and `/handoff`, the runtime handoff wire protocol). Root also owns the promoted choreography: agreement/template projection behind `SpecSource`, the ONE template→orders walk (`reconstructOrdersFromTemplate`), and checkout planning. Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions (runtime deps → `sdk/README.md`). ESM; six subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth — `/handoff`, the handoff wire protocol, and `/signer` — the policy signer). Root also owns the promoted choreography: agreement/template projection behind `SpecSource`, the ONE template→orders walk (`reconstructOrdersFromTemplate`), and checkout planning. Full entry-point map + build/test commands → `sdk/README.md`.
 
 **"Agent" = two worlds; pin the referent.** Default = MAINTAINER-PRIVATE (`.claude/agents/`, the maintainer's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-designer`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 

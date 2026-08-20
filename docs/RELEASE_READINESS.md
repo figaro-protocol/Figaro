@@ -739,7 +739,7 @@ ecosystem-agent tier.
 | Directory | Contents |
 |---|---|
 | `frontend/` | The static-export client — routes, components, `lib/`, `shared/`, `public/_headers` |
-| `sdk/` | `@figaro/sdk` — all five subpath exports |
+| `sdk/` | `@figaro/sdk` — all six subpath exports |
 | `ecosystem-agents/` | Public ecosystem-agent specifications |
 
 ### Not freeze violations

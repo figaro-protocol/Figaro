@@ -1,0 +1,57 @@
+{
+  "chainId": 11155111,
+  "verifyingContracts": [
+    "0xC45891C8a02c9f81Bcd9752FB4AA13878712693F",
+    "0xd503457906ebE0690a9467b4D0694767F9AE50B6"
+  ],
+  "contracts": {
+    "0xC45891C8a02c9f81Bcd9752FB4AA13878712693F": [
+      "0x384d96ed",
+      "0x57596b4c"
+    ],
+    "0x494806e367B6b859Dcb9A6CBF1C5bCcAA0eA0B23": [
+      "0x5b14b858",
+      "0x81138677",
+      "0x3ef7b1fb"
+    ],
+    "0x5b7d3A222053c0DdC3F2B8f94D3A85DE4DBa867F": [
+      "0x82f0fccc"
+    ],
+    "0x7739a17d4C0dcA2dF7f53f79A37251079d212d95": [
+      "0xbcd84e2e",
+      "0xa8e06bc3"
+    ],
+    "0x6e8d1dc453ed558D7F04f76fe0Bc207310040689": [
+      "0xa775529a",
+      "0xa8e06bc3"
+    ],
+    "0x366f43Aa5656869167aFB2b1cFC62318460D123F": [
+      "0xf2c298be",
+      "0x009299e3",
+      "0xdbaf2145",
+      "0x3ccfd60b"
+    ],
+    "0xd503457906ebE0690a9467b4D0694767F9AE50B6": [
+      "0x08a3eded"
+    ],
+    "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238": [
+      "0x095ea7b3"
+    ]
+  },
+  "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+  "ceilings": {
+    "perAction": "10000000",
+    "perPeriod": "50000000",
+    "periodSecs": 86400,
+    "perActionNative": "60000000000000000",
+    "perPeriodNative": "120000000000000000"
+  },
+  "egress": [
+    "https://ethereum-sepolia-rpc.publicnode.com",
+    "https://api.pinata.cloud",
+    "https://silver-recent-capybara-403.mypinata.cloud",
+    "https://ipfs.io",
+    "https://grpc.production.xmtp.network"
+  ],
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com"
+}
