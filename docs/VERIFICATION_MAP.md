@@ -62,6 +62,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 - `A-7` **Fee-on-transfer rejection**: `_pullExact` reverts if received ≠ amount
 - `A-8` **Deterrent escrow magnitudes**: held escrow = 2×payment (buyer) + 2×cumulativeValue (seller) for every committed order — the bond is the *deterrent* the equilibrium argument reasons over, not merely enough to pay out
 - `A-9` **Settled net positions**: resolution moves exactly `payment` from buyer to seller per order and returns both bonds whole
+- `A-8`/`A-9` are the PAYOFF TABLE the equilibrium proof reasons over; the choosing itself — best responses and the N-party chain equilibrium — is machine-checked in Lean 4 over that table (`formal/lean/FigaroEquilibrium.lean`; `TESTING.md` § Lean 4)
 
 ### Composition invariants
 

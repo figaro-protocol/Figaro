@@ -1,0 +1,5 @@
+name = "figaro-equilibrium"
+defaultTargets = ["FigaroEquilibrium"]
+
+[[lean_lib]]
+name = "FigaroEquilibrium"

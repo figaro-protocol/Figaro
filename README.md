@@ -25,10 +25,15 @@ then dissolves at settlement.
 solvency, non-negativity, accumulator integrity, atomic resolution — are
 machine-checked by the authoring project (Foundry, Halmos, Certora, Echidna,
 TLA+). The equilibrium result itself is an analytic proof
-([docs/THEORY.md](docs/THEORY.md) § "Nash Equilibrium Analysis"), not a
-machine-checked one: a model checker explores reachable states and has no
-notion of a rational agent choosing. What the models do check is that the
-payoffs the proof reasons over are exactly the payoffs the kernel produces.
+([docs/THEORY.md](docs/THEORY.md) § "Nash Equilibrium Analysis") that is ALSO
+machine-checked, in the one tool that can express a rational agent choosing:
+a Lean 4 proof ([formal/lean/](formal/lean/FigaroEquilibrium.lean) —
+dependency-free, `sorry`-free, constructive: `propext` + `Quot.sound` only)
+of the best-response inequalities and the N-party chain equilibrium, over the
+same payoff table the TLA⁺ invariants pin to the shipped kernel. A model
+checker explores reachable states and has no notion of choice; the models
+check that the payoffs the proof reasons over are exactly the payoffs the
+kernel produces, and Lean checks the choosing.
 No external audit yet; the SDK is not yet on npm. The public testnet
 deployment is LIVE on Sepolia — every contract Etherscan-verified, addresses
 committed at [deployments/11155111.json](deployments/11155111.json), and both

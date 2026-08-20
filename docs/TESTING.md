@@ -146,6 +146,24 @@ dropped batch's accrual is forgone at process granularity, under-pay only).
 Flipping either to FALSE is the experiment, is EXPECTED to fail, and is not a
 regression.
 
+## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
+
+`FigaroEquilibrium.lean` closes the one step no model checker can express —
+a rational agent CHOOSING. Over the exact payoff table the TLA⁺ invariants
+pin to the shipped kernel (`DeterrentEscrowMagnitudes` / `SettledNetPositions`),
+it proves: `buyer_resolves` (post-performance, resolving strictly beats
+withholding, unconditionally), `seller_performs` (performance is the strict
+best response given resolution, at every feasible retention `r ≤ Gᵢ`),
+`deterrent_gap` (`Δᵢ = Pᵢ + Gᵢ ≥ 2Pᵢ`), `holdout_when_dead` (the honest
+conditionality — cooperation is a best response GIVEN the others perform,
+never a dominant strategy), and `Chain.cooperation_is_equilibrium` (the
+N-party chain: no unilateral deviation profits at any position, with the
+inclusive accumulator `Gᵢ = ∑_{j≤i} Pⱼ` derived, not assumed). Dependency-free
+by design: core Lean 4 + `omega`, no Mathlib — `lake build` from
+`formal/lean/` needs no network beyond the pinned toolchain; `sorry`-free and
+constructive (`#print axioms` shows `propext` + `Quot.sound` only). Optional
+credibility asset, not release path.
+
 ## Rust — the proof apparatus (`prover/`)
 
 `cargo test` from `prover/` — five crates, one suite. Prereq: three of the five

@@ -147,3 +147,4 @@ coverage/
 *.bbl
 *.blg
 *.synctex.gz
+formal/lean/.lake/
