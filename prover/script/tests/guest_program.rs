@@ -32,8 +32,8 @@ async fn execute_guest(input: &figaro_kernel::types::BatchInput) -> sp1_sdk::SP1
 #[tokio::test]
 async fn guest_program_executes_canonical_batch() {
     let input = build_canonical_batch_input();
-    let mut pv_bytes = execute_guest(&input).await;
-    let pv: PublicValues = pv_bytes.read();
+    let pv_bytes = execute_guest(&input).await;
+    let pv = PublicValues::abi_decode(pv_bytes.as_slice()).expect("decode public values");
 
     assert_eq!(pv.chain_id, CHAIN_ID);
     assert_eq!(pv.verifying_contract, CORE);
@@ -58,8 +58,11 @@ async fn guest_output_matches_host_apply_batch_exactly() {
     let input = build_canonical_batch_input();
     let (host_pv, _positions, host_events) = apply_batch(&input).expect("host apply_batch");
 
-    let mut pv_bytes = execute_guest(&input).await;
-    let guest_pv: PublicValues = pv_bytes.read();
+    let pv_bytes = execute_guest(&input).await;
+    // Byte equality against the host encoding first — these are the exact
+    // bytes the on-chain verifier hashes against the proof's digest.
+    assert_eq!(pv_bytes.as_slice(), host_pv.abi_encode().as_slice());
+    let guest_pv = PublicValues::abi_decode(pv_bytes.as_slice()).expect("decode public values");
 
     assert_eq!(guest_pv.prev_state_root, host_pv.prev_state_root);
     assert_eq!(guest_pv.new_state_root, host_pv.new_state_root);

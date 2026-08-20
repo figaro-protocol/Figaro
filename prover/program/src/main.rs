@@ -7,5 +7,7 @@ use figaro_kernel::types::BatchInput;
 fn main() {
     let input: BatchInput = sp1_zkvm::io::read();
     let (public_values, _positions, _events) = apply_batch(&input).expect("invalid batch");
-    sp1_zkvm::io::commit(&public_values);
+    // Commit the ABI words the on-chain verifier hashes — never a serde
+    // serialization, which no contract can reproduce.
+    sp1_zkvm::io::commit_slice(&public_values.abi_encode());
 }

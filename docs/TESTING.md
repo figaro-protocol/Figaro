@@ -164,8 +164,10 @@ replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the assembly leg via provenance reproduction, and the
 usage-hash vector asserted verbatim on the Solidity side; bincode roundtrips
 fence the SP1 stdin landmines), `figaro-prover` (the SP1 guest program itself,
-exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — guest
-PublicValues must equal host `apply_batch` field-for-field; in-VM Gate-S
+exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
+bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exact
+words the on-chain verifier hashes against the proof's digest — and decode back
+field-for-field against host `apply_batch`; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
 and `figaro-sequencer` (mempool runs the kernel's own witness gates at the
 door; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window

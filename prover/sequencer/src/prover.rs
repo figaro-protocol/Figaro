@@ -65,7 +65,7 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
         prove_mock(elf, stdin, &pv).await?
     };
 
-    let public_values_bytes = encode_public_values(&pv);
+    let public_values_bytes = pv.abi_encode();
 
     Ok(ProveResult {
         public_values: pv,
@@ -109,7 +109,7 @@ pub fn proof_mode() -> Result<ProofMode, String> {
 /// `MockSP1Verifier` accepts the resulting empty proof.
 async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<u8>, String> {
     let client = ProverClient::builder().mock().build().await;
-    let (mut sp1_pv, report) = client
+    let (sp1_pv, report) = client
         .execute(elf, stdin)
         .await
         .map_err(|e| format!("SP1 execution failed: {e}"))?;
@@ -117,8 +117,7 @@ async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<
         cycles = report.total_instruction_count(),
         "SP1 execution complete"
     );
-    let verified_pv: PublicValues = sp1_pv.read();
-    check_state_roots(&verified_pv, pv)?;
+    check_committed_values(sp1_pv.as_slice(), pv)?;
     Ok(Vec::new())
 }
 
@@ -133,43 +132,23 @@ async fn prove_wrapped(elf: Elf, stdin: SP1Stdin, pv: &PublicValues, mode: Proof
         .map_err(|e| format!("SP1 setup failed: {e}"))?;
     info!(?mode, "Generating wrapped proof (this can take minutes)");
     let request = client.prove(&pk, stdin);
-    let mut proof = match mode {
+    let proof = match mode {
         ProofMode::Groth16 => request.groth16().await.map_err(|e| format!("SP1 Groth16 proving failed: {e}"))?,
         ProofMode::Plonk => request.plonk().await.map_err(|e| format!("SP1 PLONK proving failed: {e}"))?,
     };
-    let verified_pv: PublicValues = proof.public_values.read();
-    check_state_roots(&verified_pv, pv)?;
+    check_committed_values(proof.public_values.as_slice(), pv)?;
     Ok(proof.bytes())
 }
 
-/// The SP1 proof and the local kernel execution must commit the same state
-/// root transition; a mismatch means the guest program and the host kernel
-/// have diverged.
-fn check_state_roots(sp1: &PublicValues, local: &PublicValues) -> Result<(), String> {
-    if sp1.prev_state_root != local.prev_state_root || sp1.new_state_root != local.new_state_root {
-        return Err("SP1 and local execution produced different state roots".into());
+/// The proof's committed bytes and the local kernel execution must encode the
+/// same public values; a mismatch means the guest program and the host kernel
+/// have diverged. Byte equality, not field equality: these are the exact bytes
+/// the on-chain verifier hashes against the proof's committed digest.
+fn check_committed_values(committed: &[u8], local: &PublicValues) -> Result<(), String> {
+    if committed != local.abi_encode().as_slice() {
+        return Err("SP1 and local execution committed different public values".into());
     }
     Ok(())
-}
-
-/// ABI-encode PublicValues as 8 × 32-byte words for on-chain submission
-/// (matches FigaroBatchVerifier._decodePV).
-fn encode_public_values(pv: &PublicValues) -> Vec<u8> {
-    use alloy_primitives::U256;
-
-    let mut data = Vec::with_capacity(256);
-    data.extend_from_slice(pv.prev_state_root.as_slice());
-    data.extend_from_slice(pv.new_state_root.as_slice());
-    data.extend_from_slice(&U256::from(pv.chain_id).to_be_bytes::<32>());
-    // Address left-padded to 32 bytes
-    let mut addr_word = [0u8; 32];
-    addr_word[12..].copy_from_slice(pv.verifying_contract.as_slice());
-    data.extend_from_slice(&addr_word);
-    data.extend_from_slice(pv.token_ops_hash.as_slice());
-    data.extend_from_slice(pv.attestation_events_hash.as_slice());
-    data.extend_from_slice(pv.spec_bindings_hash.as_slice());
-    data.extend_from_slice(pv.usage_accrual_hash.as_slice());
-    data
 }
 
 #[cfg(test)]

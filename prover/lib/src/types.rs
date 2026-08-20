@@ -307,6 +307,57 @@ pub struct PublicValues {
     pub usage_accrual_hash: B256,
 }
 
+impl PublicValues {
+    /// The ONE byte layout of the public values: 8 × 32-byte ABI words,
+    /// exactly what `FigaroBatchVerifier._decodePV` abi.decodes. The guest
+    /// commits these bytes, the host submits them, and the on-chain SP1
+    /// verifier hashes the submission against the proof's committed digest —
+    /// so a second encoding anywhere is a `ProofInvalid` by construction.
+    pub fn abi_encode(&self) -> Vec<u8> {
+        let mut data = Vec::with_capacity(256);
+        data.extend_from_slice(self.prev_state_root.as_slice());
+        data.extend_from_slice(self.new_state_root.as_slice());
+        let mut chain_word = [0u8; 32];
+        chain_word[24..].copy_from_slice(&self.chain_id.to_be_bytes());
+        data.extend_from_slice(&chain_word);
+        let mut addr_word = [0u8; 32];
+        addr_word[12..].copy_from_slice(self.verifying_contract.as_slice());
+        data.extend_from_slice(&addr_word);
+        data.extend_from_slice(self.token_ops_hash.as_slice());
+        data.extend_from_slice(self.attestation_events_hash.as_slice());
+        data.extend_from_slice(self.spec_bindings_hash.as_slice());
+        data.extend_from_slice(self.usage_accrual_hash.as_slice());
+        data
+    }
+
+    /// Inverse of `abi_encode` — the only sanctioned way to read a committed
+    /// public-values stream. Strict: the length and every pad byte must hold.
+    pub fn abi_decode(data: &[u8]) -> Result<Self, String> {
+        if data.len() != 256 {
+            return Err(format!("public values must be 256 bytes, got {}", data.len()));
+        }
+        let word = |i: usize| -> [u8; 32] { data[i * 32..(i + 1) * 32].try_into().unwrap() };
+        let chain_word = word(2);
+        if chain_word[..24] != [0u8; 24] {
+            return Err("chain_id word has nonzero padding".into());
+        }
+        let addr_word = word(3);
+        if addr_word[..12] != [0u8; 12] {
+            return Err("verifying_contract word has nonzero padding".into());
+        }
+        Ok(Self {
+            prev_state_root: B256::from(word(0)),
+            new_state_root: B256::from(word(1)),
+            chain_id: u64::from_be_bytes(chain_word[24..].try_into().unwrap()),
+            verifying_contract: Address::from_slice(&addr_word[12..]),
+            token_ops_hash: B256::from(word(4)),
+            attestation_events_hash: B256::from(word(5)),
+            spec_bindings_hash: B256::from(word(6)),
+            usage_accrual_hash: B256::from(word(7)),
+        })
+    }
+}
+
 /// An attestation event proven by the batch. The on-chain verifier
 /// re-emits these as Attestation events.
 #[derive(Clone, Debug, Serialize, Deserialize)]

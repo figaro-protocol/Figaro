@@ -32,11 +32,11 @@ async fn main() {
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
     println!("── Stage 1/2 — Mock execution (no proof) ──");
-    let (mut public_values, report) =
+    let (public_values, report) =
         mock_client.execute(elf.clone(), stdin.clone()).await.unwrap();
     println!("Cycles: {}", report.total_instruction_count());
 
-    let pv: PublicValues = public_values.read();
+    let pv = PublicValues::abi_decode(public_values.as_slice()).expect("decode public values");
     println!("Previous state root: {:?}", pv.prev_state_root);
     println!("New state root:      {:?}", pv.new_state_root);
     println!("Chain ID:            {}", pv.chain_id);
@@ -82,8 +82,8 @@ async fn main() {
         println!("Proof generated in {:.1}s", prove_elapsed.as_secs_f64());
 
         // Re-read public values from the actual proof, not the mock run.
-        let mut pv_bytes = proof.public_values.clone();
-        let pv: PublicValues = pv_bytes.read();
+        let pv = PublicValues::abi_decode(proof.public_values.as_slice())
+            .expect("decode public values");
         println!(
             "Proof public values — new_state_root: {:?}, spec_bindings_hash: {:?}",
             pv.new_state_root, pv.spec_bindings_hash,
