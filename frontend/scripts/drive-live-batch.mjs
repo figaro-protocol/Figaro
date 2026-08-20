@@ -48,6 +48,13 @@
  *   BATCH_WAIT_TIMEOUT_MS — per-batch settle timeout (default 7200000 — a
  *                           local CPU Groth16 proof takes minutes to tens of
  *                           minutes)
+ *   RECORDS_DIR           — where the signed records persist (default
+ *                           ../batch-records, gitignored). Party custody: the
+ *                           relay is a convenience publisher, never the sole
+ *                           custodian — the parties keep the struct exactly as
+ *                           signed, every signature, and the domain, enough to
+ *                           re-verify or re-publish if every relay's archive
+ *                           dies.
  */
 
 import fs from 'node:fs';
@@ -295,6 +302,31 @@ const processId = hashTypedData(typedData); // root order: processId = the signe
 const orderHash = computeOrderHash(commitment, chainId, verifier);
 const startBlock = await publicClient.getBlockNumber();
 
+// Party custody — persisted BEFORE anything reaches the relay, updated as
+// each signature is produced. Batch-path signatures are over the VERIFIER's
+// domain; the record carries it so a reader verifies against the right one.
+const RECORDS_DIR = process.env.RECORDS_DIR ?? path.resolve(__dirname, '../batch-records');
+const recordFile = path.join(RECORDS_DIR, `${orderHash}.json`);
+const signedRecord = {
+    domain: { chainId, verifyingContract: verifier },
+    orderHash,
+    processId,
+    commitment,
+    buyerSig,
+    sellerSig,
+    agreement,
+};
+function saveRecord(patch) {
+    Object.assign(signedRecord, patch);
+    fs.mkdirSync(RECORDS_DIR, { recursive: true });
+    fs.writeFileSync(recordFile, `${JSON.stringify(
+        signedRecord,
+        (_, v) => (typeof v === 'bigint' ? v.toString() : v),
+        2,
+    )}\n`);
+}
+saveRecord({});
+
 const commitResult = await sequencer.submitCommit(commitment, buyerSig, sellerSig);
 console.log(`\nsubmitted Commit (op ${commitResult.id})  order ${orderHash}  process ${processId}`);
 
@@ -310,6 +342,9 @@ const attestSig = await sellerWallet.signTypedData({
     },
     primaryType: 'AttestSeller',
     message: { orderHash, clauseId: clauseKey, stage: 0, contentRef },
+});
+saveRecord({
+    attestation: { clauseId: clauseKey, stage: 0, contentRef, sectionData, sellerSig: attestSig },
 });
 const attestResult = await sequencer.submitAttestAsSeller({
     role: commitment, target: commitment,
@@ -368,6 +403,7 @@ const buyerResolveSig = await buyerWallet.signTypedData({
     primaryType: 'ResolveProcess',
     message: { processId },
 });
+saveRecord({ resolution: { processId, buyerSig: buyerResolveSig } });
 const resolveResult = await sequencer.submitResolve(processId, [commitment], buyerResolveSig);
 console.log(`\nsubmitted Resolve (op ${resolveResult.id})`);
 
@@ -417,6 +453,15 @@ for (const [label, ok] of checks) {
 
 const page = await sequencer.batches({ limit: 10 });
 const recent = page.batches.filter((b) => b.batch > settledBase);
+saveRecord({
+    settledBatches: recent.map((b) => ({
+        batch: b.batch,
+        prevStateRoot: b.prev_state_root,
+        newStateRoot: b.new_state_root,
+        settlementTx: b.settlement_tx,
+    })),
+});
+console.log(`signed records: ${recordFile}`);
 console.log(`\n── Settled batches ──`);
 for (const b of recent) {
     console.log(`batch ${b.batch}: ${b.prev_state_root} → ${b.new_state_root}`);
