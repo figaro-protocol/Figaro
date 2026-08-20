@@ -69,8 +69,12 @@ generalizing spec-driven routing, kernel-derived state, or composition with a na
 on-network contract is NOT a violation.
 End your reply with exactly one line: 'VERDICT: PASS' or 'VERDICT: FAIL'."
 
-# Run the agent headless. Fail-open on any non-zero / empty output.
-out=$(claude -p "$prompt" 2>/dev/null) || {
+# Run the agent headless. Fail-open on any non-zero / empty output — and
+# BOUNDED: fail-open covered error and empty output but a HUNG run blocked a
+# commit for 10+ minutes (2026-08-20), visually indistinguishable from work.
+# perl's alarm is the wrapper because macOS ships no `timeout` binary; a
+# stall now joins the fail-open path instead of holding the terminal.
+out=$(perl -e 'alarm shift; exec @ARGV' "${SEMANTIC_AUDIT_TIMEOUT_SECS:-120}" claude -p "$prompt" 2>/dev/null) || {
     echo "[semantic-audit:$LABEL] agent run failed — skipping the semantic gate (fail-open)." >&2
     exit 0
 }
