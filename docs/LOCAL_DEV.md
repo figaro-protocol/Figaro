@@ -66,6 +66,16 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 `forge script` is harness-denied; deploy via the `.sh` wrappers, not by calling `forge script` directly.
 
+## Prover host (`scripts/prover-box/`)
+
+The rented-machine recipe for the batch universe's relay-operator role:
+provision → reproducible guest build (docker ELF + vkey) → sequencer build →
+fork rehearsal → live settle, with the laptop driving batches through
+`npm run batch:drive` over an SSH tunnel. `scripts/prover-box/README.md` owns
+the order of operations and the lessons (swap floor, keyed fork upstream,
+`SP1_SKIP_PROGRAM_BUILD` discipline); `prover/sequencer/README.md` owns the
+sequencer environment table.
+
 ---
 
 ## Docker-hosted services
