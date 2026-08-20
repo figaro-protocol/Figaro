@@ -32,6 +32,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Route catalogue, lib map, designer surface | `FRONTEND.md` |
 | Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |
+| Guard scripts (`scripts/lint-*.sh`) — each guard's rule, rationale, and ruling | the script's own header comment (TESTING.md inventories test harnesses, not guards; a guard's header is its ONE owning statement) |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Canonical names per tier | `LEXICON.md` |
 | The florin, allocations | `FLORIN_TOKEN.md` |

@@ -646,6 +646,34 @@ window. The residual grief is self-limiting — to deny an author the griefer mu
 through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
 the cost of the stateless kernel.
 
+## 22. Batch-path resolve is a bare `ResolveProcess(processId)` signature — no nonce, no deadline
+
+**Pattern**: the kernel authorizes resolution by presence — `resolveProcess`
+requires `msg.sender == ps.rootBuyer`. The batch path replaces presence with an
+EIP-712 signature: the guest (`prover/lib/src/kernel.rs` `apply_resolve`)
+recovers a signature over `ResolveProcess(bytes32 processId)` — one field,
+no nonce, no deadline — and requires the signer to equal the root buyer.
+
+**Why it looks wrong**: a nonce-less, deadline-less authorization signature is
+the canonical replay-attack shape; every EIP-712 checklist flags it.
+
+**Why it is correct**: a replay needs a second state in which the same message
+authorizes something again, and that state cannot exist. Resolution is
+terminal and single-shot: after a process resolves, its orders leave status 1
+and its active count is zero, so a replayed resolve fails the guest's own
+state gates (`OrderNotCommitted` / `NoActiveOrders`) — and that state rides
+the on-chain state-root chain, so no relay can rewind it. The domain pins
+`chainId` and the VERIFIER as `verifyingContract`, so the signature cannot
+travel to another chain, another verifier, or to `FigaroCore` (whose domain —
+and authorization model — differ; the two universes never share a signature,
+see `SCALING_STRATEGY.md`). A deadline is absent because the message's meaning
+is time-invariant: it authorizes exactly one state transition whose payouts
+are fixed by the signed commitments, so late submission delivers precisely
+what the buyer already accepted — nothing a nonce or expiry would protect.
+The asymmetry against the kernel is the deliberate cost of the batch
+universe: `msg.sender` does not exist inside a proof, so authorization must
+be carried as a signature, in its minimal sufficient form.
+
 ---
 
 ## Summary Table
@@ -673,3 +701,4 @@ the cost of the stateless kernel.
 | 19 | Usage needs a live clause-or-assembly registration deposit | reward-path | A proven, settled use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted deposit-priced replication lever |
 | 20 | RPGF accrual never reverts settlement (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind settlement-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
 | 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes settled-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-settlement closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
+| 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |

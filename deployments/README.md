@@ -39,17 +39,20 @@ this shape as part of a mainnet deploy.
 
 ## Status today
 
-Nothing is here yet — Figaro has not made a public deployment. The `/spec`
-page's "Canonical deployments" section currently states this in prose
-(hand-maintained network/chain-ID/status table); Ethereum mainnet is listed
-as "Pending external audit."
+Sepolia is LIVE: `11155111.json` is the committed record — every address
+Etherscan-verified, the site and the e2e suites read from it, and both
+settlement universes have settled on the public chain (the direct-path specs
+and real Groth16 batches through `FigaroBatchVerifier`). The `/spec` page's
+"Canonical deployments" section renders its Sepolia rows from this record at
+build time. Ethereum mainnet remains "Pending external audit" — no mainnet
+record exists yet.
 
-## What changes at first public deploy
+## The record discipline
 
-This directory becomes the **source of truth** for public-network addresses,
+This directory is the **source of truth** for public-network addresses,
 committed per deploy (`deployments/<chainId>.json`). `/spec` and any other
-surface that needs to publish or read canonical addresses should read from
-here rather than repeat them in prose — the same discipline
+surface that needs to publish or read canonical addresses reads from
+here rather than repeating them in prose — the same discipline
 `.deployments/local.json` already follows for the devnet (`docs/LOCAL_DEV.md`
 documents the local record; `sdk/README.md` documents the record's key → SDK
 mapping — `addressesFromDeploymentRecord`).

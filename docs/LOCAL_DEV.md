@@ -16,7 +16,7 @@ forge test --via-ir
 # --- Symbolic / formal / fuzz ---
 ./scripts/test-halmos.sh      # Halmos symbolic execution (z3). Prereq: brew install z3 && pipx install halmos
 ./scripts/test-echidna.sh     # Echidna property fuzzing.       Prereq: brew install echidna
-./scripts/test-tla.sh         # TLA+ (46 invariants / 4 models — see TESTING.md § TLA+). Prereq: Java 11+ (script auto-fetches tla2tools.jar)
+./scripts/test-tla.sh         # TLA+ (48 invariants / 4 models — see TESTING.md § TLA+). Prereq: Java 11+ (script auto-fetches tla2tools.jar)
 ./scripts/test-certora.sh     # Certora (paid cloud). Prereq: pip install certora-cli ; export CERTORAKEY=...
                               #   Prelude: scripts/lint-token-ops.sh gates certora/token-ops.inventory
 cd prover && cargo test       # Rust prover workspace. Prereq: SP1 toolchain (cargo prove); without it,

@@ -48,11 +48,15 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///                           no per-wallet cap; one claim per closed annual
 ///                           period.
 ///
-/// @dev There is NO on-chain clause-content validation and NO batch settlement
-///      proof path. The chain binds an attestation to its signed agreement
-///      (merkle inclusion) and to its content (keccak256); content well-formedness
-///      is an off-chain SDK / read-time concern. Any registered clause is
-///      attestable with no per-clause on-chain code.
+/// @dev Clause-content validation is path-split. The DIRECT path binds an
+///      attestation to its signed agreement (merkle inclusion) and to its
+///      content (keccak256) but validates no shape — well-formedness is an
+///      off-chain SDK / read-time concern. The BATCHED path proves content
+///      against the registered spec in-proof (the prover's generic engine
+///      takes the spec as witness input) and `FigaroBatchVerifier` settles
+///      only if the spec hash matches `ClauseRegistry.contentHashOf`. Any
+///      registered clause is attestable — and batch-settleable — with no
+///      per-clause on-chain code.
 ///
 /// @dev Deployer renounces minting rights at the end of this script. No new minters
 ///      can ever be registered afterward.

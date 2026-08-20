@@ -29,8 +29,12 @@ TLA+). The equilibrium result itself is an analytic proof
 machine-checked one: a model checker explores reachable states and has no
 notion of a rational agent choosing. What the models do check is that the
 payoffs the proof reasons over are exactly the payoffs the kernel produces.
-No external audit yet; no public deployment (local devnet only); the SDK is not
-yet on npm. The release gates live in
+No external audit yet; the SDK is not yet on npm. The public testnet
+deployment is LIVE on Sepolia — every contract Etherscan-verified, addresses
+committed at [deployments/11155111.json](deployments/11155111.json), and both
+settlement universes exercised on the public chain: the direct-path e2e suite
+and real Groth16 batch settles through `FigaroBatchVerifier`. Ethereum mainnet
+awaits the external audit. The release gates live in
 [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
 
 ## What This Repo Contains
