@@ -73,7 +73,8 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         rung: "An economy",
         href: "/local-commerce",
         label: "A worked example",
-        description: "local commerce, end to end — one example among unbounded kinds.",
+        description:
+            "one assembly at work: a meal as a published deal-shape, filled in and run — one example among unbounded kinds.",
     },
     {
         rung: "An economy",
@@ -114,6 +115,12 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         href: "/why",
         label: "Why this exists",
         description: "the argument from first principles.",
+    },
+    {
+        rung: "The world",
+        href: "/working-groups",
+        label: "Working groups",
+        description: "the eight disciplines, and the papers behind the claims.",
     },
     {
         rung: "The world",
