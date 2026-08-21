@@ -607,6 +607,60 @@ function attestViaResolver(
                 <p className="text-sm text-ink-muted leading-relaxed">
                     No public sequencer endpoint is published yet; the address is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
                 </p>
+
+                <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">
+                    What the batch path costs &mdash; and when the direct path is simply correct.
+                </h3>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Two costs, and neither falls where a platform&apos;s would. Proving is the <strong>relay operator&apos;s</strong>, paid once per batch and never once per order &mdash; no protocol fee passes it through to a buyer or a seller. Gas on <code>settleBatch</code> is paid by whoever submits it. The <em>direct</em> path carries neither: no prover, no relay, no proving host at all. Which of the two is cheaper for you is a volume question, and the numbers below are what it turns on.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>Running your own sequencer: a laptop is not a proving host.</strong> Succinct&apos;s stated Groth16 wrap floor is <strong>~14&nbsp;GB RAM</strong> (through the <code>sp1-gnark</code> image), and the rehearsal that settled the batches below measured <strong>~18&nbsp;GB peak and ~6&ndash;7 minutes per wrap</strong> on a rented 16-core / 30&nbsp;GB host at <code>SP1_PROVER=cpu</code> &mdash; with swap, because the wrap was OOM-killed at 18&nbsp;GB on 30&nbsp;GB without it. That is <em>one machine&apos;s</em> number, not a protocol constant: proof time, memory and proof size all move with your hardware, your batch size, and whether the secp256k1 precompile patch is active. <strong>Measure your own before you budget one</strong> &mdash; <code>SP1_REAL_PROOF=1 cargo run -p figaro-prove-test --release</code> from <code>prover/</code> proves the canonical batch on your machine and prints its cycle count, generation time and proof size. An operator with no hardware sets <code>SP1_PROVER=network</code> and buys the proof from the Succinct Prover Network instead; that is still the operator&apos;s cost, never the protocol&apos;s or its users&apos;.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Two operational gates decide whether a proof settles at all, and both fail loudly but late: the guest ELF&apos;s verification key must equal the deployed <code>FigaroBatchVerifier.programVKey()</code> or every proof reverts <code>ProofInvalid()</code>, and the proof FORM must match the form the deployed SP1 gateway routes (<code>groth16</code> or <code>plonk</code>) or it reverts <code>RouteNotFound</code>. Check both <em>before</em> a seven-minute wrap, not after. Batching cadence is yours: the reference sequencer assembles on a tick (10&nbsp;s by default) up to a batch cap (100 operations by default), so the wrap time &mdash; minutes &mdash; is what actually sets time-to-settle, not the tick.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>What the proof costs to verify on chain.</strong> Per-unit, from the measured ceilings: SP1 proof verification is a <strong>~300k-gas FIXED cost per batch</strong>, then ~2k/position for hash verification and ~24k/position for the net token transfer &mdash; <strong>~26.5k marginal per net position</strong>. The direct path&apos;s comparable all-in figure is <strong>~167k gas per order</strong> (a ~144k sub-order <code>commit</code> plus ~23k of <code>resolveProcess</code>, across two or more separate transactions). At volume that is roughly <strong>6&times; cheaper per settled order</strong>, before netting &mdash; and netting is the structural part: the prover collapses every movement per (token, party) pair into one position, so 100 buyers paying one seller in one token is 100 commit transactions on the direct path and <em>one</em> position on the batch path. Worked at 100 orders: ~25.7M gas across 100+ transactions direct, against ~1.1M gas in a single transaction for the ~30 net positions they reduce to.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>But fixed means fixed, and a small batch pays it anyway.</strong> The two real Groth16 batches settled on Sepolia on 2026-08-20 &mdash; through the <code>batchVerifier</code> in the record below &mdash; each carried <strong>2 net positions</strong> and cost:
+                </p>
+                <div className="overflow-x-auto -mx-6 px-6 mb-4">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Settlement transaction</th>
+                                <th scope="col" className="py-2 pr-4">What it carried</th>
+                                <th scope="col" className="py-2 pr-4">Net positions</th>
+                                <th scope="col" className="py-2">Gas used</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default">
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs"><a href="https://sepolia.etherscan.io/tx/0xa17cbb347f4a13893649d4f108a5681a3b652a04cedf2579706b0117fff69bf2" target="_blank" rel="noopener noreferrer" className="underline">0xa17cbb34&hellip;f69bf2</a></td>
+                                <td className="py-2 pr-4 text-ink-body">commit + witness attestation</td>
+                                <td className="py-2 pr-4 font-mono">2</td>
+                                <td className="py-2 font-mono">385,902</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs"><a href="https://sepolia.etherscan.io/tx/0x2f81831d449ce6f90bb15bb54abaf7a32c3473c120e6cc9c9e35e0518e795928" target="_blank" rel="noopener noreferrer" className="underline">0x2f81831d&hellip;795928</a></td>
+                                <td className="py-2 pr-4 text-ink-body">resolve + RPGF usage claim</td>
+                                <td className="py-2 pr-4 font-mono">2</td>
+                                <td className="py-2 font-mono">377,885</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Divide those out and a two-position batch runs ~190k gas per position &mdash; <em>above</em> the direct path&apos;s ~167k per order, because two positions are carrying the whole ~300k proof verification between them. The same ~300k is what a thousand-position batch pays. <strong>So the batch path is an amortization, not a discount:</strong> it wins where the fixed cost divides by a large number and where netting collapses many orders into few positions, and it loses below that. Read those receipts yourself before you plan around either figure &mdash; both are public, both are linked above.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    <strong>When the direct path is simply correct: low volume.</strong> At a handful of orders a day it costs less per order <em>and</em> costs nothing else &mdash; no proving host, no relay to operate or trust, no vkey/gateway pairing to keep aligned, no minutes of wrap between signing and settlement, and settlement state you can read straight off <code>FigaroCore.orderStatus</code>. Nothing is lost by starting there: both paths take the <em>same signed artifacts</em>, so moving to batches later is a change of submission target, not a change to what you sign. The batch path is what you reach for when your own volume, not the protocol, makes the proof pay.
+                </p>
+                <p className="text-xs text-ink-muted leading-relaxed mt-4">
+                    Per-unit gas figures and the netting model: <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md" target="_blank" rel="noopener noreferrer" className="underline">SCALING_STRATEGY.md</a> &sect; Gas Economics (measured on Anvil receipts; the direct-path pair <code>COMMIT_GAS_PER_ORDER</code>/<code>RESOLVE_GAS_PER_ORDER</code> is lint-pinned against the kernel&apos;s own gas test). Proving-host sizing and the first run&apos;s lessons: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/prover-box/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/prover-box</code></a>. Proving-cost posture and the benchmark command: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>. The two settlement transactions are read from Sepolia, not restated.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Token" sectionId="token">
@@ -750,6 +804,25 @@ function attestViaResolver(
                 )}
                 <p className="text-xs text-ink-muted mt-4">
                     Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet, <code>deployments/&lt;chainId&gt;.json</code> committed per public deploy.
+                </p>
+
+                <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">
+                    Production endpoints: what a deployment must provision.
+                </h3>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Addresses are the easy half. The protocol keeps <em>fingerprints</em> on chain and publishes <em>events</em>, so every read a client makes is either a log scan or an IPFS fetch &mdash; and both endpoints are yours to choose. Nothing here is hosted by this project; the defaults baked into any build are defaults, not dependencies.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>An RPC endpoint that tolerates wide <code>eth_getLogs</code> ranges.</strong> Discovery has no getters to fall back on &mdash; there is no view returning a member&apos;s current profile URI, for one; the event log <em>is</em> the read path &mdash; so a cold client scans the whole history of each registry. Public endpoints cap a single call&apos;s block range and the cap is not standard: 1,000, 10,000 and 50,000 blocks are all in the wild, with providers rejecting an over-range call in their own wording rather than a shared error code. Provision for the class, not a vendor: <strong>keyless public endpoints in the 50,000-block class exist and serve this stack</strong> &mdash; the live batch settlements above were driven through one. Clients must chunk regardless. The SDK&apos;s bulk fetchers (<code>fetchCoreEvents</code>, <code>fetchDiscoveryEvents</code>, <code>fetchUsageRecords</code>, <code>fetchBatchUsageRecords</code>) chunk internally at 9,500 blocks and take a trailing <code>chunkSize</code> to tune for a stricter or a more permissive provider; the reference frontend instead halves its window on any range-cap refusal, down to a 500-block floor, so one build works against all three classes.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>And start every scan at <code>deploymentBlock</code>.</strong> It is in the record{sepolia && <> (<span className="font-mono">{String(sepolia.deploymentBlock)}</span> on Sepolia)</>} for exactly this reason &mdash; see the crosswalk below. <code>fromBlock: 0n</code> is a devnet habit; on a public network it is a great deal of range scanned for nothing, and on a capped provider it is the difference between a client that loads and one that never does.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>IPFS pinning is the publisher&apos;s own.</strong> The chain holds the fingerprint; the agreement, the assembly template and the profile behind it live on IPFS, and a counterparty, an indexer or a dispute forum retrieves each by CID. IPFS does not auto-replicate &mdash; content lives only on the nodes that pin it, so one node is one point of failure. The mainnet posture is <strong>sovereign per-party pinning</strong>: each publishing wallet&apos;s client pins what that wallet authors, so no operator is the custodian of anyone else&apos;s availability. Size it against the retrieval window, not the trade: a commitment&apos;s documents must stay fetchable for the life of any possible dispute or audit &mdash; a floor of <strong>six years</strong>, anchored to the tax-audit horizon (most administrations can audit ~5 years back, plus the year between a transaction and its declaration), extensible per agreement by the parties. In practice that means either a node you keep running for six years or a <strong>managed multi-node pinning service</strong> under your own account &mdash; a class, not a name, and the choice never becomes anyone else&apos;s custody.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    <strong>Provision reads as a chain of gateways, not one.</strong> No single gateway serves both halves of an open registry: a dedicated gateway on your own pin service answers instantly for everything <em>you</em> pinned and knows nothing else, while a public gateway reaches content anyone pinned anywhere but can take many minutes to find a fresh pin. The pattern the reference frontend ships is the dedicated gateway first and a public gateway as the read fallback, with a user&apos;s own gateway override replacing the whole chain &mdash; their node, their choice, no read leaking past it. Expect the propagation lag and build for it: a surface that reads a just-pinned CID once and gives up shows a blank where a name belongs until someone reloads. The reference frontend keeps re-reading instead &mdash; 10&nbsp;s, 20&nbsp;s, 40&nbsp;s, then once a minute for as long as the reader is on screen &mdash; and treats only permanent failures (an integrity mismatch, an unparseable document) as final.
                 </p>
 
                 <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">

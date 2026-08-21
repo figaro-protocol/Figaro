@@ -245,6 +245,133 @@ the whole reference from a checkout. This README stays the
 manual — recipes, traps, and the order to do things in; the reference is where
 you look a signature up.
 
+### Synopsis — which entry point is each export from?
+
+Nothing is re-exported: **every name below lives in exactly one entry point**,
+so this table answers the question you hit while reading a recipe ("was
+`attestAsSeller` root or `/agent`?") without scrolling back to an `import`
+line. It is a SYNOPSIS, not a reference — one line per export, no signatures.
+Scope: **every export a recipe on this page calls.** For the full surface —
+every export of all six entry points, with signatures, parameters and types —
+[figaroprotocol.com/sdk-api](https://www.figaroprotocol.com/sdk-api/index.html).
+
+Constants follow a rule instead of a row: every `*_ABI`, `EV_*` (event
+definition) and `RPGF_*` constant is a **root** export.
+
+| Export | Entry point | What it does |
+|---|---|---|
+| `A2aChannel` | `/agent` | Coordination channel over the A2A JSON-RPC wire; a declining seller comes back as `null`. |
+| `a2aMessageFromOffer` | `/agent` | Wrap a commitment payload as an A2A message for the wire. |
+| `ActionQueue` | `/agent` | Typed queue holding proposed actions for human approval before execution. |
+| `addressesFromDeploymentRecord` | root | Map a published deployment record's keys onto `FigaroAddresses` — never spread the record. |
+| `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
+| `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond the kernel will pull. |
+| `attestAsSeller` | `/agent` | Submit a seller attestation for one clause section of a committed order. |
+| `buildChainOffers` | `/agent` | Buyer-sign a whole chain's offers, in commit order, through the one template walk. |
+| `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
+| `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
+| `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
+| `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
+| `buildSectionInclusionProof` | root | Merkle proof that one clause section sits under a signed `agreementHash`. |
+| `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
+| `buildUsageClaims` | root | Turn a settled BATCH order plus its agreement into the RPGF claims a sequencer proves. |
+| `calculateBonds` | root | `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment`. |
+| `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
+| `calculateSettlement` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
+| `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
+| `canonicalContentHash` | root | `keccak256` over the canonical serialization — the digest the registries anchor. |
+| `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
+| `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
+| `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves. |
+| `computeClauseKey` | root | `keccak256(abi.encode(clauseId, version))` — the registry key, and the attest calls' `clauseId`. |
+| `computeDeadline` | root | A deadline from CHAIN time; pair with `readChainTimestamp` — there is no wall-clock fallback. |
+| `computeRpgfAllocations` | root | Off-chain mirror of the 600M pro-rata split for a closed accrual period. |
+| `computeSectionLeaf` | root | One merkle leaf — double-hashed, so a leaf preimage can never be replayed as an internal node. |
+| `counterSignDraft` | `/agent` | Candidate side: validate an inbound race draft and countersign, or decline. |
+| `decodeContentFromSpec` | `/clauses` | Canonical ABI bytes back to JSON content — the exact inverse of `encodeContentFromSpec`. |
+| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's registration deposit is withdrawable, and what still blocks it. |
+| `deriveClauseWithdrawGate` | `/derive` | Whether a clause's registration deposit is withdrawable, and what still blocks it. |
+| `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
+| `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
+| `deriveSharedSecretAsSender` | `/handoff` | ECDH shared secret from your private key and the receiver's public key. |
+| `deserializeCommitmentPayload` | `/agent` | Parse a wire envelope back into a `CommitmentPayload`. |
+| `didDocumentMatchesAddress` | `/agent` | Does this DID document name this wallet? A consistency check, never proof of control. |
+| `didWebEndpointResolver` | `/agent` | Resolve a seller's coordination endpoint through `did:web`, address-checked. |
+| `DISABLED_SWAP_FUNDING_LEG` | root | The inert swap-funding leg — pass it for the party that is not swapping. |
+| `encodeContentFromSpec` | `/clauses` | JSON clause content to canonical ABI bytes — one generic encoder, no per-clause path. |
+| `executeAction` | `/agent` | The single dispatch point for any `ProposedAction`; restores each root's signed `processId` for you. |
+| `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
+| `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the RPGF mirror. |
+| `fetchCoreEvents` | root | Every `FigaroCore` event in a block range, grouped and typed; chunks `getLogs` internally. |
+| `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
+| `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the RPGF mirror. |
+| `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalogue and process set. |
+| `fillCargoSection` | root | Fold the order's summed mass and volume onto its cargo leaf, found by declared field. |
+| `fillClassSections` | root | Fold catalogue-authored class values (freight class, hazmat, cold chain, …) onto their leaves. |
+| `fillCommerceSection` | root | Write payment, currency and (root only) the cart's line items into the commerce leaf. |
+| `fillDerivedSections` | root | Run every logistics fill the order composes — cargo, class, profile, then dimweight. |
+| `fillDimweightSection` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never authored. |
+| `fillProfileSections` | root | Fold the seller's profile-authored clause values onto their leaves. |
+| `fillProvenanceSection` | root | Write the template's own `compositionHash` into the provenance leaf. |
+| `filterByClause` | `/derive` | Narrow attestation events to one clause. |
+| `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
+| `geohashesMatch` | `/derive` | Do two geohashes agree at a given precision? Default 6 characters. |
+| `getRateQuantityResolver` | root | Look up a registered rate-quantity resolver by its source name. |
+| `haversineDistance` | `/derive` | Great-circle distance between two lat/lng points, in kilometres. |
+| `HttpChannel` | `/agent` | Coordination channel over plain HTTP; `204` is the seller declining, not an error. |
+| `InProcessChannel` | `/agent` | In-process channel — both parties run real sign/validate logic; only the wire is elided. |
+| `makeA2aOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic A2A responder. |
+| `makeSellerOfferHandler` | `/agent` | SELLER LOOP: validate, apply both refusal floors, approve the bond, counter-sign. |
+| `makeSellerQuoteHandler` | `/agent` | Mountable seller responder for the RFQ quote leg. |
+| `makeSellerRaceHandler` | `/agent` | Mountable candidate responder for the dispatch-race leg. |
+| `maxOrdersResolvablePerProcess` | root | The largest N whose `resolveProcess` fits the active chain's block gas budget. |
+| `offerFromA2aMessage` | `/agent` | Read a commitment payload back out of an A2A message; `null` when the message is not an offer. |
+| `originateProcess` | `/agent` | BUYER LOOP: instantiate, sign, offer, await the counter-signature, approve, commit. |
+| `parseAttestationLogs` | root | Decode `Attestation` logs — filter by contract ADDRESS; the topic hash is shared with the batch path. |
+| `parseClauseSpec` | `/clauses` | Parse and validate an unknown value as a `ClauseSpec` (the spec's own structure, not its content). |
+| `parseFieldSpec` | `/clauses` | Parse ONE field spec — for fields declared outside a clause's content `fields`. |
+| `parseMemberCatalogueDocument` | root | Strict parse of a pinned catalogue document; throws on malformed input. |
+| `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
+| `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
+| `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
+| `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag and complete version map. |
+| `profileValuesFor` | root | The profile-authored clause values a given seller publishes, read from its catalogue. |
+| `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
+| `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
+| `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
+| `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
+| `readUtilityTokenPin` | root | The designer's pinned settlement token, read from a template's composed clauses. |
+| `reconstruct` | root | Rebuild the full process topology from parsed core events. |
+| `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
+| `reconstructOrdersFromTemplate` | root | THE template→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
+| `recordProcessUsage` | `/agent` | Record direct-path RPGF usage AT settlement; per-leg reverts land in `failures`, never thrown. |
+| `registerRateQuantitySource` | root | Register a resolver for a catalogue's rate-quantity source (a composition tenant, no core edit). |
+| `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
+| `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
+| `resolveDidWeb` | `/agent` | Resolve a `did:web` identifier — https-only, no redirects, size-capped (SSRF-hardened). |
+| `resolveProcess` | `/agent` | The low-level buyer-only resolve. Does NOT restore signed root ids — prefer `executeAction`. |
+| `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalogue. |
+| `restoreSignedProcessId` | root | Turn an event-derived ROOT commitment back into the struct that was signed (`processId = 0`). |
+| `sectionByField` | root | Find the agreement section whose spec DECLARES a field — never look one up by clause name. |
+| `sectionDataHash` | root | A section's canonical-JSON fingerprint; a content-withheld section carries it directly. |
+| `selectRaceWinner` | `/agent` | Cheapest verified countersigner wins; ties break by arrival order. |
+| `SequencerClient` | `/agent` | HTTP client for a sequencer relay's four endpoints — the batch path's entry point. |
+| `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
+| `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
+| `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — an assembly's identity IS its composition. |
+| `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |
+| `Topology` | root | The mutable shadow state an agent keeps, updated incrementally as events arrive. |
+| `tryParseMemberProfileDocument` | root | Lenient profile parse — returns `null` instead of throwing, for discovery lists. |
+| `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
+| `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
+| `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
+| `validateDraft` | `/agent` | The structural check a candidate MUST run before countersigning a race draft. |
+| `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
+| `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
+| `warnProcessLogFillsTrap` | root | Warn when a spec pins design/checkout fills on a process-log clause — content that commits unchecked. |
+| `wrapWithSharedSecret` | `/handoff` | Encrypt a string payload under the ECDH shared secret (12-byte IV ‖ AES-256-GCM, base64url). |
+| `writeTopologySection` | root | Write the REAL parent order hashes into the topology leaf; the template carries only local ids. |
+
 ### `@figaro-protocol/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
@@ -274,6 +401,7 @@ import {
   fetchCoreEvents,
   reconstruct,
   calculateBonds,
+  calculateSettlement,
   buildCommitment,
   buildDomain,
   Topology,
@@ -307,6 +435,15 @@ const active = topology.getActiveProcesses();
 // Calculate bond requirements
 const bonds = calculateBonds(cumulativeValue, payment);
 // → { sellerBond, buyerBond, totalLocked }
+
+// And what those locked funds become once the buyer resolves. This is the
+// arithmetic to assert your balance deltas against — read the balances out of
+// band after the resolve, never off the screen that claims to have moved them.
+const settlement = calculateSettlement(payment, bonds.sellerBond, bonds.buyerBond);
+// → { sellerPayout: payment + sellerBond,   // bond back, plus the payment
+//     buyerPayout:  buyerBond − payment,    // bond back, minus the payment
+//     netTransfer:  payment }               // exactly `payment` crosses, and nothing else
+// At payment = cumulativeValue = 100: bonds 200/200, payouts 300/100, net 100.
 
 // Per-process resolve ceiling on the active chain (a process grown past
 // this can NEVER settle — check before every commit; the kernel cannot)
@@ -946,6 +1083,50 @@ The same `computeClauseKey` reappears later (below, and in
 `@figaro-protocol/sdk/agent`) as the `clauseId` argument to `attestAs{Seller,Buyer}` —
 one function, two moments: before registering (is this slot free?) and at
 attestation time (which registered clause does this section attest?).
+
+**Then pin and hash the RAW document — `canonicalize` and
+`canonicalContentHash` (both root exports).** These are the two calls behind
+"pin and hash the raw document" above, and getting them wrong is silent:
+`registerClause` takes whatever `bytes32` you hand it, so a spec pinned in one
+serialization and hashed in another registers fine and then fails every
+reader, because verification is always *fetch → re-canonicalize → re-hash*.
+Pin the exact bytes you hashed:
+
+```ts
+import { canonicalize, canonicalContentHash } from "@figaro-protocol/sdk";
+
+// `spec` is the RAW document — the whole JSON including `block`, NOT
+// `parsed.spec` (which drops `block`; see the note in the first snippet).
+const bytes = canonicalize(spec);              // sorted keys at every depth,
+                                               // array order preserved, no whitespace
+const contentHash = canonicalContentHash(spec); // === keccak256(utf8Bytes(bytes))
+
+// Pin THOSE bytes — not JSON.stringify(spec, null, 2), not a re-serialization
+// of anything you parsed. A pretty-printed pin hashes to a different value and
+// the clause never verifies for anyone.
+const contentURI = await pinToIpfs(bytes);     // your node, your pin service
+
+// Deposit is a deploy-time immutable — read it, never hardcode it. Under AND
+// over both revert with WrongDeposit, and an overpay is not refunded.
+const deposit = await client.readContract({
+  address: addresses.clauseRegistry!, abi: CLAUSE_REGISTRY_ABI,
+  functionName: "registrationDeposit",
+});
+await walletClient.writeContract({
+  address: addresses.clauseRegistry!, abi: CLAUSE_REGISTRY_ABI,
+  functionName: "registerClause",
+  args: ["figaro-my-new-clause", 1n, contentHash, contentURI], // version is uint64
+  value: deposit,
+});
+```
+
+`canonicalize` is THE one canonical-JSON convention in the protocol — the same
+function hashes agreement sections and assembly compositions, which is why a
+reader who fetched your spec from any gateway can re-derive `contentHash`
+independently. To check your own work against a live deployment before you
+trust it, recompute the hash of a spec someone already registered and compare
+it to `ClauseRegistry.contentHashOf(key)` (in `CLAUSE_REGISTRY_ABI`).
+If your recomputation matches the anchor, your pipeline is right.
 
 ### `@figaro-protocol/sdk/handoff` — Runtime Handoff Wire Protocol
 

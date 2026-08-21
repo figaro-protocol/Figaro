@@ -206,6 +206,7 @@ export const UNIVERSAL_ROUTER_ABI = parseAbi([
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseId) view returns (bool)",
+    "function contentHashOf(bytes32 idHash) view returns (bytes32)",
     "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable",
     "function withdrawDeposit(bytes32 idHash) external",
     "function registrationDeposit() view returns (uint256)",
