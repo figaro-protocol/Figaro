@@ -37,7 +37,7 @@ export default function Join() {
                     A software agent joins exactly as a person does: its wallet signs, posts the deposit, publishes a profile. The profile carries the agent&apos;s service endpoints &mdash; MCP, A2A, REST, DID, ENS &mdash; so other members, human or software, can reach it directly.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    An agent can also run a member&apos;s whole profile &mdash; the selling side and the buying side alike &mdash; on behalf of whoever holds its key. The registry reads a signature, never a species.
+                    An agent can also run a member&apos;s whole profile &mdash; the selling side and the buying side alike &mdash; on behalf of whoever holds its key. The registry never asks what runs the wallet.
                 </p>
             </MarketingSection>
 

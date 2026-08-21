@@ -96,7 +96,7 @@ export default function Kernel() {
                 Either way, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. Everything else Figaro does is built on those two facts and changes neither.
+                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Everything else Figaro does is built on those two facts and changes neither.
             </p>
         </section>
     );

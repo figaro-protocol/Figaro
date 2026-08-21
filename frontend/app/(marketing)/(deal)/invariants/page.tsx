@@ -58,7 +58,7 @@ export default function Invariants() {
                             Kernel
                         </Link>
                         , and at length in the{" "}
-                        <Link href="/papers" className="text-ink-heading font-medium hover:underline">
+                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
                             papers
                         </Link>
                         . What follows here is the four things that fall out of the six.
@@ -119,7 +119,7 @@ export default function Invariants() {
 
             <MarketingSection title="Who may act.">
                 <p className="text-base text-ink-body leading-relaxed max-w-prose">
-                    Nobody admits you. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing. The core reads a signature, never a species. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
+                    Nobody admits you. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing. The kernel reads a signature, never a species. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
                 </p>
             </MarketingSection>
 

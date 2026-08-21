@@ -93,7 +93,7 @@ export default function Home() {
                     building on it, start at{" "}
                     <Link href="/spec" className="text-ink-heading hover:underline">Specifications</Link>;
                     checking the claims, the{" "}
-                    <Link href="/papers" className="text-ink-heading hover:underline">papers</Link>{" "}
+                    <Link href="/working-groups" className="text-ink-heading hover:underline">papers</Link>{" "}
                     carry the proofs.
                 </p>
                 <div className="space-y-8">

@@ -80,10 +80,11 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  * PAGE entry is its doorway; entry ORDER within a group is the ruled
  * reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
- * `(reference)` (Glossary) is footer chrome, never nav; the paper corpus
- * has its index at /papers (maintainer-ruled 2026-08-21, superseding the
- * working-groups-only route), listed under Research. Builders leads with
- * Specifications (same ruling — the integrator's doorway, not the author's). /local-commerce and /faq are nav-visible
+ * `(reference)` (Glossary) is footer chrome, never nav; papers are
+ * reached through Working Groups (RE-RULED 2026-08-21: a /papers index was
+ * briefly built off a misread "Fix" and deleted the same day — the corpus has
+ * ONE surface, /working-groups; do not rebuild the index). Builders leads
+ * with Specifications (maintainer-ruled 2026-08-21). /local-commerce and /faq are nav-visible
  * under The Deal (maintainer, 2026-08-07) on the standing condition that the
  * rest of the site stays demoted — the meal is one worked example among
  * many, never THE model. Tools (Register a clause,
@@ -135,7 +136,6 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "Research",
         links: [
             { href: "/why", label: "Why this exists" },
-            { href: "/papers", label: "Papers" },
             { href: "/working-groups", label: "Working Groups" },
             { href: "/consequences", label: "Consequences" },
         ],

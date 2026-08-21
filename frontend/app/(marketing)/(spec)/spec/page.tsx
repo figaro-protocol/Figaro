@@ -934,7 +934,7 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
 
             <MarketingSection title="Composition" sectionId="composition">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are shown on <Link href="/kernel" className="underline">Kernel</Link>; the academic frame for why the kernel is narrow is in the <Link href="/papers" className="underline">Papers</Link>. See{" "}
+                    Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Composition doctrine protects are shown on <Link href="/kernel" className="underline">Kernel</Link>; the academic frame for why the kernel is narrow is on <Link href="/working-groups" className="underline">Working Groups</Link>. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
                     for the clause validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/clauses" className="underline">Clauses</Link> and <Link href="/assemblies" className="underline">Assemblies</Link> surfaces for composition tools. The external half &mdash; forums, offset markets, payout routing, and the rest of the compositional surface named above (<code>witnessSwapAndCommitCoordinator</code>, <code>multisender</code>, and the funding contracts) &mdash; is catalogued on <Link href="/composition" className="underline">Composition</Link>.
