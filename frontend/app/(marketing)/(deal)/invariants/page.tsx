@@ -27,7 +27,7 @@ export default function Invariants() {
         <>
             <MarketingHero
                 title="Invariants."
-                lead="An invariant is a fact a contract cannot violate — not a policy someone chose, and not a promise anyone keeps. Figaro rests on six of them, and they are the whole of it: everything else the protocol does either follows from these six or is built on top of them by somebody else. This is Figaro read as structure — the shape of the thing itself, before any history."
+                lead="Figaro rests on six facts. Not policies someone chose, not promises anyone keeps — facts a contract cannot violate. Everything else the protocol does either follows from those six or is built on top of them by somebody else."
             />
 
             <MarketingSection title="The six.">
@@ -53,7 +53,7 @@ export default function Invariants() {
                         </li>
                     </ol>
                     <p>
-                        They are facts, not rules: nothing in the contract can suspend one, because there is nothing in the contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived in ten minutes on{" "}
+                        They are facts, not rules: nothing in the contract can suspend one, because there is nothing in the contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived, with the worked numbers, on{" "}
                         <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
                             Kernel
                         </Link>
@@ -69,7 +69,7 @@ export default function Invariants() {
             <MarketingSection title="What the chain holds.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Almost nothing. Every token that goes in comes back out to one of the parties &mdash; the contract never holds a balance of its own, so there is no leak, no pool, and no house. And because each commitment only ever looks at one handoff between two parties, the chain never needs a map of the whole deal, or the deal itself. It needs a <em>fingerprint</em> of the agreement and nothing more.
+                        Almost nothing. Every token that goes in comes back out to one of the parties &mdash; the contract never holds a balance of its own &mdash; and because each commitment only ever looks at one handoff between two parties, the chain never needs the deal itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
                     </p>
                     <figure className="my-6">
                         <MerkleTreeFigure
@@ -83,7 +83,7 @@ export default function Invariants() {
                         </figcaption>
                     </figure>
                     <p>
-                        The agreement, the terms, the proof that something was delivered &mdash; all of it lives outside the chain, pinned where its owner chooses. The fingerprint does the securing: it can&apos;t rebuild the agreement and never tries to, it just makes exactly one version of the outside detail acceptable. Change anything out there by a hair and it stops matching, and the math throws it out. A contract that once had to carry everything came to carry almost nothing, and gave up none of its security doing it. What that leaves in your hands &mdash; what stays sealed, and what you can sell &mdash; is on{" "}
+                        The agreement, the terms, the proof that something was delivered all live outside the chain, pinned where their owner chooses; the fingerprint cannot rebuild any of it and never tries, it just makes exactly one version of the outside detail acceptable &mdash; change anything out there by a hair and the math throws it out. What that leaves in your hands &mdash; what stays sealed, and what you can sell &mdash; is on{" "}
                         <Link href="/data" className="text-ink-heading font-medium hover:underline">
                             Data
                         </Link>
@@ -119,35 +119,21 @@ export default function Invariants() {
 
             <MarketingSection title="Who may act.">
                 <p className="text-base text-ink-body leading-relaxed max-w-prose">
-                    Nobody admits you. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing, because the core reads a signature and never asks what produced it. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
+                    Nobody admits you. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing. The core reads a signature, never a species. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Where the meaning lives.">
+            <MarketingSection title="Where the meaning lives." bottomPad="wide">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        A law this small barely says anything on its own. What it means shows up one level up: in the agreements people write on it, the roles they take, the multi-party processes they assemble. That is why the rest of Figaro exists &mdash; not as decoration on the core, but as the only level at which the core <em>means</em> anything. The core is complete and, by itself, silent. You hear it in what gets built on it.
-                    </p>
-                    <p>
-                        And that is what the network&apos;s token funds &mdash; not the core, which runs itself, but the clauses and assemblies built on it, and the authors the protocol{" "}
+                        A law this small barely says anything on its own. What it means shows up one level up: in the agreements people write on it, the roles they take, the multi-party processes they assemble. And that is what the network&apos;s token funds &mdash; not the core, which runs itself, but the clauses and assemblies built on it, and the authors the protocol{" "}
                         <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
                             pays for the ones it comes to rely on
                         </Link>
                         .
                     </p>
                     <p className="text-ink-heading font-medium">
-                        The core is a small law that holds. The network is what emerges when people build on it. Building on it isn&apos;t optional &mdash; it&apos;s the point.
-                    </p>
-                </div>
-            </MarketingSection>
-
-            <MarketingSection title="A different place to put your trust." bottomPad="wide">
-                <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
-                    <p>
-                        Step back and the six are one idea. The internet we have asks you to trust the platform in the middle &mdash; the one that holds your data, your identity, your value, and promises to behave. You trust the keeper of the pile.
-                    </p>
-                    <p>
-                        This is the other arrangement. Trust sits in the boundary: a stake large enough that cheating loses, and a fingerprint nothing can be swapped underneath. The pile never moves; it stays with whoever owns it. What is left is a thin, fixed layer that everything composes against and no one owns &mdash; the way the network runs on TCP/IP. Not a new internet bolted over the old one. The same internet, with trust moved from the keeper in the middle to the boundary at the edge.
+                        The core is a small law that holds. Everything that gives it meaning is built on top, which is why building on it isn&apos;t optional. It&apos;s the point.
                     </p>
                     <p>
                         That is the structural reading. The historical one &mdash; why a rule like this arrives now, after force and after belief &mdash; is on{" "}

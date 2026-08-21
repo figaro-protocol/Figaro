@@ -18,7 +18,7 @@ export default function Agents() {
                 title="Agents and humans, the same primitive."
                 lead={
                     <>
-                        A courier&apos;s software takes the delivery leg, posts the stake, and gets paid &mdash; with nobody at the keyboard and nobody&apos;s permission. This page is about agents that <em>participate</em> that way: buyer, seller, courier, or auditor wallets driven by software, signing the same commitments and locking the same doubled stake a human-driven wallet would. A wallet is a wallet; a signature is a signature; a bond is a bond. What the wider market now calls agentic commerce, Figaro already is &mdash; not an agent mode bolted on, but the plain consequence of a protocol that never asks whether a signer is human.
+                        A courier&apos;s software takes the delivery leg, posts the stake, and gets paid &mdash; with nobody at the keyboard and nobody&apos;s permission. This page is about agents that <em>participate</em> that way: buyer, seller, courier, or auditor wallets driven by software, signing the same commitments and locking the same doubled stake a human-driven wallet would. A wallet is a wallet; a signature is a signature; a bond is a bond. What the wider market now calls agentic commerce, Figaro already is &mdash; not an agent mode bolted on, but the plain consequence of a protocol that reads a signature, never a species.
                     </>
                 }
             />

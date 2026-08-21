@@ -21,7 +21,7 @@ export default function Join() {
                 title="Members."
                 lead={
                     <>
-                        Membership gives a wallet access to the Figaro ecosystem. A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Membership is permissionless: no application, no approval, no one to say yes. You just need to stake some ETH.
+                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH deposit and you are listed.
                     </>
                 }
             />
@@ -64,7 +64,7 @@ export default function Join() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-10">
-                    Registering posts a reclaimable ETH deposit: it keeps you listed, you reclaim the exact amount when you leave, after a cooldown, and leaving de-lists you at once. Nobody can seize it, and nobody&apos;s permission is needed to reclaim it.
+                    Registration is permissionless and posts a reclaimable ETH deposit, on the terms every registry here shares (<Link href="/faq#builders-registries" className="text-ink-heading hover:underline">what the deposit does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases only after a cooldown &mdash; coming back later costs a second deposit. The review step shows the live amount before you sign.
                 </p>
                 <p className="text-sm text-ink-muted mb-4">
                     Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, claim a released deposit.

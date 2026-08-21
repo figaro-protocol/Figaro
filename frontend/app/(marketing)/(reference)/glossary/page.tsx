@@ -22,7 +22,7 @@ const TERMS: Term[] = [
         id: "agent",
         term: "Agent",
         definition:
-            "Whoever runs a wallet in software rather than at a keyboard — a courier's dispatcher, a pricing bot, a long-running service. The kernel checks a signature, not who or what produced it, so an agent signs, bonds, and settles exactly as a person does.",
+            "Whoever runs a wallet in software rather than at a keyboard — a courier's dispatcher, a pricing bot, a long-running service. The kernel reads a signature, never a species, so an agent signs, bonds, and settles exactly as a person does.",
         readMore: <Link href="/agents" className="hover:underline">Agents</Link>,
     },
     {

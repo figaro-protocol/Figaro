@@ -60,6 +60,12 @@ export default function Rpgf() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Where the other 400 million sits." bottomPad="wide">
+                <p className="text-base text-ink-body leading-relaxed">
+                    The florin&apos;s supply is fixed at a billion, and this reserve is 600 million of it. 300 million sit in the DAO&apos;s treasury, spent by human judgment &mdash; a one-time grant to the human layer, a different object from the usage-paid reserve above. 100 million went to the founders and early supporters. The whole split is readable on the chain.
+                </p>
+            </MarketingSection>
+
         </>
     );
 }

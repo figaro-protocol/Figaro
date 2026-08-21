@@ -5,9 +5,12 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
-// RULED 2026-08-06 (maintainer), AMENDED 2026-08-12 (maintainer): this page holds
-// FIVE things and nothing else — what a clause IS (a contract clause,
-// verifiable; it may include attestations but is NOT an attestation), the
+// RULED 2026-08-06 (maintainer), AMENDED 2026-08-12 and 2026-08-21 (maintainer):
+// this page holds SIX things and nothing else — what a clause IS (a contract
+// clause, verifiable; it may include attestations but is NOT an attestation),
+// the § "In plain words" opener carrying the register-shift warning (the device
+// is /assemblies' and is copied, not re-invented — the page is NOT split; no
+// /clauses/authoring route exists), the
 // writing requirements as BULLETS (never an exposé), the live registry COUNT
 // + a link into /registries (the inventory itself moved to the registry
 // explorer, maintainer ruling 2026-08-17), the
@@ -34,11 +37,17 @@ export default function Clauses() {
                 }
             />
 
+            <MarketingSection title="In plain words.">
+                <p className="text-sm text-ink-body leading-relaxed">
+                    Somebody writes a term once and publishes it; anyone whose deal needs that term composes it in without writing it again, and nobody asks permission either way. A clause is data, not code &mdash; the terms of a deal, written down so that a person and a program read the same document. What follows below gets technical &mdash; the requirements for writing one, exactly which part of a spec reaches which hash, what registering costs and what it permanently commits you to &mdash; but the registry count further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Writing a clause.">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed list-disc pl-5">
                     <li>One canonical JSON document: <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, and the <code>fields</code> the clause carries.</li>
                     <li>It passes the public well-formedness check &mdash; <code>parseClauseSpec</code> from <code>@figaro-protocol/sdk/clauses</code>, the same validator the registration form runs.</li>
-                    <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless, permanent per <code>(name, version)</code> &mdash; staking a small reclaimable ETH deposit (<Link href="/faq#builders-registries" className="underline">the registry terms in full</Link>).</li>
+                    <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless and first-write-wins &mdash; on the deposit terms every registry here shares (<Link href="/faq#builders-registries" className="underline">what the deposit does, and what withdrawing it leaves behind</Link>). What is specific to a clause binding: it is permanent per <code>(name, version)</code>, so withdrawing the deposit moves the stake and the listing but never the clause &mdash; agreements already committed against it keep resolving forever.</li>
                     <li>Nothing else, ever: a clause is data, not code. No per-clause contract exists, and a registered clause is immediately usable in agreements and settleable.</li>
                 </ul>
             </MarketingSection>

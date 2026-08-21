@@ -20,17 +20,7 @@ export default function Why() {
                         You already know the feeling of paying a stranger and hoping some institution &mdash; a bank, a platform, a court &mdash; will make it good if the deal goes wrong. Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. This is Figaro read as history: how it arrives, not what it is.
                     </>
                 }
-            >
-                <div className="border-l-2 border-default pl-6 mt-6">
-                    <p className="text-sm text-ink-body leading-relaxed">
-                        <strong>Reading this page.</strong> The mechanism &mdash; bonded stakes, buyer-only resolution, no platform in the middle &mdash; is shown on{" "}
-                        <Link href="/kernel" className="hover:underline">/kernel</Link>{" "}
-                        and lived through, in one worked deal among many, on <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">/local-commerce</Link>. This page steps back and asks why that counts as a legitimate way to make a rule at all, and what era of rule-making it belongs to &mdash; the historical and philosophical case, not the mechanics. If you came for the mechanics, not the history, start there instead, or see{" "}
-                        <Link href="/faq" className="hover:underline">/faq</Link>{" "}
-                        for what the design protects against, and what it does not.
-                    </p>
-                </div>
-            </MarketingHero>
+            />
 
             <MarketingSection title="Coercion, cognition, crypto.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
@@ -87,8 +77,11 @@ export default function Why() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     The same period has seen social engineering deployed at scale.
                 </p>
-                <p className="text-base text-ink-body leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed mb-8">
                     Figaro is one contribution to a substrate that captures less well: economic rules that are common knowledge, enforced by mathematics, owned by no one. Clarity is a partial defense. It is the defense the third era makes available.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                    Came for the mechanics rather than the history? They are derived on <Link href="/kernel" className="text-ink-heading hover:underline">Kernel</Link> and lived through on <Link href="/local-commerce" className="text-ink-heading hover:underline">Local Commerce</Link>; what the design does and does not protect against is on <Link href="/faq" className="text-ink-heading hover:underline">the FAQ</Link>.
                 </p>
             </MarketingSection>
         </>
