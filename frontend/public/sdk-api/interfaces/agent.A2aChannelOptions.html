@@ -13,7 +13,7 @@
 <h1>Interface A2aChannelOptions</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">A2aChannelOptions</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#fetchfn">fetchFn</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">input</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">URL</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">RequestInfo</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">init</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">input</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">URL</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">Request</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">init</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">RequestInit</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#nextid">nextId</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">()</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#resolveendpoint">resolveEndpoint</a><span class="tsd-signature-symbol">:</span> <a href="../types/agent.EndpointResolver.html" class="tsd-signature-type tsd-kind-type-alias">EndpointResolver</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/a2aChannel.ts:99</li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/a2aChannel.ts#L100">sdk/src/agent/a2aChannel.ts:100</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -59,14 +59,14 @@
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">init</span>: <span class="tsd-signature-type">RequestInit</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&gt;</span></h4></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/a2aChannel.ts:105</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/a2aChannel.ts#L106">sdk/src/agent/a2aChannel.ts:106</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="nextid"><code class="tsd-tag">Optional</code><span>next<wbr/>Id</span><a href="#nextid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">nextId</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">()</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>Correlation-id source — injectable so runs are reproducible.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/a2aChannel.ts:107</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/a2aChannel.ts#L108">sdk/src/agent/a2aChannel.ts:108</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="resolveendpoint"><span>resolve<wbr/>Endpoint</span><a href="#resolveendpoint" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">resolveEndpoint</span><span class="tsd-signature-symbol">:</span> <a href="../types/agent.EndpointResolver.html" class="tsd-signature-type tsd-kind-type-alias">EndpointResolver</a></div>
@@ -75,7 +75,7 @@
 static map, or a registry read.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/a2aChannel.ts:103</li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/a2aChannel.ts#L104">sdk/src/agent/a2aChannel.ts:104</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

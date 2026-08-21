@@ -5,7 +5,8 @@
         "src/agent/index.ts",
         "src/derive/index.ts",
         "src/clauses/index.ts",
-        "src/handoff/index.ts"
+        "src/handoff/index.ts",
+        "src/signer/index.ts"
     ],
     "out": "../frontend/public/sdk-api",
     "name": "@figaro-protocol/sdk",

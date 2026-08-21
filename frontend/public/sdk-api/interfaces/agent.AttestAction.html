@@ -12,14 +12,14 @@
 <li><a href="" aria-current="page">AttestAction</a></li></ul>
 <h1>Interface AttestAction</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">AttestAction</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#attester">attester</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#clauseid">clauseId</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#content">content</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#description">description</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#orderhashes">orderHashes</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#processid">processId</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#stage">stage</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#type">type</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;attest-as-seller&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;attest-as-buyer&quot;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
-<section class="tsd-panel tsd-hierarchy" data-refl="13284">
+<section class="tsd-panel tsd-hierarchy" data-refl="13378">
 <h4>Hierarchy</h4>
 <ul class="tsd-hierarchy">
 <li class="tsd-hierarchy-item"><span class="tsd-signature-type">BaseAction</span>
 <ul class="tsd-hierarchy">
 <li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">AttestAction</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:70</li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L70">sdk/src/agent/proposer.ts:70</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -45,7 +45,7 @@
 <div class="tsd-comment tsd-typography"><p>The address that should submit the attestation.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:73</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L73">sdk/src/agent/proposer.ts:73</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="clauseid"><code class="tsd-tag">Optional</code><span>clause<wbr/>Id</span><a href="#clauseid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">clauseId</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
@@ -57,7 +57,7 @@ clauseId absent from the target's agreement makes the coordinator's
 inclusion-proof gate reject the call.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:84</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L84">sdk/src/agent/proposer.ts:84</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="content"><code class="tsd-tag">Optional</code><span>content</span><a href="#content" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">content</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
@@ -66,7 +66,7 @@ inclusion-proof gate reject the call.</p>
 defaults <code>contentRef</code> to the section's own fingerprint.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:90</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L90">sdk/src/agent/proposer.ts:90</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="description"><span>description</span><a href="#description" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">description</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
@@ -74,14 +74,14 @@ defaults <code>contentRef</code> to the section's own fingerprint.</p>
 </div><aside class="tsd-sources">
 <p>Inherited from BaseAction.description</p>
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:31</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L31">sdk/src/agent/proposer.ts:31</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="orderhashes"><span>order<wbr/>Hashes</span><a href="#orderhashes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">orderHashes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Orders this address can attest against.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:75</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L75">sdk/src/agent/proposer.ts:75</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="processid"><span>process<wbr/>Id</span><a href="#processid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">processId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
@@ -89,20 +89,20 @@ defaults <code>contentRef</code> to the section's own fingerprint.</p>
 </div><aside class="tsd-sources">
 <p>Inherited from BaseAction.processId</p>
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:33</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L33">sdk/src/agent/proposer.ts:33</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="stage"><code class="tsd-tag">Optional</code><span>stage</span><a href="#stage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">stage</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>Optional stage; executor default is 1.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:86</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L86">sdk/src/agent/proposer.ts:86</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="type"><span>type</span><a href="#type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">type</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;attest-as-seller&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;attest-as-buyer&quot;</span></div><aside class="tsd-sources">
 <p>Overrides BaseAction.type</p>
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:71</li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L71">sdk/src/agent/proposer.ts:71</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

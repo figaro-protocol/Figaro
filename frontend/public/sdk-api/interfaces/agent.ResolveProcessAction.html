@@ -12,14 +12,14 @@
 <li><a href="" aria-current="page">ResolveProcessAction</a></li></ul>
 <h1>Interface ResolveProcessAction</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ResolveProcessAction</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#caller">caller</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#commitments">commitments</a><span class="tsd-signature-symbol">:</span> <a href="index.Commitment.html" class="tsd-signature-type tsd-kind-interface">Commitment</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#description">description</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#processid">processId</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#settlements">settlements</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">orderHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">seller</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">settlement</span><span class="tsd-signature-symbol">:</span> <a href="index.SettlementBreakdown.html" class="tsd-signature-type tsd-kind-interface">SettlementBreakdown</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#totalbuyerpayout">totalBuyerPayout</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#totalsellerpayout">totalSellerPayout</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#type">type</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;resolve-process&quot;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
-<section class="tsd-panel tsd-hierarchy" data-refl="13271">
+<section class="tsd-panel tsd-hierarchy" data-refl="13365">
 <h4>Hierarchy</h4>
 <ul class="tsd-hierarchy">
 <li class="tsd-hierarchy-item"><span class="tsd-signature-type">BaseAction</span>
 <ul class="tsd-hierarchy">
 <li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">ResolveProcessAction</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:49</li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L49">sdk/src/agent/proposer.ts:49</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -45,7 +45,7 @@
 <div class="tsd-comment tsd-typography"><p>The buyer address that must call resolveProcess.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:52</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L52">sdk/src/agent/proposer.ts:52</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="commitments"><span>commitments</span><a href="#commitments" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">commitments</span><span class="tsd-signature-symbol">:</span> <a href="index.Commitment.html" class="tsd-signature-type tsd-kind-interface">Commitment</a><span class="tsd-signature-symbol">[]</span></div>
@@ -53,7 +53,7 @@
 Must be supplied for resolveProcess (kernel re-derives hashes).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:57</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L57">sdk/src/agent/proposer.ts:57</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="description"><span>description</span><a href="#description" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">description</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
@@ -61,7 +61,7 @@ Must be supplied for resolveProcess (kernel re-derives hashes).</p>
 </div><aside class="tsd-sources">
 <p>Inherited from BaseAction.description</p>
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:31</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L31">sdk/src/agent/proposer.ts:31</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="processid"><span>process<wbr/>Id</span><a href="#processid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">processId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
@@ -69,34 +69,34 @@ Must be supplied for resolveProcess (kernel re-derives hashes).</p>
 </div><aside class="tsd-sources">
 <p>Inherited from BaseAction.processId</p>
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:33</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L33">sdk/src/agent/proposer.ts:33</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="settlements"><span>settlements</span><a href="#settlements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">settlements</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>    <span class="tsd-kind-property">orderHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">seller</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">settlement</span><span class="tsd-signature-symbol">:</span> <a href="index.SettlementBreakdown.html" class="tsd-signature-type tsd-kind-interface">SettlementBreakdown</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Per-order settlement breakdown.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:59</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L59">sdk/src/agent/proposer.ts:59</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="totalbuyerpayout"><span>total<wbr/>Buyer<wbr/>Payout</span><a href="#totalbuyerpayout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">totalBuyerPayout</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
 <div class="tsd-comment tsd-typography"><p>Total payout to buyer across all orders.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:65</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L65">sdk/src/agent/proposer.ts:65</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="totalsellerpayout"><span>total<wbr/>Seller<wbr/>Payout</span><a href="#totalsellerpayout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">totalSellerPayout</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
 <div class="tsd-comment tsd-typography"><p>Total payout to all sellers across all orders.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:67</li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L67">sdk/src/agent/proposer.ts:67</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="type"><span>type</span><a href="#type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">type</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;resolve-process&quot;</span></div><aside class="tsd-sources">
 <p>Overrides BaseAction.type</p>
 <ul>
-<li>Defined in sdk/src/agent/proposer.ts:50</li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/proposer.ts#L50">sdk/src/agent/proposer.ts:50</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

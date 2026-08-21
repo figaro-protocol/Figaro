@@ -160,7 +160,12 @@ export async function recordProcessUsage(
             chain: walletClient.chain ?? null, account, address: usageCounter,
             abi: USAGE_COUNTER_ABI, functionName, args: args as never,
         });
-        await publicClient.waitForTransactionReceipt({ hash });
+        // Estimation catches most reverts before a hash exists; a leg that
+        // reverts after estimation (explicit gas, state moved between estimate
+        // and mine) still mines a receipt — reverted, not thrown. Without this
+        // check that leg would count as recorded.
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") throw new Error(`${functionName} reverted on-chain (tx ${hash})`);
     };
     for (const { commitment: given, agreement } of entries) {
         // The counter re-hashes the SIGNED struct to find the order — a root

@@ -36,24 +36,25 @@ ahead of the first public push:
 - **Certora**: 6 specs / 37 rules (FigaroCore, AttestationCoordinator,
   TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter).
 - **Echidna**: 2 harnesses / 15 properties (kernel + FlorinToken).
-- **TLA+**: 4 models / 49 invariants (FigaroCore 7, FlorinToken 8,
-  WitnessSwapAndCommitCoordinator 10, SettlementUniverses 24).
+- **TLA+**: 4 models / 48 invariants (FigaroCore 9, FlorinToken 8,
+  WitnessSwapAndCommitCoordinator 10, SettlementUniverses 21).
 - **SDK (Vitest)** and **Frontend (Vitest + Playwright)**: component, unit,
   and end-to-end coverage — see `docs/TESTING.md` for the full harness
   inventory.
 
 ### SDK
 
-- `@figaro-protocol/sdk` at `0.1.0`, pre-1.0: five subpath exports — root (protocol
+- `@figaro-protocol/sdk` at `0.1.0`, pre-1.0: six subpath exports — root (protocol
   primitives + the RPGF distribution mirror), `/agent` (agent coordination),
   `/derive` (event derivation), `/clauses` (the Layer-A clause spec
-  source-of-truth), and `/handoff` (the runtime handoff wire protocol).
+  source-of-truth), `/handoff` (the runtime handoff wire protocol), and
+  `/signer` (the policy signer daemon + socket-backed account).
 
 ### Infrastructure
 
-- Six GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
-  `devnet-e2e-ci`, `guards-ci` (the whole-tree guard battery), and
-  `sequencer-release` (publishes the prebuilt `figaro-sequencer` relay
-  binary on tag push).
+- Eight GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
+  `devnet-e2e-ci`, `prover-ci`, `guards-ci` (the whole-tree guard battery),
+  `sdk-release`, and `sequencer-release` (publishes the prebuilt
+  `figaro-sequencer` relay binary on tag push).
 
 [Unreleased]: https://github.com/figaro-protocol/Figaro

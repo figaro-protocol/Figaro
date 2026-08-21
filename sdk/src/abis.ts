@@ -122,6 +122,10 @@ export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
     "error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId)",
+    "error NotAuthorized()",
+    "error ProcessMismatch()",
+    "error UnknownOrder()",
+    "error OrderResolved()",
 ]);
 
 export const EV_ATTESTATION = parseAbiItem(
@@ -357,6 +361,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error ZeroAddress()",
     "error ZeroMinSellers()",
     "error EmptyPeriods()",
+    "error TooManyPeriods()",
     "error PeriodsNotAscending()",
     "error AccrualClosed()",
     "error UnknownOrder()",
@@ -365,6 +370,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error InvalidInclusionProof()",
     "error SellerNotStaked(address seller)",
     "error ClauseOrAssemblyExcluded(bytes32 clauseOrAssembly)",
+    "error ClauseOrAssemblyNotRegistered(bytes32 clauseOrAssembly)",
     "error NotBatchVerifier()",
     "error PeriodMismatch(uint8 open, uint8 claimed)",
     "error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed)",
@@ -442,4 +448,15 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     //    indexers filter by address) ─────────────────────────────────
     "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
+
+    // ── Errors (settlement-reachable; constructor guards omitted) ────
+    "error StateRootMismatch(bytes32 expected, bytes32 actual)",
+    "error ChainIdMismatch(uint64 expected, uint64 actual)",
+    "error VerifyingContractMismatch(address expected, address actual)",
+    "error PositionHashMismatch()",
+    "error AttestationHashMismatch()",
+    "error SpecBindingsHashMismatch()",
+    "error UsageAccrualHashMismatch()",
+    "error SpecBindingMismatch(bytes32 clauseId, bytes32 anchored, bytes32 proven)",
+    "error FeeOnTransferDetected()",
 ]);

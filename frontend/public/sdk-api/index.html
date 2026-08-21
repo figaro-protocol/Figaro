@@ -8,7 +8,7 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <h1>@figaro-protocol/sdk</h1></div>
-<div class="tsd-panel tsd-typography"><h1 id="figarosdk" class="tsd-anchor-link">@figaro-protocol/sdk<a href="#figarosdk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<div class="tsd-panel tsd-typography"><h1 id="figaro-protocolsdk" class="tsd-anchor-link">@figaro-protocol/sdk<a href="#figaro-protocolsdk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
 <p>TypeScript SDK for the Figaro Protocol — self-enforcing agreements between strangers.</p>
 <p>Event parsing, state reconstruction, EIP-712 commitment building, bond math,
 agent coordination, the template→orders projection, and the runtime handoff
@@ -23,9 +23,10 @@ key-agreement. Three runtime dependencies: <code>viem</code>, plus <code>@noble/
 the SDK, or the first chain call throws a missing-module error rather than a
 Figaro-shaped one.</p>
 <blockquote>
-<p><strong>Honest scope:</strong> <code>@figaro-protocol/sdk</code> is not yet published to the npm registry —
-publication (with provenance attestation) is a tracked pre-release task.
-Until then, install from a repo checkout: <code>&quot;@figaro-protocol/sdk&quot;: &quot;file:../sdk&quot;</code>
+<p><strong>Provenance:</strong> <code>@figaro-protocol/sdk</code> is live on the npm registry with a
+Sigstore provenance attestation binding the tarball to this repository and
+the workflow that built it — <code>npm audit signatures</code> verifies it downstream.
+Working from a repo checkout instead? Wire <code>&quot;@figaro-protocol/sdk&quot;: &quot;file:../sdk&quot;</code>
 (build it first: <code>npm run build --workspace sdk</code> from the repo root).</p>
 </blockquote>
 <p><strong>Trap — a consumer <code>npm install</code> can DELETE the SDK's <code>dist/</code>.</strong> Read this
@@ -128,10 +129,12 @@ seller and payment.</li>
 <pre><code><span class="hl-1">✓ </span><span class="hl-5">discovered</span><span class="hl-1"> </span><span class="hl-5">a</span><span class="hl-1"> </span><span class="hl-5">single</span><span class="hl-1">-</span><span class="hl-5">order</span><span class="hl-1"> </span><span class="hl-5">seed</span><span class="hl-1"> </span><span class="hl-5">assembly</span><br/><span class="hl-1">✓ </span><span class="hl-5">located</span><span class="hl-1"> </span><span class="hl-5">the</span><span class="hl-1"> </span><span class="hl-5">commerce</span><span class="hl-1"> </span><span class="hl-5">clause</span><span class="hl-1"> </span><span class="hl-5">by</span><span class="hl-1"> </span><span class="hl-5">its</span><span class="hl-1"> </span><span class="hl-5">declared</span><span class="hl-1"> </span><span class="hl-5">field</span><br/><span class="hl-1">✓ </span><span class="hl-5">origination</span><span class="hl-1"> </span><span class="hl-5">returned</span><span class="hl-1"> </span><span class="hl-5">a</span><span class="hl-1"> </span><span class="hl-0">tx</span><span class="hl-1"> (</span><span class="hl-5">seller</span><span class="hl-1"> </span><span class="hl-5">counter</span><span class="hl-1">-</span><span class="hl-5">signed</span><span class="hl-1">, </span><span class="hl-5">commit</span><span class="hl-1"> </span><span class="hl-5">submitted</span><span class="hl-1">)</span><br/><span class="hl-1">✓ </span><span class="hl-5">initiate</span><span class="hl-1">-</span><span class="hl-5">process</span><span class="hl-1"> </span><span class="hl-5">commit</span><span class="hl-1"> </span><span class="hl-5">landed</span><span class="hl-1"> </span><span class="hl-5">on</span><span class="hl-1"> </span><span class="hl-0">chain</span><span class="hl-1"> (</span><span class="hl-5">status</span><span class="hl-1"> </span><span class="hl-5">success</span><span class="hl-1">)</span><br/><span class="hl-1">✓ </span><span class="hl-5">the</span><span class="hl-1"> </span><span class="hl-5">originated</span><span class="hl-1"> </span><span class="hl-5">process</span><span class="hl-1"> </span><span class="hl-5">is</span><span class="hl-1"> </span><span class="hl-5">discoverable</span><span class="hl-1"> </span><span class="hl-5">on</span><span class="hl-1"> </span><span class="hl-5">chain</span><span class="hl-1"> </span><span class="hl-6">with</span><span class="hl-1"> </span><span class="hl-5">the</span><span class="hl-1"> </span><span class="hl-5">right</span><span class="hl-1"> </span><span class="hl-5">seller</span><span class="hl-1"> + </span><span class="hl-5">payment</span><br/><br/><span class="hl-7">AUTONOMOUS</span><span class="hl-1"> </span><span class="hl-7">ORIGINATION</span><span class="hl-1"> </span><span class="hl-7">PROVEN</span><span class="hl-1"> — </span><span class="hl-5">no</span><span class="hl-1"> </span><span class="hl-5">human</span><span class="hl-1"> </span><span class="hl-4">in</span><span class="hl-1"> </span><span class="hl-5">the</span><span class="hl-1"> </span><span class="hl-5">loop</span>
 </code><button>Copy</button></pre>
 
-<p>Two siblings run the same recipe with exactly one thing changed:
+<p>Three siblings run the same recipe with exactly one thing changed:
 <code>verify-origination-chain.devnet.mjs</code> (a three-order value-added chain, one
-seller taking two of the nodes) and <code>verify-origination-http.devnet.mjs</code> (the
-offer envelope crosses a real HTTP socket instead of the in-process channel).</p>
+seller taking two of the nodes), <code>verify-origination-http.devnet.mjs</code> (the
+offer envelope crosses a real HTTP socket instead of the in-process channel),
+and <code>verify-origination-a2a.devnet.mjs</code> (the same envelope rides the A2A
+JSON-RPC interop wire via <code>A2aChannel</code>).</p>
 <p><strong>5. Close it — the buyer resolves.</strong> The script stops at a live bonded process,
 which is the state the mechanism is about. Ending it is a single call, and only
 the buyer can make it:</p>
@@ -182,12 +185,15 @@ increment reverts inside the settlement token with <code>ERC20InsufficientAllowa
 while the earlier bonds stay locked until the buyer resolves. Size it with
 <code>calculateSubOrderApproval</code> and check it with <code>assertApprovalCoversBond</code> (both
 below).</p>
-<h2 id="five-entry-points" class="tsd-anchor-link">Five Entry Points<a href="#five-entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<p>A generated API reference covering every export of all five entry points is
-served on the site at <code>/sdk-api</code> (TypeDoc over the same source; regenerate
-with <code>npm run docs</code> from <code>sdk/</code>). This README stays the manual — recipes,
-traps, and the order to do things in; the reference is where you look a
-signature up.</p>
+<h2 id="six-entry-points" class="tsd-anchor-link">Six Entry Points<a href="#six-entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>The generated API reference — every export, every signature.</strong> TypeDoc over
+this same source is served on the site under the path <code>/sdk-api</code> (entry point
+<code>/sdk-api/index.html</code>), one page per entry point: currently the root package
+plus <code>/agent</code>, <code>/derive</code>, <code>/clauses</code> and <code>/handoff</code> — <code>/signer</code> is documented
+in prose here only, in its own section below. No site? <code>npm run docs</code> from
+<code>sdk/</code> regenerates the whole reference from a checkout. This README stays the
+manual — recipes, traps, and the order to do things in; the reference is where
+you look a signature up.</p>
 <h3 id="-protocol-primitives" class="tsd-anchor-link"><code>@figaro-protocol/sdk</code> — Protocol Primitives<a href="#-protocol-primitives" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the distribution mirror —
@@ -460,6 +466,36 @@ plus <code>onAnyCommitmentPayload</code> for the connected wallet, and the direc
 in each callback is transport-specific (an XMTP inbox id, a wallet address) — the
 SDK does not constrain it. Full signatures: <code>dist/handoff/messages.d.ts</code> +
 <code>dist/handoff/ecdh.d.ts</code>.</p>
+<h3 id="-the-policy-signer" class="tsd-anchor-link"><code>@figaro-protocol/sdk/signer</code> — The Policy Signer<a href="#-the-policy-signer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>The protocol-shaped half of the sandboxed signer runtime
+(<code>docs/AI_AGENT_COORDINATION.md</code> § &quot;The sandboxed signer runtime&quot;): a daemon
+that holds the wallet key in ITS process only (encrypted V3 keystore,
+passphrase at start) and exposes signing as an operation over a local UNIX
+socket — every request passing an out-of-model policy gate before anything is
+signed. The gate enforces: EIP-712 <strong>domain binding</strong> (chainId + a
+verifyingContract on the policy's allowlist — <code>FigaroCore</code> and
+<code>FigaroBatchVerifier</code>, the batch universe's own domain), a <strong>contract +
+selector allowlist</strong> for transactions, <strong>per-action and rolling-period value
+ceilings</strong> (token risk = the wallet's own bond side of a Commitment plus every
+<code>approve</code> at its amount; native risk = a payable call's <code>value</code>, refused
+unless the policy grants a native ceiling), a <strong>simulation veto</strong> (<code>eth_call</code>
+plus best-effort asset tracing), and an <strong>audit log</strong>. <code>personal_sign</code> is
+refused always. The rolling window persists in a signer-owned journal — a
+restart cannot reset the ceiling.</p>
+<p>Run it:</p>
+<pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">figaro-signer</span><span class="hl-1"> </span><span class="hl-4">--policy</span><span class="hl-1"> </span><span class="hl-2">deployments/signer-policy.11155111.json</span><span class="hl-1"> </span><span class="hl-10">\</span><br/><span class="hl-1">  </span><span class="hl-4">--keystore</span><span class="hl-1"> </span><span class="hl-2">~/operator.keystore.json</span><span class="hl-1"> </span><span class="hl-4">--socket</span><span class="hl-1"> </span><span class="hl-2">/tmp/figaro-signer.sock</span><br/><span class="hl-3"># passphrase: FIGARO_SIGNER_PASSPHRASE env, or the hidden prompt</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Consume it — the account drops into the <code>WalletClient</code> the agent layer
+already takes; the agent's code path is unchanged and the key is unreachable:</p>
+<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">socketSignerAccount</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk/signer&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">createWalletClient</span><span class="hl-1">, </span><span class="hl-5">http</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;viem&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">account</span><span class="hl-1"> = </span><span class="hl-0">socketSignerAccount</span><span class="hl-1">({ </span><span class="hl-5">socketPath:</span><span class="hl-1"> </span><span class="hl-2">&quot;/tmp/figaro-signer.sock&quot;</span><span class="hl-1">, </span><span class="hl-5">address:</span><span class="hl-1"> </span><span class="hl-5">operated</span><span class="hl-1"> });</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">walletClient</span><span class="hl-1"> = </span><span class="hl-0">createWalletClient</span><span class="hl-1">({ </span><span class="hl-5">account</span><span class="hl-1">, </span><span class="hl-5">chain</span><span class="hl-1">, </span><span class="hl-5">transport:</span><span class="hl-1"> </span><span class="hl-0">http</span><span class="hl-1">(</span><span class="hl-5">rpcUrl</span><span class="hl-1">) });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>A reference policy for the live Sepolia stack ships at
+<code>deployments/signer-policy.11155111.json</code>, generated from the deployment
+record and the SDK ABIs — addresses and selectors are derived, never
+hand-typed. The host-shaped half (the sandbox wrapper carrying the policy's
+<code>egress</code> allowlist) lives beside the agent prompts, not in this package.</p>
 <h2 id="projection-from-composed-clauses-to-the-hashed-agreement" class="tsd-anchor-link">Projection: from Composed Clauses to the Hashed Agreement<a href="#projection-from-composed-clauses-to-the-hashed-agreement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>An adopted assembly template ships its clause maps mostly empty — an empty <code>{}</code>
 means the designer <em>selected</em> the clause but set no fields, deferring them
@@ -722,17 +758,17 @@ capital stays committed. <strong>Anything tracking who is currently surfaced mus
 <code>MemberWithdrawalRequested</code>, not <code>MemberWithdrawn</code></strong>; the latter is the custody
 event and can arrive a whole cooldown later. <code>reconstructDiscovery</code> already does.</p>
 <p><strong>Reading an assembly binding.</strong> <code>AssemblyRegistry.bindings(compositionHash)</code> returns
-the tuple <code>(address author, uint64 registeredAt, bool depositWithdrawn, string contentURI)</code>.
+the tuple <code>(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)</code>.
 The existence check is <code>registeredAt != 0</code>, NOT the bool: after a normal registration
 <code>depositWithdrawn</code> is <code>false</code> and stays false while the deposit is still staked (the
-surfaced state) — it flips to <code>true</code> only once the author reclaims the deposit. So a
+surfaced state) — it flips to <code>true</code> only once the registering wallet reclaims the deposit. So a
 freshly registered assembly correctly reads <code>depositWithdrawn == false</code>; that false is
 &quot;deposit still held,&quot; not &quot;registration failed.&quot;</p>
 <p><code>ClauseRegistry</code>'s parallel stake struct (<code>depositOf[idHash]</code>, surfaced to the SDK as
-<code>RegisteredClause.registrar</code>) names the same field <code>registrar</code> rather than <code>author</code> — the
-two names identify the same concept under each registry's own vocabulary (the
-registering wallet), and <code>RpgfMinter._isAuthor</code> treats both as the clause-or-assembly's author for
-600M reward eligibility.</p>
+<code>RegisteredClause.registeredBy</code>) spells the same field the same way — both registries
+name the registering wallet <code>registeredBy</code> (one role, one name), and
+<code>RpgfMinter._isAuthor</code> treats it as the clause-or-assembly's author for 600M reward
+eligibility.</p>
 <p>The catalogue follows the same shape: <code>parseMemberCatalogueDocument(cat)</code> →
 <code>pinJSON(cat)</code> → set the resulting URI as the profile's <code>catalogueURI</code> and
 <code>updateProfile</code>. First-write-wins binding means the wallet→profile edge is
@@ -776,9 +812,10 @@ first public push; this package has no tagged releases before that point.</p>
 
 <p>Autonomous-origination proofs (against a live devnet — <code>./scripts/devup.sh</code> first, then
 <code>npm run build</code>): <code>node scripts/verify-origination.devnet.mjs</code> (single order),
-<code>node scripts/verify-origination-chain.devnet.mjs</code> (multi-order chain), and
+<code>node scripts/verify-origination-chain.devnet.mjs</code> (multi-order chain),
 <code>node scripts/verify-origination-http.devnet.mjs</code> (the two agents talk over a real HTTP
-socket via <code>HttpChannel</code>, not the in-process channel).</p>
+socket via <code>HttpChannel</code>, not the in-process channel), and
+<code>node scripts/verify-origination-a2a.devnet.mjs</code> (the same over the A2A interop wire).</p>
 <h2 id="license" class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>MIT</p>
 </div></div>
@@ -796,11 +833,11 @@ socket via <code>HttpChannel</code>, not the in-process channel).</p>
 <div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
 <details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
 <h3>On This Page</h3></summary>
-<div class="tsd-accordion-details"><a href="#figarosdk"><span>@figaro-protocol/sdk</span></a>
+<div class="tsd-accordion-details"><a href="#figaro-protocolsdk"><span>@figaro-<wbr/>protocol/sdk</span></a>
 <ul>
 <li><a href="#install"><span>Install</span></a></li>
 <li><a href="#your-first-commit"><span>Your first commit</span></a></li>
-<li><a href="#five-entry-points"><span>Five <wbr/>Entry <wbr/>Points</span></a></li>
+<li><a href="#six-entry-points"><span>Six <wbr/>Entry <wbr/>Points</span></a></li>
 <li>
 <ul>
 <li><a href="#-protocol-primitives"><span> — <wbr/>Protocol <wbr/>Primitives</span></a></li></ul></li>
@@ -812,7 +849,8 @@ socket via <code>HttpChannel</code>, not the in-process channel).</p>
 <li><a href="#-agent-coordination"><span> — <wbr/>Agent <wbr/>Coordination</span></a></li>
 <li><a href="#-clause-agnostic-derivations"><span> — <wbr/>Clause-<wbr/>Agnostic <wbr/>Derivations</span></a></li>
 <li><a href="#-clause-spec-format-content-encoding"><span> — <wbr/>Clause-<wbr/>Spec <wbr/>Format + <wbr/>Content <wbr/>Encoding</span></a></li>
-<li><a href="#-runtime-handoff-wire-protocol"><span> — <wbr/>Runtime <wbr/>Handoff <wbr/>Wire <wbr/>Protocol</span></a></li></ul></li>
+<li><a href="#-runtime-handoff-wire-protocol"><span> — <wbr/>Runtime <wbr/>Handoff <wbr/>Wire <wbr/>Protocol</span></a></li>
+<li><a href="#-the-policy-signer"><span> — <wbr/>The <wbr/>Policy <wbr/>Signer</span></a></li></ul></li>
 <li><a href="#projection-from-composed-clauses-to-the-hashed-agreement"><span>Projection: from <wbr/>Composed <wbr/>Clauses to the <wbr/>Hashed <wbr/>Agreement</span></a></li>
 <li><a href="#from-adopted-template-to-signed-agreement-the-one-walk"><span>From <wbr/>Adopted <wbr/>Template to <wbr/>Signed <wbr/>Agreement — the <wbr/>ONE walk</span></a></li>
 <li><a href="#checkout-planning"><span>Checkout <wbr/>Planning</span></a></li>

@@ -19,7 +19,7 @@
 <div class="tsd-comment tsd-typography"><p>The payout: a period's accrual plus each clause or assembly's author of record gives
 every wallet's period entitlement — UNIFORM pro rata,
 <code>floor(periodAmount * score / total)</code>, with no cap.</p>
-<p><code>authorOf</code> maps clause-or-assembly key → author of record (clause registrar or
+<p><code>authorOf</code> maps clause-or-assembly key → author of record (each registry's <code>registeredBy</code> — clause or
 assembly author); a clause or assembly with no author is unclaimable and its score
 still counts toward the denominator, exactly as on chain. Author-of-record
 eligibility is gated on a LIVE stake ON CHAIN (<code>RpgfMinter._isAuthor</code>); pass
@@ -33,7 +33,7 @@ only live authors here to mirror it.</p>
 <li><span><span class="tsd-kind-parameter">periodAmount</span>: <span class="tsd-signature-type">bigint</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.RpgfAllocation.html" class="tsd-signature-type tsd-kind-interface">RpgfAllocation</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in sdk/src/rpgf/index.ts:242</li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/rpgf/index.ts#L242">sdk/src/rpgf/index.ts:242</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
