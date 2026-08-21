@@ -85,7 +85,7 @@ export default function Home() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Read the whole story" bottomPad="wide">
+            <MarketingSection title="Read the whole story" sectionId="reading-path" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-8">
                     Read in order; each page teaches one thing.
                 </p>

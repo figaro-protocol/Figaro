@@ -1,4 +1,4 @@
-interface ReadingPathStep {
+export interface ReadingPathStep {
     /** Which rung of the telling this page belongs to. */
     rung: (typeof READING_PATH_RUNGS)[number];
     href: string;
@@ -129,3 +129,20 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         description: "what the world looks like if it works.",
     },
 ];
+
+/**
+ * The step that FOLLOWS `pathname` on the path, or `null` when there is none —
+ * the page is off the path (a lookup surface, a paper, Home) or it is the last
+ * step. The only source of continuation: never hand-author a "read this next"
+ * line on a page (that is the trailing link-farm the 2026-08-06 rulings killed).
+ *
+ * `trailingSlash: true` in next.config.mjs, so a pathname may arrive as
+ * `/kernel/`; the array holds bare hrefs.
+ */
+export function nextReadingPathStep(pathname: string | null): ReadingPathStep | null {
+    if (!pathname) return null;
+    const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+    const index = READING_PATH_STEPS.findIndex((step) => step.href === normalized);
+    if (index === -1) return null;
+    return READING_PATH_STEPS[index + 1] ?? null;
+}
