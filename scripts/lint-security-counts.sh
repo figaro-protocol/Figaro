@@ -8,7 +8,10 @@
 #
 # TLA+ is deliberately absent: the page's TLA+ claim ("four protocol state
 # machines") names models, not a function count, and model membership changes
-# by ruling, not by drift.
+# by ruling, not by drift. Lean 4 is absent for the same reason: the page's
+# Lean row names the results proved, not a theorem count — and a count there
+# would include the two list lemmas the chain proof is built from, which say
+# nothing to a reader.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."

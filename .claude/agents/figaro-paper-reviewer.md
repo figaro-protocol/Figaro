@@ -40,7 +40,7 @@ Walk the paper. Surface every claim that touches code. Categories to look for:
 | **Function signature** | "`commit(commitment, buyerSig, sellerSig)`" | Match against `src/kernel/FigaroCore.sol` |
 | **Storage / mapping** | "Three mappings: processes, orderStatus, orderProcessId" | Verify against `FigaroCore.sol` storage section |
 | **Invariant name** | "TokenConservation, ContractSolvency, …" | Verify against `formal/FigaroCore.tla` |
-| **Theorem name** | "Theorem (Two-Party Nash Equilibrium)" | Verify the theorem text matches what the code enforces |
+| **Theorem name** | "Theorem 1 (Two-Party Equilibrium)" | Verify the theorem text matches what the code enforces |
 | **Clause claim** | "N runtime-attestable clauses" | Derive from `ls clauses/*.json` (all runtime-attestable except `figaro-topology`) — never a stored count |
 | **Mechanism claim** | "Kernel runs two mechanisms: asymmetric bonding + buyer dominance" | Verify against the actual mechanism implementation |
 | **Anti-pattern claim** | "No admin, no escape hatch" | Verify by grep — no admin functions, no upgradeability |
@@ -147,7 +147,7 @@ If the paper is fully in lockstep, lead with that explicitly: "All <N> load-bear
 ## Discipline reminders
 
 - You do not edit papers or code. Read tools only.
-- Cite precisely. "The paper says X" without a locator is not a citation; "the /papers/asymmetric-bonding page's Theorem (Two-Party Nash Equilibrium) says X; src/kernel/FigaroCore.sol:147 disagrees" is. Pages have no stable scholarly line numbers — cite by section / theorem name (a `page.tsx:line` is acceptable only as a volatile secondary locator).
+- Cite precisely. "The paper says X" without a locator is not a citation; "the /papers/asymmetric-bonding page's Theorem 1 (Two-Party Equilibrium) says X; src/kernel/FigaroCore.sol:147 disagrees" is. Pages have no stable scholarly line numbers — cite by section / theorem name (a `page.tsx:line` is acceptable only as a volatile secondary locator).
 - Quantitative claims first; qualitative claims only if explicitly asked.
 - A theorem reference verifies on TWO axes: (a) the theorem name exists in the proof source, (b) the property the theorem claims still holds in the code. Both must check.
 - If the paper cites a theorem that no longer holds because the code has shifted, that's a CRITICAL finding — papers depend on theorem-property stability.
