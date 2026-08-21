@@ -52,7 +52,7 @@ export default function ClauseAuthoring() {
                     <Link href="/clauses" className="underline">clauses page</Link>{" "}
                     carries the plain-language introduction, the live registry inventory, and the full explanation of{" "}
                     <Link href="/clauses#what-the-hash-covers" className="underline">what the hash covers</Link>{" "}
-                    &mdash; which part of a spec reaches which hash, and what a reserved <code>article</code> value silently changes. Read that before you register: registration is permanent.
+                    &mdash; which part of a spec reaches which hash, and what a reserved <code>article</code> value silently changes. Read that before you register: registration is permanent. The traps that bite <em>after</em> registration &mdash; when a deal built on your clause is committed, resolved, and read back &mdash; are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
                 <div className="mt-8">
                     <RegisterClauseForm />

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
@@ -11,7 +12,7 @@ import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
 
 export const metadata: Metadata = withOg({
     title: "Specifications — Figaro Protocol",
-    description: "Canonical protocol surface: kernel, attestation coordinator, registries, token, optional protocol contracts — plus the sequencer, the batch path's one off-chain piece.",
+    description: "Canonical protocol surface: kernel, attestation coordinator, registries, token, optional protocol contracts — plus the sequencer, the batch path's one off-chain piece, the deployment-record-to-SDK field crosswalk, and every named revert an integrator can hit.",
 });
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
@@ -40,7 +41,337 @@ const JUMP_LINKS: { href: string; label: string }[] = [
     { href: "#optional-contracts", label: "Optional protocol contracts" },
     { href: "#funding-composition", label: "Funding, payout & composition contracts" },
     { href: "#deployments", label: "Canonical deployments" },
+    { href: "#errors", label: "Errors, by name" },
     { href: "#composition", label: "Composition" },
+];
+
+/** The named custom errors an INTEGRATOR can trigger by calling the contracts
+ *  catalogued on this page, grouped by the lifecycle stage that throws them.
+ *  Every row is transcribed from the Solidity revert site, never from memory;
+ *  the boundary the section declares is enforced here — deploy-time constructor
+ *  arguments and genesis wiring are deliberately absent. */
+type ErrorRow = { name: string; from: string; cause: string; fix: string };
+type ErrorStage = { stage: string; rows: ErrorRow[] };
+
+const ERRORS: ErrorStage[] = [
+    {
+        stage: "Registering — a clause, an assembly, or a member profile",
+        rows: [
+            {
+                name: "WrongDeposit(provided, required)",
+                from: "ClauseRegistry · AssemblyRegistry",
+                cause: "msg.value is not EXACTLY registrationDeposit(). Over-paying reverts too: there is no owner and no sweep, so excess ETH would be trapped forever.",
+                fix: "Read registrationDeposit() live from the deployment you are calling and send exactly that. Never assume a number.",
+            },
+            {
+                name: "InsufficientDeposit()",
+                from: "MembersRegistry.register",
+                cause: "The same exact-match check, despite the name — msg.value != registrationDeposit reverts, over-payment included.",
+                fix: "Send exactly registrationDeposit().",
+            },
+            {
+                name: "AlreadyRegistered(clauseId)",
+                from: "ClauseRegistry.registerClause",
+                cause: "That keccak256(abi.encode(clauseId, version)) is taken. First-write-wins and permanent — no overwrite, no re-registration of the same slot.",
+                fix: "Check it BEFORE spending the deposit: computeClauseKey(id, version), then read registered(key). Pick another id or version if it is taken.",
+            },
+            {
+                name: "AlreadyRegistered()",
+                from: "MembersRegistry.register",
+                cause: "This wallet already has a profile.",
+                fix: "Call updateProfile(metadataURI) instead — no second deposit.",
+            },
+            {
+                name: "CompositionAlreadyRegistered(compositionHash)",
+                from: "AssemblyRegistry.registerAssembly",
+                cause: "Identity IS the composition, so an identical composition is already anchored — even under someone else's name and prose.",
+                fix: "Reuse the existing binding, or change something the hash covers. Renaming will not help: editorial prose is excluded from the hash.",
+            },
+            {
+                name: "EmptyClauseId() · EmptyContentURI() · ZeroContentHash() · ZeroCompositionHash()",
+                from: "ClauseRegistry · AssemblyRegistry",
+                cause: "A required argument arrived empty or zero.",
+                fix: "Pin the document first, then register with the real URI and canonicalContentHash(spec) / templateCompositionHash(template).",
+            },
+            {
+                name: "NotRegistered() · NotRegistered(clauseId)",
+                from: "All three registries",
+                cause: "Reclaiming a deposit (or reading a binding) that was never written.",
+                fix: "Confirm the key first — registered(key), bindings(hash), or the registry's own event stream.",
+            },
+            {
+                name: "NotRegisteredBy(caller, registeredBy)",
+                from: "ClauseRegistry · AssemblyRegistry",
+                cause: "Only the wallet that registered may reclaim that deposit. The error names the wallet that can.",
+                fix: "Call from that wallet.",
+            },
+            {
+                name: "AlreadyWithdrawn()",
+                from: "ClauseRegistry · AssemblyRegistry",
+                cause: "The deposit is already reclaimed. The binding itself stays anchored forever — withdrawal moves the stake and de-surfaces the entry, it never deletes it.",
+                fix: "Nothing to do. Re-registering the same key is impossible by design.",
+            },
+            {
+                name: "NothingPending() · CooldownActive(releaseAt)",
+                from: "MembersRegistry.withdraw",
+                cause: "Withdrawal is two steps: requestWithdrawal() then withdraw(), with a cooldown between them so a stake cannot be recycled through identity after identity.",
+                fix: "Call requestWithdrawal() first; retry withdraw() once chain time passes releaseAt (which the revert hands you).",
+            },
+            {
+                name: "TransferFailed()",
+                from: "All three registries",
+                cause: "The ETH refund to your address reverted — typically a contract wallet with no payable receive.",
+                fix: "Register from an address that can accept ETH.",
+            },
+        ],
+    },
+    {
+        stage: "Committing — FigaroCore.commit, and the settlement token underneath it",
+        rows: [
+            {
+                name: "DeadlineExpired()",
+                from: "FigaroCore.commit",
+                cause: "c.deadline < block.timestamp at mining time — usually a deadline computed from the host clock, which can sit minutes off the chain's.",
+                fix: "Build every deadline from CHAIN time: computeDeadline(await readChainTimestamp(publicClient)).",
+            },
+            {
+                name: "ZeroPayment()",
+                from: "FigaroCore.commit",
+                cause: "payment == 0. A commitment with nothing staked has no equilibrium to protect, so the kernel refuses it outright.",
+                fix: "Price the order. A non-market graph denominates in its own ERC-20 instead of committing zero.",
+            },
+            {
+                name: "InvalidBuyerSignature() · InvalidSellerSignature()",
+                from: "FigaroCore.commit",
+                cause: "ECDSA recovery over the EIP-712 digest did not return c.buyer / c.seller. Almost always a domain or field-order mismatch rather than a wrong key.",
+                fix: "Domain is { name: \"FigaroCore\", version: \"3\", chainId, verifyingContract: <core> }; the struct field order is canonical (COMMITMENT_TYPEHASH). Use buildDomain + buildCommitment, or check your hand-rolled type string against the exported COMMITMENT_TYPEHASH.",
+            },
+            {
+                name: "InvalidRootCumulativeValue()",
+                from: "FigaroCore.commit",
+                cause: "A root order (processId == 0) whose expectedCumulativeValue is not equal to its payment.",
+                fix: "For a root, the two are the same number — which is why the sub-order approval trap only bites later.",
+            },
+            {
+                name: "ProcessAlreadyExists()",
+                from: "FigaroCore.commit",
+                cause: "The derived root id already names a process: the identical struct was signed and committed before.",
+                fix: "Generate a fresh salt (generateSalt()) and re-sign.",
+            },
+            {
+                name: "UnknownProcess()",
+                from: "FigaroCore.commit · resolveProcess",
+                cause: "A sub-order (or a resolve) naming a processId no root ever created.",
+                fix: "Take the processId from the root's OrderCommitted event, not from your own derivation of a struct you have not committed yet.",
+            },
+            {
+                name: "ProcessAlreadyResolved()",
+                from: "FigaroCore.commit",
+                cause: "Extending a process whose orders have all settled. Resolution is terminal — there is no reopening.",
+                fix: "Commit a new process. Remedies are negotiated before resolve, never after.",
+            },
+            {
+                name: "NotProcessBuyer()",
+                from: "FigaroCore.commit · resolveProcess",
+                cause: "On commit: the sub-order's buyer is not the process's root buyer. On resolve: msg.sender is not. One buyer binds the whole chain.",
+                fix: "Every commitment in a process carries the same buyer, and only that wallet resolves.",
+            },
+            {
+                name: "CurrencyMismatch()",
+                from: "FigaroCore.commit",
+                cause: "A sub-order denominated in a different ERC-20 than the process. The 2:1 bond ratio is a same-unit comparison; mixing would need an oracle.",
+                fix: "One currency per process. Compose parallel processes, or swap wallet-side before committing.",
+            },
+            {
+                name: "CumulativeValueMismatch(expected, actual)",
+                from: "FigaroCore.commit",
+                cause: "expectedCumulativeValue is not the process's running cumulative plus this order's payment — the revert names both numbers.",
+                fix: "Re-read the chain before signing: reconstruct(events) gives the live cumulativeValue for the process.",
+            },
+            {
+                name: "DuplicateCommitment()",
+                from: "FigaroCore.commit",
+                cause: "This exact order hash is already committed.",
+                fix: "Fresh salt, re-sign, resubmit.",
+            },
+            {
+                name: "FeeOnTransferDetected()",
+                from: "FigaroCore.commit · FigaroBatchVerifier.settleBatch",
+                cause: "The contract received a different amount than it pulled — a fee-on-transfer or rebasing ERC-20. The bond must stay exactly as committed for the equilibrium to hold.",
+                fix: "Settle in a plain, non-rebasing ERC-20 (wstETH rather than stETH).",
+            },
+            {
+                name: "ERC20InsufficientAllowance(spender, allowance, needed)",
+                from: "the SETTLEMENT TOKEN — not the kernel",
+                cause: "The kernel pulls the FULL per-order bond on every commit and nets nothing against bonds it already holds; approving the increment on a sub-order falls short. The kernel never sees the reason, and the earlier orders' bonds stay locked until the buyer resolves.",
+                fix: "Size it with calculateSubOrderApproval(payment, newCumulativeValue) and pre-check with assertApprovalCoversBond, which throws in plain words before the transaction is sent.",
+            },
+            {
+                name: "NothingToFund() · SwapCallFailed() · OutputBelowBond(received, required)",
+                from: "WitnessSwapAndCommitCoordinator.swapAndCommit",
+                cause: "No funding leg was enabled; or the venue call reverted; or the swap produced less than the bond it was meant to fund.",
+                fix: "Enable at least one leg (DISABLED_SWAP_FUNDING_LEG for a self-funding party); widen slippage or maxInput; check the route encoded in the Permit2 witness matches the venue.",
+            },
+        ],
+    },
+    {
+        stage: "Attesting — AttestationCoordinator, while the order is live",
+        rows: [
+            {
+                name: "UnknownOrder()",
+                from: "AttestationCoordinator (all three modes)",
+                cause: "core.orderStatus(orderHash) is 0. Either the order never committed — or you passed the event-derived struct for a root, which signed processId = 0 and therefore hashes differently. It is also permanently true for a batch-settled order, which never acquires kernel status at all.",
+                fix: "Pass the SIGNED struct (restoreSignedProcessId). If the trade settled through the batch path, there is no kernel order to attest against; the batch re-emits its own Attestation events.",
+            },
+            {
+                name: "OrderResolved()",
+                from: "AttestationCoordinator (all three modes)",
+                cause: "orderStatus is 2. Evidence attaches to a LIVE order; settlement is terminal.",
+                fix: "Attest before the buyer resolves.",
+            },
+            {
+                name: "NotAuthorized()",
+                from: "AttestationCoordinator (all three modes)",
+                cause: "attestAsSeller from a caller that is not role.seller; attestAsBuyer from a caller that is not target.buyer; attestViaResolver when the seller contract's isAuthorized(orderHash, caller) returns false.",
+                fix: "Pick the entry point that matches how your authority is provable — the three differ only in that.",
+            },
+            {
+                name: "ProcessMismatch()",
+                from: "AttestationCoordinator.attestAsSeller",
+                cause: "The role and target commitments belong to different processes. Cross-order attestation stays inside one process.",
+                fix: "For same-order attestation pass the SAME commitment struct in both slots.",
+            },
+            {
+                name: "InvalidInclusionProof(agreementHash, clauseId)",
+                from: "AttestationCoordinator (all three modes)",
+                cause: "The merkle proof does not open the signed agreementHash to that clause's leaf — the clause was not in the agreement, or the proof was rebuilt from a different document than the one signed.",
+                fix: "Rebuild from the agreement that was actually signed: buildSectionInclusionProof(agreement, section.clause), with sectionDataHash(section) as the section hash. clauseId is the bytes32 computeClauseKey, never the raw name.",
+            },
+        ],
+    },
+    {
+        stage: "Resolving — FigaroCore.resolveProcess, buyer only, atomic",
+        rows: [
+            {
+                name: "NoActiveOrders() · IncompleteOrderList(required, provided)",
+                from: "FigaroCore.resolveProcess",
+                cause: "Resolution is atomic: the call must carry EVERY active order's commitment, exactly activeOrderCount of them. Partial resolution does not exist.",
+                fix: "Rebuild the full set from OrderCommitted events (the event carries every struct field) — nothing has to be stored client-side.",
+            },
+            {
+                name: "OrderNotCommitted(orderHash)",
+                from: "FigaroCore.resolveProcess",
+                cause: "A struct in the array re-hashes to an order the kernel does not hold. The silent cause is the dual-processId trap: the ARGUMENT is the derived process id, but a root struct must carry the processId = 0 it was signed with.",
+                fix: "Pass every struct through restoreSignedProcessId, or use executeAction, which applies it for you. The lower-level resolveProcess wrapper and hand-rolled cast do not.",
+            },
+        ],
+    },
+    {
+        stage: "Recording usage and claiming RPGF — UsageCounter, RpgfMinter",
+        rows: [
+            {
+                name: "AccrualClosed()",
+                from: "UsageCounter.currentPeriod, called first by both record functions",
+                cause: "The last accrual period has ended; usage is permanently unrecordable after it. currentPeriod() is a view that reverts — the revert IS the answer.",
+                fix: "Wrap the read; check periodClosed(uint8), periodCount() and periodEnd(uint256) before trusting a run. Note recordProcessUsage tolerates per-leg reverts, so this does not throw: it returns a report with every leg in failures.",
+            },
+            {
+                name: "UnknownOrder() · OrderNotResolved()",
+                from: "UsageCounter.recordClauseUsage · recordAssemblyUsage",
+                cause: "The counter proves settlement from FigaroCore.orderStatus and requires 2 (RESOLVED). Usage is what a finished process leaves behind.",
+                fix: "Record at settlement, in the same breath as the resolve. This gate is direct-path only — batch trade reaches the counter through applyBatchAccrual instead.",
+            },
+            {
+                name: "InvalidInclusionProof()",
+                from: "UsageCounter.recordClauseUsage · recordAssemblyUsage",
+                cause: "Same leaf shape as the attestation coordinator's, byte for byte — the proof must open the signed agreementHash.",
+                fix: "Same builder: buildSectionInclusionProof over the agreement that was signed.",
+            },
+            {
+                name: "ClauseOrAssemblyExcluded(clauseOrAssembly)",
+                from: "UsageCounter",
+                cause: "A protocol-floor clause (the commerce, topology and provenance clauses) is excluded from the reward. ROUTINE, not a fault — the counter refuses the floor, never the open set.",
+                fix: "Nothing. Expect these legs in failures on every run and do not treat them as errors.",
+            },
+            {
+                name: "ClauseOrAssemblyNotRegistered(clauseOrAssembly)",
+                from: "UsageCounter",
+                cause: "The author-side stake is not live: the registration deposit was withdrawn, or the key was never registered. Authorship earns only while the stake stays live.",
+                fix: "Nothing the recorder can do — this is the author's stake, not the caller's.",
+            },
+            {
+                name: "SellerNotStaked(seller)",
+                from: "UsageCounter",
+                cause: "The order's seller of record has no live MembersRegistry stake. Both sides of the gate are live stakes.",
+                fix: "Record before a seller unstakes — another reason recording belongs at settlement.",
+            },
+            {
+                name: "AlreadyCounted()",
+                from: "UsageCounter",
+                cause: "One process counts once, ever, per clause or assembly.",
+                fix: "Nothing. A repeat call is a no-op you can ignore.",
+            },
+            {
+                name: "NotBatchVerifier()",
+                from: "UsageCounter.applyBatchAccrual",
+                cause: "Only the configured FigaroBatchVerifier may push a proved accrual across the settlement seam.",
+                fix: "Not an integrator call. Direct-path recording goes through recordClauseUsage / recordAssemblyUsage.",
+            },
+            {
+                name: "UnknownPeriod(periodId) · PeriodStillAccruing(periodId)",
+                from: "RpgfMinter.claim",
+                cause: "periodId is beyond periodCount(), or that period has not closed. The claim unit is the CLOSED period, so a share is score-over-total against numbers that stopped moving.",
+                fix: "Claim after UsageCounter.periodClosed(periodId) is true.",
+            },
+            {
+                name: "AlreadyClaimed(periodId, account)",
+                from: "RpgfMinter.claim",
+                cause: "One claim per wallet per period.",
+                fix: "Pass every clause and assembly you author in that single call.",
+            },
+            {
+                name: "NotAuthorOfRecord(clauseOrAssembly, caller)",
+                from: "RpgfMinter.claim",
+                cause: "The caller is not the registrant of that key — or was, but withdrew the registration deposit. Eligibility is a live ETH stake.",
+                fix: "Claim from the registering wallet, with its deposit un-withdrawn.",
+            },
+            {
+                name: "DuplicateClauseOrAssembly(key) · NoClausesOrAssemblies() · NothingToClaim()",
+                from: "RpgfMinter.claim",
+                cause: "The array repeated a key, was empty, or produced a zero amount (no recorded score in that period).",
+                fix: "De-duplicate the array; check scoreOf(key, period) before claiming.",
+            },
+            {
+                name: "PeriodBudgetExceeded(periodId)",
+                from: "RpgfMinter.claim",
+                cause: "The period's budget is bounded and would be overspent by this claim.",
+                fix: "Nothing to retry — the bound is the mechanism's, not a rate limit.",
+            },
+        ],
+    },
+    {
+        stage: "Settling a batch — FigaroBatchVerifier.settleBatch (sequencer-side)",
+        rows: [
+            {
+                name: "StateRootMismatch(expected, actual) · ChainIdMismatch · VerifyingContractMismatch",
+                from: "FigaroBatchVerifier.settleBatch",
+                cause: "The proof's public values do not describe this chain, this verifier, or the current state root — usually a batch proved against a root another batch has since advanced past.",
+                fix: "Re-read stateRoot() and re-prove. Batches settle in sequence.",
+            },
+            {
+                name: "PositionHashMismatch() · AttestationHashMismatch() · SpecBindingsHashMismatch() · UsageAccrualHashMismatch()",
+                from: "FigaroBatchVerifier.settleBatch",
+                cause: "The calldata arrays do not hash to what the proof committed to — the proof and the data submitted alongside it disagree.",
+                fix: "Emit both from the same prover run; never re-serialize one of them independently.",
+            },
+            {
+                name: "SpecBindingMismatch(clauseId, anchored, proven)",
+                from: "FigaroBatchVerifier.settleBatch",
+                cause: "The clause spec supplied to the proof as a witness does not hash to the contentHash ClauseRegistry anchors for that clause. This IS the in-proof content check's binding.",
+                fix: "Feed the prover the exact canonical bytes that were pinned and registered — the revert names both hashes.",
+            },
+        ],
+    },
 ];
 
 export default function Specifications() {
@@ -91,11 +422,14 @@ export default function Specifications() {
                 >
                     <code>npm install @figaro-protocol/sdk viem</code>
                 </pre>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <a href="/sdk-api/index.html" className="text-ink-heading font-medium underline">Generated API reference &mdash; every export, every signature</a>. TypeDoc rendered from the shipped source, one page per entry point: the root package, <code>/agent</code>, <code>/derive</code>, <code>/clauses</code> and <code>/handoff</code>. This is where you look a signature up; the README below is the manual you read first.
+                </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-4">
                     Every published version carries an npm <em>provenance attestation</em> binding the tarball to the public repository and the exact release commit &mdash; verify it with <code>npm audit signatures</code>, or on the package&apos;s Provenance panel on npmjs.com. What you install is what the audited tree builds, checkably.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> in the public repo is the canonical integration manual &mdash; recipes, traps, and the five entry points, not duplicated here &mdash; and the generated <a href="/sdk-api/index.html" className="underline">API reference</a> covers every export where you look a signature up. The canonical clause specs are readable without a browser too: <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/*.json</code></a> in the public repo is the <code>ClauseRegistry</code> seed data, loaded from <code>ClauseRegistry</code> &rarr; IPFS at runtime.
+                    The <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> in the public repo is the canonical integration manual &mdash; recipes, traps, and the six entry points (<code>@figaro-protocol/sdk</code> plus <code>/agent</code>, <code>/derive</code>, <code>/clauses</code>, <code>/handoff</code>, <code>/signer</code>), not duplicated here. The canonical clause specs are readable without a browser too: <a href="https://github.com/figaro-protocol/Figaro/tree/main/clauses" target="_blank" rel="noopener noreferrer" className="underline"><code>clauses/*.json</code></a> in the public repo is the <code>ClauseRegistry</code> seed data, loaded from <code>ClauseRegistry</code> &rarr; IPFS at runtime.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-4">
                     Starting from zero? That README opens with <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit" target="_blank" rel="noopener noreferrer" className="underline">Your first commit</a> &mdash; a linear walkthrough from a cold machine to a bonded order committed on chain and read back from its events, every step a command you run yourself.
@@ -195,7 +529,7 @@ function attestViaResolver(
                     <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other. The batch path replaces the entire direct lifecycle &mdash; <code>commit</code> and <code>resolveProcess</code> both execute inside the proof &mdash; so <strong>a batch-settled process never acquires kernel status</strong>: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds too: a kernel-settled process is never inside a batch. There is no migration between the two, and none is planned; the split is the design, not a gap in it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-settled process satisfies neither, forever &mdash; which is exactly why the batch proof carries the RPGF usage accrual across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process record, no attestation state.
+                    <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-settled process satisfies neither, forever &mdash; which is exactly why the batch proof carries the RPGF usage accrual across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process record, no attestation state. This is the sharpest read-time trap in the protocol and it fails silently &mdash; it is catalogued as such, with the rest, on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-4">
                     The split is exhaustively model-checked, not just asserted: <a href="https://github.com/figaro-protocol/Figaro/blob/main/formal/SettlementUniverses.tla" target="_blank" rel="noopener noreferrer" className="underline"><code>formal/SettlementUniverses.tla</code></a> treats <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> as one composed system across every interleaving and checks 21 invariants &mdash; among them that no order settles in both universes and that a batch-settled order never flips a kernel status.
@@ -415,12 +749,114 @@ function attestViaResolver(
                     </div>
                 )}
                 <p className="text-xs text-ink-muted mt-4">
-                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet, <code>deployments/&lt;chainId&gt;.json</code> committed per public deploy. The record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is in the SDK README.
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet, <code>deployments/&lt;chainId&gt;.json</code> committed per public deploy.
                 </p>
+
+                <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">
+                    Record key &rarr; SDK field &rarr; contract.
+                </h3>
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    <strong>The keys in that record are not the SDK&apos;s field names.</strong> Spread a record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, three carry no SDK field at all, and every other address key passes through under the same name.
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`import { addressesFromDeploymentRecord } from "@figaro-protocol/sdk";
+const addresses = addressesFromDeploymentRecord(record);   // never { ...record }`}</code></pre>
+                <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Deployment-record key</th>
+                                <th scope="col" className="py-2 pr-4"><code>FigaroAddresses</code> field</th>
+                                <th scope="col" className="py-2">Contract, and what to know</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">figaroCore</td>
+                                <td className="py-2 pr-4 font-mono text-xs">core</td>
+                                <td className="py-2 text-ink-body"><code>FigaroCore</code>. The one <em>required</em> field &mdash; the mapping throws if the record has no <code>figaroCore</code>, rather than letting an undefined kernel address surface later as an opaque transport error.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">tokenAddress</td>
+                                <td className="py-2 pr-4 font-mono text-xs">token</td>
+                                <td className="py-2 text-ink-body">A settlement ERC-20 a devnet deploys for its own tests. <strong>Public records do not carry this key</strong>, so <code>token</code> is absent after mapping &mdash; which is correct, not a fault: a process is denominated by the <code>currency</code> inside each signed commitment, and nothing in the SDK reads <code>addresses.token</code>.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">florinToken</td>
+                                <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
+                                <td className="py-2 text-ink-body"><code>FlorinToken</code>. Not part of <code>FigaroAddresses</code>; read it off the record and pass it where you need it (with <code>FLORIN_TOKEN_ABI</code>).</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">swapQuoter</td>
+                                <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
+                                <td className="py-2 text-ink-body">A Uniswap QuoterV2 for pre-trade quotes &mdash; a client-side convenience, not a protocol contract. The SDK does not know this key.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">chainId · deploymentBlock</td>
+                                <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
+                                <td className="py-2 text-ink-body">Not addresses. <code>deploymentBlock</code> is the <code>fromBlock</code> to start every <code>getLogs</code> scan at &mdash; scanning from <code>0n</code> on a public network is a great deal of wasted range.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">attestationCoordinator · clauseRegistry · membersRegistry · assemblyRegistry · batchVerifier · usageCounter · rpgfMinter · permit2 · swapRouter · witnessSwapAndCommitCoordinator · multisender · daoTreasury</td>
+                                <td className="py-2 pr-4 text-ink-body">same name, all optional</td>
+                                <td className="py-2 text-ink-body">The contracts of those names catalogued above. Each passes through only when the record carries it, so a record from a network that deployed fewer of them yields a <code>FigaroAddresses</code> with fewer fields &mdash; absence, never a placeholder.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
                     for gate criteria, the frozen-surface declaration, and the hardening completion record.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Errors, by name." sectionId="errors">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    Every named custom error you can hit by <em>calling</em> the contracts catalogued above, in the order of the lifecycle that throws them: what threw it, what it means in plain words, and what to do. Reverts here are the protocol refusing to hold something it cannot secure &mdash; each one names its own reason, and most name the numbers too.
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed mb-4">
+                    <strong>The boundary.</strong> Runtime errors only. Deliberately absent: constructor-argument errors (<code>ZeroAddress</code>, <code>EmptyPeriods</code>, <code>PeriodsNotAscending</code>, <code>TooManyPeriods</code>, <code>ZeroMinSellers</code>, <code>AmountsPeriodsMismatch</code>, <code>ZeroVerifier</code>, <code>VerifierNotContract</code>, <code>ZeroClauseRegistry</code>, <code>ZeroUsageCounter</code>) &mdash; a deployer&apos;s concern, not a caller&apos;s; <code>FlorinToken</code>&apos;s minter-registry errors, wired once at genesis and then renounced; and the devnet mocks. The SDK&apos;s own refusals are plain JavaScript <code>Error</code>s with prose messages &mdash; the one exception is <code>SequencerError</code>, which carries a <code>.statusCode</code> (400 signature or witness-gate rejection, carrying the kernel&apos;s own reason string &mdash; or malformed JSON; 422 valid JSON that is not an operation shape; 413 over the 1&nbsp;MiB body cap; 503 mempool at capacity &mdash; capacity, never rejection, so retry after the next batch).
+                </p>
+                <p className="text-sm text-ink-muted leading-relaxed mb-6">
+                    <strong>Decoding them.</strong> Every ABI below is a root <code>@figaro-protocol/sdk</code> export carrying its contract&apos;s error fragments, so a revert decodes by name instead of arriving as opaque bytes: <code>CORE_ABI</code> (the kernel&apos;s errors <em>and</em> the standard ERC-20 ones, including <code>ERC20InsufficientAllowance</code>), <code>CLAUSE_REGISTRY_ABI</code>, <code>MEMBERS_REGISTRY_ABI</code>, <code>ASSEMBLY_REGISTRY_ABI</code>, <code>USAGE_COUNTER_ABI</code>, <code>RPGF_MINTER_ABI</code>, <code>WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>. Two present-state gaps worth knowing before you rely on decode-by-name: <code>ATTESTATION_COORDINATOR_ABI</code> carries only <code>InvalidInclusionProof</code> (its other four arrive as raw bytes), and <code>BATCH_VERIFIER_ABI</code> carries no error fragments at all. Add the fragments yourself, or match on the selector.
+                </p>
+                <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
+                                <th scope="col" className="py-2 pr-4">Error</th>
+                                <th scope="col" className="py-2 pr-4">Thrown by</th>
+                                <th scope="col" className="py-2 pr-4">What it means</th>
+                                <th scope="col" className="py-2">The fix</th>
+                            </tr>
+                        </thead>
+                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
+                            {ERRORS.map((group) => (
+                                <Fragment key={group.stage}>
+                                    <tr>
+                                        <th scope="colgroup" colSpan={4} className="py-3 text-left text-ink-heading font-semibold">
+                                            {group.stage}
+                                        </th>
+                                    </tr>
+                                    {group.rows.map((row) => (
+                                        <tr key={row.name}>
+                                            <td className="py-2 pr-4 font-mono text-xs break-words">{row.name}</td>
+                                            <td className="py-2 pr-4 text-ink-muted">{row.from}</td>
+                                            <td className="py-2 pr-4 text-ink-body">{row.cause}</td>
+                                            <td className="py-2 text-ink-body">{row.fix}</td>
+                                        </tr>
+                                    ))}
+                                </Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <p className="text-sm text-ink-muted leading-relaxed mt-6">
+                    Two of these fail <em>silently</em> rather than reverting where you are looking &mdash; the dual-<code>processId</code> confusion and a closed accrual period. Those, and the rest of the traps that no revert warns you about, are on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
             </MarketingSection>
 

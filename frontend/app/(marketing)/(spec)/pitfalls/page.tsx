@@ -9,7 +9,7 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 export const metadata: Metadata = withOg({
     title: "Sharp edges — Figaro Protocol",
     description:
-        "The one canonical footguns page: six documented traps, organized by when each one bites — writing a clause spec, building a commit, or reading settled state — each with a one-paragraph summary and a link to its full, canonical explanation.",
+        "The one canonical footguns page: eight documented traps, organized by when each one bites — writing a clause spec, building a commit, resolving and recording, or reading settled state — each with a one-paragraph summary and a link to its full, canonical explanation.",
 });
 
 export default function Pitfalls() {
@@ -27,7 +27,7 @@ export default function Pitfalls() {
                 title="Sharp edges."
                 lead={
                     <>
-                        Six documented traps, in the order you can hit them: writing a clause spec, building a commit or a checkout, then reading settled state back. Each entry below is a one-paragraph summary &mdash; the full, canonical explanation lives where it was first written, and this page links to it rather than forking it.
+                        Eight documented traps, in the order you can hit them: writing a clause spec, building a commit or a checkout, resolving a process and recording what it earned, then reading settled state back. Each entry below is a one-paragraph summary &mdash; the full, canonical explanation lives where it was first written, and this page links to it rather than forking it.
                     </>
                 }
             />
@@ -69,6 +69,23 @@ export default function Pitfalls() {
                         <strong className="text-ink-heading font-medium">A process cannot mix ERC-20s.</strong> The 2:1 bond ratio is a same-unit comparison, so the kernel refuses any oracle or DEX dependency that would compare across tokens &mdash; mix currencies by composing parallel processes, never within one.
                         <div className="mt-2 text-sm">
                             <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;What else you should know&rdquo;</Link>
+                        </div>
+                    </LabelledListRow>
+                </ul>
+            </MarketingSection>
+
+            <MarketingSection title="Settlement-time — resolving, and recording what it earned.">
+                <ul className="space-y-6">
+                    <LabelledListRow label="Two processIds, one name" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">The id <code>resolveProcess</code> takes as its argument is not the id its structs carry.</strong> The argument is the kernel&apos;s <em>derived</em> process id; every struct inside <code>commitments</code> must be the one the parties <em>signed</em> &mdash; and a root order signed <code>processId = 0</code>. Feed back the derived id that <code>OrderCommitted</code> carries &mdash; the natural move, since that is what event reconstruction hands you &mdash; and the kernel recomputes an order hash matching no committed order, reverting <code>OrderNotCommitted</code>. <code>restoreSignedProcessId</code> is the bridge; <code>executeAction</code> applies it to every element for you, and the lower-level <code>resolveProcess</code> wrapper and hand-rolled <code>cast</code> do not.
+                        <div className="mt-2 text-sm">
+                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; SDK README, &ldquo;Your first commit&rdquo; step 5</a>
+                        </div>
+                    </LabelledListRow>
+                    <LabelledListRow label="AccrualClosed()" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">A closed accrual period does not throw &mdash; it returns a report with nothing recorded.</strong> <code>recordClauseUsage</code> and <code>recordAssemblyUsage</code> each open by calling <code>UsageCounter.currentPeriod()</code>, which reverts <code>AccrualClosed()</code> once the last accrual period has ended, and <code>recordProcessUsage</code> tolerates per-leg reverts by design &mdash; so every leg lands in <code>failures</code> with <code>recorded</code> at <code>0</code> and nothing is thrown. The same boundary is sharp long before that day: a record counts in the period open <em>when you call</em>, not the one the process resolved in. Record in the same breath as the resolve, and read the report.
+                        <div className="mt-2 text-sm">
+                            <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; SDK README, &ldquo;Your first commit&rdquo; step 5</a>
                         </div>
                     </LabelledListRow>
                 </ul>

@@ -236,11 +236,14 @@ below).
 
 ## Six Entry Points
 
-A generated API reference covering every export of all six entry points is
-served on the site at `/sdk-api` (TypeDoc over the same source; regenerate
-with `npm run docs` from `sdk/`). This README stays the manual — recipes,
-traps, and the order to do things in; the reference is where you look a
-signature up.
+**The generated API reference — every export, every signature.** TypeDoc over
+this same source is served on the site under the path `/sdk-api` (entry point
+`/sdk-api/index.html`), one page per entry point: currently the root package
+plus `/agent`, `/derive`, `/clauses` and `/handoff` — `/signer` is documented
+in prose here only, in its own section below. No site? `npm run docs` from
+`sdk/` regenerates the whole reference from a checkout. This README stays the
+manual — recipes, traps, and the order to do things in; the reference is where
+you look a signature up.
 
 ### `@figaro-protocol/sdk` — Protocol Primitives
 

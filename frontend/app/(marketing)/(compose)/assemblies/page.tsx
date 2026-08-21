@@ -154,6 +154,9 @@ deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
 
 // Prove prose is excluded: same hash, different words.
 templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</code></pre>
+                <p className="text-sm text-ink-body leading-relaxed mt-5">
+                    One order matters and is easy to get backwards: compute the hash from the <em>raw</em> template, before any buyer, catalogue or pricing fill touches it &mdash; compute it after merging those fills and you get a hash the registry never anchored. That trap, and the others that bite at commit, at resolve and at read time, are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Registered assemblies." bottomPad="wide">
