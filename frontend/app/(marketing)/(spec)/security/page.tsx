@@ -27,7 +27,7 @@ export default function Security() {
 
             <MarketingSection title="External audit" sectionId="audit">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Not yet audited by an external auditor. That is the honest answer, and the protocol does not call itself release-ready until that audit lands. The Solidity surface was frozen for external audit on 20 April 2026 (with subsequent amendments scoped to the freeze); external audit decision and scheduling is one of two named release blockers.
+                    Not yet audited by an external auditor. That is the honest answer, and the protocol does not call itself release-ready until that audit lands. The Solidity surface was frozen for external audit on 20 April 2026 (with subsequent amendments scoped to the freeze); external audit decision and scheduling is the remaining named release blocker — the first, freezing the Solidity surface, is done.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Audit results will be published on this page when they exist &mdash; findings, remediations, and the auditor&apos;s report, not a summary of them.

@@ -22,7 +22,7 @@ const TERMS: Term[] = [
         id: "agent",
         term: "Agent",
         definition:
-            "Whoever runs a wallet in software rather than at a keyboard &mdash; a courier's dispatcher, a pricing bot, a long-running service. The kernel checks a signature, not who or what produced it, so an agent signs, bonds, and settles exactly as a person does.",
+            "Whoever runs a wallet in software rather than at a keyboard — a courier's dispatcher, a pricing bot, a long-running service. The kernel checks a signature, not who or what produced it, so an agent signs, bonds, and settles exactly as a person does.",
         readMore: <Link href="/agents" className="hover:underline">Agents</Link>,
     },
     {
@@ -101,7 +101,7 @@ const TERMS: Term[] = [
         definition: (
             <>
                 <p className="mb-3">
-                    A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is &mdash; registration is permanent and first-write-wins.
+                    A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is — registration is permanent and first-write-wins.
                 </p>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -114,13 +114,13 @@ const TERMS: Term[] = [
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
                             <tr>
-                                <td className="py-2 pr-4">idHash &mdash; the clause id</td>
+                                <td className="py-2 pr-4">idHash — the clause id</td>
                                 <td className="py-2 pr-4">the clause&apos;s name and version, and nothing else</td>
-                                <td className="py-2">You are pointing at a different clause in the registry &mdash; and the binding you made is permanent.</td>
+                                <td className="py-2">You are pointing at a different clause in the registry — and the binding you made is permanent.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">contentHash</td>
-                                <td className="py-2 pr-4">the whole document, exactly as written &mdash; the half people read and the half programs parse</td>
+                                <td className="py-2 pr-4">the whole document, exactly as written — the half people read and the half programs parse</td>
                                 <td className="py-2">The document is not the one that was anchored; the batch settlement path refuses to settle against it.</td>
                             </tr>
                             <tr>
@@ -165,14 +165,14 @@ const TERMS: Term[] = [
         id: "member",
         term: "Member",
         definition:
-            "A wallet that has published its profile on the members registry with a live ETH deposit &mdash; the same one deposit whether it buys, sells, or both. A member's profile carries both sides: what it offers as a seller, and, as a buyer, which of the data its own deals produce it offers for sale. The deposit is a member's, never a seller's alone; the reward mechanism reads it on the seller of record of each settled deal.",
+            "A wallet that has published its profile on the members registry with a live ETH deposit — the same one deposit whether it buys, sells, or both. A member's profile carries both sides: what it offers as a seller, and, as a buyer, which of the data its own deals produce it offers for sale. The deposit is a member's, never a seller's alone; the reward mechanism reads it on the seller of record of each settled deal.",
         readMore: <Link href="/members" className="hover:underline">Members</Link>,
     },
     {
         id: "operator",
         term: "Operator",
         definition:
-            "Whoever controls a wallet's signing key on its underlying asset's behalf &mdash; a person or an autonomous program alike; which of the two it is changes nothing in the mechanism. A person running their own asset is simply that asset's buyer or seller; the term matters when a wallet is run for the asset by someone or something else.",
+            "Whoever controls a wallet's signing key on its underlying asset's behalf — a person or an autonomous program alike; which of the two it is changes nothing in the mechanism. A person running their own asset is simply that asset's buyer or seller; the term matters when a wallet is run for the asset by someone or something else.",
         readMore: <Link href="/faq#agents" className="hover:underline">FAQ</Link>,
     },
     {
@@ -233,7 +233,7 @@ export default function Glossary() {
                 title="Glossary."
                 lead={
                     <>
-                        The fixed vocabulary used across this site, in plain language &mdash; each entry drawn from how the site itself already uses the word, with a link to where it is treated in full.
+                        The fixed vocabulary used across this site, in plain language — each entry drawn from how the site itself already uses the word, with a link to where it is treated in full.
                     </>
                 }
             />

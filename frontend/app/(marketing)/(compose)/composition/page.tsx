@@ -39,7 +39,7 @@ export default function Composes() {
                 </p>
                 <ul className="space-y-4">
                     <LabelledListRow label="Forums" uppercase>
-                        The parties&apos; agreement designates the forum &mdash; a clause&apos;s <code>composes</code> block carries the forum&apos;s URL as configuration, never code, so any forum (an on-chain court, an arbitral institution, a national court) sits behind the same seam.
+                        The parties&apos; agreement designates the forum &mdash; a clause&apos;s <code>composes</code> block carries the forum&apos;s URL as configuration, never code, so any forum (an on-chain court, an arbitral institution, a national court) sits behind the same seam. Kleros is the wired example today; the seam is provider-agnostic.
                     </LabelledListRow>
                     <LabelledListRow label="Storage" uppercase>
                         <strong>IPFS.</strong> Off-chain agreement documents, public and private data, an audit trail and evidence.

@@ -18,9 +18,10 @@ npm install @figaro-protocol/sdk viem
 the SDK, or the first chain call throws a missing-module error rather than a
 Figaro-shaped one.
 
-> **Honest scope:** `@figaro-protocol/sdk` is not yet published to the npm registry —
-> publication (with provenance attestation) is a tracked pre-release task.
-> Until then, install from a repo checkout: `"@figaro-protocol/sdk": "file:../sdk"`
+> **Provenance:** `@figaro-protocol/sdk` is live on the npm registry with a
+> Sigstore provenance attestation binding the tarball to this repository and
+> the workflow that built it — `npm audit signatures` verifies it downstream.
+> Working from a repo checkout instead? Wire `"@figaro-protocol/sdk": "file:../sdk"`
 > (build it first: `npm run build --workspace sdk` from the repo root).
 
 **Trap — a consumer `npm install` can DELETE the SDK's `dist/`.** Read this
