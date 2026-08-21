@@ -2,12 +2,17 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
+import {
+    READING_PATH_RUNGS,
+    READING_PATH_STEPS,
+} from "@/components/marketing/readingPathSteps";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol — My word is my bond",
     description:
-        "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
+        "One deal that enforces itself — both sides stake tokens worth more than cheating could gain — many such deals making an economy, and the record they leave meeting regulators, courts, and the currency you already use: the profit stays with the hands that made it.",
 });
 
 // Copy constraints the code can't show: "process" always means the economic
@@ -16,6 +21,11 @@ export const metadata: Metadata = withOg({
 // (the company functions the second section enumerates), not gas alone.
 // The unhappy path lives on
 // /faq (the FAQ owns it); home points, never carries it.
+// The reading-path section is the ruled spine (probe-validated 2026-08-21):
+// its order is deliberate — see `components/marketing/readingPathSteps.ts`.
+// The florin paragraph is deliberately SEPARATE from the community- and
+// designer-token examples above it: the florin is a pure Schelling point, not
+// one more community token, and merging the paragraphs collapses that.
 export default function Home() {
     return (
         <>
@@ -24,76 +34,80 @@ export default function Home() {
                 tagline="My word is my bond"
                 lead={
                     <>
-                        From guilds to banks to platforms, every economic system has fought over the same two questions: who enforces a deal, and who keeps the profit. Figaro&apos;s answer: both sides stake tokens worth more than cheating could gain &mdash; so no one needs to stand in the middle.
+                        From guilds to banks to platforms, every economic system has answered the same two questions: who enforces a deal, and who keeps the profit. Figaro&apos;s answer: both sides stake tokens worth more than cheating could gain &mdash; so no one needs to stand in the middle, and the profit stays with the hands that made it.
                     </>
                 }
             />
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl">
+            <MarketingSection title="One deal that enforces itself">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Every deal on Figaro runs as a value-added process: each hand adds value on its way from first supplier to final buyer &mdash; a single meal, or a freight route across an ocean &mdash; and the whole process settles as one.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What it leaves behind is a record, and the record, like the data inside it, is public and private at once. In aggregate it joins a public map of the market &mdash; the same for everyone who reads it. Its detail stays in your hands, under your control: sealed, shown when you choose, sold only if you choose. The blockchain holds nothing but a fingerprint of each agreement &mdash; the detail was never on the chain, which is why that control is real.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    That record doubles as your paperwork: to a legal, regulatory, or fiscal demand &mdash; a regulator, a tax authority, a court &mdash; you demonstrate from the record instead of asking anyone to take your word. The venue still rules; it just rules on evidence.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    And Figaro is never a finished catalogue: the terms of a deal are open parts anyone can write, improve, and be paid for as others use them &mdash; so new kinds of deals appear without waiting for anyone&apos;s approval. Your keys, your signatures, your data, the same rules in math for everyone: what a platform asks you to believe, Figaro lets you check.
+                    Every trade is a contract, and between strangers one element always fails: promising value is easy, but nothing makes delivering it credible. On Figaro, arithmetic makes it credible. The buyer stakes twice the payment. Each seller stakes twice the value they add. Keeping your word is now everyone&apos;s best move &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole deal settles at once on Ethereum: everyone is paid, every stake returns, and securing it all costs a few cents.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The two questions every system fought over finally have answers: the deal enforces itself, and the profit stays with the hands that made it. The coordination that once needed institutions is carried by a blockchain instead: securing a whole deal on Ethereum costs a few cents, and batched settlement cuts that to a sixth.
+                    The grower, the roaster, the caf&eacute;. The author, the editor, the printer. A deal is rarely two people; it is a chain of hands, each adding value &mdash; and the chain settles as one. When a deal goes wrong, remedies are negotiated while everyone still has something at stake; the FAQ has the long version. Anyone who can sign can take part: a person, a business, a software agent, an asset with its own wallet &mdash; the protocol has no gatekeeper to admit you or turn you away.
                 </p>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
-                <h2 className="text-heading-h2 text-ink-heading mb-6">Every deal spins up everything a company ever did &mdash; and dissolves it at settlement</h2>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A company is a bundle of functions held together long enough to make deals happen. A Figaro deal spins each one up for the length of a single process, then winds it up when the deal settles. The treasury and the boss are the kernel: it holds both sides&apos; stakes, and its equilibrium makes cooperation everyone&apos;s best strategy &mdash; no manager needed. The legal department is clauses: the terms of a deal, written by anyone, published for reuse, their authors paid as others put them to work. The org chart is an assembly: who adds value in what order, coordination between sellers included.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Partnerships are composition with the chain&apos;s other contracts &mdash; a Kleros forum for a dispute, a Uniswap swap that keeps a community&apos;s token circulating, a multisender that routes taxes and gifts. There is no hiring: any signer &mdash; a person, a software agent, or an asset holding its own wallet &mdash; joins by posting a bond. The books, the audit, and compliance are the record the process leaves: public in aggregate, sealed in detail, shown or sold only on its owner&apos;s terms, and enough for any regulator, tax authority, or court to rule on.
-                </p>
+            <MarketingSection title="Every deal spins up a company — and dissolves it at settlement">
                 <p className="text-base text-ink-body leading-relaxed">
-                    When the buyer resolves, everyone is paid at once &mdash; and the company that never existed winds up.
+                    A company is a bundle of functions held together long enough to make deals happen; a Figaro deal spins each one up for the length of a single deal, then winds it up. The legal department is clauses: the terms of the deal, written by anyone, published for reuse. The org chart is an assembly: who adds value in what order. The books, the audit, and compliance are the record the deal leaves behind. The treasury and the boss are the same part: the kernel, the small settlement engine every deal runs on &mdash; it holds both sides&apos; stakes and does the manager&apos;s work by arithmetic. Nothing is incorporated and nothing is deployed. When the buyer resolves, the company that never existed winds up.
                 </p>
-            </section>
+            </MarketingSection>
 
-            <section className="container mx-auto px-6 pb-16 max-w-3xl border-t border-default pt-xl">
-                <h2 className="text-heading-h2 text-ink-heading mb-6">How a deal holds together</h2>
+            <MarketingSection title="Many deals make an economy">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Clauses and assemblies are public building blocks, not paperwork filed away. Anyone can write a clause and publish it for reuse. Anyone can compose clauses into an assembly &mdash; a whole deal-shape &mdash; and publish that. A deal is an assembly put to work: the shape filled in with real hands, amounts, and signatures. Markets need no operator either: a buyer&apos;s request races to whichever sellers want it, or goes out for quotes &mdash; offers form on their own, from the network.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    When many deals share a token, that is not a feature &mdash; it is an economy. A neighborhood&apos;s own token, spent by its diaspora in Los Angeles or Lima, holds value at home. A designer pins their token to their assembly, and a micro-economy grows around their work. Each is a working economy on the same kernel.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The florin &mdash; the protocol&apos;s own unit, never required &mdash; is the neutral case: useful precisely because anyone, anywhere can agree on it. The commons pays for its own growth. The florin&apos;s supply is fixed at a billion. 600 million are set aside for authors whose clauses and assemblies get used, paid pro-rata by real use, after the fact. 300 million sit in the DAO&apos;s treasury, spent by human judgment. 100 million went to the founders and early supporters. The whole split is readable on the chain.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Beneath the words the machinery is small. Each agreement in a deal becomes a merkle tree: the clauses are its leaves, the root is the fingerprint the blockchain keeps. Anyone reading the record sees only the clauses the owner chooses to reveal.
+                    Every economy leaves a record, and Figaro splits it the opposite way a platform does: the aggregate map of the market is public, the same for everyone who reads it. The detail is yours. Your data is an asset you own: seal it, show it to whom you choose, or sell it on your own terms. The blockchain holds nothing but a fingerprint of each agreement: the agreement becomes a merkle tree, the clauses its leaves, the root the fingerprint the chain keeps. The detail itself lives on storage you control, never on the chain &mdash; which is why that ownership is real.
                 </p>
                 <MerkleForestFigure />
-                <p className="text-base text-ink-body leading-relaxed mt-8">
-                    The same machinery serves a single meal and a freight route across an ocean: the terms and the data stay where you control them, and one fingerprint sits where nobody can rewrite it.
+            </MarketingSection>
+
+            <MarketingSection title="How it meets the world">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    These economies are not silos, and they are not an exit from the world. One swap carries value between them and out to the currency you already use &mdash; a single hop on an open exchange, not a banking pipeline. Deals compose with everything else on the chain: an arbitration forum&apos;s ruling, a currency swap, a fiscal multisender. A wallet can split its own receipts the moment they land &mdash; tax, savings, obligations &mdash; to addresses it earmarked, leaving a fiscal trail as a byproduct.
                 </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
-                    <Link
-                        href="/kernel"
-                        className={
-                            "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                            "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                        }
-                        data-testid="cta-kernel"
-                    >
-                        How it works <span aria-hidden="true">&rarr;</span>
-                    </Link>
-                    <Link
-                        href="/why"
-                        className={
-                            "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                            "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                        }
-                        data-testid="cta-why"
-                    >
-                        Why this exists <span aria-hidden="true">&rarr;</span>
-                    </Link>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The record doubles as your paperwork: to a regulator, a tax authority, a court, you demonstrate from the record instead of asking anyone to take your word &mdash; the venue still rules; it rules on evidence. The institutions of the old system don&apos;t vanish. They move to the edges &mdash; venues you consult when you need them, not hosts you must pass through.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Through all of it, you hold your own keys: your wallet, your tokens, your signatures. No custodian above you. No account anyone can freeze or close. The kernel holds only live deals&apos; stakes, and only until each settles.
+                </p>
+                <p className="text-body-lead text-ink-heading font-medium mt-8">
+                    What a platform asks you to believe, Figaro lets you check.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Read the whole story" bottomPad="wide">
+                <p className="text-base text-ink-body leading-relaxed mb-8">
+                    Read in order; each page teaches one thing.
+                </p>
+                <div className="space-y-8">
+                    {READING_PATH_RUNGS.map((rung) => (
+                        <div key={rung}>
+                            <h3 className="text-heading-h3 text-ink-heading mb-3">{rung}</h3>
+                            <ol className="space-y-2">
+                                {READING_PATH_STEPS.filter((step) => step.rung === rung).map((step) => (
+                                    <li key={step.href} className="text-base text-ink-body leading-relaxed">
+                                        <Link href={step.href} className="text-ink-heading hover:underline">
+                                            {step.label}
+                                        </Link>
+                                        {" — "}
+                                        {step.description}
+                                    </li>
+                                ))}
+                            </ol>
+                        </div>
+                    ))}
                 </div>
-            </section>
+            </MarketingSection>
         </>
     );
 }
