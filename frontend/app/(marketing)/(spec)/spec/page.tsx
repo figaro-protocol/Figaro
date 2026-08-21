@@ -17,10 +17,10 @@ export const metadata: Metadata = withOg({
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
 
-/** The committed Sepolia deployment record, read at build time — the record is
+/** The committed public deployment record, read at build time — the record is
  *  the canonical address source (`deployments/README.md`), never hand-typed
  *  constants. Absent record (a fork without the deploy) renders no row. */
-function sepoliaRecord(): Record<string, string | number> | null {
+function deploymentRecord(): Record<string, string | number> | null {
     try {
         return JSON.parse(fs.readFileSync(
             path.join(process.cwd(), "../deployments/11155111.json"), "utf-8"));
@@ -375,7 +375,7 @@ const ERRORS: ErrorStage[] = [
 ];
 
 export default function Specifications() {
-    const sepolia = sepoliaRecord();
+    const record = deploymentRecord();
     return (
         <>
             <MarketingHero
@@ -512,7 +512,7 @@ function attestViaResolver(
                         title="FigaroBatchVerifier.sol"
                         href={`${GH}/protocol/verifier/FigaroBatchVerifier.sol`}
                         meta="SP1 proof · open-world content check"
-                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. A local devnet wires MockSP1Verifier; the deployment record wires Succinct's SP1 gateway + program vkey from env wherever a network names one."
+                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. A local development record wires MockSP1Verifier; the deployment record wires Succinct's SP1 gateway + program vkey from env wherever a network names one."
                     />
                 </ul>
             </MarketingSection>
@@ -605,7 +605,7 @@ function attestViaResolver(
                     Four endpoints and no other read surface, because settled state is read from the chain: <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro-protocol/sdk/agent</code>) emits &mdash; the request/response and error tables, with the run-your-own recipe, are in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
-                    No public sequencer endpoint is published yet; the address is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
+                    A sequencer endpoint is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
                 </p>
 
                 <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">
@@ -624,7 +624,7 @@ function attestViaResolver(
                     <strong>What the proof costs to verify on chain.</strong> Per-unit, from the measured ceilings: SP1 proof verification is a <strong>~300k-gas FIXED cost per batch</strong>, then ~2k/position for hash verification and ~24k/position for the net token transfer &mdash; <strong>~26.5k marginal per net position</strong>. The direct path&apos;s comparable all-in figure is <strong>~167k gas per order</strong> (a ~144k sub-order <code>commit</code> plus ~23k of <code>resolveProcess</code>, across two or more separate transactions). At volume that is roughly <strong>6&times; cheaper per settled order</strong>, before netting &mdash; and netting is the structural part: the prover collapses every movement per (token, party) pair into one position, so 100 buyers paying one seller in one token is 100 commit transactions on the direct path and <em>one</em> position on the batch path. Worked at 100 orders: ~25.7M gas across 100+ transactions direct, against ~1.1M gas in a single transaction for the ~30 net positions they reduce to.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>But fixed means fixed, and a small batch pays it anyway.</strong> The two real Groth16 batches settled on Sepolia on 2026-08-20 &mdash; through the <code>batchVerifier</code> in the record below &mdash; each carried <strong>2 net positions</strong> and cost:
+                    <strong>But fixed means fixed, and a small batch pays it anyway.</strong> Two real Groth16 batches settled on the public record's chain &mdash; through the <code>batchVerifier</code> in the record below &mdash; each carried <strong>2 net positions</strong> and cost:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6 mb-4">
                     <table className="w-full text-sm">
@@ -659,7 +659,7 @@ function attestViaResolver(
                     <strong>When the direct path is simply correct: low volume.</strong> At a handful of orders a day it costs less per order <em>and</em> costs nothing else &mdash; no proving host, no relay to operate or trust, no vkey/gateway pairing to keep aligned, no minutes of wrap between signing and settlement, and settlement state you can read straight off <code>FigaroCore.orderStatus</code>. Nothing is lost by starting there: both paths take the <em>same signed artifacts</em>, so moving to batches later is a change of submission target, not a change to what you sign. The batch path is what you reach for when your own volume, not the protocol, makes the proof pay.
                 </p>
                 <p className="text-xs text-ink-muted leading-relaxed mt-4">
-                    Per-unit gas figures and the netting model: <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md" target="_blank" rel="noopener noreferrer" className="underline">SCALING_STRATEGY.md</a> &sect; Gas Economics (measured on Anvil receipts; the direct-path pair <code>COMMIT_GAS_PER_ORDER</code>/<code>RESOLVE_GAS_PER_ORDER</code> is lint-pinned against the kernel&apos;s own gas test). Proving-host sizing and the first run&apos;s lessons: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/prover-box/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/prover-box</code></a>. Proving-cost posture and the benchmark command: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>. The two settlement transactions are read from Sepolia, not restated.
+                    Per-unit gas figures and the netting model: <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md" target="_blank" rel="noopener noreferrer" className="underline">SCALING_STRATEGY.md</a> &sect; Gas Economics (measured on Anvil receipts; the direct-path pair <code>COMMIT_GAS_PER_ORDER</code>/<code>RESOLVE_GAS_PER_ORDER</code> is lint-pinned against the kernel&apos;s own gas test). Proving-host sizing and the first run&apos;s lessons: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/prover-box/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/prover-box</code></a>. Proving-cost posture and the benchmark command: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>. The two settlement transactions are read from the chain, not restated.
                 </p>
             </MarketingSection>
 
@@ -705,7 +705,7 @@ function attestViaResolver(
 
             <MarketingSection title="Funding, payout &amp; composition contracts" sectionId="funding-composition">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists (Uniswap&apos;s Permit2 and router, the ownerless Disperse), a local devnet rehearses the composition with an interface-matching mock, and the deployment record wires the real one wherever it&apos;s deployed.
+                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists (Uniswap&apos;s Permit2 and router, the ownerless Disperse), a local development run rehearses the composition with an interface-matching mock, and the deployment record wires the real one wherever it&apos;s deployed.
                 </p>
                 <ul className="space-y-4">
                     <ContractEntry
@@ -718,14 +718,14 @@ function attestViaResolver(
                     <ContractEntry
                         id="Permit2"
                         title="Permit2 (witness SignatureTransfer)"
-                        meta="devnet mock · canonical where deployed"
-                        desc="The permit layer the swap coordinator pulls the input token through — permitWitnessTransferFrom folds the authorized swap route into the digest the owner signed. The deployment record wires Uniswap's canonical Permit2 wherever it's deployed; a local devnet wires MockWitnessPermit2, whose digest parity with the canonical deployment is proven by the mainnet-fork suite (record key: permit2)."
+                        meta="local mock · canonical where deployed"
+                        desc="The permit layer the swap coordinator pulls the input token through — permitWitnessTransferFrom folds the authorized swap route into the digest the owner signed. The deployment record wires Uniswap's canonical Permit2 wherever it's deployed; a local development record wires MockWitnessPermit2, whose digest parity with the canonical deployment is proven by the fork suite (record key: permit2)."
                     />
                     <ContractEntry
                         id="swapRouter"
                         title="swapRouter (Uniswap Universal Router)"
-                        meta="devnet mock · canonical where deployed"
-                        desc="The swap venue the coordinator routes the input token through into the settlement currency. The deployment record wires the real Uniswap Universal Router wherever it's deployed; a local devnet wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
+                        meta="local mock · canonical where deployed"
+                        desc="The swap venue the coordinator routes the input token through into the settlement currency. The deployment record wires the real Uniswap Universal Router wherever it's deployed; a local development record wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
                     />
                     <ContractEntry
                         id="UsageCounter"
@@ -744,14 +744,14 @@ function attestViaResolver(
                     <ContractEntry
                         id="daoTreasury"
                         title="daoTreasury (multisig)"
-                        meta="devnet mock · genesis custody"
-                        desc="Holds the 300M-florin DAO genesis allocation. A canonical deployment wires a Safe at the DAO wallet — config, never code; a local devnet wires MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
+                        meta="local mock · genesis custody"
+                        desc="Holds the 300M-florin DAO genesis allocation. A canonical deployment wires a Safe at the DAO wallet — config, never code; a local development record wires MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
                     />
                     <ContractEntry
                         id="multisender"
                         title="multisender (Disperse)"
-                        meta="devnet mock · canonical where deployed"
-                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018) exists, the deployment record composes it directly; a local devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
+                        meta="local mock · canonical where deployed"
+                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018) exists, the deployment record composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">
@@ -770,24 +770,23 @@ function attestViaResolver(
                             </tr>
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default">
-                            <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-ink-muted">Devnet (active)</td></tr>
-                            {sepolia && (
-                                <tr><td className="py-2 pr-4">Sepolia</td><td className="py-2 pr-4 font-mono">11155111</td><td className="py-2 text-ink-muted">Deployed &mdash; addresses below</td></tr>
+                            <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-ink-muted">A local development run&apos;s own record</td></tr>
+                            {record && (
+                                <tr><td className="py-2 pr-4">Public record</td><td className="py-2 pr-4 font-mono">{String(record.chainId ?? 11155111)}</td><td className="py-2 text-ink-muted">Committed &mdash; addresses below</td></tr>
                             )}
-                            <tr><td className="py-2 pr-4">Ethereum mainnet</td><td className="py-2 pr-4 font-mono">1</td><td className="py-2 text-ink-muted"><Link href="/security#audit" className="underline">Pending external audit</Link></td></tr>
                         </tbody>
                     </table>
                 </div>
-                {sepolia && (
+                {record && (
                     <div className="overflow-x-auto -mx-6 px-6 mt-4">
                         <p className="text-xs text-ink-muted mb-2">
-                            Sepolia addresses, from the committed record{" "}
+                            The public record&apos;s addresses, from the committed{" "}
                             <a href="https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json" target="_blank" rel="noopener noreferrer" className="underline"><code>deployments/11155111.json</code></a>{" "}
-                            (deployment block <span className="font-mono">{String(sepolia.deploymentBlock)}</span>) &mdash; this table renders the record, it never restates it:
+                            (deployment block <span className="font-mono">{String(record.deploymentBlock)}</span>) &mdash; this table renders the record, it never restates it:
                         </p>
                         <table className="w-full text-xs">
                             <tbody className="[&>tr]:border-b [&>tr]:border-default">
-                                {Object.entries(sepolia)
+                                {Object.entries(record)
                                     .filter((entry): entry is [string, string] =>
                                         typeof entry[1] === "string" && entry[1].startsWith("0x"))
                                     .map(([key, address]) => (
@@ -803,7 +802,7 @@ function attestViaResolver(
                     </div>
                 )}
                 <p className="text-xs text-ink-muted mt-4">
-                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet, <code>deployments/&lt;chainId&gt;.json</code> committed per public deploy.
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for a local development run, <code>deployments/&lt;chainId&gt;.json</code> committed per public deploy.
                 </p>
 
                 <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">
@@ -816,10 +815,10 @@ function attestViaResolver(
                     <strong>An RPC endpoint that tolerates wide <code>eth_getLogs</code> ranges.</strong> Discovery has no getters to fall back on &mdash; there is no view returning a member&apos;s current profile URI, for one; the event log <em>is</em> the read path &mdash; so a cold client scans the whole history of each registry. Public endpoints cap a single call&apos;s block range and the cap is not standard: 1,000, 10,000 and 50,000 blocks are all in the wild, with providers rejecting an over-range call in their own wording rather than a shared error code. Provision for the class, not a vendor: <strong>keyless public endpoints in the 50,000-block class exist and serve this stack</strong> &mdash; the live batch settlements above were driven through one. Clients must chunk regardless. The SDK&apos;s bulk fetchers (<code>fetchCoreEvents</code>, <code>fetchDiscoveryEvents</code>, <code>fetchUsageRecords</code>, <code>fetchBatchUsageRecords</code>) chunk internally at 9,500 blocks and take a trailing <code>chunkSize</code> to tune for a stricter or a more permissive provider; the reference frontend instead halves its window on any range-cap refusal, down to a 500-block floor, so one build works against all three classes.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>And start every scan at <code>deploymentBlock</code>.</strong> It is in the record{sepolia && <> (<span className="font-mono">{String(sepolia.deploymentBlock)}</span> on Sepolia)</>} for exactly this reason &mdash; see the crosswalk below. <code>fromBlock: 0n</code> is a devnet habit; on a public network it is a great deal of range scanned for nothing, and on a capped provider it is the difference between a client that loads and one that never does.
+                    <strong>And start every scan at <code>deploymentBlock</code>.</strong> It is in the record{record && <> (<span className="font-mono">{String(record.deploymentBlock)}</span> in the public record)</>} for exactly this reason &mdash; see the crosswalk below. <code>fromBlock: 0n</code> is a local-development habit; on a public network it is a great deal of range scanned for nothing, and on a capped provider it is the difference between a client that loads and one that never does.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>IPFS pinning is the publisher&apos;s own.</strong> The chain holds the fingerprint; the agreement, the assembly template and the profile behind it live on IPFS, and a counterparty, an indexer or a dispute forum retrieves each by CID. IPFS does not auto-replicate &mdash; content lives only on the nodes that pin it, so one node is one point of failure. The mainnet posture is <strong>sovereign per-party pinning</strong>: each publishing wallet&apos;s client pins what that wallet authors, so no operator is the custodian of anyone else&apos;s availability. Size it against the retrieval window, not the trade: a commitment&apos;s documents must stay fetchable for the life of any possible dispute or audit &mdash; a floor of <strong>six years</strong>, anchored to the tax-audit horizon (most administrations can audit ~5 years back, plus the year between a transaction and its declaration), extensible per agreement by the parties. In practice that means either a node you keep running for six years or a <strong>managed multi-node pinning service</strong> under your own account &mdash; a class, not a name, and the choice never becomes anyone else&apos;s custody.
+                    <strong>IPFS pinning is the publisher&apos;s own.</strong> The chain holds the fingerprint; the agreement, the assembly template and the profile behind it live on IPFS, and a counterparty, an indexer or a dispute forum retrieves each by CID. IPFS does not auto-replicate &mdash; content lives only on the nodes that pin it, so one node is one point of failure. The production posture is <strong>sovereign per-party pinning</strong>: each publishing wallet&apos;s client pins what that wallet authors, so no operator is the custodian of anyone else&apos;s availability. Size it against the retrieval window, not the trade: a commitment&apos;s documents must stay fetchable for the life of any possible dispute or audit &mdash; a floor of <strong>six years</strong>, anchored to the tax-audit horizon (most administrations can audit ~5 years back, plus the year between a transaction and its declaration), extensible per agreement by the parties. In practice that means either a node you keep running for six years or a <strong>managed multi-node pinning service</strong> under your own account &mdash; a class, not a name, and the choice never becomes anyone else&apos;s custody.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     <strong>Provision reads as a chain of gateways, not one.</strong> No single gateway serves both halves of an open registry: a dedicated gateway on your own pin service answers instantly for everything <em>you</em> pinned and knows nothing else, while a public gateway reaches content anyone pinned anywhere but can take many minutes to find a fresh pin. The pattern the reference frontend ships is the dedicated gateway first and a public gateway as the read fallback, with a user&apos;s own gateway override replacing the whole chain &mdash; their node, their choice, no read leaking past it. Expect the propagation lag and build for it: a surface that reads a just-pinned CID once and gives up shows a blank where a name belongs until someone reloads. The reference frontend keeps re-reading instead &mdash; 10&nbsp;s, 20&nbsp;s, 40&nbsp;s, then once a minute for as long as the reader is on screen &mdash; and treats only permanent failures (an integrity mismatch, an unparseable document) as final.
@@ -855,7 +854,7 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">tokenAddress</td>
                                 <td className="py-2 pr-4 font-mono text-xs">token</td>
-                                <td className="py-2 text-ink-body">A settlement ERC-20 a devnet deploys for its own tests. <strong>Public records do not carry this key</strong>, so <code>token</code> is absent after mapping &mdash; which is correct, not a fault: a process is denominated by the <code>currency</code> inside each signed commitment, and nothing in the SDK reads <code>addresses.token</code>.</td>
+                                <td className="py-2 text-ink-body">A settlement ERC-20 a local development run deploys for its own tests. <strong>Public records do not carry this key</strong>, so <code>token</code> is absent after mapping &mdash; which is correct, not a fault: a process is denominated by the <code>currency</code> inside each signed commitment, and nothing in the SDK reads <code>addresses.token</code>.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">florinToken</td>
@@ -892,7 +891,7 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                     Every named custom error you can hit by <em>calling</em> the contracts catalogued above, in the order of the lifecycle that throws them: what threw it, what it means in plain words, and what to do. Reverts here are the protocol refusing to hold something it cannot secure &mdash; each one names its own reason, and most name the numbers too.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-4">
-                    <strong>The boundary.</strong> Runtime errors only. Deliberately absent: constructor-argument errors (<code>ZeroAddress</code>, <code>EmptyPeriods</code>, <code>PeriodsNotAscending</code>, <code>TooManyPeriods</code>, <code>ZeroMinSellers</code>, <code>AmountsPeriodsMismatch</code>, <code>ZeroVerifier</code>, <code>VerifierNotContract</code>, <code>ZeroClauseRegistry</code>, <code>ZeroUsageCounter</code>) &mdash; a deployer&apos;s concern, not a caller&apos;s; <code>FlorinToken</code>&apos;s minter-registry errors, wired once at genesis and then renounced; and the devnet mocks. The SDK&apos;s own refusals are plain JavaScript <code>Error</code>s with prose messages &mdash; the one exception is <code>SequencerError</code>, which carries a <code>.statusCode</code> (400 signature or witness-gate rejection, carrying the kernel&apos;s own reason string &mdash; or malformed JSON; 422 valid JSON that is not an operation shape; 413 over the 1&nbsp;MiB body cap; 503 mempool at capacity &mdash; capacity, never rejection, so retry after the next batch).
+                    <strong>The boundary.</strong> Runtime errors only. Deliberately absent: constructor-argument errors (<code>ZeroAddress</code>, <code>EmptyPeriods</code>, <code>PeriodsNotAscending</code>, <code>TooManyPeriods</code>, <code>ZeroMinSellers</code>, <code>AmountsPeriodsMismatch</code>, <code>ZeroVerifier</code>, <code>VerifierNotContract</code>, <code>ZeroClauseRegistry</code>, <code>ZeroUsageCounter</code>) &mdash; a deployer&apos;s concern, not a caller&apos;s; <code>FlorinToken</code>&apos;s minter-registry errors, wired once at genesis and then renounced; and the local development mocks. The SDK&apos;s own refusals are plain JavaScript <code>Error</code>s with prose messages &mdash; the one exception is <code>SequencerError</code>, which carries a <code>.statusCode</code> (400 signature or witness-gate rejection, carrying the kernel&apos;s own reason string &mdash; or malformed JSON; 422 valid JSON that is not an operation shape; 413 over the 1&nbsp;MiB body cap; 503 mempool at capacity &mdash; capacity, never rejection, so retry after the next batch).
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     <strong>Decoding them.</strong> Every ABI below is a root <code>@figaro-protocol/sdk</code> export carrying its contract&apos;s error fragments, so a revert decodes by name instead of arriving as opaque bytes: <code>CORE_ABI</code> (the kernel&apos;s errors <em>and</em> the standard ERC-20 ones, including <code>ERC20InsufficientAllowance</code>), <code>CLAUSE_REGISTRY_ABI</code>, <code>MEMBERS_REGISTRY_ABI</code>, <code>ASSEMBLY_REGISTRY_ABI</code>, <code>USAGE_COUNTER_ABI</code>, <code>RPGF_MINTER_ABI</code>, <code>WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>. <code>BATCH_VERIFIER_ABI</code> carries the settlement-reachable fragments too (its constructor guards are deploy-time only and omitted).

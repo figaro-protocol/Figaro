@@ -164,7 +164,7 @@ export function MemberDiscovery() {
                 allListings.length === 0 ? (
                     <div className="text-center py-12 space-y-4">
                         <p className="text-base text-gray-700">
-                            This registry opens with the network.
+                            No members registered where this page is looking.
                         </p>
                         <p className="text-sm text-gray-500 max-w-md mx-auto">
                             Every member listed here is a wallet that registered itself &mdash;
@@ -176,7 +176,7 @@ export function MemberDiscovery() {
                             className="inline-block text-sm px-4 py-2 rounded border border-black bg-black text-white hover:bg-neutral-800"
                             data-testid="discover-empty-cta"
                         >
-                            Register as a seller
+                            Register as a member
                         </a>
                     </div>
                 ) : (

@@ -21,7 +21,7 @@ export default function Join() {
                 title="Members."
                 lead={
                     <>
-                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH deposit and you are listed.
+                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH deposit and you are listed. Buyer and seller are the same kind of member: buying needs only a wallet &mdash; no registration, no deposit &mdash; and registering is how either side becomes findable.
                     </>
                 }
             />

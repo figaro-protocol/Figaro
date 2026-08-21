@@ -129,7 +129,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // every amount converts at the venue's live rate BEFORE display and
     // commit (the converted price is the input the venue needs to yield the
     // default-quoted amount — the seller is made whole in their quote basis).
-    // Devnet venue = one global rate, same-decimals mocks; a production venue
+    // Local mock venue = one global rate, same-decimals mocks; a production venue
     // quotes per-pair behind this same seam. No venue while conversion is
     // needed ⇒ ordering is gated off (resolved-empty = absence).
     const swapFundingContracts = resolveSwapFundingContracts();

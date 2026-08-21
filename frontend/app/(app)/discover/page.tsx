@@ -22,10 +22,10 @@ export default function DiscoverPage() {
             <p className="text-base text-gray-600 leading-relaxed max-w-2xl mb-10">
                 Everyone here is someone you can order from directly &mdash; a
                 kitchen, a tailor, a courier, a service &mdash; each running its
-                own wallet, with no company in between. Nothing near you yet?
-                That is expected this early: the registry fills as members join,
-                and this page is where they appear. Once it has members, you
-                filter by what is close to you, pick one, and place a bonded
+                own wallet, with no company in between. Nothing near you?
+                The registry fills as members join, and this page is where
+                they appear &mdash; it reads the chain live, never a curated
+                list. You filter by what is close to you, pick one, and place a bonded
                 order &mdash; a single commit, signed by both of you, locks
                 both stakes at once.
             </p>
