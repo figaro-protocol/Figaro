@@ -14,7 +14,11 @@ export const READING_PATH_RUNGS = ["One deal", "An economy", "The world"] as con
  * The site's spine — the reading path the homepage closes with.
  *
  * THE ORDER IS THE RULING (probe-validated 2026-08-21, four rounds of blind
- * comprehension probes + an expert copy wave). Each step teaches ONE thing, and
+ * comprehension probes + an expert copy wave; REORDERED same day by maintainer
+ * ruling on the eight-probe full-site baseline, citing this comment: the worked
+ * example follows the mechanism, and the hard questions follow a deal seen to
+ * succeed — labels unified with the nav, one canonical name per page). Each
+ * step teaches ONE thing, and
  * each rung earns the next: a single deal that enforces itself, then what many
  * such deals compose into, then how those economies meet the institutions that
  * already exist. Do not reorder, retitle, or insert a step on probe evidence
@@ -40,20 +44,27 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
     {
         rung: "One deal",
         href: "/kernel",
-        label: "How it works",
+        label: "Kernel",
         description:
-            "how one deal enforces itself: the bonds, the equilibrium, the proof behind “a theorem, not a policy.”",
+            "how one deal enforces itself: the bonds, the equilibrium, the proof behind \u201ca theorem, not a policy.\u201d",
+    },
+    {
+        rung: "One deal",
+        href: "/local-commerce",
+        label: "Local Commerce",
+        description:
+            "one deal lived end to end — a meal among unbounded kinds of trade.",
     },
     {
         rung: "One deal",
         href: "/invariants",
-        label: "What can never change",
+        label: "Invariants",
         description: "the kernel's guarantees: no admin, no escape hatches, no custodian.",
     },
     {
         rung: "One deal",
         href: "/faq",
-        label: "The hard questions",
+        label: "FAQ",
         description:
             "what happens when a deal goes wrong, and the other questions worth asking plainly.",
     },
@@ -71,30 +82,20 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
     },
     {
         rung: "An economy",
-        href: "/local-commerce",
-        label: "A worked example",
-        description:
-            "one assembly at work: a meal as a published deal-shape, filled in and run — one example among unbounded kinds.",
-    },
-    {
-        rung: "An economy",
         href: "/rpgf",
-        // Not "Rewards": the nav already binds that word to /rewards, the
-        // (app) claim surface — one screen must not show two different
-        // "Rewards" destinations.
         label: "Rewards for authors",
         description: "how the commons pays its authors: real usage, retroactively.",
     },
     {
         rung: "An economy",
         href: "/data",
-        label: "The data layer",
+        label: "Data",
         description: "the record: public map, sealed detail, sold only on its owner's terms.",
     },
     {
         rung: "An economy",
         href: "/members",
-        label: "Who takes part",
+        label: "Members",
         description: "any signer: people, businesses, assets with their own wallets.",
     },
     {
@@ -119,8 +120,8 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
     {
         rung: "The world",
         href: "/working-groups",
-        label: "Working groups",
-        description: "the eight disciplines, and the papers behind the claims.",
+        label: "Working Groups",
+        description: "the eight disciplines behind the claims.",
     },
     {
         rung: "The world",

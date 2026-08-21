@@ -5,7 +5,7 @@ import { LockedFundsStateFigure } from "@/components/figures/LockedFundsStateFig
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 export const metadata: Metadata = withOg({
-    title: "How it works — Figaro Protocol",
+    title: "Kernel — Figaro Protocol",
     description:
         "How a Figaro deal works: both sides lock a stake larger than the deal, so cheating always loses; the buyer closes it out; every step is recorded permanently.",
 });

@@ -4,15 +4,16 @@
 # The marketing nav is DERIVED from the route-group structure (maintainer
 # ruling 2026-08-07), one group per protocol object:
 #   (deal) -> /kernel                       (section "The Deal")
-#   (compose)+(rewards)+(spec) -> /clauses  (section "Builders" — the three
-#                                            ruled sections survive as inert
-#                                            subheadings inside the panel)
+#   (compose)+(rewards)+(spec) -> /spec     (section "Builders" — leads with
+#                                            Specifications, the integrator's
+#                                            doorway; maintainer-ruled 2026-08-21)
 #   (participants) -> /members
 #   (research) -> /why
 # plus MARKET, the one all-bridge section carrying the (app) tier's
 # e-commerce tools (/discover, /orders, /audit). (reference) is footer
-# chrome and carries no nav entries; papers/ are reached through Working
-# Groups. /local-commerce and /faq are nav-visible under The Deal
+# chrome and carries no nav entries; the paper corpus's index lives at
+# /papers under Research (maintainer-ruled 2026-08-21, superseding the
+# working-groups-only route; the special-case below admits it). /local-commerce and /faq are nav-visible under The Deal
 # (maintainer, 2026-08-07) on the standing condition that sitewide copy
 # stays demoted — the meal is one worked example, never THE model.
 # Labels are each page's own metadata.title
@@ -31,9 +32,9 @@ const NAV = "frontend/components/shared/navLinks.ts";
 const SUFFIX = " — Figaro Protocol";
 const DOORWAYS = {
     "(deal)": "/kernel",
-    "(compose)": "/clauses",
-    "(rewards)": "/clauses",
-    "(spec)": "/clauses",
+    "(compose)": "/spec",
+    "(rewards)": "/spec",
+    "(spec)": "/spec",
     "(participants)": "/members",
     "(research)": "/why",
 };
@@ -83,6 +84,9 @@ for (const page of pages) {
     expected.get(doorway).set(route, titleOf(page));
 }
 expected.set(MARKET.doorway, new Map(MARKET.pages.map(([route, file]) => [route, titleOf(file)])));
+// The paper corpus's index: lives outside the route groups (papers/ is a real
+// segment, not a group) but is nav-visible under Research by ruling 2026-08-21.
+expected.get(DOORWAYS["(research)"]).set("/papers", titleOf("frontend/app/(marketing)/papers/page.tsx"));
 
 const navSrc = fs.readFileSync(NAV, "utf8");
 const start = navSrc.indexOf("export const MARKETING_MAP");

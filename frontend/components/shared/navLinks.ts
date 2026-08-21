@@ -30,7 +30,7 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
     { href: "/kernel", label: "The Deal" },
     { href: "/discover", label: "Market" },
-    { href: "/clauses", label: "Builders" },
+    { href: "/spec", label: "Builders" },
     { href: "/members", label: "Participants" },
     { href: "/why", label: "Research" },
 ];
@@ -80,8 +80,10 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  * PAGE entry is its doorway; entry ORDER within a group is the ruled
  * reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
- * `(reference)` (Glossary) is footer chrome, never nav; papers are
- * reached through Working Groups. /local-commerce and /faq are nav-visible
+ * `(reference)` (Glossary) is footer chrome, never nav; the paper corpus
+ * has its index at /papers (maintainer-ruled 2026-08-21, superseding the
+ * working-groups-only route), listed under Research. Builders leads with
+ * Specifications (same ruling — the integrator's doorway, not the author's). /local-commerce and /faq are nav-visible
  * under The Deal (maintainer, 2026-08-07) on the standing condition that the
  * rest of the site stays demoted — the meal is one worked example among
  * many, never THE model. Tools (Register a clause,
@@ -94,7 +96,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "The Deal",
         links: [
-            { href: "/kernel", label: "How it works" },
+            { href: "/kernel", label: "Kernel" },
             { href: "/local-commerce", label: "Local Commerce" },
             { href: "/invariants", label: "Invariants" },
             { href: "/data", label: "Data" },
@@ -112,14 +114,14 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "Builders",
         links: [
+            { href: "/spec", label: "Specifications" },
             { href: "/clauses", label: "Clauses" },
             { href: "/assemblies", label: "Assemblies" },
             { href: "/registries", label: "Registries" },
             { href: "/composition", label: "Composition" },
-            { href: "/spec", label: "Specifications" },
             { href: "/pitfalls", label: "Sharp edges" },
             { href: "/security", label: "Security" },
-            { href: "/rpgf", label: "RPGF" },
+            { href: "/rpgf", label: "Rewards for authors" },
         ],
     },
     {
@@ -132,7 +134,8 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "Research",
         links: [
-            { href: "/why", label: "Why" },
+            { href: "/why", label: "Why this exists" },
+            { href: "/papers", label: "Papers" },
             { href: "/working-groups", label: "Working Groups" },
             { href: "/consequences", label: "Consequences" },
         ],

@@ -58,7 +58,7 @@ export default function Invariants() {
                             Kernel
                         </Link>
                         , and at length in the{" "}
-                        <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
+                        <Link href="/papers" className="text-ink-heading font-medium hover:underline">
                             papers
                         </Link>
                         . What follows here is the four things that fall out of the six.

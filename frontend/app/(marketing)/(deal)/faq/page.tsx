@@ -97,7 +97,7 @@ export default function Faq() {
                     Each party has more locked than they could gain by walking away &mdash; the mechanism, worked through with the numbers, is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>. What matters for this question: whatever the other side does, honoring the deal leaves them better off than cheating, and a shortfall is put right <em>before</em> settlement &mdash; there is no refund path; the buyer&apos;s lever is to withhold the close until the work is set right.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>.
+                    The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/papers" className="text-ink-heading font-medium hover:underline">papers</Link>.
                 </p>
             </MarketingSection>
 

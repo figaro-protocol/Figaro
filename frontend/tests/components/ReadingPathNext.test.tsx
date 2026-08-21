@@ -57,9 +57,9 @@ describe("ReadingPathNext", () => {
         const nav = screen.getByRole("navigation", { name: "Reading path" });
         const links = nav.querySelectorAll("a");
         expect(links).toHaveLength(1);
-        expect(links[0]).toHaveAttribute("href", "/invariants");
-        expect(links[0].textContent).toBe("What can never change");
-        expect(container.textContent).toBe("Next in the reading path: What can never change");
+        expect(links[0]).toHaveAttribute("href", "/local-commerce");
+        expect(links[0].textContent).toBe("Local Commerce");
+        expect(container.textContent).toBe("Next in the reading path: Local Commerce");
     });
 
     it("carries no blurb, no number and no rung name — the five ruled properties", () => {

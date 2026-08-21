@@ -30,8 +30,7 @@ export default function Home() {
     return (
         <>
             <MarketingHero
-                title="The Figaro Ecosystem"
-                tagline="My word is my bond"
+                title="My word is my bond"
                 lead={
                     <>
                         From guilds to banks to platforms, every economic system has answered the same two questions: who enforces a deal, and who keeps the profit. Figaro&apos;s answer: both sides stake tokens worth more than cheating could gain &mdash; so no one needs to stand in the middle, and the profit stays with the hands that made it.
@@ -86,8 +85,15 @@ export default function Home() {
             </MarketingSection>
 
             <MarketingSection title="Read the whole story" sectionId="reading-path" bottomPad="wide">
-                <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Read in order; each page teaches one thing.
+                <p className="text-base text-ink-body leading-relaxed mb-3">
+                    Read in order; each page teaches one thing. Or start where you are:
+                    new to all of this, begin with{" "}
+                    <Link href="/local-commerce" className="text-ink-heading hover:underline">one deal, lived end to end</Link>;
+                    building on it, start at{" "}
+                    <Link href="/spec" className="text-ink-heading hover:underline">Specifications</Link>;
+                    checking the claims, the{" "}
+                    <Link href="/papers" className="text-ink-heading hover:underline">papers</Link>{" "}
+                    carry the proofs.
                 </p>
                 <div className="space-y-8">
                     {READING_PATH_RUNGS.map((rung) => (

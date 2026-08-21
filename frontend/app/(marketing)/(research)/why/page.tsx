@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = withOg({
-    title: "Why — Figaro Protocol",
+    title: "Why this exists — Figaro Protocol",
     description:
         "Three eras of rule-making — coercion, cognition, crypto — and what changes when a rule set is common knowledge by construction, enforced by mathematics rather than force or belief. The full argument is the Code Is Constitution paper.",
 });
