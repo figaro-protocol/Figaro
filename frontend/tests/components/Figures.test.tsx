@@ -7,6 +7,7 @@ import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 import { BatchSettlementSequenceFigure } from "@/components/figures/BatchSettlementSequenceFigure";
 import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
+import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
 import { readFile } from "node:fs/promises";
 
 afterEach(() => {
@@ -321,6 +322,68 @@ describe("BatchSettlementSequenceFigure", () => {
         for (const identifier of BANNED_IDENTIFIERS) {
             expect(text).not.toContain(identifier);
         }
+    });
+});
+
+/** The market-formation figure additionally names no SDK symbol or payload
+ *  field — the corpus register keeps source identifiers in comments. */
+const BANNED_FORMATION_IDENTIFIERS = [
+    "startRace",
+    "counterSignDraft",
+    "quoteDraft",
+    "verifyRaceReply",
+    "verifyQuoteReply",
+    "selectRaceWinner",
+    "expectedCumulativeValue",
+    "CommitmentPayload",
+    "quoteRequest",
+    "sellerSig",
+    "buyerSig",
+];
+
+describe("MarketFormationSwimlaneFigure", () => {
+    it("renders five numbered steps, both answer legs, and nothing beyond them", () => {
+        const { container } = render(<MarketFormationSwimlaneFigure />);
+        const text = container.textContent ?? "";
+        expect(text).toContain("Draft");
+        expect(text).toContain("Answer — race leg");
+        expect(text).toContain("Answer — quote leg");
+        expect(text).toContain("Verify");
+        expect(text).toContain("Select, and sign once");
+        // One numbered dot per step, and only the steps carry dots.
+        expect(container.querySelectorAll("circle")).toHaveLength(5);
+    });
+
+    it("puts the settlement layer beneath both lanes and marks the on-chain boundary", () => {
+        const { container } = render(<MarketFormationSwimlaneFigure />);
+        const text = container.textContent ?? "";
+        expect(text).toContain("Settlement layer — market-blind");
+        expect(text).toContain("nothing above this line is on chain");
+        // The market-blindness claim, stated where it can be read off the shape.
+        expect(text).toContain("Nothing in the artifact says how the seller was found");
+    });
+
+    it("states that losing answers expire rather than being cancelled", () => {
+        const { container } = render(<MarketFormationSwimlaneFigure />);
+        const text = container.textContent ?? "";
+        expect(text).toContain("answers not taken expire");
+        expect(text).toContain("no cancel operation");
+    });
+
+    it("names no contract, function, package, or payload field", () => {
+        const { container } = render(<MarketFormationSwimlaneFigure />);
+        const text = container.textContent ?? "";
+        for (const identifier of [...BANNED_IDENTIFIERS, ...BANNED_FORMATION_IDENTIFIERS]) {
+            expect(text).not.toContain(identifier);
+        }
+    });
+
+    it("exposes an accessible title and description bound by aria-labelledby", () => {
+        const { container } = render(<MarketFormationSwimlaneFigure idPrefix="mf" />);
+        const svg = container.querySelector("svg");
+        expect(svg).toHaveAttribute("aria-labelledby", "mf-title mf-desc");
+        expect(container.querySelector("#mf-title")?.textContent).toContain("dispatch race");
+        expect(container.querySelector("#mf-desc")?.textContent).toContain("never both");
     });
 });
 
