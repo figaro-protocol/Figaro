@@ -218,6 +218,22 @@ bg-surface border border-default rounded-glyph
 text-ink-heading font-mono font-semibold
 ```
 
+### Nav current state ("you are here")
+
+Three ORTHOGONAL channels, so no two interaction states are confusable:
+
+| Channel | State | Utilities |
+|---------|-------|-----------|
+| Fill    | hover (the pointer is here)   | `hover:bg-subtle-hover` |
+| Ring    | focus (the keyboard is here)  | `focus-visible:ring-2` |
+| Rule + weight | current (the reader is here) | `border-ink-heading` + `font-semibold` (or `font-medium` on a body-weight row) |
+
+Never spend the fill channel on the current state — a hovered neighbour then reads as the current item. The current rule is `border-ink-heading` because the amber is already the nav's own text color; no hue family enters for a state.
+
+Row-level rule: `pl-3.5 border-l-2` on the current row against `pl-4` on the rest — 14px + the 2px rule restores the 16px inset, so the label does not shift. `text-ink-heading` is NOT a legible current-state text color at nav sizes (4.1:1 on `bg-subtle`, below WCAG AA 1.4.3); deepen within the ink ramp (`text-ink-body` → `text-ink-primary`) instead.
+
+Pair the treatment with `aria-current`: `"page"` on an exact route match (at most one per rendering), `"true"` on a section doorway whose group holds the route. One rule, one implementation — `components/shared/navActive.ts`.
+
 ### Status surfaces
 
 Pair the status token as fill or icon with `text-ink-*` body. Do not use `text-success` / `text-error` / etc. as text colors directly (see §1 status-token note).

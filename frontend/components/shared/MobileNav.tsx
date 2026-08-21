@@ -7,6 +7,7 @@ import X from "@/components/icons/X";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
+import { navCurrent } from "@/components/shared/navActive";
 
 interface MobileNavProps {
     links?: NavLink[];
@@ -74,12 +75,6 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
         setIsOpen(false);
         triggerRef.current?.focus();
     };
-
-    // trailingSlash: true — usePathname() reports "/orders/" for the
-    // "/orders" nav entry, so compare with the trailing slash stripped.
-    const stripSlash = (p: string) =>
-        p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p;
-    const isActive = (href: string) => stripSlash(pathname) === stripSlash(href);
 
     const btnCls =
         theme === "dark"
@@ -166,38 +161,51 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
                         {/* Navigation Links */}
                         <nav className="flex-1 overflow-y-auto p-4">
                             <ul className="space-y-1" role="list">
-                                {links.map((link, i) => (
-                                    <li key={link.isSectionHeader ? `section-${link.label}` : link.href}>
-                                        {link.isSectionHeader ? (
-                                            <div className={`px-4 pt-${i === 0 ? "1" : "4"} pb-1 text-[11px] font-semibold ${theme === "dark" ? "text-slate-500" : "text-neutral-500"}`}>
-                                                {link.label}
-                                            </div>
-                                        ) : (
-                                            <Link
-                                                href={link.href}
-                                                className={`
-                        block px-4 py-3 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black
-                        ${isActive(link.href)
-                                                        ? theme === "dark"
-                                                            ? "bg-blue-600 text-white font-semibold"
-                                                            : "bg-black text-white font-semibold"
-                                                        : theme === "dark"
-                                                            ? "text-slate-300 hover:bg-slate-800 hover:text-white"
-                                                            : "text-neutral-700 hover:bg-neutral-100 hover:text-black"
-                                                    }
+                                {links.map((link, i) => {
+                                    // "You are here", same three channels as the
+                                    // desktop tree (NavTreeRow): FILL is hover,
+                                    // RING is focus, RULE + WEIGHT is current.
+                                    // pl-3.5 (14px) + the 2px rule restores px-4's
+                                    // 16px inset, so the current row's label does
+                                    // not shift against its neighbours.
+                                    const current = link.isSectionHeader ? undefined : navCurrent(pathname, link.href);
+                                    return (
+                                        <li key={link.isSectionHeader ? `section-${link.label}` : link.href}>
+                                            {link.isSectionHeader ? (
+                                                <div className={`px-4 pt-${i === 0 ? "1" : "4"} pb-1 text-[11px] font-semibold ${theme === "dark" ? "text-slate-500" : "text-neutral-500"}`}>
+                                                    {link.label}
+                                                </div>
+                                            ) : (
+                                                <Link
+                                                    href={link.href}
+                                                    className={`
+                        block pr-4 py-3 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black
+                        ${current ? "pl-3.5 border-l-2 border-ink-heading" : "pl-4"}
+                        ${current
+                                                            ? theme === "dark"
+                                                                ? "text-white"
+                                                                : "text-black"
+                                                            : theme === "dark"
+                                                                ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                                                : "text-neutral-700 hover:bg-neutral-100 hover:text-black"
+                                                        }
                       `}
-                                                aria-current={isActive(link.href) ? "page" : undefined}
-                                            >
-                                                <div className="font-medium">{link.label}</div>
-                                                {link.description && (
-                                                    <div className="text-xs mt-0.5 opacity-80">
-                                                        {link.description}
-                                                    </div>
-                                                )}
-                                            </Link>
-                                        )}
-                                    </li>
-                                ))}
+                                                    aria-current={current}
+                                                >
+                                                    {/* Weight lives on the label, not the
+                                                        anchor — the anchor's font-* is
+                                                        overridden by this div. */}
+                                                    <div className={current ? "font-semibold" : "font-medium"}>{link.label}</div>
+                                                    {link.description && (
+                                                        <div className="text-xs mt-0.5 opacity-80">
+                                                            {link.description}
+                                                        </div>
+                                                    )}
+                                                </Link>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </nav>
                     </div>
