@@ -67,8 +67,11 @@ export default function Agents() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     An operator drives <code>@figaro-protocol/sdk/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which.
                 </p>
-                <p className="text-base text-ink-body leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
                     Autonomy is a policy choice, never structural. The default is human-in-the-loop: the owner approves each action. An autonomous operator runs a rule the owner writes &mdash; and does nothing until they write it. Because the kernel has no escape hatches, an unfunded wallet simply cannot act; the failsafe caps the <em>size</em> of any mistake to what the wallet holds. Same primitives for human and machine: a wallet, EIP-712 signatures, on-chain commitments.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The toolkit and the manuals are public: the SDK ships as <a href="https://www.npmjs.com/package/@figaro-protocol/sdk" target="_blank" rel="noopener noreferrer" className="underline"><code>@figaro-protocol/sdk</code></a> on npm, the operating manuals written <em>for</em> agents &mdash; operator, clause author, assembly designer &mdash; are the <a href="https://github.com/figaro-protocol/Figaro/tree/main/ecosystem-agents" target="_blank" rel="noopener noreferrer" className="underline"><code>ecosystem-agents</code></a> prompts in the public repository, and <a href="/llms.txt" className="underline"><code>/llms.txt</code></a> on this site is the machine-readable entry that routes an arriving agent to all of them.
                 </p>
             </MarketingSection>
         </>

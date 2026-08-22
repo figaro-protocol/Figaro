@@ -47,6 +47,21 @@ and real Groth16 batches through `FigaroBatchVerifier`). The `/spec` page's
 build time. Ethereum mainnet remains "Pending external audit" — no mainnet
 record exists yet.
 
+## Verifying the record independently
+
+Do not take this directory's word for an address — the record is designed to be
+checked from outside it:
+
+- Every address in `11155111.json` resolves on the block explorer:
+  `https://sepolia.etherscan.io/address/<address>` (verified source + ABI). The
+  `/spec` page renders the same per-address explorer links from this record.
+- An agent whose fetch tool the explorer blocks can verify against any RPC
+  instead: `eth_getCode` at the address must return non-empty bytecode, and the
+  contract's events must appear from `deploymentBlock` forward.
+- The SDK that reads this record is `@figaro-protocol/sdk` on npm, published
+  with a Sigstore provenance attestation binding the tarball to this
+  repository — `npm audit signatures` checks it.
+
 ## The record discipline
 
 This directory is the **source of truth** for public-network addresses,
