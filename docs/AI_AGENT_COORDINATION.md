@@ -540,6 +540,12 @@ a score, never a gate). However, autonomous agents
 that want cross-protocol discoverability can declare ERC-8004-compatible
 service endpoints in their `MembersRegistry.metadataURI` JSON.
 
+Discovery in the other direction — an outside agent finding Figaro — is the
+site's `/llms.txt` (`frontend/public/llms.txt`): the machine-facing entry
+that states the frame, the visiting-agent seam, and routes to the
+`ecosystem-agents/` manuals, this document, the SDK, and the deployment
+record.
+
 ### Why This Is a Metadata Convention, Not a Contract Change
 
 Figaro's `MembersRegistry` already stores an arbitrary `metadataURI` per
