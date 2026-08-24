@@ -32,7 +32,7 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
         <header className="border-b border-default bg-canvas/80 backdrop-blur-md sticky top-0 z-50">
             <div className="container mx-auto px-6 py-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <MobileNav theme="light" topCta={mobileTopCta} links={mobileLinks} />
+                    <MobileNav topCta={mobileTopCta} links={mobileLinks} />
                     <BrandLogo />
                 </div>
                 <NavTreeRow />

@@ -3,11 +3,15 @@
  *
  * Exercises the MobileNav chrome on a narrow viewport (Pixel 5 via
  * playwright.config.ts mock-mobile project): hamburger is visible, desktop
- * nav is hidden, drawer opens and closes, and navigation closes the drawer.
+ * nav is hidden, drawer opens and closes, sections are an accordion
+ * (collapsed by default, the current route's section pre-expanded), and
+ * navigation closes the drawer.
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { NAV_LINKS } from '../../components/shared/navLinks';
 import { waitForReactHydration } from './test-helpers';
+
+const hrefRe = (href: string) => new RegExp(`^${href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`);
 
 /**
  * Navigate to an app page and wait for the hamburger button to be
@@ -19,6 +23,17 @@ import { waitForReactHydration } from './test-helpers';
 async function gotoAppNavHydrated(page: Page): Promise<void> {
     await page.goto('/orders?e2e=mock', { waitUntil: 'load' });
     await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
+}
+
+/** Expand a drawer section and return its panel (the disclosure it controls). */
+async function expandSection(drawer: Locator, name: string): Promise<Locator> {
+    const trigger = drawer.getByRole('button', { name, exact: true });
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+        await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const panelId = await trigger.getAttribute('aria-controls');
+    return drawer.locator(`#${panelId}`);
 }
 
 test.describe('Mobile navigation (Pixel 5)', () => {
@@ -48,9 +63,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
 
-        // Drawer must list every registered nav link
+        // Every registered nav link lives behind the Publication section now —
+        // the drawer opens collapsed, so the section is a tap away, not a scroll.
+        const publication = await expandSection(drawer, 'Publication');
         for (const link of NAV_LINKS) {
-            await expect(drawer.getByRole('link', { name: link.label })).toHaveAttribute('href', new RegExp(`^${link.href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`));
+            await expect(publication.getByRole('link', { name: link.label })).toHaveAttribute('href', hrefRe(link.href));
         }
 
         await page.getByRole('button', { name: 'Close menu' }).click();
@@ -67,11 +84,37 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // The (app) drawer lists the five publication doorways by their ruled
         // section labels — /spec is the 'Build' doorway there (the
         // 'Specifications' page label exists only in the marketing drawer's map).
-        await drawer.getByRole('link', { name: 'Build', exact: true }).click();
+        const publication = await expandSection(drawer, 'Publication');
+        await publication.getByRole('link', { name: 'Build', exact: true }).click();
 
         await expect(page).toHaveURL(/\/spec\/?$/);
         // useEffect on pathname change closes the drawer
         await expect(drawer).toBeHidden({ timeout: 5000 });
+    });
+
+    // The visitor report (2026-08-24): the flat drawer ran well past the fold.
+    // Closed, it is one row per section — the whole map fits the viewport with
+    // nothing to scroll, which is the point of the accordion.
+    test('the closed drawer fits the viewport without scrolling', async ({ page }) => {
+        await page.goto('/', { waitUntil: 'load' });
+        await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
+        await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
+
+        const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
+        await expect(drawer).toBeVisible();
+
+        // No section is expanded on the home route (no map entry holds "/").
+        // Only the section triggers carry aria-expanded inside the drawer.
+        const triggers = drawer.locator('button[aria-expanded]');
+        expect(await triggers.count()).toBeGreaterThan(1);
+        for (const trigger of await triggers.all()) {
+            await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        }
+
+        const overflow = await drawer.locator('nav').evaluate(
+            (el) => el.scrollHeight - el.clientHeight,
+        );
+        expect(overflow, 'the collapsed section list does not overflow its scroll area').toBeLessThanOrEqual(0);
     });
 
     // Wayfinding is comprehension. The marketing tier's desktop nav is the
@@ -92,26 +135,39 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // labelled by its own metadata.title, and the papers are reached through
         // Working Groups — the corpus is unbounded, so the working-groups page
         // IS the index (maintainer-ruled 2026-08-12; no /papers index exists).
-        for (const [label, href] of [
-            ['Invariants', '/invariants'],
-            ['Working Groups', '/working-groups'],
-            ['Clauses', '/clauses'],
-            ['Agents', '/agents'],
+        for (const [section, label, href] of [
+            ['The Deal', 'Invariants', '/invariants'],
+            ['Research', 'Working Groups', '/working-groups'],
+            ['Build', 'Clauses', '/clauses'],
+            ['Participants', 'Agents', '/agents'],
         ] as const) {
+            const panel = await expandSection(drawer, section);
             await expect(
-                drawer.getByRole('link', { name: label }),
+                panel.getByRole('link', { name: label }),
                 `${label} is reachable from the marketing drawer`,
-            ).toHaveAttribute('href', new RegExp(`^${href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`));
+            ).toHaveAttribute('href', hrefRe(href));
         }
 
-        // Section headers group the map (same shape as the (app) drawer) —
-        // the ruled five sections, asserted by one of them.
-        await expect(drawer.getByText('Build', { exact: true }).first()).toBeVisible();
-
         // And it navigates, closing behind itself.
-        await drawer.getByRole('link', { name: 'Invariants' }).click();
+        const deal = await expandSection(drawer, 'The Deal');
+        await deal.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
+    });
+
+    // The reader lands where they already are: reopening the drawer on a page
+    // shows that page's own section already open, with the doorway marked.
+    test('the drawer pre-expands the section holding the current route', async ({ page }) => {
+        await page.goto('/invariants', { waitUntil: 'load' });
+        await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
+
+        await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
+        const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
+        const deal = drawer.getByRole('button', { name: 'The Deal', exact: true });
+        await expect(deal).toHaveAttribute('aria-expanded', 'true');
+        await expect(deal).toHaveAttribute('aria-current', 'true');
+        await expect(drawer.getByRole('link', { name: 'Invariants' })).toHaveAttribute('aria-current', 'page');
+        await expect(drawer.getByRole('button', { name: 'Build', exact: true })).toHaveAttribute('aria-expanded', 'false');
     });
 
     test('backdrop click closes the drawer', async ({ page }) => {

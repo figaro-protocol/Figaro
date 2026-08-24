@@ -232,7 +232,23 @@ Never spend the fill channel on the current state — a hovered neighbour then r
 
 Row-level rule: `pl-3.5 border-l-2` on the current row against `pl-4` on the rest — 14px + the 2px rule restores the 16px inset, so the label does not shift. `text-ink-heading` is NOT a legible current-state text color at nav sizes (4.1:1 on `bg-subtle`, below WCAG AA 1.4.3); deepen within the ink ramp (`text-ink-body` → `text-ink-primary`) instead.
 
+The rule must read as a straight rule: a row carrying `border-l-2` gets a SQUARE left corner (`rounded-r-tile rounded-l-none`, not `rounded-tile`), or the 2px stroke bends around the radius and reads as a decorative brace. On `<button>` rows, `rounded-l-none` is load-bearing rather than redundant — the `globals.css` base `button` rule already applied `rounded-tile` to all four corners.
+
 Pair the treatment with `aria-current`: `"page"` on an exact route match (at most one per rendering), `"true"` on a section doorway whose group holds the route. One rule, one implementation — `components/shared/navActive.ts`.
+
+### Disclosure (`components/ui/Disclosure.tsx`)
+
+The shared show/hide shape — trigger + panel, caller-owned `expanded` state (an accordion is one state upstream of N disclosures). Trigger:
+
+```
+flex w-full items-center justify-between gap-sm min-h-11
+rounded-l-none rounded-r-tile bg-transparent border-0 text-left
+focus-visible:ring-2 focus-visible:ring-focus
+```
+
+`min-h-11` (44px) satisfies WCAG 2.5.5. The trigger carries `aria-expanded` + `aria-controls`; the panel carries the controlled `id` + `aria-labelledby` back at the trigger, and MOUNTS only while expanded, so collapsed content never enters a focus-trap query. The chevron is the primitive's own (`text-ink-muted`, `aria-hidden`, rotates 180° when open) — do not re-inline one.
+
+In a nav, the section trigger takes `text-heading-h3 text-ink-heading` against `text-ink-body` page rows: the section header must DOMINATE the links it governs. A caption-sized section header over body-sized links inverts the hierarchy.
 
 ### Status surfaces
 
