@@ -1,6 +1,6 @@
 <!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>OriginateChainParams | @figaro-protocol/sdk</title><meta name="description" content="Documentation for @figaro-protocol/sdk"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@figaro-protocol/sdk</a>
-<div id="tsd-toolbar-links"><a href="/">Site</a><a href="/clauses">Builders</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<div id="tsd-toolbar-links"><a href="/">Site</a><a href="/spec">Builders</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
 <div id="tsd-search-status" aria-live="polite" aria-atomic="true">
 <div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
@@ -12,14 +12,14 @@
 <li><a href="" aria-current="page">OriginateChainParams</a></li></ul>
 <h1>Interface OriginateChainParams</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">OriginateChainParams</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#approvebond">approveBond</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#chainid">chainId</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#channel">channel</a><span class="tsd-signature-symbol">:</span> <a href="agent.CoordinationChannel.html" class="tsd-signature-type tsd-kind-interface">CoordinationChannel</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#core">core</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#currency">currency</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#deadline">deadline</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#nodes">nodes</a><span class="tsd-signature-symbol">:</span> <a href="agent.ChainNodeSpec.html" class="tsd-signature-type tsd-kind-interface">ChainNodeSpec</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#salt">salt</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#specs">specs</a><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#template">template</a><span class="tsd-signature-symbol">:</span> <a href="index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
-<section class="tsd-panel tsd-hierarchy" data-refl="39603">
+<section class="tsd-panel tsd-hierarchy" data-refl="39614">
 <h4>Hierarchy (<a href="../hierarchy.html#agent.OriginateChainParams">View Summary</a>)</h4>
 <ul class="tsd-hierarchy">
 <li class="tsd-hierarchy-item"><a href="agent.BuildChainParams.html" class="tsd-signature-type tsd-kind-interface">BuildChainParams</a>
 <ul class="tsd-hierarchy">
 <li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">OriginateChainParams</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L532">sdk/src/agent/originate.ts:532</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L532">sdk/src/agent/originate.ts:532</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -47,30 +47,30 @@
 <div class="tsd-comment tsd-typography"><p>Approve the buyer's 2× total-payment bond before committing (default true).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L535">sdk/src/agent/originate.ts:535</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L535">sdk/src/agent/originate.ts:535</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="chainid"><span>chain<wbr/>Id</span><a href="#chainid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">chainId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#chainid">chainId</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L463">sdk/src/agent/originate.ts:463</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L463">sdk/src/agent/originate.ts:463</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="channel"><span>channel</span><a href="#channel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">channel</span><span class="tsd-signature-symbol">:</span> <a href="agent.CoordinationChannel.html" class="tsd-signature-type tsd-kind-interface">CoordinationChannel</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L533">sdk/src/agent/originate.ts:533</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L533">sdk/src/agent/originate.ts:533</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="core"><span>core</span><a href="#core" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">core</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#core">core</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L464">sdk/src/agent/originate.ts:464</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L464">sdk/src/agent/originate.ts:464</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="currency"><span>currency</span><a href="#currency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">currency</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#currency">currency</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L462">sdk/src/agent/originate.ts:462</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L462">sdk/src/agent/originate.ts:462</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="deadline"><span>deadline</span><a href="#deadline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">deadline</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
@@ -78,7 +78,7 @@
 </div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#deadline">deadline</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L470">sdk/src/agent/originate.ts:470</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L470">sdk/src/agent/originate.ts:470</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="nodes"><span>nodes</span><a href="#nodes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">nodes</span><span class="tsd-signature-symbol">:</span> <a href="agent.ChainNodeSpec.html" class="tsd-signature-type tsd-kind-interface">ChainNodeSpec</a><span class="tsd-signature-symbol">[]</span></div>
@@ -86,7 +86,7 @@
 </div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#nodes">nodes</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L466">sdk/src/agent/originate.ts:466</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L466">sdk/src/agent/originate.ts:466</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="salt"><code class="tsd-tag">Optional</code><span>salt</span><a href="#salt" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">salt</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></div>
@@ -94,7 +94,7 @@
 </div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#salt">salt</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L468">sdk/src/agent/originate.ts:468</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L468">sdk/src/agent/originate.ts:468</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="specs"><code class="tsd-tag">Optional</code><span>specs</span><a href="#specs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">specs</span><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></div>
@@ -107,13 +107,13 @@ branch and the counterparty's <code>validateOffer(..., specs)</code> is the net.
 </div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#specs">specs</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L477">sdk/src/agent/originate.ts:477</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L477">sdk/src/agent/originate.ts:477</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="template"><span>template</span><a href="#template" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">template</span><span class="tsd-signature-symbol">:</span> <a href="index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a></div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.BuildChainParams.html">BuildChainParams</a>.<a href="agent.BuildChainParams.html#template">template</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/bf5f8d3ef9ae9d7338de0df3b183204bf2195b81/sdk/src/agent/originate.ts#L461">sdk/src/agent/originate.ts:461</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L461">sdk/src/agent/originate.ts:461</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -132,7 +132,7 @@ branch and the counterparty's <code>validateOffer(..., specs)</code> is the net.
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
 <div><a href="#approvebond"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>approve<wbr/>Bond</span></a><a href="#chainid" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>chain<wbr/>Id</span></a><a href="#channel"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>channel</span></a><a href="#core" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>core</span></a><a href="#currency" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>currency</span></a><a href="#deadline" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>deadline</span></a><a href="#nodes" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>nodes</span></a><a href="#salt" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>salt</span></a><a href="#specs" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>specs</span></a><a href="#template" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>template</span></a></div></details></div></details></div>
 <div class="site-menu">
-<nav id="tsd-sidebar-links" class="tsd-navigation"><a href="/" class="tsd-nav-link">Site</a><a href="/clauses" class="tsd-nav-link">Builders</a></nav>
+<nav id="tsd-sidebar-links" class="tsd-navigation"><a href="/" class="tsd-nav-link">Site</a><a href="/spec" class="tsd-nav-link">Builders</a></nav>
 <nav class="tsd-navigation"><a href="../modules.html">@figaro-protocol/sdk</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
 <li>Loading...</li></ul></nav></div></div></div><footer></footer>

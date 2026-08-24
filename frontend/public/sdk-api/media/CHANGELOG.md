@@ -5,14 +5,13 @@ All notable changes to Figaro are documented in this file. The format follows
 described in `sdk/README.md` § "Versioning & stability" (the SDK is pre-1.0 —
 minor bumps may break).
 
-The repository carries no git tags yet. The first tag (`v0.1.0`) is minted by
-the maintainer at the time of the first public push; until then, everything
-below lives under **Unreleased**.
+The repository carries two tags: `v0.1.0` (the repository release) and
+`sdk-v0.1.0` (the commit `@figaro-protocol/sdk@0.1.0` was built and published
+to npm from). Everything since lives under **Unreleased**.
 
 ## [Unreleased]
 
-Summary of the current state of the protocol and its verification surface
-ahead of the first public push:
+Summary of the current state of the protocol and its verification surface:
 
 ### Protocol
 
@@ -22,8 +21,8 @@ ahead of the first public push:
   Solidity Surface Frozen for External Audit" for the exact frozen scope.
 - The batch settlement path (`FigaroBatchVerifier` + the Rust `prover/` SP1
   witness prover/sequencer) is live and included in the frozen scope.
-- The 600M RPGF distribution (`UsageCounter` + `RpgfMinter`) pays every
-  artifact uniformly, pro rata on real usage, gated by a two-sided live ETH
+- The 600M RPGF distribution (`UsageCounter` + `RpgfMinter`) pays every clause
+  and assembly uniformly, pro rata on real usage, gated by a two-sided live ETH
   stake — no per-clause weight, no per-wallet cap, no quadratic funding.
 
 ### Verification

@@ -122,3 +122,17 @@ for (const doorway of expected.keys()) {
 if (failed) process.exit(1);
 console.log("[nav-structure] clean — MARKETING_MAP equals the ruled route tree");
 EOF
+
+# ── Breadcrumb doorways (hygiene audit 2026-08-24) ──────────────────────────
+# A breadcrumb labelled with a nav section name must carry that section's
+# doorway href — two breadcrumbs kept pointing at the pre-2026-08-21 Builders
+# doorway after the ruling moved it. Checks the `label: "X", href: "Y"` form
+# the shipped Breadcrumb call sites use.
+crumbs=$(git ls-files 'frontend/*.ts' 'frontend/*.tsx' 'frontend/**/*.ts' 'frontend/**/*.tsx' | sort -u \
+    | xargs grep -nE 'label: "(Builders|The Deal|Participants|Research|Market)", href: "[^"]*"' 2>/dev/null \
+    | grep -vE '"Builders", href: "/spec"|"The Deal", href: "/kernel"|"Participants", href: "/members"|"Research", href: "/why"|"Market", href: "/discover"' || true)
+if [[ -n "$crumbs" ]]; then
+    echo "[nav-structure:FAIL] breadcrumb labelled with a nav section carries the wrong doorway href:"
+    echo "$crumbs" | sed 's/^/    /'
+    exit 1
+fi

@@ -28,6 +28,10 @@ bash scripts/lint-clause-counts.sh & GUARD_PIDS="$GUARD_PIDS $!"
 # 299 drifted to 301 unnoticed before this guard; the page must cite exactly
 # what the tree derives (Foundry/Halmos/Certora/Echidna).
 bash scripts/lint-security-counts.sh & GUARD_PIDS="$GUARD_PIDS $!"
+# Builder-doc claims that cite real paths while describing them falsely
+# (relay route inventory; RPGF exclusion set) — the 2026-08-24 audit's two
+# mechanically-checkable staleness classes.
+bash scripts/lint-builder-doc-claims.sh & GUARD_PIDS="$GUARD_PIDS $!"
 # The tracked abi/ bundle (non-TS integrator surface) must equal what the
 # build emits — a stale tracked ABI is worse than none. Runs after forge
 # build above, so the artifacts it re-emits from are fresh.

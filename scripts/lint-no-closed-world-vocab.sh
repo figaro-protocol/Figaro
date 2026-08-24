@@ -79,6 +79,12 @@ FAIL_FORUM='[Ff]orums? (can |will |may )?rules? only|rules? only (where|when|if)
 # definition-by-elimination failure). The mechanism is described in its OWN
 # terms: withheld close, atomic settlement, the record + ordinary law.
 FAIL_CARD_RAILS='\bchargeback\b|\bclawback\b'
+# AI-residue is BANNED on every surface (hygiene audit 2026-08-24): an agent's
+# apology, meta-note, or scaffolding placeholder shipped as content. External
+# reports of "Sorry"-notes prompted a full-estate sweep (repo, export, live
+# site, npm, Sepolia+IPFS — all clean); this class keeps it that way. Capital
+# "Sorry" only — Lean's lowercase `sorry`-free claims are legitimate.
+FAIL_RESIDUE='\bSorry\b|[Aa]s an AI|I apologi[sz]|I cannot assist|lorem ipsum|[Cc]oming soon|This is a placeholder|[Nn]ote to self'
 
 violations=0
 
@@ -134,6 +140,13 @@ for file in "$@"; do
     hits=$(grep -niE "$FAIL_CARD_RAILS" "$file" || true)
     if [[ -n "$hits" ]]; then
         echo "[closed-world] $file — card-rail vocabulary is BANNED (ruled 2026-08-04): never define the mechanism by comparison to platform/card rails. Describe it in its own terms — withheld close, atomic settlement, the record + ordinary law."
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    hits=$(grep -nE "$FAIL_RESIDUE" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — AI-residue (hygiene class, 2026-08-24): an apology, meta-note, or scaffolding placeholder is never content. Write the real sentence or delete the line."
         echo "$hits" | head -3 | sed 's/^/    /'
         violations=$((violations + 1))
     fi
