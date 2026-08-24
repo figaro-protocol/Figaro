@@ -50,13 +50,22 @@ export default function Kernel() {
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The stake is a new kind of thing. Value you part with has always had two modes: spent, or invested. The stake is a third &mdash; neither consumed nor put to work earning, a promise made expensive to break, and it comes home intact every honest time.
             </p>
+            <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
+                Who opens the box.
+            </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer is locked at twice the value too, so stalling costs the buyer exactly as much as anyone. No arbitrator weighs the case; no timer releases what is locked. And because nothing settles until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the deal closes.
             </p>
+            <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
+                Two mechanisms, not one.
+            </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Two mechanisms, then, not one, and neither is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands settle as one deal, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close settles the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
+            <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
+                More than two pairs of hands.
+            </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
                 <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">
@@ -92,6 +101,9 @@ export default function Kernel() {
                     </>
                 }
             />
+            <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
+                The record, and the proof.
+            </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Either way, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>

@@ -26,7 +26,7 @@ export default function WorkingGroups() {
                 title="Working groups."
                 lead={
                     <>
-                        Before you build on a protocol you check its arguments. {PAPER_COUNT} papers carry them &mdash; the equilibrium proof, the mechanisms by which an offer forms, the scope of what is formally verified, the legal and political readings &mdash; sorted into the eight disciplines of cryptoeconomics. A working group is whoever is doing that work in a discipline; groups form and work wherever their people are.
+                        Before you build on a protocol you check its arguments. {PAPER_COUNT} papers carry them &mdash; the equilibrium proof, the mechanisms by which an offer forms, the scope of what is formally verified, the legal and political readings &mdash; sorted into the eight disciplines of cryptoeconomics. Two of them come first whatever your discipline: <Link href="/papers/asymmetric-bonding" className="text-ink-heading hover:underline">Asymmetric Bonding and Buyer Dominance</Link> derives the equilibrium the rest of the corpus reasons from, and <Link href="/papers/verified-settlement-kernel" className="text-ink-heading hover:underline">A Verified Settlement Kernel</Link> says what a machine has and has not checked about the code that runs it; after those two, read the group nearest your own field. A working group is whoever is doing that work in a discipline; groups form and work wherever their people are.
 </>
                 }
             />

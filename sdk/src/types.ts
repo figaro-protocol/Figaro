@@ -247,7 +247,12 @@ export interface FigaroAddresses {
     rpgfMinter?: Address;
     /** Permit2 — the permit layer WitnessSwapAndCommitCoordinator pulls swap input tokens through. */
     permit2?: Address;
-    /** Uniswap Universal Router (or devnet mock) — the swap venue the coordinator routes through. */
+    /** Uniswap SwapRouter02 (or devnet mock) — the swap venue the coordinator routes
+     *  through. SwapRouter02, NOT the Universal Router: the coordinator approves the
+     *  router for your input token and forwards your signed `swapData` verbatim, so the
+     *  venue must PULL by ERC-20 allowance (`exactOutputSingle` does; the Universal
+     *  Router pulls through Permit2 or spends pre-sent balances). Encode against the
+     *  `SWAP_ROUTER_02_ABI` export. */
     swapRouter?: Address;
     /** WitnessSwapAndCommitCoordinator — off-protocol multi-token bond funding via Permit2 witness + swap + commit. */
     witnessSwapAndCommitCoordinator?: Address;

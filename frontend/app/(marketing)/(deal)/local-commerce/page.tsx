@@ -22,22 +22,19 @@ export const metadata: Metadata = {
 // not reintroduce a third tier (a farm, a supplier) into the narrated deal or
 // into its figure; no published assembly carries one, and the numbers in the
 // prose — like the `legs` passed to `StackedBondChainFigure` — are the
-// checkout values of those two legs. The deeper-chains paragraph in "Under the
-// hood" is the one place deeper chains are named, and it names them only as
-// shapes OTHER assemblies could compose: a stated possibility, never a third
-// leg of tonight's deal.
+// checkout values of those two legs.
 //
-// "The morning after" is the page's third rung (a deal → an economy → the
-// world) and is POST-SETTLEMENT NARRATIVE ONLY — never a third order, tier, or
-// leg. Its four leftovers are the ruled ones, and each has a hard constraint:
-// the record is shown to a venue that still rules, on evidence, and forums stay
-// provider-agnostic; the receipts split is the fiscal multisender — a wallet
-// spending its OWN tokens after the deal ended, so no sentence may imply the
-// deal routed a fiscal share or that any clause computed one (ruled
-// 2026-08-21); the currency hop is one ordinary swap on an open exchange, never
-// a fiat pipeline; the detail stays with its owners while only the thin public
-// half joins the map. The register for institutions is the homepage's: they
-// move to the edges, venues you consult, not hosts you must pass through.
+// The page closes on the scene ("What you never had to worry about") plus ONE
+// routing paragraph. It used to end twice: an "Under the hood" section and a
+// "The morning after" section re-told /composition, /data and the swap after
+// the natural close (~1,100 words). Those are cut. Every fact they carried is
+// owned by another page — the spec catalogue (/spec), the mechanism (/kernel),
+// the published shape and deeper chains (/assemblies), the receipts split and
+// the currency hop (/composition), the sealed detail (/data), tax and consumer
+// law (/faq#compatibility). Route to those owners; never re-narrate them here.
+// The one hard constraint that survives the cut: no sentence may imply the deal
+// routed a fiscal share or that any clause computed one — a settled wallet
+// splits its OWN tokens on its own initiative, afterwards (ruled 2026-08-21).
 export default function LocalCommercePage() {
     return (
         <>
@@ -157,39 +154,12 @@ export default function LocalCommercePage() {
                 </p>
             </section>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Under the hood
-                </h2>
-                <p className="text-base text-ink-body leading-relaxed">
-                    Everything above has an exact, inspectable form: the kernel contract that holds the stakes, the registries the participants enrolled in, the clauses their agreement composed, and the event flow the evening left behind. The full catalogue is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">the spec page</Link>; the mechanism itself is told in ten minutes on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mt-5">
-                    The evening above is not a sketch: this deal-shape &mdash; a merchant order with one courier leg hanging off it &mdash; is composed as the <em>Local commerce</em> assembly, and it sits among the registered shapes listed on <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>. Open it there to read its clauses, or fork it in the <Link href="/assemblies/designer" className="text-ink-heading font-medium hover:underline">designer</Link> and change what your own trade needs changed.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mt-5">
-                    A shape can also be drawn deeper: <em>Containerised import chain</em>, on that same list, carries a reefer container from shipper to consignee through six bonded parties, each its own line with its own stake, all of them closed at once by one importer of record.
-                </p>
-            </section>
-
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    The morning after
+                    Where the rest of it lives
                 </h2>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The dinner is settled &mdash; but the evening left four things behind, and each of them now belongs to somebody. The first is the record. Every step the deal wrote down &mdash; which wallets committed to what, for how much, in what order, at what hour, and an unforgeable fingerprint of the agreement they signed &mdash; sits on a public chain that nobody can go back and tidy. Come the tax return, come a food-safety inspection, come a claim filed months later, the kitchen does not have to be believed: it demonstrates from the record instead of asking anyone to take its word. The venue still rules &mdash; a tax authority, a regulator, a court, whichever forum the parties turn to &mdash; and it rules on evidence. Institutions like those do not vanish here. They move to the edges: venues you consult when you need one, not hosts every dinner has to pass through.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The second is the payment, which is now simply the kitchen&apos;s own. What happens next is the kitchen&apos;s own arithmetic over its own tokens &mdash; the tax drawer, the supplier, the savings jar, split in one transaction to addresses it chose long before you ordered, leaving a fiscal trail as a byproduct (<Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>). The dinner had no say in any of it, and the courier does the same with their 2.10, or doesn&apos;t &mdash; nobody supervises either wallet but its own owner.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The third is what the payment is denominated in. A deal here settles in one token, the one the shape was filled in with, and it need not be the one the kitchen keeps its books in. One hop on an open exchange carries the value across &mdash; an ordinary swap, same chain, same wallet, no permission to ask, no pipeline into or out of the banking system. It is a short last step, not an escape route: from the token the dinner used to the currency the parties already use. A courier whose family spends something different at home takes the same single step in their own direction.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The fourth is the detail, and it is the one thing that does not travel. What the chain kept is deliberately thin &mdash; wallets, amounts, a token, a fingerprint &mdash; so the bare shape of the evening joins the public map of the market. What the chain never held is the rest: what you ordered, where you live, the photograph at the door, the notes each side kept. That stays sealed with whoever produced it, shown or licensed only on their own terms &mdash; the opposite of how a delivery platform splits the same record. The whole arrangement is on <Link href="/data" className="text-ink-heading font-medium hover:underline">the data layer</Link>.
-                </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    None of that is a special power, and none of it is special to dinner. Using a protocol changes nobody&apos;s obligations &mdash; the same income tax, the same sales tax, the same consumer law that covers any direct trade in your jurisdiction covers this one; what changes is how cheaply the kitchen can show it met them, and nothing here is legal or tax advice (<Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">the FAQ</Link> says so at more length). Whatever the trade &mdash; a meal, an alteration, a container of cargo &mdash; a settled deal leaves the same four things: a record that can be shown, receipts a wallet splits on its own, value one hop from the currency in use, and detail that stays with the people who made it. Where those pieces meet the rest of the chain &mdash; swaps, payout routing, a forum where one is wanted &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
+                    Everything above has an exact, inspectable form elsewhere: the contracts, registries, clauses and events behind the evening are catalogued on <Link href="/spec" className="text-ink-heading font-medium hover:underline">the spec page</Link>, and the mechanism itself is told in ten minutes on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>. The evening is not a sketch either &mdash; a merchant order with one courier leg hanging off it is composed as the <em>Local commerce</em> assembly, readable among the registered shapes on <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>, where deeper chains sit beside it and any of them can be forked in the <Link href="/assemblies/designer" className="text-ink-heading font-medium hover:underline">designer</Link>. What the settled deal leaves behind belongs to whoever produced it: the receipts a paid wallet splits onward on its own initiative afterwards, and the single exchange hop from the deal&apos;s token to the currency a wallet actually keeps its books in, are on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>, while the detail the chain never held &mdash; what you ordered, where you live, the photograph at the door &mdash; stays sealed with its owners, on <Link href="/data" className="text-ink-heading font-medium hover:underline">the data layer</Link>. And using a protocol changes nobody&apos;s obligations: the same income tax, sales tax and consumer law that covers any direct trade in your jurisdiction covers this one &mdash; at more length on <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">the FAQ</Link>, and nothing here is legal or tax advice.
                 </p>
             </section>
 

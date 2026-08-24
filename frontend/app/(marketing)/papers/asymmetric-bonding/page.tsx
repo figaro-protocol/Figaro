@@ -9,6 +9,7 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
+import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigure";
 
 export const metadata: Metadata = withOg({
     title: "Asymmetric Bonding and Buyer Dominance — Figaro Protocol",
@@ -352,12 +353,67 @@ export default function AsymmetricBondingPaper() {
                     <p>
                         Charlie stands in $24 to earn $2 (<Math>{"\\rho = 12"}</Math>); Bob stands in $20 to earn $10 (<Math>{"\\rho = 2"}</Math>). Charlie&rsquo;s bond is set against $12 rather than against the $2 it is paid because $12 is what the chain has accumulated at its link, and that is the ceiling on what any defection there could take. Custody shows why the rule is the right one: once the meal is in its hands, what Charlie could walk off with is the meal, not its own delivery fee. The bond is twice the value accumulated at its link, and what it can retain is at most that &mdash; here strictly less, since a delivery not made is not a thing anyone can keep. Crediting the $10 it could actually hold, walking off leaves Charlie at <Math>{"-\\$24 + \\$10 = -\\$14"}</Math> against the <Math>{"+\\$2"}</Math> it declined. Bob&rsquo;s position is the same shape one link up, and at the bound: bonded at $20 against a meal worth $10, holding it leaves him at <Math>{"-\\$10"}</Math> against <Math>{"+\\$10"}</Math>. In both cases the doubling is what keeps the retention from paying for itself; where retention falls short of the accumulated value, as with Charlie, the margin is wider still. And Alice, having received nothing in either case, stands in her own locked bonds with no way to reach them but the resolution she alone can call.
                     </p>
+                    <ProcessTopologyFigure
+                        idPrefix="asymmetric-bonding-process-topology"
+                        legs={[
+                            { name: "Bob — the meal", payment: 10 },
+                            { name: "Charlie — the delivery", payment: 2 },
+                        ]}
+                        buyerLabel="Alice"
+                        unit="$"
+                        figureTitle="The two-order example as a process: one root buyer, two bilateral edges"
+                        figureDesc={
+                            "Alice is the root buyer of a process of two orders. Bob, who commits " +
+                            "first, is paid $10 against an accumulator of $10 and bonds $20. " +
+                            "Charlie, who commits second, is paid $2 against an accumulator of " +
+                            "$12 — the value the process has reached at his own commit — and " +
+                            "bonds $24. Each order is a separate bilateral edge between Alice and " +
+                            "that seller; no edge joins Bob to Charlie, although the meal passes " +
+                            "from one to the other off the record. Alice locks twice each payment, " +
+                            "$24 in all; the two sellers together lock $44. Resolution settles " +
+                            "both orders at once or neither, and only Alice may call it."
+                        }
+                        caption={
+                            <>
+                                The chain of Definition 9 is a chain in the accumulator, not in the
+                                contracting: each order is its own bilateral edge to the root buyer,
+                                and no edge joins one seller to another. What passes from Bob to
+                                Charlie is the meal, which the mechanism never sees; what orders the
+                                two sellers is <Math>{"G"}</Math>, the value the process had reached
+                                at each one&rsquo;s own commit.
+                            </>
+                        }
+                    />
                     <p>
-                        Whether the ratio itself rises with depth is a separate question from whether the deterrent does, and the corollary above answers it: the deterrent holds at every position, while <Math>{"\\rho_i"}</Math> need not rise along the chain.
+                        Whether the ratio itself rises with depth is a separate question from whether the deterrent does, and the corollary above answers it: the deterrent holds at every position, while <Math>{"\\rho_i"}</Math> need not rise along the chain. A third order makes the point in figures. Take a chain whose payments in commit order are <Math>{"\\$10"}</Math>, <Math>{"\\$2"}</Math>, <Math>{"\\$30"}</Math>. The first two are Bob&rsquo;s and Charlie&rsquo;s, at <Math>{"\\rho_1 = 2"}</Math> and <Math>{"\\rho_2 = 12"}</Math>; the third bonds against <Math>{"G_3 = \\$42"}</Math>, so <Math>{"C_{s,3} = \\$84"}</Math> and <Math>{"\\rho_3 = \\$84/\\$30 = 2.8"}</Math> &mdash; the largest cumulative exposure in the chain and the second-lowest ratio in it. Nothing has gone wrong: the exposure rose because the accumulator only ever rises, and the ratio fell because the third payment is large against everything before it. What the third seller faces is what the corollary says every seller faces &mdash; a gap <Math>{"\\Delta_3 = \\$30 + \\$42 = \\$72"}</Math> between performing and holding out, against the <Math>{"\\$60"}</Math> that twice its own payment would have secured.
                     </p>
                     <p>
-                        One qualification belongs here, before the figure below &mdash; the three-order chain, its payments unequal &mdash; works the same accounting again. The bond keys to the signed accumulator, not to an inventory: a seller posts twice the value the chain has accumulated at its link because that is the figure both parties have assented to, and the mechanism has no way to learn what any seller physically holds. Custody is the paradigm case and the reason the rule is the right one &mdash; the courier with the meal in its hands can carry off everything accumulated before it &mdash; but the rule does not depend on custody being complete. A seller whose retention falls short of the accumulated value simply faces a larger gap between performing and holding out, as noted above; the figure&rsquo;s farm, committing last and holding none of what came before it, is that case at its extreme, and its bond is the most self-defeating of the three to walk away from.
+                        One qualification belongs here, before the three-order chain below, its payments unequal, works the same accounting again. The bond keys to the signed accumulator, not to an inventory: a seller posts twice the value the chain has accumulated at its link because that is the figure both parties have assented to, and the mechanism has no way to learn what any seller physically holds. Custody is the paradigm case and the reason the rule is the right one &mdash; the courier with the meal in its hands can carry off everything accumulated before it &mdash; but the rule does not depend on custody being complete. A seller whose retention falls short of the accumulated value simply faces a larger gap between performing and holding out, as noted above; the farm below, committing last and holding none of what came before it, is that case at its extreme, and its bond is the most self-defeating of the three to walk away from.
                     </p>
+                    <p>
+                        <em>The three-order example.</em> A kitchen commits first at <Math>{"\\$8.40"}</Math>, a courier second at <Math>{"\\$2.10"}</Math>, and a farm last at <Math>{"\\$0.30"}</Math>. The same accounting applies, order by order:
+                    </p>
+                    <div className="my-4 overflow-x-auto">
+                        <table className="text-sm border-collapse">
+                            <thead>
+                                <tr>
+                                    {["Party", "Role", "Pᵢ", "Gᵢ", "Cₛ,ᵢ", "ρᵢ"].map((h) => (
+                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    ["Kitchen", "Seller 1", "$8.40", "$8.40", "$16.80", "2.0"],
+                                    ["Courier", "Seller 2", "$2.10", "$10.50", "$21.00", "10.0"],
+                                    ["Farm", "Seller 3", "$0.30", "$10.80", "$21.60", "72.0"],
+                                ].map((r) => (
+                                    <tr key={r[0]}>{r.map((c, i) => <td key={i} className="border border-default px-3 py-1.5">{c}</td>)}</tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="text-xs text-ink-muted mt-2">The payments are unequal, and the ratio rises at every step here. The first of those rises is forced rather than contingent: at the root <Math>{"G_1 = P_1"}</Math>, so <Math>{"\\rho_1 = 2"}</Math> always, and any positive payment ahead of the second seller puts <Math>{"\\rho_2"}</Math> above it. It is from the third position onward that the ratio may fall instead, as the <Math>{"\\$10"}</Math>/<Math>{"\\$2"}</Math>/<Math>{"\\$30"}</Math> chain above shows. What does hold without qualification is the column beside it: <Math>{"C_{s,i} = 2G_i"}</Math> is non-decreasing, so the farm &mdash; paid <Math>{"\\$0.30"}</Math>, and holding none of the meal &mdash; bonds <Math>{"\\$21.60"}</Math> against everything the chain has accumulated at its link.</p>
+                    </div>
                     <StackedBondChainFigure idPrefix="asymmetric-bonding-stacked-bond-chain" />
                 </PaperSubsection>
                 <PaperSubsection title="5.2 Atomic Resolution and Seller Coordination">

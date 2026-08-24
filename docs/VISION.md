@@ -212,13 +212,13 @@ Figaro inverts this. Enforcement happens *before* work begins, imposed by
 mathematics, not authority. The protocol's defense-in-depth operates across
 five layers:
 
-**Layer 0: Foundation — Blockchain Security** — Everything above rests on the
+**Layer 1: Foundation — Blockchain Security** — Everything above rests on the
 host chain's consensus: signature verification, transaction ordering,
 immutability of committed state. This layer is not Figaro's to build, but it
 is named because it is load-bearing — the bonds are only as locked, and the
 record only as immutable, as the chain that holds them.
 
-**Layer 1: Economic — Primary Nash Equilibrium (MAD via asymmetric bonding),
+**Layer 2: Economic — Primary Nash Equilibrium (MAD via asymmetric bonding),
 plus the evidence record** — Both parties lock collateral at exactly 2× the
 transaction value. Credit a defector with everything it retains off-chain and
 it is still out of pocket — the seller at best at −G, the withholding buyer at
@@ -237,8 +237,8 @@ attestation on-chain — produced always, as a by-product of ordinary
 operation, not only when something goes wrong. The upper layers consume this
 record; none of them produces it.
 
-**Layer 2: Social — Buyer Dominance + Atomic Resolution (the micro-lending
-circle effect)** — Layer 1 produces the mesh; Layer 2 enforces coordination
+**Layer 3: Social — Buyer Dominance + Atomic Resolution (the micro-lending
+circle effect)** — Layer 2 produces the mesh; Layer 3 enforces coordination
 across it. Only the buyer can trigger resolution, and resolution is atomic —
 all orders in the process settle together or not at all. So nobody is paid
 until the buyer resolves, and the remedy comes first: when one seller's work
@@ -257,19 +257,19 @@ technology, or joint-liability contracting. The peer *selection* and peer
 not need to manage the sellers. This replaces management hierarchies, quality
 control departments, and supervisory authority.
 
-**Layer 3: Arbitration** — A standing layer, not a transition aid. For the
-edge cases Layers 1 and 2 do not resolve, the parties can bring the dispute
-to an arbitration forum (e.g. Kleros) that consumes the Layer-1 evidence
+**Layer 4: Arbitration** — A standing layer, not a transition aid. For the
+edge cases Layers 2 and 3 do not resolve, the parties can bring the dispute
+to an arbitration forum (e.g. Kleros) that consumes the Layer-2 evidence
 record as input. This recourse exists with no clause named: nothing in the
 agreement has to designate a forum for the parties to seek one. The forum is
 for the parties to determine; the protocol supplies only the tamper-proof
 record it adjudicates over.
 
-**Layer 4: Traditional Legal Systems** — Equally standing: courts, too,
+**Layer 5: Traditional Legal Systems** — Equally standing: courts, too,
 consume the on-chain evidence from outside the protocol — jurisdiction and
 venue are for the parties to determine, and no clause has to name them
 either. The deterrence loop: because the evidence is already on-chain and
-unforgeable, bringing frivolous claims is self-defeating. Layers 3 and 4
+unforgeable, bringing frivolous claims is self-defeating. Layers 4 and 5
 together handle the remaining fraction of irrational actors who defect
 despite economic and social pressure.
 

@@ -28,6 +28,13 @@ Figaro-shaped one.
 before you wire the `file:` dependency; it is the one way to make the SDK
 unimportable by following its own install instructions.
 
+Installed from the **registry** (`npm install @figaro-protocol/sdk`)? It cannot
+reach you — npm never runs a registry dependency's `prepare`, so nothing re-runs
+the `rm -rf dist` below: measured, the published tarball's `dist/` arrives intact
+with no `tsc` anywhere on `PATH`, and if you ever delete it, a plain
+`npm install @figaro-protocol/sdk` re-extracts it. What follows is
+**repo-checkout-only**.
+
 `sdk/package.json` declares `"prepare": "npm run build"`, and npm runs a `file:`
 dependency's `prepare` on **every** consumer install. `build` is
 `rm -rf dist && tsc`. The `rm` always succeeds. So if `tsc` cannot be resolved
@@ -181,8 +188,12 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // through recordAssemblyUsage instead). Read the report, not the absence of an
 // exception, and read excludedClauseOrAssembly(key) off the deployment you are
 // calling rather than assuming any list:
-import { recordProcessUsage } from "@figaro-protocol/sdk/agent";
-const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter, [
+import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/sdk/agent";
+// The agreement is REBUILT, never stored: step 4's template + the same overrides and
+// specs re-instantiate it identically, and its merkle root IS the committed
+// `agreementHash` the counter opens each section's proof against.
+const agreement = instantiateRootAgreement(template, { buyer, seller: resolve.commitments[0].seller, overrides, specs });
+const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter!, [  // optional on the record type; present on every shipped record
   { commitment: resolve.commitments[0], agreement }, // the agreement each order signed
 ]);
 ```
@@ -248,6 +259,24 @@ one page per entry point — all six: the root package plus `/agent`, `/derive`,
 the whole reference from a checkout. This README stays the
 manual — recipes, traps, and the order to do things in; the reference is where
 you look a signature up.
+
+### Where each entry point can run
+
+Nothing here is browser-only, and only one thing is Node-only. The column that
+matters is the last one: what the entry point actually needs from its host.
+
+| Entry point | Browser | Node | What it needs from the host |
+|---|---|---|---|
+| root | yes | yes | `fetch` + `AbortSignal` (chain reads through `viem`, IPFS reads); no filesystem, no sockets. Bundles into a UI as-is. |
+| `/agent` | yes | yes | Same as root, plus an outbound HTTP request per coordination hop (`HttpChannel`, `A2aChannel`, `SequencerClient`, `did:web` resolution). In a browser those are cross-origin — the counterparty's endpoint must send CORS headers, which is why most agent loops run server-side. |
+| `/derive` | yes | yes | Nothing. Pure functions over values you already hold — no chain client, no network. |
+| `/clauses` | yes | yes | Nothing but `viem`'s encoders. Parse, validate and encode clause content with no chain and no network at all. |
+| `/handoff` | yes | yes | The WebCrypto global (`crypto.subtle`) for AES-GCM: present in Node, and in a browser only in a **secure context** (https, or localhost) — over plain http the wrap/unwrap calls throw. |
+| `/signer` | **no** | yes | `node:net`, `node:fs`, `node:crypto`, `node:path` — a UNIX socket and a keystore file. It is a **daemon plus a client**: run the daemon with the `figaro-signer` bin, then `socketSignerAccount` connects to its socket from your Node process. Never bundle this into a browser build. |
+
+Verified by importing each built entry point under bare Node (`sdk/dist/*`),
+and by the module graph: `/signer` is the only one that reaches a `node:`
+builtin, and `/handoff` the only one that reaches `crypto.subtle`.
 
 ### Synopsis — which entry point is each export from?
 
@@ -324,6 +353,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `haversineDistance` | `/derive` | Great-circle distance between two lat/lng points, in kilometres. |
 | `HttpChannel` | `/agent` | Coordination channel over plain HTTP; `204` is the seller declining, not an error. |
 | `InProcessChannel` | `/agent` | In-process channel — both parties run real sign/validate logic; only the wire is elided. |
+| `instantiateRootAgreement` | `/agent` | Instantiate a template's ROOT order into the signable agreement; same inputs rebuild it identically. |
 | `makeA2aOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic A2A responder. |
 | `makeSellerOfferHandler` | `/agent` | SELLER LOOP: validate, apply both refusal floors, approve the bond, counter-sign. |
 | `makeSellerQuoteHandler` | `/agent` | Mountable seller responder for the RFQ quote leg. |
@@ -378,6 +408,8 @@ definition) and `RPGF_*` constant is a **root** export.
 
 ### `@figaro-protocol/sdk` — Protocol Primitives
 
+*Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
+
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the distribution mirror —
 `computeRpgfAllocations` (`src/rpgf/formula.json`): a deterministic integer
@@ -416,6 +448,18 @@ import {
 // A PUBLISHED DEPLOYMENT RECORD uses different key names (`figaroCore`,
 // `tokenAddress`, …) — do not spread it verbatim; map it once:
 const addresses = addressesFromDeploymentRecord(deploymentRecord);
+// The mapping reads the keys it knows and IGNORES every other one, silently
+// and by design: a record carrying extras the SDK has never heard of (a local
+// development record's own keys, a future deployment's additions) maps cleanly.
+// Only a missing `figaroCore` throws. Keys that carry no SDK field at all —
+// `florinToken`, `swapQuoter`, `chainId`, `deploymentBlock` — you read off the
+// record yourself; `deploymentBlock` is the `fromBlock` every scan below wants.
+// WHICH TOKEN CAN YOU SPEND? On a devnet record the settlement balances sit in the
+// MOCK tokens — `tokenAddress` (MOCK) and `permitTokenAddress` (MPMT), 100,000 of
+// each pre-funded to the standard Anvil test keys. `florinToken` is not a settlement
+// currency on such a record: its deployer mint is renounced and those wallets hold
+// zero, so an order denominated in it reverts `ERC20InsufficientBalance` the moment
+// the kernel pulls a bond. Read balances off the record's tokens, never assume one.
 
 // Fetch all FigaroCore events from a block range. The return is a GROUPED
 // object — { orderCommitted, orderResolved, processResolved }, each a typed
@@ -708,6 +752,8 @@ salt, deadline` — everything except the two signatures).
 
 ### `@figaro-protocol/sdk/agent` — Agent Coordination
 
+*Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
+
 Context sync, network discovery, action proposer, human-in-the-loop queue,
 autonomous execution, did:web identity, and the coordination transports that
 carry an offer between two agents — `InProcessChannel`, `HttpChannel`, and
@@ -994,7 +1040,50 @@ const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) :
 const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
 ```
 
+#### The sequencer wire: seven endpoints
+
+What `SequencerClient` speaks, so you can read a relay's answer (or a curl of
+it) without guessing. Seven routes, in two halves — submission and publication.
+Amounts on this wire are **hex quantities** (`"0x7d0"`, never `"2000"`) and
+fields are `snake_case`; the conversion helpers above are the only thing that
+should build them.
+
+| Route | Request | `200` body | Client method |
+|---|---|---|---|
+| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** settlement | `submitCommit` · `submitResolve` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
+| `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
+| `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
+| `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `archive: { first_batch, last_batch, retained_batches, max_batches }` | `status()` |
+| `GET /orders/{orderHash}` | 32-byte hex in the path | `{ order_hash, process_id, commit, resolution }` — either leg `null` | `order()` → `null` on `404` |
+| `GET /processes/{processId}` | 32-byte hex in the path | `{ process_id, orders[], resolution }` | `process()` → `null` on `404` |
+| `GET /batches?from=&limit=` | `from` defaults to the oldest retained batch; `limit` defaults to 10, **clamped to 50** | `{ batches[], next_cursor, retained }` | `batches()` — follow `next_cursor` |
+
+`/submit` is idempotent on **on-chain identity** (order hash / process id /
+attestation identity): a retry, even a re-signed one, returns the original `id`
+and enqueues nothing. `/submit-usage` is idempotent on claim **bytes** only —
+weaker, so do not lean on it for identity dedup.
+
+Every failure is `{ "error": "<reason>" }` with one of these codes, and the
+client raises it as a `SequencerError` carrying `.statusCode`:
+
+| Code | When | Note |
+|---|---|---|
+| `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a usage claim with a zero clause-or-assembly or no agreement hash), malformed JSON, an unparsable hash in a read path, a non-numeric `/batches` parameter | the relay's reason string is carried verbatim into the error message |
+| `413` | body over the 1 MiB cap | a full attestation witness is tens of KB — this is abuse headroom, not a normal limit |
+| `415` | wrong content type | send `application/json` |
+| `422` | valid JSON that is not the operation or claim shape | wrong shape, unknown variant, missing field |
+| `404` | `/orders` and `/processes` only | **absence in THIS relay**, never "the trade did not happen"; the client returns `null` rather than throwing |
+| `503` | mempool at capacity | capacity, never rejection — retry after the next batch settles |
+
+`/batches` never answers `404`: an empty relay returns an empty page.
+
+Full wire shapes (every field of every publication response), the environment
+table, and the run-your-own recipe are in
+[`prover/sequencer/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md).
+
 ### `@figaro-protocol/sdk/derive` — Clause-Agnostic Derivations
+
+*Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
 
 Clause-agnostic attestation filtering, geo math, and the commits==resolves
 withdraw gate.
@@ -1049,6 +1138,8 @@ const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
 ```
 
 ### `@figaro-protocol/sdk/clauses` — Clause-Spec Format + Content Encoding
+
+*Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
 
 The single off-chain source of truth for clause-content well-formedness and
 canonical ABI encoding. It is **fully generic**: it parses a clause's spec JSON
@@ -1180,6 +1271,8 @@ If your recomputation matches the anchor, your pipeline is right.
 
 ### `@figaro-protocol/sdk/handoff` — Runtime Handoff Wire Protocol
 
+*Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
+
 The wire vocabulary two wallets speak when a pending commitment (or a sealed
 handoff key) travels between them at runtime. The SDK owns only the message
 shapes, the `HandoffChannel` transport seam, and the key agreement — the
@@ -1243,6 +1336,8 @@ SDK does not constrain it. Full signatures: `dist/handoff/messages.d.ts` +
 `dist/handoff/ecdh.d.ts`.
 
 ### `@figaro-protocol/sdk/signer` — The Policy Signer
+
+*Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
 
 The protocol-shaped half of the sandboxed signer runtime
 (`docs/AI_AGENT_COORDINATION.md` § "The sandboxed signer runtime"): a daemon
@@ -1676,7 +1771,9 @@ registration at all.
     verb, binding stays the seller's. Buyer-posture `disclosurePolicy` entries
     derive their candidate classes from this list.
 - **Catalogue** (`MemberCatalogueMetadata`) — the volatile item list pinned at
-  `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version`.
+  `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version` — and
+  `version` is a **string** (`"1"`, never `1`): `parseMemberCatalogueDocument`
+  throws `…version must be a string.` on a number rather than coercing it.
   Each item requires `id`, `name`, `price`, `available`; optional are
   `description`, `category`, `image`, `recordClass` (marks a DATA-PRODUCT
   item: `{ compositionHash, clauseId, posture }` referencing one of the

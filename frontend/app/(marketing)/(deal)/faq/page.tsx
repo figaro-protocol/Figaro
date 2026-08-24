@@ -9,15 +9,18 @@ import { LabelledListRow } from "@/components/shared/LabelledListRow";
 export const metadata: Metadata = withOg({
     title: "FAQ — Figaro Protocol",
     description:
-        "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, non-delivery, disputes, lost keys, privacy, ownership — with the residual risk stated beside each answer.",
+        "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, why this is not escrow, non-delivery, disputes, lost keys, privacy, ownership — with the residual risk stated beside each answer.",
 });
 
-/** The page's fifteen questions, in document order, split into two labeled
- *  groups by what each question is actually about — not by position. Titles
- *  are copied verbatim from each `MarketingSection` below; keep the three in
- *  lockstep if a heading changes. */
+/** The page's sixteen questions, split into two labeled groups by what each
+ *  question is actually about. The DOM sections below run in exactly this
+ *  order — index and document order are one sequence, never two (they drifted
+ *  apart once: `keys` rendered fifth while indexed under "Deeper", `ownership`
+ *  the mirror image). Titles are copied verbatim from each `MarketingSection`;
+ *  keep the three in lockstep if a heading changes. */
 const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
     { id: "custody", title: "Who holds the tokens?" },
+    { id: "escrow", title: "Is this escrow?" },
     { id: "counterparty", title: "What if the counterparty doesn't deliver?" },
     { id: "disputes", title: "What if you genuinely disagree?" },
     { id: "layers", title: "What stands behind a deal?" },
@@ -34,7 +37,7 @@ const DEEPER_QUESTIONS: { id: string; title: string }[] = [
     { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
     { id: "builders-registries", title: "Can someone hijack your registration or clause?" },
     { id: "demonstrating", title: "What can you show a regulator or an auditor?" },
-    { id: "compatibility", title: "What else you should know." },
+    { id: "compatibility", title: "Gas, tokens, and tax." },
 ];
 
 export default function Faq() {
@@ -93,9 +96,21 @@ export default function Faq() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Is this escrow?" sectionId="escrow">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    No, and the difference is who decides. An escrow agent is a third party that holds the value and then rules on whether the condition was met &mdash; you are trusting its judgment, its solvency, and its willingness to answer the phone. Nothing occupies that seat here. FigaroCore holds the payment and both stakes by fixed rule and has no opinion about the deal: it cannot inspect the work, cannot take a side, and cannot release anything except along the paths the two parties signed for. Each side&apos;s stake is its own deterrent, not a pot the other side can win &mdash; twice the payment for the buyer, twice the value at their link for each seller, and all of it comes home at settlement.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    What follows from that is worth reading before you commit rather than after. There is no refund button and no payment-network reversal path, by design: either one would be a third party able to undo a settled commitment, which is precisely the seat this design leaves empty. The lever is the close itself. Nobody is paid until the buyer resolves, so a shortfall is put right <em>before</em> resolution &mdash; while every party still has its own stake riding on the outcome, which is what makes putting it right the seller&apos;s cheapest move, and the co-sellers&apos; too (<Link href="#layers" className="text-ink-heading font-medium hover:underline">the five layers</Link> behind that). Resolution is terminal acceptance: once the buyer signs it, the process is settled and nothing inside the protocol reopens it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The residual is what this asks of the buyer that an escrow agent asks of nobody. You have to look at the work and decide, and do it while your own stake is locked. Resolve without checking and you have accepted what arrived. Never resolve at all and every stake stays locked, your own included &mdash; the property that stops anyone reaching into a deal from outside is the same property that offers no way out of one.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="What if the counterparty doesn't deliver?" sectionId="counterparty">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Each party has more locked than they could gain by walking away &mdash; the mechanism, worked through with the numbers, is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>. What matters for this question: whatever the other side does, honoring the deal leaves them better off than cheating, and a shortfall is put right <em>before</em> settlement &mdash; there is no refund path; the buyer&apos;s lever is to withhold the close until the work is set right.
+                    Each party has more locked than they could gain by walking away &mdash; the mechanism, worked through with the numbers, is on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>. What matters for this question: whatever the other side does, honoring the deal leaves them better off than cheating, and a shortfall is put right <em>before</em> settlement &mdash; there is no refund path; the buyer&apos;s lever is to withhold the close until the work is set right. You can also look before you commit: a seller&apos;s settled processes and the stake it currently holds live are both readable from the chain by anyone, so what you are reading is a declaration you check for yourself &mdash; never a score this protocol issues, ranks, or could take away.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The equilibrium is about losses, not zero-loss. A counterparty willing to burn their bond can still grief you. The defense is the magnitude: they will lose twice what you lose, every time. For the formal derivation see the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>.
@@ -128,15 +143,6 @@ export default function Faq() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     A court judgment does not need to reach into the lockbox to work. It is enforced the way any money judgment is &mdash; against the losing party&apos;s <em>other</em> assets, through the court&apos;s own powers of seizure, garnishment, or contempt &mdash; while the lockbox stays sealed the whole time. What the on-chain record buys is speed: a timestamped, tamper-proof account of exactly what was agreed and what was or was not delivered is the kind of evidence that gets a judgment quickly, rather than a slow trial over whose word to believe.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="What if you lose your keys?" sectionId="keys">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Key loss is a wallet concern, not a protocol concern &mdash; with one sharp qualifier. The kernel verifies every commitment signature by ECDSA recovery, so a buyer or seller is always an externally-owned account: a Safe or other contract wallet cannot hold the role directly. The durable posture is decided before you commit: keep the key in hardware-grade custody, and set up a recovery path on the account in advance. On Ethereum today that path is a feature called EIP-7702 &mdash; it lets you authorise, ahead of time, a backup way to act for your account, so that if the key is lost you can still close out your active deals from the same address. Figaro inherits whatever your account provides; it adds no recovery surface and removes none.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    The kernel has no recovery path of any kind. New commitments always require a fresh signature from the party&apos;s key &mdash; lose the key and no one can produce one, not Figaro, not a court order, not a software update. Resolution differs in exactly one way: it is authorized by the buyer&apos;s <em>address</em>, not a fresh signature. A buyer who pre-installed an EIP-7702 delegation before losing the key can still trigger resolution from that address and settle every active process; a buyer who didn&apos;t leaves the bonds locked, permanently. This is the explicit accepted risk of the no-escape-hatch posture: the same property that prevents anyone from stealing funds also prevents anyone from recovering them. Plan key custody before you commit tokens to an active process.
                 </p>
             </MarketingSection>
 
@@ -197,6 +203,27 @@ export default function Faq() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Who owns Figaro?" sectionId="ownership">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    No one owns the protocol, though a few things around it are held. The code is released under the MIT license &mdash; anyone can copy all of it, run it, and change it, including running a different rewards program or none at all. Nothing about the protocol depends on this site continuing to exist.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    This site&apos;s app is one interface, not the protocol. The seam between the protocol and its presentation is deliberate: the registries live on-chain, and any developer can build their own interface against the same ones. Because there is no fee anywhere in the kernel, an interface captures no value from the deals that flow through it &mdash; the value lives in the use of the shared registries, not in any single window onto them. And because participants hold their own data, the usual platform business model &mdash; monetizing the people who use it &mdash; is structurally unavailable here; there is no user data to sell.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins. What a florin is worth is a market question, settled by whoever trades one; this project makes no claim about it. Neither holding is a lever over anyone&apos;s deal: no holding controls settlement, and nothing about either can reach into a lockbox.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="What if you lose your keys?" sectionId="keys">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Key loss is a wallet concern, not a protocol concern &mdash; with one sharp qualifier. The kernel verifies every commitment signature by ECDSA recovery, so a buyer or seller is always an externally-owned account: a Safe or other contract wallet cannot hold the role directly. The durable posture is decided before you commit: keep the key in hardware-grade custody, and set up a recovery path on the account in advance. On Ethereum today that path is a feature called EIP-7702 &mdash; it lets you authorise, ahead of time, a backup way to act for your account, so that if the key is lost you can still close out your active deals from the same address. Figaro inherits whatever your account provides; it adds no recovery surface and removes none.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The kernel has no recovery path of any kind. New commitments always require a fresh signature from the party&apos;s key &mdash; lose the key and no one can produce one, not Figaro, not a court order, not a software update. Resolution differs in exactly one way: it is authorized by the buyer&apos;s <em>address</em>, not a fresh signature. A buyer who pre-installed an EIP-7702 delegation before losing the key can still trigger resolution from that address and settle every active process; a buyer who didn&apos;t leaves the bonds locked, permanently. This is the explicit accepted risk of the no-escape-hatch posture: the same property that prevents anyone from stealing funds also prevents anyone from recovering them. Plan key custody before you commit tokens to an active process.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Can software run a wallet here?" sectionId="agents">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Yes, and nothing about the mechanism changes because of it. FigaroCore checks a valid ECDSA signature from an externally-owned account, and the check has no field for what produced it. Every wallet on the network stands for some real-world asset &mdash; a kitchen, a delivery van, a courier&apos;s labor &mdash; and whoever controls that wallet&apos;s signing key on the asset&apos;s behalf is its <em>operator</em>, a person or an autonomous program alike. Which word applies turns on whose value-add the wallet carries, not on what holds the key: a program selling its own service is a <em>seller</em> in its own right, exactly as a person selling their own labor is. The full three-layer picture &mdash; asset, wallet, operator &mdash; is on <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
@@ -240,18 +267,6 @@ export default function Faq() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The exposure that remains is the underlying chain. If Ethereum itself halts, settlement halts &mdash; that risk is external to Figaro and shared with every other Ethereum protocol. Inside Figaro, no party can halt the kernel; the property is called <em>no escape hatches</em>, and the protocol&apos;s security argument depends on it. Removing it would mean a different protocol with different guarantees.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Who owns Figaro?" sectionId="ownership">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one owns the protocol, though a few things around it are held. The code is released under the MIT license &mdash; anyone can copy all of it, run it, and change it, including running a different rewards program or none at all. Nothing about the protocol depends on this site continuing to exist.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    This site&apos;s app is one interface, not the protocol. The seam between the protocol and its presentation is deliberate: the registries live on-chain, and any developer can build their own interface against the same ones. Because there is no fee anywhere in the kernel, an interface captures no value from the deals that flow through it &mdash; the value lives in the use of the shared registries, not in any single window onto them. And because participants hold their own data, the usual platform business model &mdash; monetizing the people who use it &mdash; is structurally unavailable here; there is no user data to sell.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins. What a florin is worth is a market question, settled by whoever trades one; this project makes no claim about it. Neither holding is a lever over anyone&apos;s deal: no holding controls settlement, and nothing about either can reach into a lockbox.
                 </p>
             </MarketingSection>
 
@@ -299,9 +314,9 @@ export default function Faq() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="What else you should know." sectionId="compatibility">
+            <MarketingSection title="Gas, tokens, and tax." sectionId="compatibility">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Four operational facts that aren&apos;t vulnerabilities but are worth knowing before you commit to the protocol.
+                    Five operational facts that aren&apos;t vulnerabilities but are worth knowing before you commit to the protocol. What you need in hand before a first deal is short: a wallet, some ETH for the gas each step costs, and enough of the token the deal settles in to cover your own side of it &mdash; payment plus stake as a buyer, twice the value at your link as a seller &mdash; and if what you hold is a different token, a swap composes as the on-ramp, in the same transaction as the commit.
                 </p>
                 <ul className="space-y-6">
                     <LabelledListRow label="Tax and law" labelWidth="wide" uppercase>
@@ -315,6 +330,9 @@ export default function Faq() {
                     </LabelledListRow>
                     <LabelledListRow label="One currency" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">Single settlement currency per process.</strong> A process cannot mix ERC-20s &mdash; the 2:1 bond ratio is a same-unit comparison, and an oracle or DEX dependency would reintroduce a trusted actor. Multi-token behavior composes as parallel processes in different currencies, never within one.
+                    </LabelledListRow>
+                    <LabelledListRow label="Token volatility" labelWidth="wide" uppercase>
+                        <strong className="text-ink-heading font-medium">The parties pick the settlement token, and its behaviour comes with it.</strong> A volatile ERC-20 moves the payment and both stakes together &mdash; the 2:1 ratio between them is fixed by the kernel, but what any of them is worth measured in anything else is not, and a deal that stays open for days carries that movement for its whole duration. A stablecoin narrows the exposure to whatever that stablecoin&apos;s own peg is worth. Nothing in the protocol quotes, hedges, or converts; nothing on this site is financial advice.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>

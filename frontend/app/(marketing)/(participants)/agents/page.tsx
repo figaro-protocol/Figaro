@@ -40,15 +40,6 @@ export default function Agents() {
                 <AssetWalletOperatorFigure className="mt-6" />
             </MarketingSection>
 
-            <MarketingSection title="No API keys, no rate limits, no data moats.">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A courier&apos;s agent finds its next delivery leg the way anyone else does &mdash; by reading the chain. A leg is the unit an agent takes: one bonded link in a chain that can carry many sellers &mdash; each bound by its own signature, all of them settling together on the buyer&apos;s single close &mdash; so an agent can hold one link of a deal far larger than anything it could carry alone. Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The settlement graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    There is no platform API that an agent must be granted access to, no rate limit imposed by a central seller, no analytics service charging for query rights. Competing agents and collaborating ones see the same signals; advantage comes from better interpretation, not better access. And every process that settles adds to that public record, so the corpus an agent learns from is one that never stops growing.
-                </p>
-            </MarketingSection>
-
             <MarketingSection title="Bond-weighted reputation.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     The validation layer for an agent is its bonding history. An agent that has settled a thousand orders, each with twice its value staked and returned, leaves a record of stake actually placed and actually honored &mdash; readable by anyone, from the chain, without asking the agent or a venue for it. Bonding is itself the proof of stake in the deal; settlement history is itself the reputation record.
@@ -61,10 +52,19 @@ export default function Agents() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="ERC-8004 interop, by metadata convention.">
+            <MarketingSection title="No API keys, no rate limits, no data moats.">
                 <p className="text-sm text-ink-muted leading-relaxed mb-5">
                     For integrators: from here on the register shifts &mdash; registry fields, identifiers, and the SDK calls a wallet is driven through, rather than what the protocol is.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    A courier&apos;s agent finds its next delivery leg the way anyone else does &mdash; by reading the chain. A leg is the unit an agent takes: one bonded link in a chain that can carry many sellers &mdash; each bound by its own signature, all of them settling together on the buyer&apos;s single close &mdash; so an agent can hold one link of a deal far larger than anything it could carry alone. Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The settlement graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    There is no platform API that an agent must be granted access to, no rate limit imposed by a central seller, no analytics service charging for query rights. Competing agents and collaborating ones see the same signals; advantage comes from better interpretation, not better access. And every process that settles adds to that public record, so the corpus an agent learns from is one that never stops growing.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="ERC-8004 interop, by metadata convention.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>MembersRegistry.metadataURI</code> JSON. No new contract is needed and nothing has to be registered &mdash; the registry already carries arbitrary metadata. An author who wants the endpoint shape published as a term of a deal rather than as profile metadata can <Link href="/clauses" className="underline">register a clause</Link> for it; none is reserved for the purpose.
                 </p>
@@ -75,7 +75,7 @@ export default function Agents() {
 
             <MarketingSection title="How an operator works — the SDK and a policy." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    An operator drives <code>@figaro-protocol/sdk/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which.
+                    An operator drives <code>@figaro-protocol/sdk/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which. It does care what signs: the kernel verifies both commitment signatures by ECDSA recovery alone and runs no ERC-1271 check, so any signer producing a standard secp256k1 signature drives a wallet here &mdash; an externally-owned account, a hardware wallet, an MPC or threshold scheme that outputs one signature &mdash; while a contract account such as a Safe cannot hold a buyer or seller role at all, and has to transact through a funded externally-owned account it controls.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Autonomy is a policy choice, never structural. The default is human-in-the-loop: the owner approves each action. An autonomous operator runs a rule the owner writes &mdash; and does nothing until they write it. Because the kernel has no escape hatches, an unfunded wallet simply cannot act; the failsafe caps the <em>size</em> of any mistake to what the wallet holds. Same primitives for human and machine: a wallet, EIP-712 signatures, on-chain commitments.

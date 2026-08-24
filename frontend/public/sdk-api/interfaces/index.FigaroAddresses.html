@@ -72,7 +72,7 @@
 <div class="tsd-comment tsd-typography"><p>DAO treasury multisig — holds the 300M-florin DAO genesis allocation.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L257">sdk/src/types.ts:257</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L262">sdk/src/types.ts:262</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="membersregistry"><code class="tsd-tag">Optional</code><span>members<wbr/>Registry</span><a href="#membersregistry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">membersRegistry</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
@@ -84,7 +84,7 @@
 <div class="tsd-comment tsd-typography"><p>Disperse (or devnet mock) — composed post-settlement batch dispersal.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L255">sdk/src/types.ts:255</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L260">sdk/src/types.ts:260</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="permit2"><code class="tsd-tag">Optional</code><span>permit2</span><a href="#permit2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">permit2</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
@@ -102,10 +102,15 @@
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="swaprouter"><code class="tsd-tag">Optional</code><span>swap<wbr/>Router</span><a href="#swaprouter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">swapRouter</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
-<div class="tsd-comment tsd-typography"><p>Uniswap Universal Router (or devnet mock) — the swap venue the coordinator routes through.</p>
+<div class="tsd-comment tsd-typography"><p>Uniswap SwapRouter02 (or devnet mock) — the swap venue the coordinator routes
+through. SwapRouter02, NOT the Universal Router: the coordinator approves the
+router for your input token and forwards your signed <code>swapData</code> verbatim, so the
+venue must PULL by ERC-20 allowance (<code>exactOutputSingle</code> does; the Universal
+Router pulls through Permit2 or spends pre-sent balances). Encode against the
+<code>SWAP_ROUTER_02_ABI</code> export.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L251">sdk/src/types.ts:251</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L256">sdk/src/types.ts:256</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="token"><code class="tsd-tag">Optional</code><span>token</span><a href="#token" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">token</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
@@ -124,7 +129,7 @@
 <div class="tsd-comment tsd-typography"><p>WitnessSwapAndCommitCoordinator — off-protocol multi-token bond funding via Permit2 witness + swap + commit.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L253">sdk/src/types.ts:253</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/types.ts#L258">sdk/src/types.ts:258</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

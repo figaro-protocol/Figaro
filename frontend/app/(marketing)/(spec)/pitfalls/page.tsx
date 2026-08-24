@@ -35,7 +35,7 @@ export default function Pitfalls() {
             <MarketingSection title="Spec-authoring — before you register.">
                 <ul className="space-y-6">
                     <LabelledListRow label="Reserved article names" labelWidth="wide" uppercase>
-                        <strong className="text-ink-heading font-medium">Two <code>block.design.article</code> values are reserved, and picking one by accident is silent.</strong> <code>&quot;mandatory&quot;</code> auto-folds a clause into every template agreement; <code>&quot;attestations&quot;</code> commits its content empty at signing &mdash; nothing warns you, and registration is permanent and first-write-wins, so check your <code>article</code> value before you register, not after.
+                        <strong className="text-ink-heading font-medium">Two <code>block.design.article</code> values are reserved &mdash; <code>&quot;mandatory&quot;</code> and <code>&quot;attestations&quot;</code> &mdash; and picking one by accident is silent.</strong> Each changes what your clause does at composition time; nothing warns you, nothing throws, and registration is permanent and first-write-wins. What each one does, and why the reserved words are the natural ones to reach for, is on Clauses &mdash; read it before you register, not after.
                         <div className="mt-2 text-sm">
                             <Link href="/clauses#what-the-hash-covers" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Clauses, &ldquo;What the hash covers&rdquo;</Link>
                         </div>
@@ -62,13 +62,13 @@ export default function Pitfalls() {
                     <LabelledListRow label="Fee-on-transfer tokens" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">FigaroCore refuses the commit.</strong> A fee-on-transfer ERC-20 breaks the bond arithmetic, which depends on the kernel receiving exactly what was committed &mdash; pay in a non-rebasing, non-fee-on-transfer token.
                         <div className="mt-2 text-sm">
-                            <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;What else you should know&rdquo;</Link>
+                            <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;Gas, tokens, and tax&rdquo;</Link>
                         </div>
                     </LabelledListRow>
                     <LabelledListRow label="One currency per process" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">A process cannot mix ERC-20s.</strong> The 2:1 bond ratio is a same-unit comparison, so the kernel refuses any oracle or DEX dependency that would compare across tokens &mdash; mix currencies by composing parallel processes, never within one.
                         <div className="mt-2 text-sm">
-                            <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;What else you should know&rdquo;</Link>
+                            <Link href="/faq#compatibility" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; FAQ, &ldquo;Gas, tokens, and tax&rdquo;</Link>
                         </div>
                     </LabelledListRow>
                 </ul>

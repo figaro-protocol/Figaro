@@ -206,8 +206,9 @@ buyer and/or seller post their FigaroCore bond in a token other than the process
 bond currency. One external function, `swapAndCommit(c, buyerSig, sellerSig,
 buyerFunding, sellerFunding)`: for each enabled leg it pulls the party's input
 token via a Permit2 **witness** signature (`permitWitnessTransferFrom`), forwards
-the swap calldata to an immutable `router` (the Uniswap Universal Router in
-production), forwards the swapped bond currency to the party's EOA, then calls
+the swap calldata to an immutable `router` (Uniswap **SwapRouter02** in
+production — never the Universal Router; see the venue note below), forwards the
+swapped bond currency to the party's EOA, then calls
 `FigaroCore.commit`. Because the kernel pulls each bond from the named party
 (`c.buyer`/`c.seller`) and never checks `msg.sender`, the coordinator funds the
 party in-place rather than substituting itself — the EIP-712 commitment stays

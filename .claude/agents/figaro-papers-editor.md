@@ -61,8 +61,13 @@ agrees at all three sites.
 
 Nothing is deferred: the witness-based prover/verifier is built, and the RPGF
 distribution is wired (`UsageCounter` + `RpgfMinter`, registered at florin
-genesis). What remains two-tense is DEPLOYMENT — no public network deployment
-exists yet, so no paper may claim a live mainnet or testnet. Owner:
+genesis). DEPLOYMENT (updated 2026-08-24): a public deployment is LIVE and
+settling (the publication-estate memory owns the record; batches settled
+2026-08-20) — but every settled process so far is the authoring project's own
+exercise, so no paper may claim observed play by independent participants.
+Papers state deployment facts in launch-invariant form ("processes settled on
+a public record"); whether a paper may NAME the network or cite addresses is
+UNRULED — ask the maintainer before doing either. Owner:
 `docs/CONTRACTS.md` § "Teardown state — CLOSED" — read it before writing any
 sentence about on-chain validation, proofs, or RPGF distribution.
 

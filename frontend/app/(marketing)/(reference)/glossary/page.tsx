@@ -136,6 +136,9 @@ const TERMS: Term[] = [
                         </tbody>
                     </table>
                 </div>
+                <p className="mt-3">
+                    One thing, two names: what Clauses calls <em>the clause id</em> and what Specifications and the SDK call <code>idHash</code> are the same 32 bytes &mdash; <code>keccak256(abi.encode(clauseId, version))</code>, the key the registry files an entry under and the value the attest calls take. The readable name (<code>figaro-commerce</code>) is what you author; the hash is what the chain holds.
+                </p>
             </>
         ),
         readMore: <Link href="/clauses#what-the-hash-covers" className="hover:underline">Clauses</Link>,

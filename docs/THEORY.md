@@ -291,7 +291,7 @@ its failure left in its hands. The buyer, whole, resolves. At resolution the
 seller takes back its bond and the payment, having already paid that payment
 away — it ends at zero, its failure earning it exactly nothing, and zero is
 better than `−G` by the whole value at its link. Where the remedy is refused, an
-outside forum may rule on the open record (Layers 3–4) — still before any
+outside forum may rule on the open record (Layers 4–5) — still before any
 resolution, and with no power to resolve in the buyer's place. Where a party
 neither performs nor remedies nor answers a ruling, the position simply stands:
 both bonds locked, the seller at best at `−G`, the record marking an undertaking
@@ -392,7 +392,7 @@ taking cost — differently on the two sides, which is why they are stated apart
   locked `2G`: at best `−G`, against the `+P` it declined. Retention can halve
   the seller's stake; it can never cancel it. That surviving exposure is what
   gives the buyer's withholding its force and makes the co-seller interest of
-  Layer 2 a real one.
+  Layer 3 a real one.
 - **Buyer side.** Withholding after delivery leaves the buyer credited `P`
   against a locked `2P`: `−P`, against the `0` that closing would give it. Here
   the second half supplies the *whole* of the comparison — a bond equal to the
@@ -430,7 +430,7 @@ The kernel does not run a lifecycle state machine. Each order is a single
 The kernel exposes exactly two external functions:
 
 - **`commit(Commitment c, bytes buyerSig, bytes sellerSig)`** — Bonds one order. A root order (`c.processId == 0`) creates a new process; a sub-order (`c.processId` set) extends an existing one. Both signatures are verified against the EIP-712 digest of `c`, then the buyer is charged `2 × payment` and the seller `2 × expectedCumulativeValue`. A sub-order additionally requires `c.buyer == process.rootBuyer` and that `expectedCumulativeValue` equals the live accumulator plus `payment` — so it cannot be added without the root buyer's signature, and cannot misreport cumulative value.
-- **`resolveProcess(bytes32 processId, Commitment[] commitments)`** — Buyer atomically resolves ALL active orders in the process. The caller must be the process's `rootBuyer`, and the commitment array must list every active order or the call reverts (`IncompleteOrderList`). This all-or-nothing semantics is what creates the seller coordination pressure described in Layer 2: sellers cannot be paid individually, so they must collectively satisfy the buyer.
+- **`resolveProcess(bytes32 processId, Commitment[] commitments)`** — Buyer atomically resolves ALL active orders in the process. The caller must be the process's `rootBuyer`, and the commitment array must list every active order or the call reverts (`IncompleteOrderList`). This all-or-nothing semantics is what creates the seller coordination pressure described in Layer 3: sellers cannot be paid individually, so they must collectively satisfy the buyer.
 
 There is no `firstOrder`, `subOrder`, `acceptOffer`, or `cancelOffer` — those belonged to an earlier two-step offer/accept design. The unified `commit` replaced them: the agreement is negotiated and dual-signed off-chain, then one transaction bonds it. Full function signatures and access control are in the contract source (`src/kernel/FigaroCore.sol`).
 
@@ -567,15 +567,15 @@ and the gap `Δᵢ = Pᵢ + Gᵢ`, not either ratio.
 
 Figaro's coordination mechanism operates across five layers. Understanding each layer explains why the protocol works without timeouts, protocol-run arbitrators, or governance backstops — not as a temporary simplification, but as a permanent design property.
 
-The stack, bottom to top, and it is five: **Layer 0** — blockchain security, the named foundation; **Layer 1** — the bonding equilibrium at two parties and at N, with the evidence/audit/event record co-resident (produced always, by ordinary operation); **Layer 2** — the co-seller coordination game, told remedy-first; **Layer 3** — arbitration (e.g. Kleros); **Layer 4** — traditional legal systems. Layers 3 and 4 are standing layers that consume the Layer-1 record from outside the protocol — recourse there exists with no clause named. Scaling from two parties to N is not a layer: it is Layer 1's own schedule applied at every link, and it is treated inside Layer 1 for that reason.
+The stack, bottom to top, and it is five: **Layer 1** — blockchain security, the named foundation; **Layer 2** — the bonding equilibrium at two parties and at N, with the evidence/audit/event record co-resident (produced always, by ordinary operation); **Layer 3** — the co-seller coordination game, told remedy-first; **Layer 4** — arbitration (e.g. Kleros); **Layer 5** — traditional legal systems. Layers 4 and 5 are standing layers that consume the Layer-2 record from outside the protocol — recourse there exists with no clause named. Scaling from two parties to N is not a layer: it is Layer 2's own schedule applied at every link, and it is treated inside Layer 2 for that reason.
 
-### Layer 0: Blockchain Security (The Named Foundation)
+### Layer 1: Blockchain Security (The Named Foundation)
 
 **Mechanism**: The host chain's consensus — signature verification, transaction ordering, immutability of committed state.
 
 This layer is not Figaro's to build, but it is load-bearing and therefore named: the bonds are only as locked, and the event record only as immutable, as the chain that holds them. Every guarantee in the layers above inherits from it.
 
-### Layer 1: The Bonding Equilibrium (Evidence Record Co-Resident)
+### Layer 2: The Bonding Equilibrium (Evidence Record Co-Resident)
 
 This layer is asymmetric bonding — Mechanism 1 — and it does two jobs that are
 easily mistaken for two layers. It secures the bilateral edge, and it carries
@@ -621,14 +621,14 @@ value of what the party holds:
 The bilateral case is the well-studied one. What follows is the same layer at
 N parties.
 
-#### Layer 1 at N parties: scaling is the bond schedule's own work
+#### Layer 2 at N parties: scaling is the bond schedule's own work
 
 **Scaling to N parties is Mechanism 1's work** — each seller bonding the
 cumulative value at its own link — **and buyer dominance then coordinates the
 already-scaled mesh.** The distinction is worth holding: this is not a bridge
 between two layers, and the credit for reaching N parties belongs to the bond
 schedule, not to the resolution rule. Atomic resolution's contribution is a
-different one, taken up at Layer 2 — it closes the mesh from one signature and
+different one, taken up at Layer 3 — it closes the mesh from one signature and
 induces the weakest-link subgame among sellers, neither of which is a scaling
 result.
 
@@ -706,7 +706,7 @@ performing costs it bond and product together, `−2Gᵢ`, against `−2Gᵢ + r
 for keeping what it holds. No bond schedule can make handing goods to a party
 that will not pay attractive. What recommends the cooperative profile to each
 seller is that it is strictly better **provided the others perform** — the
-weakest-link structure Layer 2 takes up — and what makes that proviso credible is
+weakest-link structure Layer 3 takes up — and what makes that proviso credible is
 that a failed profile is never banked: no clock runs from the bonded state, so
 the process does not fail, it stays open until it closes, and every party in it,
 the holdout included, strictly prefers the closing to the position it holds.
@@ -731,13 +731,13 @@ payment, and every comparison of the previous subsection carries through.
 games". Each position stands in a different amount, and it is that asymmetry —
 not any coordination rule — that preserves the deterrent at depth.
 
-#### Co-resident at Layer 1: the evidence record
+#### Co-resident at Layer 2: the evidence record
 
-Every `commit` and `resolveProcess` emits immutable, block-timestamped events (`OrderCommitted`, `OrderResolved`, `ProcessResolved`) — produced always, as a by-product of ordinary operation, not only when something goes wrong. The record lives here, beside the bonds, and it is co-resident with both subsections above: what it holds is the commitments and the fact of non-resolution, never performance. Layers 3 and 4 consume it from outside, and neither produces anything of its own.
+Every `commit` and `resolveProcess` emits immutable, block-timestamped events (`OrderCommitted`, `OrderResolved`, `ProcessResolved`) — produced always, as a by-product of ordinary operation, not only when something goes wrong. The record lives here, beside the bonds, and it is co-resident with both subsections above: what it holds is the commitments and the fact of non-resolution, never performance. Layers 4 and 5 consume it from outside, and neither produces anything of its own.
 
 ---
 
-### Layer 2: Seller Coordination Game (The Micro-Lending Circle Effect)
+### Layer 3: Seller Coordination Game (The Micro-Lending Circle Effect)
 
 **Players**: Multiple sellers in the same service chain  
 **Mechanism**: Atomic resolution (all-or-nothing payment)  
@@ -865,29 +865,29 @@ supplies it.
 
 ---
 
-### Layer 3: Arbitration (Standing Recourse, e.g. Kleros)
+### Layer 4: Arbitration (Standing Recourse, e.g. Kleros)
 
 **Players**: Parties + an arbitration forum of their choosing  
-**Mechanism**: Third-party adjudication consuming the Layer-1 evidence record  
+**Mechanism**: Third-party adjudication consuming the Layer-2 evidence record  
 **Outcome**: Disputes the economics did not dissolve are decided on an unforgeable record
 
-Arbitration is a standing layer, not a transition aid — and recourse here exists with no clause named: nothing in the agreement has to designate a forum for the parties to seek one. A decentralized arbitration protocol such as Kleros — or any forum the parties choose — takes the timestamped event record produced at Layer 1 as evidentiary input and renders a decision. **The forum rules while the process stands open, before the buyer resolves, and it cannot resolve in the buyer's place** — there is no direct enforcement mechanism, and that is precisely why composing a forum leaves the equilibrium untouched: nothing on the path by which bonds are released is handed to a party the bonds do not constrain. What an award changes is the parties' remedy negotiation; the parties then act on it — a cure, a remedy transfer, or a compensating reverse commitment — and the buyer resolves once satisfied. The record supplies what was undertaken and what remains unsettled; it never shows performance, which happened where the kernel cannot look, so the parties supply that themselves. Because arbitration is cheaper and faster than court, it is the natural first stop for the residue of cases Layers 1–2 leave; Layer 4 stands behind it.
+Arbitration is a standing layer, not a transition aid — and recourse here exists with no clause named: nothing in the agreement has to designate a forum for the parties to seek one. A decentralized arbitration protocol such as Kleros — or any forum the parties choose — takes the timestamped event record produced at Layer 2 as evidentiary input and renders a decision. **The forum rules while the process stands open, before the buyer resolves, and it cannot resolve in the buyer's place** — there is no direct enforcement mechanism, and that is precisely why composing a forum leaves the equilibrium untouched: nothing on the path by which bonds are released is handed to a party the bonds do not constrain. What an award changes is the parties' remedy negotiation; the parties then act on it — a cure, a remedy transfer, or a compensating reverse commitment — and the buyer resolves once satisfied. The record supplies what was undertaken and what remains unsettled; it never shows performance, which happened where the kernel cannot look, so the parties supply that themselves. Because arbitration is cheaper and faster than court, it is the natural first stop for the residue of cases Layers 2–3 leave; Layer 5 stands behind it.
 
 **Resolution is terminal acceptance**, and this is the corollary on the other side of the same boundary. Once the buyer resolves, the process is settled, the transfers are made, and the mechanism holds nothing further for anyone to recover — no forum, and no later ruling, can reach a balance that is no longer there. A buyer with a live complaint therefore resolves **after** the complaint is answered, not before: the whole of the recourse window is the interval in which the process stands open, which is also the interval in which both parties want their positions released. There is no recourse after resolution because there is nothing left to act on, and that is what makes resolving mean acceptance rather than merely mean payment.
 
 ---
 
-### Layer 4: Traditional Legal Systems (Edge Case Deterrence)
+### Layer 5: Traditional Legal Systems (Edge Case Deterrence)
 
 **Players**: Parties + legal system + public observers  
-**Mechanism**: Court enforcement backed by the immutable on-chain evidence produced at Layer 1  
+**Mechanism**: Court enforcement backed by the immutable on-chain evidence produced at Layer 2  
 **Outcome**: Frivolous abuse deterred by legal precedent + the permanent public record
 
-Courts, too, are a standing layer — they consume the Layer-1 record from outside the protocol, and no clause has to name a jurisdiction or venue for the parties to reach one. The same boundary binds here as at Layer 3: a court rules **while the process stands open**, and it cannot call `resolveProcess` — resolution is the buyer's alone, and no ruling gives anyone else the call. A judgment reaches the buyer the way judgments ordinarily reach parties, through the buyer's exposure outside the process, and inside the process it works by changing what the buyer expects from continuing to withhold.
+Courts, too, are a standing layer — they consume the Layer-2 record from outside the protocol, and no clause has to name a jurisdiction or venue for the parties to reach one. The same boundary binds here as at Layer 4: a court rules **while the process stands open**, and it cannot call `resolveProcess` — resolution is the buyer's alone, and no ruling gives anyone else the call. A judgment reaches the buyer the way judgments ordinarily reach parties, through the buyer's exposure outside the process, and inside the process it works by changing what the buyer expects from continuing to withhold.
 
 **The SSoT (Single Source of Truth) Argument**:
 
-The Layer-1 record provides **tamper-proof evidence** for legal proceedings:
+The Layer-2 record provides **tamper-proof evidence** for legal proceedings:
 
 ```
 Scenario: Buyer refuses to resolve despite good delivery
@@ -955,14 +955,14 @@ Rational decision: resolve
 
 **Why This Works**:
 
-1. **Immutable evidence**: The Layer-1 event record is a perfect audit trail
+1. **Immutable evidence**: The Layer-2 event record is a perfect audit trail
 2. **Public record**: All transactions visible; settlement history is permanent and derived — never a score, but readable by anyone
 3. **Precedent cascade**: Early cases deter future abuse
 4. **Economic irrationality**: Abuse costs more than cooperation
 
 **How the precedent cascade works here**: forums ruling on the open process record accumulate a body of decisions — what counted as conforming performance, what a remedy had to look like — that anyone can read before committing. The deterrent is not a new enforcement organ; it is that record of decisions, standing beside the mechanism's own arithmetic.
 
-**Layers 3–4 Handle Edge Cases Layers 1–2 Don't**:
+**Layers 4–5 Handle Edge Cases Layers 2–3 Don't**:
 
 - Truly irrational actors (rare but possible)
 - Buyers who value spite > payoff (psychologically abnormal)
@@ -981,10 +981,10 @@ The five enforcement layers work together. The goal is not redundancy for its ow
 | **0. Blockchain security** | Host-chain consensus — signatures, ordering, immutability | The foundation everything above inherits |
 | **1. Bonding equilibrium** | Asymmetric bonding at two parties and at N (evidence record co-resident) — after performance the buyer's preference for resolving is unconditional, and given it performance is each seller's strict best response at every chain position | The default: crediting a defector with everything it retains, defection is still out of pocket |
 | **2. Co-Seller Remedy** | Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect) | Multi-seller failures |
-| **3. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-1 record | Disputes the economics did not dissolve |
+| **3. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-2 record | Disputes the economics did not dissolve |
 | **4. Courts** | Traditional legal systems consume the same record from outside | Irrational or adversarial actors |
 
-**Note on what Figaro does NOT include**: No governance layer. No timeout. No protocol-run dispute machinery. No insurance tranche. No oracle. The locked bonds are the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces a unilateral escape hatch from a committed order destroys Layer 1. Any feature that introduces partial resolution destroys Layer 2. These are hard constraints.
+**Note on what Figaro does NOT include**: No governance layer. No timeout. No protocol-run dispute machinery. No insurance tranche. No oracle. The locked bonds are the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces a unilateral escape hatch from a committed order destroys Layer 2. Any feature that introduces partial resolution destroys Layer 3. These are hard constraints.
 
 **Why This Is Superior to Traditional Approaches**:
 
@@ -993,11 +993,11 @@ Traditional protocols pick one enforcement mechanism — an arbitrator, a timeou
 ```
 Problem: Buyer tries to abuse system
 
-Layer 1: Stands at −P holding the delivery, against the 0 that closing gives it
+Layer 2: Stands at −P holding the delivery, against the 0 that closing gives it
          (economic deterrence) — irrational unless spite > payoff
-Layer 2: Co-sellers remedy any real fault, leaving a pretextless withholding
+Layer 3: Co-sellers remedy any real fault, leaving a pretextless withholding
          exposed in the permanent record
-Layers 3–4: Loses in arbitration or court (legal deterrence) — immutable
+Layers 4–5: Loses in arbitration or court (legal deterrence) — immutable
          evidence, unforgeable timeline, ruled on while the process stands open
 
 Must beat ALL of these simultaneously → Economically and legally irrational
@@ -1277,11 +1277,11 @@ Figaro represents a paradigm shift in multi-party coordination:
 **Core Thesis**: locked bonds sized against the value at each link make performance and resolution each party's own better move — no external enforcement required, and none available.
 
 **Defense-in-Depth — five layers**:
-1. **Layer 0 - Blockchain Security**: the host chain's consensus is the named foundation everything above inherits
-2. **Layer 1 - The bonding equilibrium**: after performance, resolving is unconditionally strictly better for the buyer; given that, performance is the seller's strict best response. The same schedule carries that result to every position in an N-party chain — each seller bonding the cumulative value at its own link, which is asymmetric bonding's own work and not a layer of its own. The evidence record is co-resident here, produced by ordinary operation
-3. **Layer 2 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers hold a computable, bonded interest in curing any one seller's fault (micro-lending circle effect). This coordinates the already-scaled mesh; it does not scale it
-4. **Layer 3 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) rules on the open record; it cannot resolve in the buyer's place
-5. **Layer 4 - Courts**: traditional legal systems consume the same record from outside the protocol, on the same terms
+1. **Layer 1 - Blockchain Security**: the host chain's consensus is the named foundation everything above inherits
+2. **Layer 2 - The bonding equilibrium**: after performance, resolving is unconditionally strictly better for the buyer; given that, performance is the seller's strict best response. The same schedule carries that result to every position in an N-party chain — each seller bonding the cumulative value at its own link, which is asymmetric bonding's own work and not a layer of its own. The evidence record is co-resident here, produced by ordinary operation
+3. **Layer 3 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers hold a computable, bonded interest in curing any one seller's fault (micro-lending circle effect). This coordinates the already-scaled mesh; it does not scale it
+4. **Layer 4 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) rules on the open record; it cannot resolve in the buyer's place
+5. **Layer 5 - Courts**: traditional legal systems consume the same record from outside the protocol, on the same terms
 
 **Key Innovations**:
 1. **Asymmetric bonding**: bonding against the cumulative value at the link keeps the deterrent intact at depth, where what a defector could carry off is worth far more than the payment made for it
