@@ -50,10 +50,11 @@ const RETIRED =
 // Immutable Sepolia registrations carrying a since-retired word — first-write-
 // wins makes the pin permanent; each entry needs a reason and a mainnet plan.
 const PIN_ALLOWLIST = new Map([
-    // figaro-merchant-process v1: description says "order-fulfillment flow";
-    // ruling pending on rewording the repo seed before MAINNET registration
-    // (2026-08-24 hygiene audit — punch-list item).
-    ["QmfEt9p5GwY1RnhfcoY1PqKcBAEuce7SVhoaeYypx1gFYR", "fulfillment in v1 description"],
+    // figaro-merchant-process v1: the description's "order-fulfillment flow"
+    // is ACCEPTED AS-IS (maintainer ruling 2026-08-24) — ordinary English in
+    // a spec description, not the retired stored-modality vocabulary. Do not
+    // reword the seed; the same bytes register on every network.
+    ["QmfEt9p5GwY1RnhfcoY1PqKcBAEuce7SVhoaeYypx1gFYR", "fulfillment wording ruled fine as-is"],
 ]);
 
 let hits = 0;
