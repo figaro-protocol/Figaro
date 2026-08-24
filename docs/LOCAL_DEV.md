@@ -114,7 +114,7 @@ NEXT_PUBLIC_MEMBERS_REGISTRY=0x...
 NEXT_PUBLIC_ASSEMBLY_REGISTRY=0x...
 
 # Swap-and-commit funding (composition) — the coordinator plus its Permit2 and
-# swap venue. Devnet: MockWitnessPermit2 + MockUniversalRouter (deploy-local.sh
+# swap venue. Devnet: MockWitnessPermit2 + MockSwapVenue (deploy-local.sh
 # writes all three; the mock quotes from its own rate, no quoter). Sepolia +
 # mainnet: canonical Permit2 + Uniswap SwapRouter02 (the coordinator approves
 # the router and it pulls by ERC-20 allowance — SwapRouter02's shape, not the

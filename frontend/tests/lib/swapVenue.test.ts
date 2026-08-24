@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { decodeFunctionData, encodeAbiParameters, getAddress, parseAbi } from "viem";
+import { decodeFunctionData, encodeAbiParameters, encodeFunctionData, getAddress, parseAbi } from "viem";
+import { SWAP_ROUTER_02_ABI } from "@figaro-protocol/sdk";
 
 const quoterMock = vi.fn();
 vi.mock("@/lib/composition/contracts", () => ({
@@ -13,9 +14,6 @@ const QUOTER = ("0x" + "e0".repeat(20)) as `0x${string}`;
 const WETH = ("0x" + "11".repeat(20)) as `0x${string}`;
 const USDC = ("0x" + "22".repeat(20)) as `0x${string}`;
 const COORD = getAddress("0x" + "c0".repeat(20));
-const SWAP_ROUTER02_ABI = parseAbi([
-    "function exactOutputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountOut,uint256 amountInMaximum,uint160 sqrtPriceLimitX96) params) payable returns (uint256 amountIn)",
-]);
 const MOCK_ABI = parseAbi(["function swap(address tokenIn, address tokenOut, uint256 amountIn, address recipient) returns (uint256)"]);
 
 /** A publicClient that behaves like SwapRouter02 + QuoterV2: factory() answers,
@@ -64,9 +62,30 @@ describe("swapVenue — the venue is DERIVED from the router; two siblings behin
         expect(quote.amountIn).toBe(1_242n);
         const maxInput = capWithSlippage(quote.amountIn, venue.slippageBps);
         expect(maxInput).toBe(1_255n); // 1242 + ceil(1242·1%) = 1242 + 13
-        const { functionName, args } = decodeFunctionData({ abi: SWAP_ROUTER02_ABI, data: quote.route(maxInput, COORD) });
+        const calldata = quote.route(maxInput, COORD);
+        const { functionName, args } = decodeFunctionData({ abi: SWAP_ROUTER_02_ABI, data: calldata });
         expect(functionName).toBe("exactOutputSingle");
         expect(args[0]).toMatchObject({ tokenIn: WETH, tokenOut: USDC, fee: 100, recipient: COORD, amountOut: 3_000_000n, amountInMaximum: 1_255n });
+        // Cross-surface lockstep: route() must equal what an integrator encodes
+        // from the SDK's canonical ABI for the same parameters — byte for byte.
+        expect(calldata).toBe(encodeFunctionData({
+            abi: SWAP_ROUTER_02_ABI,
+            functionName: "exactOutputSingle",
+            args: [{ tokenIn: WETH, tokenOut: USDC, fee: 100, recipient: COORD, amountOut: 3_000_000n, amountInMaximum: 1_255n, sqrtPriceLimitX96: 0n }],
+        }));
+        // The golden vector frozen in sdk/tests/permit2RouterAbis.test.ts, same
+        // parameters — regenerate both from a fresh encode if the ABI ever
+        // legitimately changes, never by editing one side's hex.
+        expect(calldata).toBe(
+            "0x5023b4df" +
+            "0000000000000000000000001111111111111111111111111111111111111111" +
+            "0000000000000000000000002222222222222222222222222222222222222222" +
+            "0000000000000000000000000000000000000000000000000000000000000064" +
+            "000000000000000000000000c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0" +
+            "00000000000000000000000000000000000000000000000000000000002dc6c0" +
+            "00000000000000000000000000000000000000000000000000000000000004e7" +
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        );
     });
 
     it("Uniswap v3 without a quoter configured is a named configuration error, never a silent fallback", async () => {

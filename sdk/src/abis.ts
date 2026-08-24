@@ -183,23 +183,36 @@ export const PERMIT2_ABI = parseAbi([
     `function permitWitnessTransferFrom(${PERMIT2_PERMIT_TRANSFER_FROM_TUPLE} permit, ${PERMIT2_SIGNATURE_TRANSFER_DETAILS_TUPLE} transferDetails, address owner, bytes32 witness, string witnessTypeString, bytes signature) external`,
 ]);
 
-// ── Uniswap Universal Router ABI (canonical, external contract) ─────────────
+// ── Uniswap SwapRouter02 + QuoterV2 ABIs (canonical, external contracts) ────
 //
-// Also not a Figaro contract — the production venue
-// `WitnessSwapAndCommitCoordinator`'s immutable `router` points at (devnet
-// substitutes `MockUniversalRouter`, an ABI-INCOMPATIBLE stand-in — see
-// `src/mocks/MockUniversalRouter.sol` — the coordinator forwards `swapData`
-// to `router` OPAQUELY via `router.call(...)`, so it never decodes this ABI
-// on-chain). It is needed OFF-chain: whoever builds `swapData` for a
-// production Permit2 witness (the real-venue sibling of
-// `frontend/lib/composition/swapFunding.ts`'s devnet route builder) encodes a
-// call to `execute` — the Universal Router's entrypoint. Both overloads are
-// curated here so integrators import ONE canonical ABI instead of re-fetching
+// Also not Figaro contracts — the production venue
+// `WitnessSwapAndCommitCoordinator`'s immutable `router` points at is
+// Uniswap's SwapRouter02 (the deploy scripts probe `factory()` + `WETH9()`
+// before wiring one; devnet substitutes `MockSwapVenue`, an ABI-INCOMPATIBLE
+// settable-rate stand-in). The coordinator never decodes this ABI on-chain —
+// it forceApproves the router for the input token and forwards the party's
+// witness-signed `swapData` verbatim via `router.call(...)` — so the venue
+// must PULL the input by ERC-20 allowance and deliver the output to a
+// recipient. SwapRouter02's `exactOutputSingle` does exactly that: an exact
+// output (the bond) for at most `amountInMaximum` of input, pulled by
+// allowance. This is the ABI whoever builds `swapData` encodes against (the
+// venue seam: `frontend/lib/composition/swapVenue.ts`); `factory()` doubles
+// as the probe that tells SwapRouter02 apart from the devnet stand-in.
+// Curated here so integrators import ONE canonical ABI instead of re-fetching
 // Uniswap's own.
 
-export const UNIVERSAL_ROUTER_ABI = parseAbi([
-    "function execute(bytes commands, bytes[] inputs) external payable",
-    "function execute(bytes commands, bytes[] inputs, uint256 deadline) external payable",
+export const SWAP_ROUTER_02_ABI = parseAbi([
+    "function factory() view returns (address)",
+    "function exactOutputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountOut,uint256 amountInMaximum,uint160 sqrtPriceLimitX96) params) payable returns (uint256 amountIn)",
+]);
+
+// QuoterV2 — the read-side sibling: how much input yields an exact output, at
+// one fee tier. Its quote functions are deliberately not `view` (they
+// revert-and-decode internally), so read them through eth_call
+// (`publicClient.call` + `decodeFunctionResult`), never as a transaction.
+
+export const QUOTER_V2_ABI = parseAbi([
+    "function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountIn,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
 ]);
 
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────

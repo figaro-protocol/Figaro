@@ -26,8 +26,8 @@ src/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSingleOr
 # itself). Spec target: a CoordinatorTokenConservation rule proving the coordinator
 # retains no bond currency or input token after `swapAndCommit` (asserted by the
 # `SlippageResidualStaysWithParty` / `InputResidualRefunded` Foundry tests today).
-src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:231 | _fund (bond currency → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
-src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:235 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
+src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:233 | _fund (bond currency → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
+src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:237 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
 
 # FigaroBatchVerifier — the batch-settlement verifier (proof-apparatus
 # rebuild, witness model). BatchVerifierTokenOps.spec covers both sites:

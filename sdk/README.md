@@ -587,21 +587,42 @@ digest Permit2 verifies:
 
 ```ts
 import { buildSwapWitnessTypedData, DISABLED_SWAP_FUNDING_LEG,
+         SWAP_ROUTER_02_ABI,
          WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI } from "@figaro-protocol/sdk";
+import { encodeFunctionData } from "viem";
+
+// `swapData` IS THE VENUE'S OWN CALLDATA, forwarded verbatim after the
+// coordinator approves the router for your input token — so the venue must PULL
+// by ERC-20 allowance. The immutable venue is Uniswap's SwapRouter02 (the deploy
+// probes factory() + WETH9() before wiring one), and its exactOutputSingle
+// pulls exactly that way: deliver an EXACT output — the bond — for at most
+// `amountInMaximum` of input. Build the bytes with this package's
+// SWAP_ROUTER_02_ABI, which carries that shape:
+//
+//   recipient       — the COORDINATOR: it measures the output-balance delta,
+//                     then forwards everything to the party, so the kernel's
+//                     pull finds the bond and any residual stays the party's.
+//   amountOut       — the leg's bond, mirroring the kernel pull exactly:
+//                     2 × payment (buyer leg) or
+//                     2 × expectedCumulativeValue (seller leg).
+//   amountInMaximum — maxInput, the SAME cap the witness signs below.
+const swapData = encodeFunctionData({
+  abi: SWAP_ROUTER_02_ABI,
+  functionName: "exactOutputSingle",
+  args: [{
+    tokenIn: inputToken,
+    tokenOut: settlementCurrency,
+    fee: 500,                  // the pool's fee tier — quote the tiers, take the cheapest
+    recipient: coordinator,
+    amountOut: bondAmount,
+    amountInMaximum: maxInput,
+    sqrtPriceLimitX96: 0n,
+  }],
+});
 
 // The witness binds { router, inputToken, maxInput, keccak256(swapData) } into
 // the digest, so a relayer cannot substitute the swap route and skim the
 // slippage. `coordinator` is Permit2's spender (it performs the pull).
-//
-// `swapData` IS THE VENUE'S OWN CALLDATA, forwarded verbatim after the
-// coordinator approves the router for your input token — so the venue must PULL
-// by ERC-20 allowance. The immutable venue is Uniswap's SwapRouter02 (the deploy
-// probes factory() + WETH9() before wiring one), whose exactInputSingle pulls
-// that way. Build the bytes against SwapRouter02's interface, from Uniswap. Do
-// NOT reach for this package's UNIVERSAL_ROUTER_ABI: it is the Universal
-// Router's execute(bytes,bytes[]), a different contract that pulls through
-// Permit2 or spends pre-sent balances — calldata built from it reverts at the
-// venue call.
 const typedData = buildSwapWitnessTypedData({
   chainId, permit2, coordinator, router, inputToken,
   maxInput, nonce, deadline, swapData,

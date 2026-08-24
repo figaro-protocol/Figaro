@@ -9,10 +9,12 @@
  * router call that pulls ≤ maxInput by ERC-20 allowance and delivers ≥ the
  * output to a recipient. Two venues exist as siblings behind this interface:
  *
- * - the DEVNET mock (`MockUniversalRouter`: `swap(tokenIn, tokenOut, amountIn,
+ * - the DEVNET mock (`MockSwapVenue`: `swap(tokenIn, tokenOut, amountIn,
  *   recipient)` at one settable global rate) — Anvil only;
  * - Uniswap v3 through SwapRouter02 (`exactOutputSingle`, pulls by allowance;
- *   quotes from QuoterV2) — Sepolia and mainnet.
+ *   quotes from QuoterV2) — Sepolia and mainnet, encoded against the SDK's
+ *   canonical `SWAP_ROUTER_02_ABI` / `QUOTER_V2_ABI` so this seam and an
+ *   integrator building `swapData` by hand share one ABI source.
  *
  * Which venue a router IS is DERIVED by probing the router (the mock answers
  * `rateNumerator()`, SwapRouter02 answers `factory()`), never configured —
@@ -20,7 +22,7 @@
  * never a clause.
  */
 import { encodeFunctionData, decodeFunctionResult, parseAbi, type PublicClient } from "viem";
-import type { Hex } from "@figaro-protocol/sdk";
+import { SWAP_ROUTER_02_ABI, QUOTER_V2_ABI, type Hex } from "@figaro-protocol/sdk";
 import { getSwapQuoter } from "@/lib/composition/contracts";
 
 type SwapVenueKind = "devnet-mock" | "uniswap-v3";
@@ -52,7 +54,7 @@ export function capWithSlippage(amountIn: bigint, slippageBps: number): bigint {
     return amountIn + (amountIn * BigInt(slippageBps) + 9_999n) / 10_000n;
 }
 
-// ── Devnet venue: MockUniversalRouter ───────────────────────────────────────
+// ── Devnet venue: MockSwapVenue ─────────────────────────────────────────────
 
 const MOCK_VENUE_ABI = parseAbi([
     "function swap(address tokenIn, address tokenOut, uint256 amountIn, address recipient) returns (uint256)",
@@ -85,15 +87,8 @@ function mockVenue(publicClient: PublicClient, router: Hex): SwapVenue {
     };
 }
 
-// ── Uniswap v3 venue: SwapRouter02 + QuoterV2 ───────────────────────────────
+// ── Uniswap v3 venue: SwapRouter02 + QuoterV2 (SDK canonical ABIs) ──────────
 
-const SWAP_ROUTER02_ABI = parseAbi([
-    "function factory() view returns (address)",
-    "function exactOutputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountOut,uint256 amountInMaximum,uint160 sqrtPriceLimitX96) params) payable returns (uint256 amountIn)",
-]);
-const QUOTER_V2_ABI = parseAbi([
-    "function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountIn,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
-]);
 /** Uniswap v3's fee tiers; the venue quotes every one and takes the cheapest
  *  input — the pool set is a fact of the chain, read per quote. */
 const UNISWAP_V3_FEE_TIERS: readonly number[] = [100, 500, 3000, 10000];
@@ -132,7 +127,7 @@ function uniswapV3Venue(publicClient: PublicClient, router: Hex, quoter: Hex): S
             return {
                 amountIn: best.amountIn,
                 route: (maxInput, recipient) => encodeFunctionData({
-                    abi: SWAP_ROUTER02_ABI,
+                    abi: SWAP_ROUTER_02_ABI,
                     functionName: "exactOutputSingle",
                     args: [{ tokenIn, tokenOut, fee: best.fee, recipient, amountOut, amountInMaximum: maxInput, sqrtPriceLimitX96: 0n }],
                 }),
@@ -156,7 +151,7 @@ export function detectSwapVenue(publicClient: PublicClient, router: Hex): Promis
     let pending = VENUE_CACHE.get(key);
     if (!pending) {
         pending = (async () => {
-            const answers = async (abi: typeof MOCK_VENUE_ABI | typeof SWAP_ROUTER02_ABI, functionName: "rateNumerator" | "factory") => {
+            const answers = async (abi: typeof MOCK_VENUE_ABI | typeof SWAP_ROUTER_02_ABI, functionName: "rateNumerator" | "factory") => {
                 try {
                     await publicClient.readContract({ address: router, abi, functionName } as never);
                     return true;
@@ -165,7 +160,7 @@ export function detectSwapVenue(publicClient: PublicClient, router: Hex): Promis
                 }
             };
             if (await answers(MOCK_VENUE_ABI, "rateNumerator")) return mockVenue(publicClient, router);
-            if (await answers(SWAP_ROUTER02_ABI, "factory")) {
+            if (await answers(SWAP_ROUTER_02_ABI, "factory")) {
                 const quoter = getSwapQuoter();
                 if (!quoter) throw new Error("Swap venue is Uniswap v3 but NEXT_PUBLIC_SWAP_QUOTER (QuoterV2) is unconfigured.");
                 return uniswapV3Venue(publicClient, router, quoter);

@@ -60,7 +60,13 @@ Permit2 witness digest: gated on `MAINNET_RPC_URL` (each test SKIPS without it,
 never silently passes), it proves the `swapWitness` convention is accepted by the
 canonical Permit2 deployment and that a substituted swap route is rejected by real
 Permit2's own signature check — the one claim the mocked suite proves only against
-our own digest reconstruction (`MockWitnessPermit2`).
+our own digest reconstruction (`MockWitnessPermit2`). Its sibling contract in the
+same file, `WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest` (gated on
+`SEPOLIA_RPC_URL`, same skip discipline), is the real-VENUE proof: the coordinator
+drives the deployed Sepolia SwapRouter02 (`deployments/11155111.json`
+`swapRouter`) through the real WETH/USDC pool with `exactOutputSingle` calldata
+built the documented way (the SDK's `SWAP_ROUTER_02_ABI` shape), proving the
+allowance-pull composition end to end.
 
 ## Halmos (`test/`) — 4 harness files, 32 properties
 

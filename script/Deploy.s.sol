@@ -12,7 +12,7 @@ import "../src/florin/FlorinToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockWitnessPermit2.sol";
-import "../src/mocks/MockUniversalRouter.sol";
+import "../src/mocks/MockSwapVenue.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
 import {UsageCounter} from "../src/protocol/usage/UsageCounter.sol";
@@ -27,7 +27,7 @@ import "../src/protocol/registries/AssemblyRegistry.sol";
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
 ///         AssemblyRegistry, MembersRegistry, WitnessSwapAndCommitCoordinator
-///         (+ MockWitnessPermit2 / MockUniversalRouter as its devnet Permit2 and
+///         (+ MockWitnessPermit2 / MockSwapVenue as its devnet Permit2 and
 ///         swap venue), FlorinToken, MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
@@ -86,8 +86,8 @@ contract Deploy is Script {
         _permit2 = new MockWitnessPermit2();
         console.log("MockWitnessPermit2 deployed at:", address(_permit2));
 
-        _router = new MockUniversalRouter();
-        console.log("MockUniversalRouter deployed at:", address(_router));
+        _router = new MockSwapVenue();
+        console.log("MockSwapVenue deployed at:", address(_router));
 
         _swapCoordinator = new WitnessSwapAndCommitCoordinator(address(_core), address(_permit2), address(_router));
         console.log("WitnessSwapAndCommitCoordinator deployed at:", address(_swapCoordinator));
@@ -249,7 +249,7 @@ contract Deploy is Script {
     FigaroCore internal _core;
     AttestationCoordinator internal _attestation;
     MockWitnessPermit2 internal _permit2;
-    MockUniversalRouter internal _router;
+    MockSwapVenue internal _router;
     WitnessSwapAndCommitCoordinator internal _swapCoordinator;
     ClauseRegistry internal _clauses;
     AssemblyRegistry internal _assemblies;

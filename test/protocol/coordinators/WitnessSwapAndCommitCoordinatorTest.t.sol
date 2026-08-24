@@ -8,7 +8,7 @@ import "src/kernel/FigaroCore.sol";
 import "src/kernel/CommitmentTypes.sol";
 import "src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol";
 import "src/mocks/MockERC20.sol";
-import "src/mocks/MockUniversalRouter.sol";
+import "src/mocks/MockSwapVenue.sol";
 import "src/mocks/MockWitnessPermit2.sol";
 
 /// @title WitnessSwapAndCommitCoordinatorTest — the swap route is now signed
@@ -20,7 +20,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
     FigaroCore internal core;
     MockWitnessPermit2 internal permit2;
-    MockUniversalRouter internal router;
+    MockSwapVenue internal router;
     WitnessSwapAndCommitCoordinator internal coord;
 
     MockERC20 internal bond; // process bond currency (e.g. USDC)
@@ -42,7 +42,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
         core = new FigaroCore();
         permit2 = new MockWitnessPermit2();
-        router = new MockUniversalRouter();
+        router = new MockSwapVenue();
         coord = new WitnessSwapAndCommitCoordinator(address(core), address(permit2), address(router));
 
         bond = new MockERC20("Bond", "USDC");
@@ -93,7 +93,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
     /// @dev Build the swap calldata for a leg routing `amountIn` of `input` to
     ///      `recipient` (normally the coordinator).
     function _swapData(MockERC20 input, uint256 amountIn, address recipient) internal view returns (bytes memory) {
-        return abi.encodeCall(MockUniversalRouter.swap, (address(input), address(bond), amountIn, recipient));
+        return abi.encodeCall(MockSwapVenue.swap, (address(input), address(bond), amountIn, recipient));
     }
 
     /// @dev The Permit2 witness digest a party signs, reconstructed with the

@@ -99,7 +99,7 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
 
     IFigaroCore public immutable figaroCore;
     IPermit2WitnessTransfer public immutable permit2;
-    /// @notice Fixed swap venue (e.g. the Uniswap Universal Router). Immutable so
+    /// @notice Fixed swap venue (e.g. Uniswap's SwapRouter02). Immutable so
     ///         the caller-supplied swap calldata cannot retarget an arbitrary
     ///         address; only the swap parameters are caller-controlled — and now
     ///         those parameters are witness-bound to the party's signature.
@@ -131,9 +131,11 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     /// @notice Per-party instruction to fund a bond from a swapped input token.
     ///         `enabled == false` skips this leg — the party self-funds the bond
     ///         currency directly, exactly as in the base FigaroCore flow.
-    /// @dev `swapData` is forwarded verbatim to `router`; in production it is the
-    ///      Universal Router `execute(...)` calldata, in tests the mock router's
-    ///      swap selector. The bond amount is never supplied here — it is derived
+    /// @dev `swapData` is forwarded verbatim to `router`; in production it is
+    ///      SwapRouter02 `exactOutputSingle(...)` calldata, in tests the mock
+    ///      venue's swap selector. Either way the venue must PULL the input by
+    ///      ERC-20 allowance — `_fund` forceApproves `router` for `maxInput`
+    ///      before the call. The bond amount is never supplied here — it is derived
     ///      from the commitment — so a caller cannot under-fund the kernel pull.
     ///      `permitSignature` must be the party's Permit2 WITNESS signature over
     ///      `swapWitness(inputToken, maxInput, swapData)`; a signature over any

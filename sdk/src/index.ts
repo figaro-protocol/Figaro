@@ -35,7 +35,7 @@ export {
     BATCH_VERIFIER_ABI,
     // External canonical contracts (not Figaro's) the swap-funded bond path
     // composes with — curated so integrators don't hand-roll or re-fetch them.
-    PERMIT2_ABI, UNIVERSAL_ROUTER_ABI,
+    PERMIT2_ABI, SWAP_ROUTER_02_ABI, QUOTER_V2_ABI,
     // Kernel Commitment struct tuple — a core primitive, used by composition-layer
     // contract ABIs that take a Commitment as a calldata arg.
     COMMITMENT_TUPLE,

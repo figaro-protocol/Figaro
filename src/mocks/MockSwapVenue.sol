@@ -3,17 +3,18 @@ pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title MockUniversalRouter — devnet/test mock of a swap venue
+/// @title MockSwapVenue — devnet/test stand-in for a swap venue
 /// @notice Mirrors the MockERC20 mock pattern. Swaps an input
 ///         token for an output token at a settable rate: pulls `amountIn` of
-///         `tokenIn` from the caller (which must have approved this router) and
+///         `tokenIn` from the caller (which must have approved this venue) and
 ///         sends the output to `recipient` from this contract's pre-funded
 ///         liquidity. The coordinator forwards
-///         `abi.encodeCall(MockUniversalRouter.swap, ...)` as opaque swap
-///         calldata, exactly as it would forward Universal Router `execute(...)`
-///         calldata in production — the coordinator is router-agnostic and only
-///         asserts the output-balance delta.
-contract MockUniversalRouter {
+///         `abi.encodeCall(MockSwapVenue.swap, ...)` as opaque swap
+///         calldata, exactly as it would forward SwapRouter02
+///         `exactOutputSingle(...)` calldata in production — the coordinator is
+///         venue-agnostic and only asserts the output-balance delta. Like the
+///         production venue, this one pulls its input by ERC-20 allowance.
+contract MockSwapVenue {
     uint256 public rateNumerator = 1;
     uint256 public rateDenominator = 1;
 
