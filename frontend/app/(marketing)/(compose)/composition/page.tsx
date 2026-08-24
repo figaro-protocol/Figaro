@@ -33,7 +33,7 @@ export default function Composes() {
 
             <MarketingSection title="What is already wired in.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Third-party products already wired &mdash; add others to help the ecosystem evolve. They are listed the way a deal meets them: first what carries value out of one market and into the next, then what a running process needs, then what the world outside the deal asks for.
+                    Third-party products already wired &mdash; add others to help the ecosystem evolve. They are listed the way a deal meets them: first what carries value out of one market and into the next, then what a running process needs, then what the world outside the deal asks for. That first one carries more weight than convenience: each token denominates an economy of its own &mdash; a community&apos;s, a designer&apos;s, a stablecoin&apos;s &mdash; and a swap is the route between them. Value mobility, not enforcement, is what makes many small economies one network.
                 </p>
                 <ul className="space-y-4">
                     <LabelledListRow label="Token swap" uppercase>

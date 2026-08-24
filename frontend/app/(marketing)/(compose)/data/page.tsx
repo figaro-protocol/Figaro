@@ -35,8 +35,11 @@ export default function Data() {
             </MarketingSection>
 
             <MarketingSection title="The half that's shared.">
-                <p className="text-base text-ink-body leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
                     One part of every trade is meant to be public: who moved what, to whom, roughly where, and whether it settled &mdash; a neighborhood&apos;s demand, a seller&apos;s settlement record, a route&apos;s reliability, all readable straight from the chain, by anyone, without asking permission. This is the map a delivery platform used to keep to itself so it alone could match supply to demand. Figaro puts it in the open by construction instead, and the network&apos;s own token pays whoever keeps drawing it &mdash; see <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">how that works</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    That inversion is the whole arrangement, and it is easiest to see as a direction of travel. Value converges: every payment and every stake is pulled into one settlement, and radiates back out &mdash; payouts and stakes together, in a single transaction &mdash; the moment the buyer closes. The record does the opposite. Only a fingerprint crosses onto the chain; the detail disperses to the people who produced it; and what travels outward is the aggregate map, to everyone at once. A platform ran both the other way.
                 </p>
             </MarketingSection>
 
