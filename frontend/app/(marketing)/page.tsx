@@ -109,6 +109,9 @@ export default function Home() {
 
             <MarketingSection title="Read the whole story" sectionId="reading-path" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
+                    If you keep one sentence, keep this one: one thin, ownerless layer that makes any deal between strangers safe &mdash; and everything above it buildable by anyone.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-3">
                     Read in order; each page teaches one thing. Or start where you are:
                     new to all of this, begin with{" "}
                     <Link href="/local-commerce" className="text-ink-heading hover:underline">one deal, lived end to end</Link>;
