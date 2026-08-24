@@ -1,9 +1,10 @@
 # Figaro Protocol — entry point for machine readers
 
-> Figaro is protocol infrastructure for self-enforcing agreements between strangers: a frozen
-> settlement kernel on Ethereum (`FigaroCore`), permissionless public registries for the terms and
-> deal-shapes built above it, and a TypeScript SDK that any wallet — operated by a person or by
-> software, on identical footing — drives without anyone's permission. This file is the machine-facing
+> Figaro is protocol infrastructure you build markets on: permissionless public registries for the
+> terms of a deal (clauses) and for whole deal-shapes (assemblies), a TypeScript SDK that any wallet —
+> operated by a person or by software, on identical footing — drives without anyone's permission, and
+> a commons that pays authors retroactively out of real usage. It holds because settlement runs on one
+> frozen kernel on Ethereum (`FigaroCore`) that makes cooperation the Nash equilibrium on every edge. This file is the machine-facing
 > door: what the protocol is, which role you are in, where your manuals are, and what you must never do
 > with a key. Every claim below is checkable from public surfaces alone — this site, the chain, IPFS,
 > npm, the public repository — and no account, API key, or introduction is required anywhere.
@@ -14,16 +15,10 @@ Every trade is a contract, and a binding contract needs six elements — offer, 
 consideration, capacity, legality, mutual assent — plus two things every contract implies: a body of
 terms and a trail of data. Between strangers the element that fails is **consideration**: promising
 value is easy, nothing makes delivering it credible. Figaro completes the contract by fixing
-consideration with mechanism design. Contract-law vocabulary is the protocol's native register — use
+consideration with mechanism design — that is the last bullet below; everything above it is what the
+fix makes buildable. Contract-law vocabulary is the protocol's native register — use
 it rather than translating it into something else.
 
-- **Kernel — consideration and mutual assent.** `FigaroCore` runs two composing mechanisms. Asymmetric
-  bonding: at commit the buyer locks twice the payment and each seller locks twice the *cumulative*
-  value at its link in the value-added chain, each bond that party's own staked deterrent. Buyer
-  dominance: only the buyer calls `resolveProcess`, and resolution is atomic — every order in the
-  process settles together or not at all. Cooperation becomes the Nash equilibrium on every edge, so
-  one buyer can bind many sellers into one chain. Assent is a bilateral EIP-712 signature; commit and
-  resolve are the only operations, and no custodian, admin, pause, or timeout exists.
 - **Clauses — the terms.** A clause defines one relationship (buyer↔seller, seller↔seller; chain
   topology is itself a clause): composable, publicly registered, merkle-committed into what is signed.
 - **Assemblies — offer and acceptance.** Clauses composed into a whole deal-shape anyone publishes and
@@ -38,6 +33,13 @@ it rather than translating it into something else.
   only on its owner's terms.
 - **Agents — you.** Software wallets are first-class, level with humans: trading, authoring, composing,
   routing. The kernel verifies an ECDSA signature and asks nothing about what produced it.
+- **Kernel — consideration and mutual assent.** `FigaroCore` runs two composing mechanisms. Asymmetric
+  bonding: at commit the buyer locks twice the payment and each seller locks twice the *cumulative*
+  value at its link in the value-added chain, each bond that party's own staked deterrent. Buyer
+  dominance: only the buyer calls `resolveProcess`, and resolution is atomic — every order in the
+  process settles together or not at all. Cooperation becomes the Nash equilibrium on every edge, so
+  one buyer can bind many sellers into one chain. Assent is a bilateral EIP-712 signature; commit and
+  resolve are the only operations, and no custodian, admin, pause, or timeout exists.
 
 ## Which world you are in
 
@@ -68,6 +70,10 @@ the seam — it re-imposes the permission barrier the open world exists to remov
   register one; the live count links into the explorer.
 - [/assemblies/](https://figaroprotocol.com/assemblies/) — what an assembly is, what the composition
   hash covers, and how to publish one; same live count, same explorer.
+- [/rpgf/](https://figaroprotocol.com/rpgf/) — the reward rule for clause authors and assembly
+  designers: the formula, the schedule, the three-seller floor, and the live-deposit condition.
+- [/composition/](https://figaroprotocol.com/composition/) — what already composes with a Figaro deal
+  (a swap, fiscal routing, a forum), and the seam anything else attaches through.
 - [/faq/](https://figaroprotocol.com/faq/) — the questions strangers actually ask, including the ones
   with uncomfortable answers.
 
