@@ -4,7 +4,7 @@ import { OnboardingShell } from "@/components/members/OnboardingShell";
 import { OnboardingProfileForm } from "@/components/members/OnboardingProfileForm";
 
 export const metadata: Metadata = withOg({
-    title: "Identity — Seller onboarding",
+    title: "Identity — Member onboarding",
     description: "Your stable identity: name, description, location, branding, and the set of tokens you accept for settlement. Pinned to IPFS when you publish.",
 });
 

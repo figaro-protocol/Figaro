@@ -37,25 +37,25 @@ const FIELDS: FieldDef[] = [
     {
         key: "ipfsApiUrl",
         label: "IPFS node (API)",
-        placeholder: "http://127.0.0.1:5001",
+        placeholder: "https://ipfs.example.com:5001",
         hint: "Your own node. Everything you publish — profile, catalogue, clauses, assemblies, evidence — pins here: you pay for it, you can erase it.",
     },
     {
         key: "ipfsGatewayUrl",
         label: "IPFS gateway",
-        placeholder: "http://127.0.0.1:8080",
+        placeholder: "https://gateway.example.com",
         hint: "The gateway this browser reads pinned content through.",
     },
     {
         key: "rpcUrl",
         label: "Chain RPC",
-        placeholder: "http://127.0.0.1:8545",
+        placeholder: "https://rpc.example.com",
         hint: "Your own JSON-RPC provider — chain reads and writes go through it. Applies on the next reload.",
     },
     {
         key: "batchRelayUrl",
         label: "Verifier relay",
-        placeholder: "http://127.0.0.1:8787",
+        placeholder: "https://relay.example.com",
         hint: "The relay batched trade is read and submitted through. Untrusted by construction — the audit surface re-derives everything a relay publishes.",
     },
 ];

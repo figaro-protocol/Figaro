@@ -47,8 +47,8 @@ what a platform asks you to believe, Figaro lets you
 check; what a regulator, tax authority, or court demands, the record demonstrates.
 No admitting authority, custodian, or keeper in the
 stack: self-sovereign wallets on the base chain, the same contract reproducible
-anywhere on Earth or off it (commit and resolve need no synchrony), at pennies of
-fixed gas, proof-batched at scale — the friction of centralized coordination
+anywhere on Earth or off it (commit and resolve need no synchrony), at cents-to-dollars
+of fixed gas, proof-batched at scale — the friction of centralized coordination
 collapsed to a signature. The trail of data is the **data
 layer** — the platform allocation inverted: the aggregate map is public, the private
 detail sealed and sellable only on its owner's terms. Four token kinds meet here: coordination (stablecoins, and the protocol's own
@@ -150,7 +150,7 @@ starts accumulating an inventory or a command block, that content belongs in the
 owning doc, not here.
 
 **Do not reference any contract or file not listed here or in the indexed
-`docs/` files** (full Document Index at the bottom). Primary inventories:
+`docs/` files.** Primary inventories:
 
 - **`docs/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, florin token, mocks, "what does NOT exist".
 - **`docs/CLAUSES.md`** — clause validation architecture, the clause table, the adding-a-clause checklist.

@@ -4,7 +4,7 @@ import { OnboardingShell } from "@/components/members/OnboardingShell";
 import { OnboardingAgentsForm } from "@/components/members/OnboardingAgentsForm";
 
 export const metadata: Metadata = withOg({
-    title: "Agent endpoints — Seller onboarding",
+    title: "Agent endpoints — Member onboarding",
     description: "Optional ERC-8004-compatible service endpoints — where other members route offers and calls to this wallet. Skip it and the wallet is simply unreachable for inbound coordination; nothing else changes.",
 });
 

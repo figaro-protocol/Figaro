@@ -17,8 +17,10 @@ export const metadata: Metadata = withOg({
 
 // Copy constraints the code can't show: "process" always means the economic
 // object, "the blockchain" the substrate, "record" what a process leaves —
-// never blur the referents. The cents claim is COORDINATION friction
-// (the company functions the second section enumerates), not gas alone.
+// never blur the referents. The cost claim is GAS with its basis stated
+// ("cents to a few dollars … at typical network prices" — the FAQ's honest
+// range); never re-inflate to "pennies", never conflate with the
+// coordination-friction savings the second section enumerates.
 // The unhappy path lives on
 // /faq (the FAQ owns it); home points, never carries it.
 // The reading-path section is the ruled spine (probe-validated 2026-08-21):
@@ -40,7 +42,7 @@ export default function Home() {
 
             <MarketingSection title="One deal that enforces itself">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Every trade is a contract, and between strangers one element always fails: promising value is easy, but nothing makes delivering it credible. On Figaro, arithmetic makes it credible. The buyer stakes twice the payment. Each seller stakes twice the value the deal has accumulated at their link. Keeping your word is now everyone&apos;s best move &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole deal settles at once on Ethereum: everyone is paid, every stake returns, and securing it all costs pennies of fixed gas, batched at scale.
+                    Every trade is a contract, and between strangers one element always fails: promising value is easy, but nothing makes delivering it credible. On Figaro, arithmetic makes it credible. The buyer stakes twice the payment. Each seller stakes twice the value the deal has accumulated at their link. Keeping your word is now everyone&apos;s best move &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole deal settles at once on Ethereum: everyone is paid, every stake returns, and securing it all costs cents to a few dollars of fixed gas at typical network prices, batched at scale.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The grower, the roaster, the caf&eacute;. The author, the editor, the printer. A deal is rarely two people; it is a chain of hands, each adding value &mdash; and the chain settles as one. When a deal goes wrong, remedies are negotiated while everyone still has something at stake; the FAQ has the long version. Anyone who can sign can take part: a person, a business, a software agent, an asset with its own wallet &mdash; the protocol has no gatekeeper to admit you or turn you away.

@@ -60,9 +60,14 @@ the seam — it re-imposes the permission barrier the open world exists to remov
   one actually means.
 - [/security/](https://figaroprotocol.com/security/) — verification harnesses and audit posture,
   stated plainly.
-- [/clauses/](https://figaroprotocol.com/clauses/) — registered clauses, read live from
-  `ClauseRegistry` → IPFS; nothing bundles a copy, the set is whatever the chain holds.
-- [/assemblies/](https://figaroprotocol.com/assemblies/) — registered assemblies, read the same way.
+- [/registries/](https://figaroprotocol.com/registries/) — the registry explorer: every registered
+  clause, assembly, and member, read live from the three registries' event streams → IPFS and faceted
+  by article, author, composed clause, and live stake. Nothing bundles a copy; the set is whatever the
+  chain holds.
+- [/clauses/](https://figaroprotocol.com/clauses/) — what a clause is, what its hash covers, and how to
+  register one; the live count links into the explorer.
+- [/assemblies/](https://figaroprotocol.com/assemblies/) — what an assembly is, what the composition
+  hash covers, and how to publish one; same live count, same explorer.
 - [/faq/](https://figaroprotocol.com/faq/) — the questions strangers actually ask, including the ones
   with uncomfortable answers.
 

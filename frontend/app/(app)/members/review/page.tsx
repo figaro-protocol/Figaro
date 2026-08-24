@@ -4,7 +4,7 @@ import { OnboardingShell } from "@/components/members/OnboardingShell";
 import { OnboardingReview } from "@/components/members/OnboardingReview";
 
 export const metadata: Metadata = withOg({
-    title: "Review — Seller onboarding",
+    title: "Review — Member onboarding",
     description: "Preview how your wallet will appear on its member page, then publish: catalogue and profile pinned to IPFS, registered on MembersRegistry in one action.",
 });
 
@@ -15,7 +15,7 @@ export default function OnboardingReviewPage() {
             title="Review and publish"
             description={
                 <p>
-                    A preview of how your wallet will appear on its <code>/m/&lt;address&gt;</code> page. Edit any section, then publish: we pin the catalogue to IPFS, pin the profile JSON (with the catalogue URI embedded), and call <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>MembersRegistry</code> in one user action.
+                    A preview of how your wallet will appear on its <code>/m/&lt;address&gt;</code> page. Edit any section, then publish: publishing pins your catalogue to IPFS, pins the profile JSON (with the catalogue URI embedded), and calls <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>MembersRegistry</code> &mdash; one action from your browser, signed by your wallet.
                 </p>
             }
         >

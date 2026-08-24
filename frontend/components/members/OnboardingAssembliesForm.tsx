@@ -229,7 +229,7 @@ export function OnboardingAssembliesForm({
                     onto your profile as part of the document pinned at publish.
                     At least one binding is required — a profile with no assembly
                     binding cannot be ordered from. You can add more later through
-                    the seller-edit surface.
+                    the member-edit surface.
                 </p>
                 <p>
                     Assemblies that include sub-orders you organize (e.g. a

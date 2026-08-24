@@ -8,7 +8,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 export const metadata: Metadata = withOg({
     title: "Assemblies — Figaro Protocol",
     description:
-        "Composition templates anchored on AssemblyRegistry — each assembly wires clauses into a multi-order process. The inventory reads on-chain AssemblyRegistered events directly.",
+        "Composition templates anchored on AssemblyRegistry — each assembly wires clauses into a multi-order process. The registry explorer reads on-chain AssemblyRegistered events directly.",
 });
 
 export default function Assemblies() {
@@ -40,19 +40,19 @@ export default function Assemblies() {
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the inventory further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the registry count further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="How one is composed.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every assembly carries three mandatory clauses automatically &mdash; capital flow (committed at buy time), topology, and assembly provenance, the record of which assembly a process instantiates that credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
+                    Every assembly carries three mandatory clauses automatically &mdash; commerce terms (the payment and settlement token, committed at buy time), order topology (which seller follows which), and assembly provenance, the record of which assembly a process instantiates that credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, hand-off, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Each row in the inventory below carries its own shape, and opens on the composition it was registered under.
+                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under.
                 </p>
             </MarketingSection>
 

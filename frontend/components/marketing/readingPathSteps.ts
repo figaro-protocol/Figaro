@@ -59,7 +59,7 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         rung: "One deal",
         href: "/invariants",
         label: "Invariants",
-        description: "the kernel's guarantees: no admin, no escape hatches, no custodian.",
+        description: "the kernel's invariants: no admin, no escape hatches, no custodian.",
     },
     {
         rung: "One deal",

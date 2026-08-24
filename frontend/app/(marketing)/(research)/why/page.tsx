@@ -72,10 +72,7 @@ export default function Why() {
 
             <MarketingSection title="The current moment." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Since 2001 the Edelman Trust Barometer has tracked steady decline in the trust the public places in its institutions. The decline is not bounded to any one country or sector; it is structural. The institutions that carry the cognitive apparatus &mdash; media, government, business, civil society &mdash; show diminishing capacity to sustain the belief the apparatus needs.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The same period has seen social engineering deployed at scale.
+                    Since 2001 the Edelman Trust Barometer has tracked decline in the trust the public places in its institutions. What it reports is not confined to one country or one sector: the four institutions it surveys &mdash; media, government, business, non-governmental organizations &mdash; show the same direction across the markets it covers. Whatever its cause, that is thinner ground than the cognitive era&apos;s apparatus &mdash; belief carried by institutions trusted to carry it &mdash; asks for.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
                     Figaro is one contribution to a substrate that captures less well: economic rules that are common knowledge, enforced by mathematics, owned by no one. Clarity is a partial defense. It is the defense the third era makes available.

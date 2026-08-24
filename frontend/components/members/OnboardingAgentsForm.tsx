@@ -157,15 +157,17 @@ export function OnboardingAgentsForm({
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
                     <span className="font-semibold text-ink-heading">Optional.</span>{" "}
-                    Skip this step if your wallet is human-driven.
+                    Skip this step if nothing needs to reach your wallet
+                    directly.
                 </p>
                 <p>
                     These are ERC-8004-compatible service endpoints —{" "}
                     Figaro does not depend on ERC-8004 (the bonding mechanism
                     provides trust and settlement history provides reputation),
-                    but autonomous agents that want cross-protocol
-                    discoverability can declare endpoints here. Frontends
-                    detect agent-status by checking for any of these.
+                    but a wallet that wants cross-protocol discoverability can
+                    declare endpoints here. Endpoints declare reachability, not
+                    what runs the wallet: skip them and the wallet is simply
+                    unreachable for inbound coordination; nothing else changes.
                 </p>
             </Card>
 

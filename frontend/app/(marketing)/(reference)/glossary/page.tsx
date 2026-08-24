@@ -85,7 +85,7 @@ const TERMS: Term[] = [
         id: "florin",
         term: "The florin (FLORIN, ƒ)",
         definition:
-            "The protocol's own coordination token — a focal point participants can rally around, not a fee, not yield, not governance over anyone's deal. Its worth depends on whether the network gets used, and on nothing else.",
+            "The protocol's own coordination token — a focal point participants can rally around, not a fee, not yield, not governance over anyone's deal. What one is worth is a market question, settled by whoever trades it; this project makes no claim about it.",
         readMore: <Link href="/rpgf" className="hover:underline">RPGF</Link>,
     },
     {
@@ -172,7 +172,7 @@ const TERMS: Term[] = [
         id: "operator",
         term: "Operator",
         definition:
-            "Whoever controls a wallet's signing key on its underlying asset's behalf — a person or an autonomous program alike; which of the two it is changes nothing in the mechanism. A person running their own asset is simply that asset's buyer or seller; the term matters when a wallet is run for the asset by someone or something else.",
+            "Whoever controls a wallet's signing key on its underlying asset's behalf — a person or an autonomous program alike; which of the two it is changes nothing in the mechanism. What the word turns on is whose value-add the wallet carries: a wallet acting for itself is simply a buyer or a seller, and the term matters when a wallet is driven for an asset by someone or something else.",
         readMore: <Link href="/faq#agents" className="hover:underline">FAQ</Link>,
     },
     {

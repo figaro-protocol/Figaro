@@ -416,7 +416,7 @@ export function OnboardingReview() {
                     </Link>
                 </div>
                 <p className="text-sm text-ink-body">
-                    {hasServices ? "Configured." : "None. The wallet is human-driven."}
+                    {hasServices ? "Configured." : "None declared. Nothing can route offers or calls to this wallet directly; nothing else changes."}
                 </p>
             </Card>
 

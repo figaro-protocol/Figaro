@@ -9,7 +9,7 @@ import { LabelledListRow } from "@/components/shared/LabelledListRow";
 export const metadata: Metadata = withOg({
     title: "FAQ — Figaro Protocol",
     description:
-        "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, non-delivery, disputes, lost keys, privacy, ownership — with each guarantee's caveat beside it.",
+        "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, non-delivery, disputes, lost keys, privacy, ownership — with the residual risk stated beside each answer.",
 });
 
 /** The page's fourteen questions, in document order, split into two labeled
@@ -43,7 +43,7 @@ export default function Faq() {
                 title="FAQ."
                 lead={
                     <>
-                        Plain-language answers to the questions you should ask before sending tokens through a protocol you didn&apos;t write. Each answer names a concern, states what the protocol guarantees, and states the residual risk beside it &mdash; never in a footnote, never on another page.
+                        Plain-language answers to the questions you should ask before sending tokens through a protocol you didn&apos;t write. Each answer names a concern, states what the protocol can and cannot do about it, and states the residual risk beside it &mdash; never in a footnote, never on another page.
                     </>
                 }
             />
@@ -106,7 +106,7 @@ export default function Faq() {
                     Then five layers stand behind the deal, in order &mdash; the chain, the lockbox and its record, the other sellers, arbitration, ordinary courts &mdash; and the next answer walks all five with the figure. What this answer owns is the honest caveat underneath them:
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    There is no on-chain verdict, and there will not be one. The protocol does not adjudicate. Disagreements that exhaust the first three layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the kernel takes no position on which forum a community uses. Kleros is wired today; the full external-composition catalogue &mdash; forums, and everything else the kernel deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
+                    There is no on-chain verdict, and there will not be one. The protocol does not adjudicate. Disagreements that exhaust the first three layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the kernel takes no position on which forum a community uses. A Kleros clause is published, so composing that forum into an assembly is a design-time choice an author makes &mdash; and any other forum composes the same way. The full external-composition catalogue &mdash; forums, and everything else the kernel deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
                 </p>
             </MarketingSection>
 
@@ -198,7 +198,7 @@ export default function Faq() {
 
             <MarketingSection title="Can software run a wallet here?" sectionId="agents">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Yes, and nothing about the mechanism changes because of it. FigaroCore checks a valid ECDSA signature from an externally-owned account, and the check has no field for what produced it. Every wallet on the network stands for some real-world asset &mdash; a kitchen, a delivery van, a courier&apos;s labor &mdash; and whoever controls that wallet&apos;s signing key on the asset&apos;s behalf is its <em>operator</em>, a person or an autonomous program alike; a person running their own asset is simply that asset&apos;s seller, no different a case. The full three-layer picture &mdash; asset, wallet, operator &mdash; is on <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
+                    Yes, and nothing about the mechanism changes because of it. FigaroCore checks a valid ECDSA signature from an externally-owned account, and the check has no field for what produced it. Every wallet on the network stands for some real-world asset &mdash; a kitchen, a delivery van, a courier&apos;s labor &mdash; and whoever controls that wallet&apos;s signing key on the asset&apos;s behalf is its <em>operator</em>, a person or an autonomous program alike. Which word applies turns on whose value-add the wallet carries, not on what holds the key: a program selling its own service is a <em>seller</em> in its own right, exactly as a person selling their own labor is. The full three-layer picture &mdash; asset, wallet, operator &mdash; is on <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The caveat is the one that applies to any wallet: the mechanism verifies a signature, not an identity. It cannot tell you whether the operator behind an address is what its profile claims, human or software &mdash; that assurance, where it exists, comes from the credentials a clause binds and checks against their issuing authority, not from the kernel. And the word carries two senses, only one of which exists here. The operator <em>of a wallet</em> is whoever holds that one wallet&apos;s signing key &mdash; a person or a program, one participant among equals, and that is the sense used here and on Agents. The operator <em>of a platform</em> is the company that runs the venue two strangers meet in and takes a cut for standing between them &mdash; the sense Figaro has none of, since there is no venue in the middle to run.
@@ -250,7 +250,7 @@ export default function Faq() {
                     This site&apos;s app is one interface, not the protocol. The seam between the protocol and its presentation is deliberate: the registries live on-chain, and any developer can build their own interface against the same ones. Because there is no fee anywhere in the kernel, an interface captures no value from the deals that flow through it &mdash; the value lives in the use of the shared registries, not in any single window onto them. And because participants hold their own data, the usual platform business model &mdash; monetizing the people who use it &mdash; is structurally unavailable here; there is no user data to sell.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins &mdash; whose worth depends on whether the network is used, and on nothing else. Neither is a lever over anyone&apos;s deal: no holding controls settlement, and nothing about either can reach into a lockbox.
+                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins. What a florin is worth is a market question, settled by whoever trades one; this project makes no claim about it. Neither holding is a lever over anyone&apos;s deal: no holding controls settlement, and nothing about either can reach into a lockbox.
                 </p>
             </MarketingSection>
 
@@ -277,7 +277,7 @@ export default function Faq() {
                     The participant case is why there is a cooldown. De-listing is immediate, but the ETH releases only after a delay fixed at deployment and published on-chain before anyone pays it &mdash; without the delay, a single deposit could be walked through one identity after another, and a stake you can reclaim the instant you have used it prices nothing. Coming back costs a second deposit; a released deposit is claimable by its owner alone, with nobody&apos;s permission.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    For authors, the cost is permanence: a registered clauseId cannot be mutated. The remediation path for a flawed clause is to register v2 under a new clauseId; the v1 keeps doing whatever it does, and anyone already using it stays on it until they migrate. The discipline this asks of authors is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.
+                    For authors, the cost is permanence: a registered clauseId cannot be mutated. The remediation path for a flawed clause is to register a corrected one &mdash; a different clause, with its own id and its own hash. Nothing links the two: the flawed clause stays registered and keeps doing whatever it does, designers point their assemblies at the corrected one deliberately, and agreements already committed against the old one keep resolving. The discipline this asks of authors is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.
                 </p>
             </MarketingSection>
 

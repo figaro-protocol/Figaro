@@ -69,7 +69,7 @@ export default function Invariants() {
             <MarketingSection title="What the chain holds.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Almost nothing. Every token that goes in comes back out to one of the parties &mdash; the contract never holds a balance of its own &mdash; and because each commitment only ever looks at one handoff between two parties, the chain never needs the deal itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
+                        Almost nothing of its own. Every token inside is bonded to one open process, earmarked for that process&apos;s parties and reachable by nobody else &mdash; the contract keeps no balance it could spend. Resolution sends all of it back out; a process nobody ever resolves keeps its stakes locked where they are, permanently, which is the deterrent the whole design rests on rather than a gap in it. And because each commitment only ever looks at one handoff between two parties, the chain never needs the deal itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
                     </p>
                     <figure className="my-6">
                         <MerkleTreeFigure

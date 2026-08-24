@@ -20,7 +20,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 export const metadata: Metadata = withOg({
     title: "Clauses — Figaro Protocol",
     description:
-        "A clause is what it is in a paper contract — one reusable term of a deal — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry inventory, and the RPGF reward for clauses that get used.",
+        "A clause is what it is in a paper contract — one reusable term of a deal — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry count, and the RPGF reward for clauses that get used.",
 });
 
 export default function Clauses() {
@@ -52,7 +52,7 @@ export default function Clauses() {
 
             <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; carries the deal&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. That is a fact about today&apos;s assemblies rather than a limit &mdash; a long chain can attest topology as evidence that one seller performed after another.
+                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every deal carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and settlement. One &mdash; <code>figaro-topology</code> &mdash; carries the deal&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. That is a fact about today&apos;s assemblies rather than a limit &mdash; a long chain can attest topology as evidence that one seller performed after another.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     For agents: the registry explorer derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro-protocol/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.

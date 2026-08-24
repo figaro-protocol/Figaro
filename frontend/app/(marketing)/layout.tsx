@@ -4,7 +4,8 @@ import { Footer } from "@/components/shared/Footer";
 
 // Statically exported (`output: 'export'`). These pages prerender to real
 // HTML at build time — the content curl/crawlers see — then hydrate. The
-// event-driven inventories (/assemblies, /clauses, /sellers) read live
+// event-driven surfaces (the /registries explorer, and the live counts on
+// /assemblies and /clauses) read
 // network state client-side after mount (chain → IPFS), so the build-time
 // snapshot is only the shell, never stale data. Security headers + CSP are
 // applied at the hosting/CDN layer, not per-request (a static export runs no

@@ -183,7 +183,7 @@ function RegisteredCard({
                     className="underline hover:text-ink-heading"
                     data-testid="link-onboarding-wizard"
                 >
-                    Seller onboarding wizard →
+                    Member onboarding wizard →
                 </Link>{" "}
                 Re-walk the registration steps; publishing updates this profile in place.
             </p>
