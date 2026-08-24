@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
+import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 
 export const metadata: Metadata = withOg({
     title: "Assemblies — Figaro Protocol",
@@ -49,6 +50,55 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-body leading-relaxed">
                     Every assembly carries three mandatory clauses automatically &mdash; commerce terms (the payment and settlement token, committed at buy time), order topology (which seller follows which), and assembly provenance, the record of which assembly a process instantiates that credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, hand-off, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
                 </p>
+                <DesignGraphCollapseFigure
+                    idPrefix="assemblies-design-collapse"
+                    className="my-8"
+                    designHeading="One registered assembly"
+                    designNodes={[
+                        { label: "order-0 · shipper" },
+                        { label: "order-1 · inspection", branch: true },
+                        { label: "order-2 · freight forwarder" },
+                        { label: "order-3 · ocean carrier" },
+                        { label: "order-4 · customs agent" },
+                        { label: "order-5 · drayage" },
+                    ]}
+                    branchNote="spawned from order-0, not the next link"
+                    rootBuyerLabel="Importer of record"
+                    commitOrder={[
+                        "importer → shipper · G1",
+                        "importer → inspection · G2",
+                        "importer → forwarder · G3",
+                        "importer → ocean carrier · G4",
+                        "importer → customs agent · G5",
+                        "importer → drayage · G6",
+                    ]}
+                    topologyNote={[
+                        "G is the cumulative value at a link — the running total the kernel keeps,",
+                        "and the only quantity it accumulates. Each seller bonds 2 × G at its own",
+                        "commit, so G6 is the whole chain's value. The parent-child links ride in",
+                        "the agreement as a topology clause: merkle-bound at commit, never a field",
+                        "the kernel stores — which is why order-1 can hang off order-0 at design",
+                        "time while order-2 carries the line onward.",
+                    ]}
+                    figureTitle="A composed assembly, and the commit sequence it becomes"
+                    figureDesc={
+                        "On the left, an assembly template as composed: six orders, one of " +
+                        "them hanging off the first rather than continuing the line. On the " +
+                        "right, what the kernel holds when that template is used: six " +
+                        "commits, every one of them to the same root buyer, extending a " +
+                        "single accumulator that only rises. Settlement state records no " +
+                        "parent, no child and no branch — the ordering survives only " +
+                        "because the parties committed it in their agreement."
+                    }
+                    caption={
+                        <>
+                            The branch exists at design time and nowhere else. The kernel
+                            sees six commits extending one accumulator, each to the same
+                            root buyer &mdash; which is why re-wiring the chain produces a
+                            different assembly, not a different kernel.
+                        </>
+                    }
+                />
             </MarketingSection>
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">

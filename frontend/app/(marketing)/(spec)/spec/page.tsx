@@ -9,6 +9,8 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
 import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
+import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
+import { GasCrossoverFigure } from "@/components/figures/GasCrossoverFigure";
 
 export const metadata: Metadata = withOg({
     title: "Specifications — Figaro Protocol",
@@ -425,6 +427,7 @@ export default function Specifications() {
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <strong>Starting from zero?</strong> Start with <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium underline">Your first commit</a>, the SDK README&apos;s opening walkthrough &mdash; a cold machine to a bonded order committed on chain and read back from its events, every step a command you run yourself. The catalogue below is the reference you come back to once something is running.
                 </p>
+                <OriginationSequenceFigure className="my-8" />
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <a href="/sdk-api/index.html" className="text-ink-heading font-medium underline">Generated API reference &mdash; every export, every signature</a>. TypeDoc rendered from the shipped source, one page per entry point: the root package, <code>/agent</code>, <code>/derive</code>, <code>/clauses</code>, <code>/handoff</code> and <code>/signer</code>. This is where you look a signature up; the README below is the manual you read first.
                 </p>
@@ -655,6 +658,7 @@ function attestViaResolver(
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Divide those out and a two-position batch runs ~190k gas per position &mdash; <em>above</em> the direct path&apos;s ~167k per order, because two positions are carrying the whole ~300k proof verification between them. The same ~300k is what a thousand-position batch pays. <strong>Which puts the crossover at about three net positions:</strong> back the ~26.5k marginal out of the 385,902 measured above and ~333k of that transaction was fixed proof verification, so per position the batch costs ~193k at two and ~137k at three &mdash; the third net position is where it passes under the direct path&apos;s ~167k. Three <em>positions</em>, not three orders: netting is what turns many orders into few positions, so a real batch usually clears that line well before its order count suggests. <strong>So the batch path is an amortization, not a discount:</strong> it wins where the fixed cost divides by a large number and where netting collapses many orders into few positions, and it loses below that. Read those receipts yourself before you plan around either figure &mdash; both are public, both are linked above.
                 </p>
+                <GasCrossoverFigure className="my-8" />
                 <p className="text-base text-ink-body leading-relaxed">
                     <strong>When the direct path is simply correct: low volume.</strong> At a handful of orders a day it costs less per order <em>and</em> costs nothing else &mdash; no proving host, no relay to operate or trust, no vkey/gateway pairing to keep aligned, no minutes of wrap between signing and settlement, and settlement state you can read straight off <code>FigaroCore.orderStatus</code>. Nothing is lost by starting there: both paths take the <em>same signed artifacts</em>, so moving to batches later is a change of submission target, not a change to what you sign. The batch path is what you reach for when your own volume, not the protocol, makes the proof pay.
                 </p>

@@ -5,6 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
+import { DualProcessIdFigure } from "@/components/figures/DualProcessIdFigure";
 
 export const metadata: Metadata = withOg({
     title: "Sharp edges — Figaro Protocol",
@@ -81,6 +82,7 @@ export default function Pitfalls() {
                         <div className="mt-2 text-sm">
                             <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; SDK README, &ldquo;Your first commit&rdquo; step 5</a>
                         </div>
+                        <DualProcessIdFigure className="mt-6" />
                     </LabelledListRow>
                     <LabelledListRow label="AccrualClosed()" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">A closed accrual period does not throw &mdash; it returns a report with nothing recorded.</strong> <code>recordClauseUsage</code> and <code>recordAssemblyUsage</code> each open by calling <code>UsageCounter.currentPeriod()</code>, which reverts <code>AccrualClosed()</code> once the last accrual period has ended, and <code>recordProcessUsage</code> tolerates per-leg reverts by design &mdash; so every leg lands in <code>failures</code> with <code>recorded</code> at <code>0</code> and nothing is thrown. The same boundary is sharp long before that day: a record counts in the period open <em>when you call</em>, not the one the process resolved in. Record in the same breath as the resolve, and read the report.

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
+import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 
 export const metadata: Metadata = withOg({
@@ -281,7 +282,7 @@ export default function Faq() {
 
             <MarketingSection title="Can someone hijack your registration or clause?" sectionId="builders-registries">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Clause, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a registry &mdash; a clauseId, a member profile, an assembly slug &mdash; the binding is immutable: no admin can rebind it, no later registrant can displace it. On the direct attestation path the chain validates no content shape &mdash; it merkle-binds each attestation to its signed agreement and content-hash-binds the evidence. The batched, proof-based settlement path adds a content check: a generic SP1 proof engine re-validates each clause against the exact spec the <code>ClauseRegistry</code> anchors, so a permissive substitute cannot settle. Either way there are no per-clause validator contracts &mdash; any registered clause is attestable and settleable with zero on-chain code changes.
+                    Clause, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a registry &mdash; a clauseId, a member profile, an assembly&apos;s composition hash &mdash; the binding is immutable: no admin can rebind it, no later registrant can displace it. On the direct attestation path the chain validates no content shape &mdash; it merkle-binds each attestation to its signed agreement and content-hash-binds the evidence. The batched, proof-based settlement path adds a content check: a generic SP1 proof engine re-validates each clause against the exact spec the <code>ClauseRegistry</code> anchors, so a permissive substitute cannot settle. Either way there are no per-clause validator contracts &mdash; any registered clause is attestable and settleable with zero on-chain code changes.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     All three registries &mdash; <code>ClauseRegistry</code>, <code>AssemblyRegistry</code>, and <code>MembersRegistry</code> &mdash; are anchored by the same anti-spam mechanism: a reclaimable ETH deposit &mdash; staked intent, not a fee. No admin can seize it; withdrawing reclaims the exact amount and de-surfaces the registration (readers hide what no longer carries a live stake), so polluting a registry costs deposit &times; the time it stayed surfaced. The amount is set per deployment &mdash; read it with <code>registrationDeposit()</code> on the registry you are registering against, never from a remembered constant.
@@ -289,6 +290,7 @@ export default function Faq() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     What a withdrawal leaves behind differs by family. A clause&apos;s or an assembly&apos;s binding is permanent &mdash; agreements already committed against it must keep resolving forever &mdash; so only the stake and the surfacing move, in a single call with no waiting. A participant registration is keyed to a wallet instead, and leaving clears it: a clause or an assembly is a permanent published record; a participant is a live identity.
                 </p>
+                <RegistryLifecycleFigure className="my-8" />
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     The participant case is why there is a cooldown. De-listing is immediate, but the ETH releases only after a delay fixed at deployment and published on-chain before anyone pays it &mdash; without the delay, a single deposit could be walked through one identity after another, and a stake you can reclaim the instant you have used it prices nothing. Coming back costs a second deposit; a released deposit is claimable by its owner alone, with nobody&apos;s permission.
                 </p>

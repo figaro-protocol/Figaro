@@ -23,6 +23,12 @@ export interface DesignGraphCollapseFigureProps extends BaseFigureProps {
      *  terms. One entry per rendered line — SVG does not wrap text, so the
      *  caller owns the break points. */
     topologyNote: readonly string[];
+    /** The italic printed once, above the first branch node — what "off the
+     *  main line" MEANS in the citing surface's own graph. Defaults to the
+     *  paper register's wording. Kept to ~39 characters: it is drawn from the
+     *  branch column and the right panel begins at x=206, so a longer line runs
+     *  under the commit sequence. */
+    branchNote?: string;
     figureTitle: string;
     figureDesc: string;
     caption: ReactNode;
@@ -47,6 +53,16 @@ const L_W = 178;
 const R_X = 206;
 const R_W = 178;
 
+// SVG does not wrap text, and both panels are 178 units wide — so the figure's
+// own fixed strings are authored as LINES, and the geometry below is computed
+// from how many each takes. Written as single strings, the right panel's
+// subheading and the accumulator note both ran past the plate's right edge.
+const SUB_LEADING = 10;
+const NOTE_LEADING = 10;
+const LEFT_SUBHEADING = ["branches; ordering is the parties’ own"] as const;
+const RIGHT_SUBHEADING = ["one accumulator, one root buyer,", "no parent field"] as const;
+const ACCUMULATOR_NOTE = ["G rises monotonically down this list,", "and only down it."] as const;
+
 export function DesignGraphCollapseFigure({
     idPrefix = "design-graph-collapse",
     className,
@@ -56,6 +72,7 @@ export function DesignGraphCollapseFigure({
     rootBuyerLabel,
     designHeading,
     topologyNote,
+    branchNote = "off the main line, bonded to the same process",
     figureTitle,
     figureDesc,
     caption,
@@ -63,14 +80,19 @@ export function DesignGraphCollapseFigure({
     const titleId = `${idPrefix}-title`;
     const descId = `${idPrefix}-desc`;
 
-    const headerY = 58;
+    // The header rule clears the taller of the two subheadings.
+    const subLines = Math.max(LEFT_SUBHEADING.length, RIGHT_SUBHEADING.length);
+    const headerY = 58 + (subLines - 1) * SUB_LEADING;
     const leftTop = headerY + 22;
     const rightTop = headerY + 62; // room for the root-buyer bar above the commits
 
     const bodyBottom = Math.max(leftTop + designNodes.length * ROW_H, rightTop + commitOrder.length * ROW_H);
+    // The seam opens below the accumulator note, which hangs off the commit
+    // list and so grows with its own line count.
+    const seamTop = bodyBottom + 22 + (ACCUMULATOR_NOTE.length - 1) * NOTE_LEADING;
     // The seam's closing sentence sits below however many lines the caller's
     // topology note takes.
-    const seamY = bodyBottom + 58 + topologyNote.length * 11;
+    const seamY = seamTop + 36 + topologyNote.length * 11;
     const viewHeight = seamY + 26;
 
     const spineX = L_X + 14;
@@ -108,15 +130,19 @@ export function DesignGraphCollapseFigure({
                 <text x={L_X} y="22" fontSize="11" fontWeight="600" className="fill-ink-heading">
                     {designHeading}
                 </text>
-                <text x={L_X} y="36" fontSize="8.5" className="fill-ink-muted">
-                    branches; ordering is the parties&rsquo; own
-                </text>
+                {LEFT_SUBHEADING.map((line, i) => (
+                    <text key={line} x={L_X} y={36 + i * SUB_LEADING} fontSize="8.5" className="fill-ink-muted">
+                        {line}
+                    </text>
+                ))}
                 <text x={R_X} y="22" fontSize="11" fontWeight="600" className="fill-ink-heading">
                     What the kernel holds
                 </text>
-                <text x={R_X} y="36" fontSize="8.5" className="fill-ink-muted">
-                    one accumulator, one root buyer, no parent field
-                </text>
+                {RIGHT_SUBHEADING.map((line, i) => (
+                    <text key={line} x={R_X} y={36 + i * SUB_LEADING} fontSize="8.5" className="fill-ink-muted">
+                        {line}
+                    </text>
+                ))}
 
                 <line x1={L_X} y1={headerY - 12} x2="384" y2={headerY - 12} className="stroke-default" strokeWidth="1" />
 
@@ -159,7 +185,7 @@ export function DesignGraphCollapseFigure({
                                 // the main line, and drawing them onto it would assert the
                                 // sequence the paragraph denies.
                                 <text x={x - 4} y={y - 12} fontSize="7.5" fontStyle="italic" className="fill-ink-muted">
-                                    off the main line, bonded to the same process
+                                    {branchNote}
                                 </text>
                             )}
                             <circle
@@ -214,17 +240,25 @@ export function DesignGraphCollapseFigure({
                         </g>
                     );
                 })}
-                <text x={R_X + 10} y={rightTop + commitOrder.length * ROW_H + 4} fontSize="8" className="fill-ink-muted">
-                    G rises monotonically down this list, and only down it.
-                </text>
+                {ACCUMULATOR_NOTE.map((line, i) => (
+                    <text
+                        key={line}
+                        x={R_X + 10}
+                        y={rightTop + commitOrder.length * ROW_H + 4 + i * NOTE_LEADING}
+                        fontSize="8"
+                        className="fill-ink-muted"
+                    >
+                        {line}
+                    </text>
+                ))}
 
                 {/* ── The seam ────────────────────────────────────────────── */}
-                <line x1={L_X} y1={bodyBottom + 22} x2="384" y2={bodyBottom + 22} className="stroke-default" strokeWidth="1" />
-                <text x={L_X} y={bodyBottom + 40} fontSize="9" fontWeight="600" className="fill-ink-primary">
+                <line x1={L_X} y1={seamTop} x2="384" y2={seamTop} className="stroke-default" strokeWidth="1" />
+                <text x={L_X} y={seamTop + 18} fontSize="9" fontWeight="600" className="fill-ink-primary">
                     What carries across the collapse
                 </text>
                 {topologyNote.map((line, i) => (
-                    <text key={line} x={L_X} y={bodyBottom + 54 + i * 11} fontSize="8.5" className="fill-ink-body">
+                    <text key={line} x={L_X} y={seamTop + 32 + i * 11} fontSize="8.5" className="fill-ink-body">
                         {line}
                     </text>
                 ))}
