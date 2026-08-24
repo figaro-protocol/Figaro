@@ -114,6 +114,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/spec", label: "Specifications" },
             { href: "/clauses", label: "Clauses" },
             { href: "/assemblies", label: "Assemblies" },
+            { href: "/worked-example", label: "Worked example" },
             { href: "/registries", label: "Registries" },
             { href: "/composition", label: "Composition" },
             { href: "/data", label: "Data" },

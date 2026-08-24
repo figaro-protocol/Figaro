@@ -52,7 +52,7 @@ export default function Assemblies() {
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under.
+                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under. One of those shapes is followed order by order, with every stake named per party, on <Link href="/worked-example" className="underline">Worked example</Link>.
                 </p>
             </MarketingSection>
 
@@ -175,7 +175,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 </p>
                 <RegistryCountLink family="assemblies" />
                 <p className="text-sm text-ink-body leading-relaxed mt-6">
-                    A registered assembly that gets used earns from the protocol&apos;s retroactive public-goods funding &mdash; the designer of record is paid when the world trades through what they published; see <Link href="/rpgf" className="underline">RPGF</Link>.
+                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when settled deals run through an assembly, its designer of record draws a share of the florins reserved for authors. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Rewards for authors</Link>.
                 </p>
             </MarketingSection>
 

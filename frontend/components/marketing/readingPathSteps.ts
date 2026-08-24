@@ -84,7 +84,7 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
         href: "/composition",
         label: "Composition",
         description:
-            "how deals compose — with each other, and with the chain's other contracts: forums, swaps, the fiscal multisender.",
+            "how deals compose — with each other, and with the chain's other contracts: swaps, the fiscal multisender, a forum where one is wanted.",
     },
     {
         rung: "What you can build",

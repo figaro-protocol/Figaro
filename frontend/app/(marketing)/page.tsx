@@ -12,7 +12,7 @@ import {
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol — My word is my bond",
     description:
-        "One deal that enforces itself — both sides stake tokens worth more than cheating could gain — many such deals making an economy, and the record they leave meeting regulators, courts, and the currency you already use: the profit stays with the hands that made it.",
+        "Write a process: clauses write the agreement between a buyer and a seller, and, composed into an assembly, many sellers run one process a whole market can reuse. It holds because one contract makes keeping your word the winning move — and the record it leaves answers taxation, consent, emissions, or a courtroom alike.",
 });
 
 // Copy constraints the code can't show: "process" always means the economic
@@ -20,13 +20,26 @@ export const metadata: Metadata = withOg({
 // never blur the referents. The cost claim is GAS with its basis stated
 // ("cents to a few dollars … at typical network prices" — the FAQ's honest
 // range); never re-inflate to "pennies", never conflate with the
-// coordination-friction savings the second section enumerates.
+// coordination-friction savings the sections enumerate.
 // The unhappy path lives on
 // /faq (the FAQ owns it); home points, never carries it.
-// The reading-path section is the ruled spine (probe-validated 2026-08-21):
-// its order is deliberate — see `components/marketing/readingPathSteps.ts`.
+// The reading-path section is the ruled spine — see
+// `components/marketing/readingPathSteps.ts`.
+//
+// SECTION ORDER is the safe→build reorientation (maintainer, 2026-08-24, on
+// the 2026-08-22 USP ratification): what anyone can BUILD leads, and the
+// enforcement mechanism follows as the warrant a reader has just acquired a
+// reason to ask for. Do not restore enforcement to first position.
+//
+// COMPOSITION ORDER, wherever composition is named here or elsewhere on the
+// site (maintainer, 2026-08-24, B.5): value mobility first (value captured in
+// one market moves to the next through an ordinary swap), then the game
+// theory framed as "disputes become the exception", then legacy integration
+// — taxation, regulation, a forum. Never lead a composition list with
+// arbitration.
+//
 // The florin paragraph is deliberately SEPARATE from the community- and
-// designer-token examples above it: the florin is a pure Schelling point, not
+// designer-token examples beside it: the florin is a pure Schelling point, not
 // one more community token, and merging the paragraphs collapses that.
 export default function Home() {
     return (
@@ -35,10 +48,37 @@ export default function Home() {
                 title="My word is my bond"
                 lead={
                     <>
-                        From guilds to banks to platforms, every economic system has answered the same two questions: who enforces a deal, and who keeps the profit. Figaro&apos;s answer: both sides stake tokens worth more than cheating could gain &mdash; so no one needs to stand in the middle, and the profit stays with the hands that made it.
+                        <strong className="text-ink-heading">Write a process.</strong> Clauses write the agreement between a buyer and a seller; composed into an assembly, many sellers run one process &mdash; and a whole market can run the same one. Value captured in one market moves to the next through an ordinary token swap. Software agents trade, author, and operate on the same footing as people, and the data a process throws off stays yours: the aggregate map is public, the detail sealed and sellable only on your terms.
                     </>
                 }
-            />
+            >
+                <p className="text-body-lead text-ink-muted max-w-2xl mt-5">
+                    It holds because one contract makes keeping your word the winning move &mdash; disputes become the exception, not the norm &mdash; and when taxation, consent, emissions, or a courtroom still asks, the same verifiable record answers. What we built is the start, not the boundary: the protocol is designed to outlive its builders, with nine tenths of its tokens reserved for the community that extends it &mdash; paid to whoever writes the clauses and assemblies the world ends up using. All of it transparent; all of it verifiable.
+                </p>
+            </MarketingHero>
+
+            <MarketingSection title="Anyone can write the terms of a market">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Clauses and assemblies are public building blocks, not paperwork filed away. Anyone can write a clause and publish it for reuse. Anyone can compose clauses into an assembly &mdash; a whole deal-shape &mdash; and publish that. A deal is an assembly put to work: the shape filled in with real hands, amounts, and signatures. Markets need no operator either: a buyer&apos;s request races to whichever sellers want it, or goes out for quotes &mdash; offers form on their own, from the network.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The commons pays for its own growth: the florin, the protocol&apos;s own token, has a supply fixed at a billion, and 600 million of it are set aside for authors whose clauses and assemblies get used, paid pro-rata by real use, after the fact. Where the other 400 million sits is itemized on{" "}
+                    <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for authors</Link>. The whole split is readable on the chain.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Many deals make an economy">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    When many deals share a token, that is not a feature &mdash; it is an economy. A neighborhood&apos;s own token, spent by its diaspora in Los Angeles or Lima, holds value at home. A designer pins their token to their assembly, and a micro-economy grows around their work. Each is a working economy on the same kernel.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The florin is never required: it is the neutral case, useful precisely because anyone, anywhere can agree on it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-8">
+                    Every economy leaves a record, and Figaro splits it the opposite way a platform does: the aggregate map of the market is public, the same for everyone who reads it. The detail is yours. Your data is an asset you own: seal it, show it to whom you choose, or sell it on your own terms. The blockchain holds nothing but a fingerprint of each agreement: the agreement becomes a merkle tree, the clauses its leaves, the root the fingerprint the chain keeps. The detail itself lives on storage you control, never on the chain &mdash; which is why that ownership is real.
+                </p>
+                <MerkleForestFigure />
+            </MarketingSection>
 
             <MarketingSection title="One deal that enforces itself">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
@@ -55,35 +95,15 @@ export default function Home() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Many deals make an economy">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Clauses and assemblies are public building blocks, not paperwork filed away. Anyone can write a clause and publish it for reuse. Anyone can compose clauses into an assembly &mdash; a whole deal-shape &mdash; and publish that. A deal is an assembly put to work: the shape filled in with real hands, amounts, and signatures. Markets need no operator either: a buyer&apos;s request races to whichever sellers want it, or goes out for quotes &mdash; offers form on their own, from the network.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    When many deals share a token, that is not a feature &mdash; it is an economy. A neighborhood&apos;s own token, spent by its diaspora in Los Angeles or Lima, holds value at home. A designer pins their token to their assembly, and a micro-economy grows around their work. Each is a working economy on the same kernel.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The florin &mdash; the protocol&apos;s own unit, never required &mdash; is the neutral case: useful precisely because anyone, anywhere can agree on it. The commons pays for its own growth. The florin&apos;s supply is fixed at a billion, and 600 million of it are set aside for authors whose clauses and assemblies get used, paid pro-rata by real use, after the fact. Where the other 400 million sits is itemized on{" "}
-                    <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for authors</Link>. The whole split is readable on the chain.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Every economy leaves a record, and Figaro splits it the opposite way a platform does: the aggregate map of the market is public, the same for everyone who reads it. The detail is yours. Your data is an asset you own: seal it, show it to whom you choose, or sell it on your own terms. The blockchain holds nothing but a fingerprint of each agreement: the agreement becomes a merkle tree, the clauses its leaves, the root the fingerprint the chain keeps. The detail itself lives on storage you control, never on the chain &mdash; which is why that ownership is real.
-                </p>
-                <MerkleForestFigure />
-            </MarketingSection>
-
             <MarketingSection title="How it meets the world">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    These economies are not silos, and they are not an exit from the world. One swap carries value between them and out to the currency you already use &mdash; a single hop on an open exchange, not a banking pipeline. Deals compose with everything else on the chain: an arbitration forum&apos;s ruling, a currency swap, a fiscal multisender through which a wallet splits its own receipts, leaving a fiscal trail as a byproduct (<Link href="/composition" className="text-ink-heading hover:underline">Composition</Link>).
+                    These economies are not silos, and they are not an exit from the world. One swap carries value between them and out to the currency you already use &mdash; a single hop on an open exchange, not a banking pipeline. Deals compose with everything else on the chain: that same swap, a fiscal multisender through which a wallet splits its own receipts, leaving a fiscal trail as a byproduct, and &mdash; for the exception rather than the norm &mdash; an arbitration forum&apos;s ruling (<Link href="/composition" className="text-ink-heading hover:underline">Composition</Link>).
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The record doubles as your paperwork: to a regulator, a tax authority, a court, you demonstrate rather than ask to be believed. The old institutions don&apos;t vanish &mdash; they move to the edges.
+                    The record doubles as your paperwork: to a regulator, a tax authority, a court, you demonstrate rather than ask to be believed.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Through all of it, you hold your own keys: your wallet, your tokens, your signatures. No custodian above you. No account anyone can freeze or close. The kernel holds only live deals&apos; stakes, and only until each settles.
-                </p>
-                <p className="text-body-lead text-ink-heading font-medium mt-8">
-                    What a platform asks you to believe, Figaro lets you check.
                 </p>
             </MarketingSection>
 

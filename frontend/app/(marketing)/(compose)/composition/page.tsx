@@ -31,13 +31,13 @@ export default function Composes() {
                 }
             />
 
-            <MarketingSection title="The ecosystem composes around the kernel.">
+            <MarketingSection title="What is already wired in.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Third-party products already wired &mdash; add others to help the ecosystem evolve:
+                    Third-party products already wired &mdash; add others to help the ecosystem evolve. They are listed the way a deal meets them: first what carries value out of one market and into the next, then what a running process needs, then what the world outside the deal asks for.
                 </p>
                 <ul className="space-y-4">
-                    <LabelledListRow label="Forums" uppercase>
-                        The parties&apos; agreement designates the forum &mdash; a clause&apos;s <code>composes</code> block carries the forum&apos;s URL as configuration, never code, so any forum (an on-chain court, an arbitral institution, a national court) sits behind the same seam. Kleros is the wired example today; the seam is provider-agnostic.
+                    <LabelledListRow label="Token swap" uppercase>
+                        <strong>Uniswap.</strong> A process is denominated in one token, but a buyer may hold another: swap through Uniswap and commit in the same transaction. The same single hop carries a settled payout onward &mdash; value captured in one market moves to the next without a pipeline into or out of the banking system.
                     </LabelledListRow>
                     <LabelledListRow label="Storage" uppercase>
                         <strong>IPFS.</strong> Off-chain agreement documents, public and private data, an audit trail and evidence.
@@ -45,11 +45,11 @@ export default function Composes() {
                     <LabelledListRow label="Messaging" uppercase>
                         <strong>XMTP.</strong> Per-order encrypted handoff channels for public and private data exchange.
                     </LabelledListRow>
-                    <LabelledListRow label="Token swap" uppercase>
-                        <strong>Uniswap.</strong> A process is denominated in one token, but a buyer may hold another: swap through Uniswap and commit in the same transaction.
-                    </LabelledListRow>
                     <LabelledListRow label="Multisender" id="multisender" uppercase>
                         <strong>Disperse.</strong> Post-settlement payout routing through the composed public multisender: one payment, many recipients, one transaction &mdash; it goes through whole or not at all. A settled wallet splits its own receipts the moment they land, to addresses it earmarked itself: a fiscal set-aside, savings, what it owes a supplier, a mutual-aid contribution. Nothing in the deal routed any of it and no clause computed it &mdash; the split is the wallet&apos;s own arithmetic over its own tokens, done afterwards, on its own initiative, spending a balance it already holds. The composed contract is the ownerless Disperse deployment &mdash; <code>0xD152f549545093347A162Dce210e7293f1452150</code>, the same address across chains, unowned since 2018 &mdash; and the call is its own <code>disperseToken(token, recipients, values)</code>, made by the wallet itself. Its entry, and the record key a deployment wires it under, are on <Link href="/spec#multisender" className="underline">/spec</Link>. What falls out is a self-sovereign fiscal trail nobody had to assemble later: the set-aside is dated, the recipient is named, and it stands on the same public record as the trade that paid for it.
+                    </LabelledListRow>
+                    <LabelledListRow label="Forums" uppercase>
+                        The parties&apos; agreement designates the forum &mdash; a clause&apos;s <code>composes</code> block carries the forum&apos;s URL as configuration, never code, so any forum (an on-chain court, an arbitral institution, a national court) sits behind the same seam. Kleros is the wired example today; the seam is provider-agnostic. This is the exception rather than the norm: the bonded equilibrium is what makes most deals close without one, and a forum that was never composed still rules on the same record &mdash; the parties simply pick the venue afterwards.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>

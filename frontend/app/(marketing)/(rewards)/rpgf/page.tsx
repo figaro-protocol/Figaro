@@ -19,10 +19,10 @@ export default function Rpgf() {
     return (
         <>
             <MarketingHero
-                title="Retroactive public goods funding."
+                title="Paid for what the network uses."
                 lead={
                     <>
-                        600 million florins &mdash; sixty percent of all that will ever exist &mdash; reserved for whoever writes the clauses and composes the assemblies that grow the network&apos;s usage, by a published formula anyone can check.
+                        Write a clause, publish an assembly, and when settled deals reach for it you draw a share of 600 million florins &mdash; sixty percent of every florin that will ever exist &mdash; by a published formula anyone can check. Nobody applies, nobody decides, and no fee is taken from anyone to fund it. Two conditions, up front: a year that closes with fewer than three distinct sellers using your work scores nothing, and a deal counts only while both you and the seller who delivered it hold a live registration deposit.
                     </>
                 }
             />
@@ -50,10 +50,11 @@ export default function Rpgf() {
                 <ul className="space-y-3 text-base text-ink-body leading-relaxed list-disc pl-5">
                     <li>Every clause and assembly earns the same way: by how much real settled trade reached for it.</li>
                     <li>Two numbers decide a share: settled deals that carried it, and distinct sellers behind them. Breadth beats volume &mdash; fifty sellers reaching for it once outweighs one seller using it fifty times. Payment size never enters.</li>
-                    <li>Earning starts at three distinct sellers &mdash; the smallest signal one person can&apos;t stage alone. A year that closes below three scores nothing.</li>
-                    <li>A deal counts only when the seller who delivered it holds a live deposit too. Your registration deposit stays live, or your work comes off the shelf and stops earning.</li>
                     <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the contract itself.</li>
                 </ul>
+                <p className="text-base text-ink-body leading-relaxed mt-6">
+                    The two conditions in the lead are one guard, read from both ends: three distinct sellers is the smallest signal a single person cannot stage alone, and a live deposit required of author and seller alike means padding a tally costs real stake for as long as the padding stands.
+                </p>
                 <RpgfValueLoopFigure />
                 <p className="text-base text-ink-body leading-relaxed mt-6">
                     An author reads their accrual and claims a closed period&apos;s share at <Link href="/rewards" className="text-ink-heading font-medium hover:underline">Claim rewards</Link> &mdash; connected wallet required, permission from no one.

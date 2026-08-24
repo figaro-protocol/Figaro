@@ -13,8 +13,11 @@ const TAXONOMY_URL =
 export const metadata: Metadata = withOg({
     title: "Working Groups — Figaro Protocol",
     description:
-        "A working group is an interdisciplinary group of people: the eight disciplines of cryptoeconomics intersecting on questions none of them can close alone. The eight groups, their papers, and how to contribute.",
+        "Before you build on a protocol you check its arguments. The papers that carry them — the equilibrium proof, the mechanisms by which an offer forms, the scope of what is formally verified, the legal and political readings — sorted into the eight disciplines of cryptoeconomics. The eight groups, their papers, and how to contribute.",
 });
+
+/** Derived, never stated: the corpus size is whatever `PAPER_GROUPS` holds. */
+const PAPER_COUNT = PAPER_GROUPS.reduce((n, g) => n + g.papers.length, 0);
 
 export default function WorkingGroups() {
     return (
@@ -23,8 +26,8 @@ export default function WorkingGroups() {
                 title="Working groups."
                 lead={
                     <>
-                        A working group is an interdisciplinary group of people: the eight disciplines of cryptoeconomics<sup>1</sup> intersecting on questions none of them can close alone. Groups form and work wherever their people are.
-                    </>
+                        Before you build on a protocol you check its arguments. {PAPER_COUNT} papers carry them &mdash; the equilibrium proof, the mechanisms by which an offer forms, the scope of what is formally verified, the legal and political readings &mdash; sorted into the eight disciplines of cryptoeconomics. A working group is whoever is doing that work in a discipline; groups form and work wherever their people are.
+</>
                 }
             />
 

@@ -17,10 +17,16 @@ export default function Data() {
                 title="Your records. Your terms."
                 lead={
                     <>
-                        Every trade you settle leaves two kinds of trace: a fingerprint on the chain, and the record of what actually happened &mdash; the agreement, the evidence, the books you kept. The protocol only ever holds the first. The second stays with you, pinned where you choose, disclosed only when you choose &mdash; and because letting someone else in on it is itself a trade, you can sell access to it the same bonded way you sell anything else.
+                        Every trade you settle leaves two kinds of trace: a fingerprint on the chain, and the record of what actually happened &mdash; the agreement, the evidence, the books you kept. The protocol only ever holds the first. The second stays with you, pinned where you choose, disclosed only when you choose &mdash; and because letting someone else in on it is itself a trade, you can sell access to it the same bonded way you sell anything else. None of it needed a new contract: this whole market is two ordinary clauses composed onto a bonded sale.
                     </>
                 }
             />
+
+            <MarketingSection title="Two clauses, and no new contract.">
+                <p className="text-base text-ink-body leading-relaxed">
+                    The data market runs on two ordinary clauses, composed onto a bonded sale like any other term of trade: one sets the disclosure regime for a process&apos;s own records, the other sets the terms of a specific sale. Two reference assemblies show the whole round trip &mdash; a credentialed survey whose flight record is licensed onward, and a standing subscription to another member&apos;s growing record, both proved end to end on the developer network the reference suite runs against. Browse the <Link href="/clauses" className="text-ink-heading font-medium hover:underline">clauses</Link> and <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">assemblies</Link> for the exact terms &mdash; and publish your own beside them; the reference set is a starting point, not the catalogue.
+                </p>
+            </MarketingSection>
 
             <MarketingSection title="What the chain keeps.">
                 <p className="text-base text-ink-body leading-relaxed">
@@ -46,15 +52,9 @@ export default function Data() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="See it built.">
-                <p className="text-base text-ink-body leading-relaxed">
-                    None of this needed a new contract. The data market runs on two ordinary clauses, composed onto a bonded sale like any other term of trade: one sets the disclosure regime for a process&apos;s own records, the other sets the terms of a specific sale. Two reference assemblies show the whole round trip &mdash; a credentialed survey whose flight record is licensed onward, and a standing subscription to another member&apos;s growing record. What you can check right now is those same assemblies, proved end to end on the developer network the reference suite runs against. Browse the <Link href="/clauses" className="text-ink-heading font-medium hover:underline">clauses</Link> and <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">assemblies</Link> for the exact terms.
-                </p>
-            </MarketingSection>
-
             <MarketingSection title="Erasure, honestly." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
-                    What you publish, you can erase: unpinning stops your node serving it and lets the network garbage-collect it. Two things it cannot reach &mdash; a fingerprint on-chain, which is permanent by design, since the whole point is that nothing can be swapped in underneath it; and a copy another node already took before you unpinned. The honest limits are stated in full on <Link href="/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
+                    What you publish you can erase by unpinning it, with two things unpinning cannot reach &mdash; the on-chain fingerprint, permanent by design, and any copy another node took before you unpinned &mdash; both stated in full on <Link href="/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
                 </p>
             </MarketingSection>
         </>

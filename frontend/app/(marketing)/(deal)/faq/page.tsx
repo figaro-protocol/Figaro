@@ -12,7 +12,7 @@ export const metadata: Metadata = withOg({
         "Plain-language answers to the questions people ask before sending tokens through Figaro — custody, non-delivery, disputes, lost keys, privacy, ownership — with the residual risk stated beside each answer.",
 });
 
-/** The page's fourteen questions, in document order, split into two labeled
+/** The page's fifteen questions, in document order, split into two labeled
  *  groups by what each question is actually about — not by position. Titles
  *  are copied verbatim from each `MarketingSection` below; keep the three in
  *  lockstep if a heading changes. */
@@ -33,6 +33,7 @@ const DEEPER_QUESTIONS: { id: string; title: string }[] = [
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
     { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
     { id: "builders-registries", title: "Can someone hijack your registration or clause?" },
+    { id: "demonstrating", title: "What can you show a regulator or an auditor?" },
     { id: "compatibility", title: "What else you should know." },
 ];
 
@@ -278,6 +279,20 @@ export default function Faq() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     For authors, the cost is permanence: a registered clauseId cannot be mutated. The remediation path for a flawed clause is to register a corrected one &mdash; a different clause, with its own id and its own hash. Nothing links the two: the flawed clause stays registered and keeps doing whatever it does, designers point their assemblies at the corrected one deliberately, and agreements already committed against the old one keep resolving. The discipline this asks of authors is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="What can you show a regulator or an auditor?" sectionId="demonstrating">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The record &mdash; which is usually the thing being asked for. Using a protocol changes none of your obligations; what it changes is the cost of demonstrating you met them. Three cases the shipped <Link href="/clauses" className="text-ink-heading font-medium hover:underline">clauses</Link> already cover, named plainly:
+                </p>
+                <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Consent, for the GDPR.</strong> A consent clause affixes each document &mdash; terms, a privacy notice, a data-processing agreement &mdash; at design time by its keccak256 hash, its version, and its title; the parties&apos; signatures over the agreement root that includes it <em>are</em> the acceptance, so there is no separate ceremony to reconstruct afterwards. Who accepted which version of which document, and when, is recoverable from the commitment itself &mdash; the record a controller has to be able to produce. The residual: that is evidence of acceptance, not a lawful basis. Purpose limitation, data minimisation, and handling a withdrawal stay yours to run; the clause is append-only, so a withdrawal is an off-chain process, never a content edit.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Emissions, for ESG reporting.</strong> An emissions clause names the accounting methodology the seller reports under &mdash; the GHG Protocol, ISO 14064, PAS 2050, EN 16258, or one you write &mdash; and the measured figure is filed against that order as an attestation, with a correction filed as a later attestation readers weigh for themselves. That is per-order data under a named methodology, which is what an emissions report consumes. The residual: the protocol validates no standard and takes no closed list of them, stores no scope 1/2/3 classification (scope is relative to a reporting boundary, so a reader derives it from its own position in the chain), and does not check whether the figure is true. Offset retirement is outside the protocol entirely.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Deal facts, for e-invoicing.</strong> The European standard for electronic invoicing (EN 16931) wants a structured set of facts: who supplied whom, what was delivered, in what amounts, in which currency, on what date, against which agreement. A settled process carries all of them on the public record, line by line, each line&apos;s own agreement bound by fingerprint. The residual: the protocol emits no invoice in that format and files nothing for you. Mapping the record into whatever form your jurisdiction requires is your own step &mdash; the point is that it is a mapping rather than a reconstruction.</li>
+                </ul>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The pattern is the same in all three, and it is the boundary worth being exact about: the obligation stays with the party who has it, and what the record removes is the part where you have to be believed. Nothing here makes a deployment compliant &mdash; compliance is a property of you and how you run it, the way the privacy answer above says of the same code &mdash; and nothing on this site is legal or tax advice.
                 </p>
             </MarketingSection>
 
