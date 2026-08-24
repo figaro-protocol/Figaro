@@ -64,15 +64,26 @@ export function MemberLanding() {
     }, [unregistered, depositKnown, owedDeposit, router]);
 
     if (!mounted || (unregistered && (!depositKnown || !owedDeposit))) {
-        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+        return (
+            <>
+                <ManageHeader />
+                <Card className="p-8 text-sm text-ink-faint">Loading…</Card>
+            </>
+        );
     }
     if (profileLoading && isConnected) {
-        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+        return (
+            <>
+                <ManageHeader />
+                <Card className="p-8 text-sm text-ink-faint">Loading…</Card>
+            </>
+        );
     }
 
     if (unregistered && owedDeposit) {
         return (
             <>
+                <ManageHeader />
                 <PendingDepositNotice address={address} />
                 <p className="text-base text-ink-body leading-relaxed">
                     To register again,{" "}
@@ -87,7 +98,12 @@ export function MemberLanding() {
     // TS can't derive it from the composed guards above: past them, the
     // wallet is connected and registered.
     if (!profileData) {
-        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
+        return (
+            <>
+                <ManageHeader />
+                <Card className="p-8 text-sm text-ink-faint">Loading…</Card>
+            </>
+        );
     }
     const [metadataURI, registeredBlock] = profileData;
     return (
@@ -98,6 +114,27 @@ export function MemberLanding() {
             deposit={deposit}
             onWithdrawn={() => { refetchWithdrawal(); void refetch(); }}
         />
+    );
+}
+
+/**
+ * What the page IS, above the wallet gate. The static export prerenders the
+ * pre-mount branch, so before this every visitor and every crawler met a bare
+ * "Loading…" card with no heading. Sibling shape: `RewardsView` / `OrdersList`
+ * keep their heading and prose above the gate rather than returning nothing.
+ * It renders in the pre-dashboard states ONLY — the registered dashboard's own
+ * h1 is the member's name, so the page carries exactly one h1 at any moment.
+ */
+function ManageHeader() {
+    return (
+        <header className="mb-6 space-y-2">
+            <h1 className="text-heading-h1 text-ink-heading">Manage membership</h1>
+            <p className="text-base text-ink-body leading-relaxed">
+                The registered member&apos;s dashboard &mdash; view and edit the profile, leave
+                the registry, claim a released deposit; a wallet that is not registered is sent
+                on to the enrolment steps.
+            </p>
+        </header>
     );
 }
 

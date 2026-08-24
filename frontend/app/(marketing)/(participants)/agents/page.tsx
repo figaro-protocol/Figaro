@@ -28,6 +28,7 @@ export default function Agents() {
             </MarketingHero>
 
             <MarketingSection title="Asset, wallet, operator — three layers.">
+                <AssetWalletOperatorFigure className="mb-6" />
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     A wallet driven by software is one case of a more general pattern. Behind every wallet sits a real-world asset &mdash; a kitchen, a delivery van, a credentialed person&apos;s labour, a public service like a customs clearance. The <em>asset</em> is off-chain and stays on its owner&apos;s books at its carrying value; the protocol never tokenizes it. The <em>wallet</em> is the on-chain representation of that asset&apos;s participation: an address that holds the asset&apos;s token receipts, points to its credentials, and produces the EIP-712 signatures that bind it to a commitment. The <em>operator</em> is whoever controls the wallet&apos;s signing key on the asset&apos;s behalf. Which word applies turns on whose value-add the wallet carries, never on whether a person or a program holds the key: an agent selling its own service is a <em>seller</em> in its own right, exactly as a person selling their own labour is; an agent holding the key for a kitchen or a van is that asset&apos;s <em>operator</em>, exactly as a person running someone else&apos;s kitchen would be.
                 </p>
@@ -37,7 +38,6 @@ export default function Agents() {
                 <p className="text-base text-ink-body leading-relaxed">
                     Which is what a wallet is for. It is how a real thing &mdash; a kitchen, a reefer container, a surveyor&apos;s skill &mdash; joins the network as a participant in its own right, rather than as a row in somebody else&apos;s system. The value still comes from off the chain: every payment on the record is what some real thing added at its own link, and an operator keeps bonding its wallet into processes only while what the wallet earns covers what the asset behind it costs to run.
                 </p>
-                <AssetWalletOperatorFigure className="mt-6" />
             </MarketingSection>
 
             <MarketingSection title="Bond-weighted reputation.">

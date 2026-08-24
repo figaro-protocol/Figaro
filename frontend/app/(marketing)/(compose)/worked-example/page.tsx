@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 // A PROCESS STORY, not a capital table (maintainer ruling, 2026-08-24). Every
 // figure here is stated PER PARTY in the deterrent register — "twice the value
@@ -30,6 +31,14 @@ export const metadata: Metadata = withOg({
 export default function WorkedExample() {
     return (
         <>
+            <div className="container mx-auto px-6 pt-8">
+                <Breadcrumb
+                    items={[
+                        { label: "Build", href: "/spec" },
+                        { label: "Worked example" },
+                    ]}
+                />
+            </div>
             <MarketingHero
                 title="Two agents, one process."
                 lead={

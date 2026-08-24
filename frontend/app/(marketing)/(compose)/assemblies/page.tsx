@@ -23,7 +23,8 @@ export default function Assemblies() {
                         a data sale, a certified repair. Somebody draws a shape once, and
                         anyone who fits it can trade through it without drawing it again.
                         An assembly is that drawing &mdash; a composition template
-                        that wires clauses into a multi-order process. Each one registers on{" "}
+                        that wires <Link href="/glossary#clause" className="underline">clauses</Link>{" "}
+                        into a multi-order process. Each one registers on{" "}
                         <code>AssemblyRegistry</code> under its <strong>composition hash</strong>
                         {" "}&mdash; the hash IS the identity &mdash; with an IPFS pointer to its
                         document. The readable slug you see in a URL is <em>derived</em> from
@@ -52,7 +53,7 @@ export default function Assemblies() {
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line in a multi-seller assembly is its own bonded commitment, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under. One of those shapes is followed order by order, with every stake named per party, on <Link href="/worked-example" className="underline">Worked example</Link>.
+                    Every line in a multi-seller assembly is its own <Link href="/glossary#bonded-commitment" className="underline">bonded commitment</Link>, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under. One of those shapes is followed order by order, with every stake named per party, on <Link href="/worked-example" className="underline">Worked example</Link>.
                 </p>
             </MarketingSection>
 
