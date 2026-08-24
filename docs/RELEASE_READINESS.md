@@ -579,6 +579,13 @@ external-audit gates above:
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
 - `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), `UsageCounter.periodEnd(0..8)` == nine annual boundaries derived from `RPGF_GENESIS`, and `UsageCounter.minSellers` == 3 — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.periodAmount` (45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping, ruled 2026-07-31) sums to 600M and its length is validated on-chain against `periodCount()`.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
+- **No test members on mainnet — ever** (maintainer ruling 2026-08-24). The rehearsal
+  doctrine covers procedure, not tooling: the member-registering smoke specs
+  (`*.sepolia.spec.ts` — `live-order` drives the onboarding wizard and registers a
+  "Smoke counter …" profile) are TESTNET-ONLY and are never pointed at mainnet.
+  Mainnet verification is read-only checks plus real content by real wallets.
+  Verify after any mainnet verification run: a MembersRegistry read shows no
+  test-flavored member surfaced.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly-template / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
 - Test-helper flags unset in the deploy build: `NEXT_PUBLIC_ENABLE_TEST_HELPERS`, `NEXT_PUBLIC_USE_TEST_SIGNER`, `NEXT_PUBLIC_TEST_PRIVATE_KEY`, `NEXT_PUBLIC_DEV_ADDRESS` must all be unset (else `?e2e=mock` / the injected test signer inline into the bundle). This is now enforced at build time: `frontend/next.config.mjs` ABORTS a `NODE_ENV=production` build with any of these set unless `FIGARO_ALLOW_TEST_HELPERS=1` (the escape only the Playwright e2e build sets). Confirm the CDN build runs without that escape.

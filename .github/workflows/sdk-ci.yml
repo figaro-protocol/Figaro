@@ -47,3 +47,14 @@ jobs:
             - name: Build
               working-directory: ./sdk
               run: npm run build
+
+            # The tracked API reference (frontend/public/sdk-api) must equal
+            # what typedoc emits from this source — it drifted silently before
+            # the 2026-08-24 audit. typedoc.json pins gitRevision to "main" so
+            # the output is deterministic and this diff is meaningful.
+            - name: API reference freshness (typedoc)
+              working-directory: ./sdk
+              run: |
+                  npm run docs
+                  git diff --exit-code --stat -- ../frontend/public/sdk-api \
+                    || { echo "frontend/public/sdk-api is stale — run 'cd sdk && npm run docs' and commit the regen"; exit 1; }

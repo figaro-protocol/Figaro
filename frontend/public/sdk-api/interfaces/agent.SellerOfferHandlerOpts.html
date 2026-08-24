@@ -13,7 +13,7 @@
 <h1>Interface SellerOfferHandlerOpts</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">SellerOfferHandlerOpts</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#accept">accept</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">offer</span><span class="tsd-signature-symbol">:</span> <a href="agent.CommitmentPayload.html" class="tsd-signature-type tsd-kind-interface">CommitmentPayload</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#approvebond">approveBond</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#policy">policy</a><span class="tsd-signature-symbol">?:</span> <a href="agent.OfferPolicy.html" class="tsd-signature-type tsd-kind-interface">OfferPolicy</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#specs">specs</a><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L385">sdk/src/agent/originate.ts:385</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L385">sdk/src/agent/originate.ts:385</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -38,7 +38,7 @@ integration is autonomous-inert by default; enabling autonomy means
 writing this rule (maintainer ruling 2026-07-07).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L390">sdk/src/agent/originate.ts:390</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L390">sdk/src/agent/originate.ts:390</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="approvebond"><code class="tsd-tag">Optional</code><span>approve<wbr/>Bond</span><a href="#approvebond" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">approveBond</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
@@ -46,7 +46,7 @@ writing this rule (maintainer ruling 2026-07-07).</p>
 offer, so the allowance is on chain before the buyer commits (default true).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L405">sdk/src/agent/originate.ts:405</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L405">sdk/src/agent/originate.ts:405</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="policy"><code class="tsd-tag">Optional</code><span>policy</span><a href="#policy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">policy</span><span class="tsd-signature-symbol">?:</span> <a href="agent.OfferPolicy.html" class="tsd-signature-type tsd-kind-interface">OfferPolicy</a></div>
@@ -56,7 +56,7 @@ declines every offer — counter-signing bonds the seller against
 attacker-chosen magnitudes/currency, so vouching for them is opt-IN.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L395">sdk/src/agent/originate.ts:395</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L395">sdk/src/agent/originate.ts:395</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="specs"><code class="tsd-tag">Optional</code><span>specs</span><a href="#specs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">specs</span><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></div>
@@ -68,7 +68,7 @@ handler runs no leaf/struct check — the caller's own SpecSource (the same
 one used to originate or display the offer) is the one to pass here.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/82f309259450a65643c78e8d88c87833dddf3264/sdk/src/agent/originate.ts#L402">sdk/src/agent/originate.ts:402</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L402">sdk/src/agent/originate.ts:402</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
