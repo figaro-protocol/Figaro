@@ -96,7 +96,7 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "NotRegistered() · NotRegistered(clauseId)",
                 from: "All three registries",
-                cause: "Reclaiming a deposit (or reading a binding) that was never written.",
+                cause: "Reclaiming a deposit, reading a binding, or declaring a mechanism's clause (setMechanismClause) against a key that was never written.",
                 fix: "Confirm the key first — registered(key), bindings(hash), or the registry's own event stream.",
             },
             {
@@ -290,8 +290,8 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "ClauseOrAssemblyExcluded(clauseOrAssembly)",
                 from: "UsageCounter",
-                cause: "A protocol-floor clause (the commerce, topology and provenance clauses) is excluded from the reward. ROUTINE, not a fault — the counter refuses the floor, never the open set.",
-                fix: "Nothing. Expect these legs in failures on every run and do not treat them as errors.",
+                cause: "That key is in the counter's excluded set. The mandatory clauses EARN — commerce and topology ride on every order and are scored for their author of record. The reference deployments exclude exactly one key, figaro-assembly-provenance: it is attribution plumbing, and scoring it would double-pay every assembly trade (its designer accrues through recordAssemblyUsage instead). ROUTINE where it appears, not a fault.",
+                fix: "Nothing. The set is a constructor argument, so read excludedClauseOrAssembly(key) against the deployment you are calling rather than assuming a list; expect the provenance leg in failures on any assembly run.",
             },
             {
                 name: "ClauseOrAssemblyNotRegistered(clauseOrAssembly)",
@@ -423,7 +423,7 @@ export default function Specifications() {
                     <code>npm install @figaro-protocol/sdk viem</code>
                 </pre>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <a href="/sdk-api/index.html" className="text-ink-heading font-medium underline">Generated API reference &mdash; every export, every signature</a>. TypeDoc rendered from the shipped source, one page per entry point: the root package, <code>/agent</code>, <code>/derive</code>, <code>/clauses</code> and <code>/handoff</code>. This is where you look a signature up; the README below is the manual you read first.
+                    <a href="/sdk-api/index.html" className="text-ink-heading font-medium underline">Generated API reference &mdash; every export, every signature</a>. TypeDoc rendered from the shipped source, one page per entry point: the root package, <code>/agent</code>, <code>/derive</code>, <code>/clauses</code>, <code>/handoff</code> and <code>/signer</code>. This is where you look a signature up; the README below is the manual you read first.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-4">
                     Every published version carries an npm <em>provenance attestation</em> binding the tarball to the public repository and the exact release commit &mdash; verify it with <code>npm audit signatures</code>, or on the package&apos;s Provenance panel on npmjs.com. What you install is what the audited tree builds, checkably.
@@ -505,7 +505,7 @@ function attestViaResolver(
                         title="ClauseRegistry.sol"
                         href={`${GH}/protocol/registries/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
-                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. contentURI points at the off-chain JSON spec, and the registry stores its keccak256 contentHash as the integrity anchor the batch verifier binds witness specs to (contentHashOf). The registry validates no content shape itself — a registered clause is immediately attestable, and settleable through the proven path."
+                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. contentURI points at the off-chain JSON spec, and the registry stores its keccak256 contentHash as the integrity anchor the batch verifier binds witness specs to (contentHashOf). The registry validates no content shape itself — a registered clause is immediately attestable, and settleable through the proven path. One extra entry point sits beside registration: setMechanismClause(idHash) is permissionless self-declaration for a composed mechanism contract — it writes no storage and confers nothing, it just emits MechanismClauseSet(msg.sender, idHash) so indexers can see which clause your mechanism speaks, and it reverts NotRegistered(idHash) if that clause was never anchored. Pass the identity HASH (computeClauseKey(id, version)), not the bare name registerClause takes."
                     />
                     <ContractEntry
                         id="FigaroBatchVerifier"
@@ -565,7 +565,7 @@ function attestViaResolver(
                             <tr>
                                 <td className="py-2 pr-4">Is this order settled?</td>
                                 <td className="py-2 pr-4 font-mono text-xs">orderStatus(bytes32) == 2</td>
-                                <td className="py-2 text-ink-body">No per-order flag exists on chain. The order&apos;s state lives under <code className="font-mono text-xs">stateRoot()</code>; the public facts are the batch that carried it and the transfers it executed.</td>
+                                <td className="py-2 text-ink-body">No per-order flag exists on chain &mdash; the order&apos;s state lives under <code className="font-mono text-xs">stateRoot()</code>, and the on-chain facts are the batch that carried it and the transfers it executed. Ask a relay for the per-order answer: <code className="font-mono text-xs">GET /processes/&lt;processId&gt;</code> (or <code className="font-mono text-xs">/orders/&lt;orderHash&gt;</code>), which <code className="font-mono text-xs">SequencerClient.process()</code> wraps. A <code className="font-mono text-xs">null</code> there means &ldquo;not in THIS relay&apos;s archive&rdquo; &mdash; never &ldquo;not settled.&rdquo; The relay is transport; the transfers are the proof.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">What event says so?</td>
@@ -602,7 +602,7 @@ function attestViaResolver(
                     <strong>A relay, not an authority.</strong> <code>FigaroBatchVerifier.settleBatch</code> is <code>external</code> with no caller gate, no owner, no fee and no upgrade path &mdash; so a sequencer is one relay among any number, and running your own needs nobody&apos;s permission. It holds no keys of yours and confers no privilege: its own signer pays gas and has no protocol role. Its admission checks call the <em>same</em> kernel functions the proof runs (EIP-712 recovery; the attestation witness gates), so it can reject earlier than the proof and can never accept more. Its honest powers are exactly <strong>censor and delay</strong> &mdash; never forge, never alter a signed struct, never settle what you did not sign, never touch a bond. The fallback is always direct <code>FigaroCore</code> submission with the same artifacts.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Four endpoints and no other read surface, because settled state is read from the chain: <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro-protocol/sdk/agent</code>) emits &mdash; the request/response and error tables, with the run-your-own recipe, are in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>.
+                    Seven endpoints, in two halves. <strong>Submission:</strong> <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. <strong>Publication</strong> &mdash; the batch universe&apos;s mirror of the kernel&apos;s events, because a batch-settled order has none: <code>GET /orders/&lt;orderHash&gt;</code>, <code>GET /processes/&lt;processId&gt;</code>, <code>GET /batches</code> (a page bounded at 50, with a <code>next_cursor</code> to follow). Read those through <code>SequencerClient</code>&apos;s <code>order()</code>, <code>process()</code> and <code>batches()</code> rather than by hand, for the <code>404</code> rule they encode: <strong>null means &ldquo;not in THIS relay&apos;s archive&rdquo;</strong> &mdash; settled by another relay, settled directly against <code>FigaroCore</code>, or aged out of retention (<code>status().archive</code> gives the window) &mdash; and never &ldquo;the trade did not happen.&rdquo; Every other failure throws, so an unreachable relay stays distinguishable from an absent record. A relay is transport, not an authority: verify what it returns against the chain. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro-protocol/sdk/agent</code>) emits &mdash; the request/response and error tables, with the run-your-own recipe, are in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
                     A sequencer endpoint is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
@@ -723,9 +723,9 @@ function attestViaResolver(
                     />
                     <ContractEntry
                         id="swapRouter"
-                        title="swapRouter (Uniswap Universal Router)"
+                        title="swapRouter (Uniswap SwapRouter02)"
                         meta="local mock · canonical where deployed"
-                        desc="The swap venue the coordinator routes the input token through into the settlement currency. The deployment record wires the real Uniswap Universal Router wherever it's deployed; a local development record wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
+                        desc="The swap venue the coordinator routes the input token through into the settlement currency. It is SwapRouter02, not the Universal Router, and the difference is load-bearing for the calldata you sign: the coordinator approves the router for your input token and forwards your signed swapData verbatim, so the venue must PULL by ERC-20 allowance — SwapRouter02's exactInputSingle does; the Universal Router pulls through Permit2 or spends pre-sent balances and would not. Build that calldata against SwapRouter02's own interface, taken from Uniswap — and do NOT reach for the SDK's UNIVERSAL_ROUTER_ABI export to do it: it carries the Universal Router's execute(bytes,bytes[]) and describes a different contract, so calldata built from it reverts at the venue call. The deploy script proves the address behaves like one before broadcasting — factory() and WETH9() must both answer with contracts — and a local development record wires the settable-rate stand-in MockUniversalRouter (the mock's name predates the pinning), pre-funded with bond-token liquidity at a 1:1 default so buyer legs swap deterministically in tests (record key: swapRouter)."
                     />
                     <ContractEntry
                         id="UsageCounter"
@@ -744,8 +744,8 @@ function attestViaResolver(
                     <ContractEntry
                         id="daoTreasury"
                         title="daoTreasury (multisig)"
-                        meta="local mock · genesis custody"
-                        desc="Holds the 300M-florin DAO genesis allocation. A canonical deployment wires a Safe at the DAO wallet — config, never code; a local development record wires MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
+                        meta="multisig · genesis custody"
+                        desc="Holds the 300M-florin DAO genesis allocation. Three cases, and they differ: a production deploy mints to a canonical Safe read from the DAO_WALLET environment variable and deploys no treasury contract at all — config, never code. The public record above does deploy one: a MockTreasuryMultisig, 2-of-3 over the founder wallet, the supporters wallet and the deploying wallet — real signers on a real network, not placeholders, and a plain multisig rather than a Safe. A local development record deploys the same contract over that run's own anvil accounts. In every case the treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
                     />
                     <ContractEntry
                         id="multisender"
@@ -828,7 +828,7 @@ function attestViaResolver(
                     Record key &rarr; SDK field &rarr; contract.
                 </h3>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>The keys in that record are not the SDK&apos;s field names.</strong> Spread a record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, three carry no SDK field at all, and every other address key passes through under the same name.
+                    <strong>The keys in that record are not the SDK&apos;s field names.</strong> Spread a record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, four carry no SDK field at all (<code>florinToken</code>, <code>swapQuoter</code>, <code>chainId</code>, <code>deploymentBlock</code>), and every other address key passes through under the same name.
                 </p>
                 <pre
                     tabIndex={0}

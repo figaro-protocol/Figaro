@@ -70,7 +70,12 @@ once, no time lock) returns the stake and emits `DepositWithdrawn` — the
 binding stays permanent, but readers DE-SURFACE the clause for new
 compositions (surfacing derives from the live stake; committed agreements
 keep resolving it). Version migration = withdraw the old version's stake +
-register the new. The commits == resolves withdraw gate is protocol-surface:
+register the new. `setMechanismClause(idHash)` is the registry's third external
+function — permissionless mechanism SELF-DECLARATION: any contract may call it,
+it writes no storage, it emits `MechanismClauseSet(msg.sender, idHash)` for
+indexers, and it reverts `NotRegistered(idHash)` on an unanchored key. It
+confers nothing (`discovery.ts` skips the event as a non-discovery input).
+The commits == resolves withdraw gate is protocol-surface:
 the count lives in the indexer (the same count RPGF pays on), and the contract
 cannot hold it (the kernel is frozen, with no composition provenance), so the
 gate has no on-chain hardening. There is **no on-chain
@@ -541,7 +546,7 @@ No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic i
 - `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
 - `src/mocks/MockTreasuryMultisig.sol` — devnet/test stand-in for the DAO treasury Safe (mainnet composes a canonical Safe at `DAO_WALLET` — config, never authored code): Safe's approveHash flow (propose → threshold approvals → anyone executes), no owner acts alone. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_DAO_TREASURY` (anvil[0..2] placeholder owners, 2-of-3) and the 300M devnet genesis mint target; `TreasuryProcurementTest` rehearses the funded operator-EOA procurement loop against it.
 - `src/mocks/MockDisperse.sol` — devnet stand-in for the canonical public multisender (Disperse.app, `0xD152f549545093347A162Dce210e7293f1452150`); mirrors its verified interface and behavior — `disperseEther` (legs + remainder refund), `disperseToken` (aggregate pull then legs), `disperseTokenSimple` (per-leg pulls), every batch atomic. Used by `MockDisperseTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_MULTISENDER`; mainnet composes the canonical deployment.
-- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
+- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens). A public deploy wires the chain's **Uniswap SwapRouter02**, not the Universal Router — the coordinator `forceApprove`s the router and calls it with the party's `swapData` verbatim, so the venue must PULL by ERC-20 allowance (`exactInputSingle` does; the Universal Router pulls via Permit2 or spends pre-sent balances). `DeploySepolia.s.sol` and `DeploySwapCoordinator.s.sol` both probe `factory()` + `WETH9()` and refuse an address that does not answer with contracts. The mock's NAME predates that pinning; its `swap(...)` shape is a test stand-in, not the production interface.
 - `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
 - `src/mocks/MockReentrantToken.sol` — Foundry-tests-only malicious ERC-20 that re-enters an armed target on `transfer`/`transferFrom` (the fee-on-transfer / ERC-777 hook an attacker gets). Used by `ReentrancyAdversarialTest` to prove the `nonReentrant` guards on `FigaroCore.commit`/`resolveProcess` and `FigaroBatchVerifier.settleBatch` actually fire under a live re-entry attempt. Never deployed.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFlorinToken.sol`, `EchidnaToken.sol`
@@ -638,7 +643,10 @@ binding stays the direct path's integrity floor. In-proof content validation is 
 property of the BATCHED path; the direct path validates no content shape.
 
 **Reading rule:** the "rebuild pre-launch" markers that guarded launch-state literature
-are retired — present-state surfaces state the apparatus as built (devnet-deployed;
-mainnet wires Succinct's verifier gateway by env). What remains two-tense is
-DEPLOYMENT: no public network deployment exists yet, so surfaces must not claim a
-live mainnet/testnet.
+are retired — present-state surfaces state the apparatus AS BUILT, and that now includes
+deployment. A public network deployment exists: `deployments/11155111.json` is committed,
+its addresses are the ones `/spec` renders, and the batch path settled real Groth16
+batches through the `batchVerifier` in it (the transactions `/spec` § "The sequencer"
+links). The remaining two-tense fact is narrower: **no mainnet deployment exists**, so no
+surface may claim one. Public copy names no network at all — `lint-mainnet-posture.sh`
+bans the network words outright; the deployment-record table is the statement.

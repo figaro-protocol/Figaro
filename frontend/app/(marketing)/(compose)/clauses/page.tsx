@@ -5,20 +5,18 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
-// RULED 2026-08-06 (maintainer), AMENDED 2026-08-12 and 2026-08-21 (maintainer):
-// this page holds SIX things and nothing else — what a clause IS (a contract
-// clause, verifiable; it may include attestations but is NOT an attestation),
+// This page holds SIX things and nothing else: what a clause IS (a contract
+// clause, verifiable; it may include attestations but is NOT an attestation);
 // the § "In plain words" opener carrying the register-shift warning (the device
-// is /assemblies' and is copied, not re-invented — the page is NOT split; no
-// /clauses/authoring route exists), the
-// writing requirements as BULLETS (never an exposé), the live registry COUNT
-// + a link into /registries (the inventory itself moved to the registry
-// explorer, maintainer ruling 2026-08-17), the
+// is /assemblies', copied rather than re-invented); the writing requirements as
+// BULLETS, never an exposé; the live registry COUNT plus a link into
+// /registries (the inventory itself lives in the registry explorer); the
 // hash-identity reference (§ "What the hash covers", the clause mirror of
-// /assemblies' § "What the composition hash covers" — it lives on the concept
-// page, never forked onto the register tool), and the add-your-own + RPGF
+// /assemblies' § "What the composition hash covers" — it belongs on the concept
+// page, never forked onto the register tool); and the add-your-own + RPGF
 // invitation with EXACTLY ONE link to the register page.
-// Public/private data belongs to /data — the disposition section died here.
+// The page is not split — no /clauses/authoring route exists. Public/private
+// data disposition belongs to /data, not here.
 export const metadata: Metadata = withOg({
     title: "Clauses — Figaro Protocol",
     description:
@@ -54,7 +52,7 @@ export default function Clauses() {
 
             <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
+                    The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; carries the deal&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. That is a fact about today&apos;s assemblies rather than a limit &mdash; a long chain can attest topology as evidence that one seller performed after another.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
                     For agents: the registry explorer derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro-protocol/sdk</code> &mdash; see <Link href="/spec" className="underline">/spec</Link> for the deployment record.
@@ -162,7 +160,7 @@ buildOrderAgreement(buyer, seller, { "figaro-probe": {} }, specs);
                 <ul className="space-y-4 text-sm text-ink-body leading-relaxed">
                     <li className="flex gap-4">
                         <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0 uppercase">Off-chain</span>
-                        <span><strong>Validation (TypeScript).</strong> The SDK&apos;s <code>parseClauseSpec</code> and <code>validateContent</code> check that off-chain content conforms to the spec before anyone signs it. Published as a JSON Schema (<code>clause-spec.schema.json</code>) with domain types (hex bytes, addresses, ISO datetimes, enums). The schema is <strong>open by design</strong> &mdash; unknown fields are tolerated and ignored, so the format itself is never gatekept: extend the shape with fields the protocol has never seen and it grows by versioning, the same way clauses register without permission. This off-chain check gates every signature; the same spec drives the in-proof content check on the batched settlement path (below).</span>
+                        <span><strong>Validation (TypeScript).</strong> The SDK&apos;s <code>parseClauseSpec</code> and <code>validateContent</code> check that off-chain content conforms to the spec before anyone signs it. The format they check against is written down as a JSON Schema with domain types (hex bytes, addresses, ISO datetimes, enums) &mdash; it ships inside the package you install, at <code>src/clauses/clause-spec.schema.json</code>, and is readable without installing anything <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/clause-spec.schema.json" target="_blank" rel="noopener noreferrer" className="underline">in the public repo</a>. The schema is <strong>open by design</strong> &mdash; unknown fields are tolerated and ignored, so the format itself is never gatekept: extend the shape with fields the protocol has never seen and it grows by versioning, the same way clauses register without permission. This off-chain check gates every signature; the same spec drives the in-proof content check on the batched settlement path (below).</span>
                     </li>
                     <li className="flex gap-4">
                         <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0 uppercase">On-chain</span>

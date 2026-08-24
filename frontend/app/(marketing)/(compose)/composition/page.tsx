@@ -5,16 +5,14 @@ import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
-// AUDITED + MERGED 2026-08-05: this page absorbed /builders/composability (the
-// split was an author's filing distinction — "catalogue" vs "doctrine" — that no
-// reader could see; maintainer ruled ONE page). RULED + REWRITTEN BY THE MAINTAINER
-// 2026-08-06, final form: the hero (two ways to compose) plus the wired
-// third-party list, forward-looking ("add others to help the ecosystem
-// evolve") — nothing else. The five-conditions apparatus, the kernel-invariant
-// column, and the composer-duties list were DELETED: they repeated the kernel
-// (/kernel owns the mechanism) and grounded page claims in paper propositions
-// (the paper/frontend seam stays). Operational read/attach guidance lives in
-// the SDK README, not here.
+// Composition is ONE page: a "catalogue" vs "doctrine" split is an author's
+// filing distinction no reader can see. It holds the hero (two ways to compose)
+// plus the wired third-party list, forward-looking ("add others to help the
+// ecosystem evolve") — nothing else. Do not restore the five-conditions
+// apparatus, the kernel-invariant column, or the composer-duties list: they
+// repeat the kernel (/kernel owns the mechanism) and ground page claims in
+// paper propositions (the paper/frontend seam stays). Operational read/attach
+// guidance lives in the SDK README, not here.
 export const metadata: Metadata = withOg({
     title: "Composition — Figaro Protocol",
     description:
@@ -51,7 +49,7 @@ export default function Composes() {
                         <strong>Uniswap.</strong> A process is denominated in one token, but a buyer may hold another: swap through Uniswap and commit in the same transaction.
                     </LabelledListRow>
                     <LabelledListRow label="Multisender" uppercase>
-                        <strong>Disperse.</strong> Post-settlement payout routing through the composed public multisender: one payment, many recipients, one transaction &mdash; it goes through whole or not at all. A settled wallet splits its own receipts the moment they land, to addresses it earmarked itself: a fiscal set-aside, savings, what it owes a supplier, a mutual-aid contribution. Nothing in the deal routed any of it and no clause computed it &mdash; the split is the wallet&apos;s own arithmetic over its own tokens, done afterwards, on its own initiative, spending a balance it already holds (<code>frontend/lib/composition/payoutRouting.ts</code>). What falls out is a self-sovereign fiscal trail nobody had to assemble later: the set-aside is dated, the recipient is named, and it stands on the same public record as the trade that paid for it.
+                        <strong>Disperse.</strong> Post-settlement payout routing through the composed public multisender: one payment, many recipients, one transaction &mdash; it goes through whole or not at all. A settled wallet splits its own receipts the moment they land, to addresses it earmarked itself: a fiscal set-aside, savings, what it owes a supplier, a mutual-aid contribution. Nothing in the deal routed any of it and no clause computed it &mdash; the split is the wallet&apos;s own arithmetic over its own tokens, done afterwards, on its own initiative, spending a balance it already holds. The composed contract is the ownerless Disperse deployment &mdash; <code>0xD152f549545093347A162Dce210e7293f1452150</code>, the same address across chains, unowned since 2018 &mdash; and the call is its own <code>disperseToken(token, recipients, values)</code>, made by the wallet itself. Its entry, and the record key a deployment wires it under, are on <Link href="/spec#multisender" className="underline">/spec</Link>. What falls out is a self-sovereign fiscal trail nobody had to assemble later: the set-aside is dated, the recipient is named, and it stands on the same public record as the trade that paid for it.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>

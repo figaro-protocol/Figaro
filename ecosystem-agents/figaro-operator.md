@@ -231,10 +231,14 @@ Usage is recorded **at settlement or it is permanently deniable** (`docs/DESIGN_
 agent that resolves without this credits no clause author and no assembly designer, and the
 600M reward's uniformity across actors is exactly this call. Only the section FINGERPRINT
 reaches calldata, so a private section's plaintext never becomes public. Read the report,
-not the absence of an exception: **excluded protocol-floor clauses reverting inside it is
-routine**, by design — the counter refuses the floor (the commerce, topology and provenance
-clauses), never the open set — so those legs appear in `failures` with
-`ClauseOrAssemblyExcluded` on a perfectly healthy run. The once-per-process assembly credit
+not the absence of an exception. **The mandatory clauses EARN**: commerce and topology ride
+on every order and are scored for their author of record like any other. The reference
+deployments exclude exactly ONE key — `figaro-assembly-provenance`, which is attribution
+plumbing (scoring it would double-pay every assembly trade, whose designer accrues through
+the assembly leg below) — so on a perfectly healthy assembly run that one leg appears in
+`failures` with `ClauseOrAssemblyExcluded` and nothing else does. The set is a constructor
+argument, never a fixed list: read `excludedClauseOrAssembly(key)` off the deployment you
+are calling before you tell the owner a leg was refused. The once-per-process assembly credit
 is an INDEPENDENT leg (`assemblyRecorded`): it is claimed from the first section carrying a
 well-formed `compositionHash` and requires that composition to hold a live registry binding,
 so an agreement with no provenance section credits no designer at all. Report the report,
@@ -253,7 +257,12 @@ flight. Derive that before withdrawing:
 import { fetchCoreEvents } from "@figaro-protocol/sdk";
 import { deriveInFlightOrders, deriveClauseWithdrawGate, deriveAssemblyWithdrawGate } from "@figaro-protocol/sdk/derive";
 
-const inFlight = deriveInFlightOrders(await fetchCoreEvents(publicClient, addresses, 0n));
+// fromBlock is `deploymentBlock` from the same deployment record you mapped `addresses`
+// out of — never 0n. Public RPC endpoints cap the eth_getLogs range, so a from-genesis
+// scan is range burned for nothing at best and a client that never loads at worst.
+const inFlight = deriveInFlightOrders(
+    await fetchCoreEvents(publicClient, addresses, BigInt(record.deploymentBlock)),
+);
 // You resolve each ref's pinned agreement (the SDK does no IPFS I/O), pairing it as
 // { processId, agreement }; a null agreement is party-private and counted, never blocking.
 const gate = deriveClauseWithdrawGate("figaro-emissions", agreements);
@@ -336,18 +345,36 @@ re-attest a finished order, re-quote a filled request, chase a counterparty who 
 performed, or tell the owner a payment never arrived when it did.
 
 So when a process the wallet expected is absent from `sync()`, or an order reads status
-`0`, check the other universe before concluding anything — using the deployment record's
-`batchVerifier` address and `BATCH_VERIFIER_ABI` from `@figaro-protocol/sdk`:
+`0`, check the other universe before concluding anything. **Ask a relay first** — a
+batch-settled order has no kernel event and no per-order flag on chain, which is exactly
+why relays publish the batch universe's mirror of those events. `SequencerClient` reads
+them, and encodes the one rule you must not get wrong:
 
-- `stateRoot()` (bytes32) and `batchCount()` (uint64) — the batch universe's whole state.
-  There is **no per-order settled flag on chain**; the order's state lives under that root.
-- `BatchSettled(uint64 batchId, bytes32 prevStateRoot, bytes32 newStateRoot, uint256
-  positionCount)` — the batch that carried it.
+```ts
+const view = await seq.process(processId);   // its orders and its resolution facts
+const one  = await seq.order(orderHash);     // one published order
+const page = await seq.batches({ from: 0 }); // ≤50 a page; follow next_cursor
+```
+
+`null` means **"not in THIS relay's archive"** — settled by another relay, settled
+directly against `FigaroCore`, or aged out of retention (`status().archive` gives the
+window; check it against your cursor BEFORE replaying, or a dropped range is skipped
+silently). It NEVER means the trade did not happen, and you must never report it that way
+to the owner. Every other failure THROWS, so an unreachable relay stays distinguishable
+from an absent record.
+
+A relay is transport, not an authority, so confirm what matters on chain — the deployment
+record's `batchVerifier` address with `BATCH_VERIFIER_ABI` from `@figaro-protocol/sdk`:
+
+- The ERC-20 transfers `settleBatch` executed for the net positions — tokens moved are
+  tokens moved, whichever path moved them. This is the settlement fact.
 - `Attestation(...)` re-emitted by the verifier — per-order evidence. It **shares the
   `AttestationCoordinator`'s topic hash**, so filter by contract **address**, never by
   topic, or you will merge the two universes into one wrong picture.
-- The ERC-20 transfers `settleBatch` executed for the net positions — tokens moved are
-  tokens moved, whichever path moved them.
+- `BatchSettled(uint64 batchId, bytes32 prevStateRoot, bytes32 newStateRoot, uint256
+  positionCount)` — the batch that carried it; `stateRoot()` (bytes32) and `batchCount()`
+  (uint64) are the batch universe's whole on-chain state, the order's own living under
+  that root. Reach for these when you have no relay at all, not as the first move.
 
 Exactly one thing crosses the seam: the RPGF usage accrual, carried by the proof into
 `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what their
@@ -372,6 +399,7 @@ const seq = new SequencerClient({ url: SEQUENCER_URL }); // owner config, like R
 if (!await seq.isAvailable()) { /* fall back to direct FigaroCore */ }
 const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // also: submitResolve · submitAttestAsSeller · submitAttestAsBuyer · submitUsageClaim
+// and, reading back: status · order · process · batches (see the section above)
 ```
 
 **Why you need not trust it, stated precisely** — and why you must not confuse this with
@@ -393,9 +421,10 @@ retry — even one where you re-signed — returns the original `{ id }` and enq
 never treat a repeat as a double-spend. `503` means the relay's mempool is at capacity,
 not that your submission was rejected — retry after the next batch. `413` is the body cap
 (1 MiB default) and `422` a body that is not a valid operation shape. **Confirm nothing
-from the relay's acknowledgment**: an `{ id }` is a queue receipt, not settlement. Verify
-from chain — `BatchSettled` on the verifier, the ERC-20 transfers, and `scoreOf` for the
-usage leg. There is **no hosted public sequencer today**; if the owner has not configured
+from the relay's acknowledgment**: an `{ id }` is a queue receipt, not settlement. Follow it
+with `seq.process(processId)` for the published record, and verify from chain what the owner
+acts on — the ERC-20 transfers, `BatchSettled` on the verifier, and `scoreOf` for the usage
+leg. There is **no hosted public sequencer today**; if the owner has not configured
 a URL, the direct path is the whole answer, and you should say that rather than invent an
 endpoint.
 
@@ -466,9 +495,12 @@ execution runtime that hosts this agent MUST enforce the following. **F1–F3 ar
 SATISFIED STRUCTURALLY by the policy signer** (`@figaro-protocol/sdk/signer` — the required
 custody per "The signer is your only pen" above); a runtime that instead hands this
 agent a raw key is running it wrong, and the operator MUST be told those guarantees
-have fallen back to behavioral-only. **F4–F6 remain behavioral until the runtime's
-data-channel envelope and sandbox wrapper exist** — the operator MUST be told exactly
-that, a live risk, not a solved problem.
+have fallen back to behavioral-only. **F4–F6 are SATISFIED STRUCTURALLY by the runtime's
+data channel and sandbox wrapper** (`ecosystem-agents/runtime/` — `figaro-fetch` and
+`figaro-run-sandboxed`), which ship and run. The condition is the LAUNCH SHAPE, and it is
+the operator's to hold: signer outside, this agent inside the wrapper, every network read
+framed. Run any piece bare and that piece falls back to behavioral-only — say so, as a
+live risk, rather than reporting a guarantee the launch did not actually give.
 
 - **F1 — Key custody (the model never sees the key).** The signing key MUST be held by a
   signer the model cannot read — never a raw private key materialized into the model's
@@ -506,8 +538,9 @@ that, a live risk, not a solved problem.
   (`ecosystem-agents/runtime/` — see "Fetched content arrives framed" above): fetched
   content arrives delimited, provenance-tagged, and boundary-nonced. Structural at the
   fetch boundary when the host wires ALL network arrivals (coordination messages
-  included) through `frame()`; the model's handling of what is inside a frame remains
-  behavioral until the sandbox wrapper closes the loop.*
+  included) through `frame()`; your handling of what sits INSIDE a frame stays behavioral,
+  and no wrapper changes that — the frame marks the content as data, it cannot read it
+  for you.*
 - **F5 — Tool scoping (no raw host Bash).** `tools: Read, Bash` grants full host filesystem
   write, arbitrary network egress, and secret reads — strictly LARGER than every boundary
   this spec asserts ("only your own wallet", "never the repo"). The runtime MUST scope
@@ -517,7 +550,8 @@ that, a live risk, not a solved problem.
   seed phrases, keystores, or environment secrets; transactions touching any wallet but the
   one this agent operates; and arbitrary network egress beyond the RPC endpoint, the pinning
   service, and the coordination channel. Editing the frontmatter is not the fix — the fix is
-  the sandbox denying the above; until it exists, the tool grant over-privileges this agent.
+  the sandbox denying the above, and it does. Launched bare, and only then, the tool grant
+  over-privileges this agent.
   *Satisfied by the sandbox wrapper (`ecosystem-agents/runtime/` — `figaro-run-sandboxed`):
   launched through it, writes land only in the agent's workspace, the environment is
   scrubbed of anything key-shaped, named secret paths are unreadable, and ALL network

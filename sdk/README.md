@@ -174,9 +174,13 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // authors and assembly designers from records the BUYER's side writes when the
 // process resolves; a deferred record is permanently deniable (a seller can
 // unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
-// headless twin of what the frontend does at the same moment; excluded
-// protocol-floor clauses reverting inside it is routine, and the report says
-// what landed:
+// headless twin of what the frontend does at the same moment. The mandatory
+// clauses EARN — commerce and topology are scored for their author of record
+// like any other — so the only routine revert inside it is the excluded
+// figaro-assembly-provenance leg (attribution plumbing; its designer accrues
+// through recordAssemblyUsage instead). Read the report, not the absence of an
+// exception, and read excludedClauseOrAssembly(key) off the deployment you are
+// calling rather than assuming any list:
 import { recordProcessUsage } from "@figaro-protocol/sdk/agent";
 const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter, [
   { commitment: resolve.commitments[0], agreement }, // the agreement each order signed
@@ -210,7 +214,7 @@ does NOT, and neither does hand-rolled `cast`.
 
 *`AccrualClosed()`.* `recordClauseUsage` and `recordAssemblyUsage` both open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
-last accrual period has ended (`src/protocol/usage/UsageCounter.sol:386-392`) —
+last accrual period has ended (`src/protocol/usage/UsageCounter.sol:389-395`) —
 the nine annual periods are the RPGF mechanism's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a
 record is attributed to the period **open when you call**, not the one the
@@ -355,7 +359,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `sectionByField` | root | Find the agreement section whose spec DECLARES a field — never look one up by clause name. |
 | `sectionDataHash` | root | A section's canonical-JSON fingerprint; a content-withheld section carries it directly. |
 | `selectRaceWinner` | `/agent` | Cheapest verified countersigner wins; ties break by arrival order. |
-| `SequencerClient` | `/agent` | HTTP client for a sequencer relay's four endpoints — the batch path's entry point. |
+| `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the publication reads. |
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
 | `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — an assembly's identity IS its composition. |
@@ -588,6 +592,16 @@ import { buildSwapWitnessTypedData, DISABLED_SWAP_FUNDING_LEG,
 // The witness binds { router, inputToken, maxInput, keccak256(swapData) } into
 // the digest, so a relayer cannot substitute the swap route and skim the
 // slippage. `coordinator` is Permit2's spender (it performs the pull).
+//
+// `swapData` IS THE VENUE'S OWN CALLDATA, forwarded verbatim after the
+// coordinator approves the router for your input token — so the venue must PULL
+// by ERC-20 allowance. The immutable venue is Uniswap's SwapRouter02 (the deploy
+// probes factory() + WETH9() before wiring one), whose exactInputSingle pulls
+// that way. Build the bytes against SwapRouter02's interface, from Uniswap. Do
+// NOT reach for this package's UNIVERSAL_ROUTER_ABI: it is the Universal
+// Router's execute(bytes,bytes[]), a different contract that pulls through
+// Permit2 or spends pre-sent balances — calldata built from it reverts at the
+// venue call.
 const typedData = buildSwapWitnessTypedData({
   chainId, permit2, coordinator, router, inputToken,
   maxInput, nonce, deadline, swapData,
@@ -929,7 +943,22 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 await seq.submitResolve(processId, commitments, buyerSig);
 await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sellerSig, proof });
 await seq.submitUsageClaim(claim);  // the RPGF leg — build with buildUsageClaims
-await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled }
+await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, archive }
+
+// READING BATCHED TRADE BACK. A batch-settled order has no kernel event and no
+// per-order flag on chain, so do NOT chase stateRoot() and BatchSettled by
+// hand: the relay PUBLISHES the batch universe's mirror of the kernel's
+// events, and the client encodes the 404 rule you must not get wrong.
+const view = await seq.process(processId);   // the orders + the resolution facts
+const one  = await seq.order(orderHash);     // one published order
+const page = await seq.batches({ from: 0 }); // ≤50 a page; follow next_cursor
+// `null` means "not in THIS relay's archive" — settled by another relay,
+// settled directly against FigaroCore, or aged out of retention. It NEVER
+// means the trade did not happen. Check status().archive against your cursor
+// BEFORE replaying, or a dropped range is skipped silently. Every other
+// failure THROWS, so an unreachable relay never reads as an absent record.
+// The relay is untrusted TRANSPORT: verify what it returns against the chain —
+// the ERC-20 transfers settleBatch executed, and scoreOf for the usage leg.
 // Errors are SequencerError with .statusCode: 400 signature/witness-gate
 // rejection (carrying the kernel's own reason string) or malformed JSON, 422
 // not a valid operation shape, 413 over the 1 MiB body cap, 503 mempool at
@@ -969,7 +998,7 @@ import {
 const attestationLogs = await client.getLogs({
   address: addresses.attestationCoordinator!,
   event: EV_ATTESTATION,
-  fromBlock: 0n,
+  fromBlock: BigInt(record.deploymentBlock),  // never 0n on a public network
 });
 const attestations = parseAttestationLogs(attestationLogs);
 
@@ -1687,16 +1716,25 @@ direct-ABI callers — the exact parameter types are the function's identity, so
 a mistyped one reverts with an opaque selector mismatch, not a friendly error):
 
 ```solidity
-// ClauseRegistry.sol:154 — cast selector: registerClause(string,uint64,bytes32,string)
+// ClauseRegistry.sol:156 — cast selector: registerClause(string,uint64,bytes32,string)
 function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI) external payable
 
 // AssemblyRegistry.sol:148 — cast selector: registerAssembly(bytes32,string)
 function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable
+
+// ClauseRegistry.sol:207 — a composed MECHANISM contract declaring which clause
+// it speaks. Permissionless, not payable, writes no storage: it only emits
+// MechanismClauseSet(msg.sender, idHash) for indexers, and reverts
+// NotRegistered(idHash) if that clause was never anchored. Note the argument is
+// the identity HASH (computeClauseKey(id, version)) — not the bare string name
+// registerClause takes.
+function setMechanismClause(bytes32 idHash) external
 ```
 
 `version` is `uint64`, not the `uint256` a caller might reach for by habit; and
 `registerAssembly` takes no version parameter at all — `compositionHash` alone
-is the identity. Both are `payable`; `msg.value` must equal `registrationDeposit()` exactly.
+is the identity. Both registering calls are `payable`; `msg.value` must equal
+`registrationDeposit()` exactly (`setMechanismClause` is not — it takes no deposit).
 
 **All three registries take the same reclaimable ETH deposit.** `MembersRegistry`,
 `ClauseRegistry`, and `AssemblyRegistry` each require a `registrationDeposit` on
@@ -1781,8 +1819,11 @@ reproducible builds against this package.
 
 Every published change is recorded in the repo-root
 [`CHANGELOG.md`](../CHANGELOG.md) (Keep a Changelog format) — check it before
-upgrading. The first git tag (`v0.1.0`) is minted by the maintainer at the
-first public push; this package has no tagged releases before that point.
+upgrading. `0.1.0` is published on npm and tagged in the public repository:
+`v0.1.0` marks the repository release, `sdk-v0.1.0` the commit this package was
+built and published from. Verify the tie yourself rather than taking it on
+trust — `npm audit signatures` checks the provenance attestation that binds the
+tarball to that repository and that commit.
 
 ## Test
 
