@@ -26,7 +26,7 @@ export default function Composes() {
                 title="What composes with Figaro."
                 lead={
                     <>
-                        Composition happens two ways: <strong>internally</strong>, where clauses assemble into assemblies and mechanism contracts like <Link href="/spec#AttestationCoordinator" className="underline">AttestationCoordinator</Link> extend the protocol without touching the kernel — catalogued on <Link href="/spec" className="underline">/spec</Link>; and <strong>externally</strong>, through the third-party products below.
+                        Composition happens two ways: <strong>internally</strong>, where <Link href="/clauses" className="underline">clauses</Link> assemble into <Link href="/assemblies" className="underline">assemblies</Link> and mechanism contracts like <Link href="/spec#AttestationCoordinator" className="underline">AttestationCoordinator</Link> extend the protocol without touching the kernel — catalogued on <Link href="/spec" className="underline">/spec</Link>; and <strong>externally</strong>, through the third-party products below.
                     </>
                 }
             />

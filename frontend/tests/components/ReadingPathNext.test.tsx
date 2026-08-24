@@ -34,7 +34,10 @@ describe("nextReadingPathStep", () => {
     });
 
     it("returns null off the path — home, lookup pages, papers", () => {
-        for (const off of ["/", "/registries", "/spec", "/glossary", "/papers/after-tradelens"]) {
+        // /registries is deliberately off-path (an explorer reached from the
+        // live counts, not a lesson); /spec joined the path 2026-08-24 and is
+        // therefore NOT listed here.
+        for (const off of ["/", "/registries", "/glossary", "/papers/after-tradelens"]) {
             expect(nextReadingPathStep(off)).toBeNull();
         }
     });
@@ -57,9 +60,9 @@ describe("ReadingPathNext", () => {
         const nav = screen.getByRole("navigation", { name: "Reading path" });
         const links = nav.querySelectorAll("a");
         expect(links).toHaveLength(1);
-        expect(links[0]).toHaveAttribute("href", "/local-commerce");
-        expect(links[0].textContent).toBe("Local Commerce");
-        expect(container.textContent).toBe("Next in the reading path: Local Commerce");
+        expect(links[0]).toHaveAttribute("href", "/invariants");
+        expect(links[0].textContent).toBe("Invariants");
+        expect(container.textContent).toBe("Next in the reading path: Invariants");
     });
 
     it("carries no blurb, no number and no rung name — the five ruled properties", () => {

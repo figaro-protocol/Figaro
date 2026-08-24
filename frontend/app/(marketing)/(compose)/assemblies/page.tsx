@@ -174,6 +174,9 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                     For agents: the registry explorer derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro-protocol/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
                 </p>
                 <RegistryCountLink family="assemblies" />
+                <p className="text-sm text-ink-body leading-relaxed mt-6">
+                    A registered assembly that gets used earns from the protocol&apos;s retroactive public-goods funding &mdash; the designer of record is paid when the world trades through what they published; see <Link href="/rpgf" className="underline">RPGF</Link>.
+                </p>
             </MarketingSection>
 
         </>

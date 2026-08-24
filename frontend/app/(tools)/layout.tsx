@@ -30,11 +30,11 @@ export const metadata: Metadata = {
  * It mounts the full `<Providers>` stack like `(app)` — authoring publishes
  * on-chain, so it needs the wallet — but uses the one-row `<ToolsHeader>`
  * (publication nav + ConnectWallet, NO Orders/Members row) and the
- * shared `<Footer>`, so the designer reads as a Builders-section page under
+ * shared `<Footer>`, so the designer reads as a Build-section page under
  * the same publication row every site page carries (`NAV_LINKS`), not as
  * the runtime dashboard. The designer routes live here, not in `(app)/`.
  */
-export default function BuildersLayout({ children }: { children: React.ReactNode }) {
+export default function BuildLayout({ children }: { children: React.ReactNode }) {
     return (
         <Providers>
             <div className="min-h-screen flex flex-col">

@@ -18,7 +18,7 @@
     "githubPages": false,
     "navigationLinks": {
         "Site": "/",
-        "Builders": "/spec"
+        "Build": "/spec"
     },
     "gitRevision": "main"
 }

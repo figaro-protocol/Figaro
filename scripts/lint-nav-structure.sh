@@ -4,7 +4,8 @@
 # The marketing nav is DERIVED from the route-group structure (maintainer
 # ruling 2026-08-07), one group per protocol object:
 #   (deal) -> /kernel                       (section "The Deal")
-#   (compose)+(rewards)+(spec) -> /spec     (section "Builders" — leads with
+#   (compose)+(rewards)+(spec) -> /spec     (section "Build" — renamed from
+#                                            "Builders" 2026-08-24; leads with
 #                                            Specifications, the integrator's
 #                                            doorway; maintainer-ruled 2026-08-21)
 #   (participants) -> /members
@@ -125,12 +126,15 @@ EOF
 
 # ── Breadcrumb doorways (hygiene audit 2026-08-24) ──────────────────────────
 # A breadcrumb labelled with a nav section name must carry that section's
-# doorway href — two breadcrumbs kept pointing at the pre-2026-08-21 Builders
+# doorway href — two breadcrumbs kept pointing at the pre-2026-08-21 Build
 # doorway after the ruling moved it. Checks the `label: "X", href: "Y"` form
-# the shipped Breadcrumb call sites use.
+# the shipped Breadcrumb call sites use. The section label is matched
+# EXACTLY: renaming a section without renaming it here turns this guard dark
+# (it would match nothing and pass), which is why the 2026-08-24
+# "Builders" → "Build" rename swept this line too.
 crumbs=$(git ls-files 'frontend/*.ts' 'frontend/*.tsx' 'frontend/**/*.ts' 'frontend/**/*.tsx' | sort -u \
-    | xargs grep -nE 'label: "(Builders|The Deal|Participants|Research|Market)", href: "[^"]*"' 2>/dev/null \
-    | grep -vE '"Builders", href: "/spec"|"The Deal", href: "/kernel"|"Participants", href: "/members"|"Research", href: "/why"|"Market", href: "/discover"' || true)
+    | xargs grep -nE 'label: "(Build|Builders|The Deal|Participants|Research|Market)", href: "[^"]*"' 2>/dev/null \
+    | grep -vE '"Build", href: "/spec"|"The Deal", href: "/kernel"|"Participants", href: "/members"|"Research", href: "/why"|"Market", href: "/discover"' || true)
 if [[ -n "$crumbs" ]]; then
     echo "[nav-structure:FAIL] breadcrumb labelled with a nav section carries the wrong doorway href:"
     echo "$crumbs" | sed 's/^/    /'

@@ -4,8 +4,8 @@
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
 //   The five entries are the ruled protocol-object sections (maintainer
-//   2026-08-07, enforced by scripts/lint-nav-structure.sh): The Deal,
-//   Market, Builders, Participants, Research — full tree in the
+//   2026-08-07, enforced by scripts/lint-nav-structure.sh): Build,
+//   The Deal, Market, Participants, Research — full tree in the
 //   MARKETING_MAP docstring below. The logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` feeds ONLY the mobile drawer's App section
@@ -28,9 +28,9 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
+    { href: "/spec", label: "Build" },
     { href: "/kernel", label: "The Deal" },
     { href: "/discover", label: "Market" },
-    { href: "/spec", label: "Builders" },
     { href: "/members", label: "Participants" },
     { href: "/why", label: "Research" },
 ];
@@ -43,7 +43,7 @@ export const NAV_LINKS: NavLink[] = [
 // The first entry (Orders) is the consumer's primary surface — the wallet's
 // single actor-neutral order list (every order it's on as buyer OR seller,
 // plus anything awaiting its action). It precedes the protocol-tier surfaces
-// (Builders, Terminal, etc.) so a participant who already has a wallet
+// (Build, Terminal, etc.) so a participant who already has a wallet
 // connected has a one-click path to "their" work.
 export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
@@ -74,33 +74,60 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 
 /**
  * The marketing map — the ruled site tree (maintainer, 2026-08-07), five nav
- * entries: The Deal `(deal)`, Market (the all-bridge group carrying the app
- * tier's e-commerce tools), Builders (`(compose)` + `(rewards)` + `(spec)`, one flat list of pages),
+ * entries: Build (`(compose)` + `(rewards)` + `(spec)`, one flat list of pages),
+ * The Deal `(deal)`, Market (the all-bridge group carrying the app
+ * tier's e-commerce tools),
  * Participants `(participants)`, Research `(research)`. Each group's first
  * PAGE entry is its doorway; entry ORDER within a group is the ruled
  * reading order, not alphabetical.
+ *
+ * SECTION ORDER is the maintainer's word, not machine-enforced —
+ * `lint-nav-structure.sh` checks doorway-first, set equality, and
+ * label==metadata.title, never the order of the sections themselves. Build
+ * leads and The Deal follows it (maintainer, 2026-08-24, safe→build
+ * reorientation on the 2026-08-22 USP ratification): the first doorway a
+ * visitor meets resolves to a build object, and the warrant section answers a
+ * question they have just acquired a reason to ask. The same ruling renamed
+ * the section "Builders" → "Build" — a verb, not an audience noun (the
+ * `/builders` hub was deleted for being an audience carve; do not re-grow one).
  * Labels derive from each page's own `metadata.title` minus the site suffix.
  * `(reference)` (Glossary) is footer chrome, never nav; papers are
  * reached through Working Groups (RE-RULED 2026-08-21: a /papers index was
  * briefly built off a misread "Fix" and deleted the same day — the corpus has
- * ONE surface, /working-groups; do not rebuild the index). Builders leads
+ * ONE surface, /working-groups; do not rebuild the index). Build leads
  * with Specifications (maintainer-ruled 2026-08-21). /local-commerce and /faq are nav-visible
  * under The Deal (maintainer, 2026-08-07) on the standing condition that the
  * rest of the site stays demoted — the meal is one worked example among
  * many, never THE model. Tools (Register a clause,
  * Designer, Claim, Join) are buttons on their object's page, never nav
- * slots. `scripts/lint-nav-structure.sh` enforces all of this.
+ * slots. `scripts/lint-nav-structure.sh` enforces the mechanical half of this
+ * (doorway-first, set equality against the route tree, label==metadata.title,
+ * and breadcrumb doorways) — section order and section names are the
+ * maintainer's word, checked by review.
  * ONE source, two renderings: `NavTreeRow` (desktop disclosure submenus) and
  * `NAV_LINKS_MARKETING_DRAWER` (mobile, flattened with section headers).
  */
 export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
+    {
+        section: "Build",
+        links: [
+            { href: "/spec", label: "Specifications" },
+            { href: "/clauses", label: "Clauses" },
+            { href: "/assemblies", label: "Assemblies" },
+            { href: "/registries", label: "Registries" },
+            { href: "/composition", label: "Composition" },
+            { href: "/data", label: "Data" },
+            { href: "/pitfalls", label: "Sharp edges" },
+            { href: "/security", label: "Security" },
+            { href: "/rpgf", label: "Rewards for authors" },
+        ],
+    },
     {
         section: "The Deal",
         links: [
             { href: "/kernel", label: "Kernel" },
             { href: "/local-commerce", label: "Local Commerce" },
             { href: "/invariants", label: "Invariants" },
-            { href: "/data", label: "Data" },
             { href: "/faq", label: "FAQ" },
         ],
     },
@@ -110,19 +137,6 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/discover", label: "Discover members" },
             { href: "/orders", label: "Your orders" },
             { href: "/audit", label: "Audit" },
-        ],
-    },
-    {
-        section: "Builders",
-        links: [
-            { href: "/spec", label: "Specifications" },
-            { href: "/clauses", label: "Clauses" },
-            { href: "/assemblies", label: "Assemblies" },
-            { href: "/registries", label: "Registries" },
-            { href: "/composition", label: "Composition" },
-            { href: "/pitfalls", label: "Sharp edges" },
-            { href: "/security", label: "Security" },
-            { href: "/rpgf", label: "Rewards for authors" },
         ],
     },
     {

@@ -38,8 +38,8 @@ describe("MobileNav", () => {
 
         for (const group of MARKETING_MAP) {
             // The section header is a non-link element. Filter on that: a section
-            // and its doorway link share a name ("Builders" heads the group AND
-            // labels /builders), so an unscoped text query matches both.
+            // and its doorway link share a name ("Build" heads the group AND
+            // labels its doorway), so an unscoped text query matches both.
             const header = screen.getAllByText(group.section).filter((el) => el.tagName !== "A");
             expect(header.length).toBeGreaterThan(0);
 

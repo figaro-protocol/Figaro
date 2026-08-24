@@ -65,11 +65,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeVisible();
 
         // The (app) drawer lists the five publication doorways by their ruled
-        // section labels — /clauses is the 'Builders' doorway there (the
-        // 'Clauses' page label exists only in the marketing drawer's map).
-        await drawer.getByRole('link', { name: 'Builders', exact: true }).click();
+        // section labels — /spec is the 'Build' doorway there (the
+        // 'Specifications' page label exists only in the marketing drawer's map).
+        await drawer.getByRole('link', { name: 'Build', exact: true }).click();
 
-        await expect(page).toHaveURL(/\/clauses\/?$/);
+        await expect(page).toHaveURL(/\/spec\/?$/);
         // useEffect on pathname change closes the drawer
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
@@ -106,7 +106,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         // Section headers group the map (same shape as the (app) drawer) —
         // the ruled five sections, asserted by one of them.
-        await expect(drawer.getByText('Builders', { exact: true }).first()).toBeVisible();
+        await expect(drawer.getByText('Build', { exact: true }).first()).toBeVisible();
 
         // And it navigates, closing behind itself.
         await drawer.getByRole('link', { name: 'Invariants' }).click();

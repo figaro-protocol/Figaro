@@ -61,6 +61,10 @@ export default function Invariants() {
                         <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
                             papers
                         </Link>
+                        . What the contracts stating them are tested against &mdash; six independent benches, and the external-audit posture stated plainly &mdash; is on{" "}
+                        <Link href="/security" className="text-ink-heading font-medium hover:underline">
+                            Security
+                        </Link>
                         . What follows here is the four things that fall out of the six.
                     </p>
                 </div>

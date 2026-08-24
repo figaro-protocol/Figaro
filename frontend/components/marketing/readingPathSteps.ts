@@ -7,22 +7,48 @@ export interface ReadingPathStep {
     description: string;
 }
 
-/** The three rungs, in reading order: one deal, many deals, the world they meet. */
-export const READING_PATH_RUNGS = ["One deal", "An economy", "The world"] as const;
+/** The four rungs, in reading order: what you can make, why it holds, where you
+ *  start, what it changes. */
+export const READING_PATH_RUNGS = [
+    "What you can build",
+    "Why it holds",
+    "Where you start",
+    "What it changes",
+] as const;
 
 /**
  * The site's spine — the reading path the homepage closes with.
  *
- * THE ORDER IS THE RULING (probe-validated 2026-08-21, four rounds of blind
- * comprehension probes + an expert copy wave; REORDERED same day by maintainer
- * ruling on the eight-probe full-site baseline, citing this comment: the worked
- * example follows the mechanism, and the hard questions follow a deal seen to
- * succeed — labels unified with the nav, one canonical name per page). Each
- * step teaches ONE thing, and
- * each rung earns the next: a single deal that enforces itself, then what many
- * such deals compose into, then how those economies meet the institutions that
- * already exist. Do not reorder, retitle, or insert a step on probe evidence
- * alone — reopening this requires a maintainer ruling that cites this comment.
+ * THE ORDER IS THE RULING. Two rulings stand on the record, the second
+ * superseding the first; neither is deleted, because the reasoning of the one
+ * that was replaced is what makes the replacement legible.
+ *
+ * 1. 2026-08-21 (SUPERSEDED) — three rungs, "One deal" / "An economy" / "The
+ *    world", probe-validated across four rounds of blind comprehension probes
+ *    plus an expert copy wave, then REORDERED the same day by maintainer ruling
+ *    on the eight-probe full-site baseline: the worked example follows the
+ *    mechanism, and the hard questions follow a deal seen to succeed. Each rung
+ *    earned the next — a single deal that enforces itself, then what many such
+ *    deals compose into, then how those economies meet the institutions that
+ *    already exist. That order was ruled against the then-current safe-led
+ *    estate and was correct for it.
+ * 2. 2026-08-24 (IN FORCE) — the safe→build reorientation. Four rungs. The
+ *    superseding instrument is the 2026-08-22 USP ratification, which puts the
+ *    BUILD altitude first: a reader meets a thing they could make before the
+ *    warrant that lets them believe it. Rung 1 is the invitation (clauses,
+ *    assemblies, composition, the data market as the existence proof, the
+ *    commons that pays authors, one published shape lived end to end); rung 2
+ *    is the warrant, unchanged in content and load-bearing precisely because it
+ *    now answers a question the reader has just acquired a reason to ask;
+ *    rung 3 is the door; rung 4 is the horizon. /security and /spec join the
+ *    path (the warrant's own evidence, and the door itself, were off-curriculum).
+ *    /registries stays off-path: it is an explorer reached from the live counts,
+ *    not a lesson.
+ *
+ * Each step still teaches ONE thing, and labels stay unified with the nav —
+ * one canonical name per page. Do not reorder, retitle, or insert a step on
+ * probe evidence alone — reopening this requires a maintainer ruling that
+ * cites this comment and is RECORDED here alongside the ones it supersedes.
  *
  * Step 1 of the ruled path is Home itself and is therefore NOT in this array;
  * a page does not link to itself. Steps are deliberately UNNUMBERED in the
@@ -42,89 +68,103 @@ export const READING_PATH_RUNGS = ["One deal", "An economy", "The world"] as con
  */
 export const READING_PATH_STEPS: ReadingPathStep[] = [
     {
-        rung: "One deal",
-        href: "/kernel",
-        label: "Kernel",
-        description:
-            "how one deal enforces itself: the bonds, the equilibrium, the proof behind \u201ca theorem, not a policy.\u201d",
-    },
-    {
-        rung: "One deal",
-        href: "/local-commerce",
-        label: "Local Commerce",
-        description:
-            "one deal lived end to end — a meal among unbounded kinds of trade.",
-    },
-    {
-        rung: "One deal",
-        href: "/invariants",
-        label: "Invariants",
-        description: "the kernel's invariants: no admin, no escape hatches, no custodian.",
-    },
-    {
-        rung: "One deal",
-        href: "/faq",
-        label: "FAQ",
-        description:
-            "what happens when a deal goes wrong, and the other questions worth asking plainly.",
-    },
-    {
-        rung: "An economy",
+        rung: "What you can build",
         href: "/clauses",
         label: "Clauses",
         description: "the terms of deals: public building blocks, and how to write one.",
     },
     {
-        rung: "An economy",
+        rung: "What you can build",
         href: "/assemblies",
         label: "Assemblies",
         description: "whole deal-shapes: publish once, reuse anywhere.",
     },
     {
-        rung: "An economy",
-        href: "/rpgf",
-        label: "Rewards for authors",
-        description: "how the commons pays its authors: real usage, retroactively.",
-    },
-    {
-        rung: "An economy",
-        href: "/data",
-        label: "Data",
-        description: "the record: public map, sealed detail, sold only on its owner's terms.",
-    },
-    {
-        rung: "An economy",
-        href: "/members",
-        label: "Members",
-        description: "any signer: people, businesses, assets with their own wallets.",
-    },
-    {
-        rung: "An economy",
-        href: "/agents",
-        label: "Agents",
-        description: "software agents on the same footing — operating, authoring, trading.",
-    },
-    {
-        rung: "The world",
+        rung: "What you can build",
         href: "/composition",
         label: "Composition",
         description:
             "how deals compose — with each other, and with the chain's other contracts: forums, swaps, the fiscal multisender.",
     },
     {
-        rung: "The world",
+        rung: "What you can build",
+        href: "/data",
+        label: "Data",
+        description: "the record: public map, sealed detail, sold only on its owner's terms.",
+    },
+    {
+        rung: "What you can build",
+        href: "/rpgf",
+        label: "Rewards for authors",
+        description: "how the commons pays its authors: real usage, retroactively.",
+    },
+    {
+        rung: "What you can build",
+        href: "/local-commerce",
+        label: "Local Commerce",
+        description:
+            "one deal lived end to end — a meal among unbounded kinds of trade.",
+    },
+    {
+        rung: "Why it holds",
+        href: "/kernel",
+        label: "Kernel",
+        description:
+            "how one deal enforces itself: the bonds, the equilibrium, the proof behind \u201ca theorem, not a policy.\u201d",
+    },
+    {
+        rung: "Why it holds",
+        href: "/invariants",
+        label: "Invariants",
+        description: "the kernel's invariants: no admin, no escape hatches, no custodian.",
+    },
+    {
+        rung: "Why it holds",
+        href: "/security",
+        label: "Security",
+        description:
+            "testing and code security: six independent benches, and the audit posture stated plainly.",
+    },
+    {
+        rung: "Why it holds",
+        href: "/faq",
+        label: "FAQ",
+        description:
+            "what happens when a deal goes wrong, and the other questions worth asking plainly.",
+    },
+    {
+        rung: "Where you start",
+        href: "/spec",
+        label: "Specifications",
+        description:
+            "the canonical surface: every contract a permissionless primitive, with the deployment record.",
+    },
+    {
+        rung: "Where you start",
+        href: "/members",
+        label: "Members",
+        description: "any signer: people, businesses, assets with their own wallets.",
+    },
+    {
+        rung: "Where you start",
+        href: "/agents",
+        label: "Agents",
+        description: "software agents on the same footing — operating, authoring, trading.",
+    },
+    {
+        rung: "What it changes",
         href: "/why",
         label: "Why this exists",
         description: "the argument from first principles.",
     },
     {
-        rung: "The world",
+        rung: "What it changes",
         href: "/working-groups",
         label: "Working Groups",
         description: "the eight disciplines behind the claims.",
     },
     {
-        rung: "The world",
+        rung: "What it changes",
         href: "/consequences",
         label: "Consequences",
         description: "what the world looks like if it works.",
