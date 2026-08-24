@@ -110,11 +110,11 @@ export function MemberEditProfile() {
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
 
-    // Redirect back to /sellers on a confirmed update. No refetch here:
-    // `useMemberProfile` is per-call-site local state, so refetching this
-    // component's instance can't refresh /sellers (which has its own) —
-    // and the synchronous re-render + re-fetch it kicked raced the
-    // router.push navigation. /sellers reads fresh on mount regardless.
+    // Redirect back to /members/manage on a confirmed update. No refetch
+    // here: `useMemberProfile` is per-call-site local state, so refetching
+    // this component's instance can't refresh /members/manage (which has its
+    // own) — and the synchronous re-render + re-fetch it kicked raced the
+    // router.push navigation. /members/manage reads fresh on mount regardless.
     useEffect(() => {
         if (updater.isSuccess) {
             router.push("/members/manage");

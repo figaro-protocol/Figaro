@@ -15,9 +15,10 @@ import type { OnboardingStepChromeProps } from "@/components/members/OnboardingS
 
 /**
  * Step 6 of the onboarding wizard. Collects ERC-8004-compatible
- * agent service endpoints into `state.services`. Optional and
- * advanced — autonomous-agent sellers use this; human-driven
- * wallets skip the step.
+ * agent service endpoints into `state.services`. Optional: endpoints
+ * declare REACHABILITY, not what runs the wallet — a wallet that
+ * nothing needs to reach directly skips the step and loses nothing
+ * else.
  *
  * Per `reference_erc8004_interop_only.md`: Figaro does NOT depend on
  * ERC-8004; it offers an optional metadata convention so agents that

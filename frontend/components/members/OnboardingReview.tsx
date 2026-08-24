@@ -15,6 +15,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useMemberProfile,
     useRegistrationDeposit,
+    useWithdrawalCooldown,
 } from "@/lib/member/useMembersRegistry";
 import { type MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
@@ -84,6 +85,23 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     return { profileTemplate };
 }
 
+/** The withdrawal delay as prose, from the live `withdrawalCooldown`
+ *  immutable. The deposit is quoted from the chain, so the delay it is
+ *  locked for must be too — a participant prices the pair, never one alone.
+ *  Zero is a real deployed value (a local development record wires no
+ *  delay); undefined means the read has not landed yet. */
+function cooldownPhrase(seconds: bigint | undefined): string {
+    if (seconds === undefined) return "after a cooldown";
+    if (seconds === 0n) return "with no cooldown";
+    const days = Number(seconds) / 86_400;
+    if (days >= 1) {
+        const n = Math.round(days * 10) / 10;
+        return `after ${n} ${n === 1 ? "day" : "days"}`;
+    }
+    const hours = Math.round((Number(seconds) / 3_600) * 10) / 10;
+    return `after ${hours} ${hours === 1 ? "hour" : "hours"}`;
+}
+
 export function OnboardingReview() {
     const router = useRouter();
     const mounted = useMounted();
@@ -95,6 +113,8 @@ export function OnboardingReview() {
 
     const { data: depositRaw } = useRegistrationDeposit();
     const deposit = depositRaw as bigint | undefined;
+    const { data: cooldownRaw } = useWithdrawalCooldown();
+    const cooldown = cooldownPhrase(cooldownRaw as bigint | undefined);
 
     const {
         publish,
@@ -203,7 +223,7 @@ export function OnboardingReview() {
                         prose={
                             isRegistered
                                 ? "Your profile has been re-pinned to IPFS and the new metadataURI is on-chain."
-                                : "Your wallet is now registered on this network. You get the deposit back when you leave the registry, after a cooldown."
+                                : `Your wallet is now registered on this network. You get the deposit back when you leave the registry, ${cooldown}.`
                         }
                         proseClassName="text-sm text-ink-body"
                         rows={[
@@ -449,7 +469,7 @@ export function OnboardingReview() {
                         <span className="font-semibold text-ink-heading">
                             {formatToken(deposit)} ETH
                         </span>
-                        {" "}— you get it back when you leave the registry, after a cooldown.
+                        {" "}— you get it back when you leave the registry, {cooldown}.
                         Withdrawing de-lists you from discovery; the stake is what
                         keeps you surfaced.
                     </p>

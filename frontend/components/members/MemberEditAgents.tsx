@@ -16,8 +16,9 @@
  *
  * Per `reference_erc8004_interop_only.md`: Figaro doesn't depend on
  * ERC-8004; these endpoints are an OPTIONAL cross-protocol
- * discoverability convention. Saving with no endpoints is a
- * normal state for human-driven sellers.
+ * discoverability convention. They declare REACHABILITY, not what
+ * runs the wallet — saving with no endpoints is a normal state, and
+ * leaves the wallet simply unreachable for inbound coordination.
  */
 
 import { useEffect, useState } from "react";

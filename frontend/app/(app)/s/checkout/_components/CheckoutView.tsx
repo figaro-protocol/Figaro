@@ -317,9 +317,9 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         return out;
     })();
-    // A composition never supplies a counterparty (counterparty-deferring
-    // compositions were retired with the dutch auction 2026-07-02) — every
-    // unbound sub-order is the buyer's pick, whether or not it composes.
+    // A composition never supplies a counterparty: it invokes an on-network
+    // contract, it does not name a seller. So every unbound sub-order is the
+    // buyer's pick, whether or not the order also composes.
     const buyerPickSubOrders = unboundSubOrders;
     const buyerChoosesCounterparty = buyerPickSubOrders.length > 0;
     // Every composition's REQUIRED block.runtime.fields must be filled before placing.

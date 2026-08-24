@@ -159,9 +159,9 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
 
         // NO runtime compose verb: composition is the DESIGNER's act — the
         // buyer selects an assembly and originates from its template
-        // (`originateChain`), never extends a live process ad hoc. A
-        // "commit-sub-order" arm here was the SDK-native reincarnation of the
-        // retired open-sub-order-composer; deleted 2026-07-10.
+        // (`originateChain`), never extends a live process ad hoc. Never add
+        // a "commit-sub-order" arm here — a runtime compose verb is an
+        // authority violation.
 
         // 2. Attest as buyer
         actions.push({

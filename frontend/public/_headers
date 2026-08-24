@@ -12,9 +12,8 @@
 #     build time is the future hardening; 'wasm-unsafe-eval' stays for
 #     @react-pdf's fontkit (Harfbuzz WASM, the /audit evidence-bundle PDF).
 #   - connect-src: scheme-wide https:/wss:/ws: + loopback. A wallet points
-#     this frontend at its OWN RPC + IPFS endpoints (/settings — the
-#     composition cost model), so the endpoint set is the USER'S, not
-#     enumerable here. https: also covers XMTP's :5558 gRPC-web ports.
+#     this frontend at its OWN RPC + IPFS endpoints (/members/edit/endpoints),
+#     so the endpoint set is the USER'S, not enumerable here. https: also covers XMTP's :5558 gRPC-web ports.
 #   - img-src loopback: the local Kubo gateway (127.0.0.1:8080) serves
 #     catalogue/branding pins on a devnet.
 #   - font-src data:: fontkit loads its WASM as a data: URI; fonts.gstatic

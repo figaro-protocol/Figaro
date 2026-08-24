@@ -10,10 +10,10 @@
  * single live system.
  *
  * Routes covered:
- *   /sellers/edit/identity   — change name, submit via OnboardingProfileForm
- *   /sellers/edit/catalogue  — Delete-catalogue affordance (clear catalogueURI)
- *   /sellers/edit/agents     — set MCP endpoint, submit
- *   /sellers/edit/assemblies — toggle a registered assembly on, submit
+ *   /members/edit/identity   — change name, submit via OnboardingProfileForm
+ *   /members/edit/catalogue  — Delete-catalogue affordance (clear catalogueURI)
+ *   /members/edit/agents     — set MCP endpoint, submit
+ *   /members/edit/assemblies — toggle a registered assembly on, submit
  *
  * Each test seeds anvil[0] as a registered seller with a fresh
  * profile pinned to IPFS, then drives the edit form. Each assertion
@@ -164,7 +164,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         const { metadataURI } = await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
         expect(metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
 
-        // On a confirmed update the success effect redirects to /sellers.
+        // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 
@@ -210,7 +210,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         // The on-chain event is the system-of-record that the edit shipped.
         await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
 
-        // On a confirmed update the success effect redirects to /sellers.
+        // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 
@@ -238,7 +238,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.getByRole('button', { name: 'Save changes' }).click();
         await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
 
-        // On a confirmed update the success effect redirects to /sellers.
+        // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
 
         // Diagnostic: confirm the render-loop bug is fixed. Pre-fix, the
@@ -291,7 +291,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.getByRole('button', { name: 'Save changes' }).click();
         await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
 
-        // On a confirmed update the success effect redirects to /sellers.
+        // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 });

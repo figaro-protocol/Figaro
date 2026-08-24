@@ -23,10 +23,9 @@ export const metadata: Metadata = withOg({
  *     here — the end-of-process step where the audit bundle becomes the
  *     evidence exported to an off-chain forum
  *
- * The legacy routes redirect (hosting-layer config, not app code — static
- * export carries no server redirects):
- *   - `/financials/<processId>` → `/audit/view?process=<processId>`
- *   - `/verify` → `/audit` (no processId; generic verify-only mode)
+ * No redirect ships: the static export carries no server redirects and the
+ * deployment ships no `_redirects` file. `/audit` (generic verify-only mode)
+ * and `/audit/view?process=<processId>` are the only routes into this surface.
  *
  * Wallet-tier (in `(app)/`) because the orders + agreements being audited
  * are the connected wallet's own.

@@ -68,7 +68,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
     // false start left commit windows (wagmi client/address still hydrating
     // → the effect's early return) where consumers saw
     // {data: undefined, isLoading: false} and treated an unscanned wallet
-    // as unregistered — the /sellers/edit/* guards redirected mid-session
+    // as unregistered — the /members/edit/* guards redirected mid-session
     // on exactly that window, killing in-flight saves (e2e flake 2026-07-09).
     const [isLoading, setIsLoading] = useState(true);
     const [generation, setGeneration] = useState(0);
@@ -90,7 +90,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
                 // keyed on `data` re-fire on every poll for nothing,
                 // which compounds into update-depth thrash on routes
                 // that chain `refetch() + router.push(...)` in a
-                // success-useEffect (see /sellers/edit/* family).
+                // success-useEffect (see /members/edit/* family).
                 setData((prev) => {
                     const same = prev
                         && prev[0] === state.metadataURI
@@ -111,7 +111,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
     // Stable refetch — a new arrow function on every render makes any
     // consumer that puts `refetch` in a `useEffect` dep array re-fire
     // on every parent render, which is what powered the post-success
-    // refetch-redirect cycle on /sellers/edit/<route> pages.
+    // refetch-redirect cycle on /members/edit/<route> pages.
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
 
     return { data, isLoading, refetch };

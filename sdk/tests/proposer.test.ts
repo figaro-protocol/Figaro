@@ -50,8 +50,8 @@ describe("proposeActions", () => {
         const actions = proposeActions(process, BUYER);
 
         // Composition is the designer's act: the buyer resolves and attests,
-        // never extends a live process ad hoc (the commit-sub-order arm was
-        // an authority violation, deleted 2026-07-10).
+        // never extends a live process ad hoc (a commit-sub-order arm would
+        // be an authority violation).
         expect(actions.length).toBe(2);
         expect(actions[0].type).toBe("resolve-process");
         expect(actions[1].type).toBe("attest-as-buyer");

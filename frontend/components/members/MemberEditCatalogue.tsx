@@ -160,7 +160,7 @@ export function MemberEditCatalogue() {
         setSeeded(true);
     }, [seeded, loaded, existingProfile, existingCatalogue, update]);
 
-    // Redirect back to /sellers on a confirmed update.
+    // Redirect back to /members/manage on a confirmed update.
     useEffect(() => {
         if (updater.isSuccess) {
             router.push("/members/manage");
@@ -262,7 +262,7 @@ export function MemberEditCatalogue() {
 
 /**
  * Bottom-of-page destructive footer. Mirrors the Withdraw row
- * pattern on /sellers: muted link expands inline to a
+ * pattern on /members/manage: muted link expands inline to a
  * confirm/cancel pair on click. Action clears `catalogueURI` from
  * the profile (one-pin sequence — the existing catalogue document
  * stays pinned on IPFS but is no longer referenced from the

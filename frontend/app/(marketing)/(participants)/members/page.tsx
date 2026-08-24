@@ -58,7 +58,7 @@ export default function Join() {
                             <tr className="border-b border-default"><td className="py-2 pr-4">Catalogue</td><td className="py-2">The items you sell, priced in your default token.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Assemblies</td><td className="py-2">Bind the deal-shapes you sell through.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Buyer</td><td className="py-2">Subscribe the deal-shapes you buy through; choose the data you offer for sale.</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">Agents</td><td className="py-2">Publish service endpoints, if a machine runs this wallet.</td></tr>
+                            <tr className="border-b border-default"><td className="py-2 pr-4">Agents</td><td className="py-2">Publish service endpoints, if anything needs to reach this wallet directly.</td></tr>
                             <tr><td className="py-2 pr-4">Review</td><td className="py-2">One action pins your profile and registers the wallet.</td></tr>
                         </tbody>
                     </table>

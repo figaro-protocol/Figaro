@@ -18,7 +18,7 @@ export default function Pitfalls() {
             <div className="container mx-auto px-6 pt-8">
                 <Breadcrumb
                     items={[
-                        { label: "Builders", href: "/clauses" },
+                        { label: "Builders", href: "/spec" },
                         { label: "Sharp edges" },
                     ]}
                 />

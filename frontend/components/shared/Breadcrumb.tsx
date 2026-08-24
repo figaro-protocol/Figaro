@@ -18,7 +18,7 @@ interface BreadcrumbProps {
 }
 
 /**
- * Depth-≥ 2 wayfinding trail — e.g. "Builders › Composability". Derived
+ * Depth-≥ 2 wayfinding trail — e.g. "Clauses › Register a clause". Derived
  * from the route the caller passes in, never a stored taxonomy.
  *
  * This is the one implementation: extracted from `PaperLayout`'s inline

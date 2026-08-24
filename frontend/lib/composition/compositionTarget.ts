@@ -20,9 +20,10 @@ export interface CompositionTarget {
     abi: Abi;
 }
 
-/** Known standard interfaces, keyed by `block.design.composes.interface`. Currently
- *  EMPTY: the descending auction (the first tenant) was abandoned 2026-07-02;
- *  the next expected row is the emissions cluster's `carbon-aggregator`. */
+/** Known standard interfaces, keyed by `block.design.composes.interface`.
+ *  EMPTY: a row exists only once a composed contract ships with a handler in
+ *  `useCompositionActions` — the registry records what is invocable, never
+ *  what is planned. An unknown interface returns null and nothing is called. */
 const STANDARD_INTERFACES: Record<string, { address: () => `0x${string}` | null; abi: Abi }> = {};
 
 /** The `{ address, abi }` to invoke for a composition interface, or null when

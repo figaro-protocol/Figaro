@@ -338,11 +338,11 @@ contract UsageCounterTest is Test {
         assertEq(d, 1);
     }
 
-    /// Repeat trade is bounded by the SCORE, not by a cliff. The per-pair cap of
-    /// 5 was deleted 2026-07-30 — it never bound for an attacker optimising score
-    /// per unit cost and only ever bound honest repeat trade. What does the work
-    /// is `c^(1/3)`: one seller carrying many trades adds volume that is
-    /// discounted far more steeply than any cliff would be.
+    /// Repeat trade is bounded by the SCORE, not by a cliff — never reintroduce
+    /// a per-pair cap: it cannot bind for an attacker optimising score per unit
+    /// cost and only binds honest repeat trade. What does the work is `c^(1/3)`:
+    /// one seller carrying many trades adds volume that is discounted far more
+    /// steeply than any cliff would be.
     function test_repeatTradeIsDiscountedNotRefused() public {
         for (uint256 i = 0; i < 8; i++) {
             CommitmentTypes.Commitment memory c =

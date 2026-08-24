@@ -15,7 +15,7 @@
  * the cooldown's own behaviour is covered in Foundry against a non-zero value.
  *
  * `members-onboarding.devnet.spec.ts` covers the register path; this covers
- * leave → claim: /sellers dashboard → Begin → Confirm and leave → receipt →
+ * leave → claim: /members/manage dashboard → Begin → Confirm and leave → receipt →
  * Continue → pending-deposit notice → Claim deposit → ETH actually moves.
  *
  * Requires: Anvil + ./deploy-local.sh

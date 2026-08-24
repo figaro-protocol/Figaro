@@ -112,7 +112,7 @@ export interface SequencerUsageClaim {
     order: SequencerCommitment;
     /** Clause idHash or assembly compositionHash. Field name mirrors the Rust
      *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
-     *  wire-protocol identity; renamed in lockstep with the Rust side 2026-08-05. */
+     *  wire-protocol identity; any change must land in lockstep with the Rust side. */
     clause_or_assembly: Hex;
     /** serde's externally-tagged encoding of the Rust `UsageClaimKind`. */
     kind: { Clause: { section_hash: Hex } } | "Assembly";

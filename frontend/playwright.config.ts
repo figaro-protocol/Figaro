@@ -171,9 +171,9 @@ export default defineConfig({
     //     chrome that needs a real browser and jsdom can't render.
     //
     // UI logic that needs neither lives in Vitest (`tests/components/`,
-    // `tests/lib/`); contracts live in Foundry. The former `mock` project
-    // (UI tests against a fake backend) was retired 2026-05-20 — a
-    // mock-backed test is not end-to-end.
+    // `tests/lib/`); contracts live in Foundry. There is no mock-backed
+    // browser project and never will be: a test against a fake backend is
+    // not end-to-end.
     projects: [
         {
             name: 'devnet-authoring',

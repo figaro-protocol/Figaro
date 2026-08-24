@@ -48,7 +48,7 @@ export default function Composes() {
                     <LabelledListRow label="Token swap" uppercase>
                         <strong>Uniswap.</strong> A process is denominated in one token, but a buyer may hold another: swap through Uniswap and commit in the same transaction.
                     </LabelledListRow>
-                    <LabelledListRow label="Multisender" uppercase>
+                    <LabelledListRow label="Multisender" id="multisender" uppercase>
                         <strong>Disperse.</strong> Post-settlement payout routing through the composed public multisender: one payment, many recipients, one transaction &mdash; it goes through whole or not at all. A settled wallet splits its own receipts the moment they land, to addresses it earmarked itself: a fiscal set-aside, savings, what it owes a supplier, a mutual-aid contribution. Nothing in the deal routed any of it and no clause computed it &mdash; the split is the wallet&apos;s own arithmetic over its own tokens, done afterwards, on its own initiative, spending a balance it already holds. The composed contract is the ownerless Disperse deployment &mdash; <code>0xD152f549545093347A162Dce210e7293f1452150</code>, the same address across chains, unowned since 2018 &mdash; and the call is its own <code>disperseToken(token, recipients, values)</code>, made by the wallet itself. Its entry, and the record key a deployment wires it under, are on <Link href="/spec#multisender" className="underline">/spec</Link>. What falls out is a self-sovereign fiscal trail nobody had to assemble later: the set-aside is dated, the recipient is named, and it stands on the same public record as the trade that paid for it.
                     </LabelledListRow>
                 </ul>

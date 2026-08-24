@@ -198,8 +198,8 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
 
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
  *  commerce, topology) that auto-fold into every template agreement; they are
- *  not designer choices. (Article renamed from "structural" 2026-07-14 — that
- *  word collided with the design/DAG sense and maddened everyone.) */
+ *  not designer choices. Never name this article "structural" — that word
+ *  collides with the design/DAG sense. */
 export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
 }

@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 interface LabelledListRowProps {
     /** Mono-styled label rendered in the left column. */
     label: string;
+    /** Anchor id on the row, for a cross-page deep link that must land on
+     *  this entry. Omitted rows carry no id. */
+    id?: string;
     /** Width slot for the label column. */
     labelWidth?: "narrow" | "default" | "wide";
     /** Whether to uppercase the label. */
@@ -25,12 +28,13 @@ const WIDTH_CLASS: Record<NonNullable<LabelledListRowProps["labelWidth"]>, strin
  */
 export function LabelledListRow({
     label,
+    id,
     labelWidth = "default",
     uppercase = false,
     children,
 }: LabelledListRowProps) {
     return (
-        <li className="flex gap-4">
+        <li id={id} className={`flex gap-4${id ? " scroll-mt-24" : ""}`}>
             <span
                 className={
                     `font-mono text-xs text-gray-500 mt-1 ${WIDTH_CLASS[labelWidth]} shrink-0` +

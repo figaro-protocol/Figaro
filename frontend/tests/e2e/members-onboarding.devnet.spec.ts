@@ -299,7 +299,7 @@ test.describe("seller registration wizard (devnet)", () => {
             ).toHaveCount(0);
         }
 
-        // ── /sellers dashboard carries BOTH calls (user rule 2026-06-12):
+        // ── /members/manage dashboard carries BOTH calls (user rule 2026-06-12):
         // the profile view/edit, and the onboarding-wizard entry. Runs on
         // every pass, including the conformant-skip path.
         await gotoAsWallet(page, SELLER.address, "/members/manage?e2e=devnet");

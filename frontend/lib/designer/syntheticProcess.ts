@@ -137,8 +137,9 @@ export function buildSyntheticOrder(params: {
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
     /** Per-root clause-field overrides. Merged onto defaultNodeClauseFields().
-     *  Used by `assemblyTemplateToDraft` to seed an IPFS-pinned assembly's kleros +
-     *  modality fields into the new draft's root. */
+     *  Used by `assemblyTemplateToDraft` to seed a pinned assembly's own clause
+     *  fields into the new draft's root — whatever fields it composed, read
+     *  from the template; no clause is named here. */
     clauseFieldOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
