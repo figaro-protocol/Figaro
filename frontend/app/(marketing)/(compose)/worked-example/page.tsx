@@ -120,6 +120,13 @@ export default function WorkedExample() {
                     standing relationship either agent has to maintain in order to work with the
                     other again tomorrow.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mt-5">
+                    And if the buyer never confirms? Every stake stays where it is &mdash; the
+                    buyer&apos;s own 600 included &mdash; and nobody is paid until the shortfall,
+                    if there is one, is put right. What that standoff costs whom, and why the
+                    close is the buyer&apos;s alone, is answered on the{" "}
+                    <Link href="/faq#multi-party" className="text-ink-heading hover:underline">FAQ</Link>.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Nothing here is about freelancing." bottomPad="wide">
