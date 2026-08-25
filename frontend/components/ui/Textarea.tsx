@@ -6,6 +6,9 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
     errorId?: string;
 }
 
+// The §7 form-input shape, identical to Input and Select. `min-h-11` (44px)
+// is the WCAG 2.5.5 Target Size floor for a rows={1} caller; every current
+// caller passes rows>=2, where the row box already exceeds it.
 const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     ({ className, hasError, errorId, ...props }, ref) => {
         return (
@@ -13,8 +16,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 aria-invalid={hasError || undefined}
                 aria-describedby={errorId || undefined}
                 className={cn(
-                    "flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-black text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
-                    hasError && "border-red-400 focus:ring-red-400 focus:border-red-400",
+                    "flex min-h-11 w-full rounded-tile border border-default bg-surface px-3 py-2 text-ink-primary text-sm placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-default-strong disabled:cursor-not-allowed disabled:opacity-50",
+                    hasError && "border-error focus-visible:ring-error focus-visible:border-error",
                     className
                 )}
                 ref={ref}

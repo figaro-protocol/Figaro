@@ -6,11 +6,16 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
     className?: string;
 }
 
+// The §7 section-card surface, tokens per docs/DESIGN_TOKENS.md §1/§4 —
+// the same three values globals.css `.card` / `.section-card` @apply, so the
+// component and the class name cannot render two different cards. Padding
+// and shadow stay caller-owned: call sites run p-4 through p-8 and none of
+// them wants the class's fixed `shadow-section p-xl`.
 export function Card({ children, className, ...rest }: CardProps) {
     return (
         <div
             className={cn(
-                "bg-white rounded-lg border border-gray-200",
+                "bg-paper rounded-section border border-default",
                 className
             )}
             {...rest}

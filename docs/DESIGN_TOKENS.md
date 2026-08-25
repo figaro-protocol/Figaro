@@ -62,14 +62,18 @@ The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, 
 
 ### Status
 
-Single-value tokens. Decorative or icon use only. **Do not use as text utilities** (`text-success`, `text-warning`, `text-error`, `text-info`) — `text-error` on `bg-canvas` computes ~3.0:1 contrast and fails WCAG AA. Status surfaces should pair token-as-fill (`bg-success/10`, `border-error`) with `text-ink-*` foreground. If a future surface needs a contrast-validated text/background pair, expand each status token to `<status>-bg` / `<status>-fg` rather than reaching for `text-error` directly.
+Single-value tokens. Fill, border, ring, and icon use throughout. As **text** utilities, only `text-error` is admissible — the measured contrast, not a blanket rule:
 
-| Token      | Hex       | Tailwind utility | Intent                                         |
-|------------|-----------|------------------|------------------------------------------------|
-| `success`  | `#6b7a4a` | `bg-success`     | Muted moss green; status pill fill or icon.    |
-| `warning`  | `#a8762d` | `bg-warning`     | Muted ochre; warning pill fill or icon.        |
-| `error`    | `#9c4a3c` | `bg-error`       | Muted terracotta; error pill fill or icon.    |
-| `info`     | `#857c6e` | `bg-info`        | Aliases `ink.muted`; informational fill only.  |
+| Token      | Hex       | Tailwind utility | On `canvas` | On `paper` | Text use                                   |
+|------------|-----------|------------------|-------------|------------|--------------------------------------------|
+| `success`  | `#6b7a4a` | `bg-success`     | 4.26:1      | 4.66:1     | **No** — fails AA on canvas.                |
+| `warning`  | `#a8762d` | `bg-warning`     | 3.63:1      | 3.97:1     | **No** — fails AA on both.                  |
+| `error`    | `#9c4a3c` | `bg-error`       | 5.56:1      | 6.07:1     | **Yes** — passes AA on both.                |
+| `info`     | `#857c6e` | `bg-info`        | 3.77:1      | 4.11:1     | **No** — aliases `ink.muted`; fill only.    |
+
+Intent: `success` muted moss green, `warning` muted ochre, `error` muted terracotta, `info` the `ink.muted` alias. All four are ≥3:1 on both surfaces, so all four are valid as borders, rings, and icons (WCAG 1.4.11, Non-text Contrast).
+
+`text-error` is what `FormField` uses for the required-marker glyph and the `role="alert"` message. For the other three, pair token-as-fill (`bg-success/10`, `border-warning`) with a `text-ink-*` foreground; if a surface needs `success`/`warning`/`info` as legible text, expand that token to a `<status>-fg` pair rather than darkening the shared value — the fill and the text want different luminances.
 
 ### Dark mode
 
@@ -181,7 +185,9 @@ These are the canonical shape contracts. New primitives should adopt these defau
 bg-paper rounded-section shadow-section border border-default p-xl
 ```
 
-### Link tile / primary button
+### Link tile / primary button (the CSS shape)
+
+The `globals.css` base `button, .btn` rule — what an unstyled `<button>` renders as anywhere on the site:
 
 ```
 bg-subtle border border-default-strong rounded-tile px-lg py-sm
@@ -197,15 +203,70 @@ bg-transparent border border-default-strong rounded-tile px-lg py-sm
 text-ink-muted font-medium hover:bg-subtle hover:text-ink-primary
 ```
 
-### Form input / select / textarea
+### `<Button>` variants (`components/ui/Button.tsx`)
+
+The cva primitive, which supersedes the base rule wherever it is used. Base string, on every variant:
 
 ```
-bg-surface border border-default rounded-tile px-md py-sm
-min-h-11 text-ink-primary
-focus-visible:border-default-strong focus-visible:ring-2 focus-visible:ring-focus
+inline-flex items-center justify-center rounded-tile text-sm font-medium
+transition-colors focus-visible:outline-none focus-visible:ring-2
+focus-visible:ring-offset-2 focus-visible:ring-focus
+disabled:pointer-events-none disabled:opacity-50
 ```
 
-`min-h-11` (44px) satisfies WCAG 2.5.5 (Target Size).
+| Variant | Fill | Border | Text | Hover |
+|---|---|---|---|---|
+| `default` | `bg-ink-heading` | `border-ink-heading` | `text-paper` | `bg-ink-primary` |
+| `destructive` | `bg-error` | `border-error` | `text-paper` | `bg-error/90` |
+| `outline` | `bg-paper` | `border-default-strong` | `text-ink-primary` | `bg-subtle` |
+| `secondary` | `bg-subtle` | `border-default` | `text-ink-primary` | `bg-subtle-hover` |
+| `ghost` | `bg-transparent` | `border-transparent` | `text-ink-primary` | `bg-subtle` |
+| `link` | `bg-transparent` | `border-transparent` | `text-ink-primary` | `underline` |
+
+Every variant declares a border — including the two transparent ones — so switching variants never shifts layout by the 1px the bordered variants add.
+
+`default` is filled-sumi, **not** `bg-accent`: accent is capped at one surface per page (§1) and this is the site-wide default variant, so accent here would stack CTAs on any page carrying two buttons.
+
+| Size | Utilities |
+|---|---|
+| `default` | `min-h-11 px-4 py-2` |
+| `sm` | `min-h-11 px-3 text-xs` |
+| `lg` | `min-h-12 px-8` |
+| `icon` | `min-h-11 min-w-11 h-11 w-11` |
+
+Every size clears 44px: `min-h-11` satisfies WCAG 2.5.5 (Target Size). `sm` shrinks the *type*, never the target.
+
+### Form input / select / textarea (`components/ui/{Input,Select,Textarea}.tsx`)
+
+One string, shared verbatim by all three:
+
+```
+flex min-h-11 w-full rounded-tile border border-default bg-surface
+px-3 py-2 text-ink-primary text-sm placeholder:text-ink-muted
+focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus
+focus-visible:border-default-strong
+disabled:cursor-not-allowed disabled:opacity-50
+```
+
+Error state, applied when the caller passes `hasError` (which also sets `aria-invalid`):
+
+```
+border-error focus-visible:ring-error focus-visible:border-error
+```
+
+`min-h-11` (44px), not a fixed height, satisfies WCAG 2.5.5 (Target Size) while letting a textarea grow with its `rows`.
+
+Padding is the numeric `px-3 py-2`, not the `px-md py-sm` token pair — same choice `<Button>` makes. The spacing scale (§3) governs layout rhythm; control-internal padding is tuned against the 44px floor and the `text-sm` line box.
+
+The focus indicator is `focus-visible:`, not `focus:`. The `globals.css` base `:focus-visible` outline would otherwise double up with the ring, which is why `focus-visible:outline-none` is in the string. Consequence to know: a **pointer** click on a `<select>` draws no ring (a `<select>` is not a text field, so it does not match `:focus-visible` on click). That is the intended pointer-vs-keyboard split — the fill channel is the pointer's, the ring channel is the keyboard's (see "Nav current state" below).
+
+### Card (`components/ui/Card.tsx`)
+
+```
+bg-paper rounded-section border border-default
+```
+
+The same three values the `.card` / `.section-card` class applies, so the component and the class cannot render two different cards. Padding and shadow are deliberately **not** in the primitive — call sites run `p-4` through `p-8` and set their own — whereas the CSS class fixes `shadow-section p-xl`. A card at `p-4` carries a 20px radius against 16px padding; if that reads bulbous at a given call site, the fix is the call site's padding, not a second radius.
 
 ### Modal / dialog
 
@@ -252,7 +313,7 @@ In a nav, the section trigger takes `text-heading-h3 text-ink-heading` against `
 
 ### Status surfaces
 
-Pair the status token as fill or icon with `text-ink-*` body. Do not use `text-success` / `text-error` / etc. as text colors directly (see §1 status-token note).
+Pair `success` / `warning` / `info` as fill, border, or icon with a `text-ink-*` body — none of the three is legible as a text color. `text-error` is the one status token that measures AA-clean and is used as text (see the §1 status-token table).
 
 ---
 
@@ -260,7 +321,7 @@ Pair the status token as fill or icon with `text-ink-*` body. Do not use `text-s
 
 - Hardcoded hex anywhere outside `tailwind.config.ts` and `globals.css`. Use `@apply` against tokens instead.
 - Arbitrary-value Tailwind classes (`bg-[#...]`, `text-[14px]`, `rounded-[7px]`) — each is a token-drift risk.
-- `text-error` / `text-success` / `text-warning` / `text-info` as text colors — fail WCAG AA against canvas.
+- `text-success` / `text-warning` / `text-info` as text colors — each measures below AA against canvas (see §1). `text-error` is the exception and is measured, not assumed.
 - `text-paper` / `text-subtle` / `text-canvas` — render invisible-on-canvas; the surface tokens are not text-safe.
 - `focus:outline-none` without a paired `focus-visible:` indicator — leaves keyboard navigation with no visible focus state.
 - New tokens added to `tailwind.config.ts` without a corresponding entry in this spec, or vice versa.
