@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
@@ -26,6 +27,20 @@ function deploymentRecord(): Record<string, string | number> | null {
     try {
         return JSON.parse(fs.readFileSync(
             path.join(process.cwd(), "../deployments/11155111.json"), "utf-8"));
+    } catch {
+        return null;
+    }
+}
+
+/** sha256 of the record's exact committed bytes, computed at build — DERIVED,
+ *  never stored, so it cannot drift from the file (ruled 2026-08-25, the
+ *  machine-discovery probe's ask). The security property is cross-origin:
+ *  this site attests the bytes GitHub serves, so an agent hashes the raw
+ *  file and compares one string — neither origin alone can forge agreement. */
+function deploymentRecordSha256(): string | null {
+    try {
+        return createHash("sha256").update(fs.readFileSync(
+            path.join(process.cwd(), "../deployments/11155111.json"))).digest("hex");
     } catch {
         return null;
     }
@@ -379,6 +394,7 @@ const ERRORS: ErrorStage[] = [
 
 export default function Specifications() {
     const record = deploymentRecord();
+    const recordSha = deploymentRecordSha256();
     return (
         <>
             <MarketingHero
@@ -795,6 +811,14 @@ function attestViaResolver(
                             <a href="https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json" target="_blank" rel="noopener noreferrer" className="underline"><code>deployments/11155111.json</code></a>{" "}
                             (deployment block <span className="font-mono">{String(record.deploymentBlock)}</span>) &mdash; this table renders the record, it never restates it:
                         </p>
+                        {recordSha && (
+                            <p className="text-xs text-ink-muted mb-2">
+                                Verify the record in one comparison rather than address by address &mdash; its committed bytes hash to{" "}
+                                <span className="font-mono break-all">sha256:{recordSha}</span>; check it yourself:{" "}
+                                <code className="break-all">curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256</code>.
+                                This page computes the hash from the same file at build, so the two agreeing means the site and the repository are serving the same record.
+                            </p>
+                        )}
                         <table className="w-full text-xs">
                             <tbody className="[&>tr]:border-b [&>tr]:border-default">
                                 {Object.entries(record)

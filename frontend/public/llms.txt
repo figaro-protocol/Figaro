@@ -117,6 +117,9 @@ roles; each is its own manual.
   is deployed code. Each is also verified on that chain's public block explorer; the record's shape and
   discipline are documented in
   [deployments/README.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/README.md).
+  Verify the record in one comparison: [/spec/](https://figaroprotocol.com/spec/) publishes the sha256 of
+  the record's committed bytes (computed at build from the same file) — hash the raw GitHub file yourself
+  and compare; the site and the repository agreeing means neither origin alone could have altered it.
 
 ## Safety — what holds before any transaction
 
