@@ -31,9 +31,9 @@ function CheckList({ checks, orderHash }: { checks: BatchRelayCheck[]; orderHash
                     <dt className="text-ink-muted font-mono">{check.id}</dt>
                     <dd data-testid={`batch-check-${check.id}-${orderHash}`}>
                         {check.ok ? (
-                            <span className="text-green-700">&#10003; {check.detail}</span>
+                            <span className="text-success-fg">&#10003; {check.detail}</span>
                         ) : (
-                            <span className="text-red-700 font-semibold">
+                            <span className="text-error-fg font-semibold">
                                 &#10007; {check.detail}
                             </span>
                         )}
@@ -69,7 +69,7 @@ function StatusNotice({ batch }: { batch: VerifiedBatchProcess }) {
     }
     if (batch.status === "unreachable") {
         return (
-            <p className="text-sm text-red-700" data-testid="batch-status-unreachable">
+            <p className="text-sm text-error-fg" data-testid="batch-status-unreachable">
                 The relay at <span className="font-mono break-all">{batch.relayUrl}</span>{" "}
                 could not be read: {batch.error}
             </p>
@@ -144,11 +144,11 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                             </p>
                             <p className="text-xs" data-testid="batch-resolve-signature">
                                 {batch.resolution.signature.ok ? (
-                                    <span className="text-green-700">
+                                    <span className="text-success-fg">
                                         &#10003; {batch.resolution.signature.detail}
                                     </span>
                                 ) : (
-                                    <span className="text-red-700 font-semibold">
+                                    <span className="text-error-fg font-semibold">
                                         &#10007; {batch.resolution.signature.detail}
                                     </span>
                                 )}
@@ -166,7 +166,7 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                                 <div
                                     key={o.orderHash}
                                     className={`space-y-2 border rounded-section p-4 ${o.verdict === "failed"
-                                        ? "border-red-400"
+                                        ? "border-error"
                                         : "border-default"
                                         }`}
                                     data-testid={`batch-order-${o.orderHash}`}
@@ -177,9 +177,9 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                                         </p>
                                         <span
                                             className={`text-xs font-semibold ${o.verdict === "verified"
-                                                ? "text-green-700"
+                                                ? "text-success-fg"
                                                 : o.verdict === "failed"
-                                                    ? "text-red-700"
+                                                    ? "text-error-fg"
                                                     : "text-ink-muted"
                                                 }`}
                                             data-testid={`batch-verdict-${o.orderHash}`}

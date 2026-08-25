@@ -10,6 +10,7 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { formatToken } from "@/lib/shared/utils";
+import { Button } from "@/components/ui/Button";
 
 interface TokenApprovalProps {
     tokenAddress: `0x${string}`;
@@ -83,16 +84,13 @@ export function TokenApprovalFlow({
 
     if (!address) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-red-800 mb-2">Sign In Required</h3>
-                <p className="text-red-700 mb-4">Sign in to place your order.</p>
+            <div className="bg-error/10 border border-error/30 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-error-fg mb-2">Sign In Required</h3>
+                <p className="text-error-fg mb-4">Sign in to place your order.</p>
                 {onCancel && (
-                    <button
-                        onClick={onCancel}
-                        className="px-4 py-2 bg-subtle text-ink-primary rounded-lg hover:bg-subtle-hover"
-                    >
+                    <Button variant="secondary" onClick={onCancel}>
                         Cancel
-                    </button>
+                    </Button>
                 )}
             </div>
         );
@@ -100,10 +98,10 @@ export function TokenApprovalFlow({
 
     if (isChecking) {
         return (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-info/10 border border-info/30 rounded-lg p-4">
                 <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-                    <p className="text-blue-800">Checking payment status...</p>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-info mr-3"></div>
+                    <p className="text-info-fg">Checking payment status...</p>
                 </div>
             </div>
         );
@@ -115,25 +113,19 @@ export function TokenApprovalFlow({
             : errorMessage;
 
         return (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-red-800 mb-2">Error</h3>
-                <p className="text-red-700 mb-4">{message}</p>
+            <div className="bg-error/10 border border-error/30 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-error-fg mb-2">Error</h3>
+                <p className="text-error-fg mb-4">{message}</p>
                 <div className="flex gap-3">
                     {!hasInsufficientBalance && (
-                        <button
-                            onClick={() => setErrorMessage(null)}
-                            className="px-4 py-2 bg-red-600 text-paper rounded-lg hover:bg-red-700"
-                        >
+                        <Button variant="destructive" onClick={() => setErrorMessage(null)}>
                             Retry
-                        </button>
+                        </Button>
                     )}
                     {onCancel && (
-                        <button
-                            onClick={onCancel}
-                            className="px-6 py-2 bg-subtle text-ink-primary rounded-lg font-medium hover:bg-subtle-hover"
-                        >
+                        <Button variant="secondary" onClick={onCancel}>
                             Cancel
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -142,32 +134,26 @@ export function TokenApprovalFlow({
 
     if (!approved) {
         return (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-yellow-800 mb-2">Payment Authorization Needed</h3>
-                <p className="text-yellow-700 mb-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-warning-fg mb-2">Payment Authorization Needed</h3>
+                <p className="text-warning-fg mb-4">
                     Authorize Figaro to hold your deposit for this order.
                 </p>
-                <div className="space-y-2 mb-4 text-sm text-yellow-600">
+                <div className="space-y-2 mb-4 text-sm text-warning-fg">
                     <p>• Deposit amount: {formatToken(requiredAmount, decimals)}</p>
                     <p>• This exact amount will be authorized — nothing more.</p>
                 </div>
+                {/* The action is the filled-sumi default, not an amber fill:
+                    white on `warning` measures 3.97:1 and DESIGN_TOKENS §7 bans
+                    amber under white text. Amber stays on the surround. */}
                 <div className="flex gap-3">
-                    <button
-                        onClick={handleApprove}
-                        disabled={isApproving}
-                        className={`px-6 py-2 bg-yellow-600 text-paper rounded-lg font-medium ${isApproving ? "opacity-50 cursor-not-allowed" : "hover:bg-yellow-700"
-                            }`}
-                    >
+                    <Button onClick={handleApprove} disabled={isApproving}>
                         {isApproving ? "Authorizing..." : "Authorize Payment"}
-                    </button>
+                    </Button>
                     {onCancel && (
-                        <button
-                            onClick={onCancel}
-                            disabled={isApproving}
-                            className="px-4 py-2 bg-subtle text-ink-primary rounded-lg hover:bg-subtle-hover"
-                        >
+                        <Button variant="secondary" onClick={onCancel} disabled={isApproving}>
                             Cancel
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -176,10 +162,10 @@ export function TokenApprovalFlow({
 
     // Approved - show success message
     return (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="bg-success/10 border border-success/30 rounded-lg p-4">
             <div className="flex items-center">
                 <svg
-                    className="w-5 h-5 text-green-600 mr-3"
+                    className="w-5 h-5 text-success mr-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -191,7 +177,7 @@ export function TokenApprovalFlow({
                         d="M5 13l4 4L19 7"
                     />
                 </svg>
-                <p className="text-green-800 font-medium">Payment authorized — ready to place order</p>
+                <p className="text-success-fg font-medium">Payment authorized — ready to place order</p>
             </div>
         </div>
     );

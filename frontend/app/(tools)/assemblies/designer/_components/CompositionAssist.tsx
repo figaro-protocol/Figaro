@@ -31,6 +31,7 @@ import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
 import { ModalChrome } from "@/components/ui/ModalChrome";
+import { Button } from "@/components/ui/Button";
 
 interface CompositionAssistProps {
     /** The canvas's current composition, or null when there is nothing to
@@ -106,15 +107,21 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
 
     return (
         <>
-            <button
+            {/* Sits in the designer canvas toolbar — a dense tool row acting on
+                the canvas beside it, which is what `size="compact"` is for
+                (DESIGN_TOKENS §7). Migrated with the rest of that row so no
+                control in it stands at a different height. */}
+            <Button
                 type="button"
+                variant="outline"
+                size="compact"
                 onClick={() => setOpen(true)}
                 data-testid="designer-assist-open"
-                className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong shrink-0"
+                className="shrink-0"
                 title="Hand this draft to your own agent (figaro-assembly-designer) and import its composition back. Assistance runs in your runtime, with your wallet — composing stays your act."
             >
                 Agent assist
-            </button>
+            </Button>
             {open && (
                 <ModalChrome
                     onClose={() => setOpen(false)}
@@ -193,7 +200,7 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
                             className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-paper text-ink-body placeholder:text-ink-muted resize-y focus:outline-none focus:ring-2 focus:ring-focus"
                         />
                         {importError && (
-                            <p className="text-xs text-red-600" data-testid="designer-assist-import-error">
+                            <p className="text-xs text-error-fg" data-testid="designer-assist-import-error">
                                 {importError}
                             </p>
                         )}

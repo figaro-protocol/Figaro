@@ -28,6 +28,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
+import { Button } from "@/components/ui/Button";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {
@@ -631,35 +632,47 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         {savedHint}
                     </span>
                 )}
-                <button
+                {/* The toolbar's three controls act on the canvas beside them,
+                    so the whole row takes `size="compact"` (DESIGN_TOKENS §7) —
+                    together, so no control in it stands at a different height.
+                    `Save` keeps its amber outline through `className`: the
+                    outline variant's border is the neutral strong one, and the
+                    amber marks this as the draft-state action beside the dark
+                    `Review`. Reset stays deliberately quiet in `ink-muted`. */}
+                <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={handleSaveDraft}
                     disabled={!canSaveDraft}
                     data-testid="designer-save"
-                    className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
+                    className={`border-ink-heading text-ink-heading font-semibold shrink-0 ${savedHint ? "" : "ml-auto"}`}
                     title={slug ? "Update the saved draft" : "Save this canvas as a draft"}
                 >
                     {slug ? "Update" : "Save"}
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
+                    size="compact"
                     onClick={handleReview}
                     disabled={!canPublish}
                     data-testid="designer-review"
-                    className="text-xs px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="font-semibold shrink-0"
                     title={publishBlockedReason ?? "Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."}
                 >
                     Review
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="compact"
                     onClick={handleReset}
                     data-testid="designer-reset"
-                    className="text-[11px] px-2 py-1.5 rounded text-ink-muted hover:text-ink-heading hover:bg-subtle shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="text-ink-muted hover:text-ink-heading shrink-0"
                     title="Clear the canvas and start over"
                 >
                     {resetLabel}
-                </button>
+                </Button>
             </div>
             <div className="flex-1 overflow-hidden flex flex-row">
                 {/* LEFT — assembly inspector: the REQUIRED editorial identity
@@ -737,7 +750,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         {maxOrders !== null && (
                             <p
                                 data-testid="designer-node-capacity"
-                                className={`text-[11px] tabular-nums ${atOrderCapacity ? "text-red-600 font-semibold" : "text-ink-muted"}`}
+                                className={`text-[11px] tabular-nums ${atOrderCapacity ? "text-error-fg font-semibold" : "text-ink-muted"}`}
                                 title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess settles in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
                             >
                                 {orders.length} / {maxOrders} orders{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
@@ -790,7 +803,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             onDeleteNode={handleDeleteNode}
                         />
                         {mergeNotice && (
-                            <p className="mt-2 text-xs text-amber-700 shrink-0" data-testid="designer-merge-notice">
+                            <p className="mt-2 text-xs text-warning-fg shrink-0" data-testid="designer-merge-notice">
                                 {mergeNotice}
                             </p>
                         )}

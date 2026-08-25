@@ -198,7 +198,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
 
     return (
         <div className="rounded-lg border border-default bg-paper p-4 space-y-2" data-testid="race-panel">
-            <p className="text-sm text-red-600" data-testid="race-error">{error ?? "The race failed."}</p>
+            <p className="text-sm text-error-fg" data-testid="race-error">{error ?? "The race failed."}</p>
             <button
                 type="button"
                 onClick={race.reset}

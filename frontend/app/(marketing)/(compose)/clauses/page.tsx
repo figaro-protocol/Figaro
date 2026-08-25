@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { CtaLink } from "@/components/marketing/CtaLink";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 // This page holds SIX things and nothing else: what a clause IS (a contract
@@ -167,17 +168,9 @@ buildOrderAgreement(buyer, seller, { "figaro-probe": {} }, specs);
                 <p className="text-sm text-ink-body leading-relaxed">
                     Anyone who meets those requirements can register a clause. No permission, no gatekeeper. A registered clause that gets used earns from the protocol&apos;s retroactive public-goods funding &mdash; the reward follows real usage alone; see <Link href="/rpgf" className="underline">RPGF</Link>.
                 </p>
-                <Link
-                    href="/clauses/register"
-                    className={
-                        "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm mt-5 bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                        "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                    }
-                    data-testid="cta-register-clause"
-                >
-                    Register a clause <span aria-hidden="true">&rarr;</span>
-                </Link>
+                <CtaLink href="/clauses/register" className="mt-5" data-testid="cta-register-clause">
+                    Register a clause
+                </CtaLink>
             </MarketingSection>
 
         </>

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/shared/utils";
+import { colorTokens } from "@/lib/shared/designTokenValues";
 
 /**
  * A square initials badge — the fallback shown when a member has no logo
@@ -15,8 +16,8 @@ import { cn } from "@/lib/shared/utils";
 export interface InitialsAvatarProps {
     /** Display name; the initials are its first two characters, uppercased. */
     name: string;
-    /** "accent" = solid `#6b7280` background, white text. "neutral" = light
-     *  `neutral-100` background, bordered, `neutral-600` text. */
+    /** "accent" = solid `ink.body` background, `paper` text. "neutral" =
+     *  `subtle` background, `default` border, `ink-body` text. */
     tone?: "accent" | "neutral";
     /** Square side, in pixels. */
     size?: number;
@@ -55,7 +56,12 @@ export function InitialsAvatar({
                 height: size,
                 borderRadius: radius,
                 ...(fontSize !== undefined ? { fontSize } : {}),
-                ...(tone === "accent" ? { backgroundColor: "#6b7280" } : {}),
+                // `ink.body`, not `ink.muted`: the initials sit in `text-paper`
+                // on this fill, and muted drops the pair below AA (ruled
+                // 2026-08-25). Taken from the palette module rather than spelled
+                // as a hex — the sibling values here are numeric, so the fill
+                // stays in the same `style` object.
+                ...(tone === "accent" ? { backgroundColor: colorTokens.ink.body } : {}),
             }}
             aria-hidden={ariaHidden}
         >

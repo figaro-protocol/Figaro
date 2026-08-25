@@ -196,7 +196,7 @@ function RegisteredCard({
                     View public profile →
                 </Link>
                 {profileError && (
-                    <p className="text-sm text-red-600 mt-2" role="alert">{profileError}</p>
+                    <p className="text-sm text-error-fg mt-2" role="alert">{profileError}</p>
                 )}
             </header>
 
@@ -346,7 +346,7 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
                 {busy ? "Claiming…" : "Claim deposit"}
             </Button>
             {(claimError || error) && (
-                <p className="text-xs text-red-600" role="alert">
+                <p className="text-xs text-error-fg" role="alert">
                     {claimError ?? extractErrorMessage(error, String(error))}
                 </p>
             )}
@@ -480,7 +480,7 @@ function WithdrawRow({
                 </button>
             </div>
             {(submitError || error) && (
-                <p className="text-xs text-red-600" role="alert">
+                <p className="text-xs text-error-fg" role="alert">
                     {submitError ?? extractErrorMessage(error, String(error))}
                 </p>
             )}

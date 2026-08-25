@@ -104,7 +104,9 @@
     }
 
     /* Keyboard focus indicator — only on focus-visible so mouse clicks
-       don't draw rings. Uses the focus token (warm taupe). */
+       don't draw rings. Uses the focus token (deep warm khaki, #8c7f5f):
+       solved to clear WCAG 1.4.11's 3:1 on every surface a ring can land
+       on, subtle-hover included. Not `default-strong`, which is lighter. */
     :focus-visible {
         @apply outline-2 outline-focus;
         outline-style: solid;
@@ -124,16 +126,24 @@
 
 /* Neutralize ReactFlow's built-in role-coloring so the kernel doesn't paint
    buyer/seller nodes with default green/blue. Node-specific colors are
-   set via inline style props in components/runtime/TopologyCanvas.tsx. */
+   set via inline style props in components/runtime/TopologyCanvas.tsx.
+
+   The hexes below MIRROR lib/shared/designTokenValues.ts — paper, ink.primary
+   and default, in that order. A stylesheet cannot import the module, and these
+   rules must carry `!important` to beat the vendor sheet, so the values are
+   spelled out. If a palette value moves there, move it here in the same edit. */
 .react-flow__node,
 .react-flow__node.buyer,
 .react-flow__node.seller,
 .react-flow__node.active,
 .react-flow__edge.active,
 .react-flow__edge.resolved {
-    background: #fff !important;
-    color: #000 !important;
-    border-color: #ddd !important;
+    background: #ffffff !important;
+    /* colorTokens.paper */
+    color: #3a322a !important;
+    /* colorTokens.ink.primary */
+    border-color: #e0dccf !important;
+    /* colorTokens.default */
     box-shadow: none !important;
     opacity: 1 !important;
 }
@@ -145,9 +155,10 @@
     overflow: visible !important;
 }
 
-/* Default edge path stroke when an inline style isn't supplied. */
+/* Default edge path stroke when an inline style isn't supplied. Mirrors
+   colorTokens.ink.body — the same value TopologyCanvas passes inline. */
 .react-flow__edge-path {
-    stroke: #555;
+    stroke: #5a4f42;
     stroke-width: 2;
     fill: none;
 }

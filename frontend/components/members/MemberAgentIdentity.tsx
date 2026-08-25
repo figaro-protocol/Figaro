@@ -55,7 +55,7 @@ export function MemberAgentIdentity({ sellerAddress }: { sellerAddress: `0x${str
                         <span
                             data-testid="did-status"
                             data-consistent="true"
-                            className="text-xs font-semibold text-green-700"
+                            className="text-xs font-semibold text-success-fg"
                             title="This DID document names this wallet. It does not prove the wallet controls the DID — anyone can host a document naming any wallet."
                         >
                             ✓ consistent · DID names this wallet
@@ -64,7 +64,7 @@ export function MemberAgentIdentity({ sellerAddress }: { sellerAddress: `0x${str
                         <span
                             data-testid="did-status"
                             data-consistent="false"
-                            className="text-xs font-semibold text-amber-700"
+                            className="text-xs font-semibold text-warning-fg"
                             title={error ?? undefined}
                         >
                             {error ? "unconfirmed · could not resolve" : "inconsistent · DID does not name this wallet"}

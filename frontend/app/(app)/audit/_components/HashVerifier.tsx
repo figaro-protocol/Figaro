@@ -102,7 +102,7 @@ function HashResult({ computed, expected, label }: {
             <p className="text-xs font-mono break-all" data-testid="verify-result-computed">{computed}</p>
             {expected.length > 0 && (
                 <div
-                    className={`text-xs font-semibold ${match ? "text-green-700" : "text-red-700"}`}
+                    className={`text-xs font-semibold ${match ? "text-success-fg" : "text-error-fg"}`}
                     data-testid="verify-result-status"
                 >
                     {match ? "✓ Matches expected hash" : "✗ Does not match expected hash"}
@@ -114,7 +114,7 @@ function HashResult({ computed, expected, label }: {
 
 function ErrorBox({ message }: { message: string }) {
     return (
-        <div className="rounded border border-red-200 bg-red-50 p-4 text-xs text-red-800" data-testid="verify-error">
+        <div className="rounded border border-error/30 bg-error/10 p-4 text-xs text-error-fg" data-testid="verify-error">
             {message}
         </div>
     );
@@ -342,10 +342,10 @@ function SearchMode() {
                     {hits.map((hit, i) => (
                         <div
                             key={i}
-                            className="rounded border border-green-200 bg-green-50 p-4 space-y-1"
+                            className="rounded border border-success/30 bg-success/10 p-4 space-y-1"
                             data-testid={`verify-search-hit-${i}`}
                         >
-                            <p className="text-[10px] uppercase font-semibold tracking-wider text-green-800">{hit.kind}</p>
+                            <p className="text-[10px] uppercase font-semibold tracking-wider text-success-fg">{hit.kind}</p>
                             <p className="text-xs font-semibold text-ink-primary">{hit.label}</p>
                             <p className="text-[11px] text-ink-body">{hit.location}</p>
                         </div>

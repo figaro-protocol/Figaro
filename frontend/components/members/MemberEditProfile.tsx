@@ -134,7 +134,7 @@ export function MemberEditProfile() {
     if (fetchError) {
         return (
             <Card className="p-8 space-y-3">
-                <p className="text-sm text-red-600" role="alert">{fetchError}</p>
+                <p className="text-sm text-error-fg" role="alert">{fetchError}</p>
                 <p className="text-xs text-ink-faint">
                     Couldn&apos;t load the existing profile, so editing it isn&apos;t safe — saving without the existing fields would clobber them.
                 </p>

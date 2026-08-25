@@ -26,7 +26,7 @@ export function CredentialVerifyButton({ data }: { data: Record<string, unknown>
             target="_blank"
             rel="noopener noreferrer"
             data-testid="credential-verify"
-            className="ml-2 whitespace-nowrap text-blue-600 hover:text-blue-800 underline"
+            className="ml-2 whitespace-nowrap text-ink-heading hover:text-ink-body underline"
         >
             Verify ↗
         </a>

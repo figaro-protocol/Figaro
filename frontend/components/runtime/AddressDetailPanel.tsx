@@ -246,7 +246,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         <p className="text-xs text-ink-muted italic">{detail.instructions}</p>
                     )}
                     {detail.handling && (
-                        <p className="text-xs font-semibold text-amber-800" data-testid="interaction-address-detail-handling">
+                        <p className="text-xs font-semibold text-warning-fg" data-testid="interaction-address-detail-handling">
                             ⚠ {detail.handling}
                         </p>
                     )}
@@ -257,12 +257,12 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         </p>
                     )}
                     {anchored === "verified" && (
-                        <p className="text-xs font-semibold text-green-700" data-testid="interaction-address-verified">
+                        <p className="text-xs font-semibold text-success-fg" data-testid="interaction-address-verified">
                             ✓ Matches the on-chain anchor
                         </p>
                     )}
                     {anchored === "missing" && (
-                        <p className="text-xs text-amber-700" data-testid="interaction-address-unanchored">
+                        <p className="text-xs text-warning-fg" data-testid="interaction-address-unanchored">
                             No on-chain anchor found for this detail yet.
                         </p>
                     )}
@@ -314,12 +314,12 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                 </p>
             )}
             {sent && (
-                <p className="text-xs font-semibold text-green-700" data-testid="interaction-address-sent">
+                <p className="text-xs font-semibold text-success-fg" data-testid="interaction-address-sent">
                     ✓ Shared privately — fingerprint anchored on-chain
                 </p>
             )}
 
-            {error && <p className="text-xs text-red-600" data-testid="interaction-address-error">{error}</p>}
+            {error && <p className="text-xs text-error-fg" data-testid="interaction-address-error">{error}</p>}
         </section>
     );
 }

@@ -116,12 +116,12 @@ export function QrChallengePanel({ processId, orderHash, clauseId }: Interaction
                         />
                     </label>
                     {scanned.trim() && decoded === null && (
-                        <p className="text-[11px] text-red-600" data-testid="interaction-qr-invalid">
+                        <p className="text-[11px] text-error-fg" data-testid="interaction-qr-invalid">
                             Not a Figaro order QR payload.
                         </p>
                     )}
                     {matches && (
-                        <p className="text-xs font-semibold text-green-700" data-testid="interaction-qr-match">
+                        <p className="text-xs font-semibold text-success-fg" data-testid="interaction-qr-match">
                             ✓ Matches this order
                         </p>
                     )}

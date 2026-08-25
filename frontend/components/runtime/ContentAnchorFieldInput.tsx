@@ -95,7 +95,7 @@ export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }
                 </p>
             )}
             {error && (
-                <p className="text-[11px] text-red-600" data-testid={`${testId}-affix-error`}>
+                <p className="text-[11px] text-error-fg" data-testid={`${testId}-affix-error`}>
                     {error}
                 </p>
             )}

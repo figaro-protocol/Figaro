@@ -114,7 +114,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
     return (
         <div className="space-y-5 text-sm" data-testid="agreement-review">
             {!hasAgreement && (
-                <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <div className="rounded border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-fg">
                     ⚠ The full agreement document isn&apos;t available locally. Verify the
                     <code className="font-mono mx-1">agreementHash</code> below against the source you trust
                     before continuing.

@@ -44,7 +44,12 @@ function formatTimestamp(iso: string): string {
     });
 }
 
-/** Color map for the event names `buildProcessTimeline` emits. */
+/** Color map for the event names `buildProcessTimeline` emits.
+ *
+ *  Deliberately OUTSIDE the status-token system (DESIGN_TOKENS §1): these are
+ *  a CATEGORICAL encoding — one hue per event kind, needing mutual
+ *  distinguishability, not a good/bad reading. Mapping them onto
+ *  success/warning/error would assert a valence the timeline does not have. */
 const EVENT_COLORS: Record<string, string> = {
     OrderCommitted: "bg-blue-500",
     Attestation: "bg-green-500",
@@ -230,8 +235,8 @@ function EvidenceDisplayContent() {
     if (error) {
         return (
             <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
-                <div className="bg-paper rounded-lg border border-red-200 p-6 max-w-md text-center">
-                    <h2 className="text-sm font-semibold text-red-600 mb-2">Error</h2>
+                <div className="bg-paper rounded-lg border border-error/30 p-6 max-w-md text-center">
+                    <h2 className="text-sm font-semibold text-error-fg mb-2">Error</h2>
                     <p className="text-xs text-ink-body">{error}</p>
                 </div>
             </div>

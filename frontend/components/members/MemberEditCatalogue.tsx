@@ -180,7 +180,7 @@ export function MemberEditCatalogue() {
     if (fetchError) {
         return (
             <Card className="p-8 space-y-3">
-                <p className="text-sm text-red-600" role="alert">{fetchError}</p>
+                <p className="text-sm text-error-fg" role="alert">{fetchError}</p>
                 <p className="text-xs text-ink-faint">
                     Couldn&apos;t load the existing profile or catalogue, so editing it isn&apos;t safe — saving without the existing items would clobber them.
                 </p>
@@ -314,7 +314,7 @@ function DeleteCatalogueFooter({
                     type="button"
                     onClick={handleDelete}
                     disabled={running || disabled}
-                    className="text-sm border border-default rounded px-3 py-1.5 text-red-600 hover:bg-paper-200 transition-colors disabled:opacity-50"
+                    className="text-sm border border-default rounded px-3 py-1.5 text-error-fg hover:bg-paper-200 transition-colors disabled:opacity-50"
                 >
                     {running ? "Deleting…" : "Confirm delete"}
                 </button>
@@ -328,7 +328,7 @@ function DeleteCatalogueFooter({
                 </button>
             </div>
             {error && (
-                <p className="text-xs text-red-600" role="alert">{error}</p>
+                <p className="text-xs text-error-fg" role="alert">{error}</p>
             )}
         </div>
     );

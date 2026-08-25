@@ -66,12 +66,15 @@ describe('TokenAddressInput', () => {
         expect(screen.queryByText('…')).not.toBeInTheDocument();
     });
 
-    it('applies red border styling for an invalid partial address', () => {
+    it('applies the error-token border for an invalid partial address', () => {
         useReadContractMock.mockReturnValue({ data: undefined, isLoading: false });
         render(<TokenAddressInput value="0xbad" onChange={vi.fn()} />);
 
+        // The bare `error` token, not a tinted `/N` fraction: here the border is
+        // the SOLE visual carrier of the invalid state, which DESIGN_TOKENS §1
+        // holds to WCAG 1.4.11's 3:1 floor.
         const input = screen.getByPlaceholderText('0x… token address');
-        expect(input.className).toContain('border-red-300');
+        expect(input.className).toContain('border-error');
     });
 
     it('shows the remove button when onRemove is provided', () => {

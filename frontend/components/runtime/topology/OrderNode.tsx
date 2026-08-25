@@ -5,11 +5,23 @@ import { Order, OrderState } from "@/lib/kernel/store";
 import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { describeClause } from "@/lib/shared/clauseSpecSource";
+import { colorTokens } from "@/lib/shared/designTokenValues";
 
 // ── Visual maps ─────────────────────────────────────────────────────────────
+//
+// Deliberately OUTSIDE the status-token system (ruled 2026-08-25;
+// DESIGN_TOKENS §1). Everything in this block — the per-state node chrome, the
+// state dot, and the buyer/seller role ring and dot below — is a CATEGORICAL
+// data-viz encoding: what it must deliver is mutual distinguishability across
+// a dense canvas, not a good/bad reading. A seller is not "info" and a buyer
+// is not "success"; folding the pair into status hues would assert a valence
+// the topology does not have and would collapse two categories into one.
 
+// State (unlike the buyer/seller pair above) IS a status reading — Active
+// means live-and-well — so it rides `success`, matching the active-edge
+// stroke TopologyCanvas draws from colorTokens.success: one meaning, one hue.
 const STATE_COLORS: Record<OrderState, string> = {
-    [OrderState.Active]: "bg-paper border-green-500",
+    [OrderState.Active]: "bg-paper border-success",
     [OrderState.Resolved]: "bg-paper border-default opacity-60",
 };
 
@@ -19,8 +31,8 @@ const STATE_LABELS: Record<OrderState, string> = {
 };
 
 const STATE_DOT: Record<OrderState, string> = {
-    [OrderState.Active]: "bg-green-500",
-    [OrderState.Resolved]: "bg-gray-400",
+    [OrderState.Active]: "bg-success",
+    [OrderState.Resolved]: "bg-ink-faint",
 };
 
 export type OrderNodeData = Order & {
@@ -146,7 +158,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`order-node-${data.orderHash}-delete`}
                             aria-label={`Delete order ${data.orderHash.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
-                            className="nodrag w-3.5 h-3.5 rounded-full border border-red-300 bg-paper text-red-600 hover:bg-red-50 hover:border-red-500 text-[10px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border border-error/40 bg-paper text-error-fg hover:bg-error/10 hover:border-error text-[10px] leading-none flex items-center justify-center"
                         >
                             ×
                         </button>
@@ -223,7 +235,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             <Handle
                 type="source"
                 position={Position.Bottom}
-                style={{ background: "transparent", border: "1px solid #ccc", width: 8, height: 8 }}
+                // React Flow's `Handle` takes a style object, not a class — so
+                // the border comes from the palette module rather than a hex
+                // (the same reason TopologyCanvas imports it).
+                style={{ background: "transparent", border: `1px solid ${colorTokens.default}`, width: 8, height: 8 }}
             />
         </div>
     );

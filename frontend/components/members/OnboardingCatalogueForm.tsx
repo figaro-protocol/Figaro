@@ -468,7 +468,7 @@ export function OnboardingCatalogueForm({
                     </p>
                 )}
                 {importErrors.length > 0 && (
-                    <div className="text-xs text-red-600 space-y-1" role="alert">
+                    <div className="text-xs text-error-fg space-y-1" role="alert">
                         <p className="font-semibold">CSV import problems:</p>
                         <ul className="list-disc pl-5">
                             {importErrors.map((e) => (<li key={e}>{e}</li>))}
@@ -481,10 +481,10 @@ export function OnboardingCatalogueForm({
             </div>
 
             {submitError && (
-                <p className="text-sm text-red-600" role="alert">{submitError}</p>
+                <p className="text-sm text-error-fg" role="alert">{submitError}</p>
             )}
             {externalError && (
-                <p className="text-sm text-red-600" role="alert">{externalError}</p>
+                <p className="text-sm text-error-fg" role="alert">{externalError}</p>
             )}
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
@@ -527,7 +527,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                     <button
                         type="button"
                         onClick={onRemove}
-                        className="text-xs text-ink-faint hover:text-red-600 transition-colors"
+                        className="text-xs text-ink-faint hover:text-error-fg transition-colors"
                     >
                         Remove
                     </button>

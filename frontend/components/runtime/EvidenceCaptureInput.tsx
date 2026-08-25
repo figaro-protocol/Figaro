@@ -102,13 +102,13 @@ export function EvidenceCaptureInput({ value, onChange, testId }: FieldFormatInp
                     type="button"
                     onClick={() => void purge()}
                     data-testid={`${testId}-capture-purge`}
-                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-muted hover:border-red-400 hover:text-red-600"
+                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-muted hover:border-error hover:text-error-fg"
                 >
                     Unpin + purge this capture
                 </button>
             )}
             {error && (
-                <p className="text-[11px] text-red-600" data-testid={`${testId}-capture-error`}>
+                <p className="text-[11px] text-error-fg" data-testid={`${testId}-capture-error`}>
                     {error}
                 </p>
             )}

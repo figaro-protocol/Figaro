@@ -22,7 +22,7 @@ export function ToolsHeader() {
         <HeaderShell
             right={
                 <>
-                    {walletConnected && <YourTurnBadge theme="light" />}
+                    {walletConnected && <YourTurnBadge />}
                     <ConnectWallet />
                 </>
             }

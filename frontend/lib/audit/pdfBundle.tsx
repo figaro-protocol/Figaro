@@ -38,6 +38,16 @@ import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline
 import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Styles ──────────────────────────────────────────────────────────────────
+//
+// DELIBERATELY OUTSIDE the screen palette (ruled 2026-08-25) — not an
+// un-migrated raw-hex site, and not a finding. Print is a second medium: this
+// bundle is an evidence document meant to survive photocopying, faxing and
+// black-and-white laser output, where the MUJI warm-neutral ramp collapses
+// into indistinguishable mid-grays. The neutral grayscale below is chosen for
+// that medium, and the two chromatic values (`#15803d` / `#b91c1c`, the
+// signature verdicts) are held at print-legible saturation for the same
+// reason. Do not "fix" these onto `colorTokens`; changing them changes what a
+// printed audit bundle looks like in a forum, not what a page looks like.
 
 const styles = StyleSheet.create({
     page: {

@@ -79,7 +79,7 @@ export function DraftsList() {
                         <button
                             type="button"
                             onClick={() => handleDelete(d.slug, d.name)}
-                            className="text-xs px-3 py-1.5 rounded border border-red-300 bg-paper hover:border-red-500 text-red-700 text-center"
+                            className="text-xs px-3 py-1.5 rounded border border-error/40 bg-paper hover:border-error text-error-fg text-center"
                             data-testid={`draft-delete-${d.slug}`}
                         >
                             Delete

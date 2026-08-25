@@ -208,7 +208,7 @@ export function RewardsView() {
                 </div>
 
                 {error && (
-                    <p className="text-sm text-red-600 mt-6 break-all" data-testid="rewards-error">
+                    <p className="text-sm text-error-fg mt-6 break-all" data-testid="rewards-error">
                         {error}
                     </p>
                 )}

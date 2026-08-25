@@ -276,7 +276,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                             return (
                                                 <div
                                                     key={catalogueItem.id}
-                                                    className="bg-paper border border-default rounded-lg p-4 hover:border-blue-400 transition-all shadow-sm"
+                                                    className="bg-paper border border-default rounded-lg p-4 hover:border-default-strong transition-all shadow-sm"
                                                     data-testid={`catalogue-item-${catalogueItem.id}`}
                                                 >
                                                     <div className="flex items-start gap-3">
@@ -315,7 +315,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center justify-between">
-                                                                <span className="font-semibold text-blue-700">
+                                                                <span className="font-semibold text-ink-primary">
                                                                     {catalogueItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                                                                     {catalogueItem.pricingPolicy === "rate" && (
                                                                         <span className="text-ink-muted font-normal"> / {catalogueItem.rateUnit || "unit"}</span>

@@ -319,12 +319,12 @@ function SignPageContent() {
                 <Card className="p-4 space-y-2">
                     <h2 className="text-sm font-semibold text-ink-primary">Secure Channel</h2>
                     {channelStatus === "listening" && (
-                        <p className="text-xs text-blue-600" data-testid="xmtp-commitment-channel-status">
+                        <p className="text-xs text-info-fg" data-testid="xmtp-commitment-channel-status">
                             Listening for incoming commitment payloads over XMTP…
                         </p>
                     )}
                     {channelStatus === "error" && (
-                        <p className="text-xs text-amber-700" data-testid="xmtp-commitment-channel-status">
+                        <p className="text-xs text-warning-fg" data-testid="xmtp-commitment-channel-status">
                             {channelError ?? "Could not open the XMTP channel."}
                         </p>
                     )}
@@ -342,14 +342,14 @@ function SignPageContent() {
                     </label>
                     <textarea
                         data-testid="input-commitment-payload"
-                        className="w-full bg-surface border border-default rounded-lg px-3 py-2 text-ink-primary text-sm font-mono placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full bg-surface border border-default rounded-lg px-3 py-2 text-ink-primary text-sm font-mono placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-focus resize-none"
                         rows={6}
                         placeholder='Paste the JSON payload here…'
                         value={rawInput}
                         onChange={(e) => setRawInput(e.target.value)}
                     />
                     {parseError && (
-                        <p className="text-red-600 text-xs" data-testid="parse-error">{parseError}</p>
+                        <p className="text-error-fg text-xs" data-testid="parse-error">{parseError}</p>
                     )}
                     <Button
                         onClick={handleParse}
@@ -370,7 +370,7 @@ function SignPageContent() {
                     </h2>
 
                     {agreementCheck && !agreementCheck.ok && (
-                        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" data-testid="sign-agreement-invalid">
+                        <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error-fg" data-testid="sign-agreement-invalid">
                             <p className="font-semibold mb-1">
                                 These terms do NOT match the signed agreementHash — do not proceed.
                             </p>
@@ -384,7 +384,7 @@ function SignPageContent() {
                         </div>
                     )}
                     {agreementCheck?.ok && (
-                        <p className="text-xs text-green-700" data-testid="sign-agreement-verified">
+                        <p className="text-xs text-success-fg" data-testid="sign-agreement-verified">
                             ✓ Terms verified — the agreement below recomputes to the signed hash.
                         </p>
                     )}
@@ -413,7 +413,7 @@ function SignPageContent() {
                             <div className="flex justify-between" data-testid="sign-process-capacity">
                                 <span>Process orders</span>
                                 <span className={processCapacity.remaining <= Math.max(1, Math.floor(processCapacity.cap / 20))
-                                    ? "text-amber-700 font-semibold"
+                                    ? "text-warning-fg font-semibold"
                                     : undefined}>
                                     {processCapacity.activeOrderCount} / {processCapacity.cap} resolvable
                                 </span>
@@ -423,23 +423,23 @@ function SignPageContent() {
 
                     {/* Signature status */}
                     <div className="flex gap-2 text-xs">
-                        <span className={`px-2 py-0.5 rounded ${hasBuyerSig ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                        <span className={`px-2 py-0.5 rounded ${hasBuyerSig ? "bg-success/20 text-success-fg" : "bg-warning/20 text-warning-fg"}`}>
                             Buyer: {hasBuyerSig ? "Signed" : "Pending"}
                         </span>
-                        <span className={`px-2 py-0.5 rounded ${hasSellerSig ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                        <span className={`px-2 py-0.5 rounded ${hasSellerSig ? "bg-success/20 text-success-fg" : "bg-warning/20 text-warning-fg"}`}>
                             Seller: {hasSellerSig ? "Signed" : "Pending"}
                         </span>
                     </div>
 
                     {loadedFromChannel && (
-                        <p className="text-xs text-green-700 rounded bg-green-50 border border-green-200 px-2 py-1">
+                        <p className="text-xs text-success-fg rounded bg-success/10 border border-success/30 px-2 py-1">
                             Received via XMTP secure channel.
                         </p>
                     )}
 
                     {/* Warning if connected wallet is not a party */}
                     {address && !isBuyer && !isSeller && (
-                        <p className="text-amber-600 text-xs bg-amber-50 border border-amber-200 rounded p-2">
+                        <p className="text-warning-fg text-xs bg-warning/10 border border-warning/30 rounded p-2">
                             Your connected wallet ({truncateHex(address)}) is neither the buyer nor the seller in this commitment.
                         </p>
                     )}
@@ -559,7 +559,7 @@ function SignPageContent() {
                     )}
 
                     {commitError && (
-                        <p className="text-red-600 text-xs" data-testid="sign-error">{commitError}</p>
+                        <p className="text-error-fg text-xs" data-testid="sign-error">{commitError}</p>
                     )}
 
                     <button
@@ -586,7 +586,7 @@ function SignPageContent() {
                     </p>
                     <button
                         onClick={handleReset}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        className="text-xs text-ink-heading hover:text-ink-body underline"
                     >
                         Listen for another commitment
                     </button>
@@ -596,13 +596,13 @@ function SignPageContent() {
             {/* Step 3: Success */}
             {step === "done" && (
                 <Card className="p-6 text-center space-y-3">
-                    <p className="text-green-600 font-semibold">Commitment submitted on-chain.</p>
+                    <p className="text-success-fg font-semibold">Commitment submitted on-chain.</p>
                     <p className="text-xs text-ink-muted">
                         Both parties&apos; bonds are now locked. The order is Active.
                     </p>
                     <button
                         onClick={handleReset}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        className="text-xs text-ink-heading hover:text-ink-body underline"
                     >
                         Sign another commitment
                     </button>

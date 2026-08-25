@@ -133,10 +133,10 @@ export function PayoutRoutingPanel({ currency }: Props) {
                 </Button>
             </div>
             {error && (
-                <p className="mt-2 text-sm text-red-600" data-testid="payout-routing-error">{error}</p>
+                <p className="mt-2 text-sm text-error-fg" data-testid="payout-routing-error">{error}</p>
             )}
             {routedTx && !error && (
-                <p className="mt-2 text-xs text-green-700" data-testid="payout-routing-success">
+                <p className="mt-2 text-xs text-success-fg" data-testid="payout-routing-success">
                     Routed — tx <span className="font-mono break-all">{routedTx}</span>
                 </p>
             )}

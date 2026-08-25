@@ -196,7 +196,7 @@ function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPaylo
                     <div className="flex items-baseline gap-3">
                         <h2 className="text-sm font-semibold text-ink-primary truncate">{counterpartyName}</h2>
                         <span
-                            className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800"
+                            className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2.5 py-0.5 text-xs font-semibold text-warning-fg"
                             data-testid="order-pending-status"
                         >
                             Awaiting acceptance
@@ -231,8 +231,8 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
                         <span
                             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                                 row.isResolved
-                                    ? "border-green-200 bg-green-50 text-green-800"
-                                    : "border-blue-200 bg-blue-50 text-blue-800"
+                                    ? "border-success/30 bg-success/10 text-success-fg"
+                                    : "border-info/30 bg-info/10 text-info-fg"
                             }`}
                             data-testid={`order-status-${row.processId}`}
                         >
@@ -385,7 +385,7 @@ export function OrdersList() {
                                 ))}
                             </div>
                             {(acceptError ?? flowError) && (
-                                <p className="text-sm text-red-600" data-testid="orders-your-turn-error">{acceptError ?? flowError}</p>
+                                <p className="text-sm text-error-fg" data-testid="orders-your-turn-error">{acceptError ?? flowError}</p>
                             )}
                         </section>
                     )}
@@ -406,7 +406,7 @@ export function OrdersList() {
                                 ))}
                             </div>
                             {submitError && (
-                                <p className="text-sm text-red-600" data-testid="orders-ready-error">{submitError}</p>
+                                <p className="text-sm text-error-fg" data-testid="orders-ready-error">{submitError}</p>
                             )}
                         </section>
                     )}

@@ -64,7 +64,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                     placeholder={`geohash (base32, ≤${maxChars} chars)`}
                     data-testid={testId}
                     className={`w-full rounded border bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent ${
-                        shapeOk ? "border-default" : "border-red-400"
+                        shapeOk ? "border-default" : "border-error"
                     }`}
                 />
                 <button
@@ -79,7 +79,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                 </button>
             </div>
             {error && (
-                <p className="text-[11px] text-red-600" data-testid={`${testId}-device-error`}>
+                <p className="text-[11px] text-error-fg" data-testid={`${testId}-device-error`}>
                     {error}
                 </p>
             )}

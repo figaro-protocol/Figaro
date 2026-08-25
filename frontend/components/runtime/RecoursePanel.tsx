@@ -171,7 +171,7 @@ export function RecoursePanel({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         data-testid="dispute-open-forum"
-                                        className="ml-2 whitespace-nowrap text-blue-600 hover:text-blue-800 underline"
+                                        className="ml-2 whitespace-nowrap text-ink-heading hover:text-ink-body underline"
                                     >
                                         Open a dispute →
                                     </a>
@@ -216,7 +216,7 @@ export function RecoursePanel({
                             <button
                                 onClick={handleDownload}
                                 data-testid="dispute-evidence-download"
-                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                className="text-xs text-ink-heading hover:text-ink-body underline"
                             >
                                 Download evidence bundle (PDF)
                             </button>
@@ -232,7 +232,7 @@ export function RecoursePanel({
                 </div>
             )}
 
-            {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-xs text-error-fg">{error}</p>}
         </Card>
     );
 }

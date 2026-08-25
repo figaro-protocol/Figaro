@@ -34,7 +34,7 @@ export function AssemblyShapeLine({
     }
     if (choice.state === "error") {
         return (
-            <p className={`${className} text-amber-700`}>
+            <p className={`${className} text-warning-fg`}>
                 Document unavailable (IPFS gateway?). On-chain identity is recorded regardless.
             </p>
         );

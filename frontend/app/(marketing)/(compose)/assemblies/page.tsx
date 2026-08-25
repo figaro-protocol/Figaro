@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { CtaLink } from "@/components/marketing/CtaLink";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 
@@ -38,17 +39,9 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
                     This page explains assemblies. The composing happens in the designer.
                 </p>
-                <Link
-                    href="/assemblies/designer"
-                    className={
-                        "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm mt-4 bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                        "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                    }
-                    data-testid="cta-open-designer"
-                >
-                    Open the designer <span aria-hidden="true">&rarr;</span>
-                </Link>
+                <CtaLink href="/assemblies/designer" className="mt-4" data-testid="cta-open-designer">
+                    Open the designer
+                </CtaLink>
             </MarketingHero>
 
             <MarketingSection title="In plain words.">

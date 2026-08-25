@@ -158,7 +158,7 @@ export function AgreementDrawer({
                         onClick={onClose}
                         aria-label="Close drawer"
                         title="Close"
-                        className="w-8 h-8 rounded border border-default hover:border-red-400 bg-paper text-ink-body text-xs"
+                        className="w-8 h-8 rounded border border-default hover:border-error bg-paper text-ink-body text-xs"
                     >
                         ✕
                     </button>

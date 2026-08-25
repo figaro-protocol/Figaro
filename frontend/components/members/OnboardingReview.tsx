@@ -197,7 +197,7 @@ export function OnboardingReview() {
     if (error) {
         return (
             <Card className="p-6 space-y-4">
-                <p className="text-sm text-red-600" role="alert">{error}</p>
+                <p className="text-sm text-error-fg" role="alert">{error}</p>
                 <Link href="/members/identity">
                     <Button variant="outline">← Back to fill missing fields</Button>
                 </Link>
@@ -477,7 +477,7 @@ export function OnboardingReview() {
             </Card>
 
             {(pinError || onChainError) && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-sm text-error-fg" role="alert">
                     {pinError ?? onChainError?.message}
                 </p>
             )}

@@ -57,7 +57,7 @@ export function IpfsImageUpload({
                 <button
                     type="button"
                     onClick={() => onChange("")}
-                    className="text-xs text-ink-faint hover:text-red-600 transition-colors"
+                    className="text-xs text-ink-faint hover:text-error-fg transition-colors"
                 >
                     Remove
                 </button>

@@ -68,7 +68,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                 {busy ? "Building bundle…" : "Download audit bundle (PDF)"}
             </button>
             {error && (
-                <p className="text-[11px] text-red-700" data-testid="download-audit-bundle-error">
+                <p className="text-[11px] text-error-fg" data-testid="download-audit-bundle-error">
                     {error}
                 </p>
             )}

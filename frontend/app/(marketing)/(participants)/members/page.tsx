@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { CtaLink } from "@/components/marketing/CtaLink";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 export const metadata: Metadata = withOg({
@@ -76,28 +77,12 @@ export default function Join() {
                     <RegistryCountLink family="members" />
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4">
-                    <Link
-                        href="/members/identity"
-                        className={
-                            "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                            "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                        }
-                        data-testid="cta-register"
-                    >
-                        Register <span aria-hidden="true">&rarr;</span>
-                    </Link>
-                    <Link
-                        href="/discover"
-                        className={
-                            "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
-                            "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus"
-                        }
-                        data-testid="cta-discover"
-                    >
-                        Browse members <span aria-hidden="true">&rarr;</span>
-                    </Link>
+                    <CtaLink href="/members/identity" data-testid="cta-register">
+                        Register
+                    </CtaLink>
+                    <CtaLink href="/discover" data-testid="cta-discover">
+                        Browse members
+                    </CtaLink>
                 </div>
             </MarketingSection>
         </>

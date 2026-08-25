@@ -419,19 +419,20 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             >
                 ← Back to editor
             </Link>
-            <button
+            <Button
                 type="button"
+                size="compact"
                 onClick={handleConfirmPublish}
                 // Gated on the spec cache: the publish build folds the MANDATORY
                 // mandatory clauses from loaded specs — confirming before the
                 // chain→IPFS warm completes would throw "no mandatory clauses".
                 disabled={confirming || !clauseSpecsLoaded}
-                className="text-xs px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                className="font-semibold"
                 data-testid="review-confirm-publish"
                 title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
                 {confirming ? "Publishing…" : clauseSpecsLoaded ? "Confirm publish — irreversible" : "Loading clause specs…"}
-            </button>
+            </Button>
         </div>
     ) : resolved.kind === "draft" ? (
         <Link
@@ -444,8 +445,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     ) : (
         <div className="ml-auto flex items-center gap-2">
             {isAuthor && (
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={handleWithdraw}
                     // Author-only reclaim, gated by the advisory commits==resolves
                     // gate: disabled while any VERIFIED in-flight deal composes
@@ -454,7 +457,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     // deals never disable — they render as the caveat strip
                     // below the toolbar. The title names why.
                     disabled={withdrawing || resolved.stakeWithdrawn || withdrawGate === null || withdrawGate.inFlightCount > 0}
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="border-default text-ink-heading font-semibold"
                     data-testid="view-withdraw-button"
                     title={
                         resolved.stakeWithdrawn
@@ -464,17 +467,19 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     }
                 >
                     {resolved.stakeWithdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
-                </button>
+                </Button>
             )}
-            <button
+            <Button
                 type="button"
+                variant="outline"
+                size="compact"
                 onClick={handleFork}
                 disabled={forking}
-                className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                className="border-ink-heading text-ink-heading font-semibold"
                 data-testid="view-fork-button"
             >
                 {forking ? "Forking…" : "Fork"}
-            </button>
+            </Button>
         </div>
     );
 
@@ -486,14 +491,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         <div className="h-screen bg-canvas flex flex-col" data-testid="assembly-view-page">
             {inReviewMode && (
                 <div
-                    className="px-8 py-3 border-b border-amber-200 bg-amber-50 shrink-0"
+                    className="px-8 py-3 border-b border-warning/30 bg-warning/10 shrink-0"
                     data-testid="review-banner"
                     role="status"
                 >
-                    <p className="text-sm font-semibold text-amber-900">
+                    <p className="text-sm font-semibold text-warning-fg">
                         Review before publish — this action is irreversible.
                     </p>
-                    <p className="text-xs text-amber-800 mt-1 max-w-3xl leading-relaxed">
+                    <p className="text-xs text-warning-fg mt-1 max-w-3xl leading-relaxed">
                         Confirming will pin the assembly assemblyTemplate to IPFS, lock the
                         registration deposit, and anchor the slug{" "}
                         <code className="font-mono">/{slug}</code> on-chain. The slug
@@ -517,7 +522,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <span className="text-sm font-semibold text-ink-heading">{resolved.name}</span>
                 <span className="font-mono text-xs text-ink-muted">/{slug}</span>
                 <span
-                    className={`text-[10px] uppercase tracking-widest rounded px-2 py-0.5 ${inReviewMode ? "bg-amber-100 text-amber-900 border border-amber-200" : "text-ink-muted bg-subtle"}`}
+                    className={`text-[10px] uppercase tracking-widest rounded px-2 py-0.5 ${inReviewMode ? "bg-warning/20 text-warning-fg border border-warning/30" : "text-ink-muted bg-subtle"}`}
                     data-testid="view-source-badge"
                 >
                     {sourceLabel}
@@ -543,14 +548,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             )}
             {publishError && (
                 <div className="px-6 py-3 border-b border-default bg-subtle">
-                    <p className="text-sm text-red-600" role="alert" data-testid="publish-error">
+                    <p className="text-sm text-error-fg" role="alert" data-testid="publish-error">
                         Publish failed: {publishError}
                     </p>
                 </div>
             )}
             {withdrawError && (
                 <div className="px-6 py-3 border-b border-default bg-subtle">
-                    <p className="text-sm text-red-600" role="alert" data-testid="withdraw-error">
+                    <p className="text-sm text-error-fg" role="alert" data-testid="withdraw-error">
                         Reclaim failed: {withdrawError}
                     </p>
                 </div>

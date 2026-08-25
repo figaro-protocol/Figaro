@@ -21,6 +21,7 @@
 
 import type { Commitment, Agreement } from "@figaro-protocol/sdk";
 import { ModalChrome } from "@/components/ui/ModalChrome";
+import { Button } from "@/components/ui/Button";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
 
@@ -112,23 +113,24 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-default bg-subtle flex justify-end gap-3">
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
                         onClick={onCancel}
                         data-testid="preview-cancel"
-                        className="px-4 py-2 text-sm font-semibold border border-default rounded text-ink-body hover:bg-subtle"
+                        className="border-default text-ink-body font-semibold"
                     >
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={onConfirm}
                         data-testid="preview-confirm"
-                        className="px-4 py-2 text-sm font-semibold bg-ink-primary text-paper rounded hover:bg-ink-body"
+                        className="font-semibold"
                         autoFocus
                     >
                         {copy.confirm}
-                    </button>
+                    </Button>
                 </div>
         </ModalChrome>
     );

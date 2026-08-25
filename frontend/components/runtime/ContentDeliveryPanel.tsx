@@ -254,12 +254,12 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                         {received.contentHash}
                     </p>
                     {anchored === "verified" && (
-                        <p className="text-xs font-semibold text-green-700" data-testid="interaction-content-verified">
+                        <p className="text-xs font-semibold text-success-fg" data-testid="interaction-content-verified">
                             ✓ Rehash matches the on-chain completion evidence
                         </p>
                     )}
                     {anchored === "missing" && (
-                        <p className="text-xs text-amber-700" data-testid="interaction-content-unanchored">
+                        <p className="text-xs text-warning-fg" data-testid="interaction-content-unanchored">
                             No on-chain completion evidence found for this artifact yet.
                         </p>
                     )}
@@ -304,12 +304,12 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                 </p>
             )}
             {sent && (
-                <p className="text-xs font-semibold text-green-700" data-testid="interaction-content-sent">
+                <p className="text-xs font-semibold text-success-fg" data-testid="interaction-content-sent">
                     ✓ Delivered privately — completion evidence anchored on-chain
                 </p>
             )}
 
-            {error && <p className="text-xs text-red-600" data-testid="interaction-content-error">{error}</p>}
+            {error && <p className="text-xs text-error-fg" data-testid="interaction-content-error">{error}</p>}
         </section>
     );
 }

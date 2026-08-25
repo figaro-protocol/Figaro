@@ -666,7 +666,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     ))}
                                 </div>
                                 {conversionBlocked && (
-                                    <p className="text-xs text-red-600" data-testid="payment-token-no-venue">
+                                    <p className="text-xs text-error-fg" data-testid="payment-token-no-venue">
                                         No conversion venue is configured — prices can&apos;t be quoted in this
                                         token. Pick the list-price token to order.
                                     </p>
@@ -731,7 +731,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             )}
                                             {row.pricing?.issue === "unresolvable-quantity" &&
                                                 row.pricing.item?.rateQuantitySource !== "checkout-quantity" && (
-                                                <p className="text-xs text-red-600" data-testid={`rate-unresolvable-${row.nodeId}`}>
+                                                <p className="text-xs text-error-fg" data-testid={`rate-unresolvable-${row.nodeId}`}>
                                                     Priced by rate ({row.pricing.item?.rateUnit ?? "unit"}), but this order
                                                     carries no value its quantity source can read.
                                                 </p>
@@ -971,7 +971,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                         </Button>
 
                         {(checkoutError || commitError) && (
-                            <p className="text-sm text-red-600" data-testid="seller-checkout-error">
+                            <p className="text-sm text-error-fg" data-testid="seller-checkout-error">
                                 {checkoutError ?? commitError}
                             </p>
                         )}

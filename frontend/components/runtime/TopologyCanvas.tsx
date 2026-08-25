@@ -33,6 +33,13 @@ import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import { deriveOrderDepths } from "@/lib/shared/orderTopology";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { OrderNode, type OrderNodeData } from "./topology/OrderNode";
+// React Flow paints edges, arrowheads and the minimap through SVG `stroke` /
+// `color` props, which take a literal — not a Tailwind class. The literals come
+// from the single palette source so the canvas cannot drift from the theme.
+import { colorTokens } from "@/lib/shared/designTokenValues";
+
+/** Edge, arrowhead and minimap chrome — the neutral ink the graph is drawn in. */
+const EDGE_INK = colorTokens.ink.body;
 
 
 // ── Layout constants ────────────────────────────────────────────────────────
@@ -223,9 +230,9 @@ export function TopologyCanvas({
                     source: parentOrderId,
                     target: order.orderHash,
                     animated: order.state === OrderState.Active,
-                    markerEnd: { type: MarkerType.ArrowClosed, color: "#555" },
+                    markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_INK },
                     style: {
-                        stroke: order.state === OrderState.Active ? "#16a34a" : "#555",
+                        stroke: order.state === OrderState.Active ? colorTokens.success : EDGE_INK,
                         strokeWidth: 2,
                     },
                 });
@@ -283,8 +290,8 @@ export function TopologyCanvas({
                                 setDblClick({ node, seq: ++dblClickSeq.current })
                             }
                             defaultEdgeOptions={{
-                                style: { stroke: "#555", strokeWidth: 2 },
-                                markerEnd: { type: MarkerType.ArrowClosed, color: "#555" },
+                                style: { stroke: EDGE_INK, strokeWidth: 2 },
+                                markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_INK },
                             }}
                         >
                             <Controls />
@@ -292,7 +299,7 @@ export function TopologyCanvas({
                             <DoubleClickZoom trigger={dblClick} />
                             <AutoFitView nodeCount={nodes.length} />
                             {orders.length > 4 && (
-                                <MiniMap nodeColor={() => "#4b5563"} className="hidden sm:block" />
+                                <MiniMap nodeColor={() => EDGE_INK} className="hidden sm:block" />
                             )}
                         </ReactFlow>
                     )}

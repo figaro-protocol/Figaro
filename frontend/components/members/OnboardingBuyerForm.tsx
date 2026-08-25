@@ -243,7 +243,7 @@ export function OnboardingBuyerForm({
             )}
 
             {externalError && (
-                <p className="text-sm text-red-600" role="alert">{externalError}</p>
+                <p className="text-sm text-error-fg" role="alert">{externalError}</p>
             )}
 
             <div className="flex items-center justify-between pt-4 border-t border-default">

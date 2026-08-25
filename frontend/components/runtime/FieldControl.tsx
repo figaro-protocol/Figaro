@@ -332,7 +332,7 @@ export function FieldControl({
         const guidance = (
             <>
                 {issue && (
-                    <p className="mt-1 text-xs text-red-600" role="alert" data-testid={`${testId}-constraint`}>
+                    <p className="mt-1 text-xs text-error-fg" role="alert" data-testid={`${testId}-constraint`}>
                         {issue}
                     </p>
                 )}

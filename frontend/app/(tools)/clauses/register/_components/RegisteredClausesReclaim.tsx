@@ -137,7 +137,7 @@ function ReclaimClauseRow({
                         {clause.version}
                         {" · "}
                         <span
-                            className={withdrawn ? "text-ink-faint" : "text-green-700"}
+                            className={withdrawn ? "text-ink-faint" : "text-success-fg"}
                             data-testid={`clause-reclaim-state-${clause.idHash}`}
                         >
                             {withdrawn ? "stake reclaimed" : "live"}
@@ -171,7 +171,7 @@ function ReclaimClauseRow({
                 </p>
             )}
             {error && (
-                <p className="text-xs text-red-600" role="alert" data-testid="clause-withdraw-error">
+                <p className="text-xs text-error-fg" role="alert" data-testid="clause-withdraw-error">
                     Reclaim failed: {error}
                 </p>
             )}

@@ -328,7 +328,7 @@ export function OnboardingAssembliesForm({
             />
 
             {(submitError ?? externalError) && (
-                <p className="text-sm text-red-600" role="alert">{submitError ?? externalError}</p>
+                <p className="text-sm text-error-fg" role="alert">{submitError ?? externalError}</p>
             )}
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
@@ -433,7 +433,7 @@ function CounterpartyClauseEditor({
                                 value={value}
                                 onChange={(e) => updateRow(i, e.target.value)}
                                 className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
-                                    valid ? "border-default" : "border-red-400"
+                                    valid ? "border-default" : "border-error"
                                 }`}
                                 data-testid={`counterparty-${clauseId}-input-${i}`}
                             />
@@ -441,7 +441,7 @@ function CounterpartyClauseEditor({
                                 <button
                                     type="button"
                                     onClick={() => removeRow(i)}
-                                    className="text-xs text-ink-faint hover:text-red-600 px-2"
+                                    className="text-xs text-ink-faint hover:text-error-fg px-2"
                                     aria-label={`Remove address ${i + 1}`}
                                     data-testid={`counterparty-${clauseId}-remove-${i}`}
                                 >

@@ -32,7 +32,7 @@ export function Header() {
             right={
                 onSpectator ? undefined : (
                     <>
-                        {walletConnected && <YourTurnBadge theme="light" />}
+                        {walletConnected && <YourTurnBadge />}
                         <ConnectWallet />
                     </>
                 )

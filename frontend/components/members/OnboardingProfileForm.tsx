@@ -549,7 +549,7 @@ export function OnboardingProfileForm({
                             </Button>
                         </div>
                         {locateError && (
-                            <p className="text-xs text-red-600" role="alert">{locateError}</p>
+                            <p className="text-xs text-error-fg" role="alert">{locateError}</p>
                         )}
                         <p className="text-xs text-ink-faint">
                             Auto-fill from the address (geocoded via OpenStreetMap) or your device&apos;s location. You can also paste a geohash from any tool — the encoding is standard base32.
@@ -668,7 +668,7 @@ export function OnboardingProfileForm({
                         </p>
                     )}
                     {errors.acceptedTokens && (
-                        <p className="text-sm text-red-600" role="alert">{errors.acceptedTokens}</p>
+                        <p className="text-sm text-error-fg" role="alert">{errors.acceptedTokens}</p>
                     )}
                 </div>
 
@@ -709,14 +709,14 @@ export function OnboardingProfileForm({
             {/* ── Nav ───────────────────────────────────────────────── */}
             <div className="space-y-3 pt-4 border-t border-default">
                 {errorCount > 0 && (
-                    <p className="text-sm text-red-600" role="alert">
+                    <p className="text-sm text-error-fg" role="alert">
                         {errorCount === 1
                             ? "Fix the highlighted field to continue."
                             : `Fix the ${errorCount} highlighted fields to continue.`}
                     </p>
                 )}
                 {externalError && (
-                    <p className="text-sm text-red-600" role="alert">{externalError}</p>
+                    <p className="text-sm text-error-fg" role="alert">{externalError}</p>
                 )}
                 <div className="flex items-center justify-between">
                     <Link
@@ -778,13 +778,13 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
 
     let symbolHint: React.ReactNode = null;
     if (integrity === "not-address" && value.address.length > 0) {
-        symbolHint = <span className="text-red-600">Not a valid 20-byte hex address.</span>;
+        symbolHint = <span className="text-error-fg">Not a valid 20-byte hex address.</span>;
     } else if (integrity === "zero") {
-        symbolHint = <span className="text-red-600">Zero address can&apos;t be a token. Use a real ERC-20 contract address.</span>;
+        symbolHint = <span className="text-error-fg">Zero address can&apos;t be a token. Use a real ERC-20 contract address.</span>;
     } else if (integrity === "checksum-invalid") {
-        symbolHint = <span className="text-red-600">Mixed-case address with invalid EIP-55 checksum — likely a typo. Re-paste from the source, or use the all-lowercase form.</span>;
+        symbolHint = <span className="text-error-fg">Mixed-case address with invalid EIP-55 checksum — likely a typo. Re-paste from the source, or use the all-lowercase form.</span>;
     } else if (isDuplicate) {
-        symbolHint = <span className="text-red-600">You already added this token. Remove one of the duplicate rows.</span>;
+        symbolHint = <span className="text-error-fg">You already added this token. Remove one of the duplicate rows.</span>;
     } else if (formatOk) {
         if (isLoading) {
             symbolHint = "Reading symbol from contract…";
@@ -792,12 +792,12 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
             symbolHint = <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>;
         } else if (errorKind === "no-rpc") {
             symbolHint = (
-                <span className="text-red-600">
+                <span className="text-error-fg">
                     Can&apos;t verify — chain RPC unreachable. Make sure your wallet is connected to a chain that&apos;s running (devnet: <code>./deploy-local.sh</code>).
                 </span>
             );
         } else {
-            symbolHint = <span className="text-red-600">Address is not an ERC-20 (no <code>symbol()</code>) on the connected chain. Remove or correct.</span>;
+            symbolHint = <span className="text-error-fg">Address is not an ERC-20 (no <code>symbol()</code>) on the connected chain. Remove or correct.</span>;
         }
     }
 

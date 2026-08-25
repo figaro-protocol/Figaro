@@ -133,31 +133,31 @@ export function RegisterClauseForm() {
             {/* Validation feedback — derived live from the pasted text. */}
             {validation.state === "syntax" && (
                 <div
-                    className="rounded-lg border border-red-200 bg-red-50 p-4"
+                    className="rounded-lg border border-error/30 bg-error/10 p-4"
                     data-testid="clause-validation-errors"
                     role="alert"
                 >
-                    <p className="text-sm font-semibold text-red-800">Not valid JSON</p>
-                    <p className="text-xs text-red-700 mt-1 font-mono break-words">{validation.message}</p>
+                    <p className="text-sm font-semibold text-error-fg">Not valid JSON</p>
+                    <p className="text-xs text-error-fg mt-1 font-mono break-words">{validation.message}</p>
                 </div>
             )}
             {validation.state === "invalid" && (
                 <div
-                    className="rounded-lg border border-red-200 bg-red-50 p-4"
+                    className="rounded-lg border border-error/30 bg-error/10 p-4"
                     data-testid="clause-validation-errors"
                     role="alert"
                 >
-                    <p className="text-sm font-semibold text-red-800 mb-2">
+                    <p className="text-sm font-semibold text-error-fg mb-2">
                         Spec is not well-formed — fix {validation.errors.length} issue{validation.errors.length === 1 ? "" : "s"}:
                     </p>
                     <ul className="space-y-1">
                         {validation.errors.map((err, i) => (
                             <li
                                 key={`${err.path}-${i}`}
-                                className="text-xs text-red-700 flex gap-2"
+                                className="text-xs text-error-fg flex gap-2"
                                 data-testid="clause-validation-error"
                             >
-                                <code className="font-mono shrink-0 text-red-800">{err.path}</code>
+                                <code className="font-mono shrink-0 text-error-fg">{err.path}</code>
                                 <span>{err.message}</span>
                             </li>
                         ))}
@@ -165,14 +165,14 @@ export function RegisterClauseForm() {
                 </div>
             )}
             {validation.state === "valid" && (
-                <p className="text-sm text-green-700" data-testid="clause-validation-ok">
+                <p className="text-sm text-success-fg" data-testid="clause-validation-ok">
                     Spec is well-formed. Registering pins it to IPFS, posts the registration deposit, and anchors it on-chain — permanent per (name, version).
                 </p>
             )}
 
             {submitError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4" role="alert">
-                    <p className="text-sm text-red-700" data-testid="clause-register-error">
+                <div className="rounded-lg border border-error/30 bg-error/10 p-4" role="alert">
+                    <p className="text-sm text-error-fg" data-testid="clause-register-error">
                         Registration failed: {submitError}
                     </p>
                 </div>

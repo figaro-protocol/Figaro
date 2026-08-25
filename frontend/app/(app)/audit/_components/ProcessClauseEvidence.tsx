@@ -69,17 +69,17 @@ function OrderSignatureRows({
                     <dt className="text-ink-muted">{label}</dt>
                     <dd data-testid={`audit-sig-${party}-${orderHash}`}>
                         {verdict === "valid" && (
-                            <span className="text-green-700 font-semibold">
+                            <span className="text-success-fg font-semibold">
                                 &#10003; Valid &mdash; recovers to the committed {party}
                             </span>
                         )}
                         {verdict === "invalid" && (
-                            <span className="text-red-700 font-semibold">
+                            <span className="text-error-fg font-semibold">
                                 &#10007; Invalid &mdash; does not recover to the committed {party}
                             </span>
                         )}
                         {verdict === "proved" && (
-                            <span className="text-blue-700 font-semibold">
+                            <span className="text-info-fg font-semibold">
                                 &#9670; Proved in a batch &mdash; checked inside the proof, not recomputed here
                             </span>
                         )}

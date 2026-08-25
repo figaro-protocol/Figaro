@@ -1,4 +1,8 @@
 import { ImageResponse } from "next/og";
+// Satori renders these inline styles itself — it takes literal color strings,
+// not Tailwind classes — so the card reads the palette module directly rather
+// than duplicating its hexes (docs/DESIGN_TOKENS.md §8).
+import { colorTokens } from "@/lib/shared/designTokenValues";
 
 // No `runtime = "edge"` here: edge runtime disables static generation, so the
 // static export would emit the <meta og:image> URL but never the image itself
@@ -19,7 +23,7 @@ export default async function Image() {
         (
             <div
                 style={{
-                    background: "#f5f5f2",
+                    background: colorTokens.canvas,
                     width: "100%",
                     height: "100%",
                     display: "flex",
@@ -28,14 +32,14 @@ export default async function Image() {
                     justifyContent: "center",
                     fontFamily: "Georgia, 'Times New Roman', serif",
                     padding: "80px 96px",
-                    borderBottom: "16px solid #a16328",
+                    borderBottom: `16px solid ${colorTokens.ink.heading}`,
                 }}
             >
                 <div
                     style={{
                         fontSize: 96,
                         fontWeight: 700,
-                        color: "#a16328",
+                        color: colorTokens.ink.heading,
                         letterSpacing: "-2px",
                         marginBottom: 28,
                     }}
@@ -46,7 +50,7 @@ export default async function Image() {
                     style={{
                         fontSize: 44,
                         fontWeight: 400,
-                        color: "#3a322a",
+                        color: colorTokens.ink.primary,
                         lineHeight: 1.35,
                         maxWidth: 950,
                     }}
@@ -57,7 +61,7 @@ export default async function Image() {
                     style={{
                         fontSize: 26,
                         fontWeight: 400,
-                        color: "#857c6e",
+                        color: colorTokens.ink.muted,
                         marginTop: 36,
                     }}
                 >

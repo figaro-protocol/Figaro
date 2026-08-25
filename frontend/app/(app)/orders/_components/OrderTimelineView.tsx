@@ -39,8 +39,8 @@ type Tone = "neutral" | "blue" | "green";
 
 function toneClasses(tone: Tone): string {
     switch (tone) {
-        case "blue": return "border-blue-200 bg-blue-50 text-blue-800";
-        case "green": return "border-green-200 bg-green-50 text-green-800";
+        case "blue": return "border-info/30 bg-info/10 text-info-fg";
+        case "green": return "border-success/30 bg-success/10 text-success-fg";
         default: return "border-default bg-subtle text-ink-body";
     }
 }
@@ -136,7 +136,7 @@ export function OrderTimelineView({ processId }: Props) {
                     <p className="text-xs text-ink-body" data-testid="order-process-capacity">
                         Process orders:{" "}
                         <span className={resolveCapacity.remaining <= Math.max(1, Math.floor(resolveCapacity.cap / 20))
-                            ? "font-medium text-amber-700"
+                            ? "font-medium text-warning-fg"
                             : "font-medium text-ink-primary"}>
                             {resolveCapacity.activeOrderCount} / {resolveCapacity.cap} resolvable in one settlement
                         </span>
@@ -205,7 +205,7 @@ export function OrderTimelineView({ processId }: Props) {
                 />
             )}
             {workspace.actionError && (
-                <p className="text-sm text-red-600" data-testid="workspace-action-error">{workspace.actionError}</p>
+                <p className="text-sm text-error-fg" data-testid="workspace-action-error">{workspace.actionError}</p>
             )}
 
             {/* Timeline — the process's attestation log, each row labelled from
@@ -214,7 +214,7 @@ export function OrderTimelineView({ processId }: Props) {
                 <p className="text-xs font-semibold text-ink-muted">Timeline</p>
                 <ol className="space-y-2" data-testid="order-timeline">
                     <li className="flex items-start gap-3 rounded border border-default bg-paper p-3">
-                        <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
+                        <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                         <div className="flex-1">
                             <p className="text-sm font-semibold text-ink-primary">order placed</p>
                             <p className="text-xs text-ink-muted">
@@ -233,7 +233,7 @@ export function OrderTimelineView({ processId }: Props) {
                                 data-testid={`timeline-event-${eventCode}`}
                                 data-event-code={eventCode}
                             >
-                                <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
+                                <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                                 <div className="flex-1">
                                     <p className="text-sm font-semibold text-ink-primary">{eventLabel}</p>
                                     <p className="text-xs text-ink-muted">{clauseTitle} · block {att.blockNumber}</p>
@@ -243,7 +243,7 @@ export function OrderTimelineView({ processId }: Props) {
                     })}
                     {isResolved && (
                         <li className="flex items-start gap-3 rounded border border-default bg-paper p-3">
-                            <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
+                            <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                             <div className="flex-1">
                                 <p className="text-sm font-semibold text-ink-primary">order completed</p>
                                 <p className="text-xs text-ink-muted">Bonds released.</p>

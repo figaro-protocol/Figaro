@@ -14,29 +14,21 @@ import Link from "next/link";
 import { usePendingSellerSignature, awaitsMyCounterSign } from "@/lib/checkout/orderPendingSellerSignature";
 import Bell from "@/components/icons/Bell";
 
-interface YourTurnBadgeProps {
-    theme?: "light" | "dark";
-}
-
-export function YourTurnBadge({ theme = "dark" }: YourTurnBadgeProps) {
+export function YourTurnBadge() {
     const { pending } = usePendingSellerSignature(awaitsMyCounterSign);
     const count = pending.length;
-
-    const cls = theme === "dark"
-        ? "relative rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-paper"
-        : "relative rounded-lg p-2 text-ink-body transition-colors hover:bg-subtle hover:text-ink-primary";
 
     return (
         <Link
             href="/orders"
-            className={cls}
+            className="relative rounded-lg p-2 text-ink-body transition-colors hover:bg-subtle hover:text-ink-primary"
             aria-label={count > 0 ? `${count} order${count === 1 ? "" : "s"} awaiting your action` : "Orders"}
             data-testid="your-turn-badge"
         >
             <Bell className="w-5 h-5" aria-hidden="true" />
             {count > 0 && (
                 <span
-                    className="absolute -top-1 -right-1 bg-red-500 text-paper text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                    className="absolute -top-1 -right-1 bg-error text-paper text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
                     aria-hidden="true"
                     data-testid="your-turn-count"
                 >

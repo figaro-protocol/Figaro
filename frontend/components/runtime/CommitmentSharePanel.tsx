@@ -215,10 +215,10 @@ export function CommitmentSharePanel({
 
             {/* Signature status */}
             <div className="flex gap-2 text-xs">
-                <span className={`px-2 py-0.5 rounded ${hasBuyerSig ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                <span className={`px-2 py-0.5 rounded ${hasBuyerSig ? "bg-success/20 text-success-fg" : "bg-warning/20 text-warning-fg"}`}>
                     Buyer: {hasBuyerSig ? "Signed" : "Pending"}
                 </span>
-                <span className={`px-2 py-0.5 rounded ${hasSellerSig ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                <span className={`px-2 py-0.5 rounded ${hasSellerSig ? "bg-success/20 text-success-fg" : "bg-warning/20 text-warning-fg"}`}>
                     Seller: {hasSellerSig ? "Signed" : "Pending"}
                 </span>
             </div>
@@ -229,7 +229,7 @@ export function CommitmentSharePanel({
                     <p className="text-xs text-ink-muted">
                         Share with the counter-party to collect their signature.
                         Send it over XMTP or copy the payload as a fallback for the{" "}
-                        <a href="/sign" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">/sign</a>{" "}
+                        <a href="/sign" target="_blank" rel="noopener noreferrer" className="text-ink-heading hover:text-ink-body underline">/sign</a>{" "}
                         page.
                     </p>
                     {qrDataUrl && (
@@ -243,7 +243,7 @@ export function CommitmentSharePanel({
                         />
                     )}
                     {qrUnavailable && (
-                        <p className="text-xs text-amber-600 text-center" data-testid="commitment-qr-unavailable">
+                        <p className="text-xs text-warning-fg text-center" data-testid="commitment-qr-unavailable">
                             QR sharing is unavailable for this payload size. Use the copy button instead.
                         </p>
                     )}
@@ -269,7 +269,7 @@ export function CommitmentSharePanel({
                     </div>
                     {transportStatus === "sent" && transportRecipient && (
                         <p
-                            className="text-[11px] text-green-700 text-center max-w-sm"
+                            className="text-[11px] text-success-fg text-center max-w-sm"
                             data-testid="commitment-xmtp-status"
                         >
                             Commitment payload sent over XMTP to {truncateHex(transportRecipient)}.
@@ -277,7 +277,7 @@ export function CommitmentSharePanel({
                     )}
                     {transportStatus === "error" && transportError && (
                         <p
-                            className="text-[11px] text-amber-700 text-center max-w-sm"
+                            className="text-[11px] text-warning-fg text-center max-w-sm"
                             data-testid="commitment-xmtp-status"
                         >
                             {transportError}
@@ -288,21 +288,21 @@ export function CommitmentSharePanel({
 
             {/* Signing state */}
             {step === "signing" && (
-                <p className="text-xs text-blue-600 animate-pulse">
+                <p className="text-xs text-info-fg animate-pulse">
                     Waiting for wallet signature…
                 </p>
             )}
 
             {/* Done — the seller has counter-signed and committed on-chain. */}
             {step === "done" && (
-                <p className="text-xs text-green-600 font-medium">
+                <p className="text-xs text-success-fg font-medium">
                     Commitment submitted successfully.
                 </p>
             )}
 
             {/* Error */}
             {step === "error" && (
-                <p className="text-xs text-red-600">
+                <p className="text-xs text-error-fg">
                     Commitment failed. Check console for details.
                 </p>
             )}
