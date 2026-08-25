@@ -88,6 +88,37 @@ export default function Faq() {
                 </nav>
             </MarketingSection>
 
+            {/* Deliberately NOT in the jump index above: the index is the page's
+             *  sixteen questions, in one sequence with the DOM sections that answer
+             *  them. This is not a seventeenth question — it is the short form of
+             *  thirteen answers already below, kept at the top where a first-time
+             *  reader lands. Every line here is one sentence and links to the
+             *  section or page that owns the full treatment; nothing is derived
+             *  here that is not derived there. */}
+            <MarketingSection title="Before your first real deal." sectionId="before-you-send">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Thirteen things worth settling before a first commitment, each answered in one line. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavourable answers are on it too, in the same list as the rest.
+                </p>
+                <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Has the code been audited?</strong> Not yet by an external auditor; what exists instead is six independent verification benches and a frozen surface waiting for one (<Link href="#verification" className="text-ink-heading font-medium hover:underline">the full answer</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Is anyone selling near me?</strong> Whatever the <Link href="/discover" className="text-ink-heading font-medium hover:underline">member directory</Link> shows where you are looking is the whole answer, including nothing &mdash; it reads the chain live and is never a curated list.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Who holds the payment while the deal runs?</strong> No one &mdash; the payment and both stakes sit in a contract with no owner and no path out but the close the buyer signs (<Link href="#custody" className="text-ink-heading font-medium hover:underline">who holds the tokens</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What do I have to put up?</strong> As a buyer, twice the payment leaves your wallet at commit &mdash; the payment itself and an equal stake that returns to you when you sign the close &mdash; plus ETH for the gas each step costs, cents to a few dollars at typical network prices (<Link href="#compatibility" className="text-ink-heading font-medium hover:underline">gas, tokens, and tax</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Can I get a refund?</strong> There is no refund button and no reversal path, by design &mdash; nobody is paid until the buyer signs the close, so a shortfall is put right <em>before</em> that signature rather than undone after it (<Link href="#escrow" className="text-ink-heading font-medium hover:underline">why this is not escrow</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What happens the moment I sign the close?</strong> It is terminal acceptance: the process settles, and nothing inside the protocol reopens it &mdash; so look at the work before signing, not after.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What do I lose if it goes wrong?</strong> Your stake is your own deterrent, never a pot the other side can win &mdash; the way to lose it is to leave a process open forever, which leaves every stake locked, yours included (<Link href="#escrow" className="text-ink-heading font-medium hover:underline">the residual, stated in full</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What if we genuinely disagree?</strong> There is no on-chain verdict and there will not be one &mdash; three inner layers absorb most of it, and any outside forum rules on the record, to which the protocol contributes evidence, never a ruling (<Link href="#layers" className="text-ink-heading font-medium hover:underline">the five layers</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What if I lose my key?</strong> The kernel has no recovery path of any kind &mdash; a buyer who set up an account-level recovery beforehand can still close active processes; a buyer who did not leaves the stakes locked, permanently (<Link href="#keys" className="text-ink-heading font-medium hover:underline">plan this before you commit</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Can anyone freeze my funds or shut this down?</strong> There is no admin, owner, pause function, or upgrade key to hold; the exposure that remains is Ethereum itself (<Link href="#shutdown" className="text-ink-heading font-medium hover:underline">what has no privileged role</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Can this website lie about what I am signing?</strong> Not about a deal already committed &mdash; the gap is the moment just before you sign, and closing it means running one of two checks yourself, with developer tools (<Link href="#signing" className="text-ink-heading font-medium hover:underline">both checks, step by step</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What becomes public about me?</strong> Your wallet address and its on-chain activity, linkable by anyone &mdash; this is pseudonymity, not anonymity; the personal detail stays off-chain, encrypted, and erasable by you (<Link href="#privacy" className="text-ink-heading font-medium hover:underline">what the network learns</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Does this change my tax or legal position?</strong> No &mdash; a trade here carries the same obligations as any direct trade in your jurisdiction, and nothing on this site is legal, tax, or financial advice (<Link href="#compatibility" className="text-ink-heading font-medium hover:underline">tax and law</Link>).</li>
+                </ul>
+                <p className="text-base text-ink-body leading-relaxed">
+                    None of these ask you to take this site&apos;s word for anything: each line names something readable on the chain, runnable on your own machine, or a thing the kernel plainly has no code for.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Who holds the tokens?" sectionId="custody">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     No one. When a buyer and seller commit to a process, the payment and both bonds move into <em>FigaroCore</em> &mdash; the kernel contract &mdash; and stay there until the buyer signs the atomic resolution that releases them. There is no custodian, no escrow account, no platform balance sheet, no off-chain ledger reconciling who is owed what.
