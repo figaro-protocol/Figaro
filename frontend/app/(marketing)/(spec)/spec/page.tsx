@@ -292,7 +292,7 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "ClauseOrAssemblyExcluded(clauseOrAssembly)",
                 from: "UsageCounter",
-                cause: "That key is in the counter's excluded set. The mandatory clauses EARN — commerce and topology ride on every order and are scored for their author of record. The reference deployments exclude exactly one key, figaro-assembly-provenance: it is attribution plumbing, and scoring it would double-pay every assembly trade (its designer accrues through recordAssemblyUsage instead). ROUTINE where it appears, not a fault.",
+                cause: "That key is in the counter's excluded set. Of the three mandatory clauses, commerce and topology EARN — they ride on every order and are scored for their author of record. The reference deployments exclude exactly one key, figaro-assembly-provenance: it is attribution plumbing, and scoring it would double-pay every assembly trade (its designer accrues through recordAssemblyUsage instead). ROUTINE where it appears, not a fault.",
                 fix: "Nothing. The set is a constructor argument, so read excludedClauseOrAssembly(key) against the deployment you are calling rather than assuming a list; expect the provenance leg in failures on any assembly run.",
             },
             {

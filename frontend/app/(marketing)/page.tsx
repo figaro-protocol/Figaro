@@ -55,6 +55,20 @@ export default function Home() {
                 <p className="text-body-lead text-ink-muted max-w-2xl mt-5">
                     It holds because one contract makes keeping your word the winning move &mdash; disputes become the exception, not the norm &mdash; and when taxation, consent, emissions, or a courtroom still asks, the same verifiable record answers. What we built is the start, not the boundary: the protocol is designed to outlive its builders, with nine tenths of its tokens reserved for the community that extends it &mdash; paid to whoever writes the clauses and assemblies the world ends up using. All of it transparent; all of it verifiable.
                 </p>
+                {/* The promoted thesis + audience router (ruled 2026-08-25 on the
+                    run-13 evidence: the plain pitch and the newcomer's door belong
+                    in the first screen). The copy is the ruled closing-section
+                    copy MOVED, not re-authored — one canonical home, up here. */}
+                <p className="text-body-lead text-ink-muted max-w-2xl mt-5">
+                    If you keep one sentence, keep this one: one thin, ownerless layer that makes any deal between strangers safe &mdash; and everything above it buildable by anyone. Start where you are:
+                    new to all of this, begin with{" "}
+                    <Link href="/local-commerce" className="text-ink-heading hover:underline">one deal, lived end to end</Link>;
+                    building on it, start at{" "}
+                    <Link href="/spec" className="text-ink-heading hover:underline">Specifications</Link>;
+                    checking the claims, the{" "}
+                    <Link href="/working-groups" className="text-ink-heading hover:underline">papers</Link>{" "}
+                    carry the proofs.
+                </p>
             </MarketingHero>
 
             <MarketingSection title="Anyone can write the terms of a market">
@@ -109,17 +123,7 @@ export default function Home() {
 
             <MarketingSection title="Read the whole story" sectionId="reading-path" bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
-                    If you keep one sentence, keep this one: one thin, ownerless layer that makes any deal between strangers safe &mdash; and everything above it buildable by anyone.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-3">
-                    Read in order; each page teaches one thing. Or start where you are:
-                    new to all of this, begin with{" "}
-                    <Link href="/local-commerce" className="text-ink-heading hover:underline">one deal, lived end to end</Link>;
-                    building on it, start at{" "}
-                    <Link href="/spec" className="text-ink-heading hover:underline">Specifications</Link>;
-                    checking the claims, the{" "}
-                    <Link href="/working-groups" className="text-ink-heading hover:underline">papers</Link>{" "}
-                    carry the proofs.
+                    Read in order; each page teaches one thing.
                 </p>
                 <div className="space-y-8">
                     {READING_PATH_RUNGS.map((rung) => (

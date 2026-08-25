@@ -166,10 +166,9 @@ export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = [
         { isSectionHeader: true, label: group.section, href: "" } as NavLink,
         ...group.links,
     ]),
-    // The app tier, announced on marketing mobile exactly as the footer's App
-    // column announces it on desktop — DERIVED (filtered spread), never a
-    // hand-copy. Routes the marketing map already lists (e.g. /discover,
-    // /orders, /audit under Market) are not repeated here.
+    // The app tier — DERIVED (filtered spread), never a hand-copy. Routes the
+    // marketing map already lists (e.g. /discover, /orders, /audit under
+    // Market) are not repeated here.
     { isSectionHeader: true, label: "App", href: "" },
     ...NAV_LINKS_APP_PRIMARY.filter(
         (link) => !MARKETING_MAP.some((g) => g.links.some((l) => l.href === link.href)),

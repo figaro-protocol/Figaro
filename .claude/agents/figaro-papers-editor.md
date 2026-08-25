@@ -66,8 +66,10 @@ settling (the publication-estate memory owns the record; batches settled
 2026-08-20) — but every settled process so far is the authoring project's own
 exercise, so no paper may claim observed play by independent participants.
 Papers state deployment facts in launch-invariant form ("processes settled on
-a public record"); whether a paper may NAME the network or cite addresses is
-UNRULED — ask the maintainer before doing either. Owner:
+a public record") and NEVER carry implementation details — no network names,
+no deployment addresses, no transaction receipts (RULED 2026-08-25: hard no,
+permanent — that is not a paper's purpose). Deployment information lives on
+the site's /spec page, organized by network. Owner:
 `docs/CONTRACTS.md` § "Teardown state — CLOSED" — read it before writing any
 sentence about on-chain validation, proofs, or RPGF distribution.
 
