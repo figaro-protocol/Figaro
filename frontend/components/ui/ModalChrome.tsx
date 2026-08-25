@@ -122,7 +122,7 @@ export function ModalChrome({
 
     return createPortal(
         <div
-            className={`fixed inset-0 z-[60] flex justify-center bg-black/50 ${alignClass}`}
+            className={`fixed inset-0 z-[60] flex justify-center bg-ink-primary/40 ${alignClass}`}
             data-testid={backdropTestId}
             onClick={(e) => {
                 if (dismissOnBackdrop && e.target === e.currentTarget) onClose();

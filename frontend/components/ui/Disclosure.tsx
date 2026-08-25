@@ -39,6 +39,8 @@ export interface DisclosureProps {
     panelClassName?: string;
     /** Optional test-id on the trigger button. */
     triggerTestId?: string;
+    /** Optional test-id on the panel. */
+    panelTestId?: string;
     /** Panel content — rendered only while expanded. */
     children: ReactNode;
 }
@@ -74,6 +76,7 @@ export function Disclosure({
     triggerClassName = "",
     panelClassName = "",
     triggerTestId,
+    panelTestId,
     children,
 }: DisclosureProps) {
     const triggerId = `${id}-trigger`;
@@ -98,7 +101,13 @@ export function Disclosure({
                 <DisclosureChevron expanded={expanded} />
             </button>
             {expanded && (
-                <div id={id} role="region" aria-labelledby={triggerId} className={panelClassName}>
+                <div
+                    id={id}
+                    role="region"
+                    aria-labelledby={triggerId}
+                    className={panelClassName}
+                    data-testid={panelTestId}
+                >
                     {children}
                 </div>
             )}

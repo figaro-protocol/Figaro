@@ -2,24 +2,31 @@ import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/shared/utils";
 
+// Every color, border and ring value resolves to a token in
+// docs/DESIGN_TOKENS.md §1; the shape is the §4 `tile` radius shared by
+// every other button on the site (globals.css's base `button` rule).
+// `default` is the filled-sumi shape (§1 accent discipline) rather than
+// `bg-accent`: accent is capped at ONE surface per page and this variant
+// is the site-wide default, so accent here would stack CTAs on any page
+// with two buttons.
 const buttonVariants = cva(
-    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex items-center justify-center rounded-tile text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-50",
     {
         variants: {
             variant: {
-                default: "bg-black text-white border border-black hover:bg-gray-800",
-                destructive: "bg-red-600 text-white border border-red-600 hover:bg-red-700",
-                outline: "border border-gray-300 bg-white hover:bg-gray-50 text-black",
-                secondary: "bg-gray-100 text-black border border-gray-200 hover:bg-gray-200",
-                ghost: "bg-transparent text-black border border-transparent hover:bg-gray-100",
-                link: "text-black underline-offset-4 hover:underline",
+                default: "bg-ink-heading text-paper border border-ink-heading hover:bg-ink-primary",
+                destructive: "bg-error text-paper border border-error hover:bg-error/90",
+                outline: "border border-default-strong bg-paper hover:bg-subtle text-ink-primary",
+                secondary: "bg-subtle text-ink-primary border border-default hover:bg-subtle-hover",
+                ghost: "bg-transparent text-ink-primary border border-transparent hover:bg-subtle",
+                link: "bg-transparent border border-transparent text-ink-primary underline-offset-4 hover:underline",
             },
             size: {
-                // AUDIT FIX HP-4: Touch-optimized sizes (44x44px minimum)
-                default: "min-h-[44px] px-4 py-2",
-                sm: "min-h-[44px] px-3 text-xs",
-                lg: "min-h-[48px] px-8",
-                icon: "min-h-[44px] min-w-[44px] h-11 w-11",
+                // min-h-11 (44px) satisfies WCAG 2.5.5 Target Size.
+                default: "min-h-11 px-4 py-2",
+                sm: "min-h-11 px-3 text-xs",
+                lg: "min-h-12 px-8",
+                icon: "min-h-11 min-w-11 h-11 w-11",
             },
         },
         defaultVariants: {
