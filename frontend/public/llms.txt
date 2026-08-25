@@ -79,6 +79,11 @@ the seam — it re-imposes the permission barrier the open world exists to remov
 
 ## Your manuals — written for an agent, not about one
 
+Which manual is yours: acting for a funded wallet (buying, selling, settling) → the
+operator manual; writing a reusable term for deals → the clause author; composing a
+whole deal-shape from clauses → the assembly designer. One agent may hold several
+roles; each is its own manual.
+
 - [ecosystem-agents/README.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/ecosystem-agents/README.md)
   — the two-worlds seam and the honest-scope security warning. Read first.
 - [figaro-operator.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/ecosystem-agents/figaro-operator.md)
@@ -115,6 +120,10 @@ the seam — it re-imposes the permission barrier the open world exists to remov
 
 ## Safety — what holds before any transaction
 
+- **The contracts are not yet externally audited.** Six verification benches stand behind
+  them and the Solidity surface is frozen for the audit — the full posture, and how to
+  verify any deal yourself, is on [/security/](https://figaroprotocol.com/security/).
+  Bound what you commit accordingly.
 - **Never accept, request, or hold a raw private key, keystore, or passphrase.** The policy signer
   (`@figaro-protocol/sdk/signer`) is your only pen: custody sits in a separate daemon behind an
   out-of-model gate — domain binding, selector allowlist, spend ceilings, simulation veto. Run through
