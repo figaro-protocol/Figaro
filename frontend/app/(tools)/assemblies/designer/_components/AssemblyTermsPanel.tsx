@@ -66,9 +66,9 @@ export function AssemblyTermsPanel({
     if (assemblyClauses.length === 0) return null;
 
     return (
-        <section data-testid="assembly-terms-panel" className="border border-neutral-200 rounded bg-white p-3 space-y-2">
-            <p className="text-xs font-semibold text-neutral-700">Assembly terms</p>
-            <p className="text-xs text-neutral-500 leading-relaxed">
+        <section data-testid="assembly-terms-panel" className="border border-default rounded bg-paper p-3 space-y-2">
+            <p className="text-xs font-semibold text-ink-body">Assembly terms</p>
+            <p className="text-xs text-ink-muted leading-relaxed">
                 Terms of the whole composition — composed once here, carried in the
                 assembly&rsquo;s identity, and folded into <strong>every</strong> agreement at
                 checkout so every party signs them.
@@ -89,7 +89,7 @@ export function AssemblyTermsPanel({
                                 onChange={(e) => onToggleClause(clauseId, e.target.checked, version)}
                                 className="mt-0.5"
                             />
-                            <span className="text-sm text-neutral-800">{spec.title}</span>
+                            <span className="text-sm text-ink-primary">{spec.title}</span>
                         </label>
                         {selected && spec.fields
                             .filter((f) => fills.includes(f.name))

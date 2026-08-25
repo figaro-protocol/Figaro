@@ -81,24 +81,24 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
     const handleAccept = () => runWithApproval(sellerBond, onAccept);
 
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4" data-testid="order-your-turn-card">
+        <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid="order-your-turn-card">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-xs font-semibold text-neutral-500 mb-1">New order to accept</p>
-                    <p className="text-sm font-mono text-neutral-700">
+                    <p className="text-xs font-semibold text-ink-muted mb-1">New order to accept</p>
+                    <p className="text-sm font-mono text-ink-body">
                         From {displayNameForAddress(listings, commitment.buyer)}
                     </p>
                 </div>
                 <div className="text-right shrink-0">
-                    <p className="text-xs text-neutral-500">Order value</p>
-                    <p className="text-sm font-semibold text-black">{formatToken(commitment.payment, decimals)}</p>
+                    <p className="text-xs text-ink-muted">Order value</p>
+                    <p className="text-sm font-semibold text-ink-primary">{formatToken(commitment.payment, decimals)}</p>
                 </div>
             </div>
-            <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600 space-y-1">
+            <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
-                    <span className="font-medium text-neutral-700">Your seller bond:</span>{" "}
+                    <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
                     {formatToken(sellerBond, decimals)}
-                    <span className="text-neutral-400 ml-1">(returned at settlement)</span>
+                    <span className="text-ink-faint ml-1">(returned at settlement)</span>
                 </p>
             </div>
             <div className="flex gap-2">
@@ -109,7 +109,7 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
                     type="button"
                     onClick={onDismiss}
                     disabled={isAccepting || isApproving}
-                    className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50 disabled:opacity-40"
+                    className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle disabled:opacity-40"
                     data-testid="btn-dismiss-order"
                 >
                     Dismiss
@@ -146,24 +146,24 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
     const handleSubmit = () => runWithApproval(sellerBond, onSubmit);
 
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4" data-testid="order-ready-to-submit-card">
+        <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid="order-ready-to-submit-card">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-xs font-semibold text-neutral-500 mb-1">Fully signed — submit on-chain</p>
-                    <p className="text-sm font-mono text-neutral-700">
+                    <p className="text-xs font-semibold text-ink-muted mb-1">Fully signed — submit on-chain</p>
+                    <p className="text-sm font-mono text-ink-body">
                         From {displayNameForAddress(listings, commitment.buyer)}
                     </p>
                 </div>
                 <div className="text-right shrink-0">
-                    <p className="text-xs text-neutral-500">Order value</p>
-                    <p className="text-sm font-semibold text-black">{formatToken(commitment.payment, decimals)}</p>
+                    <p className="text-xs text-ink-muted">Order value</p>
+                    <p className="text-sm font-semibold text-ink-primary">{formatToken(commitment.payment, decimals)}</p>
                 </div>
             </div>
-            <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600 space-y-1">
+            <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
-                    <span className="font-medium text-neutral-700">Your seller bond:</span>{" "}
+                    <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
                     {formatToken(sellerBond, decimals)}
-                    <span className="text-neutral-400 ml-1">(locked at submit, returned at settlement)</span>
+                    <span className="text-ink-faint ml-1">(locked at submit, returned at settlement)</span>
                 </p>
             </div>
             <div className="flex gap-2">
@@ -174,7 +174,7 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
                     type="button"
                     onClick={onDismiss}
                     disabled={isSubmitting || isApproving}
-                    className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50 disabled:opacity-40"
+                    className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle disabled:opacity-40"
                     data-testid="btn-dismiss-ready-order"
                 >
                     Dismiss
@@ -190,11 +190,11 @@ function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPaylo
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, commitment.seller);
     return (
-        <div className="block rounded-lg border border-neutral-200 bg-white p-4" data-testid="order-pending-row">
+        <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-pending-row">
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-3">
-                        <h2 className="text-sm font-semibold text-black truncate">{counterpartyName}</h2>
+                        <h2 className="text-sm font-semibold text-ink-primary truncate">{counterpartyName}</h2>
                         <span
                             className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800"
                             data-testid="order-pending-status"
@@ -202,11 +202,11 @@ function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPaylo
                             Awaiting acceptance
                         </span>
                     </div>
-                    <p className="mt-1 text-xs text-neutral-500">Waiting for {counterpartyName} to counter-sign.</p>
+                    <p className="mt-1 text-xs text-ink-muted">Waiting for {counterpartyName} to counter-sign.</p>
                 </div>
                 <div className="text-right shrink-0">
-                    <p className="text-xs text-neutral-500">Order value</p>
-                    <p className="text-sm font-semibold text-black">{formatToken(commitment.payment, decimals)}</p>
+                    <p className="text-xs text-ink-muted">Order value</p>
+                    <p className="text-sm font-semibold text-ink-primary">{formatToken(commitment.payment, decimals)}</p>
                 </div>
             </div>
         </div>
@@ -219,13 +219,13 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
     return (
         <Link
             href={`/orders/view?process=${row.processId}`}
-            className="block rounded-lg border border-neutral-200 bg-white p-4 hover:border-black transition-colors"
+            className="block rounded-lg border border-default bg-paper p-4 hover:border-default-strong transition-colors"
             data-testid={`order-row-${row.processId}`}
         >
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-3">
-                        <h2 className="text-sm font-semibold text-black truncate">
+                        <h2 className="text-sm font-semibold text-ink-primary truncate">
                             {displayNameForAddress(listings, row.counterparty)}
                         </h2>
                         <span
@@ -239,13 +239,13 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
                             {row.isResolved ? "Completed" : "In progress"}
                         </span>
                     </div>
-                    <p className="mt-1 text-xs text-neutral-500 font-mono">
+                    <p className="mt-1 text-xs text-ink-muted font-mono">
                         Process {truncateHex(row.processId, { head: 10, tail: 6 })}
                     </p>
                 </div>
                 <div className="text-right shrink-0">
-                    <p className="text-xs text-neutral-500">Order value</p>
-                    <p className="text-sm font-semibold text-black">{formatToken(row.payment, decimals)}</p>
+                    <p className="text-xs text-ink-muted">Order value</p>
+                    <p className="text-sm font-semibold text-ink-primary">{formatToken(row.payment, decimals)}</p>
                 </div>
             </div>
         </Link>
@@ -350,9 +350,9 @@ export function OrdersList() {
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header>
-                <p className="text-xs font-semibold text-neutral-500">Your orders</p>
-                <h1 className="mt-1 text-3xl font-bold text-black">Orders</h1>
-                <p className="mt-2 text-sm text-neutral-600">
+                <p className="text-xs font-semibold text-ink-muted">Your orders</p>
+                <h1 className="mt-1 text-3xl font-bold text-ink-primary">Orders</h1>
+                <p className="mt-2 text-sm text-ink-body">
                     Every order you&apos;re on — buyer or seller — and anything that needs you.
                 </p>
             </header>
@@ -363,7 +363,7 @@ export function OrdersList() {
                 React #418/#423/#425). Real state takes over post-mount. */}
             {!mounted || !isConnected ? (
                 <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to see your orders.">
-                    <div className="rounded-lg border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
+                    <div className="rounded-lg border border-default bg-paper p-5 text-sm text-ink-muted">
                         Connect a wallet to see your orders.
                     </div>
                 </WalletGate>
@@ -371,7 +371,7 @@ export function OrdersList() {
                 <>
                     {!isMock && visibleIncoming.length > 0 && (
                         <section className="space-y-3" data-testid="orders-your-turn-section">
-                            <p className="text-xs font-semibold text-neutral-500">Your turn</p>
+                            <p className="text-xs font-semibold text-ink-muted">Your turn</p>
                             <div className="space-y-3">
                                 {visibleIncoming.map(({ payload, index }) => (
                                     <YourTurnCard
@@ -392,7 +392,7 @@ export function OrdersList() {
 
                     {!isMock && visibleReady.length > 0 && (
                         <section className="space-y-3" data-testid="orders-ready-section">
-                            <p className="text-xs font-semibold text-neutral-500">Ready to submit</p>
+                            <p className="text-xs font-semibold text-ink-muted">Ready to submit</p>
                             <div className="space-y-3">
                                 {visibleReady.map(({ payload, index }) => (
                                     <ReadyToSubmitCard
@@ -413,7 +413,7 @@ export function OrdersList() {
 
                     {visibleOutbound.length > 0 && (
                         <section className="space-y-3" data-testid="orders-pending-section">
-                            <p className="text-xs font-semibold text-neutral-500">Awaiting acceptance</p>
+                            <p className="text-xs font-semibold text-ink-muted">Awaiting acceptance</p>
                             <ul className="space-y-3" data-testid="orders-pending">
                                 {visibleOutbound.map((payload, index) => (
                                     <li key={`pending-${index}`}>
@@ -425,11 +425,11 @@ export function OrdersList() {
                     )}
 
                     {nothing ? (
-                        <div className="rounded-lg border border-neutral-200 bg-white p-6 space-y-3" data-testid="orders-empty">
-                            <p className="text-sm text-neutral-700">You haven&apos;t placed or received any orders yet.</p>
+                        <div className="rounded-lg border border-default bg-paper p-6 space-y-3" data-testid="orders-empty">
+                            <p className="text-sm text-ink-body">You haven&apos;t placed or received any orders yet.</p>
                             <Link
                                 href="/discover"
-                                className="inline-block rounded border border-black px-4 py-2 text-sm font-semibold text-black hover:bg-neutral-100"
+                                className="inline-block rounded border border-ink-heading px-4 py-2 text-sm font-semibold text-ink-primary hover:bg-subtle"
                                 data-testid="link-discover-from-orders-empty"
                             >
                                 Browse sellers →
@@ -438,11 +438,11 @@ export function OrdersList() {
                     ) : (
                         <>
                             <section className="space-y-3" data-testid="orders-active-section">
-                                <p className="text-xs font-semibold text-neutral-500">In progress</p>
+                                <p className="text-xs font-semibold text-ink-muted">In progress</p>
                                 {isLoading ? (
-                                    <p className="text-sm text-neutral-500" data-testid="orders-loading">Loading…</p>
+                                    <p className="text-sm text-ink-muted" data-testid="orders-loading">Loading…</p>
                                 ) : activeRows.length === 0 ? (
-                                    <div className="rounded-lg border border-neutral-200 bg-white p-5 text-sm text-neutral-500" data-testid="orders-active-empty">
+                                    <div className="rounded-lg border border-default bg-paper p-5 text-sm text-ink-muted" data-testid="orders-active-empty">
                                         No orders in progress.
                                     </div>
                                 ) : (
@@ -456,7 +456,7 @@ export function OrdersList() {
 
                             {completedRows.length > 0 && (
                                 <section className="space-y-3" data-testid="orders-completed-section">
-                                    <p className="text-xs font-semibold text-neutral-500">Completed</p>
+                                    <p className="text-xs font-semibold text-ink-muted">Completed</p>
                                     <ul className="space-y-3" data-testid="orders-completed">
                                         {completedRows.map((row) => (
                                             <li key={row.processId}><OrderRow row={row} listings={listings} /></li>

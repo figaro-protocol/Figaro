@@ -40,15 +40,15 @@ export function MemberAgentIdentity({ sellerAddress }: { sellerAddress: `0x${str
     return (
         <div
             data-testid="seller-agent-identity"
-            className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-2"
+            className="mt-4 rounded-xl border border-default bg-subtle p-4 space-y-2"
         >
-            <p className="text-xs font-semibold text-neutral-500">Agent identity</p>
+            <p className="text-xs font-semibold text-ink-muted">Agent identity</p>
 
             {did && (
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <code className="text-xs text-neutral-800 break-all">{did}</code>
+                    <code className="text-xs text-ink-primary break-all">{did}</code>
                     {checking ? (
-                        <span data-testid="did-status" className="text-xs text-neutral-500">
+                        <span data-testid="did-status" className="text-xs text-ink-muted">
                             checking…
                         </span>
                     ) : consistent ? (
@@ -74,10 +74,10 @@ export function MemberAgentIdentity({ sellerAddress }: { sellerAddress: `0x${str
             )}
 
             {endpoints.length > 0 && (
-                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
+                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-body">
                     {endpoints.map(([label, value]) => (
                         <li key={label}>
-                            <span className="font-semibold text-neutral-500">{label}:</span>{" "}
+                            <span className="font-semibold text-ink-muted">{label}:</span>{" "}
                             <code className="break-all">{value}</code>
                         </li>
                     ))}

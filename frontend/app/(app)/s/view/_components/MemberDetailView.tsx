@@ -79,8 +79,8 @@ export function MemberDetailView({ sellerAddress }: Props) {
     if (cataloguesLoading) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Seller</p>
-                <h1 className="text-3xl font-bold text-black">Loading…</h1>
+                <p className="text-xs font-semibold text-ink-muted mb-3">Seller</p>
+                <h1 className="text-3xl font-bold text-ink-primary">Loading…</h1>
             </div>
         );
     }
@@ -88,17 +88,17 @@ export function MemberDetailView({ sellerAddress }: Props) {
     if (!memberCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
-                <h1 className="text-3xl font-bold text-black">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
-                <p className="text-sm text-neutral-600">
+                <p className="text-xs font-semibold text-ink-muted mb-3">Seller not found</p>
+                <h1 className="text-3xl font-bold text-ink-primary">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
+                <p className="text-sm text-ink-body">
                     This wallet hasn&apos;t registered itself in <code className="text-xs">MembersRegistry</code> on the network
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
-                    <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
+                    <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary">
                         Register as a member
                     </Link>
-                    <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
+                    <Link href="/discover" className="inline-block underline text-sm text-ink-primary hover:text-ink-body">
                         ← Back to discover
                     </Link>
                 </div>
@@ -153,13 +153,13 @@ export function MemberDetailView({ sellerAddress }: Props) {
         <div>
             <div data-testid="member-detail-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-5xl space-y-8">
                 <div>
-                    <Link href="/discover" className="text-sm text-neutral-500 hover:text-black">
+                    <Link href="/discover" className="text-sm text-ink-muted hover:text-ink-primary">
                         ← Back to discover
                     </Link>
                 </div>
 
                 {/* Hero */}
-                <header className="rounded-3xl border border-neutral-200 bg-white p-8 space-y-4">
+                <header className="rounded-3xl border border-default bg-paper p-8 space-y-4">
                     <div className="flex flex-wrap items-start gap-5">
                         <MemberLogo
                             sellerAddress={sellerAddressTyped}
@@ -169,14 +169,14 @@ export function MemberDetailView({ sellerAddress }: Props) {
                         />
                         <div className="flex-1 min-w-0">
                             {memberCatalogue.specialty && (
-                                <p className="text-xs font-semibold text-neutral-500">{memberCatalogue.specialty}</p>
+                                <p className="text-xs font-semibold text-ink-muted">{memberCatalogue.specialty}</p>
                             )}
-                            <h1 className="mt-1 text-4xl font-bold text-black">{memberCatalogue.name}</h1>
-                            <p className="mt-3 max-w-2xl text-base text-neutral-700">{memberCatalogue.description}</p>
+                            <h1 className="mt-1 text-4xl font-bold text-ink-primary">{memberCatalogue.name}</h1>
+                            <p className="mt-3 max-w-2xl text-base text-ink-body">{memberCatalogue.description}</p>
                             {memberCatalogue.addressText && (
-                                <p className="mt-2 text-sm text-neutral-500">{memberCatalogue.addressText}</p>
+                                <p className="mt-2 text-sm text-ink-muted">{memberCatalogue.addressText}</p>
                             )}
-                            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                                 {memberCatalogue.acceptedTokens && memberCatalogue.acceptedTokens.length > 0 && (
                                     <span data-testid="seller-accepted-tokens">
                                         Accepts: {memberCatalogue.acceptedTokens.map((t) => t.symbol).join(", ")}
@@ -184,7 +184,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                 )}
                                 {tokenSymbol && (
                                     <span data-testid="seller-pricing-token">
-                                        Priced in: <span className="font-semibold text-neutral-700">{tokenSymbol}</span>
+                                        Priced in: <span className="font-semibold text-ink-body">{tokenSymbol}</span>
                                     </span>
                                 )}
                                 {(() => {
@@ -217,11 +217,11 @@ export function MemberDetailView({ sellerAddress }: Props) {
                     if (offered.length === 0) return null;
                     return (
                         <section
-                            className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3"
+                            className="rounded-lg border border-default bg-paper p-5 space-y-3"
                             data-testid="seller-disclosure-policy"
                         >
-                            <p className="text-xs font-semibold text-neutral-500">Data for sale</p>
-                            <ul className="space-y-2 text-sm text-neutral-700">
+                            <p className="text-xs font-semibold text-ink-muted">Data for sale</p>
+                            <ul className="space-y-2 text-sm text-ink-body">
                                 {offered.map((entry) => {
                                     const title = getClauseSpec(entry.clauseId)?.title ?? entry.clauseId;
                                     const embargo = entry.calendar?.embargoDaysAfterSettlement;
@@ -231,26 +231,26 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                             className="flex flex-wrap items-baseline gap-x-2"
                                             data-testid={`disclosure-data-${entry.clauseId}-${entry.posture}`}
                                         >
-                                            <span className="font-medium text-black">{title}</span>
-                                            <span className="text-neutral-500">data · as {entry.posture}</span>
-                                            <span className="text-neutral-500">
+                                            <span className="font-medium text-ink-primary">{title}</span>
+                                            <span className="text-ink-muted">data · as {entry.posture}</span>
+                                            <span className="text-ink-muted">
                                                 · {entry.whitelist?.length
                                                     ? `${entry.whitelist.length} wallet${entry.whitelist.length === 1 ? "" : "s"} whitelisted`
                                                     : "any counterparty"}
                                             </span>
-                                            <span className="text-neutral-500">
+                                            <span className="text-ink-muted">
                                                 · {embargo
                                                     ? `opens ${embargo} day${embargo === 1 ? "" : "s"} after settlement`
                                                     : "available on settlement"}
                                             </span>
-                                            <code className="text-[11px] text-neutral-400 font-mono">
+                                            <code className="text-[11px] text-ink-faint font-mono">
                                                 {truncateHex(entry.compositionHash, { head: 10, tail: 0 })}
                                             </code>
                                         </li>
                                     );
                                 })}
                             </ul>
-                            <p className="text-xs text-neutral-500">
+                            <p className="text-xs text-ink-muted">
                                 Priced data appears in the catalogue below.
                             </p>
                         </section>
@@ -264,10 +264,10 @@ export function MemberDetailView({ sellerAddress }: Props) {
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Catalogue */}
                     <section className="space-y-8" data-testid="seller-catalogue">
-                        <p className="text-xs font-semibold text-neutral-500">Catalogue</p>
+                        <p className="text-xs font-semibold text-ink-muted">Catalogue</p>
                         {categories.map((category) => (
                             <div key={category}>
-                                <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
+                                <h2 className="text-lg font-semibold text-ink-primary mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {memberCatalogue.items
                                         .filter((item) => categoryOf(item) === category)
@@ -276,7 +276,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                             return (
                                                 <div
                                                     key={catalogueItem.id}
-                                                    className="bg-white border border-neutral-200 rounded-lg p-4 hover:border-blue-400 transition-all shadow-sm"
+                                                    className="bg-paper border border-default rounded-lg p-4 hover:border-blue-400 transition-all shadow-sm"
                                                     data-testid={`catalogue-item-${catalogueItem.id}`}
                                                 >
                                                     <div className="flex items-start gap-3">
@@ -295,11 +295,11 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                             }
                                                         />
                                                         <div className="flex-1">
-                                                            <h3 className="font-semibold text-black mb-1">{catalogueItem.name}</h3>
-                                                            <p className="text-sm text-neutral-500 mb-2">{catalogueItem.description}</p>
+                                                            <h3 className="font-semibold text-ink-primary mb-1">{catalogueItem.name}</h3>
+                                                            <p className="text-sm text-ink-muted mb-2">{catalogueItem.description}</p>
                                                             {catalogueItem.dataSold && (
                                                                 <p
-                                                                    className="text-[11px] text-neutral-500 mb-2"
+                                                                    className="text-[11px] text-ink-muted mb-2"
                                                                     data-testid={`catalogue-item-data-sold-${catalogueItem.id}`}
                                                                 >
                                                                     Data for sale · {getClauseSpec(catalogueItem.dataSold.clauseId)?.title ?? catalogueItem.dataSold.clauseId} · as {catalogueItem.dataSold.posture}
@@ -307,7 +307,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                             )}
                                                             {(catalogueItem.massGrams || catalogueItem.volumeMl) && (
                                                                 <p
-                                                                    className="text-[11px] text-neutral-500 mb-2 flex flex-wrap gap-x-2"
+                                                                    className="text-[11px] text-ink-muted mb-2 flex flex-wrap gap-x-2"
                                                                     data-testid={`catalogue-item-logistics-${catalogueItem.id}`}
                                                                 >
                                                                     {catalogueItem.massGrams ? <span>{formatMass(catalogueItem.massGrams, cartUnitSystem)}</span> : null}
@@ -318,7 +318,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                 <span className="font-semibold text-blue-700">
                                                                     {catalogueItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                                                                     {catalogueItem.pricingPolicy === "rate" && (
-                                                                        <span className="text-neutral-500 font-normal"> / {catalogueItem.rateUnit || "unit"}</span>
+                                                                        <span className="text-ink-muted font-normal"> / {catalogueItem.rateUnit || "unit"}</span>
                                                                     )}
                                                                 </span>
                                                                 {quantity === 0 ? (
@@ -326,7 +326,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                         type="button"
                                                                         onClick={() => handleAddItem(catalogueItem)}
                                                                         disabled={!catalogueItem.available}
-                                                                        className="rounded border border-black px-3 py-1.5 text-sm font-semibold text-black hover:bg-neutral-100 disabled:opacity-40"
+                                                                        className="rounded border border-ink-heading px-3 py-1.5 text-sm font-semibold text-ink-primary hover:bg-subtle disabled:opacity-40"
                                                                         data-testid={`btn-add-${catalogueItem.id}`}
                                                                     >
                                                                         Add
@@ -336,16 +336,16 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleRemoveItem(catalogueItem.id)}
-                                                                            className="w-8 h-8 rounded border border-neutral-300 bg-white text-black hover:bg-neutral-100"
+                                                                            className="w-8 h-8 rounded border border-default bg-paper text-ink-primary hover:bg-subtle"
                                                                             aria-label={`Remove one ${catalogueItem.name}`}
                                                                         >
                                                                             −
                                                                         </button>
-                                                                        <span className="w-6 text-center text-black font-semibold">{quantity}</span>
+                                                                        <span className="w-6 text-center text-ink-primary font-semibold">{quantity}</span>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleAddItem(catalogueItem)}
-                                                                            className="w-8 h-8 rounded border border-black bg-black text-white hover:bg-neutral-800"
+                                                                            className="w-8 h-8 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary"
                                                                             aria-label={`Add another ${catalogueItem.name}`}
                                                                         >
                                                                             +
@@ -365,14 +365,14 @@ export function MemberDetailView({ sellerAddress }: Props) {
 
                     {/* Order summary — selection only; review + commit on checkout. */}
                     <aside
-                        className="sticky top-6 rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
+                        className="sticky top-6 rounded-lg border border-default bg-paper p-5 space-y-4"
                         data-testid="seller-cart"
                     >
-                        <p className="text-xs font-semibold text-neutral-500">Order</p>
+                        <p className="text-xs font-semibold text-ink-muted">Order</p>
                         {cartItems.length === 0 ? (
-                            <p className="text-sm text-neutral-500">
+                            <p className="text-sm text-ink-muted">
                                 Your cart is empty. Add items from the catalogue to start an order with{" "}
-                                <span className="font-semibold text-black">{memberCatalogue.name}</span>.
+                                <span className="font-semibold text-ink-primary">{memberCatalogue.name}</span>.
                             </p>
                         ) : (
                             <>

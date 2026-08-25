@@ -43,15 +43,15 @@ export function splitFirstSentence(desc: string): { lead: string; rest: string }
 export function ContractEntry({ id, title, desc, href, meta }: ContractEntryProps) {
     const { lead, rest } = splitFirstSentence(desc);
     return (
-        <li id={id} className="border-b border-gray-100 pb-4 scroll-mt-24">
+        <li id={id} className="border-b border-default pb-4 scroll-mt-24">
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
-                <div className="text-black font-medium">
+                <div className="text-ink-primary font-medium">
                     {href ? (
                         <a
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black rounded"
+                            className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                         >
                             <code>{title}</code>
                         </a>
@@ -59,15 +59,15 @@ export function ContractEntry({ id, title, desc, href, meta }: ContractEntryProp
                         <code>{title}</code>
                     )}
                 </div>
-                {meta && <div className="text-xs text-gray-600">{meta}</div>}
+                {meta && <div className="text-xs text-ink-body">{meta}</div>}
             </div>
-            <p className="text-sm text-gray-700 mt-1">{lead}</p>
+            <p className="text-sm text-ink-body mt-1">{lead}</p>
             {rest && (
                 <details className="mt-1">
                     <summary className="text-xs text-ink-muted hover:text-ink-heading cursor-pointer select-none">
                         Full description
                     </summary>
-                    <p className="text-sm text-gray-700 mt-2">{rest}</p>
+                    <p className="text-sm text-ink-body mt-2">{rest}</p>
                 </details>
             )}
         </li>

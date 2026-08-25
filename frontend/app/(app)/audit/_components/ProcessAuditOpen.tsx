@@ -30,7 +30,7 @@ export function ProcessAuditOpen() {
                     onChange={(e) => setProcessId(e.target.value)}
                     placeholder="0x…"
                     data-testid="process-audit-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
+                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
             <Button type="submit" disabled={!valid} data-testid="process-audit-go">

@@ -87,7 +87,7 @@ export function RpcBanner() {
     if (available === null || available === true) return null;
 
     return (
-        <div className="fixed left-0 right-0 top-16 z-50 bg-yellow-500 text-black text-sm py-2 text-center">
+        <div className="fixed left-0 right-0 top-16 z-50 bg-yellow-500 text-ink-primary text-sm py-2 text-center">
             RPC unreachable — on-chain queries are disabled until your node is available.
         </div>
     );

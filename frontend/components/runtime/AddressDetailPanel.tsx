@@ -210,14 +210,14 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
 
     return (
         <section
-            className="rounded border border-neutral-200 bg-white p-4 space-y-3"
+            className="rounded border border-default bg-paper p-4 space-y-3"
             data-testid="interaction-address-panel"
         >
             <div className="flex items-baseline justify-between gap-2">
-                <p className="text-xs font-semibold text-neutral-500">Address detail (private)</p>
-                <p className="text-[11px] text-neutral-400">{clauseTitle}</p>
+                <p className="text-xs font-semibold text-ink-muted">Address detail (private)</p>
+                <p className="text-[11px] text-ink-faint">{clauseTitle}</p>
             </div>
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-ink-body">
                 The agreement commits the geohash cells; door-level detail is shared
                 privately here, encrypted to this order&apos;s counterparty alone, its
                 fingerprint anchored on-chain.
@@ -230,7 +230,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                     onClick={() => void handleRequest()}
                     disabled={busy || !channel || requested}
                     data-testid="interaction-address-request"
-                    className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500 disabled:opacity-50"
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
                 >
                     {requested ? waitingLabel : busy ? "Requesting…" : requestLabel}
                 </button>
@@ -239,11 +239,11 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
             {/* The counterparty's decrypted detail + the anchor verdict. */}
             {detail && (
                 <div className="space-y-1" data-testid="interaction-address-detail">
-                    <p className="text-sm font-semibold text-black">{detail.name}</p>
-                    <p className="text-sm text-neutral-800">{detail.street}</p>
-                    {detail.unit && <p className="text-xs text-neutral-700">{detail.unit}</p>}
+                    <p className="text-sm font-semibold text-ink-primary">{detail.name}</p>
+                    <p className="text-sm text-ink-primary">{detail.street}</p>
+                    {detail.unit && <p className="text-xs text-ink-body">{detail.unit}</p>}
                     {detail.instructions && (
-                        <p className="text-xs text-neutral-500 italic">{detail.instructions}</p>
+                        <p className="text-xs text-ink-muted italic">{detail.instructions}</p>
                     )}
                     {detail.handling && (
                         <p className="text-xs font-semibold text-amber-800" data-testid="interaction-address-detail-handling">
@@ -251,7 +251,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         </p>
                     )}
                     {detail.notifyName && (
-                        <p className="text-xs text-neutral-700" data-testid="interaction-address-detail-notify">
+                        <p className="text-xs text-ink-body" data-testid="interaction-address-detail-notify">
                             Notify on arrival: {detail.notifyName}
                             {detail.notifyContact ? ` — ${detail.notifyContact}` : ""}
                         </p>
@@ -271,8 +271,8 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
 
             {/* Share MY detail once the counterparty's key is known. */}
             {peerPubKey && !sent && (
-                <div className="space-y-2 border-t border-neutral-100 pt-3">
-                    <p className="text-xs text-neutral-600">
+                <div className="space-y-2 border-t border-default pt-3">
+                    <p className="text-xs text-ink-body">
                         Share your door-level detail. It is encrypted to this order&apos;s
                         counterparty; only its fingerprint goes on-chain.
                     </p>
@@ -285,14 +285,14 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         ["notifyName", "Notify on arrival (optional)", form.notifyName ?? ""],
                         ["notifyContact", "Notify contact (optional)", form.notifyContact ?? ""],
                     ] as const).map(([key, label, value]) => (
-                        <label key={key} className="block text-xs font-semibold text-neutral-700">
+                        <label key={key} className="block text-xs font-semibold text-ink-body">
                             {label}
                             <input
                                 type="text"
                                 value={value}
                                 onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                                 data-testid={`interaction-address-${key}`}
-                                className="mt-1 w-full text-xs px-2 py-1.5 border border-neutral-300 rounded"
+                                className="mt-1 w-full text-xs px-2 py-1.5 border border-default rounded"
                             />
                         </label>
                     ))}
@@ -301,14 +301,14 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         onClick={() => void handleSend()}
                         disabled={busy || !form.name.trim() || !form.street.trim()}
                         data-testid="interaction-address-send"
-                        className="text-xs px-3 py-1.5 rounded bg-black text-white hover:bg-neutral-800 disabled:opacity-50"
+                        className="text-xs px-3 py-1.5 rounded bg-ink-heading text-paper hover:bg-ink-primary disabled:opacity-50"
                     >
                         {busy ? "Encrypting + anchoring…" : "Send privately"}
                     </button>
                 </div>
             )}
             {!peerPubKey && !sent && !requested && !detail && (
-                <p className="text-[11px] text-neutral-500" data-testid="interaction-address-waiting">
+                <p className="text-[11px] text-ink-muted" data-testid="interaction-address-waiting">
                     Once either side requests, the other can share — encrypted to this
                     order alone.
                 </p>

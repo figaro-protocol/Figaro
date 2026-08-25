@@ -77,23 +77,23 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
     return (
         <div className="relative pl-8 pb-6 last:pb-0">
             {/* Vertical connector line */}
-            <div className="absolute left-[11px] top-6 bottom-0 w-px bg-gray-200 last:hidden" />
+            <div className="absolute left-[11px] top-6 bottom-0 w-px bg-default last:hidden" />
 
             {/* Dot */}
-            <div className={`absolute left-1 top-1.5 w-[14px] h-[14px] rounded-full border-2 border-white ${dotColor} shadow-sm`} />
+            <div className={`absolute left-1 top-1.5 w-[14px] h-[14px] rounded-full border-2 border-paper ${dotColor} shadow-sm`} />
 
             {/* Content */}
-            <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+            <div className="bg-paper border border-default rounded-lg p-3 shadow-sm">
                 <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-gray-800">
+                    <span className="text-sm font-semibold text-ink-primary">
                         {event.label}
                     </span>
-                    <span className="text-xs text-gray-500 font-mono">
+                    <span className="text-xs text-ink-muted font-mono">
                         #{index + 1}
                     </span>
                 </div>
 
-                <div className="text-xs text-gray-500 mb-2">
+                <div className="text-xs text-ink-muted mb-2">
                     {formatTimestamp(event.iso)} · Block {event.blockNumber.toString()}
                 </div>
 
@@ -102,8 +102,8 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
                     <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
                         {detailEntries.map(([key, val]) => (
                             <div key={key} className="contents">
-                                <span className="text-gray-500 font-mono">{key}</span>
-                                <span className="text-gray-600 font-mono truncate" title={val}>
+                                <span className="text-ink-muted font-mono">{key}</span>
+                                <span className="text-ink-body font-mono truncate" title={val}>
                                     {key.toLowerCase().includes("address") || key === "buyer" || key === "seller"
                                         ? truncateHex(val)
                                         : val}
@@ -114,7 +114,7 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
                 )}
 
                 {/* Tx hash link */}
-                <div className="mt-2 text-xs text-gray-500 font-mono truncate" title={event.txHash}>
+                <div className="mt-2 text-xs text-ink-muted font-mono truncate" title={event.txHash}>
                     tx: {event.txHash}
                 </div>
             </div>
@@ -136,9 +136,9 @@ function SummaryBar({ timeline }: { timeline: ProcessTimeline }) {
                 { label: "Cancelled", value: s.cancelledCount },
                 { label: "Total Payment", value: s.totalPayment },
             ].map(({ label, value }) => (
-                <div key={label} className="bg-gray-50 rounded-lg p-2 text-center">
-                    <div className="text-xs text-gray-500">{label}</div>
-                    <div className="text-sm font-semibold text-gray-700">{String(value)}</div>
+                <div key={label} className="bg-subtle rounded-lg p-2 text-center">
+                    <div className="text-xs text-ink-muted">{label}</div>
+                    <div className="text-sm font-semibold text-ink-body">{String(value)}</div>
                 </div>
             ))}
         </div>
@@ -218,8 +218,8 @@ function EvidenceDisplayContent() {
     // ── Loading state ───────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-sm text-gray-500 animate-pulse">
+            <div className="min-h-screen bg-canvas flex items-center justify-center">
+                <div className="text-sm text-ink-muted animate-pulse">
                     Loading process timeline…
                 </div>
             </div>
@@ -229,10 +229,10 @@ function EvidenceDisplayContent() {
     // ── Error state ─────────────────────────────────────────────────
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg border border-red-200 p-6 max-w-md text-center">
+            <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+                <div className="bg-paper rounded-lg border border-red-200 p-6 max-w-md text-center">
                     <h2 className="text-sm font-semibold text-red-600 mb-2">Error</h2>
-                    <p className="text-xs text-gray-600">{error}</p>
+                    <p className="text-xs text-ink-body">{error}</p>
                 </div>
             </div>
         );
@@ -242,17 +242,17 @@ function EvidenceDisplayContent() {
 
     // ── Success ─────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+        <div className="min-h-screen bg-canvas p-4 sm:p-6">
             <article className="max-w-2xl mx-auto">
                 {/* Header */}
                 <header className="mb-6">
-                    <h1 className="text-lg font-bold text-gray-800">
+                    <h1 className="text-lg font-bold text-ink-primary">
                         Figaro Process Timeline
                     </h1>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                         On-chain lifecycle evidence for dispute{disputeID ? ` #${disputeID}` : ""}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted font-mono">
                         <span>process: {timeline.processId}</span>
                         <span>chain: {chainIdParam ?? timeline.chainId}</span>
                         <span>core: {truncateHex(coreAddressParam ?? timeline.coreAddress)}</span>
@@ -261,14 +261,14 @@ function EvidenceDisplayContent() {
                 </header>
                 {timeline.participants.length > 0 && (
                     <div className="mb-4">
-                        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                        <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1">
                             Participants
                         </h2>
                         <div className="flex flex-wrap gap-1">
                             {timeline.participants.map((addr) => (
                                 <span
                                     key={addr}
-                                    className="inline-block bg-gray-100 text-gray-600 rounded px-2 py-0.5 text-xs font-mono"
+                                    className="inline-block bg-subtle text-ink-body rounded px-2 py-0.5 text-xs font-mono"
                                     title={addr}
                                 >
                                     {truncateHex(addr)}
@@ -284,7 +284,7 @@ function EvidenceDisplayContent() {
                 {/* Timeline */}
                 <div className="relative">
                     {timeline.events.length === 0 ? (
-                        <p className="text-xs text-gray-500 text-center py-8">
+                        <p className="text-xs text-ink-muted text-center py-8">
                             No lifecycle events found for this process.
                         </p>
                     ) : (
@@ -295,8 +295,8 @@ function EvidenceDisplayContent() {
                 </div>
 
                 {/* Footer */}
-                <footer className="mt-8 pt-4 border-t border-gray-200 text-center">
-                    <p className="text-xs text-gray-500">
+                <footer className="mt-8 pt-4 border-t border-default text-center">
+                    <p className="text-xs text-ink-muted">
                         All data sourced from on-chain events emitted by FigaroCore at{" "}
                         <span className="font-mono">{truncateHex(timeline.coreAddress)}</span>
                         {" "}on chain {timeline.chainId}. Events are immutable and block-timestamped.
@@ -312,7 +312,7 @@ export default function EvidenceDisplayPage() {
         <Suspense
             fallback={
                 <div className="min-h-screen flex items-center justify-center">
-                    <p className="text-sm text-gray-500">Loading evidence…</p>
+                    <p className="text-sm text-ink-muted">Loading evidence…</p>
                 </div>
             }
         >

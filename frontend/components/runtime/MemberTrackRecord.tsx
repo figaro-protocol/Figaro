@@ -23,9 +23,9 @@ interface Props {
 
 function Stat({ label, value, testId }: { label: string; value: string; testId: string }) {
     return (
-        <div className="rounded border border-neutral-200 px-3 py-2">
-            <div className="text-lg font-semibold text-black tabular-nums" data-testid={testId}>{value}</div>
-            <div className="text-xs text-neutral-500">{label}</div>
+        <div className="rounded border border-default px-3 py-2">
+            <div className="text-lg font-semibold text-ink-primary tabular-nums" data-testid={testId}>{value}</div>
+            <div className="text-xs text-ink-muted">{label}</div>
         </div>
     );
 }
@@ -33,7 +33,7 @@ function Stat({ label, value, testId }: { label: string; value: string; testId: 
 export function MemberTrackRecord({ record, isLoading }: Props) {
     if (isLoading) {
         return (
-            <p className="text-xs text-neutral-500" data-testid="track-record-loading">
+            <p className="text-xs text-ink-muted" data-testid="track-record-loading">
                 Reconstructing track record from the public graph…
             </p>
         );
@@ -48,12 +48,12 @@ export function MemberTrackRecord({ record, isLoading }: Props) {
     return (
         <section className="space-y-3" data-testid="seller-track-record">
             <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-sm font-semibold text-black">Track record</h3>
-                <span className="text-xs text-neutral-500">operating since {sinceLabel}</span>
+                <h3 className="text-sm font-semibold text-ink-primary">Track record</h3>
+                <span className="text-xs text-ink-muted">operating since {sinceLabel}</span>
             </div>
 
             {!hasHistory ? (
-                <p className="text-xs text-neutral-500" data-testid="track-record-empty">
+                <p className="text-xs text-ink-muted" data-testid="track-record-empty">
                     No committed orders yet — this seller has no on-chain history to show.
                 </p>
             ) : (
@@ -69,19 +69,19 @@ export function MemberTrackRecord({ record, isLoading }: Props) {
                     </div>
 
                     {record.valueTransacted.length > 0 && (
-                        <div className="text-xs text-neutral-600" data-testid="track-record-value">
+                        <div className="text-xs text-ink-body" data-testid="track-record-value">
                             <span className="font-semibold">Value transacted as seller: </span>
                             {record.valueTransacted.map((v, i) => (
                                 <span key={v.currency}>
                                     {i > 0 ? ", " : ""}
                                     <span className="tabular-nums">{formatUnits(v.total, 18)}</span>{" "}
-                                    <span className="font-mono text-neutral-400">{truncateHex(v.currency)}</span>
+                                    <span className="font-mono text-ink-faint">{truncateHex(v.currency)}</span>
                                 </span>
                             ))}
                         </div>
                     )}
 
-                    <p className="text-[11px] text-neutral-400 leading-snug">
+                    <p className="text-[11px] text-ink-faint leading-snug">
                         Every figure is recomputed from public on-chain events — settlement and
                         coordination history, not a platform score. Token amounts shown at 18 decimals.
                     </p>

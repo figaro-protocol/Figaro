@@ -15,7 +15,7 @@ interface BrandLogoProps {
  * The ® reflects the registered trademark status of "Figaro."
  */
 export function BrandLogo({ variant = "full", tone = "black", asLink = true }: BrandLogoProps) {
-    const colorClass = tone === "white" ? "text-white" : "text-ink-heading";
+    const colorClass = tone === "white" ? "text-paper" : "text-ink-heading";
 
     const inner = (
         <span className={`text-xl md:text-2xl font-bold ${colorClass}`}>

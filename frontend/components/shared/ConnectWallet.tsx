@@ -33,7 +33,7 @@ export function ConnectWallet() {
         return (
             <div className="flex items-center gap-2">
                 <span
-                    className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-black"
+                    className="rounded-md border border-default bg-paper px-3 py-2 text-sm font-medium text-ink-primary"
                     data-testid="connect-wallet-address"
                 >
                     {truncateHex(address)}

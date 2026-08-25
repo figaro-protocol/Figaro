@@ -157,7 +157,7 @@ export function FieldControl({
                 {label && <div className="mb-1">{label}</div>}
                 <div className="space-y-1">
                     {field.values.map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+                        <label key={opt} className="flex items-center gap-2 text-xs text-ink-body cursor-pointer">
                             <input
                                 type="radio"
                                 name={testId}
@@ -202,7 +202,7 @@ export function FieldControl({
                     {arr.map((item, i) => (
                         <div
                             key={i}
-                            className="space-y-2 rounded border border-neutral-200 p-2"
+                            className="space-y-2 rounded border border-default p-2"
                             data-testid={`${testId}-item-${i}`}
                         >
                             <ObjectEntryFields
@@ -220,7 +220,7 @@ export function FieldControl({
                                     type="button"
                                     onClick={() => onChange(arr.filter((_item, j) => j !== i))}
                                     data-testid={`${testId}-item-${i}-remove`}
-                                    className="text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500"
+                                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
                                 >
                                     Remove
                                 </button>
@@ -231,7 +231,7 @@ export function FieldControl({
                         type="button"
                         onClick={() => onChange([...arr, {}])}
                         data-testid={`${testId}-add`}
-                        className="text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500"
+                        className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
                     >
                         Add {field.name} entry
                     </button>
@@ -253,7 +253,7 @@ export function FieldControl({
                 {label && <div className="mb-1">{label}</div>}
                 <div className="space-y-1">
                     {options.map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+                        <label key={opt} className="flex items-center gap-2 text-xs text-ink-body cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={arr.includes(opt)}
@@ -273,7 +273,7 @@ export function FieldControl({
 
     if (field.type === "boolean") {
         return (
-            <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-ink-body cursor-pointer">
                 <input
                     type="checkbox"
                     checked={value === true}
@@ -297,7 +297,7 @@ export function FieldControl({
         return (
             <div data-testid={`${testId}-object`}>
                 {label && <div className="mb-1">{label}</div>}
-                <div className="space-y-2 border-l border-neutral-200 pl-3">
+                <div className="space-y-2 border-l border-default pl-3">
                     <ObjectEntryFields
                         fields={field.fields}
                         value={obj}
@@ -379,7 +379,7 @@ export function FieldControl({
                         else onChange(numeric ? Number(raw) : raw);
                     }}
                     data-testid={testId}
-                    className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs text-black focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
                 />
                 {guidance}
             </div>

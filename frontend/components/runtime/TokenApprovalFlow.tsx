@@ -89,7 +89,7 @@ export function TokenApprovalFlow({
                 {onCancel && (
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500"
+                        className="px-4 py-2 bg-subtle text-ink-primary rounded-lg hover:bg-subtle-hover"
                     >
                         Cancel
                     </button>
@@ -122,7 +122,7 @@ export function TokenApprovalFlow({
                     {!hasInsufficientBalance && (
                         <button
                             onClick={() => setErrorMessage(null)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            className="px-4 py-2 bg-red-600 text-paper rounded-lg hover:bg-red-700"
                         >
                             Retry
                         </button>
@@ -130,7 +130,7 @@ export function TokenApprovalFlow({
                     {onCancel && (
                         <button
                             onClick={onCancel}
-                            className="px-6 py-2 bg-gray-400 text-white rounded-lg font-medium hover:bg-gray-500"
+                            className="px-6 py-2 bg-subtle text-ink-primary rounded-lg font-medium hover:bg-subtle-hover"
                         >
                             Cancel
                         </button>
@@ -155,7 +155,7 @@ export function TokenApprovalFlow({
                     <button
                         onClick={handleApprove}
                         disabled={isApproving}
-                        className={`px-6 py-2 bg-yellow-600 text-white rounded-lg font-medium ${isApproving ? "opacity-50 cursor-not-allowed" : "hover:bg-yellow-700"
+                        className={`px-6 py-2 bg-yellow-600 text-paper rounded-lg font-medium ${isApproving ? "opacity-50 cursor-not-allowed" : "hover:bg-yellow-700"
                             }`}
                     >
                         {isApproving ? "Authorizing..." : "Authorize Payment"}
@@ -164,7 +164,7 @@ export function TokenApprovalFlow({
                         <button
                             onClick={onCancel}
                             disabled={isApproving}
-                            className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500"
+                            className="px-4 py-2 bg-subtle text-ink-primary rounded-lg hover:bg-subtle-hover"
                         >
                             Cancel
                         </button>

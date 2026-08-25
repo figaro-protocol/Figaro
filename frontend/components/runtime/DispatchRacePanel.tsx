@@ -30,7 +30,7 @@ export interface RaceStartPolicy {
     ceiling?: string;
 }
 
-const FIELD = "w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
+const FIELD = "w-full rounded border border-default bg-surface px-2 py-1.5 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent";
 
 interface Props {
     race: ReturnType<typeof useDispatchRace>;
@@ -54,14 +54,14 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
         };
         const ceilingValid = /^\d+(\.\d+)?$/.test(ceiling.trim()) && Number(ceiling) > 0;
         return (
-            <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3" data-testid="race-panel">
-                <p className="text-xs text-neutral-600">
+            <div className="rounded-lg border border-default bg-paper p-4 space-y-3" data-testid="race-panel">
+                <p className="text-xs text-ink-body">
                     Or form the market: every registered seller whose catalogue can
                     serve this order receives your draft; whoever counter-signs is
                     in, and the cheapest wins unless you pick otherwise.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                    <label className="text-xs text-neutral-600">
+                    <label className="text-xs text-ink-body">
                         Window (seconds)
                         <input
                             type="number" min="1" value={windowSeconds}
@@ -69,7 +69,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                             className={FIELD} data-testid="race-window-input"
                         />
                     </label>
-                    <label className="text-xs text-neutral-600">
+                    <label className="text-xs text-ink-body">
                         Candidates (blank = all)
                         <input
                             type="number" min="1" value={maxCandidates}
@@ -81,12 +81,12 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                 <Button type="button" onClick={() => onStart(policy)} className="w-full" data-testid="race-start">
                     Race at posted prices
                 </Button>
-                <div className="space-y-2 border-t border-neutral-200 pt-3">
-                    <p className="text-xs text-neutral-600">
+                <div className="space-y-2 border-t border-default pt-3">
+                    <p className="text-xs text-ink-body">
                         Or request quotes: candidates name their own price under your
                         ceiling — for work no posted price fits.
                     </p>
-                    <label className="text-xs text-neutral-600">
+                    <label className="text-xs text-ink-body">
                         Your ceiling ({tokenSymbol})
                         <input
                             type="text" inputMode="decimal" value={ceiling} placeholder="0.00"
@@ -110,37 +110,37 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
 
     if (step === "drafting") {
         return (
-            <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="race-panel">
-                <p className="text-sm text-neutral-600">Drafting offers…</p>
+            <div className="rounded-lg border border-default bg-paper p-4" data-testid="race-panel">
+                <p className="text-sm text-ink-body">Drafting offers…</p>
             </div>
         );
     }
 
     if (step === "racing") {
         return (
-            <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3" data-testid="race-panel">
-                <p className="text-xs font-semibold text-neutral-500">
+            <div className="rounded-lg border border-default bg-paper p-4 space-y-3" data-testid="race-panel">
+                <p className="text-xs font-semibold text-ink-muted">
                     {quoting ? "Requesting quotes from" : "Racing"} {candidates.length} candidate{candidates.length === 1 ? "" : "s"} — {repliedCount} {quoting ? "quoted" : "available"}
                 </p>
                 <ul className="space-y-2">
                     {candidates.map((c) => (
                         <li
                             key={c.address}
-                            className="flex items-center justify-between gap-3 rounded border border-neutral-200 p-2"
+                            className="flex items-center justify-between gap-3 rounded border border-default p-2"
                             data-testid={`race-candidate-${c.address.toLowerCase()}`}
                             data-payment={c.payment.toString()}
                             data-replied={c.replied ? "true" : "false"}
                         >
                             <div className="min-w-0">
-                                <p className="text-xs font-mono text-neutral-700 truncate">{truncateHex(c.address)}</p>
-                                <p className="text-xs text-neutral-500 truncate">{c.itemName}</p>
+                                <p className="text-xs font-mono text-ink-body truncate">{truncateHex(c.address)}</p>
+                                <p className="text-xs text-ink-muted truncate">{c.itemName}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 {/* On the quotes leg an unreplied row has no price
                                     yet — the payment field still holds the ceiling
                                     the draft went out at, which is not a quote. */}
                                 {(!quoting || c.replied) && (
-                                    <span className="text-xs font-semibold text-black">
+                                    <span className="text-xs font-semibold text-ink-primary">
                                         {formatToken(c.payment, decimals)} {tokenSymbol}
                                     </span>
                                 )}
@@ -148,13 +148,13 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                                     <button
                                         type="button"
                                         onClick={() => race.pick(c.address)}
-                                        className="rounded border border-neutral-300 px-2 py-1 text-xs text-black hover:bg-neutral-50"
+                                        className="rounded border border-default px-2 py-1 text-xs text-ink-primary hover:bg-subtle"
                                         data-testid={`race-pick-${c.address.toLowerCase()}`}
                                     >
                                         Choose
                                     </button>
                                 ) : (
-                                    <span className="text-xs text-neutral-400">{quoting ? "awaiting quote…" : "waiting…"}</span>
+                                    <span className="text-xs text-ink-faint">{quoting ? "awaiting quote…" : "waiting…"}</span>
                                 )}
                             </div>
                         </li>
@@ -175,19 +175,19 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
 
     if (step === "done" && result) {
         return (
-            <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-2" data-testid="race-panel">
-                <p className="text-xs font-semibold text-neutral-500">Race winner</p>
-                <p className="text-sm font-mono text-neutral-700" data-testid="race-winner" data-seller={result.selection.seller.toLowerCase()}>
+            <div className="rounded-lg border border-default bg-paper p-4 space-y-2" data-testid="race-panel">
+                <p className="text-xs font-semibold text-ink-muted">Race winner</p>
+                <p className="text-sm font-mono text-ink-body" data-testid="race-winner" data-seller={result.selection.seller.toLowerCase()}>
                     {truncateHex(result.selection.seller)} — {result.selection.price} {tokenSymbol}
                 </p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-ink-muted">
                     Their counter-signature rides your order: placing it delivers a
                     commit-ready order to them.
                 </p>
                 <button
                     type="button"
                     onClick={race.reset}
-                    className="text-xs text-neutral-500 hover:text-neutral-700 underline"
+                    className="text-xs text-ink-muted hover:text-ink-body underline"
                     data-testid="race-reset"
                 >
                     Race again
@@ -197,12 +197,12 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
     }
 
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-2" data-testid="race-panel">
+        <div className="rounded-lg border border-default bg-paper p-4 space-y-2" data-testid="race-panel">
             <p className="text-sm text-red-600" data-testid="race-error">{error ?? "The race failed."}</p>
             <button
                 type="button"
                 onClick={race.reset}
-                className="text-xs text-neutral-500 hover:text-neutral-700 underline"
+                className="text-xs text-ink-muted hover:text-ink-body underline"
                 data-testid="race-reset"
             >
                 Try again

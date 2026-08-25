@@ -71,26 +71,26 @@ export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }
                     }}
                     disabled={affixing}
                     data-testid={`${testId}-affix`}
-                    className="text-[11px] text-neutral-700 file:mr-2 file:rounded file:border file:border-neutral-300 file:bg-white file:px-2 file:py-1 file:text-[11px] file:text-neutral-700 hover:file:border-neutral-500"
+                    className="text-[11px] text-ink-body file:mr-2 file:rounded file:border file:border-default file:bg-surface file:px-2 file:py-1 file:text-[11px] file:text-ink-body hover:file:border-default-strong"
                 />
                 {value && (
                     <button
                         type="button"
                         onClick={clear}
                         data-testid={`${testId}-clear`}
-                        className="shrink-0 text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500"
+                        className="shrink-0 text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
                     >
                         Clear
                     </button>
                 )}
             </div>
             {affixing && (
-                <p className="text-[11px] text-neutral-500" data-testid={`${testId}-affixing`}>
+                <p className="text-[11px] text-ink-muted" data-testid={`${testId}-affixing`}>
                     Pinning &amp; anchoring…
                 </p>
             )}
             {value && (
-                <p className="text-[11px] font-mono text-neutral-500 break-all" data-testid={testId} title={value}>
+                <p className="text-[11px] font-mono text-ink-muted break-all" data-testid={testId} title={value}>
                     {fileName ? `${fileName} · ` : ""}{value}
                 </p>
             )}

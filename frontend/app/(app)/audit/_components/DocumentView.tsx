@@ -17,13 +17,13 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
     return (
         <section className="space-y-4" data-testid={`document-${document.genre}`}>
             <header className="space-y-1">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-700">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-body">
                     {document.title}
                 </h3>
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-neutral-700">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-ink-body">
                     {document.header.map((r) => (
                         <div key={r.label}>
-                            <dt className="text-neutral-500">{r.label}</dt>
+                            <dt className="text-ink-muted">{r.label}</dt>
                             <dd className="break-all">{r.value}</dd>
                         </div>
                     ))}
@@ -31,23 +31,23 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
             </header>
 
             {document.leafSections?.map((s) => (
-                <div key={s.label} className="bg-white border border-neutral-200 rounded-lg p-5 space-y-1">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 mb-3">
+                <div key={s.label} className="bg-paper border border-default rounded-lg p-5 space-y-1">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-body mb-3">
                         {s.label}
                     </h4>
                     {s.entries.map((e) => (
                         <div key={e.key} className="flex items-baseline justify-between gap-3 text-xs">
-                            <span className="text-neutral-700">{e.key}</span>
-                            <span className="font-mono text-neutral-700">{e.value}</span>
+                            <span className="text-ink-body">{e.key}</span>
+                            <span className="font-mono text-ink-body">{e.value}</span>
                         </div>
                     ))}
                 </div>
             ))}
 
             {document.lines && (
-                <div className="overflow-x-auto bg-white border border-neutral-200 rounded-lg">
+                <div className="overflow-x-auto bg-paper border border-default rounded-lg">
                     <table className="w-full text-xs" data-testid={`document-lines-${document.genre}`}>
-                        <thead className="bg-neutral-50 text-neutral-600">
+                        <thead className="bg-subtle text-ink-body">
                             <tr>
                                 {document.lines.columns.map((c, i) => (
                                     <th
@@ -61,7 +61,7 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                         </thead>
                         <tbody>
                             {document.lines.rows.map((row, ri) => (
-                                <tr key={ri} className="border-t border-neutral-100">
+                                <tr key={ri} className="border-t border-default">
                                     {row.map((cell, ci) => (
                                         <td
                                             key={ci}
@@ -75,7 +75,7 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                         </tbody>
                         {document.lines.total && (
                             <tfoot>
-                                <tr className="border-t border-neutral-200 font-semibold">
+                                <tr className="border-t border-default font-semibold">
                                     <td className="px-3 py-2" colSpan={Math.max(1, document.lines.columns.length - 1)}>
                                         {document.lines.total.label}
                                     </td>
@@ -88,7 +88,7 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
             )}
 
             {document.note && (
-                <p className="text-[11px] text-neutral-500 max-w-2xl">{document.note}</p>
+                <p className="text-[11px] text-ink-muted max-w-2xl">{document.note}</p>
             )}
         </section>
     );

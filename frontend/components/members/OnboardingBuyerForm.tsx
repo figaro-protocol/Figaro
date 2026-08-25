@@ -201,7 +201,7 @@ export function OnboardingBuyerForm({
                                     href={`/assemblies/designer/view?slug=${encodeURIComponent(choice.slug)}`}
                                     target="_blank"
                                     rel="noopener"
-                                    className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center shrink-0"
+                                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center shrink-0"
                                     data-testid={`buyer-assembly-inspect-${choice.slug}`}
                                 >
                                     Inspect ↗

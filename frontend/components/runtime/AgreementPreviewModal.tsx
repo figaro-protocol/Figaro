@@ -68,17 +68,17 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
             onClose={onCancel}
             aria-labelledby="agreement-preview-title"
             data-testid="agreement-preview-modal"
-            panelClassName="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            panelClassName="bg-paper rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         >
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50">
-                    <p className="text-xs font-semibold text-neutral-500 mb-1">
+                <div className="px-6 py-4 border-b border-default bg-subtle">
+                    <p className="text-xs font-semibold text-ink-muted mb-1">
                         {copy.eyebrow}
                     </p>
-                    <h2 id="agreement-preview-title" className="text-lg font-semibold text-black">
+                    <h2 id="agreement-preview-title" className="text-lg font-semibold text-ink-primary">
                         Agreement preview
                     </h2>
-                    <p className="text-sm text-neutral-600 mt-1">
+                    <p className="text-sm text-ink-body mt-1">
                         {copy.lede}
                     </p>
                 </div>
@@ -87,36 +87,36 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                     <AgreementReview commitment={commitment} agreement={agreement} />
                     {swap && (
-                        <section className="mt-5 border-t border-neutral-200 pt-4" data-testid="preview-swap">
-                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">
+                        <section className="mt-5 border-t border-default pt-4" data-testid="preview-swap">
+                            <h3 className="text-xs font-semibold text-ink-muted mb-2">
                                 Swap-funded bond
                             </h3>
-                            <p className="text-sm text-neutral-600 mb-2">
+                            <p className="text-sm text-ink-body mb-2">
                                 Your bond is funded by swapping another token into the process
                                 currency. You are also authorizing a Permit2 transfer of up to
                                 the amount below — your wallet will show it as a second signature.
                             </p>
                             <dl className="grid grid-cols-[90px_1fr] gap-y-1 text-sm">
-                                <dt className="text-neutral-500">Max input</dt>
-                                <dd className="text-black" data-testid="preview-swap-max-input">
+                                <dt className="text-ink-muted">Max input</dt>
+                                <dd className="text-ink-primary" data-testid="preview-swap-max-input">
                                     <span className="font-mono text-xs">{swap.maxInput.toString()}</span>
                                 </dd>
-                                <dt className="text-neutral-500">From token</dt>
-                                <dd className="font-mono text-xs text-black break-all">{swap.inputToken}</dd>
-                                <dt className="text-neutral-500">Into</dt>
-                                <dd className="font-mono text-xs text-black break-all">{swap.currency}</dd>
+                                <dt className="text-ink-muted">From token</dt>
+                                <dd className="font-mono text-xs text-ink-primary break-all">{swap.inputToken}</dd>
+                                <dt className="text-ink-muted">Into</dt>
+                                <dd className="font-mono text-xs text-ink-primary break-all">{swap.currency}</dd>
                             </dl>
                         </section>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3">
+                <div className="px-6 py-4 border-t border-default bg-subtle flex justify-end gap-3">
                     <button
                         type="button"
                         onClick={onCancel}
                         data-testid="preview-cancel"
-                        className="px-4 py-2 text-sm font-semibold border border-neutral-300 rounded text-neutral-700 hover:bg-neutral-100"
+                        className="px-4 py-2 text-sm font-semibold border border-default rounded text-ink-body hover:bg-subtle"
                     >
                         Cancel
                     </button>
@@ -124,7 +124,7 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                         type="button"
                         onClick={onConfirm}
                         data-testid="preview-confirm"
-                        className="px-4 py-2 text-sm font-semibold bg-black text-white rounded hover:bg-neutral-800"
+                        className="px-4 py-2 text-sm font-semibold bg-ink-heading text-paper rounded hover:bg-ink-primary"
                         autoFocus
                     >
                         {copy.confirm}

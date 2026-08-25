@@ -39,7 +39,7 @@ export function DraftsList() {
 
     if (drafts.length === 0) {
         return (
-            <p className="text-sm text-neutral-500" data-testid="drafts-empty">
+            <p className="text-sm text-ink-muted" data-testid="drafts-empty">
                 You don&apos;t have any saved drafts yet. Save the canvas as a draft from the designer toolbar to see it here.
             </p>
         );
@@ -50,28 +50,28 @@ export function DraftsList() {
             {drafts.map((d) => (
                 <li
                     key={d.slug}
-                    className="rounded-lg border border-neutral-200 bg-white px-5 py-3 flex items-center gap-4"
+                    className="rounded-lg border border-default bg-paper px-5 py-3 flex items-center gap-4"
                     data-testid={`draft-row-${d.slug}`}
                 >
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-black truncate">
-                            {d.name || <span className="font-normal italic text-neutral-400">Untitled</span>}
+                        <p className="text-sm font-semibold text-ink-primary truncate">
+                            {d.name || <span className="font-normal italic text-ink-faint">Untitled</span>}
                         </p>
-                        <p className="font-mono text-[11px] text-neutral-500 mt-0.5">/{d.slug}</p>
-                        <p className="text-xs text-neutral-500 mt-1">
+                        <p className="font-mono text-[11px] text-ink-muted mt-0.5">/{d.slug}</p>
+                        <p className="text-xs text-ink-muted mt-1">
                             {d.orderCount} order{d.orderCount === 1 ? "" : "s"} · last edited {formatRelative(d.updatedAt)}
                         </p>
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
                         <Link
                             href={`/assemblies/designer/edit?slug=${encodeURIComponent(d.slug)}`}
-                            className="text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-neutral-100 text-black text-center"
+                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-primary text-center"
                         >
                             Edit
                         </Link>
                         <Link
                             href={`/assemblies/designer/view?slug=${encodeURIComponent(d.slug)}`}
-                            className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
+                            className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center"
                             data-testid={`draft-inspect-${d.slug}`}
                         >
                             Inspect
@@ -79,7 +79,7 @@ export function DraftsList() {
                         <button
                             type="button"
                             onClick={() => handleDelete(d.slug, d.name)}
-                            className="text-xs px-3 py-1.5 rounded border border-red-300 bg-white hover:border-red-500 text-red-700 text-center"
+                            className="text-xs px-3 py-1.5 rounded border border-red-300 bg-paper hover:border-red-500 text-red-700 text-center"
                             data-testid={`draft-delete-${d.slug}`}
                         >
                             Delete

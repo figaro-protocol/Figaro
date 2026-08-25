@@ -63,8 +63,8 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                     }}
                     placeholder={`geohash (base32, ≤${maxChars} chars)`}
                     data-testid={testId}
-                    className={`w-full rounded border bg-white px-2 py-1 text-xs font-mono text-black focus:outline-none focus:ring-1 focus:ring-accent ${
-                        shapeOk ? "border-neutral-300" : "border-red-400"
+                    className={`w-full rounded border bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent ${
+                        shapeOk ? "border-default" : "border-red-400"
                     }`}
                 />
                 <button
@@ -73,7 +73,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                     disabled={locating}
                     data-testid={`${testId}-device`}
                     title="Fill from this device's location"
-                    className="shrink-0 text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500 disabled:opacity-50"
+                    className="shrink-0 text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
                 >
                     {locating ? "Locating…" : "Use device location"}
                 </button>

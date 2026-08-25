@@ -9,6 +9,7 @@
 
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { showWarning } from "@/components/ui/toast";
 import { useEffect, useState } from "react";
 import { activeChain, DEVNET_CHAIN_ID } from "@/lib/shared/chains";
@@ -56,26 +57,26 @@ export function ChainGuard({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Warning overlay */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-                <div className="bg-slate-800 border-2 border-yellow-500 rounded-lg p-8 max-w-md mx-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-primary/40">
+                <div className="bg-paper border-2 border-warning rounded-lg p-8 max-w-md mx-4">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="bg-yellow-500/20 p-3 rounded-lg">
-                            <AlertTriangle className="w-8 h-8 text-yellow-500" />
+                        <div className="bg-warning/20 p-3 rounded-lg">
+                            <AlertTriangle className="w-8 h-8 text-warning" />
                         </div>
-                        <h2 className="text-2xl font-bold text-white">Wrong Network</h2>
+                        <h2 className="text-2xl font-bold text-ink-heading">Wrong Network</h2>
                     </div>
 
-                    <p className="text-slate-300 mb-4">
+                    <p className="text-ink-body mb-4">
                         You&apos;re connected to the wrong network.
                         <br />
                         Please switch to continue:
                     </p>
 
-                    <div className="bg-slate-900/50 rounded-lg p-4 mb-6">
+                    <div className="bg-subtle rounded-lg p-4 mb-6">
                         <ul className="space-y-2">
                             {SUPPORTED_CHAIN_IDS.map((id) => (
-                                <li key={id} className="flex items-center gap-2 text-slate-300">
-                                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                <li key={id} className="flex items-center gap-2 text-ink-body">
+                                    <div className="w-2 h-2 bg-ink-muted rounded-full"></div>
                                     <span className="font-semibold">{CHAIN_NAMES[id] || `Network ${id}`}</span>
                                 </li>
                             ))}
@@ -83,15 +84,15 @@ export function ChainGuard({ children }: { children: React.ReactNode }) {
                     </div>
 
                     {switchChain && (
-                        <button
+                        <Button
                             onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_IDS[0] })}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                            className="w-full font-semibold py-3 px-6"
                         >
                             Switch to {CHAIN_NAMES[SUPPORTED_CHAIN_IDS[0]] || 'Figaro Network'}
-                        </button>
+                        </Button>
                     )}
 
-                    <p className="text-xs text-slate-500 text-center mt-4">
+                    <p className="text-xs text-ink-muted text-center mt-4">
                         Your wallet needs to be on the correct network to use Figaro.
                     </p>
                 </div>

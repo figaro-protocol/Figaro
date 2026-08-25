@@ -38,7 +38,7 @@ export function ProfileClauseValues({
     const profileClauses = listProfileSourcedClauses();
     if (profileClauses.length === 0) return null;
     return (
-        <div className="space-y-4 border-t border-neutral-200 pt-3" data-testid="profile-clauses">
+        <div className="space-y-4 border-t border-default pt-3" data-testid="profile-clauses">
             <p className="text-xs text-ink-muted">
                 Standing declarations (optional — master data any order composing the
                 matching clause fills from your profile)

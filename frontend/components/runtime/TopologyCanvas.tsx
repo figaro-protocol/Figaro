@@ -241,11 +241,11 @@ export function TopologyCanvas({
             <Card data-testid="order-graph-card" className="h-[400px] sm:h-[600px] overflow-hidden">
                 <style>{`.react-flow__node { visibility: visible !important; }`}</style>
                 {!designerMode && (
-                <div className="p-4 border-b border-gray-200 bg-white">
+                <div className="p-4 border-b border-default bg-paper">
                     <div className="flex items-start justify-between gap-2">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                            <p className="text-sm text-gray-600">
+                            <h2 className="text-lg font-semibold text-ink-primary">{title}</h2>
+                            <p className="text-sm text-ink-body">
                                 {orders.length === 0
                                     ? emptySubtitle
                                     : `${orders.length} order${orders.length === 1 ? "" : "s"}${viewedProcessId ? ` · ${truncateHex(viewedProcessId, { head: 10, tail: 0 })}` : ""}`
@@ -257,9 +257,9 @@ export function TopologyCanvas({
                 )}
                 <div className={designerMode ? "h-full" : "h-[calc(100%-80px)]"}>
                     {orders.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-gray-500">
+                        <div className="flex items-center justify-center h-full text-ink-muted">
                             <div data-testid="no-orders" className="text-center">
-                                <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                <svg className="w-12 h-12 mx-auto mb-3 text-ink-faint" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                                     <circle cx="6" cy="12" r="2.5" />
                                     <circle cx="18" cy="6" r="2.5" />
                                     <circle cx="18" cy="18" r="2.5" />

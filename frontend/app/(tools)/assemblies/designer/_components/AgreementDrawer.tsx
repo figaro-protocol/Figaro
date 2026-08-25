@@ -95,13 +95,13 @@ export function AgreementDrawer({
             <aside
                 data-testid="agreement-drawer"
                 data-empty="true"
-                className="w-[360px] shrink-0 bg-white border-l border-neutral-200 flex flex-col items-center justify-center text-center px-6"
+                className="w-[360px] shrink-0 bg-paper border-l border-default flex flex-col items-center justify-center text-center px-6"
             >
-                <div className="text-neutral-300 text-4xl mb-3" aria-hidden>←</div>
-                <p className="text-sm font-semibold text-neutral-700 mb-1">
+                <div className="text-ink-faint text-4xl mb-3" aria-hidden>←</div>
+                <p className="text-sm font-semibold text-ink-body mb-1">
                     Select a node to edit
                 </p>
-                <p className="text-xs text-neutral-500 leading-relaxed max-w-[260px]">
+                <p className="text-xs text-ink-muted leading-relaxed max-w-[260px]">
                     Click any node on the canvas to inspect its parties and the
                     clauses available on the network.
                 </p>
@@ -137,8 +137,8 @@ export function AgreementDrawer({
             }
             className={
                 embedded
-                    ? "shrink-0 bg-white border-l border-neutral-200 overflow-hidden flex flex-col transition-[width] duration-150"
-                    : "fixed right-0 bg-white border-l border-t border-neutral-200 shadow-xl z-30 overflow-hidden flex flex-col rounded-tl-lg transition-[width] duration-150"
+                    ? "shrink-0 bg-paper border-l border-default overflow-hidden flex flex-col transition-[width] duration-150"
+                    : "fixed right-0 bg-paper border-l border-t border-default shadow-xl z-30 overflow-hidden flex flex-col rounded-tl-lg transition-[width] duration-150"
             }
         >
             {minimized && (
@@ -149,7 +149,7 @@ export function AgreementDrawer({
                         aria-label="Expand drawer"
                         data-testid="drawer-expand"
                         title="Expand"
-                        className="w-8 h-8 rounded border border-neutral-300 hover:border-neutral-700 bg-white text-neutral-600 text-xs"
+                        className="w-8 h-8 rounded border border-default hover:border-default-strong bg-paper text-ink-body text-xs"
                     >
                         ‹
                     </button>
@@ -158,11 +158,11 @@ export function AgreementDrawer({
                         onClick={onClose}
                         aria-label="Close drawer"
                         title="Close"
-                        className="w-8 h-8 rounded border border-neutral-300 hover:border-red-400 bg-white text-neutral-600 text-xs"
+                        className="w-8 h-8 rounded border border-default hover:border-red-400 bg-paper text-ink-body text-xs"
                     >
                         ✕
                     </button>
-                    <div className="border-t border-neutral-200 w-6 my-1" />
+                    <div className="border-t border-default w-6 my-1" />
                     {presentArticles.map((article) => (
                         <button
                             key={article}
@@ -170,7 +170,7 @@ export function AgreementDrawer({
                             onClick={() => { setMinimized(false); setOpenSection(article); }}
                             title={article}
                             data-testid={`drawer-rail-${article}`}
-                            className="w-full text-[10px] text-neutral-500 hover:text-black px-1 py-1"
+                            className="w-full text-[10px] text-ink-muted hover:text-ink-primary px-1 py-1"
                         >
                             {article.slice(0, 3)}
                         </button>
@@ -178,11 +178,11 @@ export function AgreementDrawer({
                 </div>
             )}
             {!minimized && (<>
-            <div className="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
+            <div className="px-5 py-3 border-b border-default flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-xs text-ink-muted">Agreement</p>
                     <p
-                        className="text-sm font-semibold text-black mt-0.5 truncate"
+                        className="text-sm font-semibold text-ink-primary mt-0.5 truncate"
                         data-testid="drawer-selected-order-id"
                         title={order.orderHash}
                     >
@@ -196,7 +196,7 @@ export function AgreementDrawer({
                         aria-label="Minimize drawer"
                         data-testid="drawer-minimize"
                         title="Minimize"
-                        className="text-xs text-neutral-500 hover:text-black px-1"
+                        className="text-xs text-ink-muted hover:text-ink-primary px-1"
                     >
                         ›
                     </button>
@@ -205,7 +205,7 @@ export function AgreementDrawer({
                         onClick={onClose}
                         aria-label="Close drawer"
                         data-testid="drawer-close"
-                        className="text-xs text-neutral-500 hover:text-black px-1"
+                        className="text-xs text-ink-muted hover:text-ink-primary px-1"
                     >
                         ✕
                     </button>
@@ -215,7 +215,7 @@ export function AgreementDrawer({
             {orders && orders.length > 1 && onSelectOrder && (
                 <div
                     data-testid="drawer-node-tabs"
-                    className="flex flex-row gap-1 px-3 py-2 border-b border-neutral-200 overflow-x-auto"
+                    className="flex flex-row gap-1 px-3 py-2 border-b border-default overflow-x-auto"
                 >
                     {orders.map((node, index) => {
                         const isActive = node.orderHash === order.orderHash;
@@ -229,8 +229,8 @@ export function AgreementDrawer({
                                 title={node.orderHash}
                                 className={`shrink-0 rounded border px-3 py-1 text-xs ${
                                     isActive
-                                        ? "border-black bg-black text-white"
-                                        : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500"
+                                        ? "border-ink-heading bg-ink-heading text-paper"
+                                        : "border-default bg-paper text-ink-body hover:border-default-strong"
                                 }`}
                             >
                                 Order {index + 1}
@@ -243,7 +243,7 @@ export function AgreementDrawer({
             <div className="flex-1 flex flex-row overflow-hidden">
                 <nav
                     data-testid="drawer-articles-nav"
-                    className="w-[112px] shrink-0 border-r border-neutral-200 overflow-y-auto"
+                    className="w-[112px] shrink-0 border-r border-default overflow-y-auto"
                 >
                     {presentArticles.map((article) => {
                         const isOpen = openSection === article;
@@ -256,8 +256,8 @@ export function AgreementDrawer({
                                 aria-pressed={isOpen}
                                 className={`w-full text-left text-xs px-4 py-2.5 ${
                                     isOpen
-                                        ? "bg-neutral-100 text-black font-semibold"
-                                        : "text-neutral-600 hover:bg-neutral-50"
+                                        ? "bg-subtle text-ink-primary font-semibold"
+                                        : "text-ink-body hover:bg-subtle"
                                 }`}
                             >
                                 {article}
@@ -277,13 +277,13 @@ export function AgreementDrawer({
                             <div className="space-y-5">
                                 <div>
                                     <span className="text-xs text-ink-muted">Buyer</span>
-                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-identity-buyer">
+                                    <p className="font-mono text-xs text-ink-body break-all mt-0.5" data-testid="drawer-identity-buyer">
                                         {order.buyer}
                                     </p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-ink-muted">Seller</span>
-                                    <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-identity-seller">
+                                    <p className="font-mono text-xs text-ink-body break-all mt-0.5" data-testid="drawer-identity-seller">
                                         {order.seller}
                                     </p>
                                 </div>
@@ -291,7 +291,7 @@ export function AgreementDrawer({
                                     <span className="text-xs text-ink-muted">Position</span>
                                     {parentOrderHashes && parentOrderHashes.length > 0 ? (
                                         <ul
-                                            className="font-mono text-[10px] text-neutral-600 space-y-1 break-all mt-0.5"
+                                            className="font-mono text-[10px] text-ink-body space-y-1 break-all mt-0.5"
                                             data-testid="drawer-identity-parents"
                                         >
                                             {parentOrderHashes.map((p) => (
@@ -300,7 +300,7 @@ export function AgreementDrawer({
                                         </ul>
                                     ) : (
                                         <p
-                                            className="text-xs text-neutral-700 mt-0.5"
+                                            className="text-xs text-ink-body mt-0.5"
                                             data-testid="drawer-identity-root"
                                         >
                                             Root order.
@@ -404,14 +404,14 @@ function ClauseRegistryPanel({
                             </p>
                             {registeredClauses === null ? (
                                 <p
-                                    className="text-xs text-neutral-500"
+                                    className="text-xs text-ink-muted"
                                     data-testid="drawer-registry-loading"
                                 >
                                     Reading the registry&hellip;
                                 </p>
                             ) : !registryGroups || registryGroups.length === 0 ? (
                                 <p
-                                    className="text-xs text-neutral-500"
+                                    className="text-xs text-ink-muted"
                                     data-testid="drawer-registry-empty"
                                 >
                                     No clauses registered on the network this site is reading.
@@ -465,7 +465,7 @@ function ClauseControl({
     const spec = clause.clauseId ? getClauseSpec(clause.clauseId, clause.version) : undefined;
     return (
         <div>
-            <label className="flex items-center gap-2 text-xs text-neutral-700">
+            <label className="flex items-center gap-2 text-xs text-ink-body">
                 <input
                     type="checkbox"
                     className="h-3.5 w-3.5"
@@ -474,7 +474,7 @@ function ClauseControl({
                     data-testid={`drawer-registry-clause-${clauseKey}${clause.version > 1 ? `-v${clause.version}` : ""}`}
                 />
                 <span
-                    className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
+                    className={`text-xs text-ink-primary${spec?.description ? " cursor-help" : ""}`}
                     title={spec?.description}
                 >
                     {spec?.title ?? clause.clauseId ?? truncateHex(clause.idHash, { head: 10, tail: 0 })}
@@ -528,7 +528,7 @@ function ClauseControl({
                                     {nested.map((nc) => (
                                         <div
                                             key={nc.idHash}
-                                            className="mt-2 ml-3 border-l border-neutral-200 pl-3"
+                                            className="mt-2 ml-3 border-l border-default pl-3"
                                             data-testid={`drawer-nested-${field.name}-${nc.clauseId ?? nc.idHash}`}
                                         >
                                             <ClauseControl

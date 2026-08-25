@@ -217,14 +217,14 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
 
     return (
         <section
-            className="rounded border border-neutral-200 bg-white p-4 space-y-3"
+            className="rounded border border-default bg-paper p-4 space-y-3"
             data-testid="interaction-content-panel"
         >
             <div className="flex items-baseline justify-between gap-2">
-                <p className="text-xs font-semibold text-neutral-500">Content delivery (private)</p>
-                <p className="text-[11px] text-neutral-400">{clauseTitle}</p>
+                <p className="text-xs font-semibold text-ink-muted">Content delivery (private)</p>
+                <p className="text-[11px] text-ink-faint">{clauseTitle}</p>
             </div>
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-ink-body">
                 The artifact travels encrypted to this order&apos;s counterparty alone;
                 its keccak256 anchors on-chain as the completion evidence. The chain
                 never learns the bytes.
@@ -237,7 +237,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                     onClick={() => void handleRequest()}
                     disabled={busy || !channel || requested}
                     data-testid="interaction-content-request"
-                    className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500 disabled:opacity-50"
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
                 >
                     {requested ? waitingLabel : busy ? "Requesting…" : requestLabel}
                 </button>
@@ -246,11 +246,11 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
             {/* The decrypted deliverable + the anchor verdict. */}
             {received && (
                 <div className="space-y-1" data-testid="interaction-content-received">
-                    <p className="text-sm font-semibold text-black">{received.name}</p>
-                    <p className="text-xs text-neutral-700">
+                    <p className="text-sm font-semibold text-ink-primary">{received.name}</p>
+                    <p className="text-xs text-ink-body">
                         {received.mediaType} · {received.bytes.length.toLocaleString()} bytes
                     </p>
-                    <p className="text-[11px] font-mono text-neutral-500 break-all" data-testid="interaction-content-hash">
+                    <p className="text-[11px] font-mono text-ink-muted break-all" data-testid="interaction-content-hash">
                         {received.contentHash}
                     </p>
                     {anchored === "verified" && (
@@ -267,7 +267,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                         type="button"
                         onClick={handleDownload}
                         data-testid="interaction-content-download"
-                        className="text-xs px-3 py-1.5 rounded bg-black text-white hover:bg-neutral-800"
+                        className="text-xs px-3 py-1.5 rounded bg-ink-heading text-paper hover:bg-ink-primary"
                     >
                         Save the artifact
                     </button>
@@ -276,8 +276,8 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
 
             {/* Deliver MY artifact once the counterparty's key is known. */}
             {peerPubKey && !sent && (
-                <div className="space-y-2 border-t border-neutral-100 pt-3">
-                    <p className="text-xs text-neutral-600">
+                <div className="space-y-2 border-t border-default pt-3">
+                    <p className="text-xs text-ink-body">
                         Deliver the artifact ({Math.round(CONTENT_DELIVERY_MAX_BYTES / 1024)} KiB max —
                         larger deliverables use the repository-grant or public-release mode).
                         It is encrypted to this order&apos;s counterparty; only its keccak256
@@ -292,13 +292,13 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                             if (file) void handleSend(file);
                         }}
                         data-testid="interaction-content-file"
-                        className="block w-full text-xs text-neutral-700 file:mr-2 file:rounded file:border file:border-neutral-300 file:bg-white file:px-3 file:py-1.5 file:text-xs file:text-neutral-700 hover:file:border-neutral-500"
+                        className="block w-full text-xs text-ink-body file:mr-2 file:rounded file:border file:border-default file:bg-surface file:px-3 file:py-1.5 file:text-xs file:text-ink-body hover:file:border-default-strong"
                     />
-                    {busy && <p className="text-xs text-neutral-500">Encrypting + anchoring…</p>}
+                    {busy && <p className="text-xs text-ink-muted">Encrypting + anchoring…</p>}
                 </div>
             )}
             {!peerPubKey && !sent && !requested && !received && (
-                <p className="text-[11px] text-neutral-500" data-testid="interaction-content-waiting">
+                <p className="text-[11px] text-ink-muted" data-testid="interaction-content-waiting">
                     Once either side requests, the other can deliver — encrypted to this
                     order alone.
                 </p>

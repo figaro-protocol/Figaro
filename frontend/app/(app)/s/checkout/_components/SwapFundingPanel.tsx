@@ -39,7 +39,7 @@ function FundingTokenOption({
     });
     return (
         <label
-            className="flex items-center justify-between gap-2 rounded border border-neutral-200 px-3 py-2 text-sm cursor-pointer has-[:checked]:border-black"
+            className="flex items-center justify-between gap-2 rounded border border-default px-3 py-2 text-sm cursor-pointer has-[:checked]:border-ink-heading"
             data-testid={`funding-token-option-${token.address.toLowerCase()}`}
         >
             <span className="flex items-center gap-2">
@@ -48,11 +48,11 @@ function FundingTokenOption({
                     name="funding-token"
                     checked={selected}
                     onChange={onSelect}
-                    className="accent-black"
+                    className="accent-ink-heading"
                 />
-                <span className="font-medium text-black">{token.symbol}</span>
+                <span className="font-medium text-ink-primary">{token.symbol}</span>
             </span>
-            <span className="text-neutral-500 tabular-nums">
+            <span className="text-ink-muted tabular-nums">
                 {balance !== undefined ? `${formatToken(balance as bigint, decimals)} held` : "…"}
             </span>
         </label>
@@ -83,13 +83,13 @@ export function SwapFundingPanel({
 }) {
     return (
         <div
-            className="rounded border border-neutral-200 bg-neutral-50 p-3 space-y-2"
+            className="rounded border border-default bg-subtle p-3 space-y-2"
             data-testid="swap-funding-panel"
         >
-            <p className="text-xs font-semibold text-neutral-500">
+            <p className="text-xs font-semibold text-ink-muted">
                 Not enough {currencySymbol || "the settlement token"} — fund your bond from another accepted token
             </p>
-            <p className="text-[11px] text-neutral-500 leading-relaxed">
+            <p className="text-[11px] text-ink-muted leading-relaxed">
                 The chosen token is swapped into {currencySymbol || "the settlement token"} when the
                 order commits; the swap route is bound into your signature, so no relayer can change
                 it. The order itself stays priced and bonded in {currencySymbol || "the settlement token"}.

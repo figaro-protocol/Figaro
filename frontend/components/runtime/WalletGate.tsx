@@ -81,9 +81,9 @@ export interface WalletGateProps {
 }
 
 const INLINE_CLASS =
-    "rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-500 space-y-3";
+    "rounded-lg border border-default bg-paper p-4 text-sm text-ink-muted space-y-3";
 const STANDALONE_CLASS =
-    "border border-gray-200 rounded-lg px-8 py-10 text-center";
+    "border border-default rounded-lg px-8 py-10 text-center";
 
 export function WalletGate({
     hint,
@@ -109,12 +109,12 @@ export function WalletGate({
         return (
             <div className={wrapperClass} data-testid={testId ?? "wallet-gate"}>
                 {title && (
-                    <p className="text-sm font-semibold text-black mb-1">{title}</p>
+                    <p className="text-sm font-semibold text-ink-primary mb-1">{title}</p>
                 )}
                 {explainer && (
-                    <p className="text-xs text-gray-500 mb-3 text-left">{explainer}</p>
+                    <p className="text-xs text-ink-muted mb-3 text-left">{explainer}</p>
                 )}
-                <p className="text-xs text-gray-500 mb-6">{hint}</p>
+                <p className="text-xs text-ink-muted mb-6">{hint}</p>
                 <ConnectWallet />
             </div>
         );

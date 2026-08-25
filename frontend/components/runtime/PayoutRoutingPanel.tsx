@@ -69,9 +69,9 @@ export function PayoutRoutingPanel({ currency }: Props) {
     }
 
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="payout-routing">
-            <p className="text-xs font-semibold text-neutral-500 mb-1">Route your receipts</p>
-            <p className="text-sm text-neutral-600 mb-3">
+        <div className="rounded-lg border border-default bg-paper p-4" data-testid="payout-routing">
+            <p className="text-xs font-semibold text-ink-muted mb-1">Route your receipts</p>
+            <p className="text-sm text-ink-body mb-3">
                 Split what you were paid to earmarked addresses in one transaction,
                 through the public multisender this deployment composes with. Your
                 wallet, your receipts — the batch is atomic and the split becomes
@@ -87,7 +87,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
                             onChange={(e) => setLeg(i, { recipient: e.target.value })}
                             placeholder="0x recipient"
                             data-testid={`payout-routing-recipient-${i}`}
-                            className="flex-1 rounded border border-neutral-300 bg-white px-2 py-1 text-xs font-mono text-black focus:outline-none focus:ring-1 focus:ring-accent"
+                            className="flex-1 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
                         />
                         <input
                             type="text"
@@ -96,14 +96,14 @@ export function PayoutRoutingPanel({ currency }: Props) {
                             onChange={(e) => setLeg(i, { amount: e.target.value })}
                             placeholder={`amount${symbol ? ` (${symbol})` : ""}`}
                             data-testid={`payout-routing-amount-${i}`}
-                            className="w-36 rounded border border-neutral-300 bg-white px-2 py-1 text-xs font-mono text-black focus:outline-none focus:ring-1 focus:ring-accent"
+                            className="w-36 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
                         />
                         {legs.length > 1 && (
                             <button
                                 type="button"
                                 onClick={() => setLegs((prev) => prev.filter((_, j) => j !== i))}
                                 data-testid={`payout-routing-remove-${i}`}
-                                className="text-xs text-neutral-500 hover:text-neutral-700"
+                                className="text-xs text-ink-muted hover:text-ink-body"
                                 title="Remove this leg"
                             >
                                 ✕
@@ -117,7 +117,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
                     type="button"
                     onClick={() => setLegs((prev) => [...prev, { recipient: "", amount: "" }])}
                     data-testid="payout-routing-add-leg"
-                    className="text-xs text-neutral-500 hover:text-neutral-700 underline"
+                    className="text-xs text-ink-muted hover:text-ink-body underline"
                 >
                     Add a recipient
                 </button>

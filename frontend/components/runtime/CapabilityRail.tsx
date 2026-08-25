@@ -51,23 +51,23 @@ export function CapabilityRail({
     };
 
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-4" data-testid="capability-rail">
-            <p className="text-xs font-semibold text-neutral-500 mb-1">
+        <div className="rounded-lg border border-default bg-paper p-4" data-testid="capability-rail">
+            <p className="text-xs font-semibold text-ink-muted mb-1">
                 What You Can Do
             </p>
             {contextLabel && (
-                <p className="mb-3 text-sm font-medium text-neutral-600">{contextLabel}</p>
+                <p className="mb-3 text-sm font-medium text-ink-body">{contextLabel}</p>
             )}
             <div className="space-y-2">
                 {sorted.map((capability) => (
                     <div
                         key={capability.id}
-                        className="rounded border border-neutral-200 p-3"
+                        className="rounded border border-default p-3"
                         data-testid={`capability-${capability.actionKind}`}
                         data-clause-id={attestClauseId(capability)}
                     >
                         <div className="flex items-center justify-between gap-3">
-                            <p className="font-semibold text-black text-sm">{capability.label}</p>
+                            <p className="font-semibold text-ink-primary text-sm">{capability.label}</p>
                         </div>
                         {capability.inputFields && capability.inputFields.length > 0 && (
                             <div className="mt-3 space-y-3" data-testid={`capability-inputs-${capability.id}`}>
@@ -104,7 +104,7 @@ export function CapabilityRail({
                         </div>
                     </div>
                 ))}
-                {sorted.length === 0 && <p className="text-sm text-neutral-500" data-testid="capability-rail-empty">No capabilities derived.</p>}
+                {sorted.length === 0 && <p className="text-sm text-ink-muted" data-testid="capability-rail-empty">No capabilities derived.</p>}
             </div>
         </div>
     );

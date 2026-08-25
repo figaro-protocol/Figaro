@@ -116,14 +116,14 @@ export function PublishedList() {
                             type="button"
                             onClick={() => handleFork(choice)}
                             disabled={forking !== null || choice.state !== "loaded"}
-                            className="text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-neutral-100 text-black disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-primary disabled:opacity-40 disabled:cursor-not-allowed"
                             data-testid={`published-fork-${choice.slug}`}
                         >
                             {forking === choice.slug ? "Forking…" : "Fork"}
                         </button>
                         <Link
                             href={`/assemblies/designer/view?slug=${encodeURIComponent(choice.slug)}`}
-                            className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
+                            className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center"
                             data-testid={`published-inspect-${choice.slug}`}
                         >
                             Inspect

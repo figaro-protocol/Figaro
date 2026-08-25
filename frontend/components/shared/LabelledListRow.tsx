@@ -37,13 +37,13 @@ export function LabelledListRow({
         <li id={id} className={`flex gap-4${id ? " scroll-mt-24" : ""}`}>
             <span
                 className={
-                    `font-mono text-xs text-gray-500 mt-1 ${WIDTH_CLASS[labelWidth]} shrink-0` +
+                    `font-mono text-xs text-ink-muted mt-1 ${WIDTH_CLASS[labelWidth]} shrink-0` +
                     (uppercase ? " uppercase" : "")
                 }
             >
                 {label}
             </span>
-            <span className="text-sm text-gray-700 leading-relaxed">{children}</span>
+            <span className="text-sm text-ink-body leading-relaxed">{children}</span>
         </li>
     );
 }

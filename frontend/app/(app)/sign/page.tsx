@@ -309,15 +309,15 @@ function SignPageContent() {
 
     return (
         <div className="max-w-lg mx-auto px-4 py-12 space-y-6">
-            <h1 className="text-2xl font-bold text-black">Counter-Sign Commitment</h1>
-            <p className="text-sm text-neutral-600">
+            <h1 className="text-2xl font-bold text-ink-primary">Counter-Sign Commitment</h1>
+            <p className="text-sm text-ink-body">
                 This page listens for incoming commitment payloads over XMTP while your wallet is connected.
                 You can still paste a payload manually or open a share link that preloads it.
             </p>
 
             {!parsed && !rawInput.trim() && !searchParams.get("payload") && address && (
                 <Card className="p-4 space-y-2">
-                    <h2 className="text-sm font-semibold text-neutral-900">Secure Channel</h2>
+                    <h2 className="text-sm font-semibold text-ink-primary">Secure Channel</h2>
                     {channelStatus === "listening" && (
                         <p className="text-xs text-blue-600" data-testid="xmtp-commitment-channel-status">
                             Listening for incoming commitment payloads over XMTP…
@@ -328,7 +328,7 @@ function SignPageContent() {
                             {channelError ?? "Could not open the XMTP channel."}
                         </p>
                     )}
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-ink-muted">
                         Manual paste remains available below as a fallback.
                     </p>
                 </Card>
@@ -337,12 +337,12 @@ function SignPageContent() {
             {/* Step 1: Paste payload */}
             {!parsed && (
                 <Card className="p-4 space-y-3">
-                    <label className="block text-sm font-medium text-neutral-700">
+                    <label className="block text-sm font-medium text-ink-body">
                         Commitment Payload
                     </label>
                     <textarea
                         data-testid="input-commitment-payload"
-                        className="w-full bg-white border border-neutral-300 rounded-lg px-3 py-2 text-black text-sm font-mono placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full bg-surface border border-default rounded-lg px-3 py-2 text-ink-primary text-sm font-mono placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                         rows={6}
                         placeholder='Paste the JSON payload here…'
                         value={rawInput}
@@ -365,7 +365,7 @@ function SignPageContent() {
             {/* Step 2: Review & counter-sign */}
             {parsed && commitment && step !== "done" && step !== "awaiting-buyer" && (
                 <Card className="p-4 space-y-4">
-                    <h2 className="text-sm font-semibold text-neutral-900">
+                    <h2 className="text-sm font-semibold text-ink-primary">
                         {isRoot ? "Order Commitment" : "Sub-Order Commitment"}
                     </h2>
 
@@ -392,7 +392,7 @@ function SignPageContent() {
                     <AgreementReview commitment={commitment} agreement={parsed.agreement ?? null} />
 
                     {/* This party's position — context the agreement itself doesn't carry */}
-                    <div className="text-xs space-y-1.5 text-neutral-600 border-t border-neutral-200 pt-3">
+                    <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3">
                         <div className="flex justify-between">
                             <span>{myBondLabel}</span>
                             <span>{formatToken(myBondAmount, tokenDecimals)} tokens</span>
@@ -447,8 +447,8 @@ function SignPageContent() {
                     {/* Payment authorization before counter-signing */}
                     {needsMySignature && !approvalDone && approvalCurrency && (
                         <div className="space-y-2">
-                            <h3 className="text-xs font-semibold text-neutral-700">Payment Authorization</h3>
-                            <p className="text-xs text-neutral-500">
+                            <h3 className="text-xs font-semibold text-ink-body">Payment Authorization</h3>
+                            <p className="text-xs text-ink-muted">
                                 Authorize the deposit for this order before signing.
                             </p>
                             <TokenApprovalFlow
@@ -475,7 +475,7 @@ function SignPageContent() {
                                     if (fundingOpen) setSellerFundingToken(null);
                                     setFundingOpen(!fundingOpen);
                                 }}
-                                className="text-xs text-neutral-500 underline hover:text-neutral-700"
+                                className="text-xs text-ink-muted underline hover:text-ink-body"
                                 data-testid="seller-funding-toggle"
                             >
                                 {fundingOpen ? "Bond from the order's token instead" : "Fund bond from another token"}
@@ -501,7 +501,7 @@ function SignPageContent() {
                         buyer-signed order counter-signs & submits. */}
                     {needsMySignature && approvalDone && (isQuoteRequest ? (
                         <div className="space-y-2">
-                            <p className="text-xs text-neutral-600">
+                            <p className="text-xs text-ink-body">
                                 The buyer asks for your price — at most{" "}
                                 <span className="font-semibold" data-testid="quote-ceiling">
                                     {formatToken(commitment!.payment, tokenDecimals)} {currencySymbol}
@@ -514,7 +514,7 @@ function SignPageContent() {
                                 value={quotePrice}
                                 onChange={(e) => setQuotePrice(e.target.value)}
                                 placeholder="Your price"
-                                className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
                                 data-testid="quote-price-input"
                             />
                             <Button
@@ -564,7 +564,7 @@ function SignPageContent() {
 
                     <button
                         onClick={handleReset}
-                        className="text-xs text-neutral-500 hover:text-neutral-700"
+                        className="text-xs text-ink-muted hover:text-ink-body"
                     >
                         ← Start over
                     </button>
@@ -576,10 +576,10 @@ function SignPageContent() {
                 struct before its deadline. */}
             {step === "awaiting-buyer" && (
                 <Card className="p-6 text-center space-y-3">
-                    <p className="text-sm font-semibold text-black" data-testid="sign-offer-returned">
+                    <p className="text-sm font-semibold text-ink-primary" data-testid="sign-offer-returned">
                         Offer returned to the buyer.
                     </p>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-ink-muted">
                         If the buyer commits you before the offer&apos;s deadline, the
                         commit-ready order appears on your Orders page. Until then
                         nothing binds either side, and the offer simply expires.
@@ -597,7 +597,7 @@ function SignPageContent() {
             {step === "done" && (
                 <Card className="p-6 text-center space-y-3">
                     <p className="text-green-600 font-semibold">Commitment submitted on-chain.</p>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-ink-muted">
                         Both parties&apos; bonds are now locked. The order is Active.
                     </p>
                     <button
@@ -611,7 +611,7 @@ function SignPageContent() {
 
             {/* Not connected */}
             {!address && (
-                <p className="text-sm text-neutral-500 text-center">
+                <p className="text-sm text-ink-muted text-center">
                     Connect your wallet to counter-sign a commitment.
                 </p>
             )}
@@ -624,8 +624,8 @@ export default function SignPage() {
         <Suspense
             fallback={
                 <div className="max-w-lg mx-auto px-4 py-12 space-y-6">
-                    <h1 className="text-2xl font-bold text-black">Counter-Sign Commitment</h1>
-                    <p className="text-sm text-neutral-600">Loading shared commitment context…</p>
+                    <h1 className="text-2xl font-bold text-ink-primary">Counter-Sign Commitment</h1>
+                    <p className="text-sm text-ink-body">Loading shared commitment context…</p>
                 </div>
             }
         >

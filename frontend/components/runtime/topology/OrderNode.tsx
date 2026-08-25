@@ -9,8 +9,8 @@ import { describeClause } from "@/lib/shared/clauseSpecSource";
 // ── Visual maps ─────────────────────────────────────────────────────────────
 
 const STATE_COLORS: Record<OrderState, string> = {
-    [OrderState.Active]: "bg-white border-green-500",
-    [OrderState.Resolved]: "bg-white border-gray-300 opacity-60",
+    [OrderState.Active]: "bg-paper border-green-500",
+    [OrderState.Resolved]: "bg-paper border-default opacity-60",
 };
 
 const STATE_LABELS: Record<OrderState, string> = {
@@ -75,7 +75,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
         : [];
 
     const nodeClassName = data.designerMode
-        ? `px-1.5 py-1 rounded min-w-[112px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
+        ? `px-1.5 py-1 rounded min-w-[112px] border border-default bg-paper cursor-pointer hover:border-default-strong`
         : `px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${
             data.isBuyer
                 ? "ring-2 ring-offset-1 ring-blue-500"
@@ -99,7 +99,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             />
             <div className="flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1.5">
-                    <span className={`${data.designerMode ? "text-[10px]" : "text-xs"} font-semibold text-black`} title={data.orderHash}>
+                    <span className={`${data.designerMode ? "text-[10px]" : "text-xs"} font-semibold text-ink-primary`} title={data.orderHash}>
                         {data.designerMode
                             ? `Order ${data.orderNumber}`
                             : `Order #${data.orderHash.toString().slice(0, 8)}`}
@@ -131,7 +131,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`btn-add-suborder-${data.orderHash}`}
                             aria-label={`Add a sub-order under order ${data.orderHash.slice(0, 8)}`}
                             title="Add a sub-order (child) of this order"
-                            className="nodrag w-3.5 h-3.5 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-[10px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border border-default bg-paper text-ink-body hover:bg-subtle hover:border-default-strong text-[10px] leading-none flex items-center justify-center"
                         >
                             +
                         </button>
@@ -146,7 +146,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`order-node-${data.orderHash}-delete`}
                             aria-label={`Delete order ${data.orderHash.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
-                            className="nodrag w-3.5 h-3.5 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-[10px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border border-red-300 bg-paper text-red-600 hover:bg-red-50 hover:border-red-500 text-[10px] leading-none flex items-center justify-center"
                         >
                             ×
                         </button>
@@ -162,14 +162,14 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 {!data.designerMode && (
                     <>
                         <div className="flex justify-between font-semibold">
-                            <span className="text-neutral-600">Pay</span>
-                            <span className="text-black">{formatToken(data.payment ?? 0n, data.decimals)}</span>
+                            <span className="text-ink-body">Pay</span>
+                            <span className="text-ink-primary">{formatToken(data.payment ?? 0n, data.decimals)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-neutral-600">Total</span>
-                            <span className="text-black">{formatToken(data.cumulativeValue ?? 0n, data.decimals)}</span>
+                            <span className="text-ink-body">Total</span>
+                            <span className="text-ink-primary">{formatToken(data.cumulativeValue ?? 0n, data.decimals)}</span>
                         </div>
-                        <div className="flex justify-between font-mono text-[10px] text-neutral-500 pt-1 border-t border-neutral-100">
+                        <div className="flex justify-between font-mono text-[10px] text-ink-muted pt-1 border-t border-default">
                             <span title={data.buyer}>{buyerShort}</span>
                             <span className="opacity-50">→</span>
                             <span title={data.seller}>{sellerShort}</span>
@@ -180,26 +180,26 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 {/* Designer mode: the node's composed terms, derived per clause —
                     so "what this order does" is legible without opening the drawer. */}
                 {data.designerMode && (designerChips.length > 0 ? (
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-neutral-100" data-testid={`node-clauses-${data.orderHash}`}>
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-default" data-testid={`node-clauses-${data.orderHash}`}>
                         {designerChips.map((c) => (
                             <span
                                 key={c.clauseId}
                                 title={c.clauseId}
-                                className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 text-[10px] leading-tight"
+                                className="px-1.5 py-0.5 rounded bg-subtle text-ink-body text-[10px] leading-tight"
                             >
                                 {c.label}
                             </span>
                         ))}
                     </div>
                 ) : (
-                    <p className="pt-1 text-[10px] italic text-neutral-400" data-testid={`node-clauses-empty-${data.orderHash}`}>
+                    <p className="pt-1 text-[10px] italic text-ink-faint" data-testid={`node-clauses-empty-${data.orderHash}`}>
                         No terms yet — click to compose
                     </p>
                 ))}
 
             </div>
             {data.designerMode && data.onAddParentClick && data.candidateParents && data.candidateParents.length > 0 && (
-                <div className="nodrag mt-1.5 pt-1.5 border-t border-neutral-100">
+                <div className="nodrag mt-1.5 pt-1.5 border-t border-default">
                     <select
                         data-testid={`select-add-parent-${data.orderHash}`}
                         aria-label={`Add a parent to order ${data.orderHash.slice(0, 8)}`}
@@ -211,7 +211,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             e.currentTarget.value = "";
                             if (parentId) data.onAddParentClick?.(data.orderHash, parentId);
                         }}
-                        className="nodrag w-full rounded border border-neutral-300 bg-white text-[10px] text-neutral-600 px-1 py-0.5"
+                        className="nodrag w-full rounded border border-default bg-surface text-[10px] text-ink-body px-1 py-0.5"
                     >
                         <option value="" disabled>+ add parent…</option>
                         {data.candidateParents.map((p) => (

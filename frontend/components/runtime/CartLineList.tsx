@@ -47,19 +47,19 @@ export function CartLineList({ items, tokenSymbol, emphasizePrice = false, showS
                         className="flex items-baseline justify-between gap-2"
                         data-testid={`cart-line-${item.catalogueItemId}`}
                     >
-                        <span className="flex-1 min-w-0 text-black font-medium truncate">
-                            {item.name} <span className="text-neutral-400">× {item.quantity}</span>
+                        <span className="flex-1 min-w-0 text-ink-primary font-medium truncate">
+                            {item.name} <span className="text-ink-faint">× {item.quantity}</span>
                         </span>
-                        <span className={`text-neutral-900 ${emphasizePrice ? "font-semibold " : ""}tabular-nums shrink-0`}>
+                        <span className={`text-ink-primary ${emphasizePrice ? "font-semibold " : ""}tabular-nums shrink-0`}>
                             {cartLineTotal(item).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                         </span>
                     </li>
                 ))}
             </ul>
             {showSubtotal && (
-                <div className="flex justify-between border-t border-neutral-200 pt-3 text-sm font-semibold">
-                    <span className="text-black">Subtotal</span>
-                    <span className="text-black tabular-nums" data-testid="cart-subtotal">
+                <div className="flex justify-between border-t border-default pt-3 text-sm font-semibold">
+                    <span className="text-ink-primary">Subtotal</span>
+                    <span className="text-ink-primary tabular-nums" data-testid="cart-subtotal">
                         {sumCartValue(items).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                     </span>
                 </div>

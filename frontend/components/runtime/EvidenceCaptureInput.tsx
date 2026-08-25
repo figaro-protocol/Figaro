@@ -82,7 +82,7 @@ export function EvidenceCaptureInput({ value, onChange, testId }: FieldFormatInp
                             onClick={() => void capture(kind)}
                             disabled={capturing !== null}
                             data-testid={`${testId}-capture-${kind}`}
-                            className="text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500 disabled:opacity-50"
+                            className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
                         >
                             {capturing === kind ? "Capturing…" : CAPTURE_LABELS[kind]}
                         </button>
@@ -95,14 +95,14 @@ export function EvidenceCaptureInput({ value, onChange, testId }: FieldFormatInp
                 onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
                 placeholder="Evidence URI — capture above, or paste any artifact locator"
                 data-testid={testId}
-                className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-[12px] font-mono text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full rounded border border-default bg-surface px-2 py-1.5 text-[12px] font-mono text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
             />
             {retained && (
                 <button
                     type="button"
                     onClick={() => void purge()}
                     data-testid={`${testId}-capture-purge`}
-                    className="text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-500 hover:border-red-400 hover:text-red-600"
+                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-muted hover:border-red-400 hover:text-red-600"
                 >
                     Unpin + purge this capture
                 </button>

@@ -20,6 +20,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
 import { parseClauseSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import { WalletGate } from "@/components/runtime/WalletGate";
+import { Button } from "@/components/ui/Button";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
 import {
@@ -179,15 +180,15 @@ export function RegisterClauseForm() {
 
             {mounted && validation.state === "valid" && (
                 <WalletGate hint="Connect a wallet to sign the registration and post the deposit.">
-                    <button
+                    <Button
                         type="button"
                         onClick={handleRegister}
                         disabled={submitting}
-                        className="text-sm px-5 py-2.5 rounded-tile border border-ink-heading bg-ink-heading text-paper font-semibold hover:bg-ink-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="font-semibold"
                         data-testid="clause-register-button"
                     >
                         {submitting ? "Registering…" : "Register clause"}
-                    </button>
+                    </Button>
                 </WalletGate>
             )}
         </div>

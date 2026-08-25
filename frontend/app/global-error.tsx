@@ -27,21 +27,21 @@ export default function GlobalError({
 
     return (
         <html lang="en">
-            <body className="bg-white text-black">
+            <body className="bg-canvas text-ink-primary">
                 <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="max-w-md w-full bg-white border border-gray-300 rounded-lg p-8 text-center">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-6">
-                            <AlertTriangle className="w-8 h-8 text-black" aria-hidden="true" />
+                    <div className="max-w-md w-full bg-paper border border-default rounded-lg p-8 text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-subtle rounded-full mb-6">
+                            <AlertTriangle className="w-8 h-8 text-ink-primary" aria-hidden="true" />
                         </div>
 
                         <h2 className="text-2xl font-bold mb-3">
                             Critical Error
                         </h2>
 
-                        <p className="text-gray-700 mb-6">
+                        <p className="text-ink-body mb-6">
                             A critical error occurred. Please refresh the page to continue.
                             {error.digest && (
-                                <span className="block text-xs text-gray-500 mt-2">
+                                <span className="block text-xs text-ink-muted mt-2">
                                     Error ID: {error.digest}
                                 </span>
                             )}
@@ -50,14 +50,14 @@ export default function GlobalError({
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={reset}
-                                className="px-6 py-3 bg-white border border-gray-300 text-black font-semibold rounded-lg"
+                                className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg"
                             >
                                 Try again
                             </button>
 
                             <button
                                 onClick={copyError}
-                                className="px-6 py-3 bg-white border border-gray-300 text-black font-semibold rounded-lg inline-flex items-center justify-center gap-2"
+                                className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg inline-flex items-center justify-center gap-2"
                             >
                                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                 {copied ? 'Copied' : 'Copy Error Details'}
@@ -65,7 +65,7 @@ export default function GlobalError({
 
                             <button
                                 onClick={() => window.location.href = '/'}
-                                className="px-6 py-3 bg-white border border-gray-300 text-black font-semibold rounded-lg"
+                                className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg"
                             >
                                 Go home
                             </button>

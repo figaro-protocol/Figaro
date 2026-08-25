@@ -33,7 +33,7 @@ export function MemberCard({
 
     return (
         <article
-            className="relative rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
+            className="relative rounded-lg border border-default bg-paper p-4 transition-shadow hover:shadow-sm"
             data-testid="member-card"
             data-seller-address={listing.address}
         >
@@ -55,7 +55,7 @@ export function MemberCard({
                     <InitialsAvatar name={listing.name} className="shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-semibold text-black truncate group-hover:underline">
+                    <h3 className="text-base font-semibold text-ink-primary truncate group-hover:underline">
                         {listing.name}
                     </h3>
                 </div>
@@ -63,22 +63,22 @@ export function MemberCard({
 
             {/* Description / specialty / location — informational, not interactive. */}
             {listing.description && (
-                <p className="text-sm text-gray-700 leading-snug mb-3 line-clamp-2">
+                <p className="text-sm text-ink-body leading-snug mb-3 line-clamp-2">
                     {listing.description}
                 </p>
             )}
 
             {listing.specialty && (
-                <p className="text-xs text-gray-600 mb-2">
+                <p className="text-xs text-ink-body mb-2">
                     <span className="font-semibold">Specialty:</span> {listing.specialty}
                 </p>
             )}
 
             {(listing.geohash || listing.addressText) && (
-                <p className="text-xs text-gray-500 mb-3 truncate">
+                <p className="text-xs text-ink-muted mb-3 truncate">
                     {listing.addressText ?? listing.geohash}
                     {listing.addressText && listing.geohash ? (
-                        <span className="font-mono text-gray-400 ml-2">({listing.geohash})</span>
+                        <span className="font-mono text-ink-faint ml-2">({listing.geohash})</span>
                     ) : null}
                 </p>
             )}
@@ -88,8 +88,8 @@ export function MemberCard({
                 itself the signal, matching the detail page's honest empty
                 state. The full breakdown lives on /s/view?seller=<address>. */}
             {trackRecord && trackRecord.completedProcesses > 0 && (
-                <p className="text-xs text-gray-600 mb-3" data-testid="card-track-record">
-                    <span className="font-semibold text-black tabular-nums">
+                <p className="text-xs text-ink-body mb-3" data-testid="card-track-record">
+                    <span className="font-semibold text-ink-primary tabular-nums">
                         {trackRecord.completedProcesses}
                     </span>
                     {" processes completed on the public graph"}
@@ -104,7 +104,7 @@ export function MemberCard({
                             key={slug}
                             type="button"
                             onClick={() => onAssemblyClick(slug)}
-                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:border-black hover:bg-gray-200 transition-colors cursor-pointer"
+                            className="text-xs px-2 py-0.5 rounded-full bg-subtle text-ink-body border border-default hover:border-default-strong hover:bg-subtle-hover transition-colors cursor-pointer"
                             aria-label={`Filter by ${slug}`}
                         >
                             {slug}
@@ -112,7 +112,7 @@ export function MemberCard({
                     ) : (
                         <span
                             key={slug}
-                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200"
+                            className="text-xs px-2 py-0.5 rounded-full bg-subtle text-ink-body border border-default"
                         >
                             {slug}
                         </span>
@@ -124,7 +124,7 @@ export function MemberCard({
 
             {/* Accepted tokens — plain text, not pills. Descriptive, not filterable. */}
             {listing.acceptedTokens.length > 0 && (
-                <p className="pt-2 border-t border-gray-100 text-xs text-gray-500">
+                <p className="pt-2 border-t border-default text-xs text-ink-muted">
                     Accepts {listing.acceptedTokens.map((t) => t.symbol).join(", ")}
                 </p>
             )}

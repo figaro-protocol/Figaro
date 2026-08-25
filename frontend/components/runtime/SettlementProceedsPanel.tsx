@@ -56,30 +56,30 @@ export function SettlementProceedsPanel({
 
     return (
         <div
-            className="mt-3 border border-neutral-200 rounded-lg p-4 bg-neutral-50 space-y-3"
+            className="mt-3 border border-default rounded-lg p-4 bg-subtle space-y-3"
             data-testid="settlement-proceeds"
         >
-            <p className="text-xs font-semibold text-neutral-500">
+            <p className="text-xs font-semibold text-ink-muted">
                 Settlement Complete
             </p>
-            <dl className="text-sm text-neutral-700 space-y-1">
+            <dl className="text-sm text-ink-body space-y-1">
                 <div className="flex justify-between gap-4">
                     <dt>{isSeller ? "Payment received" : "Payment sent"}</dt>
-                    <dd className="font-medium text-black" data-testid="settlement-payment">
+                    <dd className="font-medium text-ink-primary" data-testid="settlement-payment">
                         {fmt(payment)}
                     </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                     <dt>Bond returned to your wallet</dt>
-                    <dd className="font-medium text-black" data-testid="settlement-bond-returned">
+                    <dd className="font-medium text-ink-primary" data-testid="settlement-bond-returned">
                         {fmt(bondReturned)}
                     </dd>
                 </div>
             </dl>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-muted">
                 The agreement completed as guaranteed — your bond is back in your wallet.
             </p>
-            <p className="text-xs text-neutral-500 font-mono truncate" title={sourceOrderId}>
+            <p className="text-xs text-ink-muted font-mono truncate" title={sourceOrderId}>
                 Order: {truncateHex(sourceOrderId, { head: 14, tail: 8 })}
             </p>
         </div>

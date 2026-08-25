@@ -265,8 +265,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     if (cataloguesLoading) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Checkout</p>
-                <h1 className="text-3xl font-bold text-black">Loading…</h1>
+                <p className="text-xs font-semibold text-ink-muted mb-3">Checkout</p>
+                <h1 className="text-3xl font-bold text-ink-primary">Loading…</h1>
             </div>
         );
     }
@@ -274,9 +274,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     if (!memberCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
-                <h1 className="text-3xl font-bold text-black">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
-                <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
+                <p className="text-xs font-semibold text-ink-muted mb-3">Seller not found</p>
+                <h1 className="text-3xl font-bold text-ink-primary">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
+                <Link href="/discover" className="inline-block underline text-sm text-ink-primary hover:text-ink-body">
                     ← Back to discover
                 </Link>
             </div>
@@ -607,24 +607,24 @@ export function CheckoutView({ sellerAddress }: Props) {
     return (
         <div data-testid="checkout-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-2xl space-y-6">
             <div>
-                <Link href={`/s/view?seller=${sellerAddressLower}`} className="text-sm text-neutral-500 hover:text-black">
+                <Link href={`/s/view?seller=${sellerAddressLower}`} className="text-sm text-ink-muted hover:text-ink-primary">
                     ← Back to {memberCatalogue.name}
                 </Link>
             </div>
 
             <header className="space-y-1">
-                <p className="text-xs font-semibold text-neutral-500">Checkout</p>
-                <h1 className="text-2xl font-bold text-black">Order from {memberCatalogue.name}</h1>
+                <p className="text-xs font-semibold text-ink-muted">Checkout</p>
+                <h1 className="text-2xl font-bold text-ink-primary">Order from {memberCatalogue.name}</h1>
             </header>
 
             <section
-                className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
+                className="rounded-lg border border-default bg-paper p-5 space-y-4"
                 data-testid="checkout-cart"
             >
                 {cartItems.length === 0 ? (
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-ink-muted">
                         Your cart is empty.{" "}
-                        <Link href={`/s/view?seller=${sellerAddressLower}`} className="underline text-black hover:text-neutral-600">
+                        <Link href={`/s/view?seller=${sellerAddressLower}`} className="underline text-ink-primary hover:text-ink-body">
                             Browse {memberCatalogue.name}&apos;s catalogue
                         </Link>{" "}
                         to add items.
@@ -642,8 +642,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                             pin replaces the pick entirely; a single-entry array
                             offers no choice. */}
                         {!utilityTokenPin && currency && (memberCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
-                            <div className="border-t border-neutral-200 pt-3 space-y-1" data-testid="payment-token-picker">
-                                <p className="text-xs font-semibold text-neutral-500">Pay in</p>
+                            <div className="border-t border-default pt-3 space-y-1" data-testid="payment-token-picker">
+                                <p className="text-xs font-semibold text-ink-muted">Pay in</p>
                                 <div className="flex flex-wrap gap-3 text-sm">
                                     {memberCatalogue!.acceptedTokens!.map((t) => (
                                         <label key={t.address} className="flex items-center gap-1.5 cursor-pointer">
@@ -660,7 +660,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             />
                                             <span>{t.symbol}</span>
                                             {sellerDefault && hexEqual(t.address, sellerDefault) && (
-                                                <span className="text-xs text-neutral-400">(list price)</span>
+                                                <span className="text-xs text-ink-faint">(list price)</span>
                                             )}
                                         </label>
                                     ))}
@@ -674,19 +674,19 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         )}
                         {utilityTokenPin && (
-                            <p className="text-xs text-neutral-500 border-t border-neutral-200 pt-3" data-testid="payment-token-pinned">
+                            <p className="text-xs text-ink-muted border-t border-default pt-3" data-testid="payment-token-pinned">
                                 This assembly is denominated by design{tokenSymbol ? ` — every bond and payment moves in ${tokenSymbol}` : ""}.
                             </p>
                         )}
 
-                        <div className="border-t border-neutral-200 pt-3 space-y-1.5 text-sm">
+                        <div className="border-t border-default pt-3 space-y-1.5 text-sm">
                             {kitBreakdown ? (
                                 <div className="space-y-1" data-testid="cart-contributor-breakdown">
                                     {kitBreakdown.rows.map((row, i) => (
                                         <div key={i}>
                                             <div className="flex justify-between">
-                                                <span className="text-neutral-600">{row.name}</span>
-                                                <span className="text-neutral-900 tabular-nums">
+                                                <span className="text-ink-body">{row.name}</span>
+                                                <span className="text-ink-primary tabular-nums">
                                                     {formatToken(row.payment, tokenDecimals)}
                                                 </span>
                                             </div>
@@ -695,7 +695,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                 unit; the same numbers commit as the line item. */}
                                             {row.pricing?.item?.pricingPolicy === "rate" && !row.pricing.issue && (
                                                 <div
-                                                    className="flex justify-between text-xs text-neutral-500"
+                                                    className="flex justify-between text-xs text-ink-muted"
                                                     data-testid={`rate-derivation-${row.nodeId}`}
                                                 >
                                                     <span>
@@ -709,7 +709,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                 </div>
                                             )}
                                             {row.pricing?.item?.rateQuantitySource === "checkout-quantity" && (
-                                                <label className="mt-1 flex items-center justify-between gap-2 text-xs text-neutral-600">
+                                                <label className="mt-1 flex items-center justify-between gap-2 text-xs text-ink-body">
                                                     <span>{row.pricing.item.rateUnit ?? "unit"}s</span>
                                                     <input
                                                         type="number"
@@ -724,7 +724,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                 [row.nodeId!]: Number.isFinite(n) && n > 0 ? n : 0,
                                                             }));
                                                         }}
-                                                        className="w-20 rounded border border-neutral-300 px-2 py-1 text-right text-sm"
+                                                        className="w-20 rounded border border-default px-2 py-1 text-right text-sm"
                                                         data-testid={`rate-quantity-input-${row.nodeId}`}
                                                     />
                                                 </label>
@@ -738,41 +738,41 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             )}
                                         </div>
                                     ))}
-                                    <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-medium">
-                                        <span className="text-neutral-700">Total to all sellers</span>
-                                        <span className="text-neutral-900 tabular-nums" data-testid="cart-kit-total">
+                                    <div className="flex justify-between border-t border-default pt-1.5 font-medium">
+                                        <span className="text-ink-body">Total to all sellers</span>
+                                        <span className="text-ink-primary tabular-nums" data-testid="cart-kit-total">
                                             {formatToken(kitBreakdown.total, tokenDecimals)}
                                         </span>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-600">Payment to seller</span>
-                                    <span className="text-neutral-900 tabular-nums">
+                                    <span className="text-ink-body">Payment to seller</span>
+                                    <span className="text-ink-primary tabular-nums">
                                         {formatToken(cartTotal, tokenDecimals)}
                                     </span>
                                 </div>
                             )}
                             <div className="flex justify-between">
-                                <span className="text-neutral-600">Your bond (refundable on resolve)</span>
-                                <span className="text-neutral-900 tabular-nums" data-testid="checkout-bond-refundable">
+                                <span className="text-ink-body">Your bond (refundable on resolve)</span>
+                                <span className="text-ink-primary tabular-nums" data-testid="checkout-bond-refundable">
                                     {formatToken(planTotal, tokenDecimals)}
                                 </span>
                             </div>
-                            <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
-                                <span className="text-black">Locked at commit</span>
-                                <span className="text-black tabular-nums" data-testid="checkout-locked-total">
+                            <div className="flex justify-between border-t border-default pt-1.5 font-semibold">
+                                <span className="text-ink-primary">Locked at commit</span>
+                                <span className="text-ink-primary tabular-nums" data-testid="checkout-locked-total">
                                     {formatToken(lockedTotal, tokenDecimals)}
                                 </span>
                             </div>
-                            <p className="text-[11px] text-neutral-500 pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
+                            <p className="text-[11px] text-ink-muted pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
                                 Both you and the seller lock a bond against this deal, so cooperation is the
                                 seller&apos;s only profitable move — no arbitrator, no timeout, no admin. You
                                 alone resolve it; your bond returns when you do, and you pay only the price above.
                             </p>
                             {(cartMassGrams > 0 || cartVolumeMl > 0) && (
                                 <div
-                                    className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
+                                    className="flex justify-between text-[11px] text-ink-muted pt-1.5 border-t border-default"
                                     data-testid="cart-logistics-total"
                                 >
                                     <span>Shipment</span>
@@ -790,18 +790,18 @@ export function CheckoutView({ sellerAddress }: Props) {
                             review; the per-order wallet sign is then confirmed in
                             the shared agreement-preview modal. */}
                         {agreementGroups.length > 0 && (
-                            <div className="space-y-2 border-t border-neutral-200 pt-3" data-testid="checkout-agreement-terms">
-                                <p className="text-xs font-semibold text-neutral-500">Agreement</p>
+                            <div className="space-y-2 border-t border-default pt-3" data-testid="checkout-agreement-terms">
+                                <p className="text-xs font-semibold text-ink-muted">Agreement</p>
                                 {agreementGroups.map((group) => (
                                     <div key={group.key} className="space-y-0.5" data-testid={`agreement-order-${group.key}`}>
                                         {agreementGroups.length > 1 && (
-                                            <p className="text-[11px] font-medium text-neutral-500">{group.label}</p>
+                                            <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
-                                        <ul className="text-xs text-neutral-600 space-y-0.5">
+                                        <ul className="text-xs text-ink-body space-y-0.5">
                                             {group.clauses.map(({ clauseId, values, data, fillable }) => (
                                                 <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
                                                     {getClauseSpec(clauseId)?.title ?? clauseId}
-                                                    {values && <span className="text-neutral-900"> — {values}</span>}
+                                                    {values && <span className="text-ink-primary"> — {values}</span>}
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (
                                                         <div className="mt-1 mb-2 ml-3 space-y-2">
@@ -825,7 +825,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                         </ul>
                                     </div>
                                 ))}
-                                <p className="text-[11px] text-neutral-400">
+                                <p className="text-[11px] text-ink-faint">
                                     Placing the order signs {agreementGroups.length > 1 ? "these agreements" : "this agreement"} and locks your bond.
                                 </p>
                             </div>
@@ -837,9 +837,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                             no modality. */}
                         {assemblyOptions.length === 1 && (
                             <div>
-                                <p className="text-xs font-semibold text-neutral-500 mb-1">Method</p>
+                                <p className="text-xs font-semibold text-ink-muted mb-1">Method</p>
                                 <p
-                                    className="text-sm text-black"
+                                    className="text-sm text-ink-primary"
                                     data-testid="method-static"
                                     data-method={assemblyOptions[0].slug}
                                 >
@@ -851,7 +851,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             <div>
                                 <label
                                     htmlFor="method-select"
-                                    className="text-xs font-semibold text-neutral-500 mb-1 block"
+                                    className="text-xs font-semibold text-ink-muted mb-1 block"
                                 >
                                     Method
                                 </label>
@@ -861,7 +861,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     onChange={(e) =>
                                         setSelectedSlug(e.target.value === "" ? undefined : e.target.value)
                                     }
-                                    className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                    className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
                                     data-testid="select-method"
                                 >
                                     <option value="" data-testid="option-method-unset">
@@ -939,9 +939,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         ))}
 
-                        <p className="text-xs text-neutral-500" data-testid="checkout-security-link">
+                        <p className="text-xs text-ink-muted" data-testid="checkout-security-link">
                             Can this website lie about what you&apos;re signing?{" "}
-                            <Link href="/faq#signing" className="underline text-black hover:text-neutral-600">
+                            <Link href="/faq#signing" className="underline text-ink-primary hover:text-ink-body">
                                 How to check &rarr;
                             </Link>
                         </p>

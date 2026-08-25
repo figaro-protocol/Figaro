@@ -98,7 +98,7 @@ function ConsentValueToken({ token }: { token: string }) {
     const href = token.startsWith("ipfs://") ? resolveContentUri(token) : null;
     if (!href) return <>{token}</>;
     return (
-        <a href={href} target="_blank" rel="noreferrer" className="underline text-black">
+        <a href={href} target="_blank" rel="noreferrer" className="underline text-ink-primary">
             {token}
         </a>
     );
@@ -123,28 +123,28 @@ export function AgreementReview({ commitment, agreement }: Props) {
 
             {/* Parties */}
             <section>
-                <h3 className="text-xs font-semibold text-neutral-500 mb-2">Parties</h3>
+                <h3 className="text-xs font-semibold text-ink-muted mb-2">Parties</h3>
                 <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
-                    <dt className="text-neutral-500">Buyer</dt>
-                    <dd className="font-mono text-xs text-black break-all" data-testid="preview-buyer">{commitment.buyer}</dd>
-                    <dt className="text-neutral-500">Seller</dt>
-                    <dd className="font-mono text-xs text-black break-all" data-testid="preview-seller">{commitment.seller}</dd>
+                    <dt className="text-ink-muted">Buyer</dt>
+                    <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-buyer">{commitment.buyer}</dd>
+                    <dt className="text-ink-muted">Seller</dt>
+                    <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-seller">{commitment.seller}</dd>
                 </dl>
             </section>
 
             {/* Payment */}
             <section>
-                <h3 className="text-xs font-semibold text-neutral-500 mb-2">Payment</h3>
+                <h3 className="text-xs font-semibold text-ink-muted mb-2">Payment</h3>
                 <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
-                    <dt className="text-neutral-500">Currency</dt>
-                    <dd className="font-mono text-xs text-black break-all">{commitment.currency}</dd>
-                    <dt className="text-neutral-500">Amount</dt>
-                    <dd className="text-black" data-testid="preview-payment">
-                        {formatPayment(commitment.payment, decimals)} <span className="text-neutral-500 text-xs">(raw: {commitment.payment.toString()})</span>
+                    <dt className="text-ink-muted">Currency</dt>
+                    <dd className="font-mono text-xs text-ink-primary break-all">{commitment.currency}</dd>
+                    <dt className="text-ink-muted">Amount</dt>
+                    <dd className="text-ink-primary" data-testid="preview-payment">
+                        {formatPayment(commitment.payment, decimals)} <span className="text-ink-muted text-xs">(raw: {commitment.payment.toString()})</span>
                     </dd>
-                    <dt className="text-neutral-500">Deadline</dt>
-                    <dd className="text-black">
-                        {formatBlockTimestamp(commitment.deadline)} <span className="text-neutral-500 text-xs">(unix {commitment.deadline.toString()})</span>
+                    <dt className="text-ink-muted">Deadline</dt>
+                    <dd className="text-ink-primary">
+                        {formatBlockTimestamp(commitment.deadline)} <span className="text-ink-muted text-xs">(unix {commitment.deadline.toString()})</span>
                     </dd>
                 </dl>
             </section>
@@ -152,12 +152,12 @@ export function AgreementReview({ commitment, agreement }: Props) {
             {/* Commerce / line items */}
             {lineItems.length > 0 && (
                 <section>
-                    <h3 className="text-xs font-semibold text-neutral-500 mb-2">Line items</h3>
-                    <ul className="border border-neutral-200 rounded divide-y divide-neutral-200 text-sm" data-testid="preview-line-items">
+                    <h3 className="text-xs font-semibold text-ink-muted mb-2">Line items</h3>
+                    <ul className="border border-default rounded divide-y divide-default text-sm" data-testid="preview-line-items">
                         {lineItems.map((item, i) => (
                             <li key={i} className="px-3 py-2 flex justify-between">
-                                <span className="text-black">{item.name}</span>
-                                <span className="text-neutral-600 font-mono text-xs">×{item.quantity} @ {item.unitPrice}</span>
+                                <span className="text-ink-primary">{item.name}</span>
+                                <span className="text-ink-body font-mono text-xs">×{item.quantity} @ {item.unitPrice}</span>
                             </li>
                         ))}
                     </ul>
@@ -171,8 +171,8 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 acceptance — no separate ceremony, no checkbox. */}
             {consented.length > 0 && (
                 <section data-testid="preview-consent-terms">
-                    <h3 className="text-xs font-semibold text-neutral-500 mb-2">Consent terms</h3>
-                    <div className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2 space-y-2 text-xs text-neutral-700">
+                    <h3 className="text-xs font-semibold text-ink-muted mb-2">Consent terms</h3>
+                    <div className="rounded border border-default bg-subtle px-3 py-2 space-y-2 text-xs text-ink-body">
                         <p>
                             This agreement composes a consent clause and affixes its
                             documents to the deal. Your signature over the{" "}
@@ -186,10 +186,10 @@ export function AgreementReview({ commitment, agreement }: Props) {
                             {consented.flatMap((section) =>
                                 describeClause(section.clause, section.data as Record<string, unknown>).fields.flatMap((field) =>
                                     field.values.map((line, i) => (
-                                        <li key={`${section.clause}-${field.name}-${i}`} className="font-mono break-all text-black">
+                                        <li key={`${section.clause}-${field.name}-${i}`} className="font-mono break-all text-ink-primary">
                                             {line.split(" · ").map((token, j) => (
                                                 <span key={j}>
-                                                    {j > 0 && <span className="text-neutral-400"> · </span>}
+                                                    {j > 0 && <span className="text-ink-faint"> · </span>}
                                                     <ConsentValueToken token={token} />
                                                 </span>
                                             ))}
@@ -205,12 +205,12 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 can be hidden from what the signer binds. */}
             {dumpedSections.length > 0 && (
                 <section>
-                    <h3 className="text-xs font-semibold text-neutral-500 mb-2">Clauses</h3>
+                    <h3 className="text-xs font-semibold text-ink-muted mb-2">Clauses</h3>
                     <ul className="space-y-2 text-xs" data-testid="preview-clauses">
                         {dumpedSections.map((section) => (
-                            <li key={section.clause} className="border border-neutral-200 rounded px-3 py-2">
-                                <p className="font-mono text-neutral-500 mb-1">{section.clause}</p>
-                                <pre className="text-black whitespace-pre-wrap break-words">
+                            <li key={section.clause} className="border border-default rounded px-3 py-2">
+                                <p className="font-mono text-ink-muted mb-1">{section.clause}</p>
+                                <pre className="text-ink-primary whitespace-pre-wrap break-words">
                                     {JSON.stringify(section.data, null, 2)}
                                 </pre>
                             </li>
@@ -220,14 +220,14 @@ export function AgreementReview({ commitment, agreement }: Props) {
             )}
 
             {/* Hash */}
-            <section className="border-t border-neutral-200 pt-4">
-                <h3 className="text-xs font-semibold text-neutral-500 mb-2">
+            <section className="border-t border-default pt-4">
+                <h3 className="text-xs font-semibold text-ink-muted mb-2">
                     agreementHash (signed value)
                 </h3>
-                <p className="font-mono text-xs text-black break-all bg-neutral-50 border border-neutral-200 rounded p-2" data-testid="preview-agreement-hash">
+                <p className="font-mono text-xs text-ink-primary break-all bg-subtle border border-default rounded p-2" data-testid="preview-agreement-hash">
                     {commitment.agreementHash}
                 </p>
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs text-ink-muted mt-1">
                     This is the exact 32-byte value the signatures bind to. Proceed only if it matches the agreement above.
                 </p>
             </section>

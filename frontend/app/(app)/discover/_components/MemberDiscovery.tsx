@@ -60,28 +60,28 @@ export function MemberDiscovery() {
     return (
         <div className="space-y-6">
             {/* Location prompt */}
-            <section className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <section className="rounded-lg border border-default bg-subtle px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm">
                     {location.status === "granted" && location.geohash ? (
                         <>
-                            <span className="text-gray-700">Filtering near </span>
-                            <span className="font-mono text-black">{location.geohash}</span>
+                            <span className="text-ink-body">Filtering near </span>
+                            <span className="font-mono text-ink-primary">{location.geohash}</span>
                             <button
                                 type="button"
                                 onClick={location.clear}
-                                className="ml-3 text-xs text-gray-500 underline hover:text-black"
+                                className="ml-3 text-xs text-ink-muted underline hover:text-ink-primary"
                             >
                                 clear
                             </button>
                         </>
                     ) : location.status === "requesting" ? (
-                        <span className="text-gray-700">Requesting location…</span>
+                        <span className="text-ink-body">Requesting location…</span>
                     ) : location.status === "denied" || location.status === "error" || location.status === "unsupported" ? (
-                        <span className="text-gray-700">
+                        <span className="text-ink-body">
                             {location.error ?? "Location unavailable."} You can still browse all members.
                         </span>
                     ) : (
-                        <span className="text-gray-700">
+                        <span className="text-ink-body">
                             Showing all members. Filter by your location?
                         </span>
                     )}
@@ -90,7 +90,7 @@ export function MemberDiscovery() {
                     <button
                         type="button"
                         onClick={location.request}
-                        className="text-sm font-semibold text-black border border-gray-300 rounded-md px-3 py-1.5 hover:bg-white"
+                        className="text-sm font-semibold text-ink-primary border border-default rounded-md px-3 py-1.5 hover:bg-paper"
                     >
                         Use my location
                     </button>
@@ -105,13 +105,13 @@ export function MemberDiscovery() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search members…"
                     aria-label="Search members"
-                    className="w-full max-w-md rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                    className="w-full max-w-md rounded-md border border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
                 />
             </section>
 
             {/* Assembly filter row */}
             <section className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted mr-1">
                     Assembly
                 </span>
                 <button
@@ -120,8 +120,8 @@ export function MemberDiscovery() {
                     className={
                         "text-xs px-2.5 py-1 rounded-full border transition-colors " +
                         (assemblyFilter === null
-                            ? "bg-black text-white border-black"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-black")
+                            ? "bg-ink-heading text-paper border-ink-heading"
+                            : "bg-paper text-ink-body border-default hover:border-default-strong")
                     }
                 >
                     All
@@ -134,8 +134,8 @@ export function MemberDiscovery() {
                         className={
                             "text-xs px-2.5 py-1 rounded-full border transition-colors " +
                             (assemblyFilter === slug
-                                ? "bg-black text-white border-black"
-                                : "bg-white text-gray-700 border-gray-300 hover:border-black")
+                                ? "bg-ink-heading text-paper border-ink-heading"
+                                : "bg-paper text-ink-body border-default hover:border-default-strong")
                         }
                     >
                         {slug}
@@ -143,7 +143,7 @@ export function MemberDiscovery() {
                 ))}
             </section>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-muted">
                 {isLoading
                     ? "Loading members…"
                     : `${filtered.length} ${filtered.length === 1 ? "member" : "members"} shown of ${allListings.length} total.`}
@@ -163,24 +163,24 @@ export function MemberDiscovery() {
             {filtered.length === 0 && !isLoading && (
                 allListings.length === 0 ? (
                     <div className="text-center py-12 space-y-4">
-                        <p className="text-base text-gray-700">
+                        <p className="text-base text-ink-body">
                             No members registered where this page is looking.
                         </p>
-                        <p className="text-sm text-gray-500 max-w-md mx-auto">
+                        <p className="text-sm text-ink-muted max-w-md mx-auto">
                             Every member listed here is a wallet that registered itself &mdash;
                             an identity, a catalogue, accepted tokens; no application, no
                             approval, no one to say yes. You can be the first.
                         </p>
                         <a
                             href="/members"
-                            className="inline-block text-sm px-4 py-2 rounded border border-black bg-black text-white hover:bg-neutral-800"
+                            className="inline-block text-sm px-4 py-2 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary"
                             data-testid="discover-empty-cta"
                         >
                             Register as a member
                         </a>
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500 italic text-center py-8">
+                    <p className="text-sm text-ink-muted italic text-center py-8">
                         No sellers match the current filters.
                     </p>
                 )

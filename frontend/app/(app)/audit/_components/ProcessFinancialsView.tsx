@@ -35,28 +35,28 @@ export function ProcessFinancialsView({ processId }: Props) {
             <header className="space-y-2">
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <p className="text-xs font-semibold text-neutral-500">
+                        <p className="text-xs font-semibold text-ink-muted">
                             Process financials
                         </p>
-                        <h2 className="text-xl font-bold text-black">
+                        <h2 className="text-xl font-bold text-ink-primary">
                             Financial statements
                         </h2>
                     </div>
                     <DownloadAuditBundleButton processId={processId} orders={orders} />
                 </div>
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-neutral-700 mt-3">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-ink-body mt-3">
                     <div>
-                        <dt className="text-neutral-500">processId</dt>
+                        <dt className="text-ink-muted">processId</dt>
                         <dd className="break-all" data-testid="financials-process-id">{processId}</dd>
                     </div>
                     {buyer && (
                         <div>
-                            <dt className="text-neutral-500">buyer</dt>
+                            <dt className="text-ink-muted">buyer</dt>
                             <dd className="break-all">{buyer}</dd>
                         </div>
                     )}
                 </dl>
-                <p className="text-[11px] text-neutral-500 max-w-2xl mt-3">
+                <p className="text-[11px] text-ink-muted max-w-2xl mt-3">
                     One statement per seller (individual register) plus the assembly
                     consolidation. Cash-basis projection of on-chain commit + resolve
                     events. Each line traces to one or more on-chain events. Not an
@@ -68,7 +68,7 @@ export function ProcessFinancialsView({ processId }: Props) {
             </header>
 
             {orders.length === 0 ? (
-                <p className="text-sm text-neutral-500" data-testid="financials-empty">
+                <p className="text-sm text-ink-muted" data-testid="financials-empty">
                     No orders found for this process. The kernel published no
                     commitment under this processId
                     {batch?.status === "found"

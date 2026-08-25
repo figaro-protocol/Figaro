@@ -31,6 +31,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
+import { Button } from "@/components/ui/Button";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
 import {
@@ -368,14 +369,15 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         >
                             Open public read-only view →
                         </Link>
-                        <button
+                        <Button
                             type="button"
+                            size="sm"
                             onClick={handleContinueAfterPublish}
-                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
+                            className="font-semibold"
                             data-testid="receipt-continue"
                         >
                             Continue to assemblies
-                        </button>
+                        </Button>
                     </div>
                 }
             />

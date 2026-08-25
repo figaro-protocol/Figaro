@@ -41,7 +41,7 @@ function toneClasses(tone: Tone): string {
     switch (tone) {
         case "blue": return "border-blue-200 bg-blue-50 text-blue-800";
         case "green": return "border-green-200 bg-green-50 text-green-800";
-        default: return "border-neutral-200 bg-neutral-50 text-neutral-700";
+        default: return "border-default bg-subtle text-ink-body";
     }
 }
 
@@ -84,9 +84,9 @@ export function OrderTimelineView({ processId }: Props) {
     if (!processModel) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
-                <p className="text-xs font-semibold text-neutral-500 mb-3">Order</p>
-                <h1 className="text-3xl font-bold text-black mb-4">Loading…</h1>
-                <p className="text-sm text-neutral-600">
+                <p className="text-xs font-semibold text-ink-muted mb-3">Order</p>
+                <h1 className="text-3xl font-bold text-ink-primary mb-4">Loading…</h1>
+                <p className="text-sm text-ink-body">
                     Reading process <code className="font-mono text-xs">{truncateHex(processId, { head: 10, tail: 0 })}</code> from
                     chain. If this persists, the process ID may be wrong or the indexer may be unreachable.
                 </p>
@@ -110,9 +110,9 @@ export function OrderTimelineView({ processId }: Props) {
     return (
         <div data-testid="order-timeline-view" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header className="space-y-3">
-                <p className="text-xs font-semibold text-neutral-500">Order</p>
+                <p className="text-xs font-semibold text-ink-muted">Order</p>
                 <div className="flex flex-wrap items-baseline gap-3">
-                    <h1 className="text-3xl font-bold text-black">{headline}</h1>
+                    <h1 className="text-3xl font-bold text-ink-primary">{headline}</h1>
                     <span
                         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(pillTone)}`}
                         data-testid="order-status-pill"
@@ -120,33 +120,33 @@ export function OrderTimelineView({ processId }: Props) {
                         {pillLabel}
                     </span>
                 </div>
-                <p className="text-sm text-neutral-700">{subhead}</p>
+                <p className="text-sm text-ink-body">{subhead}</p>
                 {processModel.rootModality && (
                     // The committed modality, shown as the clause's own
                     // code (the agreement is the source) — read off the builder's
                     // model, never a clause section or a frontend label map.
-                    <p className="text-xs text-neutral-600" data-testid="order-modality">
-                        Modality: <span className="font-medium text-black">{processModel.rootModality}</span>
+                    <p className="text-xs text-ink-body" data-testid="order-modality">
+                        Modality: <span className="font-medium text-ink-primary">{processModel.rootModality}</span>
                     </p>
                 )}
                 {/* Resolve-ceiling position — depth vs the chain's atomic-resolve
                     cap (chain-adaptive, read live; the same ceiling the designer
                     canvas gates on). Active processes only; absence = no read. */}
                 {!isResolved && resolveCapacity && (
-                    <p className="text-xs text-neutral-600" data-testid="order-process-capacity">
+                    <p className="text-xs text-ink-body" data-testid="order-process-capacity">
                         Process orders:{" "}
                         <span className={resolveCapacity.remaining <= Math.max(1, Math.floor(resolveCapacity.cap / 20))
                             ? "font-medium text-amber-700"
-                            : "font-medium text-black"}>
+                            : "font-medium text-ink-primary"}>
                             {resolveCapacity.activeOrderCount} / {resolveCapacity.cap} resolvable in one settlement
                         </span>
                     </p>
                 )}
-                <p className="text-xs text-neutral-500 font-mono">
+                <p className="text-xs text-ink-muted font-mono">
                     Process <span data-testid="order-process-id">{truncateHex(processId, { head: 10, tail: 6 })}</span>
                     {" · "}
-                    {role === "buyer" && <>You are the buyer · seller: <span className="text-neutral-700">{sellerDisplayName}</span></>}
-                    {role === "seller" && <>You are the seller · buyer: <span className="text-neutral-700">{buyerDisplayName}</span></>}
+                    {role === "buyer" && <>You are the buyer · seller: <span className="text-ink-body">{sellerDisplayName}</span></>}
+                    {role === "seller" && <>You are the seller · buyer: <span className="text-ink-body">{buyerDisplayName}</span></>}
                     {role === "spectator" && <>Read-only — your wallet is neither buyer nor seller on this order</>}
                 </p>
             </header>
@@ -211,13 +211,13 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Timeline — the process's attestation log, each row labelled from
                 the clause's own spec (clauseId comes from the event data). */}
             <section className="space-y-3">
-                <p className="text-xs font-semibold text-neutral-500">Timeline</p>
+                <p className="text-xs font-semibold text-ink-muted">Timeline</p>
                 <ol className="space-y-2" data-testid="order-timeline">
-                    <li className="flex items-start gap-3 rounded border border-neutral-200 bg-white p-3">
+                    <li className="flex items-start gap-3 rounded border border-default bg-paper p-3">
                         <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
                         <div className="flex-1">
-                            <p className="text-sm font-semibold text-black">order placed</p>
-                            <p className="text-xs text-neutral-500">
+                            <p className="text-sm font-semibold text-ink-primary">order placed</p>
+                            <p className="text-xs text-ink-muted">
                                 {role === "buyer" ? `You committed to ${sellerDisplayName}.` : `${buyerDisplayName} committed.`}
                             </p>
                         </div>
@@ -227,7 +227,7 @@ export function OrderTimelineView({ processId }: Props) {
                         return (
                             <li
                                 key={`${att.clauseId}-${att.orderHash}-${att.stage}-${att.blockNumber}`}
-                                className="flex items-start gap-3 rounded border border-neutral-200 bg-white p-3"
+                                className="flex items-start gap-3 rounded border border-default bg-paper p-3"
                                 // Stable raw event code for targeting (the humanized
                                 // eventLabel is the visible text below).
                                 data-testid={`timeline-event-${eventCode}`}
@@ -235,18 +235,18 @@ export function OrderTimelineView({ processId }: Props) {
                             >
                                 <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
                                 <div className="flex-1">
-                                    <p className="text-sm font-semibold text-black">{eventLabel}</p>
-                                    <p className="text-xs text-neutral-500">{clauseTitle} · block {att.blockNumber}</p>
+                                    <p className="text-sm font-semibold text-ink-primary">{eventLabel}</p>
+                                    <p className="text-xs text-ink-muted">{clauseTitle} · block {att.blockNumber}</p>
                                 </div>
                             </li>
                         );
                     })}
                     {isResolved && (
-                        <li className="flex items-start gap-3 rounded border border-neutral-200 bg-white p-3">
+                        <li className="flex items-start gap-3 rounded border border-default bg-paper p-3">
                             <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
                             <div className="flex-1">
-                                <p className="text-sm font-semibold text-black">order completed</p>
-                                <p className="text-xs text-neutral-500">Bonds released.</p>
+                                <p className="text-sm font-semibold text-ink-primary">order completed</p>
+                                <p className="text-xs text-ink-muted">Bonds released.</p>
                             </div>
                         </li>
                     )}
@@ -257,7 +257,7 @@ export function OrderTimelineView({ processId }: Props) {
             <section className="flex flex-wrap gap-3 text-sm">
                 <Link
                     href={`/audit/view?process=${processId}`}
-                    className="rounded border border-neutral-300 px-4 py-2 text-neutral-700 hover:bg-neutral-50"
+                    className="rounded border border-default px-4 py-2 text-ink-body hover:bg-subtle"
                     data-testid="link-audit"
                 >
                     View audit record

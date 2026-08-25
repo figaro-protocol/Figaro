@@ -594,7 +594,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                         id={`${idPrefix}-data-sold`}
                         value={item.dataSoldKey}
                         onChange={(e) => onChange("dataSoldKey", e.target.value)}
-                        className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                        className="w-full rounded border border-default px-3 py-2 text-sm"
                         data-testid={`${idPrefix}-data-sold`}
                     >
                         <option value="">Not a data product</option>
@@ -628,7 +628,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                         id={`${idPrefix}-pricing-policy`}
                         value={item.pricingPolicy}
                         onChange={(e) => onChange("pricingPolicy", e.target.value as FormItem["pricingPolicy"])}
-                        className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                        className="w-full rounded border border-default px-3 py-2 text-sm"
                         data-testid={`${idPrefix}-pricing-policy`}
                     >
                         <option value="fixed">Fixed price</option>
@@ -655,7 +655,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                                 id={`${idPrefix}-rate-source`}
                                 value={item.rateQuantitySource}
                                 onChange={(e) => onChange("rateQuantitySource", e.target.value)}
-                                className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                                className="w-full rounded border border-default px-3 py-2 text-sm"
                                 data-testid={`${idPrefix}-rate-source`}
                             >
                                 {listRateQuantitySources().map(({ source, label }) => (
@@ -720,7 +720,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                 a shippable/regulated item authors them; everything else leaves
                 them blank. */}
             {catalogueClauses.length > 0 && (
-                <div className="space-y-4 border-t border-neutral-200 pt-3" data-testid={`${idPrefix}-clauses`}>
+                <div className="space-y-4 border-t border-default pt-3" data-testid={`${idPrefix}-clauses`}>
                     <p className="text-xs text-ink-muted">Logistics classifications (optional — for shippable / regulated goods)</p>
                     {catalogueClauses.map(({ clauseId }) => {
                         const spec = getClauseSpec(clauseId);

@@ -46,8 +46,8 @@ export function InitialsAvatar({
                 "flex items-center justify-center font-semibold",
                 fontSize === undefined && "text-xs",
                 tone === "accent"
-                    ? "text-white"
-                    : "bg-neutral-100 border border-neutral-200 text-neutral-600",
+                    ? "text-paper"
+                    : "bg-subtle border border-default text-ink-body",
                 className,
             )}
             style={{

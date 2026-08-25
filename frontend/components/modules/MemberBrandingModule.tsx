@@ -55,7 +55,7 @@ export function MemberLogo({
                 style={{ width: size, height: size }}
                 aria-hidden="true"
             >
-                <div className="w-full h-full bg-neutral-100 rounded animate-pulse" />
+                <div className="w-full h-full bg-subtle rounded animate-pulse" />
             </div>
         );
     }
@@ -116,7 +116,7 @@ export function MemberLogo({
             style={{ width: size, height: size, display: "block" }}
             aria-hidden="true"
         >
-            <span className="block w-full h-full bg-neutral-100 rounded" />
+            <span className="block w-full h-full bg-subtle rounded" />
         </span>
     );
 }

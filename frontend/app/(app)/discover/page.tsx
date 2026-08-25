@@ -12,19 +12,19 @@ export const metadata: Metadata = withOg({
 export default function DiscoverPage() {
     return (
         <section className="container mx-auto px-6 pt-16 pb-24 max-w-5xl">
-            <h1 className="text-4xl sm:text-5xl font-bold text-black leading-tight tracking-tight mb-3">
+            <h1 className="text-4xl sm:text-5xl font-bold text-ink-primary leading-tight tracking-tight mb-3">
                 Members on this network.
             </h1>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-ink-muted mb-4">
                 Buyers and sellers alike publish a profile here &mdash; to appear yourself, register on{" "}
-                <Link href="/members" className="underline hover:text-black">/members</Link>.
+                <Link href="/members" className="underline hover:text-ink-primary">/members</Link>.
             </p>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-ink-muted mb-4">
                 This page lists the members you can order from. The registry of record is{" "}
-                <Link href="/registries?family=members" className="underline hover:text-black">the registry explorer</Link>
+                <Link href="/registries?family=members" className="underline hover:text-ink-primary">the registry explorer</Link>
                 {" "}&mdash; every registered wallet, offering or not.
             </p>
-            <p className="text-base text-gray-600 leading-relaxed max-w-2xl mb-10">
+            <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-10">
                 Everyone here is someone you can order from directly &mdash; a
                 kitchen, a tailor, a courier, a service &mdash; each running its
                 own wallet, with no company in between. Nothing near you?
@@ -34,9 +34,9 @@ export default function DiscoverPage() {
                 order &mdash; a single commit, signed by both of you, locks
                 both stakes at once.
             </p>
-            <p className="text-sm text-gray-500 mb-10">
-                New to this? <Link href="/members" className="underline hover:text-black">See what membership is</Link>, or read{" "}
-                <Link href="/local-commerce" className="underline hover:text-black">one deal, lived</Link> end to end.
+            <p className="text-sm text-ink-muted mb-10">
+                New to this? <Link href="/members" className="underline hover:text-ink-primary">See what membership is</Link>, or read{" "}
+                <Link href="/local-commerce" className="underline hover:text-ink-primary">one deal, lived</Link> end to end.
             </p>
             <MemberDiscovery />
         </section>

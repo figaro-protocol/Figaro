@@ -181,12 +181,12 @@ export function CommitmentSharePanel({
 
     return (
         <Card className="p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-ink-primary">
                 {isRoot ? "Order Commitment" : "Sub-Order Commitment"}
             </h3>
 
             {/* Commitment details */}
-            <div className="text-xs space-y-1 text-gray-600">
+            <div className="text-xs space-y-1 text-ink-body">
                 <div className="flex justify-between">
                     <span>Buyer</span>
                     <span className="font-mono">{truncateHex(commitment.buyer)}</span>
@@ -226,7 +226,7 @@ export function CommitmentSharePanel({
             {/* QR code (shown when awaiting the seller's counter-signature) */}
             {step === "awaiting-seller" && (
                 <div className="flex flex-col items-center gap-2">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-ink-muted">
                         Share with the counter-party to collect their signature.
                         Send it over XMTP or copy the payload as a fallback for the{" "}
                         <a href="/sign" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">/sign</a>{" "}

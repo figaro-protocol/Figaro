@@ -45,11 +45,11 @@ export function HashVerifier() {
     return (
         <div className="space-y-6" data-testid="verify-page">
             <header className="space-y-2">
-                <p className="text-xs font-semibold text-neutral-500">
+                <p className="text-xs font-semibold text-ink-muted">
                     Verification
                 </p>
-                <h2 className="text-xl font-bold text-black">Audit-bundle hash verifier</h2>
-                <p className="text-sm text-neutral-700 max-w-2xl">
+                <h2 className="text-xl font-bold text-ink-primary">Audit-bundle hash verifier</h2>
+                <p className="text-sm text-ink-body max-w-2xl">
                     All computation is client-side via the same SDK
                     functions the protocol uses internally — verifiability
                     follows from using the canonical functions, not a
@@ -57,7 +57,7 @@ export function HashVerifier() {
                 </p>
             </header>
 
-            <nav className="flex gap-2 border-b border-neutral-200" data-testid="verify-mode-tabs">
+            <nav className="flex gap-2 border-b border-default" data-testid="verify-mode-tabs">
                 {(["agreement", "section", "search"] as const).map((m) => (
                     <button
                         key={m}
@@ -66,8 +66,8 @@ export function HashVerifier() {
                         data-testid={`verify-mode-${m}`}
                         className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 ${
                             mode === m
-                                ? "border-black text-black"
-                                : "border-transparent text-neutral-500 hover:text-black"
+                                ? "border-ink-heading text-ink-primary"
+                                : "border-transparent text-ink-muted hover:text-ink-primary"
                         }`}
                     >
                         {m === "agreement" ? "A. Agreement" : m === "section" ? "B. Section" : "C. Search"}
@@ -93,10 +93,10 @@ function HashResult({ computed, expected, label }: {
     const match = expected.length > 0 && hexEqual(computed, expected);
     return (
         <div
-            className="rounded border border-neutral-200 bg-neutral-50 p-4 space-y-2"
+            className="rounded border border-default bg-subtle p-4 space-y-2"
             data-testid="verify-result"
         >
-            <p className="text-[11px] uppercase font-semibold tracking-wider text-neutral-500">
+            <p className="text-[11px] uppercase font-semibold tracking-wider text-ink-muted">
                 {label}
             </p>
             <p className="text-xs font-mono break-all" data-testid="verify-result-computed">{computed}</p>
@@ -153,12 +153,12 @@ function AgreementMode() {
 
     return (
         <div className="space-y-4" data-testid="verify-agreement-mode">
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-ink-body">
                 Paste an `Agreement` JSON (the off-chain document referenced by `agreementHash`).
                 The recomputed merkle root is shown below — compare to the on-chain
                 `OrderCommitted.agreementHash` event field.
             </p>
-            <label className="block text-xs font-semibold text-neutral-700">
+            <label className="block text-xs font-semibold text-ink-body">
                 Agreement JSON
                 <textarea
                     value={json}
@@ -166,17 +166,17 @@ function AgreementMode() {
                     rows={12}
                     placeholder='{"version":"a1","buyer":"0x...","seller":"0x...","sections":[...]}'
                     data-testid="verify-agreement-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
+                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
-            <label className="block text-xs font-semibold text-neutral-700">
+            <label className="block text-xs font-semibold text-ink-body">
                 Expected agreementHash (optional)
                 <input
                     value={expected}
                     onChange={(e) => setExpected(e.target.value)}
                     placeholder="0x…"
                     data-testid="verify-agreement-expected"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
+                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
             {result.kind === "error" && <ErrorBox message={result.message} />}
@@ -211,13 +211,13 @@ function SectionMode() {
 
     return (
         <div className="space-y-4" data-testid="verify-section-mode">
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-ink-body">
                 Paste a single `AgreementSection` JSON (one clause from an
                 agreement, e.g. a commerce section). The recomputed
                 leaf hash is shown below — compare to the section&apos;s leaf in
                 the audit-bundle hash appendix.
             </p>
-            <label className="block text-xs font-semibold text-neutral-700">
+            <label className="block text-xs font-semibold text-ink-body">
                 Section JSON
                 <textarea
                     value={json}
@@ -225,17 +225,17 @@ function SectionMode() {
                     rows={8}
                     placeholder='{"clause":"figaro-commerce","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
                     data-testid="verify-section-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
+                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
-            <label className="block text-xs font-semibold text-neutral-700">
+            <label className="block text-xs font-semibold text-ink-body">
                 Expected leaf hash (optional)
                 <input
                     value={expected}
                     onChange={(e) => setExpected(e.target.value)}
                     placeholder="0x…"
                     data-testid="verify-section-expected"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
+                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
             {result.kind === "error" && <ErrorBox message={result.message} />}
@@ -311,24 +311,24 @@ function SearchMode() {
 
     return (
         <div className="space-y-4" data-testid="verify-search-mode">
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-ink-body">
                 Paste any hex hash from an audit bundle. The search walks orders
                 + agreements available to the connected wallet and reports what
                 each match anchors to. Use this to chase a hash from the bundle
                 PDF&apos;s hash appendix to its on-chain source.
             </p>
-            <label className="block text-xs font-semibold text-neutral-700">
+            <label className="block text-xs font-semibold text-ink-body">
                 Hash to look up
                 <input
                     value={hash}
                     onChange={(e) => setHash(e.target.value)}
                     placeholder="0x…"
                     data-testid="verify-search-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
+                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
             {hash.trim() && hits.length === 0 && (
-                <div className="rounded border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-600" data-testid="verify-search-no-hits">
+                <div className="rounded border border-default bg-subtle p-4 text-xs text-ink-body" data-testid="verify-search-no-hits">
                     No match in locally-loaded orders + agreements. Try modes A or B
                     with the hash&apos;s source content, or open the relevant process
                     audit first with the process-ID field above.
@@ -336,7 +336,7 @@ function SearchMode() {
             )}
             {hits.length > 0 && (
                 <div className="space-y-2" data-testid="verify-search-results">
-                    <p className="text-[11px] uppercase font-semibold tracking-wider text-neutral-500">
+                    <p className="text-[11px] uppercase font-semibold tracking-wider text-ink-muted">
                         {hits.length} match{hits.length > 1 ? "es" : ""}
                     </p>
                     {hits.map((hit, i) => (
@@ -346,8 +346,8 @@ function SearchMode() {
                             data-testid={`verify-search-hit-${i}`}
                         >
                             <p className="text-[10px] uppercase font-semibold tracking-wider text-green-800">{hit.kind}</p>
-                            <p className="text-xs font-semibold text-black">{hit.label}</p>
-                            <p className="text-[11px] text-neutral-600">{hit.location}</p>
+                            <p className="text-xs font-semibold text-ink-primary">{hit.label}</p>
+                            <p className="text-[11px] text-ink-body">{hit.location}</p>
                         </div>
                     ))}
                 </div>

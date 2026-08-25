@@ -132,17 +132,17 @@ export function RecoursePanel({
 
     return (
         <Card className="p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            <h3 className="text-sm font-semibold text-ink-body mb-2">
                 Dispute Resolution
             </h3>
 
             {/* ── Recourse forum(s) the assembly authored ─────── */}
             {recourses && recourses.length > 0 && (
                 <div
-                    className="mb-3 rounded border border-neutral-200 bg-neutral-50 p-2 space-y-1"
+                    className="mb-3 rounded border border-default bg-subtle p-2 space-y-1"
                     data-testid="dispute-recourse-list"
                 >
-                    <p className="text-[11px] font-semibold text-neutral-500">
+                    <p className="text-[11px] font-semibold text-ink-muted">
                         Recourse forum — from the assembly&apos;s dispute-resolution clauses
                     </p>
                     {recourses.map((r) => {
@@ -155,12 +155,12 @@ export function RecoursePanel({
                         return (
                             <div
                                 key={r.clauseId}
-                                className="text-xs text-neutral-700"
+                                className="text-xs text-ink-body"
                                 data-testid={`dispute-recourse-${r.clauseId}`}
                             >
                                 <span className="font-medium">{desc.title}</span>
                                 {desc.fields.length > 0 && (
-                                    <span className="text-neutral-500">
+                                    <span className="text-ink-muted">
                                         {" — "}
                                         {desc.fields.map((f) => `${f.label}: ${f.values.join(", ")}`).join(" · ")}
                                     </span>
@@ -182,7 +182,7 @@ export function RecoursePanel({
                 </div>
             )}
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-muted">
                 Figaro does not arbitrate. If the parties cannot resolve the issue
                 directly, take the timestamped evidence bundle to the recourse forum
                 and open the dispute in its own interface.
@@ -191,18 +191,18 @@ export function RecoursePanel({
             {/* ── Prepare + pin the evidence bundle ───────────── */}
             {canBundle && (
                 <div
-                    className="mt-2 flex flex-col gap-1.5 rounded border border-neutral-200 bg-neutral-50 p-2"
+                    className="mt-2 flex flex-col gap-1.5 rounded border border-default bg-subtle p-2"
                     data-testid="dispute-evidence-bundle"
                 >
                     <button
                         onClick={handlePrepareBundle}
                         disabled={loading}
                         data-testid="dispute-evidence-prepare"
-                        className="self-start px-3 py-1.5 text-xs font-medium rounded bg-black text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="self-start px-3 py-1.5 text-xs font-medium rounded bg-ink-heading text-paper hover:bg-ink-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         {loading ? "Building…" : bundleCID ? "Rebuild evidence bundle" : "Prepare evidence bundle"}
                     </button>
-                    <p className="text-[10px] text-neutral-600 leading-tight">
+                    <p className="text-[10px] text-ink-body leading-tight">
                         Builds the process-scoped audit bundle (timeline, contracts,
                         clause data, attestations, financials) in your browser and pins
                         the PDF to IPFS. Attach the pinned URI as evidence on the forum.
@@ -210,7 +210,7 @@ export function RecoursePanel({
 
                     {bundleCID && (
                         <div className="mt-1 space-y-1" data-testid="dispute-evidence-result">
-                            <p className="text-[10px] font-mono text-neutral-500 break-all">
+                            <p className="text-[10px] font-mono text-ink-muted break-all">
                                 ipfs://{bundleCID}
                             </p>
                             <button
@@ -223,7 +223,7 @@ export function RecoursePanel({
                             <button
                                 onClick={() => void handleUnpin()}
                                 data-testid="dispute-evidence-unpin"
-                                className="ml-3 text-xs text-neutral-500 hover:text-neutral-700 underline"
+                                className="ml-3 text-xs text-ink-muted hover:text-ink-body underline"
                             >
                                 Unpin from IPFS
                             </button>

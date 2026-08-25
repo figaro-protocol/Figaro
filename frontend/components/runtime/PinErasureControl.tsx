@@ -52,7 +52,7 @@ export function PinErasureControl({
                     onClick={() => void handleUnpin()}
                     disabled={status === "erasing"}
                     data-testid={`${testidPrefix}-button`}
-                    className="text-xs text-neutral-500 hover:text-neutral-700 underline disabled:opacity-50"
+                    className="text-xs text-ink-muted hover:text-ink-body underline disabled:opacity-50"
                 >
                     {status === "erasing" ? erasingLabel : buttonLabel}
                 </button>

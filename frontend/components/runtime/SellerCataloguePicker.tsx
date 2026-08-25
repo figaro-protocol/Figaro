@@ -45,7 +45,7 @@ interface Props {
     onSelect: (selection: SellerSelection | null) => void;
 }
 
-const FIELD = "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
+const FIELD = "w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent";
 
 export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
@@ -82,7 +82,7 @@ export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
 
     return (
         <div className="space-y-2" data-testid="seller-catalogue-picker">
-            <label className="text-xs font-semibold text-neutral-500 block">
+            <label className="text-xs font-semibold text-ink-muted block">
                 Seller address
             </label>
 
@@ -98,15 +98,15 @@ export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
 
             {/* Catalogue step — the seller's published price list. */}
             {validSeller && isLoading && catalogueItems.length === 0 && (
-                <p className="text-xs text-neutral-500">Loading the seller&apos;s catalogue…</p>
+                <p className="text-xs text-ink-muted">Loading the seller&apos;s catalogue…</p>
             )}
             {validSeller && !isLoading && catalogueItems.length === 0 && (
-                <p className="text-xs text-neutral-500" data-testid="seller-no-items">
+                <p className="text-xs text-ink-muted" data-testid="seller-no-items">
                     This seller publishes no catalogue items.
                 </p>
             )}
             {catalogueItems.length > 0 && (
-                <div className="space-y-1 rounded border border-neutral-200 p-2" data-testid="seller-catalogue-list">
+                <div className="space-y-1 rounded border border-default p-2" data-testid="seller-catalogue-list">
                     {catalogueItems.map((item) => (
                         <label key={item.id} className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
@@ -117,8 +117,8 @@ export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
                                 onChange={() => setSelectedItemId(item.id)}
                                 data-testid={`seller-item-${item.id}`}
                             />
-                            <span className="text-black">{item.name}</span>
-                            <span className="text-neutral-500 ml-auto tabular-nums">
+                            <span className="text-ink-primary">{item.name}</span>
+                            <span className="text-ink-muted ml-auto tabular-nums">
                                 {`${item.price}${tokenSymbol ? ` ${tokenSymbol}` : ""}`}
                             </span>
                         </label>

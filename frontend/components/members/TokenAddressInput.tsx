@@ -81,12 +81,12 @@ export function TokenAddressInput({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     aria-invalid={showError || undefined}
-                    className={`w-full border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-black ${
-                        showError ? "border-red-300 focus:border-red-400" : "border-gray-300"
+                    className={`w-full border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-default-strong ${
+                        showError ? "border-red-300 focus:border-red-400" : "border-default"
                     }`}
                 />
                 {valid && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint pointer-events-none">
                         {isLoading ? "…" : (symbol ?? "✓")}
                     </span>
                 )}
@@ -95,7 +95,7 @@ export function TokenAddressInput({
                 <button
                     type="button"
                     onClick={onRemove}
-                    className="text-gray-300 hover:text-red-500 transition-colors text-lg leading-none flex-shrink-0"
+                    className="text-ink-faint hover:text-red-500 transition-colors text-lg leading-none flex-shrink-0"
                     aria-label="Remove"
                 >
                     &times;
