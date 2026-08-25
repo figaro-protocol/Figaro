@@ -301,7 +301,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         onClick={() => void handleSend()}
                         disabled={busy || !form.name.trim() || !form.street.trim()}
                         data-testid="interaction-address-send"
-                        className="text-xs px-3 py-1.5 rounded bg-ink-heading text-paper hover:bg-ink-primary disabled:opacity-50"
+                        className="text-xs px-3 py-1.5 rounded bg-ink-primary text-paper hover:bg-ink-body disabled:opacity-50"
                     >
                         {busy ? "Encrypting + anchoring…" : "Send privately"}
                     </button>

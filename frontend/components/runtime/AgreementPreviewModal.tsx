@@ -124,7 +124,7 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                         type="button"
                         onClick={onConfirm}
                         data-testid="preview-confirm"
-                        className="px-4 py-2 text-sm font-semibold bg-ink-heading text-paper rounded hover:bg-ink-primary"
+                        className="px-4 py-2 text-sm font-semibold bg-ink-primary text-paper rounded hover:bg-ink-body"
                         autoFocus
                     >
                         {copy.confirm}

@@ -120,7 +120,7 @@ export function MemberDiscovery() {
                     className={
                         "text-xs px-2.5 py-1 rounded-full border transition-colors " +
                         (assemblyFilter === null
-                            ? "bg-ink-heading text-paper border-ink-heading"
+                            ? "bg-ink-primary text-paper border-ink-primary"
                             : "bg-paper text-ink-body border-default hover:border-default-strong")
                     }
                 >
@@ -134,7 +134,7 @@ export function MemberDiscovery() {
                         className={
                             "text-xs px-2.5 py-1 rounded-full border transition-colors " +
                             (assemblyFilter === slug
-                                ? "bg-ink-heading text-paper border-ink-heading"
+                                ? "bg-ink-primary text-paper border-ink-primary"
                                 : "bg-paper text-ink-body border-default hover:border-default-strong")
                         }
                     >
@@ -173,7 +173,7 @@ export function MemberDiscovery() {
                         </p>
                         <a
                             href="/members"
-                            className="inline-block text-sm px-4 py-2 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary"
+                            className="inline-block text-sm px-4 py-2 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body"
                             data-testid="discover-empty-cta"
                         >
                             Register as a member

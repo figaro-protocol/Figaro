@@ -95,7 +95,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
-                    <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary">
+                    <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body">
                         Register as a member
                     </Link>
                     <Link href="/discover" className="inline-block underline text-sm text-ink-primary hover:text-ink-body">
@@ -345,7 +345,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleAddItem(catalogueItem)}
-                                                                            className="w-8 h-8 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary"
+                                                                            className="w-8 h-8 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body"
                                                                             aria-label={`Add another ${catalogueItem.name}`}
                                                                         >
                                                                             +

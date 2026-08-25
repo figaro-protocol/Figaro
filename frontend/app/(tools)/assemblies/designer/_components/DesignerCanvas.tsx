@@ -597,7 +597,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         </Link>
                         <Link
                             href="/assemblies/designer/new?fresh=1"
-                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold"
+                            className="text-xs px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body font-semibold"
                         >
                             Start a blank assembly
                         </Link>
@@ -646,7 +646,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     onClick={handleReview}
                     disabled={!canPublish}
                     data-testid="designer-review"
-                    className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="text-xs px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     title={publishBlockedReason ?? "Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."}
                 >
                     Review

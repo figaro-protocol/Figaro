@@ -267,7 +267,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                         type="button"
                         onClick={handleDownload}
                         data-testid="interaction-content-download"
-                        className="text-xs px-3 py-1.5 rounded bg-ink-heading text-paper hover:bg-ink-primary"
+                        className="text-xs px-3 py-1.5 rounded bg-ink-primary text-paper hover:bg-ink-body"
                     >
                         Save the artifact
                     </button>

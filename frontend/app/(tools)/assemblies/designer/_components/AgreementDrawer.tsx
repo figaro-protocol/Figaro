@@ -229,7 +229,7 @@ export function AgreementDrawer({
                                 title={node.orderHash}
                                 className={`shrink-0 rounded border px-3 py-1 text-xs ${
                                     isActive
-                                        ? "border-ink-heading bg-ink-heading text-paper"
+                                        ? "border-ink-primary bg-ink-primary text-paper"
                                         : "border-default bg-paper text-ink-body hover:border-default-strong"
                                 }`}
                             >

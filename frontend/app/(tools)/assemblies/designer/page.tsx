@@ -30,7 +30,7 @@ export default function DesignerLanding() {
                 <div className="mt-8">
                     <Link
                         href="/assemblies/designer/new?fresh=1"
-                        className="inline-flex rounded-tile border border-ink-heading bg-ink-heading text-paper px-5 py-2.5 text-sm font-semibold hover:bg-ink-primary"
+                        className="inline-flex rounded-tile border border-ink-primary bg-ink-primary text-paper px-5 py-2.5 text-sm font-semibold hover:bg-ink-body"
                     >
                         Start a blank assembly
                     </Link>

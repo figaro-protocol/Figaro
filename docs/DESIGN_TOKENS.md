@@ -58,7 +58,7 @@ The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, 
 - **CTAs only.** Use `bg-accent` / `text-accent` on the primary call-to-action of a page (e.g., the marketing-header Discover button, a "Download paper" button, a "Sign commitment" button on a transactional surface). Do not use accent on body text, captions, status surfaces, or decorative dividers.
 - **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (`border-ink-heading`, paper fill) is the canonical companion shape for the secondary action.
 - **Never used as a text-on-canvas color** for prose. `text-accent` on canvas is decoratively visible but not body-text legible at small sizes. Reserve for short labels (button text uses `text-paper` on `bg-accent`).
-- **Hover inverts fill ⇄ outline within the same hue.** A filled `bg-accent text-paper` button hovers to `bg-paper text-accent` (with `border-accent` set in both states so the outline appears on hover). An outline-strong-sumi secondary button (`border-ink-heading bg-paper text-ink-heading`) hovers to filled-sumi (`bg-ink-heading text-paper`). The pair: filled-accent ⇄ outline-accent (primary), outline-sumi ⇄ filled-sumi (secondary). Crossing hue families on hover (indigo → sumi) reads as a register break; flipping fill state within the same hue reads as activation.
+- **Hover inverts fill ⇄ outline within the same hue.** A filled `bg-accent text-paper` button hovers to `bg-paper text-accent` (with `border-accent` set in both states so the outline appears on hover). An outline-strong-sumi secondary button (`border-ink-heading bg-paper text-ink-heading`) hovers to filled-sumi (`bg-ink-primary text-paper` — the dark ink, never amber under white text; ruled 2026-08-25, see §7's Button note). The pair: filled-accent ⇄ outline-accent (primary), outline-sumi ⇄ filled-sumi (secondary). Crossing hue families on hover (indigo → sumi) reads as a register break; flipping fill state within the same hue reads as activation.
 
 ### Status
 
@@ -216,7 +216,7 @@ disabled:pointer-events-none disabled:opacity-50
 
 | Variant | Fill | Border | Text | Hover |
 |---|---|---|---|---|
-| `default` | `bg-ink-heading` | `border-ink-heading` | `text-paper` | `bg-ink-primary` |
+| `default` | `bg-ink-primary` | `border-ink-primary` | `text-paper` | `bg-ink-body` |
 | `destructive` | `bg-error` | `border-error` | `text-paper` | `bg-error/90` |
 | `outline` | `bg-paper` | `border-default-strong` | `text-ink-primary` | `bg-subtle` |
 | `secondary` | `bg-subtle` | `border-default` | `text-ink-primary` | `bg-subtle-hover` |
@@ -225,7 +225,7 @@ disabled:pointer-events-none disabled:opacity-50
 
 Every variant declares a border — including the two transparent ones — so switching variants never shifts layout by the 1px the bordered variants add.
 
-`default` is filled-sumi, **not** `bg-accent`: accent is capped at one surface per page (§1) and this is the site-wide default variant, so accent here would stack CTAs on any page carrying two buttons.
+`default` is filled-sumi, **not** `bg-accent`: accent is capped at one surface per page (§1) and this is the site-wide default variant, so accent here would stack CTAs on any page carrying two buttons. And filled-sumi means `ink-primary`, the dark warm ink — **never `ink-heading` under `text-paper`** (RULED 2026-08-25: white on the amber, though a computed 4.8:1, is not legible to actual eyes; every amber-filled primary was swept to the dark fill, hovering to `ink-body` so the text stays high-contrast in both states). Amber is for text, borders, and current-markers on light grounds only.
 
 | Size | Utilities |
 |---|---|

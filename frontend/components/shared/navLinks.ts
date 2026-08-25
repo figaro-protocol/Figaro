@@ -98,9 +98,13 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  * with Specifications (maintainer-ruled 2026-08-21). /local-commerce and /faq are nav-visible
  * under The Deal (maintainer, 2026-08-07) on the standing condition that the
  * rest of the site stays demoted — the meal is one worked example among
- * many, never THE model. Tools (Register a clause,
- * Designer, Claim, Join) are buttons on their object's page, never nav
- * slots. `scripts/lint-nav-structure.sh` enforces the mechanical half of this
+ * many, never THE model. The two AUTHORING tools (Register a clause,
+ * Designer) are nav leaves under Build, each beside its object page
+ * (SUPERSEDING ruling, maintainer 2026-08-25: the maintainer could not find
+ * the designer — a build-first site whose composing surfaces hide behind an
+ * inline sentence contradicts its own orientation; the seam is emphasized,
+ * in nav AND as a CTA on each object page). Claim and Join remain buttons
+ * on their object's page, never nav slots. `scripts/lint-nav-structure.sh` enforces the mechanical half of this
  * (doorway-first, set equality against the route tree, label==metadata.title,
  * and breadcrumb doorways) — section order and section names are the
  * maintainer's word, checked by review.
@@ -113,7 +117,9 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         links: [
             { href: "/spec", label: "Specifications" },
             { href: "/clauses", label: "Clauses" },
+            { href: "/clauses/register", label: "Register a clause" },
             { href: "/assemblies", label: "Assemblies" },
+            { href: "/assemblies/designer", label: "Designer" },
             { href: "/worked-example", label: "Worked example" },
             { href: "/registries", label: "Registries" },
             { href: "/composition", label: "Composition" },

@@ -14,7 +14,7 @@ const buttonVariants = cva(
     {
         variants: {
             variant: {
-                default: "bg-ink-heading text-paper border border-ink-heading hover:bg-ink-primary",
+                default: "bg-ink-primary text-paper border border-ink-heading hover:bg-ink-body",
                 destructive: "bg-error text-paper border border-error hover:bg-error/90",
                 outline: "border border-default-strong bg-paper hover:bg-subtle text-ink-primary",
                 secondary: "bg-subtle text-ink-primary border border-default hover:bg-subtle-hover",

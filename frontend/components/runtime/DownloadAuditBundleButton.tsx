@@ -62,7 +62,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                     }
                 }}
                 disabled={disabled}
-                className={`text-xs px-3 py-1.5 rounded border ${disabled ? "bg-subtle text-ink-faint border-default cursor-not-allowed" : "bg-ink-heading text-paper border-ink-heading hover:bg-ink-primary"}`}
+                className={`text-xs px-3 py-1.5 rounded border ${disabled ? "bg-subtle text-ink-faint border-default cursor-not-allowed" : "bg-ink-primary text-paper border-ink-primary hover:bg-ink-body"}`}
                 data-testid="download-audit-bundle-button"
             >
                 {busy ? "Building bundle…" : "Download audit bundle (PDF)"}

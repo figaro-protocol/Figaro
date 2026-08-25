@@ -426,7 +426,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 // mandatory clauses from loaded specs — confirming before the
                 // chain→IPFS warm completes would throw "no mandatory clauses".
                 disabled={confirming || !clauseSpecsLoaded}
-                className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-xs px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="review-confirm-publish"
                 title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
