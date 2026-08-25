@@ -466,8 +466,9 @@ five path-filtered, the guard battery whole-tree); the seventh publishes:
 - **`sdk-release`** — on an `sdk-v<version>` tag (refused unless it equals
   `sdk/package.json`'s version): type-check, pure-surface tests (`SKIP_ANVIL=1`),
   build, `npm publish --provenance` (RELEASE_READINESS Task 10 — the Sigstore
-  attestation binds the tarball to this repo + commit); needs the `NPM_TOKEN`
-  secret until npm Trusted Publishing replaces it. Gates no merge.
+  attestation binds the tarball to this repo + commit); auth is npm Trusted
+  Publishing (OIDC — the package's npm settings name this workflow as the
+  trusted publisher; no stored token). Gates no merge.
 
 The EIP-712 parity harness (above) rides `foundry-ci` + `sdk-ci`; both run its
 two halves unconditionally.

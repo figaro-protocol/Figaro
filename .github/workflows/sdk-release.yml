@@ -10,14 +10,16 @@ name: SDK Release
 # `version` — the workflow refuses a mismatch, so a tag can never publish
 # something other than what the tree names.
 #
-# What the maintainer sets up once (never automated — account acts):
-#   1. an npm organisation that owns the `@figaro` scope;
-#   2. a GRANULAR access token on that account, scoped to publish `@figaro-protocol/sdk`,
-#      with "bypass 2FA" for automation, stored as the repo secret `NPM_TOKEN`;
-#   3. after the first publish, optionally replace the token with npm Trusted
-#      Publishing (OIDC — no long-lived secret; configure this workflow as the
-#      trusted publisher on the package's npm settings) and delete NPM_TOKEN.
-# Provenance requires `id-token: write` (the Sigstore OIDC identity) — the ONLY
+# Auth is npm Trusted Publishing (configured 2026-08-25): the package's npm
+# settings name THIS workflow file in THIS repository as the trusted publisher
+# (allowed action: publish, no environment), and npm mints a short-lived
+# credential from the run's OIDC identity — no stored token. That handshake
+# needs npm ≥ 11.5.1, newer than what the pinned Node bundles, hence the npm
+# upgrade step below. What the maintainer owns (account acts, never automated):
+# the npm organisation holding the `@figaro-protocol` scope, and the trusted-
+# publisher entry itself — if this file is ever renamed, the npm setting must
+# be updated in the same act or publishes fail with an auth error.
+# Provenance and the OIDC handshake require `id-token: write` — the ONLY
 # extra permission this workflow takes.
 
 on:
@@ -77,8 +79,12 @@ jobs:
               working-directory: ./sdk
               run: npm run build
 
+            # Trusted Publishing's OIDC credential exchange ships in npm 11.5.1;
+            # Node 22 (.nvmrc) bundles npm 10.x, which would look for a token,
+            # find none, and fail auth.
+            - name: Upgrade npm for Trusted Publishing
+              run: npm install -g npm@latest
+
             - name: Publish to npm with provenance
               working-directory: ./sdk
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: npm publish --provenance --access public

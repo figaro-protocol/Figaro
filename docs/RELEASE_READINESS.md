@@ -284,8 +284,12 @@ public content) — the scope is the GitHub organisation's own name, which is th
 stronger identity anyway: the attestation binds to `github.com/figaro-protocol`, so
 scope and provenance agree. Verified downstream: cold `npm install` into a scratch
 project, `npm audit signatures` ("verified attestations"), root + `/signer` subpath
-import smoke. Remaining optional hardening: move to npm Trusted Publishing (OIDC —
-this workflow as the trusted publisher) and delete `NPM_TOKEN`.
+import smoke. Hardening DONE 2026-08-25: the workflow publishes via npm Trusted
+Publishing (OIDC — the package's npm settings name
+`.github/workflows/sdk-release.yml` as the trusted publisher; allowed action
+publish only), removing the token-expiry
+failure class. The `NPM_TOKEN` repo secret is deleted once the first OIDC
+publish succeeds (maintainer act).
 
 ### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
 
