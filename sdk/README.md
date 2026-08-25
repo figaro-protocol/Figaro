@@ -191,7 +191,10 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/sdk/agent";
 // The agreement is REBUILT, never stored: step 4's template + the same overrides and
 // specs re-instantiate it identically, and its merkle root IS the committed
-// `agreementHash` the counter opens each section's proof against.
+// `agreementHash` the counter opens each section's proof against. Note the return
+// shape: this is the bare Agreement — when you need its hash, compute it with
+// `computeAgreementHash(agreement)` (root export); only `buildOrderAgreement`
+// returns the `{ agreement, agreementHash }` pair.
 const agreement = instantiateRootAgreement(template, { buyer, seller: resolve.commitments[0].seller, overrides, specs });
 const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter!, [  // optional on the record type; present on every shipped record
   { commitment: resolve.commitments[0], agreement }, // the agreement each order signed
