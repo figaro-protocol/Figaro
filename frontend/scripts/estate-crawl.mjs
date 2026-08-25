@@ -31,7 +31,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, http, parseAbiItem } from "viem";
+import { createPublicClient, http } from "viem";
+import {
+    CLAUSE_REGISTRY_ABI,
+    ASSEMBLY_REGISTRY_ABI,
+    MEMBERS_REGISTRY_ABI,
+} from "@figaro-protocol/sdk";
+
+// The canonical ABIs, never hand-written fragments: a fabricated ABI never
+// errors — it just sees nothing (lint-no-handwritten-kernel-abis.sh).
+const eventItem = (abi, name) => abi.find((e) => e.type === "event" && e.name === name);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SITE = (process.env.ESTATE_SITE_URL ?? "https://figaro-protocol.pages.dev").replace(/\/$/, "");
@@ -126,16 +135,16 @@ if (process.env.ESTATE_SKIP_PINS !== "1") {
     };
     const sources = [
         ["clause", record.clauseRegistry,
-            parseAbiItem("event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registeredBy)"),
+            eventItem(CLAUSE_REGISTRY_ABI, "ClauseRegistered"),
             (l) => l.args.contentURI],
         ["assembly", record.assemblyRegistry,
-            parseAbiItem("event AssemblyRegistered(bytes32 indexed compositionHash, address indexed registeredBy, string contentURI)"),
+            eventItem(ASSEMBLY_REGISTRY_ABI, "AssemblyRegistered"),
             (l) => l.args.contentURI],
         ["member", record.membersRegistry,
-            parseAbiItem("event MemberRegistered(address indexed member, string metadataURI)"),
+            eventItem(MEMBERS_REGISTRY_ABI, "MemberRegistered"),
             (l) => l.args.metadataURI],
         ["member-update", record.membersRegistry,
-            parseAbiItem("event MemberProfileUpdated(address indexed member, string metadataURI)"),
+            eventItem(MEMBERS_REGISTRY_ABI, "MemberProfileUpdated"),
             (l) => l.args.metadataURI],
     ];
     let pinCount = 0;
