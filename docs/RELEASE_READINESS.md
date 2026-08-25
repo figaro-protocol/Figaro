@@ -290,8 +290,8 @@ Publishing (OIDC — the package's npm settings name
 publish only), removing the token-expiry
 failure class. `0.1.1` is the current published version — the first OIDC
 publish (tag `sdk-v0.1.1`, 2026-08-25), verified downstream the same way
-(`npm audit signatures`: verified attestations). The now-unused `NPM_TOKEN`
-repo secret awaits deletion (maintainer act).
+(`npm audit signatures`: verified attestations). The `NPM_TOKEN` repo secret
+is deleted (2026-08-25) — no long-lived publish credential exists anywhere.
 
 ### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
 
