@@ -868,6 +868,11 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                                 <td className="py-2 text-ink-body">A settlement ERC-20 a local development run deploys for its own tests. <strong>Public records do not carry this key</strong>, so <code>token</code> is absent after mapping &mdash; which is correct, not a fault: a process is denominated by the <code>currency</code> inside each signed commitment, and nothing in the SDK reads <code>addresses.token</code>.</td>
                             </tr>
                             <tr>
+                                <td className="py-2 pr-4 font-mono text-xs">permitTokenAddress</td>
+                                <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
+                                <td className="py-2 text-ink-body">A second local-run ERC-20 (MPMT) deployed for the permit-funded flows&apos; own tests. <strong>Public records do not carry this key</strong>, and the SDK does not read it; like <code>tokenAddress</code>, denomination comes from the <code>currency</code> inside each signed commitment.</td>
+                            </tr>
+                            <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">florinToken</td>
                                 <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
                                 <td className="py-2 text-ink-body"><code>FlorinToken</code>. Not part of <code>FigaroAddresses</code>; read it off the record and pass it where you need it (with <code>FLORIN_TOKEN_ABI</code>).</td>

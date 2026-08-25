@@ -48,7 +48,7 @@ export default function Faq() {
                 title="FAQ."
                 lead={
                     <>
-                        Plain-language answers to the questions you should ask before sending tokens through a protocol you didn&apos;t write. Each answer names a concern, states what the protocol can and cannot do about it, and states the residual risk beside it &mdash; never in a footnote, never on another page.
+                        Plain-language answers to the questions you should ask before sending tokens through a protocol you didn&apos;t write. Each answer names a concern, states what the protocol can and cannot do about it, and states the residual risk beside it &mdash; never in a footnote.
                     </>
                 }
             />

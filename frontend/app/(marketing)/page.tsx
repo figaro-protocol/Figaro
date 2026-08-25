@@ -105,7 +105,7 @@ export default function Home() {
 
             <MarketingSection title="Every deal spins up a company — and dissolves it at settlement">
                 <p className="text-base text-ink-body leading-relaxed">
-                    A company is a bundle of functions held together long enough to make deals happen; a Figaro deal spins each one up for the length of a single deal, then winds it up. The legal department is clauses: the terms of the deal, written by anyone, published for reuse. The org chart is an assembly: who adds value in what order. The books, the audit, and compliance are the record the deal leaves behind. The treasury and the boss are one part. That is the kernel: the small settlement engine every deal runs on. It holds both sides&apos; stakes and does the manager&apos;s work by arithmetic. Nothing is incorporated and nothing is deployed. When the buyer resolves, the company that never existed winds up.
+                    A company is a bundle of functions held together long enough to make deals happen; a Figaro deal spins each one up for the length of a single deal, then winds it up. The legal department is clauses: the terms of the deal, written by anyone, published for reuse. The org chart is an assembly: who adds value in what order. The books, the audit, and compliance are the record the deal leaves behind. The treasury and the boss are the same thing &mdash; the kernel, the small settlement engine every deal runs on. It holds both sides&apos; stakes and does the manager&apos;s work by arithmetic. Nothing is incorporated and nothing is deployed. When the buyer resolves, the company that never existed winds up.
                 </p>
             </MarketingSection>
 

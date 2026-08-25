@@ -30,7 +30,7 @@ export default function Consequences() {
                     <>
                         One constant changed. Between two strangers with no institution between them, a promise to deliver can be made credible for the cost of temporarily locked capital and cents to a few dollars of fixed gas at typical network prices, with no percentage taken by anyone in the middle. Civilization built a great deal to substitute for that missing property: intermediaries, books kept in order to be believed, the firm itself as a container for enforceable cooperation. All of it becomes optional. What follows is a two-hundred-year projection of that substitution stack unwinding, in order of how much weight each part carries, with what the unwinding costs stated beside it &mdash; every line derived from the mechanism, not observed in a deployment, and the{" "}
                         <Link href="#counterweights" className="text-ink-heading font-medium hover:underline">standing counterweights</Link>{" "}
-                        below say what would make it wrong. It is the question asked before the code was released, and written down first so that no one &mdash; the author included &mdash; could later say it had not been asked.
+                        below say what would make it wrong. The projection is the question asked before the code was released, and written down first so that no one &mdash; the author included &mdash; could later say it had not been asked.
                     </>
                 }
             />
