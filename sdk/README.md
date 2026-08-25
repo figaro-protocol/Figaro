@@ -1930,18 +1930,18 @@ The event log is the read path: verify an update landed by re-running discovery
 
 ## Versioning & stability
 
-`@figaro-protocol/sdk` is pre-1.0 (currently `0.1.0`). Per semver's pre-1.0 convention,
+`@figaro-protocol/sdk` is pre-1.0 (currently `0.1.1`). Per semver's pre-1.0 convention,
 **minor version bumps may include breaking changes** — there is no stable
 public API yet. Pin an exact version or a narrow range if you need
 reproducible builds against this package.
 
 Every published change is recorded in the repo-root
 [`CHANGELOG.md`](../CHANGELOG.md) (Keep a Changelog format) — check it before
-upgrading. `0.1.0` is published on npm and tagged in the public repository:
-`v0.1.0` marks the repository release, `sdk-v0.1.0` the commit this package was
-built and published from. Verify the tie yourself rather than taking it on
-trust — `npm audit signatures` checks the provenance attestation that binds the
-tarball to that repository and that commit.
+upgrading. Each published version is tagged in the public repository:
+`v0.1.0` marks the repository release, `sdk-v<version>` the commit that
+version was built and published from. Verify the tie yourself rather than
+taking it on trust — `npm audit signatures` checks the provenance attestation
+that binds the tarball to that repository and that commit.
 
 ## Test
 

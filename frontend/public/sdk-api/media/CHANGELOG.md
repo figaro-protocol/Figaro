@@ -5,9 +5,10 @@ All notable changes to Figaro are documented in this file. The format follows
 described in `sdk/README.md` § "Versioning & stability" (the SDK is pre-1.0 —
 minor bumps may break).
 
-The repository carries two tags: `v0.1.0` (the repository release) and
-`sdk-v0.1.0` (the commit `@figaro-protocol/sdk@0.1.0` was built and published
-to npm from). Everything since lives under **Unreleased**.
+The repository carries a `v0.1.0` tag (the repository release) and one
+`sdk-v<version>` tag per npm publish of `@figaro-protocol/sdk` (the commit
+that version was built and published from). Everything since the latest
+release lives under **Unreleased**.
 
 ## [Unreleased]
 
@@ -43,7 +44,7 @@ Summary of the current state of the protocol and its verification surface:
 
 ### SDK
 
-- `@figaro-protocol/sdk` at `0.1.0`, pre-1.0: six subpath exports — root (protocol
+- `@figaro-protocol/sdk` at `0.1.1`, pre-1.0: six subpath exports — root (protocol
   primitives + the RPGF distribution mirror), `/agent` (agent coordination),
   `/derive` (event derivation), `/clauses` (the Layer-A clause spec
   source-of-truth), `/handoff` (the runtime handoff wire protocol), and
@@ -55,5 +56,31 @@ Summary of the current state of the protocol and its verification surface:
   `devnet-e2e-ci`, `prover-ci`, `guards-ci` (the whole-tree guard battery),
   `sdk-release`, and `sequencer-release` (publishes the prebuilt
   `figaro-sequencer` relay binary on tag push).
+
+## [sdk-0.1.1] - 2026-08-25
+
+`@figaro-protocol/sdk@0.1.1` — supersedes the stale `0.1.0` tarball, whose ABI
+surface had drifted behind the repository.
+
+### Fixed
+
+- `CLAUSE_REGISTRY_ABI` now includes `contentHashOf(bytes32) view returns (bytes32)` —
+  the function the README's own anchoring recipe calls; absent from the `0.1.0` ABI.
+- The AttestationCoordinator ABI names the four remaining reachable reverts
+  (`NotAuthorized`, `ProcessMismatch`, `UnknownOrder`, `OrderResolved`), so every
+  coordinator revert decodes.
+- `/agent`'s autonomous gateway checks each transaction receipt's `status`: a leg
+  that reverts on-chain after gas estimation now throws instead of counting as
+  recorded.
+
+### Changed
+
+- **Breaking:** `UNIVERSAL_ROUTER_ABI` is deleted — it described a contract the
+  protocol never composes. Encode swap legs against the new `SWAP_ROUTER_02_ABI`
+  (+ `QUOTER_V2_ABI` for read-side quoting), the venue
+  `WitnessSwapAndCommitCoordinator` actually routes through; a golden-vector test
+  pins the encodings.
+- README: worked `exactOutputSingle` calldata in the swap recipe, expanded
+  integration walkthrough and recipes.
 
 [Unreleased]: https://github.com/figaro-protocol/Figaro
