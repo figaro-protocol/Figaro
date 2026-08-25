@@ -1,4 +1,7 @@
 import type { Config } from "tailwindcss";
+// Relative, not the `@/` alias: this config is loaded by Tailwind/Next's own
+// TS loader (jiti), which resolves tsconfig paths only for the app graph.
+import { colorTokens } from "./lib/shared/designTokenValues";
 
 const config: Config = {
     content: [
@@ -13,45 +16,15 @@ const config: Config = {
     theme: {
         extend: {
             // Per docs/DESIGN_TOKENS.md §1 (Color tokens).
+            // DERIVED, never re-declared: every hex lives once, in
+            // `lib/shared/designTokenValues.ts`, so the Tailwind utilities and
+            // the raw-hex consumers (SVG strokes, QR, next/og) cannot drift.
             // The `bg./text./border.` namespacing in the spec is dropped because
             // Tailwind class generation uses role names directly (`bg-canvas`,
             // `text-muted`, `border-default`). Note the deliberate rename of
             // `text.*` to `ink.*` to avoid the `text-text-*` class collision
             // (Tailwind utility prefix `text-` + token key `text`).
-            colors: {
-                // Surfaces — Step 3.3 revision: warmer recessed surfaces (R>G>B)
-                // so the muji palette reads as warm rather than near-cool-gray.
-                canvas: '#f5f5f2',
-                paper: '#ffffff',
-                surface: '#ffffff',
-                subtle: '#f0ede5',
-                'subtle-hover': '#e6e2d8',
-                // Borders — warm linen/taupe replacing neutral grays.
-                default: '#e0dccf',
-                'default-strong': '#b3a98f',
-                // Text (`ink.*` to avoid `text-text-*` collision).
-                // Step 3.3 revision: cool-neutral grays (#111/#222/#333/#555/#888)
-                // failed visible-warmth test against Tailwind's gray.* ramp;
-                // replaced with R>G>B warm-neutral ramp (sumi → cocoa → khaki).
-                ink: {
-                    heading: '#a16328',
-                    primary: '#3a322a',
-                    body: '#5a4f42',
-                    muted: '#857c6e',
-                    faint: '#a89e8d',
-                },
-                focus: '#b3a98f',
-                // Accent — traditional MUJI aizome indigo. The single
-                // CTA-only contrast color in an otherwise warm-neutral
-                // palette. See DESIGN_TOKENS.md §1 for the discipline:
-                // accent surfaces appear at most once per page, on the
-                // primary call-to-action; never on body / status / icons.
-                accent: '#2a578f',
-                success: '#6b7a4a',
-                warning: '#a8762d',
-                error: '#9c4a3c',
-                info: '#857c6e',
-            },
+            colors: colorTokens,
             // Per docs/DESIGN_TOKENS.md §3 (Spacing tokens).
             // Six-step scale aliasing the muji-* values; named `xs..2xl` so
             // utilities read as `p-md`, `gap-lg`, `mt-2xl`. Container side-padding

@@ -14,7 +14,7 @@ const buttonVariants = cva(
     {
         variants: {
             variant: {
-                default: "bg-ink-primary text-paper border border-ink-heading hover:bg-ink-body",
+                default: "bg-ink-primary text-paper border border-ink-primary hover:bg-ink-body",
                 destructive: "bg-error text-paper border border-error hover:bg-error/90",
                 outline: "border border-default-strong bg-paper hover:bg-subtle text-ink-primary",
                 secondary: "bg-subtle text-ink-primary border border-default hover:bg-subtle-hover",
@@ -27,6 +27,13 @@ const buttonVariants = cva(
                 sm: "min-h-11 px-3 text-xs",
                 lg: "min-h-12 px-8",
                 icon: "min-h-11 min-w-11 h-11 w-11",
+                // 28px — clears WCAG 2.5.8 Target Size (Minimum, AA: 24 CSS
+                // px) but NOT 2.5.5 (AAA: 44). Admissible only in a dense
+                // tool row acting on the content beside it; never a primary
+                // CTA, never a lone control. `px-3` plus a real label keeps
+                // the width past 24px too — a compact ICON-only button would
+                // not, so use size="icon" for those. See DESIGN_TOKENS.md §7.
+                compact: "min-h-7 px-3 text-xs",
             },
         },
         defaultVariants: {
