@@ -14,12 +14,16 @@ export const metadata: Metadata = withOg({
 });
 
 /** The page's sixteen questions, split into two labeled groups by what each
- *  question is actually about. The DOM sections below run in exactly this
+ *  question is actually about — plus one leading entry that is NOT a question:
+ *  the pre-deal checklist (a curated digest of thirteen answers; the index
+ *  POINTS at it, ruled 2026-08-25 — the map stays the complete map, the digest
+ *  stays a digest, never merged). The DOM sections below run in exactly this
  *  order — index and document order are one sequence, never two (they drifted
  *  apart once: `keys` rendered fifth while indexed under "Deeper", `ownership`
  *  the mirror image). Titles are copied verbatim from each `MarketingSection`;
  *  keep the three in lockstep if a heading changes. */
 const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
+    { id: "before-you-send", title: "Before your first real deal." },
     { id: "custody", title: "Who holds the tokens?" },
     { id: "escrow", title: "Is this escrow?" },
     { id: "counterparty", title: "What if the counterparty doesn't deliver?" },
@@ -88,13 +92,16 @@ export default function Faq() {
                 </nav>
             </MarketingSection>
 
-            {/* Deliberately NOT in the jump index above: the index is the page's
-             *  sixteen questions, in one sequence with the DOM sections that answer
-             *  them. This is not a seventeenth question — it is the short form of
-             *  thirteen answers already below, kept at the top where a first-time
-             *  reader lands. Every line here is one sentence and links to the
-             *  section or page that owns the full treatment; nothing is derived
-             *  here that is not derived there. */}
+            {/* Named in the jump index above as its leading entry (ruled
+             *  2026-08-25): the index is the complete map and POINTS here; this
+             *  section stays a curated DIGEST — the short form of thirteen
+             *  answers already below, kept at the top where a first-time reader
+             *  lands. Never merge the two (the index exhaustive, this selective —
+             *  collapsing them degrades both jobs), and never grow this list
+             *  toward exhaustiveness to cover the index's deeper questions.
+             *  Every line here is one sentence and links to the section or page
+             *  that owns the full treatment; nothing is derived here that is not
+             *  derived there. */}
             <MarketingSection title="Before your first real deal." sectionId="before-you-send">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Thirteen things worth settling before a first commitment, each answered in one line. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavourable answers are on it too, in the same list as the rest.
