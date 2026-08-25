@@ -33,8 +33,9 @@
 # narrate the bans themselves.
 #
 # Wired into the root package.json lint-staged block under
-# `**/*.{ts,tsx,sol,rs,md}`. Run manually over the whole repo:
-#   git ls-files '*.ts' '*.tsx' '*.sol' '*.rs' '*.md' | xargs bash scripts/lint-no-closed-world-vocab.sh
+# `**/*.{ts,tsx,sol,rs,md,txt}` (.txt rides the .md prose classes —
+# frontend/public/llms.txt is a public doctrine surface). Run manually:
+#   git ls-files '*.ts' '*.tsx' '*.sol' '*.rs' '*.md' '*.txt' | xargs bash scripts/lint-no-closed-world-vocab.sh
 #
 # Exit code: 0 on clean (warnings allowed), 1 on any FAIL violation.
 
@@ -93,7 +94,7 @@ for file in "$@"; do
     is_md=0
     case "$file" in
         *.ts | *.tsx | *.sol | *.rs) ;;
-        *.md) is_md=1 ;;
+        *.md | *.txt) is_md=1 ;;
         *) continue ;;
     esac
     # Papers narrate the project's history (incl. retired vocabulary) — exempt.
