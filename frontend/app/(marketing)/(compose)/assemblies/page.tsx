@@ -48,7 +48,7 @@ export default function Assemblies() {
 
             <MarketingSection title="How one is composed.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every assembly carries three mandatory clauses automatically &mdash; commerce terms (the payment and settlement token, committed at buy time), order topology (which seller follows which), and assembly provenance, the record of which assembly a process instantiates that credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, hand-off, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
+                    Every assembly carries three mandatory clauses automatically: commerce terms, the payment and settlement token committed at buy time; order topology, which seller follows which; and assembly provenance &mdash; the record of which assembly a process instantiates, which is what credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, hand-off, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
                 </p>
                 <DesignGraphCollapseFigure
                     idPrefix="assemblies-design-collapse"

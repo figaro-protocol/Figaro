@@ -48,14 +48,14 @@ export default function Invariants() {
                             <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer closes, every order in the deal settles in one transaction, or none of them does. <em>What it means for you:</em> nobody is paid while somebody else is left hanging &mdash; so everyone bonded in has their own reason to help put a fault right before the close.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nothing can be swapped underneath the record afterwards, so a forum or a court reads what happened rather than reconstructing it.
+                            <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nobody can swap anything in underneath the record. A forum or a court reads what happened. It does not have to reconstruct it.
                         </li>
                         <li>
                             <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the contract knows &mdash; no refund path, no timeout, no admin key, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a deal by anyone but the two parties to it, which is also why whatever is wrong gets put right before the close rather than argued about after it.
                         </li>
                     </ol>
                     <p>
-                        They are facts, not rules: nothing in the contract can suspend one, because there is nothing in the contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived, with the worked numbers, on{" "}
+                        They are facts, not rules. Nothing in the contract can suspend one, because there is nothing in the contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived, with the worked numbers, on{" "}
                         <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
                             Kernel
                         </Link>

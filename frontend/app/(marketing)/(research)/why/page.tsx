@@ -17,7 +17,7 @@ export default function Why() {
                 title="Three eras of rule-making."
                 lead={
                     <>
-                        You already know the feeling of paying a stranger and hoping some institution &mdash; a bank, a platform, a court &mdash; will make it good if the deal goes wrong. Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. This is Figaro read as history: how it arrives, not what it is.
+                        You already know the feeling of paying a stranger and hoping some institution &mdash; a bank, a platform, a court &mdash; will make it good if the deal goes wrong. Coercion. Cognition. Crypto. Three ways humans have made rules legitimate. The first two are ancient and still working. The third is new, and it brings what neither could: clarity, anchored in mathematics. This is Figaro read as history: how it arrives, not what it is.
                     </>
                 }
             />
