@@ -288,8 +288,10 @@ import smoke. Hardening DONE 2026-08-25: the workflow publishes via npm Trusted
 Publishing (OIDC — the package's npm settings name
 `.github/workflows/sdk-release.yml` as the trusted publisher; allowed action
 publish only), removing the token-expiry
-failure class. The `NPM_TOKEN` repo secret is deleted once the first OIDC
-publish succeeds (maintainer act).
+failure class. `0.1.1` is the current published version — the first OIDC
+publish (tag `sdk-v0.1.1`, 2026-08-25), verified downstream the same way
+(`npm audit signatures`: verified attestations). The now-unused `NPM_TOKEN`
+repo secret awaits deletion (maintainer act).
 
 ### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
 
