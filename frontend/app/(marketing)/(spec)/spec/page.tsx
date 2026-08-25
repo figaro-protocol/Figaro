@@ -814,7 +814,7 @@ function attestViaResolver(
                         {recordSha && (
                             <p className="text-xs text-ink-muted mb-2">
                                 Verify the record in one comparison rather than address by address &mdash; its committed bytes hash to{" "}
-                                <span className="font-mono break-all">sha256:{recordSha}</span>; check it yourself:{" "}
+                                <span className="font-mono break-all">{`sha256:${recordSha}`}</span>; check it yourself:{" "}
                                 <code className="break-all">curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256</code>.
                                 This page computes the hash from the same file at build, so the two agreeing means the site and the repository are serving the same record.
                             </p>
