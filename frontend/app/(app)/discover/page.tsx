@@ -19,6 +19,11 @@ export default function DiscoverPage() {
                 Buyers and sellers alike publish a profile here &mdash; to appear yourself, register on{" "}
                 <Link href="/members" className="underline hover:text-black">/members</Link>.
             </p>
+            <p className="text-sm text-gray-500 mb-4">
+                This page lists the members you can order from. The registry of record is{" "}
+                <Link href="/registries?family=members" className="underline hover:text-black">the registry explorer</Link>
+                {" "}&mdash; every registered wallet, offering or not.
+            </p>
             <p className="text-base text-gray-600 leading-relaxed max-w-2xl mb-10">
                 Everyone here is someone you can order from directly &mdash; a
                 kitchen, a tailor, a courier, a service &mdash; each running its

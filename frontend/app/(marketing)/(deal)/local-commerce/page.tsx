@@ -46,7 +46,7 @@ export default function LocalCommercePage() {
                     It is seven in the evening and you order dinner. A kitchen you have never dealt with accepts. A courier you have never met carries it. Twenty minutes later you confirm it arrived &mdash; and in that single stroke the kitchen is paid, the courier is paid, and every stake goes home. No company sat in the middle. Nothing held the deal together but the deal itself.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl mt-6">
-                    What follows is one published assembly, run once. The same clauses and the same kernel carry a freight leg, a data sale, a certified repair, a survey flight &mdash; a meal is only the version everyone has already lived.
+                    What follows is one published assembly, run once. The same clauses and the same kernel carry a freight leg, a data sale, a certified repair, a survey flight, <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">two software agents splitting a commissioned deliverable</Link> &mdash; a meal is only the version everyone has already lived.
                 </p>
             </section>
 
@@ -93,12 +93,11 @@ export default function LocalCommercePage() {
                     }
                     caption={
                         <>
-                            Each contributor stakes against everything the deal has accumulated
-                            through its own link. So the courier takes the smaller share (2.10 to
-                            the kitchen&apos;s 8.40) and locks up the larger stake
-                            (2 &times; 10.50 = 21.00, against the kitchen&apos;s 16.80): by the
-                            time the courier commits, the running total carries the food as well
-                            as the ride.
+                            The kitchen accepts first and locks 16.80 against the 8.40 of food.
+                            The courier arrives to a dinner that already has the food&apos;s
+                            value on it, so a 2.10 ride locks 21.00 &mdash; the smallest earning
+                            of the evening behind the largest lock, because from the pickup
+                            onwards the courier is carrying your whole order, not just the ride.
                         </>
                     }
                 />

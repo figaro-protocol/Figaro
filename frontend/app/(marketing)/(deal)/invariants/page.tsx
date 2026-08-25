@@ -19,9 +19,11 @@ export const metadata: Metadata = withOg({
 //
 // CANONICAL, DO NOT RELOCATE: with /why, this page is the in-repo source of
 // the four boundary readings — HOLDS ("What the chain holds"), COUPLES
-// ("What couples to it"), ADMITS ("Who may act"), EMERGES ("Where the
-// meaning lives"). All four bind the KERNEL ONLY. They may be reorganized
-// under the invariant list; they may not move to another page.
+// ("What couples to it"), ADMITS (the closing line of "The six.", folded in
+// 2026-08-25: it was a three-sentence pointer wearing a section heading),
+// EMERGES ("Where the meaning lives"). All four bind the KERNEL ONLY. They
+// may be reorganized under the invariant list; they may not move to another
+// page.
 export default function Invariants() {
     return (
         <>
@@ -65,7 +67,14 @@ export default function Invariants() {
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>
-                        . What follows here is the four things that fall out of the six.
+                        .
+                    </p>
+                    <p>
+                        Nobody admits you, either. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing; the kernel reads a signature, never a species, and the full treatment is on{" "}
+                        <Link href="/agents" className="text-ink-heading font-medium hover:underline">
+                            Agents
+                        </Link>
+                        . What follows here is the other three things that fall out of the six.
                     </p>
                 </div>
             </MarketingSection>
@@ -119,12 +128,6 @@ export default function Invariants() {
                         Anything already on-chain composes too &mdash; a token, an item held in a wallet, another contract that prices or matches or settles. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. That openness was never something Figaro had to build &mdash; it is what having a boundary instead of a platform means.
                     </p>
                 </div>
-            </MarketingSection>
-
-            <MarketingSection title="Who may act.">
-                <p className="text-base text-ink-body leading-relaxed max-w-prose">
-                    Nobody admits you. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing. The kernel reads a signature, never a species. Full treatment: <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
-                </p>
             </MarketingSection>
 
             <MarketingSection title="Where the meaning lives." bottomPad="wide">

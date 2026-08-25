@@ -42,7 +42,7 @@ export default function Assemblies() {
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one &mdash; but the registry count further down is not a curated list: it reads directly off the live network, so it shows exactly what is registered today, nothing more and nothing less.
+                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one.
                 </p>
             </MarketingSection>
 
@@ -103,7 +103,10 @@ export default function Assemblies() {
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line in a multi-seller assembly is its own <Link href="/glossary#bonded-commitment" className="underline">bonded commitment</Link>, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under. One of those shapes is followed order by order, with every stake named per party, on <Link href="/worked-example" className="underline">Worked example</Link>.
+                    Every line in a multi-seller assembly is its own <Link href="/glossary#bonded-commitment" className="underline">bonded commitment</Link>, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mt-4">
+                    <strong>One of those shapes, followed order by order:</strong> a buyer and two agents run a single process on it, every stake named per party, one resolution settling all of them together &mdash; <Link href="/worked-example" className="underline">Worked example</Link>.
                 </p>
             </MarketingSection>
 
@@ -214,15 +217,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered assembly is searchable in the registry explorer &mdash; each
                     row one on-chain binding keyed by its composition hash, its template fetched
-                    from IPFS, its author the wallet that anchored it. There is no static roster of
-                    assemblies &mdash; the count is derived, never stored. The canonical templates of
-                    the reference set are the <a href="https://github.com/figaro-protocol/Figaro/tree/main/assemblies" target="_blank" rel="noopener noreferrer" className="underline"><code>assemblies/</code> directory</a> in
-                    the repository; on chain, discover every anchored assembly (reference or
-                    third-party) the same way the registry explorer does &mdash; by reading the{" "}
-                    <code>AssemblyRegistry</code>&apos;s <code>AssemblyRegistered</code> event stream.
-                </p>
-                <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    For agents: the registry explorer derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro-protocol/sdk</code> &mdash; see the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a> for the deployment record.
+                    from IPFS, its author the wallet that anchored it.
                 </p>
                 <RegistryCountLink family="assemblies" />
                 <p className="text-sm text-ink-body leading-relaxed mt-6">

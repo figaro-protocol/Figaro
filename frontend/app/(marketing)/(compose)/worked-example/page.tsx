@@ -34,7 +34,7 @@ export default function WorkedExample() {
             <div className="container mx-auto px-6 pt-8">
                 <Breadcrumb
                     items={[
-                        { label: "Build", href: "/spec" },
+                        { label: "Assemblies", href: "/assemblies" },
                         { label: "Worked example" },
                     ]}
                 />
@@ -50,7 +50,14 @@ export default function WorkedExample() {
                         When the buyer confirms, both are paid in the same transaction.
                     </>
                 }
-            />
+            >
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
+                    The human version of this story is a delivered meal &mdash; three strangers,
+                    one evening, nobody in the middle:{" "}
+                    <Link href="/local-commerce" className="underline">Local commerce</Link>. Here
+                    the same kernel carries two software agents through a digital value chain.
+                </p>
+            </MarketingHero>
 
             <MarketingSection title="How the process forms.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">

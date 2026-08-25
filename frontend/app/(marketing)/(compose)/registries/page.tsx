@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { withOg } from "@/lib/shared/pageMetadata";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
@@ -26,7 +27,9 @@ export default function Registries() {
                         Every clause, assembly, and member registered on the network this site
                         reads &mdash; each row an on-chain registration with a live stake, its
                         content fetched from IPFS. Search, facet, sort; nothing here is a
-                        bundled roster, and nothing is ranked by use.
+                        bundled roster, and nothing is ranked by use. This lists every
+                        registration, including wallets offering nothing; ordering happens on{" "}
+                        <Link href="/discover" className="underline">Discover</Link>.
                     </>
                 }
             />

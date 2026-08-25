@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Glossary — Figaro Protocol",
     description:
-        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, the florin, kernel, operator, order, attestation, process, settlement, gas, the four hashes, keccak256, EIP-712, ECDSA, IPFS and its CID, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
+        "Plain-language definitions of the fixed vocabulary used across the site — agent, buyer, seller, clause, assembly, composition, bonded commitment, stake, deposit, the florin, kernel, operator, order, attestation, process, settlement, gas, the four hashes, keccak256, EIP-712, ECDSA, IPFS and its CID, stablecoin-class tokens, and wallet — each drawn from how the site itself already uses the word.",
 });
 
 interface Term {
@@ -68,6 +68,13 @@ const TERMS: Term[] = [
         readMore: <Link href="/composition" className="hover:underline">Composition</Link>,
     },
     {
+        id: "deposit",
+        term: "Deposit",
+        definition:
+            "The reclaimable ETH a wallet locks to put a clause, an assembly, or its own profile on a registry — staked intent, not a fee. Nobody takes a cut of it, and withdrawing returns the exact amount and de-surfaces the registration, so what registering costs is the deposit for as long as it stays listed; a participant's ETH releases only after a cooldown fixed at deployment. It is not a deal's stake: a stake secures one open deal inside the kernel and comes home at settlement, while a deposit sits outside the kernel entirely and only keeps a registration visible. The amount is set per deployment and shown before you sign.",
+        readMore: <Link href="/faq#builders-registries" className="hover:underline">FAQ</Link>,
+    },
+    {
         id: "ecdsa",
         term: "ECDSA",
         definition:
@@ -100,44 +107,8 @@ const TERMS: Term[] = [
         term: "The four hashes",
         definition: (
             <>
-                <p className="mb-3">
-                    A clause spec produces four separate hashes, and mixing them up is the costliest authoring mistake there is — registration is permanent and first-write-wins.
-                </p>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-default text-left font-semibold text-ink-heading">
-                                <th scope="col" className="py-2 pr-4">Hash</th>
-                                <th scope="col" className="py-2 pr-4">Computed over</th>
-                                <th scope="col" className="py-2">If it doesn&apos;t match</th>
-                            </tr>
-                        </thead>
-                        <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
-                            <tr>
-                                <td className="py-2 pr-4">idHash — the clause id</td>
-                                <td className="py-2 pr-4">the clause&apos;s name and version, and nothing else</td>
-                                <td className="py-2">You are pointing at a different clause in the registry — and the binding you made is permanent.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">contentHash</td>
-                                <td className="py-2 pr-4">the whole document, exactly as written — the half people read and the half programs parse</td>
-                                <td className="py-2">The document is not the one that was anchored; the batch settlement path refuses to settle against it.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">agreementHash</td>
-                                <td className="py-2 pr-4">every filled-in term of one deal, folded together into a single fingerprint</td>
-                                <td className="py-2">Buyer and seller are not signing the same deal, and the kernel will not accept the commitment.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">compositionHash</td>
-                                <td className="py-2 pr-4">the set of clauses a designer composed into an assembly</td>
-                                <td className="py-2">The shape being offered is not the shape that was published under that name.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p className="mt-3">
-                    One thing, two names: what Clauses calls <em>the clause id</em> and what Specifications and the SDK call <code>idHash</code> are the same 32 bytes &mdash; <code>keccak256(abi.encode(clauseId, version))</code>, the key the registry files an entry under and the value the attest calls take. The readable name (<code>figaro-commerce</code>) is what you author; the hash is what the chain holds.
+                <p>
+                    A clause spec produces four separate hashes &mdash; the clause id (the registry key), <code>contentHash</code> (the document&apos;s own fingerprint), <code>agreementHash</code> (what a buyer and a seller sign), and <code>compositionHash</code> (what an assembly is) &mdash; and mixing them up is the costliest authoring mistake there is, because registration is permanent and first-write-wins. One thing, two names: the clause id and what the SDK calls <code>idHash</code> are the same 32 bytes, <code>keccak256(abi.encode(clauseId, version))</code>; the readable name (<code>figaro-commerce</code>) is what you author, and the hash is what the chain holds.
                 </p>
             </>
         ),

@@ -53,9 +53,6 @@ export default function Agents() {
             </MarketingSection>
 
             <MarketingSection title="No API keys, no rate limits, no data moats.">
-                <p className="text-sm text-ink-muted leading-relaxed mb-5">
-                    For integrators: from here on the register shifts &mdash; registry fields, identifiers, and the SDK calls a wallet is driven through, rather than what the protocol is.
-                </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     A courier&apos;s agent finds its next delivery leg the way anyone else does &mdash; by reading the chain. A leg is the unit an agent takes: one bonded link in a chain that can carry many sellers &mdash; each bound by its own signature, all of them settling together on the buyer&apos;s single close &mdash; so an agent can hold one link of a deal far larger than anything it could carry alone. Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The settlement graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
                 </p>
@@ -65,11 +62,17 @@ export default function Agents() {
             </MarketingSection>
 
             <MarketingSection title="ERC-8004 interop, by metadata convention.">
+                <p className="font-mono text-xs text-ink-muted uppercase tracking-wide mb-2">
+                    For integrators
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5 pb-5 border-b border-default">
+                    Everything above this line is the argument; everything below it is the operating surface &mdash; registry fields, identifiers, and the SDK calls a wallet is driven through, rather than what the protocol is.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>MembersRegistry.metadataURI</code> JSON. No new contract is needed and nothing has to be registered &mdash; the registry already carries arbitrary metadata. An author who wants the endpoint shape published as a term of a deal rather than as profile metadata can <Link href="/clauses" className="underline">register a clause</Link> for it; none is reserved for the purpose.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods name the agent&apos;s on-chain Ethereum address in CAIP-10 form &mdash; a consistency check, not proof of control, since a DID Document is self-published. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro-protocol/sdk/agent</code> for the round-trip.
+                    An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods name the agent&apos;s on-chain Ethereum address in CAIP-10 form &mdash; a consistency check, not proof of control, since a DID Document is self-published. The round-trip &mdash; resolve a document, check it against the address, build one for your own wallet &mdash; ships in <code>@figaro-protocol/sdk/agent</code>; the calls are named and specified in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#figaro-protocolsdkagent--agent-coordination" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>, never restated here.
                 </p>
             </MarketingSection>
 
