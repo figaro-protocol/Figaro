@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Security — Figaro Protocol",
     description:
-        "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna — the external-audit posture, and how to verify any deal yourself. Audit results are published here as they land.",
+        "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna, Lean 4 — the external-audit posture, and how to verify any deal yourself. Audit results are published here as they land.",
 });
 
 // Security in the crypto sense only: testing, code security, audit results.
@@ -26,11 +26,14 @@ export default function Security() {
             />
 
             <MarketingSection title="External audit" sectionId="audit">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Not yet audited by an external auditor. That is the honest answer. The Solidity surface is frozen for that audit (amendments scoped to the freeze), and results land on this page when they exist.
-                </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Audit results will be published on this page when they exist &mdash; findings, remediations, and the auditor&apos;s report, not a summary of them.
+                    Not yet audited by an external auditor. That is the honest answer. The Solidity surface is frozen for that audit (amendments scoped to the freeze), and results will be published on this page when they exist &mdash; findings, remediations, and the auditor&apos;s report, not a summary of them.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Verifying what you are served" sectionId="delivery">
+                <p className="text-base text-ink-body leading-relaxed">
+                    The contracts being verified says nothing about the page in front of you &mdash; a frontend could still misrepresent what you sign. The definitive, non-technical answer to that is a verifiable build: a release pinned by its own content hash (a CID) with a published rebuild recipe anyone can diff against it, plus a second, independently built frontend attesting to the same typed data &mdash; so no single origin&apos;s word is required at all. Until then, the two checks under <Link href="/faq#signing" className="text-ink-heading font-medium hover:underline">signing, on the FAQ</Link> are the check, and the limitation stated there stands as written.
                 </p>
             </MarketingSection>
 
