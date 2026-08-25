@@ -21,6 +21,7 @@ import Link from "next/link";
 import { parseClauseSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
 import {
@@ -119,7 +120,7 @@ export function RegisterClauseForm() {
             <label htmlFor="clause-spec-input" className="block text-sm font-medium text-ink-heading">
                 Clause spec (JSON)
             </label>
-            <textarea
+            <Textarea
                 id="clause-spec-input"
                 data-testid="clause-spec-input"
                 value={specText}
@@ -127,7 +128,7 @@ export function RegisterClauseForm() {
                 spellCheck={false}
                 rows={16}
                 placeholder={'{\n  "clauseId": "figaro-my-clause",\n  "version": 1,\n  "title": "My clause",\n  "description": "…",\n  "fields": [ { "name": "note", "type": "string", "required": true } ]\n}'}
-                className="w-full font-mono text-xs text-ink-body bg-paper border border-default rounded-section p-4 focus:border-default-strong focus:outline-none resize-y"
+                className="font-mono text-xs text-ink-body p-4 resize-y"
             />
 
             {/* Validation feedback — derived live from the pasted text. */}

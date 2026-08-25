@@ -1,6 +1,7 @@
 "use client";
 
 import { isValidAddress } from "@/lib/shared/evm";
+import { Input } from "@/components/ui/Input";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 
 /**
@@ -75,15 +76,13 @@ export function TokenAddressInput({
     return (
         <div className="flex items-center gap-2">
             <div className="relative flex-1">
-                <input
+                <Input
                     type="text"
                     placeholder="0x… token address"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    aria-invalid={showError || undefined}
-                    className={`w-full border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-default-strong ${
-                        showError ? "border-error focus:border-error" : "border-default"
-                    }`}
+                    hasError={showError}
+                    className="font-mono"
                 />
                 {valid && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint pointer-events-none">

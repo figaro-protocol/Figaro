@@ -25,6 +25,12 @@ const config: Config = {
             // `text.*` to `ink.*` to avoid the `text-text-*` class collision
             // (Tailwind utility prefix `text-` + token key `text`).
             colors: colorTokens,
+            // ring-offset gaps draw in the page's own ground, not Tailwind's
+            // default white — on canvas/subtle surfaces a white gap read as a
+            // halo (ruled 2026-08-25). canvas ≈ paper to the eye, so one
+            // default serves every surface; override per-site only if a ring
+            // ever sits on a dark fill.
+            ringOffsetColor: { DEFAULT: colorTokens.canvas },
             // Per docs/DESIGN_TOKENS.md §3 (Spacing tokens).
             // Six-step scale aliasing the muji-* values; named `xs..2xl` so
             // utilities read as `p-md`, `gap-lg`, `mt-2xl`. Container side-padding
