@@ -45,7 +45,7 @@ export default function Kernel() {
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Nothing is seized and nobody judges: a forfeited stake is simply value that never comes home, locked in the box, benefiting no one. The math is exactly why walking away is rare &mdash; it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts: until the buyer closes, neither side can reach anything, so a deal nobody closes strands both stakes in the box, not just the walker&apos;s. The deterrent works on both sides at once, with one difference &mdash; whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked, and never a token more.
+A forfeited stake is simply value that never comes home, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a deal nobody closes strands both stakes in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The stake is a new kind of thing. Value you part with has always had two modes: spent, or invested. The stake is a third &mdash; neither consumed nor put to work earning, a promise made expensive to break, and it comes home intact every honest time.
@@ -60,7 +60,7 @@ export default function Kernel() {
                 Two mechanisms, not one.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Two mechanisms, then, not one, and neither is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands settle as one deal, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close settles the whole &mdash; and the composition is the machine.
+                Neither mechanism is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands settle as one deal, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close settles the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">

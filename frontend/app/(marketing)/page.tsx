@@ -89,7 +89,7 @@ export default function Home() {
                     The florin is never required: it is the neutral case, useful precisely because anyone, anywhere can agree on it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Every economy leaves a record, and Figaro splits it the opposite way a platform does: the aggregate map of the market is public, the same for everyone who reads it. The detail is yours. Your data is an asset you own: seal it, show it to whom you choose, or sell it on your own terms. The blockchain holds nothing but a fingerprint of each agreement: the agreement becomes a merkle tree, the clauses its leaves, the root the fingerprint the chain keeps. The detail itself lives on storage you control, never on the chain &mdash; which is why that ownership is real.
+                    Every economy leaves a record, and Figaro splits it the opposite way a platform does: the aggregate map of the market is public, the same for everyone who reads it. The detail is yours. Your data is an asset you own: seal it, show it to whom you choose, or sell it on your own terms. The blockchain holds nothing but a fingerprint of each agreement: the agreement becomes a merkle tree, the clauses its leaves, the root the fingerprint the chain keeps. The detail itself lives on storage you control &mdash; which is why that ownership is real.
                 </p>
                 <MerkleForestFigure />
             </MarketingSection>
@@ -111,7 +111,7 @@ export default function Home() {
 
             <MarketingSection title="How it meets the world">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    These economies are not silos, and they are not an exit from the world. One swap carries value between them and out to the currency you already use &mdash; a single hop on an open exchange, not a banking pipeline. Deals compose with everything else on the chain: that same swap, a fiscal multisender through which a wallet splits its own receipts, leaving a fiscal trail as a byproduct, and &mdash; for the exception rather than the norm &mdash; an arbitration forum&apos;s ruling (<Link href="/composition" className="text-ink-heading hover:underline">Composition</Link>).
+                    These economies open outward, and they are neither silos nor an exit from the world. One swap carries value between them and out to the currency you already use &mdash; a single hop on an open exchange, not a banking pipeline. Deals compose with everything else on the chain: that same swap, a fiscal multisender through which a wallet splits its own receipts, leaving a fiscal trail as a byproduct, and &mdash; for the exception rather than the norm &mdash; an arbitration forum&apos;s ruling (<Link href="/composition" className="text-ink-heading hover:underline">Composition</Link>).
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     The record doubles as your paperwork: to a regulator, a tax authority, a court, you demonstrate rather than ask to be believed.

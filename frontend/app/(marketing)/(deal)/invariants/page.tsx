@@ -29,7 +29,7 @@ export default function Invariants() {
         <>
             <MarketingHero
                 title="Invariants."
-                lead="Figaro rests on six facts. Not policies someone chose, not promises anyone keeps — facts a contract cannot violate. Everything else the protocol does either follows from those six or is built on top of them by somebody else."
+                lead="Figaro rests on six facts a contract cannot violate — not policies someone chose, not promises anyone keeps. Everything else the protocol does either follows from those six or is built on top of them by somebody else."
             />
 
             <MarketingSection title="The six.">

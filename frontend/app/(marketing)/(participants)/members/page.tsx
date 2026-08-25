@@ -31,7 +31,7 @@ export default function Join() {
                     One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through, and which of the data your own deals produce you offer for sale. Either side puts the wallet in the data market, because every deal it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    None of it is a grade. Nothing here issues a standing, ranks one, or can revoke one: the profile is your own declaration, and what stands behind it is the deposit you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you.
+                    The profile is your own declaration, and what stands behind it is the deposit you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
                 </p>
             </MarketingSection>
 
