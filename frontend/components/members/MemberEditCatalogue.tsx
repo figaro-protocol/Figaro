@@ -19,20 +19,16 @@
  * and a price.") since a registered seller with an empty
  * catalogue is a degenerate state.
  *
- * Wallet-not-connected and wallet-not-registered both redirect to
- * `/members`, matching the redirect-on-miss pattern at
- * `/members` and `/members/edit/identity`.
+ * On top of the shared editor scaffold, this surface fetches a
+ * SECOND document (the catalogue JSON behind `profile.catalogueURI`)
+ * before the form can render: the profile carries `acceptedTokens` +
+ * `defaultTokenAddress` (for the per-item pricing label), the
+ * catalogue carries the items themselves.
  */
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
-import { Card } from "@/components/ui/Card";
-import { useMounted } from "@/hooks/useMounted";
-import { useMemberProfile } from "@/lib/member/useMembersRegistry";
-import { useOnboardingState } from "@/lib/member/onboardingState";
-import { useUpdateMemberProfile } from "@/lib/member/useUpdateMemberProfile";
-import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import { MemberEditGate } from "@/components/members/MemberEditGate";
+import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
 import { fetchMemberCatalogue } from "@/lib/member/catalogueFetcher";
 import { extractErrorMessage, toError } from "@/lib/shared/errors";
 import type {
@@ -40,68 +36,59 @@ import type {
     UnitSystem,
     CatalogueItemMetadata,
 } from "@/lib/member/memberCatalogueMetadata";
-import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { publishMemberCatalogue } from "@/lib/member/cataloguePublisher";
 import { OnboardingCatalogueForm } from "@/components/members/OnboardingCatalogueForm";
 
 export function MemberEditCatalogue() {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
-    const { update, loaded } = useOnboardingState(address);
-
-    const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
     const [existingCatalogue, setExistingCatalogue] = useState<MemberCatalogueMetadata | null>(null);
-    const [fetchError, setFetchError] = useState<string | null>(null);
-    const [seeded, setSeeded] = useState(false);
     const [pinningCatalogue, setPinningCatalogue] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
-    const saveInFlight = updater.isPending || updater.isConfirming || pinningCatalogue;
+    const editor = useMemberProfileEditor({
+        sourceNoun: "profile or catalogue",
+        clobberNoun: "items",
+        extraSaveInFlight: pinningCatalogue,
+        extraFetch: { pending: !existingCatalogue, message: "Fetching catalogue from IPFS…" },
+        // Seed both halves so the catalogue form renders pre-populated.
+        // The form reads `state.profile.defaultTokenAddress` +
+        // `state.profile.acceptedTokens` for the price-token symbol, and
+        // `state.catalogue.items` for the item list. `extraFetch` holds
+        // seeding until `existingCatalogue` is fetched.
+        seed: (existingProfile, update) => {
+            if (!existingCatalogue) return;
+            update({
+                profile: {
+                    name: existingProfile.name,
+                    description: existingProfile.description,
+                    specialty: existingProfile.specialty,
+                    location: existingProfile.location,
+                    branding: existingProfile.branding,
+                    assets: existingProfile.assets,
+                    acceptedTokens: existingProfile.acceptedTokens,
+                    defaultTokenAddress: existingProfile.defaultTokenAddress,
+                },
+                catalogue: { items: existingCatalogue.items, unitSystem: existingCatalogue.unitSystem },
+                // Feed the data-for-sale select's options — the member's
+                // declared data offers; read-only here (the policy is
+                // edited on the assemblies / buyer surfaces).
+                disclosurePolicy: existingProfile.disclosurePolicy ?? [],
+            });
+        },
+    });
+    const { existingProfile, setFetchError, address } = editor;
 
-    // Redirect unregistered wallets to onboarding — but only on SETTLED
-    // state (`!registryLoading && !registryData` = a completed scan found
-    // nothing; isLoading starts true in useMemberProfile), and never
-    // mid-save: the redirect unmounts the form and kills the in-flight
-    // pin/tx (2026-07-09 e2e flake).
+    // Fetch the catalogue JSON the profile references via
+    // `catalogueURI`, once the shared scaffold has the profile.
     useEffect(() => {
-        if (!mounted || saveInFlight) return;
-        if (!isConnected) {
-            router.replace("/members/manage");
-            return;
-        }
-        if (!registryLoading && !registryData) {
-            router.replace("/members/manage");
-        }
-    }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
-
-    // Fetch the on-chain profile JSON, then the catalogue JSON it
-    // references via `catalogueURI`. Both are needed before we can
-    // render the form: the profile carries `acceptedTokens` +
-    // `defaultTokenAddress` (for the per-item pricing label), the
-    // catalogue carries the items themselves.
-    useEffect(() => {
-        if (!registryData) return;
-        const [profileURI] = registryData;
+        if (!existingProfile) return;
         let cancelled = false;
         (async () => {
             try {
-                // The ONE cached profile read path (lib/member/profileFetcher).
-                const profile = await fetchMemberProfile(profileURI);
-                if (cancelled) return;
-                if (!profile) {
-                    setFetchError("Couldn't fetch or parse the member profile.");
-                    return;
-                }
-                setExistingProfile(profile);
-
-                if (!profile.catalogueURI) {
+                if (!existingProfile.catalogueURI) {
                     // Edge: a profile without a catalogue. Treat as
                     // an empty starting point for editing.
                     setExistingCatalogue({
-                        subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
+                        subjectAddress: existingProfile.subjectAddress ?? (address as `0x${string}`),
                         items: [],
                         version: "1.0.0",
                     });
@@ -109,7 +96,7 @@ export function MemberEditCatalogue() {
                 }
 
                 // The ONE cached catalogue read path (lib/member/catalogueFetcher).
-                const catalogue = await fetchMemberCatalogue(profile.catalogueURI);
+                const catalogue = await fetchMemberCatalogue(existingProfile.catalogueURI);
                 if (cancelled) return;
                 try {
                     if (!catalogue) throw new Error("Couldn't fetch or parse the catalogue document.");
@@ -129,73 +116,10 @@ export function MemberEditCatalogue() {
         return () => {
             cancelled = true;
         };
-    }, [registryData, address]);
+    }, [existingProfile, address, setFetchError]);
 
-    // Seed the wizard's localStorage state with both halves so the
-    // catalogue form renders pre-populated. The form reads
-    // `state.profile.defaultTokenAddress` + `state.profile.acceptedTokens`
-    // for the price-token symbol, and `state.catalogue.items` for the
-    // item list.
-    useEffect(() => {
-        if (seeded) return;
-        if (!loaded) return;
-        if (!existingProfile || !existingCatalogue) return;
-        update({
-            profile: {
-                name: existingProfile.name,
-                description: existingProfile.description,
-                specialty: existingProfile.specialty,
-                location: existingProfile.location,
-                branding: existingProfile.branding,
-                assets: existingProfile.assets,
-                acceptedTokens: existingProfile.acceptedTokens,
-                defaultTokenAddress: existingProfile.defaultTokenAddress,
-            },
-            catalogue: { items: existingCatalogue.items, unitSystem: existingCatalogue.unitSystem },
-            // Feed the data-for-sale select's options — the member's
-            // declared data offers; read-only here (the policy is
-            // edited on the assemblies / buyer surfaces).
-            disclosurePolicy: existingProfile.disclosurePolicy ?? [],
-        });
-        setSeeded(true);
-    }, [seeded, loaded, existingProfile, existingCatalogue, update]);
-
-    // Redirect back to /members/manage on a confirmed update.
-    useEffect(() => {
-        if (updater.isSuccess) {
-            router.push("/members/manage");
-        }
-    }, [updater.isSuccess, router]);
-
-    if (!mounted) {
-        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
-    }
-    if (!isConnected) {
-        return <Card className="p-8 text-sm text-ink-faint">Redirecting…</Card>;
-    }
-    if (registryLoading || !registryData) {
-        return <Card className="p-8 text-sm text-ink-faint">Reading registry…</Card>;
-    }
-
-    if (fetchError) {
-        return (
-            <Card className="p-8 space-y-3">
-                <p className="text-sm text-error-fg" role="alert">{fetchError}</p>
-                <p className="text-xs text-ink-faint">
-                    Couldn&apos;t load the existing profile or catalogue, so editing it isn&apos;t safe — saving without the existing items would clobber them.
-                </p>
-            </Card>
-        );
-    }
-
-    if (!existingProfile) {
-        return <Card className="p-8 text-sm text-ink-faint">Fetching profile from IPFS…</Card>;
-    }
-    if (!existingCatalogue) {
-        return <Card className="p-8 text-sm text-ink-faint">Fetching catalogue from IPFS…</Card>;
-    }
-    if (!seeded) {
-        return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
+    if (editor.gate) {
+        return <MemberEditGate gate={editor.gate} />;
     }
 
     async function handleSave(items: CatalogueItemMetadata[], unitSystem: UnitSystem): Promise<void> {
@@ -230,13 +154,8 @@ export function MemberEditCatalogue() {
         // Step 2: re-pin the profile with the new catalogueURI and
         // dispatch updateProfile. The hook handles its own errors;
         // any failure flows through `updater.error`.
-        await updater.save({ catalogueURI: newCatalogueURI });
+        await editor.updater.save({ catalogueURI: newCatalogueURI });
     }
-
-    const isSaving = pinningCatalogue || updater.isPending || updater.isConfirming;
-    const externalError =
-        saveError ??
-        (updater.error ? (updater.error.message ?? String(updater.error)) : null);
 
     return (
         <div className="space-y-12">
@@ -245,16 +164,16 @@ export function MemberEditCatalogue() {
                 submitLabel="Save changes"
                 backHref="/members/manage"
                 backLabel="← Cancel"
-                submitInFlight={isSaving}
-                externalError={externalError}
+                submitInFlight={editor.saveInFlight}
+                externalError={saveError ?? editor.externalError}
             />
             <DeleteCatalogueFooter
-                disabled={isSaving}
+                disabled={editor.saveInFlight}
                 onDelete={async () => {
                     setSaveError(null);
-                    await updater.save({}, { clear: ["catalogueURI"] });
+                    await editor.updater.save({}, { clear: ["catalogueURI"] });
                 }}
-                error={updater.error?.message ?? null}
+                error={editor.updater.error?.message ?? null}
             />
         </div>
     );

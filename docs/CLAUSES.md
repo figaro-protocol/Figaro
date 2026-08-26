@@ -8,11 +8,11 @@ and content-hashes the evidence (`AttestationCoordinator`), but validates no
 content shape; well-formedness there is the SDK's job (honest authors) plus a
 read-time concern (downstream forums reject garbage). On the BATCHED path
 (rebuilt 2026-07-16 — `prover/` + `FigaroBatchVerifier`, `CONTRACTS.md` is the
-owner), content IS validated in-proof: the Rust mirror of Layer A
-(`prover/clause`, byte-parity locked by conformance suites) validates and
-generically re-encodes the content against the clause's spec supplied as a
-WITNESS INPUT, and settlement checks the witness's hash against
-`ClauseRegistry.contentHashOf`. Both paths keep the property that matters: a
+owner), content IS validated in-proof by a generic clause ENGINE — the Rust
+mirror of Layer A (`prover/clause`, byte-parity locked by conformance suites),
+taking each spec as a WITNESS INPUT anchored against
+`ClauseRegistry.contentHashOf`; the engine-not-clauses argument is owned by
+`SCALING_STRATEGY.md` § "Prover Clause Architecture". Both paths keep the property that matters: a
 never-seen clause is attestable — and batch-settleable — with **zero
 per-clause on-chain code**, open-world by construction
 (`figaro-protocol-open-world-auditor` is the gate).
@@ -92,10 +92,11 @@ Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry
 Two on-chain touch points remain:
 
 - **`ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`**
-  — permissionless, first-write-wins, immutable. `clauseId` is the **bare
-  human-readable name** (a string, e.g. `figaro-emissions`) and `version` is a separate
-  `uint64`; the on-chain identity/dedup key is `keccak256(abi.encode(clauseId, version))`,
-  so `name`+`version` together form the key. (On a live chain that registration is
+  — permissionless, first-write-wins, immutable; the on-chain identity/dedup
+  key is `keccak256(abi.encode(clauseId, version))`, `clauseId` being the **bare
+  human-readable name** (e.g. `figaro-emissions`). The registration semantics —
+  the K4 stake, withdraw-to-de-surface, version migration — are owned by
+  `CONTRACTS.md` § Registries. (On a live chain that registration is
   first-write-wins immutable — changing an anchored spec MEANS a new version; the
   immutability is the point. On a local devnet, where the registry is wiped and
   re-seeded fresh each `devup`, specs in `clauses/` are edited **in place** — do

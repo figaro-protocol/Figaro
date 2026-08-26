@@ -21,7 +21,7 @@ import {
     requiredCounterpartyClauses,
     useAssemblyChoices,
 } from "@/lib/protocol/assemblyChoices";
-import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
+import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
@@ -248,48 +248,13 @@ export function OnboardingAssembliesForm({
                             : [];
                     const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (
-                        <Card
+                        <AssemblyChoiceRow
                             key={choice.slug}
-                            className={`p-4 transition-colors ${isSelected ? "border-ink-heading" : ""}`}
-                            data-testid={`seller-assembly-row-${choice.slug}`}
+                            choice={choice}
+                            checked={isSelected}
+                            onToggle={() => toggle(choice.slug)}
+                            testIdPrefix="seller-assembly"
                         >
-                            <div className="flex items-start gap-3">
-                                <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
-                                    <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        onChange={() => toggle(choice.slug)}
-                                        className="mt-1 accent-accent"
-                                    />
-                                    <div className="flex-1 min-w-0 space-y-1">
-                                        <div className="flex items-baseline justify-between gap-2">
-                                            <span className="font-semibold text-ink-heading truncate">
-                                                {choice.name}
-                                            </span>
-                                            <code className="text-xs text-ink-faint font-mono shrink-0">
-                                                {choice.slug}
-                                            </code>
-                                        </div>
-                                        <AssemblyShapeLine
-                                            choice={choice}
-                                            className="text-[11px]"
-                                            testId={`seller-assembly-shape-${choice.slug}`}
-                                        />
-                                        <p className="text-xs text-ink-faint">
-                                            Networks: {choice.networkTargets.join(", ")}
-                                        </p>
-                                    </div>
-                                </label>
-                                <Link
-                                    href={`/assemblies/designer/view?slug=${encodeURIComponent(choice.slug)}`}
-                                    target="_blank"
-                                    rel="noopener"
-                                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center shrink-0"
-                                    data-testid={`seller-assembly-inspect-${choice.slug}`}
-                                >
-                                    Inspect ↗
-                                </Link>
-                            </div>
                             {isSelected && requiredClauses.length > 0 && (
                                 <div
                                     className="mt-4 pt-4 border-t border-default space-y-4"
@@ -311,7 +276,7 @@ export function OnboardingAssembliesForm({
                                     })}
                                 </div>
                             )}
-                        </Card>
+                        </AssemblyChoiceRow>
                     );
                 })}
             </div>

@@ -1,5 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export type LockedFundsStateFigureProps = BaseFigureProps;
 
@@ -31,9 +32,6 @@ export function LockedFundsStateFigure({
     className,
     svgProps,
 }: LockedFundsStateFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     const arrowId = `${idPrefix}-arrow`;
 
     const cy = 90;
@@ -43,17 +41,14 @@ export function LockedFundsStateFigure({
     const cx3 = 334;
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox="0 0 400 500"
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>The locked-funds state machine</title>
-                <desc id={descId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 400 500"
+            title="The locked-funds state machine"
+            desc={
+                <>
                     Three states connected by two transitions. Unknown moves
                     to Committed when commit() pulls both the buyer&apos;s
                     bond of twice the payment and the seller&apos;s bond of
@@ -67,20 +62,18 @@ export function LockedFundsStateFigure({
                     buyer never calls resolveProcess, Committed persists
                     indefinitely with both bonds locked — by design, not
                     as a malfunction.
-                </desc>
-
+                </>
+            }
+            caption={
+                <>
+                    No timeout and no admin override are not gaps — they are the
+                    mechanism. Removing either would give one party an escape
+                    hatch the other can be forced through.
+                </>
+            }
+        >
                 <defs>
-                    <marker
-                        id={arrowId}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="7"
-                        markerHeight="7"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={arrowId} />
                 </defs>
 
                 {/* ── State spine ─────────────────────────────────────── */}
@@ -195,12 +188,6 @@ export function LockedFundsStateFigure({
                 <text x="200" y="468" fontSize="8" fontStyle="italic" textAnchor="middle" className="fill-ink-muted">
                     docs/DESIGN_DECISIONS.md §4–5
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                No timeout and no admin override are not gaps — they are the
-                mechanism. Removing either would give one party an escape
-                hatch the other can be forced through.
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

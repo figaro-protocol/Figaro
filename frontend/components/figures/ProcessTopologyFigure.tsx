@@ -1,6 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 interface ProcessTopologyLeg {
     /** The seller-of-record's label, as the citing paper names it. */
@@ -82,23 +82,18 @@ export function ProcessTopologyFigure({
     const hubBottom = nodes[nodes.length - 1].y + 8;
     const hubMid = (hubTop + hubBottom) / 2;
 
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
     const viewHeight = hubBottom + 110;
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 {/* Column headings */}
                 <text x={NODE_X} y="26" fontSize="9" fontWeight="600" className="fill-ink-muted">
                     seller of record · commit order
@@ -208,8 +203,6 @@ export function ProcessTopologyFigure({
                         ? "Resolution settles the order, and it is the buyer's alone to call."
                         : `Resolution settles all ${nodes.length} orders at once, or none of them.`}
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

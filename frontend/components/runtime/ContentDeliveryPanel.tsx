@@ -16,15 +16,17 @@
  * the receiver verifies by REHASHING what it decrypted against that
  * on-chain anchor. The chain never learns the bytes.
  *
+ * The channel subscription, authentication contract, and anchor polling
+ * live in `useCeremonyChannel`; this panel owns the artifact codec (the
+ * stage-1 evidence shape) and the JSX.
+ *
  * Mounted by the interactionSurfaces registry — this component knows no
  * clause; `clauseId` identifies the declaring section for the attestation
  * and the title, never a dispatch.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
+import { useCallback, useRef, useState } from "react";
+import { useAccount, useWalletClient } from "wagmi";
 import { keccak256 } from "viem";
-import { getHandoffChannel } from "@/lib/handoff/channel";
-import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import {
     CONTENT_DELIVERY_MAX_BYTES,
@@ -34,9 +36,8 @@ import {
     sendContentDelivery,
     type DeliveredContent,
 } from "@/lib/handoff/contentDelivery";
-import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
+import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { attestationAnchorMatches, type AnchorVerificationState } from "@/components/runtime/handoffAnchorState";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
@@ -49,8 +50,6 @@ const COMPLETION_STAGE = 1;
 
 export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();
-    const chainId = useChainId();
-    const publicClient = usePublicClient();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -62,85 +61,43 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
 
     const counterparty = role === "seller" ? buyer : seller;
     const ceremonyId = contentCeremonyId(orderHash);
-    const [channel, setChannel] = useState<HandoffChannel | null>(null);
-    const [peerPubKey, setPeerPubKey] = useState<string | null>(null);
-    const [blob, setBlob] = useState<string | null>(null);
-    const [requested, setRequested] = useState(false);
-    const [received, setReceived] = useState<DeliveredContent | null>(null);
-    const [anchored, setAnchored] = useState<AnchorVerificationState>("unknown");
     const [sent, setSent] = useState<`0x${string}` | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // The channel (mock in e2e, XMTP live) + subscriptions — the same
-    // verify-and-skip contract as every ceremony: transport identity is
-    // untrusted, each message must carry a wallet signature recovering to
-    // this order's counterparty; failures are skipped, never terminal.
-    useEffect(() => {
-        if (!address || !role) return;
-        let disposed = false;
-        const unsubs: Array<() => void> = [];
-        const acceptFromCounterparty = async (msg: AuthenticatedEcdhMessage): Promise<boolean> => {
-            if (!hexEqual(msg.senderAddress, counterparty)) return false;
-            return verifyEcdhMessageAuth(msg);
-        };
-        void getHandoffChannel(address).then((ch) => {
-            if (disposed) return;
-            setChannel(ch);
-            unsubs.push(ch.onEcdhPubkey(ceremonyId, (msg) => {
-                void acceptFromCounterparty(msg).then((ok) => {
-                    if (ok && !disposed) setPeerPubKey(msg.pubKeyHex);
-                });
-            }));
-            unsubs.push(ch.onWrappedKey(ceremonyId, (msg) => {
-                void acceptFromCounterparty(msg).then((ok) => {
-                    if (ok && !disposed) setBlob(msg.wrappedKeyB64);
-                });
-            }));
-        });
-        // A keypair in sessionStorage marks a request already sent this session.
-        setRequested(getOrderEcdhKeypair(address, ceremonyId) !== null);
-        return () => {
-            disposed = true;
-            for (const u of unsubs) u();
-        };
-    }, [address, role, ceremonyId, counterparty]);
-
-    // Decrypt once both halves arrived, rehash, then verify the rehash
-    // against the on-chain stage-1 attestation (its content is the encoded
-    // {contentHash} struct; the event binds contentRef = keccak(content)).
-    // The attestation tx can confirm AFTER the channel messages arrive, so
-    // the verification POLLS until it lands.
-    useEffect(() => {
-        if (!role || !address || !peerPubKey || !blob) return;
-        let cancelled = false;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        void (async () => {
-            const delivered = await decryptContentDelivery({
-                myAddress: address, orderId: orderHash, senderPubKeyHex: peerPubKey, blobB64: blob,
-            });
-            if (cancelled) return;
-            setReceived(delivered);
-            if (!delivered) return;
+    const decrypt = useCallback(
+        (args: { myAddress: `0x${string}`; senderPubKeyHex: string; blobB64: string }) =>
+            decryptContentDelivery({
+                myAddress: args.myAddress, orderId: orderHash,
+                senderPubKeyHex: args.senderPubKeyHex, blobB64: args.blobB64,
+            }),
+        [orderHash],
+    );
+    // Rehash what was decrypted into the stage-1 evidence shape (its
+    // content is the encoded {contentHash} struct; the event binds
+    // contentRef = keccak(content)).
+    const expectedAnchor = useCallback(
+        (delivered: DeliveredContent) => {
             const spec = getClauseSpec(clauseId);
-            if (!spec) return;
-            const expected = keccak256(
+            if (!spec) return null;
+            return keccak256(
                 encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, { stage: COMPLETION_STAGE }),
             );
-            const checkAnchor = async () => {
-                if (!publicClient || cancelled) return;
-                const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
-                if (cancelled) return;
-                setAnchored(verified ? "verified" : "missing");
-                if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
-            };
-            await checkAnchor();
-        })();
-        return () => {
-            cancelled = true;
-            if (timer) clearTimeout(timer);
-        };
-    }, [role, address, peerPubKey, blob, orderHash, clauseId, publicClient, chainId]);
+        },
+        [clauseId],
+    );
+
+    // Both parties send ECDH pubkeys on the derived content-ceremony id.
+    const { channel, peerPubKey, requested, setRequested, received, anchored } =
+        useCeremonyChannel<DeliveredContent>({
+            address,
+            enabled: role !== null,
+            ceremonyId,
+            orderHash,
+            counterparty,
+            decrypt,
+            expectedAnchor,
+        });
 
     const handleRequest = useCallback(async () => {
         if (!channel || !address || !walletClient) return;
@@ -159,10 +116,10 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
         } finally {
             setBusy(false);
         }
-    }, [channel, address, walletClient, counterparty, orderHash]);
+    }, [channel, address, walletClient, counterparty, orderHash, setRequested]);
 
     const handleSend = useCallback(async (file: File) => {
-        if (!channel || !address || !peerPubKey || !walletClient) return;
+        if (!channel || !address || !peerPubKey || !walletClient || !role) return;
         setBusy(true);
         setError(null);
         try {
@@ -186,8 +143,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
                 content: encodeContentFromSpec(spec, { contentHash }, { stage: COMPLETION_STAGE }),
                 failureMessage: "Anchoring the completion evidence failed",
             };
-            if (role === "buyer") await attestationActions.submitBuyerAttestation(attestArgs);
-            else await attestationActions.submitSellerAttestation(attestArgs);
+            await attestationActions.submitAttestation(role, attestArgs);
             setSent(contentHash);
         } catch (e) {
             setError(extractErrorMessage(e, "Delivering the content failed."));

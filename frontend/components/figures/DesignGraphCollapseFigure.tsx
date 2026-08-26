@@ -1,6 +1,7 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 interface DesignGraphNode {
     label: string;
@@ -77,9 +78,6 @@ export function DesignGraphCollapseFigure({
     figureDesc,
     caption,
 }: DesignGraphCollapseFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     // The header rule clears the taller of the two subheadings.
     const subLines = Math.max(LEFT_SUBHEADING.length, RIGHT_SUBHEADING.length);
     const headerY = 58 + (subLines - 1) * SUB_LEADING;
@@ -100,30 +98,18 @@ export function DesignGraphCollapseFigure({
     const firstBranch = designNodes.findIndex((n) => n.branch);
 
     return (
-        <figure className={cn("w-full max-w-2xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            frameClassName="w-full max-w-2xl mx-auto"
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 <defs>
-                    <marker
-                        id={`${idPrefix}-arrow`}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={`${idPrefix}-arrow`} />
                 </defs>
 
                 {/* Panel headings */}
@@ -268,8 +254,6 @@ export function DesignGraphCollapseFigure({
                 <text x={L_X} y={seamY + 11} fontSize="8.5" className="fill-ink-muted">
                     on the left, {commitOrder.length} commits and one accumulator on the right.
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

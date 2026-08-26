@@ -1,6 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export interface StackedBondChainLeg {
     name: string;
@@ -89,24 +89,18 @@ export function StackedBondChainFigure({
     const maxBond = nodes[nodes.length - 1].sellerBond; // == 2 × totalPayment
     const pxPerUnit = BAR_W / maxBond;
 
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     const viewHeight = BASE_Y0 + nodes.length * BLOCK_H + 56;
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 {/* Legend */}
                 <rect x="24" y="18" width="14" height="10" rx="2" className="fill-subtle-hover stroke-default" strokeWidth="0.5" />
                 <text x="42" y="27" fontSize="9" className="fill-ink-muted">value accumulated (upstream orders)</text>
@@ -159,10 +153,6 @@ export function StackedBondChainFigure({
                 <text x="200" y={viewHeight - 10} fontSize="10" textAnchor="middle" className="fill-ink-muted">
                     Total payment {fmt(totalPayment)} · buyer bonds 2× each payment as that order commits ({fmt(2 * totalPayment)} in all)
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                {caption}
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

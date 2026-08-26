@@ -1,6 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 interface RpgfScheduleTranche {
     /** How the citing surface names the tranche. */
@@ -75,9 +75,6 @@ export function RpgfScheduleFigure({
     figureDesc = DEFAULT_DESC,
     caption = DEFAULT_CAPTION,
 }: RpgfScheduleFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     const periods = tranches.flatMap((t, ti) =>
         Array.from({ length: t.periods }, () => ({ trancheIndex: ti, millions: t.perPeriodMillions })),
     );
@@ -89,18 +86,15 @@ export function RpgfScheduleFigure({
     const pxPerMillion = PLOT_H / (maxMillions * 1.12);
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox="0 0 400 336"
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 400 336"
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 <text x="20" y="24" fontSize="12" fontWeight="600" className="fill-ink-heading">
                     Per-period budget, in millions of florins
                 </text>
@@ -170,8 +164,6 @@ export function RpgfScheduleFigure({
                 <text x="20" y="322" fontSize="8.5" className="fill-ink-body">
                     The {periods.length} budgets sum to {total % 1 === 0 ? total : total.toFixed(1)}M &mdash; the reserve exactly, and the cap the token registers for it.
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

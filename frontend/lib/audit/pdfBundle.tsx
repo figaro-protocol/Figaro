@@ -24,6 +24,7 @@
  *   pages. The documents (invoice, BoL, financial statements) and hash
  *   appendix aggregate across the whole process.
  */
+import type { ReactNode } from "react";
 import {
     Document,
     Page,
@@ -213,6 +214,47 @@ function PageFooter({ agreementHash, processId }: { agreementHash?: string; proc
     );
 }
 
+// ── Shared page scaffold + metadata row ─────────────────────────────────────
+
+/** The A4 page every bundle section renders on: kicker label + h1 header,
+ *  the section's own content, and the anchor footer. Omit `footer` for a
+ *  page with no on-chain anchor of its own (the projected documents). */
+function AuditPage({ label, title, footer, children }: {
+    label: string;
+    title: string;
+    footer?: { agreementHash?: string; processId?: string };
+    children: ReactNode;
+}) {
+    return (
+        <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+                <Text style={styles.label}>{label}</Text>
+                <Text style={styles.h1}>{title}</Text>
+            </View>
+            {children}
+            {footer && <PageFooter agreementHash={footer.agreementHash} processId={footer.processId} />}
+        </Page>
+    );
+}
+
+/** One key/value metadata row. `mono` sets the value in the hash face;
+ *  `extraStyle` layers a verdict style (badgeOk / badgeBad) on the value. */
+function MetaRow({ k, v, mono = false, extraStyle }: {
+    k: string;
+    v: ReactNode;
+    mono?: boolean;
+    extraStyle?: (typeof styles)[keyof typeof styles];
+}) {
+    return (
+        <View style={styles.metadataRow}>
+            <Text style={styles.metadataKey}>{k}</Text>
+            <Text style={[styles.metadataValue, ...(mono ? [styles.mono] : []), ...(extraStyle ? [extraStyle] : [])]}>
+                {v}
+            </Text>
+        </View>
+    );
+}
+
 // ── Cover page ──────────────────────────────────────────────────────────────
 
 function CoverPage({ processId, buyer, generatedAt }: {
@@ -221,26 +263,11 @@ function CoverPage({ processId, buyer, generatedAt }: {
     generatedAt: Date;
 }) {
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Audit bundle</Text>
-                <Text style={styles.h1}>Bonded commitment record</Text>
-            </View>
+        <AuditPage label="Audit bundle" title="Bonded commitment record" footer={{ processId }}>
             <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>processId</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{processId}</Text>
-                </View>
-                {buyer && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>buyer</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{buyer}</Text>
-                    </View>
-                )}
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>generated</Text>
-                    <Text style={styles.metadataValue}>{generatedAt.toISOString()}</Text>
-                </View>
+                <MetaRow k="processId" v={processId} mono />
+                {buyer && <MetaRow k="buyer" v={buyer} mono />}
+                <MetaRow k="generated" v={generatedAt.toISOString()} />
             </View>
             <Text style={styles.note}>
                 This bundle is a cryptographically-verifiable trade record. Every
@@ -259,8 +286,7 @@ function CoverPage({ processId, buyer, generatedAt }: {
                 process: Documents (invoice, bill of lading, financial
                 statements) · Hash appendix.
             </Text>
-            <PageFooter processId={processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -268,41 +294,20 @@ function CoverPage({ processId, buyer, generatedAt }: {
 
 function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Contract</Text>
-                <Text style={styles.h1}>{contract.title}</Text>
-            </View>
+        <AuditPage
+            label="Contract"
+            title={contract.title}
+            footer={{ agreementHash: contract.agreementHash, processId: contract.processId }}
+        >
             <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{contract.orderHash}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>buyer</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{contract.parties.buyer}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>seller</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{contract.parties.seller}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>currency</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{contract.currency}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>payment (P)</Text>
-                    <Text style={styles.metadataValue}>{fmt(contract.payment)}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>cumulativeValue (G)</Text>
-                    <Text style={styles.metadataValue}>{fmt(contract.cumulativeValue)}</Text>
-                </View>
+                <MetaRow k="orderHash" v={contract.orderHash} mono />
+                <MetaRow k="buyer" v={contract.parties.buyer} mono />
+                <MetaRow k="seller" v={contract.parties.seller} mono />
+                <MetaRow k="currency" v={contract.currency} mono />
+                <MetaRow k="payment (P)" v={fmt(contract.payment)} />
+                <MetaRow k="cumulativeValue (G)" v={fmt(contract.cumulativeValue)} />
                 {contract.committedAtBlock !== undefined && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>committedAtBlock</Text>
-                        <Text style={styles.metadataValue}>{contract.committedAtBlock}</Text>
-                    </View>
+                    <MetaRow k="committedAtBlock" v={contract.committedAtBlock} />
                 )}
             </View>
 
@@ -328,29 +333,15 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 <>
                     <Text style={styles.h2}>Terms</Text>
                     <View style={styles.section}>
-                        {contract.method && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>method</Text>
-                                <Text style={[styles.metadataValue, styles.mono]}>{contract.method}</Text>
-                            </View>
-                        )}
+                        {contract.method && <MetaRow k="method" v={contract.method} mono />}
                         {contract.jurisdiction && (
                             <>
-                                <View style={styles.metadataRow}>
-                                    <Text style={styles.metadataKey}>applicable law</Text>
-                                    <Text style={styles.metadataValue}>{contract.jurisdiction.applicableLaw}</Text>
-                                </View>
+                                <MetaRow k="applicable law" v={contract.jurisdiction.applicableLaw} />
                                 {contract.jurisdiction.forum && (
-                                    <View style={styles.metadataRow}>
-                                        <Text style={styles.metadataKey}>forum</Text>
-                                        <Text style={styles.metadataValue}>{contract.jurisdiction.forum}</Text>
-                                    </View>
+                                    <MetaRow k="forum" v={contract.jurisdiction.forum} />
                                 )}
                                 {contract.jurisdiction.language && (
-                                    <View style={styles.metadataRow}>
-                                        <Text style={styles.metadataKey}>language</Text>
-                                        <Text style={styles.metadataValue}>{contract.jurisdiction.language}</Text>
-                                    </View>
+                                    <MetaRow k="language" v={contract.jurisdiction.language} />
                                 )}
                             </>
                         )}
@@ -379,8 +370,7 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 agreementHash. Reader recomputes via computeSectionLeaf and
                 verifies inclusion.
             </Text>
-            <PageFooter agreementHash={contract.agreementHash} processId={contract.processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -391,16 +381,13 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
 
 function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Clause data</Text>
-                <Text style={styles.h1}>{doc.title}</Text>
-            </View>
+        <AuditPage
+            label="Clause data"
+            title={doc.title}
+            footer={{ agreementHash: doc.agreementHash, processId: doc.processId }}
+        >
             <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
-                </View>
+                <MetaRow k="orderHash" v={doc.orderHash} mono />
             </View>
             <Text style={styles.note}>
                 Every clause committed on this order, rendered from its registered
@@ -428,8 +415,7 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
             {doc.clauses.length === 0 && (
                 <Text style={styles.sectionBody}>No clause data committed on this order.</Text>
             )}
-            <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -438,22 +424,17 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
 function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
     const total = doc.logs.reduce((n, g) => n + g.events.length, 0);
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Process logs</Text>
-                <Text style={styles.h1}>{doc.title}</Text>
-            </View>
+        <AuditPage
+            label="Process logs"
+            title={doc.title}
+            footer={{ agreementHash: doc.agreementHash, processId: doc.processId }}
+        >
             <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>events recorded</Text>
-                    <Text style={styles.metadataValue}>
-                        {total} across {doc.logs.length} process clause{doc.logs.length === 1 ? "" : "s"}
-                    </Text>
-                </View>
+                <MetaRow k="orderHash" v={doc.orderHash} mono />
+                <MetaRow
+                    k="events recorded"
+                    v={<>{total} across {doc.logs.length} process clause{doc.logs.length === 1 ? "" : "s"}</>}
+                />
             </View>
             <Text style={styles.note}>
                 Sovereign event logs from off-chain sellers. The buyer&apos;s
@@ -493,8 +474,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                     No sovereign process events attested for this order.
                 </Text>
             )}
-            <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -502,37 +482,24 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
 
 function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Members registry</Text>
-                <Text style={styles.h1}>{doc.title}</Text>
-            </View>
+        <AuditPage
+            label="Members registry"
+            title={doc.title}
+            footer={{ agreementHash: doc.agreementHash, processId: doc.processId }}
+        >
             <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>seller</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.seller}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>registered?</Text>
-                    <Text style={[styles.metadataValue, doc.registered ? styles.badgeOk : styles.badgeBad]}>
-                        {doc.registered ? "Yes" : "NOT REGISTERED"}
-                    </Text>
-                </View>
+                <MetaRow k="orderHash" v={doc.orderHash} mono />
+                <MetaRow k="seller" v={doc.seller} mono />
+                <MetaRow
+                    k="registered?"
+                    v={doc.registered ? "Yes" : "NOT REGISTERED"}
+                    extraStyle={doc.registered ? styles.badgeOk : styles.badgeBad}
+                />
                 {doc.registered && doc.metadataURI && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>metadataURI</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{doc.metadataURI}</Text>
-                    </View>
+                    <MetaRow k="metadataURI" v={doc.metadataURI} mono />
                 )}
                 {doc.registered && doc.registeredAtBlock !== undefined && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>registered at block</Text>
-                        <Text style={styles.metadataValue}>{doc.registeredAtBlock}</Text>
-                    </View>
+                    <MetaRow k="registered at block" v={doc.registeredAtBlock} />
                 )}
             </View>
             {doc.notice && (
@@ -544,8 +511,7 @@ function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
                 legitimate seller is expected to register (runtime convention);
                 an unregistered seller is itself an audit-significant flag.
             </Text>
-            <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -572,11 +538,11 @@ function shortDetails(ev: TimelineEvent): string {
 function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
     const { events, summary, participants } = timeline;
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Process timeline</Text>
-                <Text style={styles.h1}>FigaroCore lifecycle events</Text>
-            </View>
+        <AuditPage
+            label="Process timeline"
+            title="FigaroCore lifecycle events"
+            footer={{ processId: timeline.processId }}
+        >
             <Text style={styles.note}>
                 Chronological reconstruction of all FigaroCore events scoped to
                 this processId, plus coordinator-specific extensions where
@@ -586,39 +552,17 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
             </Text>
 
             <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>chainId</Text>
-                    <Text style={styles.metadataValue}>{timeline.chainId}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>core address</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{timeline.coreAddress}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>events</Text>
-                    <Text style={styles.metadataValue}>
-                        {events.length} total · {summary.orderCount} committed · {summary.resolvedCount} resolved
-                    </Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>total payment</Text>
-                    <Text style={styles.metadataValue}>{summary.totalPayment}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>seller payouts</Text>
-                    <Text style={styles.metadataValue}>{summary.totalSellerPayout}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>buyer payouts</Text>
-                    <Text style={styles.metadataValue}>{summary.totalBuyerPayout}</Text>
-                </View>
+                <MetaRow k="chainId" v={timeline.chainId} />
+                <MetaRow k="core address" v={timeline.coreAddress} mono />
+                <MetaRow
+                    k="events"
+                    v={<>{events.length} total · {summary.orderCount} committed · {summary.resolvedCount} resolved</>}
+                />
+                <MetaRow k="total payment" v={summary.totalPayment} />
+                <MetaRow k="seller payouts" v={summary.totalSellerPayout} />
+                <MetaRow k="buyer payouts" v={summary.totalBuyerPayout} />
                 {participants.length > 0 && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>participants</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>
-                            {participants.map((p) => shortAddr(p)).join(", ")}
-                        </Text>
-                    </View>
+                    <MetaRow k="participants" v={participants.map((p) => shortAddr(p)).join(", ")} mono />
                 )}
             </View>
 
@@ -659,8 +603,7 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
                 as standalone timeline JSON evidence prior to this bundle&apos;s
                 consolidation.
             </Text>
-            <PageFooter processId={timeline.processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -668,11 +611,11 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
 
 function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] }) {
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Verification</Text>
-                <Text style={styles.h1}>{appendix.title}</Text>
-            </View>
+        <AuditPage
+            label="Verification"
+            title={appendix.title}
+            footer={{ agreementHash: appendix.agreementHash, processId: appendix.processId }}
+        >
             <Text style={styles.note}>
                 Reader recomputes each hash from the cited content / location and
                 verifies against chain. agreementHash = merkle root over section
@@ -696,8 +639,7 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
                     </View>
                 ))}
             </View>
-            <PageFooter agreementHash={appendix.agreementHash} processId={appendix.processId} />
-        </Page>
+        </AuditPage>
     );
 }
 
@@ -733,17 +675,10 @@ interface AuditBundlePdfData {
  */
 function DocumentPage({ document }: { document: RenderedDocument }) {
     return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Document</Text>
-                <Text style={styles.h1}>{document.title}</Text>
-            </View>
+        <AuditPage label="Document" title={document.title}>
             <View style={styles.section}>
                 {document.header.map((r) => (
-                    <View key={r.label} style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>{r.label}</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{r.value}</Text>
-                    </View>
+                    <MetaRow key={r.label} k={r.label} v={r.value} mono />
                 ))}
             </View>
             {document.lines && (
@@ -764,10 +699,7 @@ function DocumentPage({ document }: { document: RenderedDocument }) {
                         ))}
                     </View>
                     {document.lines.total && (
-                        <View style={styles.metadataRow}>
-                            <Text style={styles.metadataKey}>{document.lines.total.label}</Text>
-                            <Text style={styles.metadataValue}>{document.lines.total.value}</Text>
-                        </View>
+                        <MetaRow k={document.lines.total.label} v={document.lines.total.value} />
                     )}
                 </>
             )}
@@ -776,16 +708,13 @@ function DocumentPage({ document }: { document: RenderedDocument }) {
                     <Text style={styles.h2}>{s.label}</Text>
                     <View style={styles.section}>
                         {s.entries.map((e) => (
-                            <View key={e.key} style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>{e.key}</Text>
-                                <Text style={styles.metadataValue}>{e.value}</Text>
-                            </View>
+                            <MetaRow key={e.key} k={e.key} v={e.value} />
                         ))}
                     </View>
                 </View>
             ))}
             {document.note && <Text style={styles.note}>{document.note}</Text>}
-        </Page>
+        </AuditPage>
     );
 }
 

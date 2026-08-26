@@ -1,5 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export type OriginationSequenceFigureProps = BaseFigureProps;
 
@@ -235,8 +236,6 @@ export function OriginationSequenceFigure({
     className,
     svgProps,
 }: OriginationSequenceFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
     const arrowId = `${idPrefix}-arrow`;
 
     const { laid, bottom } = layoutRows(ROWS);
@@ -244,17 +243,15 @@ export function OriginationSequenceFigure({
     const viewHeight = lifelineBottom + 46;
 
     return (
-        <figure className={cn("w-full max-w-2xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>The origination handshake, step by step</title>
-                <desc id={descId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            frameClassName="w-full max-w-2xl mx-auto"
+            title="The origination handshake, step by step"
+            desc={
+                <>
                     A sequence across four columns — buyer, channel, seller, and
                     the chain. The buyer discovers the network, instantiates the
                     root agreement from a template, validates it against every
@@ -270,20 +267,20 @@ export function OriginationSequenceFigure({
                     the handshake before anything is committed: the buyer&apos;s
                     own gate refuses to sign a non-conforming agreement, and the
                     seller throws on an agreement-hash or signature mismatch.
-                </desc>
-
+                </>
+            }
+            caption={
+                <>
+                    Signing and committing are two steps, and the handshake refuses
+                    twice before either: once when the buyer&apos;s own gate finds an
+                    agreement that does not conform to its specs, and once when the
+                    seller&apos;s re-hash of that agreement fails to reproduce the
+                    committed <code>agreementHash</code>.
+                </>
+            }
+        >
                 <defs>
-                    <marker
-                        id={arrowId}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={arrowId} />
                 </defs>
 
                 {/* ── Column headers, and the lifelines beneath them ──── */}
@@ -446,14 +443,6 @@ export function OriginationSequenceFigure({
                 <text x="12" y={lifelineBottom + 38} fontSize="7.5" className="fill-ink-body">
                     steps 2&ndash;6 and 8 never touch the chain at all.
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                Signing and committing are two steps, and the handshake refuses
-                twice before either: once when the buyer&apos;s own gate finds an
-                agreement that does not conform to its specs, and once when the
-                seller&apos;s re-hash of that agreement fails to reproduce the
-                committed <code>agreementHash</code>.
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

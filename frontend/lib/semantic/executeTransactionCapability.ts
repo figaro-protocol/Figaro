@@ -3,7 +3,6 @@ import type {
     CapabilityActionDescriptor,
     CapabilityExecutionInput,
     SubmitClauseAttestationCapabilityAction,
-    VestingVariant,
 } from "@/lib/semantic/models";
 
 type TransactionExecutionResult = Promise<Hex | undefined | void>;
@@ -25,8 +24,6 @@ export interface TransactionCapabilityExecutors {
         action: SubmitClauseAttestationCapabilityAction,
         values?: Record<string, unknown>,
     ) => TransactionExecutionResult;
-    claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
-    claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;
 }
 
 function assertNever(_value: never): never {
@@ -91,18 +88,6 @@ export async function executeTransactionCapabilityAction(
                 executors.submitClauseAttestation,
                 "Clause attestation execution is unavailable.",
             )(action, input?.kind === "submit-clause-attestation" ? input.values : undefined);
-            break;
-        case "claim-airdrop":
-            txHash = await ensureExecutor(
-                executors.claimAirdrop,
-                "Airdrop claim execution is unavailable.",
-            )(action.amount, action.proof);
-            break;
-        case "claim-vesting":
-            txHash = await ensureExecutor(
-                executors.claimVesting,
-                "Vesting claim execution is unavailable.",
-            )(action.variant);
             break;
         default:
             return assertNever(action);

@@ -63,7 +63,7 @@ The three registry-family anchors — **parallel, not nested**. Each has its own
 
 **`src/protocol/registries/ClauseRegistry.sol`** — Permissionless clause anchoring with a
 reclaimable ETH deposit (staked intent — K4).
-`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from. `contentHashOf[idHash]` stores the anchor (never cleared) — the trust anchor the batch verifier checks each proof's witness-spec binding against when the proof apparatus lands.
+`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from. `contentHashOf[idHash]` stores the anchor (never cleared) — the trust anchor `FigaroBatchVerifier` checks each proof's witness-spec binding against.
 `registerClause` is first-write-wins, immutable, and `payable` (requires the
 immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registeredBy-only,
 once, no time lock) returns the stake and emits `DepositWithdrawn` — the
@@ -79,9 +79,10 @@ The commits == resolves withdraw gate is protocol-surface:
 the count lives in the indexer (the same count RPGF pays on), and the contract
 cannot hold it (the kernel is frozen, with no composition provenance), so the
 gate has no on-chain hardening. There is **no on-chain
-clause-content validation** — registration anchors the spec locator (IPFS) +
-content hash, and well-formedness is the off-chain Layer-A SDK's job
-(`@figaro-protocol/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
+clause-content validation** on this surface — registration anchors the spec
+locator (IPFS) + content hash only; the validation model (off-chain Layer A,
+in-proof on the batched path, the merkle/fingerprint binding) is owned by
+`CLAUSES.md`.
 
 Note: `figaro-topology` is an **agreement-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement, and it's
@@ -265,10 +266,9 @@ binding, hash-verifies the calldata (positions / attestations / spec bindings,
 O(n) assembly packing — byte-exact parity with the Rust kernel's
 `compute_*_hash`), **checks every (clause key → witness-spec hash) binding
 against `ClauseRegistry.contentHashOf`** — the open-world gate: the vkey covers
-the generic clause ENGINE, the registry anchors the constraint set, so a
-never-seen registered clause settles through the proven path with zero code
-changes while a permissive-spec substitution reverts
-(`test_permissionless_newClause_settlesWithZeroVerifierChanges`) — reconciles
+the generic clause ENGINE, the registry anchors the constraint set, so a new
+clause never touches the prover (the full argument is `SCALING_STRATEGY.md`
+§ "Prover Clause Architecture") — reconciles
 net token positions (pull net deposits / push net payouts;
 `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
 topic as the coordinator's — indexers filter by address), **carries the RPGF

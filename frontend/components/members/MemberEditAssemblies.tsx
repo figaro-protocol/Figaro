@@ -16,116 +16,27 @@
  * assembly-scoped discovery.
  */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
-import { Card } from "@/components/ui/Card";
-import { useMounted } from "@/hooks/useMounted";
-import { useMemberProfile } from "@/lib/member/useMembersRegistry";
-import { useOnboardingState } from "@/lib/member/onboardingState";
-import { useUpdateMemberProfile } from "@/lib/member/useUpdateMemberProfile";
-import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import { MemberEditGate } from "@/components/members/MemberEditGate";
+import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
 import type {
     AssemblyBindingRecord,
     DisclosurePolicyEntry,
-    MemberProfileMetadata,
 } from "@/lib/member/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 export function MemberEditAssemblies() {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
-    const { update, loaded } = useOnboardingState(address);
-
-    const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
-    const [fetchError, setFetchError] = useState<string | null>(null);
-    const [seeded, setSeeded] = useState(false);
-
-    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
-    const saveInFlight = updater.isPending || updater.isConfirming;
-
-    // Redirect unregistered wallets to onboarding — but only on SETTLED
-    // state: `!registryLoading && !registryData` is a completed scan that
-    // found nothing (isLoading starts true in useMemberProfile), never a
-    // still-hydrating window. And never navigate away mid-save — the
-    // redirect unmounts the form and kills the in-flight pin/tx (the
-    // 2026-07-09 e2e flake fired on exactly this, between Save and the
-    // transaction dispatch).
-    useEffect(() => {
-        if (!mounted || saveInFlight) return;
-        if (!isConnected) {
-            router.replace("/members/manage");
-            return;
-        }
-        if (!registryLoading && !registryData) {
-            router.replace("/members/manage");
-        }
-    }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
-
-    useEffect(() => {
-        if (!registryData) return;
-        const [metadataURI] = registryData;
-        let cancelled = false;
-        // The ONE cached profile read path (lib/member/profileFetcher).
-        fetchMemberProfile(metadataURI)
-            .then((parsed) => {
-                if (cancelled) return;
-                if (parsed) setExistingProfile(parsed);
-                else setFetchError("Couldn't fetch or parse the member profile.");
-            })
-            .catch(() => {
-                if (!cancelled) setFetchError("Couldn't fetch profile from IPFS.");
+    const editor = useMemberProfileEditor({
+        errorNoun: "the assemblies",
+        seed: (existingProfile, update) => {
+            update({
+                assemblies: existingProfile.assemblyBindings ?? [],
+                disclosurePolicy: existingProfile.disclosurePolicy ?? [],
             });
-        return () => {
-            cancelled = true;
-        };
-    }, [registryData]);
+        },
+    });
 
-    useEffect(() => {
-        if (seeded) return;
-        if (!loaded) return;
-        if (!existingProfile) return;
-        update({
-            assemblies: existingProfile.assemblyBindings ?? [],
-            disclosurePolicy: existingProfile.disclosurePolicy ?? [],
-        });
-        setSeeded(true);
-    }, [seeded, loaded, existingProfile, update]);
-
-    useEffect(() => {
-        if (updater.isSuccess) {
-            router.push("/members/manage");
-        }
-    }, [updater.isSuccess, router]);
-
-    if (!mounted) {
-        return <Card className="p-8 text-sm text-ink-faint">Loading…</Card>;
-    }
-    if (!isConnected) {
-        return <Card className="p-8 text-sm text-ink-faint">Redirecting…</Card>;
-    }
-    if (registryLoading || !registryData) {
-        return <Card className="p-8 text-sm text-ink-faint">Reading registry…</Card>;
-    }
-
-    if (fetchError) {
-        return (
-            <Card className="p-8 space-y-3">
-                <p className="text-sm text-error-fg" role="alert">{fetchError}</p>
-                <p className="text-xs text-ink-faint">
-                    Couldn&apos;t load the existing profile, so editing the assemblies isn&apos;t safe — saving without the existing fields would clobber them.
-                </p>
-            </Card>
-        );
-    }
-
-    if (!existingProfile) {
-        return <Card className="p-8 text-sm text-ink-faint">Fetching profile from IPFS…</Card>;
-    }
-    if (!seeded) {
-        return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
+    if (editor.gate) {
+        return <MemberEditGate gate={editor.gate} />;
     }
 
     async function handleSave(
@@ -143,9 +54,9 @@ export function MemberEditAssemblies() {
         // default), and a member who never declared one must
         // round-trip unchanged.
         if (disclosurePolicy.length > 0) {
-            await updater.save({ assemblyBindings: bindings, disclosurePolicy });
+            await editor.updater.save({ assemblyBindings: bindings, disclosurePolicy });
         } else {
-            await updater.save({ assemblyBindings: bindings }, { clear: ["disclosurePolicy"] });
+            await editor.updater.save({ assemblyBindings: bindings }, { clear: ["disclosurePolicy"] });
         }
     }
 
@@ -155,12 +66,8 @@ export function MemberEditAssemblies() {
             submitLabel="Save changes"
             backHref="/members/manage"
             backLabel="← Cancel"
-            submitInFlight={updater.isPending || updater.isConfirming}
-            externalError={
-                updater.error
-                    ? (updater.error.message ?? String(updater.error))
-                    : null
-            }
+            submitInFlight={editor.saveInFlight}
+            externalError={editor.externalError}
         />
     );
 }

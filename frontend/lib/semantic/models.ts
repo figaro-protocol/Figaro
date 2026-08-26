@@ -102,22 +102,6 @@ export interface SubmitClauseAttestationCapabilityAction {
 }
 
 
-interface ClaimAirdropCapabilityAction {
-    executionType: "transaction";
-    kind: "claim-airdrop";
-    amount: bigint;
-    proof: `0x${string}`[];
-}
-
-/** Florin vesting tranches with separate claim curves. */
-export type VestingVariant = "founder" | "ecosystem";
-
-interface ClaimVestingCapabilityAction {
-    executionType: "transaction";
-    kind: "claim-vesting";
-    variant: VestingVariant;
-}
-
 interface PrototypeCapabilityAction {
     executionType: "prototype";
     kind: string;
@@ -129,8 +113,6 @@ export type CapabilityActionDescriptor =
     | UpdateMemberProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction
     | SubmitClauseAttestationCapabilityAction
-    | ClaimAirdropCapabilityAction
-    | ClaimVestingCapabilityAction
     | PrototypeCapabilityAction;
 
 interface RegisterSellerCapabilityInput {

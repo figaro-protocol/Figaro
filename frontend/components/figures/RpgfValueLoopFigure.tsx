@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 /** Same fields as every content figure; `idPrefix` also seeds this figure's
  *  arrow-marker id. */
@@ -35,28 +35,37 @@ export function RpgfValueLoopFigure({
     className,
     svgProps,
 }: RpgfValueLoopFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
     const markerId = `${idPrefix}-arrow`;
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto mt-8", className)}>
-            <svg
-                viewBox="0 0 560 251"
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto text-ink-body"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>The registration deposit&apos;s value loop</title>
-                <desc id={descId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 560 251"
+            frameClassName="w-full max-w-xl mx-auto mt-8"
+            svgClassName="text-ink-body"
+            title={<>The registration deposit&apos;s value loop</>}
+            desc={
+                <>
                     Four steps in a closed loop: stake ETH to register, real trade
                     uses your clauses and assemblies, every deal pays gas in ETH,
                     and your stake rides that demand &mdash; exposure to the growth
                     your own work creates.
-                </desc>
-
+                </>
+            }
+            caption={
+                <>
+                    The registration deposit is a value loop, not a fee: the same real
+                    trade that pays your work drives demand for the currency you staked.
+                    The full derivation is in{" "}
+                    <Link href="/papers/substrate-broadening-rpgf" className="underline hover:no-underline">
+                        the RPGF paper
+                    </Link>
+                    .
+                </>
+            }
+        >
                 <defs>
                     <marker
                         id={markerId}
@@ -100,16 +109,6 @@ export function RpgfValueLoopFigure({
                 <line x1="425" y1="103" x2="425" y2="146" stroke="currentColor" strokeWidth="1.25" markerEnd={`url(#${markerId})`} />
                 <line x1="308" y1="183" x2="254" y2="183" stroke="currentColor" strokeWidth="1.25" markerEnd={`url(#${markerId})`} />
                 <line x1="135" y1="148" x2="135" y2="105" stroke="currentColor" strokeWidth="1.25" markerEnd={`url(#${markerId})`} />
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                The registration deposit is a value loop, not a fee: the same real
-                trade that pays your work drives demand for the currency you staked.
-                The full derivation is in{" "}
-                <Link href="/papers/substrate-broadening-rpgf" className="underline hover:no-underline">
-                    the RPGF paper
-                </Link>
-                .
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

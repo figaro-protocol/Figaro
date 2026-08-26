@@ -58,6 +58,9 @@
         "clauses/*.json": [
             "bash scripts/lint-clause-choices-are-bounded.sh"
         ],
+        "{clauses/*.json,frontend/app/**/papers/protocol-composition/page.tsx}": [
+            "bash scripts/lint-paper-clause-catalogue.sh"
+        ],
         "certora/token-ops.inventory": [
             "bash scripts/lint-token-ops.sh"
         ],

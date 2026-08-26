@@ -1,6 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 /** A settlement transaction actually measured on a public chain. */
 interface GasReceipt {
@@ -151,9 +151,6 @@ export function GasCrossoverFigure({
     figureDesc = SPEC_DESC,
     caption = SPEC_CAPTION,
 }: GasCrossoverFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     const xOf = (n: number) => PLOT_X + ((n - 1) / (maxPositions - 1)) * PLOT_W;
     const yOf = (gas: number) => BASE_Y - Math.min(gas, Y_MAX) * (PLOT_H / Y_MAX);
 
@@ -184,18 +181,15 @@ export function GasCrossoverFigure({
             : Math.min(xOf(crossover) + 6, PLOT_X + PLOT_W - widestOf(crossoverLines));
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox="0 0 400 336"
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 400 336"
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 <text x="18" y="22" fontSize="11" fontWeight="600" className="fill-ink-heading">
                     Gas per unit settled, by batch size
                 </text>
@@ -336,8 +330,6 @@ export function GasCrossoverFigure({
                 <text x="18" y="328" fontSize="7" fontStyle="italic" className="fill-ink-muted">
                     Per-order constants: sdk/src/gasCeilings.ts, measured on receipts by GasCeilingTest.t.sol.
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

@@ -141,38 +141,41 @@ export function validateDidDocument(
     }
 
     // verificationMethod entries must have id, type, controller
-    if (d.verificationMethod) {
-        if (!Array.isArray(d.verificationMethod)) {
-            return "'verificationMethod' must be an array";
-        }
-        for (const vm of d.verificationMethod as unknown[]) {
-            if (!vm || typeof vm !== "object") {
-                return "Each verificationMethod must be an object";
-            }
-            const v = vm as Record<string, unknown>;
-            if (!v.id || !v.type || !v.controller) {
-                return "Each verificationMethod must have id, type, and controller";
-            }
-        }
-    }
+    const vmError = requireEntries(d, "verificationMethod", "verificationMethod", ["id", "type", "controller"]);
+    if (vmError) return vmError;
 
     // service entries must have id, type, serviceEndpoint (so a resolver can
     // route to the endpoint an agent publishes — see extractServiceEndpoints)
-    if (d.service) {
-        if (!Array.isArray(d.service)) {
-            return "'service' must be an array";
+    const svcError = requireEntries(d, "service", "service", ["id", "type", "serviceEndpoint"]);
+    if (svcError) return svcError;
+
+    return null;
+}
+
+/** Validate an OPTIONAL array field of a DID Document whose entries must each
+ *  be an object carrying every `required` key. Absent field = valid (the DID
+ *  Core spec makes both arrays optional). Returns the first error, or null. */
+function requireEntries(
+    d: Record<string, unknown>,
+    key: string,
+    singular: string,
+    required: readonly string[],
+): string | null {
+    const value = d[key];
+    if (!value) return null;
+    if (!Array.isArray(value)) {
+        return `'${key}' must be an array`;
+    }
+    const requiredList = `${required.slice(0, -1).join(", ")}, and ${required[required.length - 1]}`;
+    for (const entry of value as unknown[]) {
+        if (!entry || typeof entry !== "object") {
+            return `Each ${singular} must be an object`;
         }
-        for (const svc of d.service as unknown[]) {
-            if (!svc || typeof svc !== "object") {
-                return "Each service must be an object";
-            }
-            const s = svc as Record<string, unknown>;
-            if (!s.id || !s.type || !s.serviceEndpoint) {
-                return "Each service must have id, type, and serviceEndpoint";
-            }
+        const e = entry as Record<string, unknown>;
+        if (required.some((k) => !e[k])) {
+            return `Each ${singular} must have ${requiredList}`;
         }
     }
-
     return null;
 }
 

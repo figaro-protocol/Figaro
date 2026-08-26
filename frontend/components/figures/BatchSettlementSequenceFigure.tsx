@@ -1,5 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export type BatchSettlementSequenceFigureProps = BaseFigureProps;
 
@@ -110,9 +111,6 @@ export function BatchSettlementSequenceFigure({
     className,
     svgProps,
 }: BatchSettlementSequenceFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     const firstOnChain = STEPS.findIndex((s) => s.onChain);
     // A gap opens before the first on-chain step so the acceptance-gate rule and
     // the band heading have clear air above the step-5 row.
@@ -125,17 +123,14 @@ export function BatchSettlementSequenceFigure({
     const viewHeight = fallbackY + 90;
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>The batch settlement path, step by step</title>
-                <desc id={descId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            title="The batch settlement path, step by step"
+            desc={
+                <>
                     Seven steps in order. Off chain: both parties sign one typed-data
                     commitment whose domain names the batch verifier rather than the
                     kernel; a sequencer gathers and orders signed commitments, as transport
@@ -158,20 +153,18 @@ export function BatchSettlementSequenceFigure({
                     the sequencer stalls or censors, the parties sign again for the
                     kernel&apos;s own domain and settle directly; that is a new process, not
                     a migration of a batched one.
-                </desc>
-
+                </>
+            }
+            caption={
+                <>
+                    Sequencer and prover each produce a candidate batch; neither admits one.
+                    The verifier is the sole acceptance gate, which is why a sequencer failure
+                    is a liveness problem and not a safety one.
+                </>
+            }
+        >
                 <defs>
-                    <marker
-                        id={`${idPrefix}-arrow`}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={`${idPrefix}-arrow`} />
                 </defs>
 
                 <text x="20" y="22" fontSize="12" fontWeight="600" className="fill-ink-heading">
@@ -287,12 +280,6 @@ export function BatchSettlementSequenceFigure({
                 <text x="26" y={fallbackY + 68} fontSize="8" fontStyle="italic" className="fill-ink-muted">
                     A new process on the kernel &mdash; never a migration of a batched one.
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                Sequencer and prover each produce a candidate batch; neither admits one.
-                The verifier is the sole acceptance gate, which is why a sequencer failure
-                is a liveness problem and not a safety one.
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

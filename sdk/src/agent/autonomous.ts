@@ -264,14 +264,41 @@ export async function attestAsSeller(
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
-    const hash = await walletClient.writeContract({
+    return submitAttestation(walletClient, coordinatorAddress, role, target, clauseId, stage, sectionHash, proof, contentRef);
+}
+
+/** The ONE coordinator submit both attest roles share. The role commitment
+ *  selects the function and its argument arity: the seller path carries a
+ *  role-proving commitment the buyer path structurally lacks (the buyer IS
+ *  `target.buyer` — the coordinator checks the caller, no second struct). */
+async function submitAttestation(
+    walletClient: WalletClient,
+    coordinatorAddress: Address,
+    role: Commitment | undefined,
+    target: Commitment,
+    clauseId: Hex,
+    stage: number,
+    sectionHash: Hex,
+    proof: readonly Hex[],
+    contentRef: Hex,
+): Promise<TxResult> {
+    const base = {
         chain: walletClient.chain ?? null,
         account: walletClient.account!,
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: "attestAsSeller",
-        args: [role, target, clauseId, stage, sectionHash, proof, contentRef],
-    });
+    } as const;
+    const hash = role
+        ? await walletClient.writeContract({
+              ...base,
+              functionName: "attestAsSeller",
+              args: [role, target, clauseId, stage, sectionHash, proof, contentRef],
+          })
+        : await walletClient.writeContract({
+              ...base,
+              functionName: "attestAsBuyer",
+              args: [target, clauseId, stage, sectionHash, proof, contentRef],
+          });
     return { hash };
 }
 
@@ -297,15 +324,7 @@ export async function attestAsBuyer(
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
-    const hash = await walletClient.writeContract({
-        chain: walletClient.chain ?? null,
-        account: walletClient.account!,
-        address: coordinatorAddress,
-        abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: "attestAsBuyer",
-        args: [target, clauseId, stage, sectionHash, proof, contentRef],
-    });
-    return { hash };
+    return submitAttestation(walletClient, coordinatorAddress, undefined, target, clauseId, stage, sectionHash, proof, contentRef);
 }
 
 // ── Action-based execution ──────────────────────────────────────────────────

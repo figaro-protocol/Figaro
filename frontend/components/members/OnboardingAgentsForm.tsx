@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { FormField } from "@/components/ui/FormField";
-import { Input } from "@/components/ui/Input";
+import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/member/onboardingState";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
@@ -29,14 +28,7 @@ import type { OnboardingStepChromeProps } from "@/components/members/OnboardingS
 
 type ServiceKey = keyof MemberAgentServices;
 
-interface FieldDef {
-    key: ServiceKey;
-    label: string;
-    placeholder: string;
-    hint: string;
-}
-
-const FIELDS: FieldDef[] = [
+const FIELDS: HintedFieldDef<ServiceKey>[] = [
     {
         key: "mcp",
         label: "MCP endpoint",
@@ -173,18 +165,12 @@ export function OnboardingAgentsForm({
             </Card>
 
             <div className="space-y-6">
-                {FIELDS.map((field) => (
-                    <FormField key={field.key} label={field.label} inputId={`agent-${field.key}`}>
-                        <Input
-                            id={`agent-${field.key}`}
-                            type="text"
-                            placeholder={field.placeholder}
-                            value={services[field.key] ?? ""}
-                            onChange={(e) => setField(field.key, e.target.value)}
-                        />
-                        <p className="text-xs text-ink-faint mt-1">{field.hint}</p>
-                    </FormField>
-                ))}
+                <HintedFieldList
+                    fields={FIELDS}
+                    idPrefix="agent"
+                    value={(key) => services[key] ?? ""}
+                    onChange={setField}
+                />
             </div>
 
             {externalError && (

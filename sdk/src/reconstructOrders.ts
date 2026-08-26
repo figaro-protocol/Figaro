@@ -38,8 +38,10 @@ import {
     buildOrderAgreement,
     specDeclaresContentField,
     specDeclaresField,
+    type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
+import { composedClauseWhere } from "./checkoutPlan.js";
 import { topologicalOrder } from "./topology.js";
 import type { Address, Commitment, Hex } from "./types.js";
 
@@ -329,88 +331,79 @@ function withRealParents(
     return out;
 }
 
-/** The commerce section's clause id, found the same way
- *  `checkoutPlan.fillCommerceSection` finds it: the composed clause whose
- *  loaded spec declares `payment` and declares `currency` as plain content
- *  (never a design-fill denomination pin — that is a different clause, a
- *  different term). Undefined when no composed clause matches or the spec
- *  cache is cold — a no-op, matching every other spec-routed fill in this
- *  SDK; never a clause id. */
-function commerceClauseId(
+/** The ONE guarded walk fill: write a derived `field` value onto the composed
+ *  clause whose loaded spec satisfies `predicate` — the same spec-routed
+ *  lookup the checkout fills run (`composedClauseWhere`); no clause is ever
+ *  named. No match (nothing composed, or a cold spec cache) is a no-op,
+ *  matching every other spec-routed fill in this SDK. An existing value is
+ *  accepted only when IDENTICAL to `value` (case-insensitive — every tenant
+ *  is hex); a CONTRADICTION throws with the caller's message — the walk owns
+ *  these leaves whenever specs are available, so a mismatched override is
+ *  caller error to surface immediately, not a value to silently reconcile or
+ *  overwrite. */
+function fillWalkField(
     clauses: Record<string, Record<string, unknown>>,
+    field: string,
+    value: string,
     specs: SpecSource,
-): string | undefined {
-    return Object.keys(clauses).find((clauseId) => {
-        const spec = specs.get(clauseId);
-        return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
-    });
+    nodeId: string,
+    opts: {
+        predicate: (spec: ProjectionSpecView) => boolean;
+        contradiction: (existing: string) => string;
+    },
+): Record<string, Record<string, unknown>> {
+    const clauseId = composedClauseWhere(clauses, specs, opts.predicate);
+    if (!clauseId) return clauses;
+    const existing = clauses[clauseId]?.[field];
+    if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== value.toLowerCase()) {
+        throw new Error(`node "${nodeId}": ${opts.contradiction(existing)}`);
+    }
+    return { ...clauses, [clauseId]: { ...clauses[clauseId], [field]: value } };
 }
 
 /** Write the process's settlement currency into the commerce section BEFORE
  *  hashing, so the leaf every party signs never diverges from the commitment
  *  struct's `currency` field (docs/CLAUSES.md § "Every clause is a merkle
- *  leaf"). A no-op when no composed clause carries the currency-as-content
- *  field. A caller override that already names a currency is accepted only
- *  when it is IDENTICAL to `currency`; a CONTRADICTING override throws —
- *  the walk owns this leaf whenever specs are available, so a mismatched
- *  override is caller error to surface immediately, not a value to silently
- *  reconcile or overwrite. */
+ *  leaf"). The commerce section is found the same way
+ *  `checkoutPlan.fillCommerceSection` finds it: the composed clause whose
+ *  loaded spec declares `payment` and declares `currency` as plain content
+ *  (never a design-fill denomination pin — that is a different clause, a
+ *  different term). */
 function fillWalkCurrency(
     clauses: Record<string, Record<string, unknown>>,
     currency: Address,
     specs: SpecSource,
     nodeId: string,
 ): Record<string, Record<string, unknown>> {
-    const clauseId = commerceClauseId(clauses, specs);
-    if (!clauseId) return clauses;
-    const existing = clauses[clauseId]?.currency;
-    if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== currency.toLowerCase()) {
-        throw new Error(
-            `node "${nodeId}": override names commerce currency ${existing}, which contradicts this process's ` +
-                `currency ${currency} — refusing to build a leaf that disagrees with the commitment struct`,
-        );
-    }
-    return { ...clauses, [clauseId]: { ...clauses[clauseId], currency } };
-}
-
-/** The composed clause whose loaded spec declares `compositionHash` as plain
- *  content — the provenance section (`fillProvenanceSection` in checkoutPlan
- *  routes the same way). Undefined when none is composed or the cache is cold
- *  — a no-op, never a clause id. */
-function provenanceClauseId(
-    clauses: Record<string, Record<string, unknown>>,
-    specs: SpecSource,
-): string | undefined {
-    return Object.keys(clauses).find((clauseId) => {
-        const spec = specs.get(clauseId);
-        return !!spec && specDeclaresContentField(spec, "compositionHash");
+    return fillWalkField(clauses, "currency", currency, specs, nodeId, {
+        predicate: (spec) => specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency"),
+        contradiction: (existing) =>
+            `override names commerce currency ${existing}, which contradicts this process's ` +
+            `currency ${currency} — refusing to build a leaf that disagrees with the commitment struct`,
     });
 }
 
 /** Write the instantiated template's OWN composition hash into the provenance
  *  section BEFORE hashing — the mechanical fill the checkout performs
  *  (docs/CLAUSES.md: the hash cannot appear inside the composition it hashes,
- *  so it fills at instantiation, never at design). A no-op when no composed
- *  clause declares the field. A caller override that already names a hash is
- *  accepted only when IDENTICAL; a CONTRADICTING override throws — an
- *  agreement claiming to instantiate a different composition than the one
- *  that built it is a forgery to surface, not a value to reconcile. */
+ *  so it fills at instantiation, never at design). The provenance section is
+ *  the composed clause declaring `compositionHash` as plain content
+ *  (`fillProvenanceSection` in checkoutPlan routes the same way). A
+ *  CONTRADICTING override throws — an agreement claiming to instantiate a
+ *  different composition than the one that built it is a forgery to surface,
+ *  not a value to reconcile. */
 export function fillWalkProvenance(
     clauses: Record<string, Record<string, unknown>>,
     compositionHash: `0x${string}`,
     specs: SpecSource,
     nodeId: string,
 ): Record<string, Record<string, unknown>> {
-    const clauseId = provenanceClauseId(clauses, specs);
-    if (!clauseId) return clauses;
-    const existing = clauses[clauseId]?.compositionHash;
-    if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== compositionHash.toLowerCase()) {
-        throw new Error(
-            `node "${nodeId}": override names compositionHash ${existing}, which contradicts this template's ` +
-                `own composition hash ${compositionHash} — refusing to claim a different provenance`,
-        );
-    }
-    return { ...clauses, [clauseId]: { ...clauses[clauseId], compositionHash } };
+    return fillWalkField(clauses, "compositionHash", compositionHash, specs, nodeId, {
+        predicate: (spec) => specDeclaresContentField(spec, "compositionHash"),
+        contradiction: (existing) =>
+            `override names compositionHash ${existing}, which contradicts this template's ` +
+            `own composition hash ${compositionHash} — refusing to claim a different provenance`,
+    });
 }
 
 /** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared

@@ -36,6 +36,17 @@ function ledgerSource(sourceLabel: string, referenceId?: string) {
     };
 }
 
+/** Build one attachment, deriving the id ONCE — the same string names the
+ *  attachment and its source reference. */
+function attach(
+    id: string,
+    reason: string,
+    fields: Omit<AttachmentModel, "id" | "source">,
+    source: (sourceLabel: string, referenceId?: string) => AttachmentModel["source"] = runtimeSource,
+): AttachmentModel {
+    return { id, ...fields, source: source(reason, id) };
+}
+
 /** Pre-indexed runtime state, built ONCE per process derivation so the
  *  per-order capability loop stays O(orders + attestations). The kernel's
  *  resolve ceiling (~1,240 orders / 30M gas) must flow through this deriver
@@ -461,8 +472,7 @@ function deriveOrderAttachments(order: Order, parentOrderHashes: string[], addre
     const normalized = address?.toLowerCase();
 
     if (parentOrderHashes.length === 0) {
-        attachments.push({
-            id: `${order.processId}:${orderId}:root`,
+        attachments.push(attach(`${order.processId}:${orderId}:root`, "no topology parents identifies the root order", {
             mechanismId: "core-orders",
             targetType: "order",
             targetId: orderId,
@@ -471,11 +481,9 @@ function deriveOrderAttachments(order: Order, parentOrderHashes: string[], addre
             attachmentKind: "topology-root",
             state: "derived",
             visibleByDefault: true,
-            source: runtimeSource("no topology parents identifies the root order", `${order.processId}:${orderId}:root`),
-        });
+        }));
     } else {
-        attachments.push({
-            id: `${order.processId}:${orderId}:child`,
+        attachments.push(attach(`${order.processId}:${orderId}:child`, "committed topology parents identify a sub-order", {
             mechanismId: "core-orders",
             targetType: "order",
             targetId: orderId,
@@ -484,13 +492,11 @@ function deriveOrderAttachments(order: Order, parentOrderHashes: string[], addre
             attachmentKind: "topology-child",
             state: "derived",
             visibleByDefault: true,
-            source: runtimeSource("committed topology parents identify a sub-order", `${order.processId}:${orderId}:child`),
-        });
+        }));
     }
 
     if (hexEqual(order.buyer, normalized)) {
-        attachments.push({
-            id: `${order.processId}:${orderId}:buyer-role`,
+        attachments.push(attach(`${order.processId}:${orderId}:buyer-role`, "connected wallet matches order buyer", {
             mechanismId: "core-orders",
             targetType: "order",
             targetId: orderId,
@@ -499,13 +505,11 @@ function deriveOrderAttachments(order: Order, parentOrderHashes: string[], addre
             attachmentKind: "actor-participation",
             state: "buyer",
             visibleByDefault: true,
-            source: runtimeSource("connected wallet matches order buyer", `${order.processId}:${orderId}:buyer-role`),
-        });
+        }));
     }
 
     if (hexEqual(order.seller, normalized)) {
-        attachments.push({
-            id: `${order.processId}:${orderId}:seller-role`,
+        attachments.push(attach(`${order.processId}:${orderId}:seller-role`, "connected wallet matches order seller", {
             mechanismId: "core-orders",
             targetType: "order",
             targetId: orderId,
@@ -514,13 +518,11 @@ function deriveOrderAttachments(order: Order, parentOrderHashes: string[], addre
             attachmentKind: "actor-participation",
             state: "seller",
             visibleByDefault: true,
-            source: runtimeSource("connected wallet matches order seller", `${order.processId}:${orderId}:seller-role`),
-        });
+        }));
     }
 
     if (order.agreementHash && order.agreementHash !== ZERO_BYTES32) {
-        attachments.push({
-            id: `${order.processId}:${orderId}:agreement`,
+        attachments.push(attach(`${order.processId}:${orderId}:agreement`, "OrderCommitted agreementHash field", {
             mechanismId: "core-orders",
             targetType: "order",
             targetId: orderId,
@@ -529,8 +531,7 @@ function deriveOrderAttachments(order: Order, parentOrderHashes: string[], addre
             attachmentKind: "agreement-reference",
             state: "committed",
             visibleByDefault: false,
-            source: runtimeSource("OrderCommitted agreementHash field", `${order.processId}:${orderId}:agreement`),
-        });
+        }));
     }
 
     return attachments;
@@ -546,8 +547,7 @@ function deriveProcessAttachments(
     if (orders.length === 0) return [];
 
     const attachments: AttachmentModel[] = [
-        {
-            id: `${processId}:root-order`,
+        attach(`${processId}:root-order`, "root order derived from process order topology", {
             mechanismId: "core-orders",
             targetType: "process",
             targetId: processId,
@@ -556,13 +556,11 @@ function deriveProcessAttachments(
             attachmentKind: "root-order",
             state: rootOrderId ? "derived" : "missing",
             visibleByDefault: true,
-            source: runtimeSource("root order derived from process order topology", `${processId}:root-order`),
-        },
+        }),
     ];
 
     if (currencyAddress) {
-        attachments.push({
-            id: `${processId}:currency`,
+        attachments.push(attach(`${processId}:currency`, "first process order currency", {
             mechanismId: "core-orders",
             targetType: "process",
             targetId: processId,
@@ -571,15 +569,13 @@ function deriveProcessAttachments(
             attachmentKind: "currency-binding",
             state: "active",
             visibleByDefault: true,
-            source: ledgerSource("first process order currency", `${processId}:currency`),
-        });
+        }, ledgerSource));
     }
 
     const activeCount = orders.filter((order) => order.state === OrderState.Active).length;
     const descendantCount = orders.filter((order) => order.orderHash.toString() !== rootOrderId).length;
 
-    attachments.push({
-        id: `${processId}:state-summary`,
+    attachments.push(attach(`${processId}:state-summary`, "aggregate order states within the process", {
         mechanismId: "core-orders",
         targetType: "process",
         targetId: processId,
@@ -588,12 +584,10 @@ function deriveProcessAttachments(
         attachmentKind: "state-summary",
         state: activeCount > 0 ? "active" : "closed",
         visibleByDefault: true,
-        source: runtimeSource("aggregate order states within the process", `${processId}:state-summary`),
-    });
+    }));
 
     if (descendantCount > 0) {
-        attachments.push({
-            id: `${processId}:descendants`,
+        attachments.push(attach(`${processId}:descendants`, "orders beyond the topology root are descendants", {
             mechanismId: "core-orders",
             targetType: "process",
             targetId: processId,
@@ -602,8 +596,7 @@ function deriveProcessAttachments(
             attachmentKind: "topology-summary",
             state: "composed",
             visibleByDefault: true,
-            source: runtimeSource("orders beyond the topology root are descendants", `${processId}:descendants`),
-        });
+        }));
     }
 
     const normalized = address?.toLowerCase();
@@ -612,8 +605,7 @@ function deriveProcessAttachments(
         const sellerCount = orders.filter((order) => hexEqual(order.seller, normalized)).length;
 
         if (buyerCount > 0) {
-            attachments.push({
-                id: `${processId}:buyer-presence`,
+            attachments.push(attach(`${processId}:buyer-presence`, "connected wallet matches process order buyer fields", {
                 mechanismId: "core-orders",
                 targetType: "process",
                 targetId: processId,
@@ -622,13 +614,11 @@ function deriveProcessAttachments(
                 attachmentKind: "actor-presence",
                 state: "buyer",
                 visibleByDefault: true,
-                source: runtimeSource("connected wallet matches process order buyer fields", `${processId}:buyer-presence`),
-            });
+            }));
         }
 
         if (sellerCount > 0) {
-            attachments.push({
-                id: `${processId}:seller-presence`,
+            attachments.push(attach(`${processId}:seller-presence`, "connected wallet matches process order seller fields", {
                 mechanismId: "core-orders",
                 targetType: "process",
                 targetId: processId,
@@ -637,8 +627,7 @@ function deriveProcessAttachments(
                 attachmentKind: "actor-presence",
                 state: "seller",
                 visibleByDefault: true,
-                source: runtimeSource("connected wallet matches process order seller fields", `${processId}:seller-presence`),
-            });
+            }));
         }
     }
 

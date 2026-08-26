@@ -1,5 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export type RegistryLifecycleFigureProps = BaseFigureProps;
 
@@ -155,8 +156,6 @@ export function RegistryLifecycleFigure({
     className,
     svgProps,
 }: RegistryLifecycleFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
     const arrowId = `${idPrefix}-arrow`;
 
     const rowY = (i: number) => STATES_TOP + i * (STATE_H + EDGE_H);
@@ -167,17 +166,15 @@ export function RegistryLifecycleFigure({
     const viewHeight = closingTop + closingLines * 10 + 10;
 
     return (
-        <figure className={cn("w-full max-w-2xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>What a withdrawal leaves behind, by registry family</title>
-                <desc id={descId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            frameClassName="w-full max-w-2xl mx-auto"
+            title="What a withdrawal leaves behind, by registry family"
+            desc={
+                <>
                     Two state machines. A participant registration moves from
                     unregistered to live on an exact deposit, updates its own
                     profile while live, de-surfaces the instant a withdrawal is
@@ -192,20 +189,19 @@ export function RegistryLifecycleFigure({
                     outnumber resolves. That withdrawal de-surfaces the entry for
                     new compositions but never clears the binding, so agreements
                     already committed against it keep resolving.
-                </desc>
-
+                </>
+            }
+            caption={
+                <>
+                    Both families price entry the same way &mdash; a reclaimable
+                    deposit, set per deployment. What differs is what leaving clears:
+                    a participant is a live identity, a clause or an assembly is a
+                    permanent published record.
+                </>
+            }
+        >
                 <defs>
-                    <marker
-                        id={arrowId}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={arrowId} />
                 </defs>
 
                 {MACHINES.map((machine, m) => {
@@ -313,13 +309,6 @@ export function RegistryLifecycleFigure({
                         </g>
                     );
                 })}
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                Both families price entry the same way &mdash; a reclaimable
-                deposit, set per deployment. What differs is what leaving clears:
-                a participant is a live identity, a clause or an assembly is a
-                permanent published record.
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

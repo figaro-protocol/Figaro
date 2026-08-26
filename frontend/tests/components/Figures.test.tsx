@@ -697,8 +697,13 @@ describe("DualProcessIdFigure", () => {
 
     it("exposes an accessible title and description bound by aria-labelledby", () => {
         const { container } = render(<DualProcessIdFigure idPrefix="dp" />);
+        // The <figure> is named by its <figcaption>, like every sibling —
+        // aria-labelledby on the figure itself would override that name.
+        // The title/desc pair labels the content block instead.
         const figure = container.querySelector("figure");
-        expect(figure).toHaveAttribute("aria-labelledby", "dp-title dp-desc");
+        expect(figure).not.toHaveAttribute("aria-labelledby");
+        const group = container.querySelector("[role='group']");
+        expect(group).toHaveAttribute("aria-labelledby", "dp-title dp-desc");
         expect(container.querySelector("#dp-title")?.textContent).toContain("two process ids");
         expect(container.querySelector("#dp-desc")?.textContent).toContain("restoreSignedProcessId");
     });

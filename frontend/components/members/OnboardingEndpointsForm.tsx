@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { FormField } from "@/components/ui/FormField";
-import { Input } from "@/components/ui/Input";
+import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
 import { useMounted } from "@/hooks/useMounted";
 import {
     readUserEndpoints,
@@ -26,14 +25,9 @@ import {
  * Used by the onboarding wizard step (`/members/endpoints`, save & continue)
  * and the manage-tier edit page (`/members/edit/endpoints`, save in place).
  */
-interface FieldDef {
-    key: "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl";
-    label: string;
-    placeholder: string;
-    hint: string;
-}
-
-const FIELDS: FieldDef[] = [
+const FIELDS: HintedFieldDef<
+    "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl"
+>[] = [
     {
         key: "ipfsApiUrl",
         label: "IPFS node (API)",
@@ -104,19 +98,15 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     return (
         <form onSubmit={handleSave} className="space-y-8">
             <Card className="p-6 space-y-6">
-                {FIELDS.map((f) => (
-                    <FormField key={f.key} label={f.label} inputId={`endpoints-${f.key}`}>
-                        <Input
-                            id={`endpoints-${f.key}`}
-                            type="url"
-                            placeholder={f.placeholder}
-                            value={form[f.key]}
-                            onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                            data-testid={`endpoints-${f.key}`}
-                        />
-                        <p className="text-xs text-ink-muted mt-1">{f.hint}</p>
-                    </FormField>
-                ))}
+                <HintedFieldList
+                    fields={FIELDS}
+                    idPrefix="endpoints"
+                    inputType="url"
+                    hintClassName="text-ink-muted"
+                    withTestIds
+                    value={(key) => form[key]}
+                    onChange={(key, value) => setForm((prev) => ({ ...prev, [key]: value }))}
+                />
                 <p className="text-xs text-ink-muted">
                     Stored in this browser only &mdash; never pinned, never published.
                     Empty fields use this deployment&apos;s defaults.

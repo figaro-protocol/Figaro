@@ -1,6 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 interface LayeredDefenseLayer {
     /** Layer heading, including whatever numbering the citing surface uses. */
@@ -87,9 +87,6 @@ export function LayeredDefenseFigure({
     figureDesc = FAQ_DESC,
     caption = FAQ_CAPTION,
 }: LayeredDefenseFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     const cx = 200;
     const cy = 122;
     const rChain = 16;
@@ -99,18 +96,15 @@ export function LayeredDefenseFigure({
     const rCourts = 110;
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox="0 0 400 456"
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 400 456"
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 {/* ── Concentric rings, largest first so later draws sit on top ── */}
                 <circle cx={cx} cy={cy} r={rCourts} className="fill-canvas stroke-ink-faint" strokeWidth="1" strokeDasharray="3 3" />
                 <circle cx={cx} cy={cy} r={rArbitration} className="fill-paper stroke-ink-faint" strokeWidth="1" strokeDasharray="3 3" />
@@ -161,8 +155,6 @@ export function LayeredDefenseFigure({
                 <text x="200" y="376" fontSize="9.5" fontWeight="600" textAnchor="middle" className="fill-ink-primary">
                     {boundaryNote}
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

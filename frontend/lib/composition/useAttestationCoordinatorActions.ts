@@ -16,9 +16,12 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro-protocol/sdk";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
-type SellerAttestationInput = {
-    /** The order being attested — its `agreementHash` anchors the inclusion proof. */
+type AttestationInput = {
+    /** The order being attested — its `agreementHash` anchors the inclusion
+     *  proof. On the buyer path the caller must equal `c.buyer` (which equals
+     *  the process's rootBuyer by commit invariant). */
     orderHash: Hex;
     clauseId: Hex;
     stage: number;
@@ -32,17 +35,6 @@ type SellerAttestationInput = {
      * to the committed clause under `agreementHash` — that binding is the check,
      * uniform across both; there is no "cross-checked" vs "runtime" clause tier.
      */
-    content?: Hex;
-    failureMessage?: string;
-};
-
-type BuyerAttestationInput = {
-    /** The order being attested. Caller must equal `c.buyer` (which equals
-     *  the process's rootBuyer by commit invariant). */
-    orderHash: Hex;
-    clauseId: Hex;
-    stage: number;
-    /** See `SellerAttestationInput.content`. Omit to default to sectionData. */
     content?: Hex;
     failureMessage?: string;
 };
@@ -129,13 +121,16 @@ export function useAttestationCoordinatorActions() {
         return { sectionHash, proof };
     }, []);
 
-    const submitSellerAttestation = useCallback(async ({
+    /** File one attestation as either party — the coordinator entry point
+     *  (`attestAsSeller` / `attestAsBuyer`) and its argument tuple are the
+     *  only role-dependent parts. */
+    const submitAttestation = useCallback(async (role: PartyRole, {
         orderHash,
         clauseId,
         stage,
         content,
         failureMessage = "Transaction failed",
-    }: SellerAttestationInput) => {
+    }: AttestationInput) => {
         const { account, coordinator: attestationCoordinator } = ensureCoordinatorAccess();
         setError("");
         try {
@@ -161,43 +156,15 @@ export function useAttestationCoordinatorActions() {
             return await writeContractAsync({
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI,
-                functionName: "attestAsSeller",
-                args: [target, target, clauseId, stage, sectionHash, proof, contentRef],
-                account,
-                chain,
-            });
-        } catch (cause: unknown) {
-            const message = extractErrorMessage(cause, failureMessage);
-            setError(message);
-            throw new Error(message);
-        }
-    }, [ensureCoordinatorAccess, loadCommitment, buildReceipt, writeContractAsync, chain]);
-
-    const submitBuyerAttestation = useCallback(async ({
-        orderHash,
-        clauseId,
-        stage,
-        content,
-        failureMessage = "Transaction failed",
-    }: BuyerAttestationInput) => {
-        const { account, coordinator: attestationCoordinator } = ensureCoordinatorAccess();
-        setError("");
-        try {
-            const target = await loadCommitment(orderHash);
-            const { sectionHash, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
-            // Re-assert (content omitted) ⇒ contentRef IS the committed section's
-            // fingerprint; otherwise bind the runtime content by its hash.
-            const contentRef = content ? keccak256(content) : sectionHash;
-
-            // Same publication seam as the seller path — see the note there
-            // (publish before broadcast: readers key on the chain event).
-            if (content) await publishWitnessContent({ clauseId, stage, content });
-
-            return await writeContractAsync({
-                address: attestationCoordinator,
-                abi: ATTESTATION_COORDINATOR_ABI,
-                functionName: "attestAsBuyer",
-                args: [target, clauseId, stage, sectionHash, proof, contentRef],
+                ...(role === "seller"
+                    ? {
+                        functionName: "attestAsSeller" as const,
+                        args: [target, target, clauseId, stage, sectionHash, proof, contentRef] as const,
+                    }
+                    : {
+                        functionName: "attestAsBuyer" as const,
+                        args: [target, clauseId, stage, sectionHash, proof, contentRef] as const,
+                    }),
                 account,
                 chain,
             });
@@ -209,8 +176,7 @@ export function useAttestationCoordinatorActions() {
     }, [ensureCoordinatorAccess, loadCommitment, buildReceipt, writeContractAsync, chain]);
 
     return {
-        submitSellerAttestation,
-        submitBuyerAttestation,
+        submitAttestation,
         // Composable building blocks — a custom attestation surface can
         // reconstruct the commitment and build the inclusion receipt without
         // re-implementing either step.

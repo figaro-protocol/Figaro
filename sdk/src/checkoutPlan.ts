@@ -57,8 +57,11 @@ export interface AssemblyCheckoutLineItem {
 
 /** The first composed clause whose LOADED spec satisfies `predicate`.
  *  Undefined while the spec is unloaded — the fill degrades to a no-op,
- *  exactly as the registry-reading frontend does before its cache warms. */
-function composedClauseWhere(
+ *  exactly as the registry-reading frontend does before its cache warms.
+ *  The ONE lookup every spec-routed fill runs — this module's section
+ *  writers and the template walk's guarded fills (`reconstructOrders.ts`
+ *  `fillWalkField`) alike. */
+export function composedClauseWhere(
     clauses: ClauseFields,
     specs: SpecSource,
     predicate: (spec: ProjectionSpecView) => boolean,
@@ -180,6 +183,13 @@ export function readUtilityTokenPin(
  * cannot appear inside the composition it hashes. Committed under
  * agreementHash, a buyer attestation of this section becomes the on-chain
  * event linking the process to its registered assembly.
+ *
+ * No contradiction guard here, deliberately: this fill is an override
+ * PRODUCER — its output joins `ReconstructNodeSpec.overrides` and every
+ * committed leaf then passes the walk's guarded `fillWalkProvenance`
+ * (`reconstructOrders.ts`), which throws on a mismatch. The template value is
+ * authoritative-empty by construction (above), so the only value this fill
+ * could overwrite is the walk's own guard input.
  */
 export function fillProvenanceSection(
     clauses: ClauseFields,
@@ -227,7 +237,9 @@ export function mechanicallyFilledFieldNames(
  * topology data carries template-LOCAL order ids ("order-0"); the committed
  * agreement must carry the actual EIP-712 order hashes — they are the DAG
  * edges every off-chain reader (audit, derive) reconstructs from, and the
- * bytes32 shape Layer A validates.
+ * bytes32 shape Layer A validates. The overwrite IS this writer's contract —
+ * the existing value (local ids) is EXPECTED to differ from the fill (real
+ * hashes), so an equality guard here would reject every legitimate call.
  */
 export function writeTopologySection(
     clauses: ClauseFields,

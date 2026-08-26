@@ -1,9 +1,7 @@
-import { cn } from "@/lib/shared/utils";
+import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
-export interface MerkleForestFigureProps {
-    /** Merged onto the outer <figure>. */
-    className?: string;
-}
+export type MerkleForestFigureProps = BaseFigureProps;
 
 // Diagram reinforcing the copy above it — never a retelling of the deeper
 // pages. Constraints the drawing keeps: clauses stay generic (clause a, b,
@@ -19,33 +17,39 @@ const NODE_W = 66;
 const NODE_H = 22;
 const MID_CX = [90, 250] as const;
 
-export function MerkleForestFigure({ className }: MerkleForestFigureProps) {
+export function MerkleForestFigure({
+    idPrefix = "merkle-forest",
+    className,
+    svgProps,
+}: MerkleForestFigureProps) {
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <div className="relative rounded border border-default px-3 pt-5 pb-2.5 mb-3">
-                <span aria-hidden="true" className="absolute top-1 right-2.5 text-[10px] text-ink-muted">readers</span>
-                <ul className="flex flex-wrap justify-center gap-1.5" aria-label="The data's readers">
-                    {READERS.map((reader) => (
-                        <li key={reader} className="rounded border border-default px-3 py-1 text-xs text-ink-heading">
-                            {reader}
-                        </li>
-                    ))}
-                </ul>
-            </div>
-            <svg
-                viewBox="0 0 340 304"
-                role="img"
-                aria-labelledby="merkle-diagram-title merkle-diagram-desc"
-                className="w-full h-auto"
-            >
-                <title id="merkle-diagram-title">One agreement, drawn as a diagram</title>
-                <desc id="merkle-diagram-desc">
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 340 304"
+            title="One agreement, drawn as a diagram"
+            desc={
+                <>
                     Four clauses and their data artifacts sit inside an IPFS
                     boundary, the data colored public or private. The clauses hash
                     pairwise down to a single point, and one line carries that
                     fingerprint into a block of the blockchain.
-                </desc>
-
+                </>
+            }
+            beforeSvg={
+                <div className="relative rounded border border-default px-3 pt-5 pb-2.5 mb-3">
+                    <span aria-hidden="true" className="absolute top-1 right-2.5 text-[10px] text-ink-muted">readers</span>
+                    <ul className="flex flex-wrap justify-center gap-1.5" aria-label="The data's readers">
+                        {READERS.map((reader) => (
+                            <li key={reader} className="rounded border border-default px-3 py-1 text-xs text-ink-heading">
+                                {reader}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            }
+        >
                 {/* IPFS boundary around the data artifacts and their clauses. */}
                 <rect x="6" y="6" width="328" height="116" rx="6" className="fill-none stroke-default" strokeWidth="1" strokeDasharray="4 3" />
                 <text x="326" y="18" fontSize="9" textAnchor="end" className="fill-ink-muted">IPFS</text>
@@ -104,7 +108,6 @@ export function MerkleForestFigure({ className }: MerkleForestFigureProps) {
                 <text x="29" y="292.5" fontSize="9" className="fill-ink-muted">public data</text>
                 <rect x="92" y="284" width="10" height="10" rx="2" className="fill-ink-heading" />
                 <text x="107" y="292.5" fontSize="9" className="fill-ink-muted">private data</text>
-            </svg>
-        </figure>
+        </FigureFrame>
     );
 }

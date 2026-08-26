@@ -1,5 +1,6 @@
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export type MarketFormationSwimlaneFigureProps = BaseFigureProps;
 
@@ -121,9 +122,6 @@ export function MarketFormationSwimlaneFigure({
     className,
     svgProps,
 }: MarketFormationSwimlaneFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     // Row tops, stacked in order with a uniform gap.
     const tops: number[] = [];
     let cursor = LANES_TOP + 12;
@@ -148,20 +146,20 @@ export function MarketFormationSwimlaneFigure({
     };
 
     return (
-        <figure className={cn("w-full max-w-2xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            frameClassName="w-full max-w-2xl mx-auto"
+            title={
+                <>
                     Offer formation by dispatch race and by request for quotes, and where
                     settlement enters
-                </title>
-                <desc id={descId}>
+                </>
+            }
+            desc={
+                <>
                     Two lanes above a band. The left lane is the buyer, the right lane the
                     candidate sellers, and the band beneath both is the settlement layer.
                     Step one, in the buyer&apos;s lane: the buyer builds one unsigned
@@ -188,20 +186,19 @@ export function MarketFormationSwimlaneFigure({
                     taken need no cancellation: the buyer fixes one deadline inside every
                     draft, and the settlement layer refuses a commitment past it, so losing
                     answers expire inert at no cost and leave no record.
-                </desc>
-
+                </>
+            }
+            caption={
+                <>
+                    Reversing the signing order is the whole mechanism: drafts bind nobody, an
+                    answer binds only its author, and the buyer&rsquo;s one signature is at once
+                    the selection and the commitment &mdash; so no venue is needed to hold state
+                    between the two.
+                </>
+            }
+        >
                 <defs>
-                    <marker
-                        id={`${idPrefix}-arrow`}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={`${idPrefix}-arrow`} />
                 </defs>
 
                 {/* Lane headings */}
@@ -387,13 +384,6 @@ export function MarketFormationSwimlaneFigure({
                 <text x={LANE_A_X} y={footerY + 11} fontSize="8" fontStyle="italic" className="fill-ink-muted">
                     inert. The market has no cancel operation because it needs none.
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                Reversing the signing order is the whole mechanism: drafts bind nobody, an
-                answer binds only its author, and the buyer&rsquo;s one signature is at once
-                the selection and the commitment &mdash; so no venue is needed to hold state
-                between the two.
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

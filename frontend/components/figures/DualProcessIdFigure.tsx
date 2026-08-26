@@ -88,7 +88,10 @@ export function DualProcessIdFigure({ idPrefix = "dual-process-id", className }:
     const descId = `${idPrefix}-desc`;
 
     return (
-        <figure className={cn("w-full max-w-2xl mx-auto", className)} aria-labelledby={`${titleId} ${descId}`}>
+        // Named by its <figcaption> like every sibling figure; the title/desc
+        // pair labels the content block below (a <figure> carrying
+        // aria-labelledby would override the figcaption as its name).
+        <figure className={cn("w-full max-w-2xl mx-auto", className)}>
             <p id={titleId} className="sr-only">
                 The two process ids that share one name
             </p>
@@ -106,7 +109,11 @@ export function DualProcessIdFigure({ idPrefix = "dual-process-id", className }:
                 both cases; only what the structs carry differs.
             </p>
 
-            <div className="rounded-invariant border border-default bg-paper p-lg">
+            <div
+                role="group"
+                aria-labelledby={`${titleId} ${descId}`}
+                className="rounded-invariant border border-default bg-paper p-lg"
+            >
                 <p className="text-xs font-semibold text-ink-heading mb-2">Two ids, one name, one signature</p>
                 <pre className="font-mono text-xs text-ink-primary overflow-x-auto whitespace-pre">
                     <code>resolveProcess(bytes32 processId, Commitment[] commitments)</code>

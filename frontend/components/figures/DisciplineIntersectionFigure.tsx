@@ -1,5 +1,5 @@
-import { cn } from "@/lib/shared/utils";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export interface DisciplineIntersectionFigureProps extends BaseFigureProps {
     /** One circle per discipline. Pass the live catalogue
@@ -38,27 +38,24 @@ export function DisciplineIntersectionFigure({
     className,
     svgProps,
 }: DisciplineIntersectionFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
-
     return (
-        <figure className={cn("w-full max-w-2xl mx-auto", className)}>
-            <svg
-                viewBox="0 0 660 580"
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>The disciplines intersecting in one working group</title>
-                <desc id={descId}>
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox="0 0 660 580"
+            frameClassName="w-full max-w-2xl mx-auto"
+            title="The disciplines intersecting in one working group"
+            desc={
+                <>
                     {labels.length} overlapping circles, one per discipline, every
                     circle containing a single shared center region labeled &ldquo;a
                     working group&rdquo; &mdash; a group is people from the
                     disciplines converging on one problem.
-                </desc>
-
+                </>
+            }
+            caption="One shared center: the group lives where every discipline overlaps."
+        >
                 <circle cx={CX} cy={CY} r={RING_R - 12} className="fill-subtle-hover" />
 
                 {labels.map((label, i) => {
@@ -106,10 +103,6 @@ export function DisciplineIntersectionFigure({
                 >
                     a working group
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                One shared center: the group lives where every discipline overlaps.
-            </figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

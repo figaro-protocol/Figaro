@@ -16,14 +16,16 @@
  * drop-off door; in a private transaction the buyer requests the seller's
  * precise pickup point the same way. The chain never learns the plaintext.
  *
+ * The channel subscription, authentication contract, and anchor polling
+ * live in `useCeremonyChannel`; this panel owns the addressee-block codec
+ * and the JSX.
+ *
  * Mounted by the interactionSurfaces registry — this component knows no
  * clause; `clauseId` identifies the declaring section for the anchor and
  * the title, never a dispatch.
  */
-import { useCallback, useEffect, useState } from "react";
-import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
-import { getHandoffChannel } from "@/lib/handoff/channel";
-import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro-protocol/sdk/handoff";
+import { useCallback, useState } from "react";
+import { useAccount, useWalletClient } from "wagmi";
 import {
     addressDetailAnchorRef,
     addressDetailBlobHash,
@@ -32,9 +34,8 @@ import {
     sendAddressDetail,
     type AddresseeBlock,
 } from "@/lib/handoff/addressDetail";
-import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
+import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { attestationAnchorMatches, type AnchorVerificationState } from "@/components/runtime/handoffAnchorState";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
@@ -44,8 +45,6 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();
-    const chainId = useChainId();
-    const publicClient = usePublicClient();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
 
@@ -55,12 +54,6 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         : null;
 
     const counterparty = role === "seller" ? buyer : seller;
-    const [channel, setChannel] = useState<HandoffChannel | null>(null);
-    const [peerPubKey, setPeerPubKey] = useState<string | null>(null);
-    const [blob, setBlob] = useState<string | null>(null);
-    const [requested, setRequested] = useState(false);
-    const [detail, setDetail] = useState<AddresseeBlock | null>(null);
-    const [anchored, setAnchored] = useState<AnchorVerificationState>("unknown");
     const [sent, setSent] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -69,75 +62,32 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         notifyName: "", notifyContact: "", handling: "",
     });
 
-    // The channel (mock in e2e, XMTP live) + subscriptions. Both parties send
-    // ECDH pubkeys on the same order id. Transport identity is UNTRUSTED —
-    // every message must (1) carry a wallet signature that verifies against
-    // its claimed sender and (2) claim exactly this order's counterparty.
-    // Failures are SKIPPED, never terminal: the listener keeps listening, so
-    // an injected message can neither impersonate the counterparty nor end
-    // the ceremony. (The counterparty check also drops our own messages.)
-    useEffect(() => {
-        if (!address || !role) return;
-        let disposed = false;
-        const unsubs: Array<() => void> = [];
-        const acceptFromCounterparty = async (msg: AuthenticatedEcdhMessage): Promise<boolean> => {
-            if (!hexEqual(msg.senderAddress, counterparty)) return false;
-            return verifyEcdhMessageAuth(msg);
-        };
-        void getHandoffChannel(address).then((ch) => {
-            if (disposed) return;
-            setChannel(ch);
-            unsubs.push(ch.onEcdhPubkey(orderHash, (msg) => {
-                void acceptFromCounterparty(msg).then((ok) => {
-                    if (ok && !disposed) setPeerPubKey(msg.pubKeyHex);
-                });
-            }));
-            unsubs.push(ch.onWrappedKey(orderHash, (msg) => {
-                void acceptFromCounterparty(msg).then((ok) => {
-                    if (ok && !disposed) setBlob(msg.wrappedKeyB64);
-                });
-            }));
-        });
-        // A keypair in sessionStorage marks a request already sent this session.
-        setRequested(getOrderEcdhKeypair(address, orderHash) !== null);
-        return () => {
-            disposed = true;
-            for (const u of unsubs) u();
-        };
-    }, [address, role, orderHash, counterparty]);
+    const decrypt = useCallback(
+        (args: { myAddress: `0x${string}`; senderPubKeyHex: string; blobB64: string }) =>
+            decryptAddressDetail({
+                myAddress: args.myAddress, orderId: orderHash,
+                senderPubKeyHex: args.senderPubKeyHex, blobB64: args.blobB64,
+            }),
+        [orderHash],
+    );
+    // The anchor is keccak of the anchored blob hash — hash-only, the
+    // chain never carries the ciphertext.
+    const expectedAnchor = useCallback(
+        (_decrypted: AddresseeBlock, blobB64: string) => addressDetailAnchorRef(blobB64),
+        [],
+    );
 
-    // Decrypt the counterparty's blob once both halves arrived, then verify
-    // against the on-chain anchor (the attestation whose contentRef is
-    // keccak256 of the anchored blob hash — hash-only, the chain never
-    // carries the ciphertext). The anchor tx can confirm AFTER the channel messages
-    // arrive, so the verification POLLS until it lands (the event cache
-    // makes re-reads cheap). Symmetric: either side receives this way.
-    useEffect(() => {
-        if (!role || !address || !peerPubKey || !blob) return;
-        let cancelled = false;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const expected = addressDetailAnchorRef(blob);
-        const checkAnchor = async () => {
-            if (!publicClient || cancelled) return;
-            const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
-            if (cancelled) return;
-            setAnchored(verified ? "verified" : "missing");
-            if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
-        };
-        void (async () => {
-            const decrypted = await decryptAddressDetail({
-                myAddress: address, orderId: orderHash, senderPubKeyHex: peerPubKey, blobB64: blob,
-            });
-            if (cancelled) return;
-            setDetail(decrypted);
-            if (!decrypted) return;
-            await checkAnchor();
-        })();
-        return () => {
-            cancelled = true;
-            if (timer) clearTimeout(timer);
-        };
-    }, [role, address, peerPubKey, blob, orderHash, publicClient, chainId]);
+    // Both parties send ECDH pubkeys on the order id itself.
+    const { channel, peerPubKey, requested, setRequested, received: detail, anchored } =
+        useCeremonyChannel<AddresseeBlock>({
+            address,
+            enabled: role !== null,
+            ceremonyId: orderHash,
+            orderHash,
+            counterparty,
+            decrypt,
+            expectedAnchor,
+        });
 
     const handleRequest = useCallback(async () => {
         if (!channel || !address || !walletClient) return;
@@ -156,10 +106,10 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         } finally {
             setBusy(false);
         }
-    }, [channel, address, walletClient, counterparty, orderHash]);
+    }, [channel, address, walletClient, counterparty, orderHash, setRequested]);
 
     const handleSend = useCallback(async () => {
-        if (!channel || !address || !peerPubKey || !walletClient) return;
+        if (!channel || !address || !peerPubKey || !walletClient || !role) return;
         setBusy(true);
         setError(null);
         try {
@@ -189,8 +139,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                 content: addressDetailBlobHash(blobB64),
                 failureMessage: "Anchoring the address detail failed",
             };
-            if (role === "buyer") await attestationActions.submitBuyerAttestation(anchorArgs);
-            else await attestationActions.submitSellerAttestation(anchorArgs);
+            await attestationActions.submitAttestation(role, anchorArgs);
             setSent(true);
         } catch (e) {
             setError(extractErrorMessage(e, "Sending the address failed."));

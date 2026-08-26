@@ -1,6 +1,7 @@
-import { cn } from "@/lib/shared/utils";
 import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
+import { ArrowMarker } from "@/components/figures/ArrowMarker";
+import { FigureFrame } from "@/components/figures/FigureFrame";
 
 interface SettlementPathPanel {
     heading: string;
@@ -164,8 +165,6 @@ export function SettlementPathsFigure({
     figureDesc = SPEC_DESC,
     caption = SPEC_CAPTION,
 }: SettlementPathsFigureProps) {
-    const titleId = `${idPrefix}-title`;
-    const descId = `${idPrefix}-desc`;
     const lineClass = lineFont === "mono" ? "fill-ink-primary font-mono" : "fill-ink-primary";
 
     const direct = layoutPanel(directPath, 16, false);
@@ -181,30 +180,17 @@ export function SettlementPathsFigure({
     ];
 
     return (
-        <figure className={cn("w-full max-w-xl mx-auto", className)}>
-            <svg
-                viewBox={`0 0 400 ${viewHeight}`}
-                role="img"
-                aria-labelledby={`${titleId} ${descId}`}
-                className="w-full h-auto"
-                style={{ maxWidth: "100%" }}
-                {...svgProps}
-            >
-                <title id={titleId}>{figureTitle}</title>
-                <desc id={descId}>{figureDesc}</desc>
-
+        <FigureFrame
+            idPrefix={idPrefix}
+            className={className}
+            svgProps={svgProps}
+            viewBox={`0 0 400 ${viewHeight}`}
+            title={figureTitle}
+            desc={figureDesc}
+            caption={caption}
+        >
                 <defs>
-                    <marker
-                        id={`${idPrefix}-arrow`}
-                        viewBox="0 0 10 10"
-                        refX="8"
-                        refY="5"
-                        markerWidth="7"
-                        markerHeight="7"
-                        orient="auto-start-reverse"
-                    >
-                        <path d="M0,0 L10,5 L0,10 z" className="fill-ink-muted" />
-                    </marker>
+                    <ArrowMarker id={`${idPrefix}-arrow`} />
                 </defs>
 
                 {panels.map(({ layout, panel, key }) => (
@@ -299,8 +285,6 @@ export function SettlementPathsFigure({
                 <text x="208" y={arrowTop + 21} fontSize="8" fontStyle="italic" className="fill-ink-muted">
                     {crossingSublabel}
                 </text>
-            </svg>
-            <figcaption className="mt-3 text-center text-sm text-ink-muted">{caption}</figcaption>
-        </figure>
+        </FigureFrame>
     );
 }

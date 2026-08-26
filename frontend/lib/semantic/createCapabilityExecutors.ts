@@ -25,7 +25,7 @@ import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import type { SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
 /** The attestation submitter's argument shape (both parties share it). */
-export interface AttestationSubmitArgs {
+interface AttestationSubmitArgs {
     orderHash: Hex;
     clauseId: Hex;
     stage: number;
@@ -47,8 +47,7 @@ export interface CapabilityExecutorDeps {
      *  count usage when it happens. */
     recordClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
-    submitBuyerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
-    submitSellerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
+    submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     registerMember: (metadataURI: string) => Promise<Hex | undefined | void>;
     updateMemberProfile: (metadataURI: string) => Promise<Hex | undefined | void>;
     withdrawMemberDeposit: () => Promise<Hex | undefined | void>;
@@ -218,15 +217,12 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             content,
             failureMessage: `${action.clauseId} ${action.eventCode ?? (action.reasserts ? "re-assert" : `stage-${action.stage}`)} attestation failed`,
         };
-        const submit = (a: AttestationSubmitArgs) => action.party === "buyer"
-            ? deps.submitBuyerAttestation(a)
-            : deps.submitSellerAttestation(a);
         // Custody is READER-DERIVED (ruled 2026-07-28): a diary event is one
         // custodian's own record, and any transfer-evidence witness (e.g. the
         // proximity clause's) is filed by a party through its OWN standalone
         // capability — the engine declares no pairing and reads no
         // presentation metadata at runtime.
-        return submit(args);
+        return deps.submitAttestation(action.party, args);
     };
 
     /** The callback bag `executeTransactionCapabilityAction` dispatches on. */
