@@ -312,3 +312,10 @@ different trust model, update frequency, and audience:
 Making these boundaries explicit in the UI — through visual separation,
 labeling, or progressive disclosure — prevents users from conflating
 protocol guarantees with institution-level claims.
+
+The surface that implements this table is `/data/explore` (the data explorer,
+`frontend/app/(app)/data/explore/`): one layer at a time, each rendered with its
+own truth boundary named, the rows inside each layer derived from the record —
+so the OPEN class above (one overlay per attestable clause family in use,
+composition graphs per composed venue) is a census of what a corpus contains,
+never a menu the frontend knows in advance.

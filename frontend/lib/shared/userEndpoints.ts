@@ -32,6 +32,14 @@ export interface UserEndpointOverrides {
      *  chain before showing it. So pointing this at any relay, or at your own,
      *  is safe by construction rather than by reputation. */
     batchRelayUrl?: string;
+    /** An ANALYST to ask free-form questions of on `/data/explore`. An analyst
+     *  is an agent anyone runs over the public event record — operator-hosted
+     *  for a site's public analyses, user-run for analyses that also read the
+     *  private substance that user OWNS or BOUGHT (the first-class case, which
+     *  is why this is a per-reader endpoint and not a site service). Unset =
+     *  no prompt box; the page's deterministic views are read by this browser
+     *  either way. */
+    analystUrl?: string;
 }
 
 function sanitize(value: unknown): string | undefined {
@@ -51,6 +59,7 @@ export function readUserEndpoints(): UserEndpointOverrides {
         ipfsGatewayUrl: sanitize(raw.ipfsGatewayUrl),
         geocodeUrl: sanitize(raw.geocodeUrl),
         batchRelayUrl: sanitize(raw.batchRelayUrl),
+        analystUrl: sanitize(raw.analystUrl),
     };
 }
 
@@ -61,5 +70,6 @@ export function writeUserEndpoints(next: UserEndpointOverrides): void {
         ipfsGatewayUrl: sanitize(next.ipfsGatewayUrl),
         geocodeUrl: sanitize(next.geocodeUrl),
         batchRelayUrl: sanitize(next.batchRelayUrl),
+        analystUrl: sanitize(next.analystUrl),
     });
 }

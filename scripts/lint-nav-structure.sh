@@ -86,14 +86,17 @@ for (const page of pages) {
 }
 expected.set(MARKET.doorway, new Map(MARKET.pages.map(([route, file]) => [route, titleOf(file)])));
 
-// The two AUTHORING tools are nav leaves under Build (superseding ruling,
-// maintainer 2026-08-25 — the build seam is emphasized, not hidden behind an
-// inline sentence). They live in app/(tools)/, outside the (marketing) walk,
-// so they are admitted here the way MARKET's (app) pages are. Claim and Join
-// stay page-buttons; do not grow this list without a ruling.
+// The TOOL leaves under Build, each beside its own object page (superseding
+// ruling, maintainer 2026-08-25 — the build seam is emphasized, not hidden
+// behind an inline sentence; extended 2026-08-26 with the data explorer, the
+// graph-query surface /data explains). They live outside the (marketing) walk
+// — the two authoring tools in app/(tools)/, the explorer in app/(app)/ — so
+// they are admitted here the way MARKET's (app) pages are. Claim and Join stay
+// page-buttons; do not grow this list without a ruling.
 const BUILD_TOOLS = [
     ["/clauses/register", "frontend/app/(tools)/clauses/register/page.tsx"],
     ["/assemblies/designer", "frontend/app/(tools)/assemblies/designer/page.tsx"],
+    ["/data/explore", "frontend/app/(app)/data/explore/page.tsx"],
 ];
 for (const [route, file] of BUILD_TOOLS) expected.get("/spec").set(route, titleOf(file));
 

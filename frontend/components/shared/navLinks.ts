@@ -103,8 +103,11 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  * (SUPERSEDING ruling, maintainer 2026-08-25: the maintainer could not find
  * the designer — a build-first site whose composing surfaces hide behind an
  * inline sentence contradicts its own orientation; the seam is emphasized,
- * in nav AND as a CTA on each object page). Claim and Join remain buttons
- * on their object's page, never nav slots. `scripts/lint-nav-structure.sh` enforces the mechanical half of this
+ * in nav AND as a CTA on each object page). The data explorer
+ * (`/data/explore`, the (app)-tier graph-query surface) is the third such
+ * leaf, beside its own object page (maintainer-ruled 2026-08-26) — same
+ * shape: the concept page explains the data layer, the tool queries it.
+ * Claim and Join remain buttons on their object's page, never nav slots. `scripts/lint-nav-structure.sh` enforces the mechanical half of this
  * (doorway-first, set equality against the route tree, label==metadata.title,
  * and breadcrumb doorways) — section order and section names are the
  * maintainer's word, checked by review.
@@ -124,6 +127,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/registries", label: "Registries" },
             { href: "/composition", label: "Composition" },
             { href: "/data", label: "Data" },
+            { href: "/data/explore", label: "Data explorer" },
             { href: "/pitfalls", label: "Sharp edges" },
             { href: "/security", label: "Security" },
             { href: "/rpgf", label: "Rewards for authors" },

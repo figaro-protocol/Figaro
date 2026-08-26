@@ -20,7 +20,13 @@ import {
 } from "@/lib/kernel/indexer";
 import { getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
-import { ATTESTATION_COORDINATOR_ABI, BATCH_VERIFIER_ABI, EV_ATTESTATION, parseAttestationLogs } from "@figaro-protocol/sdk";
+import {
+    ATTESTATION_COORDINATOR_ABI,
+    BATCH_VERIFIER_ABI,
+    EV_ATTESTATION,
+    parseAttestationLogs,
+    type UniverseAttestationEvent,
+} from "@figaro-protocol/sdk";
 import { getAttestationCoordinator, getBatchVerifier } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
@@ -126,6 +132,33 @@ export async function getAllBatchSettled(client: PublicClient, chainId: number):
         event: getAbiItem({ abi: BATCH_VERIFIER_ABI, name: "BatchSettled" }),
         eventName: "BatchSettled",
     });
+}
+
+/**
+ * Every `Attestation` record on this chain, from BOTH settlement universes,
+ * each row TAGGED with the universe that emitted it — the frontend's read of
+ * the SDK's `fetchAttestationRecords` shape (`UniverseAttestationEvent`),
+ * served from the event cache instead of a fresh chunked scan.
+ *
+ * The two streams stay address-filtered and separately parsed for the reason
+ * stated above: the topic hash is shared, so the emitting address is the only
+ * thing that says whether a row is re-verifiable from calldata (direct) or was
+ * proved once inside a batch (batch). Empty from a stream whose contract is
+ * unconfigured — absence of a reader, never "no attestations".
+ */
+export async function getAllAttestationRecords(
+    client: PublicClient,
+    chainId: number,
+): Promise<UniverseAttestationEvent[]> {
+    const [direct, batch] = await Promise.all([
+        getAllAttestations(client, chainId),
+        getAllBatchAttestations(client, chainId),
+    ]);
+    const out: UniverseAttestationEvent[] = [];
+    for (const [logs, universe] of [[direct, "direct"], [batch, "batch"]] as const) {
+        for (const ev of parseAttestationLogs(logs as unknown as Log[])) out.push({ ...ev, universe });
+    }
+    return out.sort((a, b) => a.blockNumber - b.blockNumber);
 }
 
 /** A process attestation flattened to the fields the runtime model needs:

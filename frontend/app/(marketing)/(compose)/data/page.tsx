@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Data — Figaro Protocol",
@@ -41,6 +42,12 @@ export default function Data() {
                 <p className="text-base text-ink-body leading-relaxed">
                     That inversion is the whole arrangement, and it is easiest to see as a direction of travel. Value converges: every payment and every stake is pulled into one settlement, and radiates back out &mdash; payouts and stakes together, in a single transaction &mdash; the moment the buyer closes. The record does the opposite. Only a fingerprint crosses onto the chain; the detail disperses to the people who produced it; and what travels outward is the aggregate map, to everyone at once. A platform ran both the other way.
                 </p>
+                <p className="text-sm text-ink-muted leading-relaxed mt-5">
+                    This page explains the map. The reading happens in the data explorer &mdash; public by construction, so no wallet and no account.
+                </p>
+                <CtaLink href="/data/explore" className="mt-4" data-testid="cta-open-data-explorer">
+                    Open the data explorer
+                </CtaLink>
             </MarketingSection>
 
             <MarketingSection title="Opening your books is a trade too.">

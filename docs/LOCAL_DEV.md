@@ -159,6 +159,17 @@ NEXT_PUBLIC_BATCH_VERIFIER=0x...
 # and anchors the batch's state root on chain before rendering it.
 NEXT_PUBLIC_BATCH_RELAY_URL=
 
+# ANALYST the data explorer (/data/explore) asks free-form questions of — an agent
+# anyone runs over the public event record (ecosystem-agents/figaro-analyst.md;
+# runnable at ecosystem-agents/runtime/figaro-analyst.mjs). Deliberately EMPTY:
+# who hosts an analyst and pays its inference is a deployment's choice, and
+# defaulting readers onto an endpoint of ours would make a convenience look like
+# an authority. Unset = NO prompt box; the explorer's derived views are projected
+# in the reader's own browser either way. Overridable per-reader
+# (readUserEndpoints().analystUrl) — a user-run analyst is the one that can also
+# read the substance that user OWNS or BOUGHT.
+NEXT_PUBLIC_ANALYST_URL=
+
 # Wallet + dev helpers — injected-only (Task 7.2, 2026-08-03): RainbowKit has
 # no wagmi-3 support, so the wallet-provider fallback is the bare injected()
 # connector; there is no WalletConnect project id to configure.

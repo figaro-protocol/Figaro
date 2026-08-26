@@ -25,6 +25,7 @@ import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
     EV_ORDER_RESOLVED,
+    EV_PROCESS_RESOLVED,
 } from "@figaro-protocol/sdk";
 
 export type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
@@ -87,6 +88,18 @@ export async function getAllOrderResolved(client: PublicClient, chainId: number)
         address: CONTRACTS.core as `0x${string}`,
         event: EV_ORDER_RESOLVED,
         eventName: "OrderResolved",
+    });
+}
+
+/** `ProcessResolved` — the process-level settlement event. The per-order
+ *  readers above answer "what happened to this order"; this one is the third
+ *  leg of the SDK's `CoreEvents` triple, which the graph projections
+ *  (`@figaro-protocol/sdk/derive`) fold to know a process closed. */
+export async function getAllProcessResolved(client: PublicClient, chainId: number) {
+    return cachedGetLogs(client, chainId, {
+        address: CONTRACTS.core as `0x${string}`,
+        event: EV_PROCESS_RESOLVED,
+        eventName: "ProcessResolved",
     });
 }
 

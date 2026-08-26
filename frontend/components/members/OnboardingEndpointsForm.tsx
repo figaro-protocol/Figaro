@@ -27,7 +27,7 @@ import {
  * and the manage-tier edit page (`/members/edit/endpoints`, save in place).
  */
 interface FieldDef {
-    key: "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl";
+    key: "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl";
     label: string;
     placeholder: string;
     hint: string;
@@ -58,16 +58,23 @@ const FIELDS: FieldDef[] = [
         placeholder: "https://relay.example.com",
         hint: "The relay batched trade is read and submitted through. Untrusted by construction — the audit surface re-derives everything a relay publishes.",
     },
+    {
+        key: "analystUrl",
+        label: "Analyst",
+        placeholder: "https://analyst.example.com",
+        hint: "An analyst you run over the public event record, asked free-form questions on the data explorer. Yours can also read the private substance you own or bought; unset means no prompt box, and the explorer's derived views still read straight from the chain.",
+    },
 ];
 
 export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     const mounted = useMounted();
     const router = useRouter();
-    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl">>>({
+    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl">>>({
         ipfsApiUrl: "",
         ipfsGatewayUrl: "",
         rpcUrl: "",
         batchRelayUrl: "",
+        analystUrl: "",
     });
     const [saved, setSaved] = useState(false);
 
@@ -78,6 +85,7 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
             ipfsGatewayUrl: current.ipfsGatewayUrl ?? "",
             rpcUrl: current.rpcUrl ?? "",
             batchRelayUrl: current.batchRelayUrl ?? "",
+            analystUrl: current.analystUrl ?? "",
         });
     }, []);
 
