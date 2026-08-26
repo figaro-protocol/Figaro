@@ -1,0 +1,349 @@
+name: On-Demand Docker Proofs
+
+# Two Docker-hosted proofs that were waiting for a Linux machine with a
+# container runtime (the authoring host is macOS; ubuntu runners have Docker).
+# Both are on-demand and potentially long — workflow_dispatch ONLY, never
+# push/schedule. The jobs are independent; each can be watched alone.
+#
+# Job 1 — xmtpd stack proof. A hermetic XMTP e2e suite does NOT exist in this
+# repo: the devnet suite deliberately mocks the XMTP channel, and the only
+# real-path test is the maintainer-manual smoke against XMTP's HOSTED dev
+# network (frontend/tests/e2e/xmtp-relay.smoke.spec.ts; docs/TESTING.md
+# § Playwright, `smoke` project). The frontend admits only the dev|production
+# networks (frontend/lib/handoff/xmtpChannel.ts — xmtpNetworkEnv throws on
+# anything else), so nothing here can yet point at a local broker. This job
+# therefore proves THE STACK, not a suite: bring up the full local xmtpd
+# broker (upstream's own dev harness — postgres, the contracts chain,
+# mls-validation-service, redis, then the Go node registered against that
+# chain) and assert the registered node actually serves its gRPC surface.
+# De-mocking the frontend relay against this broker is a separate, later step.
+#
+# Job 2 — the Linux sandbox variant. ecosystem-agents/runtime documents a
+# container-equivalent of run-sandboxed.mjs (README § "The Linux variant")
+# that has never been exercised — the launcher deliberately refuses on
+# non-macOS rather than pretending. This job builds the documented container
+# shape AROUND the runtime (workspace+temp writable, repo read-only, no
+# secret mounts, an internal network with the policy-driven egress proxy as
+# the only way out, the signer socket bind-mounted) and runs the deny cases
+# of tests/sandbox.test.mjs inside it.
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    # ── Job 1: the local xmtpd broker, brought up and answering ─────────────
+    xmtpd-stack:
+        name: xmtpd stack proof (hermetic broker bring-up)
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
+
+        steps:
+            # Upstream's repo, pinned to its latest release. fetch-depth: 0 is
+            # load-bearing: dev/run versions the binary via
+            # `git describe HEAD --tags --long`, which needs the tags.
+            - name: Checkout xmtp/xmtpd (pinned release)
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  repository: xmtp/xmtpd
+                  ref: v1.3.0
+                  path: xmtpd
+                  fetch-depth: 0
+
+            - name: Setup Go (xmtpd's toolchain)
+              uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+              with:
+                  go-version-file: xmtpd/go.mod
+                  cache-dependency-path: xmtpd/go.sum
+
+            # Upstream's own bring-up, minus dev/up's brew-installed lint
+            # tooling (macOS-flavored; jq/shellcheck are preinstalled on the
+            # runner and golangci-lint is lint-only). dev/docker/up starts the
+            # backing containers (postgres, the ghcr.io/xmtp/contracts local
+            # chain, mls-validation-service, redis, prometheus/grafana),
+            # builds the CLI image, and registers the node on the local chain;
+            # dev/gen/env writes the node's .env from dev/local.env.
+            - name: Start backing services + register the node
+              working-directory: xmtpd
+              run: |
+                  dev/docker/up single
+                  dev/gen/env
+
+            # dev/run compiles and runs the Go node with gRPC reflection,
+            # API, sync, indexer, and metrics enabled (dev/local.env puts the
+            # node's API at :5050; metrics default to :8008). Modules are
+            # pre-warmed synchronously so the readiness window below covers
+            # only compile + start, not a cold dependency download.
+            - name: Run the xmtpd node
+              working-directory: xmtpd
+              run: |
+                  go mod download
+                  nohup dev/run > /tmp/xmtpd.log 2>&1 &
+                  echo "node launched; waiting for the gRPC surface"
+
+            # The smallest real assertion the repo can honestly make today:
+            # the registered node serves its gRPC surface (reflection lists
+            # xmtp services) and the stack's chain answers. Reflection is on
+            # (dev/run sets XMTPD_REFLECTION_ENABLE), so grpcurl needs no
+            # proto files.
+            - name: Assert the stack serves
+              run: |
+                  go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.3
+                  GRPCURL="$(go env GOPATH)/bin/grpcurl"
+
+                  for _ in $(seq 1 150); do
+                      if "$GRPCURL" -plaintext 127.0.0.1:5050 list >/dev/null 2>&1; then break; fi
+                      sleep 2
+                  done
+
+                  echo "── gRPC services the node serves ──"
+                  SERVICES="$("$GRPCURL" -plaintext 127.0.0.1:5050 list)"
+                  echo "$SERVICES"
+                  echo "$SERVICES" | grep -qi "xmtp" || { echo "no xmtp service on the node's gRPC surface"; exit 1; }
+
+                  echo "── the stack's local chain answers ──"
+                  curl -s -X POST http://127.0.0.1:7545 \
+                      -H 'Content-Type: application/json' \
+                      -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' | tee /tmp/chainid.json
+                  grep -q '"result"' /tmp/chainid.json
+
+                  # Informational, not a gate — the metrics port/path is
+                  # upstream's to move.
+                  echo "── node metrics probe (informational) ──"
+                  curl -sf http://127.0.0.1:8008/metrics | head -5 || echo "metrics endpoint not answering at :8008/metrics"
+
+            - name: Node log on failure
+              if: failure()
+              run: |
+                  docker ps -a
+                  tail -200 /tmp/xmtpd.log || true
+
+    # ── Job 2: the container-equivalent sandbox, deny cases inside ──────────
+    linux-sandbox:
+        name: Linux sandbox variant (container deny cases)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+
+            # The runtime depends on the local SDK (file:../../sdk), so the
+            # SDK builds first.
+            - name: Build SDK + install runtime dependencies
+              run: |
+                  npm ci --workspace sdk
+                  npm run build --workspace sdk
+                  cd ecosystem-agents/runtime && npm ci
+
+            # The platform-independent half of the suite runs on the runner
+            # as-is: the egress-proxy decision tests. The OS-profile cases
+            # self-skip off macOS — the container below is their Linux form.
+            - name: Run the portable half of sandbox.test.mjs
+              working-directory: ecosystem-agents/runtime
+              run: node --test tests/sandbox.test.mjs
+
+            # The pieces of the container shape. The policy is the minimal
+            # egress-bearing shape the proxy reads (tests/sandbox.test.mjs
+            # uses the same); 127.0.0.1 on the allowlist resolves PROXY-side,
+            # so the sidecar's loopback echo server stands in for an allowed
+            # host exactly as in the unit test — the run stays hermetic.
+            - name: Write the sandbox scratch pieces
+              run: |
+                  SBX="$RUNNER_TEMP/figaro-sbx"
+                  echo "SBX=$SBX" >> "$GITHUB_ENV"
+                  mkdir -p "$SBX/workspace"
+
+                  cat > "$SBX/policy.json" <<'EOF'
+                  {
+                      "egress": ["http://127.0.0.1"],
+                      "rpcUrl": "http://127.0.0.1:1"
+                  }
+                  EOF
+
+                  # The sidecar: the repo's REAL egress proxy (no policy logic
+                  # added), plus a loopback echo target standing in for an
+                  # allowed host, plus a dumb TCP relay. The relay exists only
+                  # because egress-proxy.mjs binds 127.0.0.1 by design (on
+                  # macOS the launcher runs it on the host's loopback); in the
+                  # container shape the boundary is the container, so the
+                  # relay publishes the same proxy on the sidecar's network
+                  # face. Decisions stay in egress-proxy.mjs.
+                  cat > "$SBX/proxy-host.mjs" <<'EOF'
+                  import * as http from "node:http";
+                  import * as net from "node:net";
+                  import * as fs from "node:fs";
+                  import { startEgressProxy } from "/repo/ecosystem-agents/runtime/egress-proxy.mjs";
+
+                  const policy = JSON.parse(fs.readFileSync("/scratch/policy.json", "utf-8"));
+
+                  const echo = http.createServer((_req, res) => res.end("reached"));
+                  await new Promise((r) => echo.listen(9999, "127.0.0.1", r));
+
+                  const proxy = await startEgressProxy({ policy, port: 0 });
+
+                  const relay = net.createServer((c) => {
+                      const u = net.connect(proxy.port, "127.0.0.1");
+                      c.pipe(u).pipe(c);
+                      c.on("error", () => u.destroy());
+                      u.on("error", () => c.destroy());
+                  });
+                  await new Promise((r) => relay.listen(8888, "0.0.0.0", r));
+                  console.log("proxy-host ready");
+                  EOF
+
+                  # The stand-in for the policy signer's socket — the one
+                  # capability that crosses the boundary. It proves the
+                  # bind-mount crosses; it signs nothing.
+                  cat > "$SBX/signer-stub.mjs" <<'EOF'
+                  import * as net from "node:net";
+                  const server = net.createServer((c) => c.end("figaro-signer-stub\n"));
+                  server.listen(process.argv[2], () => console.log("signer stub listening"));
+                  EOF
+
+                  # The deny cases of tests/sandbox.test.mjs, run INSIDE the
+                  # container — each an escape attempt that must fail — plus
+                  # the composed proof: a framed fetch through the proxy on
+                  # the launcher's real path (fetch + the proxy-bootstrap
+                  # preload).
+                  cat > "$SBX/agent-checks.mjs" <<'EOF'
+                  import assert from "node:assert/strict";
+                  import * as fs from "node:fs";
+                  import * as net from "node:net";
+                  import * as http from "node:http";
+                  import { frame } from "/repo/ecosystem-agents/runtime/dataChannel.mjs";
+
+                  // 1. Writes: denied outside the workspace and temp; inside, they land.
+                  assert.throws(() => fs.writeFileSync("/repo/escape-attempt", "pwned"), "write escaped into the read-only repo");
+                  assert.throws(() => fs.writeFileSync("/etc/escape-attempt", "pwned"), "write escaped onto the root filesystem");
+                  fs.writeFileSync("/workspace/ok", "ok");
+                  fs.writeFileSync("/tmp/ok", "ok");
+                  console.log("PASS write boundary");
+
+                  // 2. Secrets: nothing key-shaped crossed, and no secret paths are mounted.
+                  const SECRET_ENV = /KEY|SECRET|TOKEN|JWT|PASSPHRASE|MNEMONIC|PRIVATE/i;
+                  const leaked = Object.keys(process.env).filter((k) => SECRET_ENV.test(k));
+                  assert.deepEqual(leaked, [], `key-shaped environment crossed the boundary: ${leaked}`);
+                  assert.equal(process.env.PRIVATE_KEY, undefined, "the runner's canary PRIVATE_KEY crossed the boundary");
+                  assert.ok(!fs.existsSync(`${process.env.HOME}/.figaro-deploy.env`), "a secret path is mounted");
+                  assert.ok(!fs.existsSync(`${process.env.HOME}/.ssh`), "~/.ssh is mounted");
+                  console.log("PASS secret boundary");
+
+                  // 3. Direct outbound: the internal network must refuse it.
+                  const direct = await new Promise((resolve) => {
+                      const s = net.connect({ host: "1.1.1.1", port: 443, timeout: 5000 });
+                      s.on("connect", () => { s.destroy(); resolve("connected"); });
+                      s.on("timeout", () => { s.destroy(); resolve("timeout"); });
+                      s.on("error", () => resolve("error"));
+                  });
+                  assert.notEqual(direct, "connected", "direct outbound escaped the container");
+                  console.log(`PASS direct outbound denied (${direct})`);
+
+                  // 4. The proxy's decisions at the wire (node:http goes straight
+                  //    to the proxy — only fetch rides the preload).
+                  const proxyUrl = new URL(process.env.HTTP_PROXY);
+                  const connectStatus = (hostPort) => new Promise((resolve, reject) => {
+                      const req = http.request({ host: proxyUrl.hostname, port: proxyUrl.port, method: "CONNECT", path: hostPort });
+                      req.on("connect", (res, socket) => { socket.destroy(); resolve(res.statusCode); });
+                      req.on("error", reject);
+                      req.end();
+                  });
+                  assert.equal(await connectStatus("evil.example:443"), 403, "an off-allowlist CONNECT was not refused");
+                  console.log("PASS proxy refuses off-allowlist CONNECT");
+
+                  // 5. The composed proof: a framed fetch through the proxy on the
+                  //    launcher's real path. 127.0.0.1 resolves PROXY-side — the
+                  //    sidecar's loopback echo stands in for an allowed host.
+                  const ref = "http://127.0.0.1:9999/";
+                  const res = await fetch(ref);
+                  assert.equal(res.status, 200);
+                  const content = await res.text();
+                  assert.equal(content, "reached");
+                  const framed = frame({ source: "egress-proxy", refKind: "url", ref, content });
+                  assert.match(framed, /⟦FIGARO-DATA [0-9a-f]{24} /, "the frame boundary is missing its nonce");
+                  assert.ok(framed.includes("UNTRUSTED NETWORK CONTENT"), "the frame notice is missing");
+                  assert.ok(framed.includes("reached"), "the fetched content is missing from the frame");
+                  console.log("PASS framed fetch through the proxy");
+
+                  // ...and the same path refuses an off-allowlist host.
+                  const denied = await fetch("http://evil.example/").then((r) => r.status, () => "rejected");
+                  assert.ok(denied === 403 || denied === "rejected", `off-allowlist fetch got through: ${denied}`);
+                  console.log("PASS proxied fetch to off-allowlist host denied");
+
+                  // 6. The signer socket — the one capability that crosses.
+                  const greeting = await new Promise((resolve, reject) => {
+                      const c = net.connect(process.env.FIGARO_SIGNER_SOCKET);
+                      let buf = "";
+                      c.on("data", (d) => (buf += d));
+                      c.on("end", () => resolve(buf));
+                      c.on("error", reject);
+                  });
+                  assert.equal(greeting.trim(), "figaro-signer-stub", "the signer socket did not cross the boundary");
+                  console.log("PASS signer socket crosses the boundary");
+                  EOF
+
+            # The container shape the README documents: an --internal network
+            # (no route out), the proxy sidecar as the only way anywhere, the
+            # signer socket created on the host and bind-mounted.
+            - name: Assemble the container shape
+              run: |
+                  docker network create --internal figaro-sbx-net
+
+                  node "$SBX/signer-stub.mjs" "$SBX/signer.sock" &
+                  for _ in $(seq 1 20); do
+                      if [ -S "$SBX/signer.sock" ]; then break; fi
+                      sleep 0.5
+                  done
+                  test -S "$SBX/signer.sock"
+
+                  docker run -d --name figaro-sbx-proxy \
+                      --network figaro-sbx-net \
+                      -v "$GITHUB_WORKSPACE:/repo:ro" \
+                      -v "$SBX:/scratch:ro" \
+                      node:22-bookworm-slim node /scratch/proxy-host.mjs
+                  for _ in $(seq 1 30); do
+                      if docker logs figaro-sbx-proxy 2>&1 | grep -q "proxy-host ready"; then break; fi
+                      sleep 1
+                  done
+                  docker logs figaro-sbx-proxy 2>&1 | grep -q "proxy-host ready"
+
+            # The agent container: read-only rootfs, only /workspace and /tmp
+            # writable, the repo read-only, no secret mounts, no key-shaped
+            # env forwarded (the canary below is deliberately NOT passed), the
+            # proxy env + preload set exactly as run-sandboxed.mjs sets them.
+            - name: Run the deny cases inside the container
+              env:
+                  PRIVATE_KEY: canary-must-not-cross
+              run: |
+                  docker run --rm --name figaro-sbx-agent \
+                      --network figaro-sbx-net \
+                      --read-only \
+                      --tmpfs /tmp \
+                      -v "$GITHUB_WORKSPACE:/repo:ro" \
+                      -v "$SBX/workspace:/workspace" \
+                      -v "$SBX/signer.sock:/signer.sock" \
+                      -v "$SBX/agent-checks.mjs:/agent-checks.mjs:ro" \
+                      -w /workspace \
+                      -e HTTP_PROXY=http://figaro-sbx-proxy:8888 \
+                      -e HTTPS_PROXY=http://figaro-sbx-proxy:8888 \
+                      -e NO_PROXY= \
+                      -e NODE_OPTIONS="--import /repo/ecosystem-agents/runtime/proxy-bootstrap.mjs" \
+                      -e FIGARO_SIGNER_SOCKET=/signer.sock \
+                      node:22-bookworm-slim node /agent-checks.mjs
+
+            - name: Sidecar log on failure
+              if: failure()
+              run: docker logs figaro-sbx-proxy 2>&1 || true
+
+            - name: Teardown
+              if: always()
+              run: |
+                  docker rm -f figaro-sbx-proxy 2>/dev/null || true
+                  docker network rm figaro-sbx-net 2>/dev/null || true

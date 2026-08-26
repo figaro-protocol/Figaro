@@ -1,0 +1,79 @@
+name: Estate Snapshot
+
+# Captures the estate's PERISHABLE observability signals before they expire:
+# GitHub's traffic Insights (views, clones, referrers, popular paths) retain
+# only ~14 days, so the weekly cadence overlaps every window. The npm
+# downloads trend for @figaro-protocol/sdk rides along (public API, no auth).
+#
+# The snapshot is a workflow ARTIFACT (JSON, 90-day retention) — observability
+# data is NEVER committed into the public repo; the local snapshot dir
+# (work/estate-activity/) is deliberately gitignored for the same posture.
+# Artifacts are visible only to people who can already see the repo's Actions.
+#
+# TOKEN — the maintainer's decision, not this file's: the traffic endpoints
+# require push access, and for fine-grained tokens the "Administration" (read)
+# repository permission — a permission the workflow GITHUB_TOKEN can NOT be
+# granted (`permissions:` has no administration key). With the default token
+# the traffic calls 403 and the run records the miss without failing. To turn
+# traffic capture on, add a repo secret ESTATE_TRAFFIC_TOKEN: a fine-grained
+# PAT scoped to THIS repository only, with Administration: read (costs
+# nothing, but it is a PAT). The npm capture succeeds either way.
+
+on:
+    schedule:
+        # Mondays, 05:23 UTC — a quiet hour, off the on-the-hour crowd.
+        - cron: "23 5 * * 1"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    snapshot:
+        name: Capture perishable estate signals
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Stamp the snapshot
+              run: |
+                  echo "SNAP_DATE=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+                  mkdir -p snapshot
+                  printf '{"repository":"%s","capturedAt":"%s"}\n' \
+                      "$GITHUB_REPOSITORY" "$(date -u +%FT%TZ)" > snapshot/meta.json
+
+            - name: Capture GitHub traffic (views, clones, referrers, popular paths)
+              env:
+                  GH_TOKEN: ${{ secrets.ESTATE_TRAFFIC_TOKEN || github.token }}
+              run: |
+                  ok=true
+                  for endpoint in traffic/views traffic/clones traffic/popular/referrers traffic/popular/paths; do
+                      out="snapshot/$(echo "$endpoint" | tr '/' '-').json"
+                      if ! gh api "repos/$GITHUB_REPOSITORY/$endpoint" > "$out" 2> "$out.err"; then
+                          ok=false
+                          printf '{"error":"capture failed","endpoint":"%s","detail":%s}\n' \
+                              "$endpoint" "$(jq -Rs . < "$out.err")" > "$out"
+                      fi
+                      rm -f "$out.err"
+                  done
+                  if [ "$ok" = false ]; then
+                      echo "::warning::GitHub traffic capture incomplete — the traffic API needs push access (fine-grained: Administration read), which GITHUB_TOKEN cannot be granted. Add the ESTATE_TRAFFIC_TOKEN secret (see the comment at the top of this workflow)."
+                  fi
+
+            # Independent of the traffic token by design; this step IS a gate —
+            # the npm API is public and a failure here means the capture broke.
+            - name: Capture npm downloads trend (@figaro-protocol/sdk)
+              run: |
+                  curl -fsS "https://api.npmjs.org/downloads/range/last-month/@figaro-protocol/sdk" \
+                      > snapshot/npm-downloads-range-last-month.json
+                  curl -fsS "https://api.npmjs.org/downloads/point/last-week/@figaro-protocol/sdk" \
+                      > snapshot/npm-downloads-point-last-week.json
+                  jq -e '.downloads' snapshot/npm-downloads-range-last-month.json > /dev/null
+
+            - name: Upload snapshot artifact
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: estate-snapshot-${{ env.SNAP_DATE }}-${{ github.run_id }}
+                  path: snapshot/
+                  retention-days: 90
+                  if-no-files-found: error
