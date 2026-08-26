@@ -6,11 +6,15 @@ on:
         branches: [main, develop]
         paths:
             - "sdk/**"
+            # The freshness gate diffs the committed typedoc regen — a commit
+            # that only updates the regen must re-run the gate that failed it.
+            - "frontend/public/sdk-api/**"
             - ".github/workflows/sdk-ci.yml"
     pull_request:
         branches: [main, develop]
         paths:
             - "sdk/**"
+            - "frontend/public/sdk-api/**"
 
 permissions:
     contents: read
