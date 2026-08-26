@@ -299,8 +299,8 @@ generates and verifies (`SP1_REAL_PROOF=1 cargo run -p figaro-prove-test
 --release`, ~1.2M cycles with the k256 precompile patch). The sequencer is a
 liveness convenience, never a trust assumption — direct `FigaroCore` remains
 the fallback path. Its two token-moving sites are tracked in
-`certora/token-ops.inventory` (`[PENDING]` the realigned
-`BatchVerifierTokenOps.spec` cloud run).
+`certora/token-ops.inventory` (`BatchVerifierTokenOps.spec` — cloud run green
+2026-07-16, re-run green in the 2026-08-13 freeze suite; `VERIFICATION_MAP.md` §10).
 
 **`src/protocol/verifier/ISP1Verifier.sol`** — the Succinct SP1 verifier-gateway ABI
 (`verifyProof(programVKey, publicValues, proof)`); devnet wires

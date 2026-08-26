@@ -252,7 +252,8 @@ assembly + sellers; seeding is pre-population, never a test) → run) and
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
-Five projects:
+The projects, as `playwright.config.ts` declares them (the config, not this
+list, is the census):
 
 - **`devnet-authoring`** — the `members-onboarding` wizard spec, a dependency
   project of `devnet`. Its real product: the wizard seller (anvil[13]),
@@ -299,16 +300,17 @@ Five projects:
   on the same chain (same keys — `live-order-shared.ts`; the seller's profile is edited
   through `/members/edit/identity` to accept the funding token when it does not yet);
   chain facts: the commit went THROUGH the coordinator, funding token spent ≤ the signed
-  cap, both bonds in the kernel, the coordinator empty. Passed live 2026-08-18. The
-  fourth, `payout-routing.sepolia.spec.ts` — a settled seller splits WHAT IT WAS PAID
+  cap, both bonds in the kernel, the coordinator empty. The fourth,
+  `payout-routing.sepolia.spec.ts` — a settled seller splits WHAT IT WAS PAID
   to its OWN earmarked accounts (a tax earmark and a savings earmark — sub-accounts
   derived from the seller's key; the amounts a share of the payment, never the returned
-  bond) through the composed public multisender (the canonical Disperse `0xD152…2150`,
-  same runtime on Sepolia and mainnet; devnet: `MockDisperse`): one atomic
+  bond) through the composed public multisender (the canonical public Disperse
+  deployment — `CONTRACTS.md` owns the address; devnet: `MockDisperse`): one atomic
   `disperseToken`; chain facts: each earmark received its leg exactly, the seller paid
   exactly the total, the multisender retains nothing (its bytecode carries the selector
-  the panel calls — behaviour on the public chain, never the mirror alone). Passed live
-  2026-08-18 (tx `0x9b5206e6…09e0`, block 11516827).
+  the panel calls — behaviour on the public chain, never the mirror alone).
+  Live-run records — tx hashes, blocks, addresses, dates — are `RELEASE_READINESS.md`'s
+  (Task 7 and the Sepolia redeploy list), never duplicated here.
   All four run after each other on one chain (the smoke first: it registers the seller
   and leaves the resolved process the others start from). Every
   spec's out-of-band scans go through `scanContractEvents` (`devnet-helpers.ts`) —
@@ -441,24 +443,46 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 
 ## CI (`.github/workflows/`)
 
-Seven workflows. Six gate `main`/`develop` on push + PR (the language-scoped
-five path-filtered, the guard battery whole-tree); the seventh publishes:
-- **`foundry-ci`** — `forge build`/`test`/`fmt` + Halmos symbolic proofs (Certora
-  is excluded by design — it needs the maintainer-held CERTORAKEY, never stored).
-- **`prover-ci`** — `cargo test` on the two host-only prover crates
-  (`figaro-clause`, `figaro-kernel`); the SP1-dependent crates build only at
-  release time (see `sequencer-release`).
-- **`sdk-ci`** — tsc type-check, `npm test`, build.
-- **`frontend-ci`** — type-check, ESLint, Vitest (+coverage), the **mobile**
-  Playwright project, production build.
-- **`devnet-e2e-ci`** — the **bilateral spine** (`orders-accept`) end to end in
-  the runner: Kubo (IPFS, CORS-configured), Anvil (`--accounts 38`), a full
-  `deploy-local.sh` stack, `populate-test-data`, then the `orders-accept` devnet
-  spec against the production static export. The highest-catch layer, no longer
-  maintainer-discipline-only. Broader devnet specs stay maintainer-run.
-- **`guards-ci`** — the whole-tree guard battery, NOT path-filtered: the guards
-  are repo-wide and lint-staged only ever sees a commit's touched files, so this
-  job re-certifies the whole tree on every push/PR.
+**The `.github/workflows/` listing is the inventory** (`ls .github/workflows/`
+— derived, never a stored count; the same rule the spec census above follows).
+Per workflow, what it runs and when:
+
+- **`foundry-ci`** — push/PR, path-filtered. Three jobs: `forge
+  build`/`test`/`fmt`, Forge Coverage (lcov artifact), and Halmos symbolic
+  proofs (Certora is excluded by design — it needs the maintainer-held
+  CERTORAKEY, never stored).
+- **`prover-ci`** — push/PR, path-filtered: `cargo test` on the two host-only
+  prover crates (`figaro-clause`, `figaro-kernel`); the SP1-dependent crates
+  build only at release time (see `sequencer-release`).
+- **`sdk-ci`** — push/PR, path-filtered (re-triggers on
+  `frontend/public/sdk-api/**` too): tsc type-check, `npm test`, build, and
+  the typedoc freshness gate — the committed API reference
+  (`frontend/public/sdk-api`) must equal what typedoc emits from source.
+- **`frontend-ci`** — push/PR, path-filtered: type-check, ESLint, Vitest
+  (+coverage), the **mobile** Playwright project, production build.
+- **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**
+  (`orders-accept`) end to end in the runner — Kubo (IPFS, CORS-configured),
+  Anvil (`--accounts 38`), a full `deploy-local.sh` stack,
+  `populate-test-data`, the `orders-accept` devnet spec against the production
+  static export — then the FOUR origination proofs on the same stack
+  (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`). The highest-catch
+  layer, no longer maintainer-discipline-only. Broader devnet specs stay
+  maintainer-run.
+- **`guards-ci`** — push/PR, NOT path-filtered: two npm-audit legs (root
+  production deps at high+; frontend production deps at critical-only), then
+  the whole-tree guard battery — the guards are repo-wide and lint-staged only
+  ever sees a commit's touched files, so this job re-certifies the whole tree
+  on every push/PR — plus the optional Claude semantic open-world gate
+  (skipped entirely without `ANTHROPIC_API_KEY`; fail-open on missing infra,
+  blocking on a genuine FAIL verdict).
+- **`estate-snapshot`** — weekly (Mondays 05:23 UTC) + dispatch: captures the
+  perishable estate signals (GitHub traffic, which the API retains only ~14
+  days; the npm downloads trend) as a workflow artifact with 90-day retention.
+  The traffic legs need the punch-listed `ESTATE_TRAFFIC_TOKEN` fine-grained
+  PAT — without it they warn and the npm leg still lands.
+- **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Two
+  independent jobs: the xmtpd stack proof (hermetic broker bring-up) and the
+  Linux sandbox variant (the signer runtime's container deny cases).
 - **`sequencer-release`** — publishes the prebuilt `figaro-sequencer` relay
   binary as a GitHub Release artifact (pinned toolchains + the computed vkey
   printed into the release body for rebuild-and-compare); build-and-publish

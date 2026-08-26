@@ -5,8 +5,11 @@ witness model.** The proof-based batch-scaling path in Track 2 is live code:
 the Rust kernel mirror + generic clause engine (`prover/lib`, `prover/clause`),
 the SP1 guest (`prover/program`; a real local Core proof of the canonical batch
 generates and verifies, ~1.2M cycles), the `FigaroBatchVerifier` Solidity
-contract (devnet-deployed by `Deploy.s.sol`; mainnet wires Succinct's gateway +
-program vkey by env), and the devnet sequencer (`prover/sequencer`) with its
+contract (devnet-deployed by `Deploy.s.sol`; live on Sepolia as the
+`batchVerifier` in `deployments/11155111.json`, where real Groth16 batches have
+settled through the canonical gateway — `CONTRACTS.md` § deployment record;
+mainnet wires Succinct's gateway + program vkey the same way, by env), and the
+devnet sequencer (`prover/sequencer`) with its
 SDK client (`@figaro-protocol/sdk/agent` `SequencerClient`) — proven end to end by
 `sdk/tests/batch-e2e.test.ts`. The rebuild landed the "Prover Clause
 Architecture" end-state below on day one: the guest embeds NO clauses — specs
@@ -66,7 +69,9 @@ process chains; DAG topology lives off-chain — canonical statement in
 
 Deploy the unchanged V5 kernel on Ethereum mainnet when the release gate
 is closed. Until then, development and scaling architecture work continue
-on devnet (Anvil, chain 31337).
+on devnet (Anvil, chain 31337) and on the public-network deployment — the
+full stack, batch verifier included, is live on Sepolia
+(`deployments/11155111.json`), the mainnet rehearsal.
 
 ### Sequence
 
@@ -128,8 +133,8 @@ so the party must already hold the settlement currency and have approved the
 VERIFIER, not the kernel. The batch-path equivalent is therefore a wallet-side
 swap performed before the signed commitment is submitted. POST-settlement
 composition is identical in both universes — both contracts deliver by ERC-20
-transfer to the party's own address (`FigaroCore.sol:293-294`,
-`FigaroBatchVerifier.sol:529`), so wallet-side routing of received tokens is
+transfer to the party's own address (`FigaroCore.sol:294-295`,
+`FigaroBatchVerifier.sol:531`), so wallet-side routing of received tokens is
 path-blind.
 
 **The direct path remains the fallback.** The sequencer is a liveness
@@ -357,9 +362,10 @@ sequencer by submitting directly to `FigaroCore` on-chain.
    verifier contract. Cannot fabricate, steal, or violate invariants.
    Direct `FigaroCore` fallback path always available.
 
-4. **Settlement surface**: Devnet first (Anvil, chain 31337, MockSP1Verifier).
-   Production: Ethereum mainnet with real SP1 verifier gateway.
-   The batch verifier and direct `FigaroCore` coexist — two-tier
+4. **Settlement surface**: Devnet (Anvil, chain 31337, MockSP1Verifier), and
+   live on Sepolia with the real SP1 verifier gateway — real Groth16 batches
+   settled (`deployments/11155111.json`). Production: Ethereum mainnet, the
+   same shape. The batch verifier and direct `FigaroCore` coexist — two-tier
    settlement model.
 
 5. **Event reconstruction**: The verifier contract re-emits proven
@@ -689,11 +695,14 @@ the Figaro kernel program in the zkVM and produces:
   their sellers + period)
 
 For devnet, the MockProver is used (no real proof generation).
-For testnet and mainnet, the sequencer runs the open-source SP1 prover
-locally (`SP1_PROVER=cpu` or `cuda`) and generates Groth16 proofs — the
-form `FigaroBatchVerifier` verifies on-chain. There is no dependency on an
-external proving service; a sequencer self-proves like a validator runs
-node software.
+For testnet and mainnet, the sequencer proves with the backend `SP1_PROVER`
+names (`prover/sequencer/src/prover.rs`): `cpu` / `cuda` run the open-source
+SP1 prover locally, `network` submits the same program + inputs to the
+Succinct Prover Network (§ "Proof generation" above) — each yielding Groth16
+proofs, the form `FigaroBatchVerifier` verifies on-chain. No backend is a
+trust assumption: the proof verifies against the program vkey regardless of
+who generated it. A sequencer self-proves like a validator runs node
+software, or buys liveness — never safety — from the network.
 
 ### 5. Settlement Transaction
 

@@ -197,7 +197,7 @@ clause carries a bounded enum):
 
 Other articles (the live set is whatever the registered clauses declare —
 today: logistics, emissions, dispute-resolution, consent, settlement,
-provenance, credential, data) group the drawer/inventory; classification
+credential, data) group the drawer/inventory; classification
 always reads the article, never the shape.
 
 ## The protocol clauses

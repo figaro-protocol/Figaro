@@ -211,6 +211,26 @@ could collide on one surface.
 (The `DutchAuction` `provider` sense retired with the contract, 2026-07-02; the `OffsetProvider` sense
 with the offset apparatus, 2026-07-03.)
 
+**Homonym (not a synonym):** `capacity` = (1) the contract element — the frame's
+admission leg: any signer, human, software agent, or an asset holding its own wallet,
+admitted permissionlessly on equal footing; (2) an ecosystem-agent capacity — the
+competence one `ecosystem-agents/` prompt covers ("one per capacity": operator, clause
+author, assembly designer, analyst); (3) plain ability in ordinary prose (a member
+profile's self-declared `capabilities` tags are this sense's neighbor — reachability
+metadata, never the contract element). Distinct concepts, intentionally same word;
+qualify on first use when two senses could collide on one surface.
+
+**Homonym (not a synonym):** `projection` = (1) the tier projection of party names —
+the grid's seller row: merchant · courier · supplier are *projections* of the
+value-adding party, descriptive labels, never entities; (2) the SDK's
+agreement/template projection — the deterministic walk from composed clauses to the
+filled, hashed `Agreement` both parties must reproduce byte-exactly (`sdk/README.md`
+§ "Projection: from Composed Clauses to the Hashed Agreement"); (3) the derive graph
+projections — `projectProcessGraph` / `projectSettlementGraph` / `extractOverlays`
+(`@figaro-protocol/sdk/derive`), each carrying its truth boundary. Distinct concepts,
+intentionally same word; qualify on first use when two senses could collide on one
+surface.
+
 **New-term admission rule.** A product-flavored term — a named vertical ("eats"), a
 platform role ("driver", "restaurant"), a closed category ("archetype", "role",
 "businessType") — must not enter a hard-to-change surface (clauseId, ABI field,

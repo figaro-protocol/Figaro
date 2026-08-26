@@ -42,6 +42,12 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 
 Arrows point **up**: the UI reads the registries; the registries don't know the UI exists.
 
+The one-word "verifier" in the registries row is `FigaroBatchVerifier` — the batched
+path's settlement contract, and a crease to hold: a batch-settled process never
+acquires kernel status (two settlement universes; attestations are the one stream that
+folds both). `CONTRACTS.md` owns the contract surface; `SCALING_STRATEGY.md` owns the
+proof-based batch design.
+
 ## The layers
 
 - **Kernel (`FigaroCore` + `CommitmentTypes`).** Two mechanisms — asymmetric bonding and
@@ -182,8 +188,12 @@ The copyable shape:
 The test before building anything settlement-adjacent: *can this be a parallel contract
 that reads kernel state and lets the kernel enforce?* It was yes for swapped-currency
 funding (`WitnessSwapAndCommitCoordinator`), yes for merkle-gated attestation
-(`AttestationCoordinator`), and it is yes for cashflow assignment at resolve (the credit
-splitter: a payment-leg rail, never the bond return). If the answer seems to be no, the
+(`AttestationCoordinator`) — and for post-settlement cashflow assignment the answer was
+lighter still: no new contract at all. The shipped realization is wallet-side,
+fifth-noun composition of the external public Disperse multisender
+(`frontend/lib/composition/payoutRouting.ts`; `CONTRACTS.md` § "Multisender — composed,
+not owned"): the settled seller splits its own receipts — a payment-leg rail, never the
+bond return — through a contract the network already supplies. If the answer seems to be no, the
 proposal is adding a mechanism to the kernel — stop (CLAUDE.md § "Common Misframings").
 Per-contract surfaces: `CONTRACTS.md`.
 
@@ -192,4 +202,5 @@ Per-contract surfaces: `CONTRACTS.md`.
 `CLAUDE.md` (the discipline + the five nouns), `OPEN_WORLD.md` (the open-world paradigm + the
 7-pattern lens), `CLAUSES.md` (the three validation layers + the clause table), `CONTRACTS.md`
 (the kernel + registries + validators), `LEXICON.md` (the `article` / clause-lifecycle
-rows), `THEORY.md` (why the kernel's two mechanisms make cooperation dominant).
+rows), `THEORY.md` (why the kernel's two mechanisms make cooperation dominant),
+`SCALING_STRATEGY.md` (the proof-based batch path behind the verifier row).

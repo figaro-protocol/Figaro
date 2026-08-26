@@ -35,6 +35,7 @@ cd frontend && npx vitest run            # UI logic — component + unit tier
 cd frontend && npm run test:e2e:mobile   # responsive/viewport chrome
 cd frontend && npm run test:e2e:devnet   # e2e — real UI against Anvil + contracts
 cd frontend && E2E_CHAIN=sepolia SMOKE_SELLER_KEY=0x… SMOKE_BUYER_KEY=0x… npx playwright test --project=sepolia   # the Sepolia smoke (funded keys; TESTING.md § projects)
+cd frontend && npm run estate:crawl      # whole-estate residue/vocab sweep (scripts/estate-crawl.mjs): every sitemap route + machine text (/llms.txt, index.txt, /_headers) + ALL pinned contentURIs from the three registries; read-only, exit 1 on any hit; ESTATE_SKIP_PINS=1 for site-only
                                          #   webServer = prod build on :3100 (~90 s). Kill :3100 after FORCE_REDEPLOY
                                          #   or app-code edits (stale baked build); PLAYWRIGHT_WEB_MODE=dev for HMR iteration.
 

@@ -34,6 +34,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Test-harness inventory, layer boundaries | `TESTING.md` |
 | Guard scripts (`scripts/lint-*.sh`) — each guard's rule, rationale, and ruling | the script's own header comment (TESTING.md inventories test harnesses, not guards; a guard's header is its ONE owning statement) |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
+| Design system — color/type/spacing tokens, component shapes, a11y anti-patterns | `DESIGN_TOKENS.md` |
 | Canonical names per tier | `LEXICON.md` |
 | The florin, allocations | `FLORIN_TOKEN.md` |
 | Batch-scaling design (BUILT — witness prover/verifier/sequencer beside the direct path) | `SCALING_STRATEGY.md` |
@@ -53,7 +54,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 - **Protocol and framing**: `VISION.md`, `THEORY.md`, `FLORIN_TOKEN.md`
 - **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalogue), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
-- **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md` — the four split-out inventory docs (contracts / clauses / frontend / tests; `CLAUSES.md` also carries the anchoring doctrine)
+- **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the five split-out inventory docs (contracts / clauses / frontend / tests / commands; `CLAUSES.md` also carries the anchoring doctrine)
 - **Composition and disclosure**: `PUBLIC_GRAPH_MODEL.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`; the aspirational GHG protocol spec was deleted 2026-07-10 — its two load-bearing rulings, reader-derived scope and offset-out-of-scope, live in `CLAUSES.md`)
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `RELEASE_READINESS.md` (carries the hardening-completion record + the freeze notice for the audited Solidity surface)

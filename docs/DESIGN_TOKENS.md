@@ -53,6 +53,8 @@ The ink ramp is namespaced `ink.*` rather than `text.*` to avoid the `text-text-
 
 This value recolors **every focus state on the site** — the `globals.css :focus-visible` outline, every `focus-visible:ring-focus` in `components/ui/`, and every feature component that names `ring-focus`. No markup changes; the ring simply reads as a deeper khaki.
 
+**Ring-offset ground (ruled 2026-08-25).** `ringOffsetColor.DEFAULT = canvas` (`tailwind.config.ts`): the offset gap between an element and its ring draws in the page's own ground, not Tailwind's default white — on `canvas`/`subtle` surfaces a white gap read as a halo. `canvas` ≈ `paper` to the eye, so one default serves every surface; override per-site only if a ring ever sits on a dark fill.
+
 ### Accent
 
 The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, distinct from every warm-neutral on the rest of the palette. Used to make a primary call-to-action read as "different mode of action" against canvas — without leaving the MUJI register.
@@ -292,9 +294,13 @@ bg-paper rounded-section border border-default
 
 The same three values the `.card` / `.section-card` class applies, so the component and the class cannot render two different cards. Padding and shadow are deliberately **not** in the primitive — call sites run `p-4` through `p-8` and set their own — whereas the CSS class fixes `shadow-section p-xl`. A card at `p-4` carries a 20px radius against 16px padding; if that reads bulbous at a given call site, the fix is the call site's padding, not a second radius.
 
-### Modal / dialog
+### Modal / dialog (`components/ui/ModalChrome.tsx`)
 
-Section-card shape lifted off the page. Backdrop `rgba(58, 50, 42, 0.4)` (40% `ink.primary`) — tinted from ink, not pure black.
+Section-card shape lifted off the page. `ModalChrome` is the owning primitive — backdrop with click-to-dismiss, escape-to-dismiss, tab focus trap, initial focus + restoration, body scroll lock, `role="dialog"`/`aria-modal` ARIA — with panel styling caller-supplied (`panelClassName`); do not re-inline any of those concerns in a modal. Backdrop `rgba(58, 50, 42, 0.4)` (40% `ink.primary`) — tinted from ink, not pure black.
+
+### Toast (`components/ui/toast.ts`)
+
+The one notification helper over sonner — success (optional tx-hash description), error (contract reverts, wallet rejections, RPC failures decoded via `extractErrorMessage`, the same logic inline error displays use). Feature call sites import this module, never `sonner` directly; the `<Toaster>` mount lives in `app/providers.tsx`.
 
 ### Glyph (`DisciplineGlyph`)
 
@@ -343,7 +349,7 @@ Two channels, per §1. The bare token carries the fill, border, ring, or icon (`
 
 ## 8. Anti-patterns
 
-- Hardcoded hex anywhere outside `lib/shared/designTokenValues.ts` and `globals.css`. Use a token class, or `@apply` against tokens. A consumer that genuinely cannot take a class (SVG stroke, canvas, QR, `next/og`) imports `colorTokens` from the values module — it never re-types the hex.
+- Hardcoded hex anywhere outside `lib/shared/designTokenValues.ts` and `globals.css`. Use a token class, or `@apply` against tokens. A consumer that genuinely cannot take a class (SVG stroke, canvas, QR, `next/og`) imports `colorTokens` from the values module — it never re-types the hex. One RULED exception (2026-08-25): the print palette in `lib/audit/pdfBundle.tsx` is deliberately outside the screen palette — print is a second medium (the evidence bundle must survive photocopying and black-and-white laser output, where the MUJI warm-neutral ramp collapses into indistinguishable mid-grays); do not "fix" it onto `colorTokens` — the code comment there is the ruling. Note also the QR encoders (`CommitmentSharePanel.tsx`, `QrChallengePanel.tsx`) pass `#000000`/`#ffffff` to the QR library: maximum-contrast module colors for scanner reliability, not palette members.
 - A second copy of the palette in any form — a `colors.ts`, a CSS custom-property block duplicating §1, a per-component hex map. One source (§ intro), derived downstream.
 - Arbitrary-value Tailwind classes (`bg-[#...]`, `text-[14px]`, `rounded-[7px]`) — each is a token-drift risk.
 - Bare `text-success` / `text-warning` / `text-error` / `text-info` on **prose** — those are the fill/icon channel. Status text uses the `-fg` companion (§1).

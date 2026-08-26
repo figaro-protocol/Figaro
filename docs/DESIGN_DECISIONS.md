@@ -621,8 +621,8 @@ like lost or manipulable accrual.
 **Is correct because (audit 2026-08-01, finding "settlement/reward coupling"):** the accrual
 is a REWARD-tier write inside a SETTLEMENT-tier transaction. A reward gate that reverts
 settlement lets one party block every co-batched trader's already-reconciled payouts — a free,
-unauthenticated griefing vector (a poison claim naming the excluded `figaro-commerce`, which
-rides every agreement; or a seller who unstakes between prove and submit). Tier separation is
+unauthenticated griefing vector (a poison claim naming the excluded `figaro-assembly-provenance`,
+which rides every assembly-composed agreement; or a seller who unstakes between prove and submit). Tier separation is
 the doctrine: settlement must never be hostage to the reward. A dropped batch's accrual is
 recovered by the next batch that touches the same clauses or assemblies (the counter's write is a
 cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as

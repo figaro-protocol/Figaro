@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-08-13 (the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the seven CI workflows exist — and since the same-day publication, both are LIVE). Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-08-26 (the sandbox runtime's Linux container deny cases first ran green in CI — `on-demand-docker.yml`, dispatch-only; see Pre-Mainnet). Earlier, 2026-08-13: the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the CI workflows exist (the `.github/workflows/` listing is the census — `TESTING.md` § CI) — and since the same-day publication, both are LIVE. Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -321,8 +321,9 @@ is the delivery-of-the-frontend half:
 
 **PUBLISHED 2026-08-13**: the maintainer ruled the pre-push decisions (harness ships;
 full history; the noreply commit identity), created the `figaro-protocol` org, and
-pushed. The repo is public at `github.com/figaro-protocol/Figaro`; all seven CI
-workflows have executed GREEN; `v0.1.0` is released (Linux relay binary + sha256 +
+pushed. The repo is public at `github.com/figaro-protocol/Figaro`; every CI
+workflow then in the tree (seven at that date; the `.github/workflows/` listing is
+the census) executed GREEN; `v0.1.0` is released (Linux relay binary + sha256 +
 canonical vkey in the release body); the historical v1 is archived at
 `figaro-protocol/figaro-v1` with the USPTO-cited URL preserved as a pointer repo at
 `adaliana/FigaroProtocol`; `/security` links the disclosure channels and GitHub
@@ -430,7 +431,12 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   `0xc15aedc6…583c`, block 11516595, through the coordinator, a Uniswap V3 `Swap` in the
   WETH/USDC 0.01% pool in its receipt). Audit finding for the record: the coordinator
   landed 2026-07-12 (`a401e93c`) in the devnet script, TLA+, Foundry and the frontend but
-  never in the public scripts or the scope table — an omission, not a decision.
+  never in the public scripts or the scope table — an omission, not a decision. The
+  composed-multisender leg is likewise proven live: `payout-routing.sepolia.spec.ts`
+  PASSED LIVE 2026-08-18 (tx `0x9b5206e6…09e0`, block 11516827) — one atomic
+  `disperseToken` through the canonical public Disperse
+  (`0xD152f549545093347A162Dce210e7293f1452150`, same runtime on Sepolia and mainnet;
+  nothing to deploy — the composition venue pre-exists).
 - anything else this list accumulates before the redeploy day. Task 7.3(b) — the real
   Groth16 batch settling — is DONE (2026-08-20, on the minimal-pair-corrected stack;
   see Task 3(b) above).
@@ -605,7 +611,9 @@ external-audit gates above:
   the fetch boundary), and the sandbox wrapper (`run-sandboxed` — loopback-only OS
   sandbox + policy-driven egress proxy + scrubbed environment, F5/F6; deny cases
   tested on macOS). Honest residuals, named where they live: the Linux container
-  variant is documented, not exercised on the authoring host; the read surface inside
+  variant is EXERCISED in CI on demand (`on-demand-docker.yml` Job B runs the container
+  deny cases; first green 2026-08-26, repeatable by dispatch) but never on the
+  authoring host — CI-on-demand only; the read surface inside
   the sandbox is deny-listed (named secret paths), not default-denied — acceptable
   because the signing key is never on the sandboxed side at all; and `Bash` remains in
   the operator's grant *inside* the wrapper until the runtime grows typed tools. The

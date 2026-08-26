@@ -115,7 +115,10 @@ every composition.
 - **A field that represents a CHOICE or CATEGORY is BOUNDED.** Declared finite in the
   spec; never a free-form string for a choice. `type:"string"` is ONLY for genuinely
   free content (description, URI, nonce). Bounded beats free-form for three load-bearing
-  reasons: (1) **validatable** — the Layer-C validator checks membership; (2)
+  reasons: (1) **validatable** — the Layer-A validator checks membership off-chain
+  before any signature, and on the batched path the generic in-proof clause engine
+  checks it again against the registered spec (per-clause validator contracts do not
+  exist, permanently — `CONTRACTS.md` § "Teardown state — CLOSED" owns it); (2)
   **deterministically encodable** — the generic encoder maps value → 0-based ordinal,
   which a free string cannot; (3) **renderable** as a real choice control.
 
@@ -138,7 +141,9 @@ every composition.
 
 - **Each registry family gets its own anchor** (clauses → ClauseRegistry; sellers →
   MembersRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
-  one way: assemblies use clauses; clauses don't know assemblies exist.
+  one way: assemblies use clauses; clauses don't know assemblies exist. (The rule's
+  owner — the test, the temptation to refuse — is CLAUDE.md § "Separation of Concerns —
+  Registry Families"; this is the open-world restatement.)
 
 ### Where a composed contract may stand — the four placements
 
@@ -327,6 +332,6 @@ component **plus a semantic contract** (it depends on `MechanismModel` / `RoleCo
 
 ---
 
-Related: [PUBLIC_GRAPH_MODEL.md](PUBLIC_GRAPH_MODEL.md) (the five public graphs the runtime
-renders against), [CLAUSES.md](CLAUSES.md) (the versioning/validation mechanics §2 relies on),
+Related: [PUBLIC_GRAPH_MODEL.md](PUBLIC_GRAPH_MODEL.md) (the public graphs the runtime
+renders against — an open class with five named instances, ruled 2026-08-26), [CLAUSES.md](CLAUSES.md) (the versioning/validation mechanics §2 relies on),
 [CONTRACTS.md](CONTRACTS.md) (the registries §1–§2 read from).

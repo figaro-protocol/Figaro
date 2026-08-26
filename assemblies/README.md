@@ -35,7 +35,7 @@ A reference that composes `figaro-utility-token` (`equipment-hire.json`) is the
 one exception to "re-anchoring is a no-op over the checked-in bytes": the
 clause's `currency` is a live ERC-20 address, new on every fresh deploy, so the
 checked-in file carries the zero address as a sentinel and the populate path
-(`populate-test-data.mjs`'s `fillDeployTimeCurrency`) substitutes the real
+(`populate-clauses.mjs`'s `fillDeployTimeCurrency`) substitutes the real
 deployment's token address before anchoring — the anchored compositionHash is
 over the SUBSTITUTED template, never the sentinel. A spec that wants this
 reference's slug hashes the substituted template too

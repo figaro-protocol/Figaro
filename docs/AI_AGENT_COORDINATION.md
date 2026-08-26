@@ -26,7 +26,7 @@ Pre-defined agents are **maintainer-facing by default** — they act on this rep
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro-protocol/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
   - **`figaro-clause-author` / `figaro-assembly-designer`** — author or **fork** a clause/assembly and register it on the permissionless registries (a Layer-A `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user (RPGF rewards it).
-  - **`figaro-analyst`** — *read and analyze* a market's public graphs with `@figaro-protocol/sdk/derive` (base graphs from the must-have clauses, overlays spec-derived per attestable clause family in use, composition graphs from discovered venues). It holds **no key and signs nothing**; substance it was not given it BUYS as an ordinary data-market buyer, through the operator; and it sells **analyses**, never the corpus. Reference runnable: `ecosystem-agents/runtime/figaro-analyst.mjs`.
+  - **`figaro-analyst`** — *read and analyze* a market's public graphs with `@figaro-protocol/sdk/derive` (base graphs from the must-have clauses, overlays spec-derived per attestable clause family in use, composition graphs from discovered venues). It holds **no key and signs nothing**; substance it was not given it BUYS as an ordinary data-market buyer, through the operator; and it sells **analyses**, never the corpus. Reference runnable: `ecosystem-agents/runtime/figaro-analyst.mjs` — a service, not a script: six HTTP routes (`GET /status`, `GET /graphs`, three `GET /queries/*`, and a key-gated `POST /prompt`), CORS answered so browsers read it directly, with opt-in cross-checking against extra RPC endpoints via `FIGARO_ANALYST_CROSSCHECK_RPC_URLS`.
 - **Maintainer-facing repo agents** (the Claude Code subagents that build THIS repo, acting only for the maintainer): definitions live in `.claude/agents/*.md` and ship with the repo. They touch the repo (that is their job); nothing in this document applies to them.
 
 ---
@@ -51,39 +51,14 @@ contract integrates through a wire ABI, not a shared codebase.
 
 Originating a process is a two-party commit: the buyer builds a commitment and signs
 it; the seller must counter-sign the **same** EIP-712 struct before it can land. The
-message that carries this is the offer envelope (`CommitmentPayload`):
-
-```jsonc
-{
-  "commitment": { /* the EIP-712 Commitment: processId, buyer, seller, currency, payment,
-                     expectedCumulativeValue, agreementHash, salt, deadline */ },
-  "agreement":  { /* the full off-chain agreement whose merkle root == agreementHash,
-                     pinned inline so the recipient hydrates everything from one message */ },
-  "buyerSig":   "0x…",   // filled by the buyer
-  "sellerSig":  "0x…",   // filled by the seller on accept; absent until then
-  "buyerFunding":  { /* OPTIONAL — the buyer's swap-funded bond leg, witness-signed:
-                        when present, whoever broadcasts routes through
-                        WitnessSwapAndCommitCoordinator.swapAndCommit, not the kernel's
-                        commit. Absent when the buyer self-funds. */ },
-  "quoteRequest":  { /* OPTIONAL — present ONLY on an RFQ quote-request draft, naming the
-                        pricedFields the candidate may re-price. Absent on every offer. */ }
-}
-```
-
-It serializes to compact JSON (bigints → hex). The envelope is the entire wire
-payload — there is no side channel.
-
-Two of the commitment's fields carry rules a hand-rolled implementation gets wrong:
-
-- **`processId`** — a ROOT commitment signs `ZERO_PROCESS_ID` (32 zero bytes) and the
-  kernel derives the real id at commit; a sub-order carries the root's DERIVED id. Signing
-  a made-up id for a root is a commit that never lands.
-- **`deadline` is CHAIN time, and it is mandatory.** The kernel compares it against
-  `block.timestamp` and reverts `DeadlineExpired`; the SDK's origination calls take
-  `deadline` as a REQUIRED parameter with no default, precisely so nobody reaches for the
-  host clock. Read it from the chain (`readChainTimestamp`) and offset from there
-  (`computeDeadline`) — wall-clock drift between a signer's machine and the chain expires
-  offers that both parties signed in good faith.
+message that carries this is the offer envelope (`CommitmentPayload`): the EIP-712
+commitment, the full off-chain agreement pinned inline (its merkle root ==
+`agreementHash`, so the recipient hydrates everything from one message), the two
+signatures, and two optional legs (the buyer's witness-signed swap-funding leg; an
+RFQ `quoteRequest` naming the priced fields). It serializes to compact JSON
+(bigints → hex) and is the entire wire payload — there is no side channel. The wire
+spec — the JSON shape, the root-signs-`ZERO_PROCESS_ID` rule, and the
+deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
 
 ### The exchange
 
@@ -184,7 +159,9 @@ caller policy; the choreography is never authored twice.
 
 The five graphs are `PUBLIC_GRAPH_MODEL.md`'s; this section is how a reader gets from logs
 to a view. None of them is a feed to subscribe to — each is a derivation over events plus
-the documents those events commit to.
+the documents those events commit to. The shipped projections are
+`projectProcessGraph` / `projectSettlementGraph` for the base graphs and
+`extractOverlays` for the spec-derived overlays (`@figaro-protocol/sdk/derive`).
 
 ### Process graph — events, reconstructed
 
@@ -383,15 +360,18 @@ observing the network.
 
 ---
 
-## The sandboxed signer runtime — design (ruled 2026-08-18; component 1 BUILT 2026-08-20)
+## The sandboxed signer runtime — design (ruled 2026-08-18; all four components BUILT 2026-08-20)
 
 `ecosystem-agents/*` state six requirements ON the runtime that hosts an agent
 (F1–F6 in `figaro-operator.md` § "Security requirements on the execution runtime").
-Today none is structural: the model that reads attacker-authorable network content is
-the same model that holds a raw key and a raw shell, so one prompt injection is wallet
-theft. `RELEASE_READINESS.md` § Pre-Mainnet names the runtime as the release gate on
-the whole ecosystem-agent tier. This is the design that closes it — three components,
-each mapping to the requirements it satisfies, with the choices the maintainer rules.
+As built, the requirements are structural where the components reach: the key lives in
+the signer's process (F1–F3), fetched content arrives framed (F4), and the sandbox
+wrapper carries the write/secret/egress denials (F5, F6) — with the residual
+hardening (typed tools replacing `Bash`; the Linux container leg) stated per
+component below and punch-listed. `RELEASE_READINESS.md` § Pre-Mainnet names the
+runtime as the release gate on the whole ecosystem-agent tier. This is the design
+that closed it — four components, each mapping to the requirements it satisfies,
+with the choices the maintainer ruled.
 
 **1. The policy signer — a separate PROCESS that holds the key (F1, F2, F3).**
 A small daemon, run by the wallet's owner, that loads the key into ITS memory only
@@ -400,21 +380,11 @@ A small daemon, run by the wallet's owner, that loads the key into ITS memory on
 local UNIX socket: `signTypedData(domain, types, message)` and `signTransaction(tx)`,
 returning signatures — never bytes of key. Every request passes an **out-of-model
 policy gate** before it is signed, and the gate is configuration the model cannot
-reach (a file the signer owns, outside the agent's workspace):
-- *domain binding* — EIP-712 `chainId` + `verifyingContract` MUST equal the deployment
-  record's `FigaroCore` (a signature for any other domain is refused outright);
-- *contract + selector allowlist* — a transaction MUST target one of the deployment's
-  contracts (`FigaroCore.commit`/`resolveProcess`, the coordinators, the registries'
-  own-wallet calls, the settlement token's `approve` to those spenders) — anything else
-  is refused, including transfers of ETH or tokens to arbitrary addresses;
-- *ceilings* — a per-action AND per-period (rolling 24 h) cap on the value the wallet
-  can put at risk (payment + bond, approvals counted at their amount), set below the
-  balance; the signer refuses over the cap and the model cannot raise it (F2's hot/cold
-  split follows: the operating wallet holds only the float);
-- *simulation veto* — before signing a transaction the signer `eth_call`s it and refuses
-  a revert or a token-balance delta outside the ceiling (F3: the gate disposes after the
-  model proposes);
-- *audit log* — every request, decision, and reason appended to a file the owner reads.
+reach (a file the signer owns, outside the agent's workspace). Its five checks —
+domain binding, a contract + selector allowlist, value ceilings (F2's hot/cold split
+follows: the operating wallet holds only the float), a simulation veto (F3: the gate
+disposes after the model proposes), and an audit log — are specified in
+`sdk/README.md` § "The Policy Signer", the manual for the shipped gate.
 The signer presents itself to the agent as a viem local account (the account interface viem's wallet clients take) (`@figaro-protocol/sdk/agent`
 already takes a `WalletClient`; a `WalletClient` over the socket-backed account is a
 drop-in), so `autonomous.ts` / `hitl.ts` need no change — the boundary moves from

@@ -308,6 +308,14 @@ different trust model, update frequency, and audience:
 | GHG | Protocol-derived | Reporters, auditors | Per disclosure event |
 | Settlement | Protocol-enforced | Sellers, analytics | Per settlement |
 | Cross-Process | Protocol-derived | Process provenance tools | Per link creation |
+| Composition (one per composed venue) | Composition-derived | Venue analysts, dispute readers | Per venue event |
+
+Four trust models, and the label set is closed even though the graph class is
+open (the paragraph atop this document): a composition graph's rows are read
+from the composed venue's own events — a swap pool, the multisender, a forum —
+true per that contract's rules, outside the kernel's guarantees. The SDK
+carries these labels verbatim as `TruthBoundary` (`sdk/src/derive/truth.ts`);
+a projection picks from them, never coins a new one.
 
 Making these boundaries explicit in the UI — through visual separation,
 labeling, or progressive disclosure — prevents users from conflating

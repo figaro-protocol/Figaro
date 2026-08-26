@@ -330,10 +330,10 @@ accrual open across a full e2e suite run; nine 30-minute periods give a
 past a period boundary). The constructor wires the seller-side live-stake gate
 (`MembersRegistry`), the clause-or-assembly-side deposit gates (`ClauseRegistry` +
 `AssemblyRegistry`), the batch verifier as the proof-gated writer of the
-batch-path accrual, the assembly-provenance clause key, the three excluded
-protocol-floor clauses (`figaro-commerce`, `figaro-topology`,
-`figaro-assembly-provenance` — their count is the process count and carries no
-adoption signal), and the minimum-support floor `minSellers = 3` (the mainnet
+batch-path accrual, the assembly-provenance clause key, the single exclusion
+(`figaro-assembly-provenance` — attribution plumbing, whose designers accrue via
+`recordAssemblyUsage` instead; the mandatory clauses EARN, ruled 2026-08-13,
+mirroring `DeployMainnet`), and the minimum-support floor `minSellers = 3` (the mainnet
 value, rehearsed on devnet). It then registers the RpgfMinter over it at 600M,
 registers itself with a 400M cap, mints 100M to its own wallet (founder +
 supporters stand-in; mainnet splits this into 70M FOUNDER_WALLET +

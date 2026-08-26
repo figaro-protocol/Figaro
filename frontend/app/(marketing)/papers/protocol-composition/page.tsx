@@ -25,20 +25,33 @@ function FormalBlock({ label, children }: { label: string; children: React.React
 }
 
 const CATALOGUE: [string, string][] = [
-    ["Commerce", "payment and line items — committed by the seller at commit"],
+    ["Commerce", "settlement currency, payment amount, and line items — the commercial half of every order"],
     ["Topology", "the ordering of sellers the parties commit to; agreement-only, with no runtime attestation"],
+    ["Assembly provenance", "the registered composition this agreement instantiates, carried as that composition's own hash"],
+    ["Utility token", "the single token an assembly's processes are denominated in, pinned once by the designer and folded into every agreement"],
     ["Geolocation", "origin and destination under a declared geocode standard"],
-    ["Modalities", "the buyer's requested modality: on-site, pickup, delivery, or virtual"],
+    ["Modalities", "the buyer's requested modality: consume-onsite, pickup, delivery, or virtual"],
+    ["Schedule", "the agreed time window as one half-open interval; a duration is derived from it rather than stored beside it"],
     ["Handoff", "the point where a physical exchange occurs"],
-    ["Cargo", "logistic-unit shipment measure: mass, volume, packaged dimensions, packaging"],
-    ["Cold chain", "temperature-controlled handling class committed at signing; the period record filed as a runtime witness stage"],
-    ["Emissions", "accounting methodology committed at signing; measured grams CO₂e filed as a runtime witness stage on the same clause"],
     ["Proximity policy", "accepted detection bands committed at signing; the hand-off proof filed as a runtime witness stage on the same clause"],
+    ["Content hand-off", "the digital counterpart of the hand-off clause; the delivered artifact's content hash filed as the completion witness stage"],
+    ["Cargo", "logistic-unit shipment measure: mass, volume, packaged dimensions, packaging"],
+    ["Dimensional weight", "the billed weight of a parcel and the divisor applied, so a reader reproduces the computation from the same order's cargo section"],
+    ["Cold chain", "temperature-controlled handling class committed at signing; the period record filed as a runtime witness stage"],
+    ["Freight class", "the declared road-freight classification and item number, referenced against the published classification standard"],
+    ["Dangerous goods", "the UN number, proper shipping name, hazard class, and packing group for regulated dangerous goods"],
+    ["Incoterms 2020", "the declared trade-delivery rule and the named place or port it requires, referenced against the ICC's published edition"],
+    ["Chain of custody", "the integrity regime committed at signing; custody events — applied, inspected intact, transferred, breached, removed — filed as runtime witness stages"],
+    ["Acceptance criteria", "the basis on which goods or work are accepted, committed at signing; inspection and receipt outcomes filed as a runtime witness stage"],
     ["Merchant process", "merchant per-role event ladder"],
     ["Courier process", "courier per-role event ladder"],
-    ["Arbitration (Kleros)", "off-chain arbitration-forum selection"],
-    ["Applicable law", "governing-law and recourse layer"],
-    ["Consent", "cryptographic acceptance of an off-chain document"],
+    ["Emissions", "accounting methodology committed at signing; measured grams CO₂e filed as a runtime witness stage on the same clause"],
+    ["Credential", "a licence, certification, or permit the seller declares, anchored to an external authority's own public register"],
+    ["Data license", "the terms of a sale whose value added is access to records: scope, purpose, snapshot or stream access, and redistribution"],
+    ["Data terms", "the disclosure regime for the process's own records, with the buyer committing a choice over its own half"],
+    ["Consent", "cryptographic acceptance of one or more off-chain documents, each identified by content hash"],
+    ["Arbitration (Kleros)", "off-chain arbitration-forum selection: the subcourt and the minimum juror count"],
+    ["Applicable law", "governing law and, optionally, the named venue and proceedings language"],
 ];
 
 export default function ProtocolExtensionPaper() {
@@ -217,7 +230,7 @@ export default function ProtocolExtensionPaper() {
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="4.5 The reference clause catalogue">
-                    <p>The protocol currently ships a coordinated set of reference clauses, treated as a reference set rather than as independent compositions. The set is open and grows by registration, so no enumeration of it is a definition of it; among them at this writing:</p>
+                    <p>The protocol currently ships a coordinated set of reference clauses, treated as a reference set rather than as independent compositions. The set is open and grows by registration, so no enumeration of it is a definition of it; it stands at this writing as:</p>
                     <ol className="space-y-1 list-decimal pl-6 text-sm">
                         {CATALOGUE.map(([id, desc]) => (
                             <li key={id}><em>{id}</em> &mdash; {desc}</li>

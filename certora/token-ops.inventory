@@ -19,8 +19,9 @@ src/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSingleOr
 # WitnessSwapAndCommitCoordinator — the swap-and-commit coordinator (its unhardened
 # predecessor, which left the swap route outside every signature, was deleted before
 # any deployment — git history). TRACKED here: the swap route is bound into a
-# Permit2 witness, so its token movements are an accounted surface even before it is
-# UI-wired. SECURITY NOTE: still pre-production — no CVL rule proves these yet, so both
+# Permit2 witness, so its token movements are an accounted surface. Deploy-wired and
+# UI-wired (the checkout's swap-funding panel builds the witness-signed buyer leg —
+# docs/CONTRACTS.md owns the wiring). SECURITY NOTE: no CVL rule proves these yet, so both
 # ship [PENDING]. Both forward swapped bond currency / unconsumed input to the party
 # (`c.buyer`/`c.seller`); neither touches kernel escrow (the kernel pulls the bond
 # itself). Spec target: a CoordinatorTokenConservation rule proving the coordinator
