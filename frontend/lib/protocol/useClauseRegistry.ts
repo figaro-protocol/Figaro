@@ -17,18 +17,20 @@
  *     tier, which mounts no wallet provider.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BaseError, ContractFunctionRevertedError, type Abi, type Log } from "viem";
+import { type Abi, type Log } from "viem";
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro-protocol/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { publicClient } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
-import { toError } from "@/lib/shared/errors";
 import { isValidAddress } from "@/lib/shared/evm";
-import { createUseWithdrawStake } from "@/lib/protocol/useWithdrawStake";
+import {
+    createUseWithdrawStake,
+    translateContractRevert,
+    withdrawRevertMessage,
+} from "@/lib/protocol/useWithdrawStake";
+import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import { publishTail } from "@/lib/protocol/publishTail";
 
 
@@ -87,80 +89,32 @@ function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): 
     });
 }
 
-/** Read all `DepositWithdrawn` logs, raw — decoded by the SDK parser above.
- *  Through the event cache: from the deployment block, adaptively chunked
- *  (public gateways cap `eth_getLogs` ranges), cached across renders. */
-async function fetchWithdrawnClauseLogs(
-    client: typeof publicClient,
-    addr: `0x${string}`,
-): Promise<Log[]> {
-    return cachedGetContractEvents(client, client.chain?.id ?? activeChain.id, {
-        address: addr,
-        abi: CLAUSE_REGISTRY_ABI,
-        eventName: "DepositWithdrawn",
-    }) as Promise<Log[]>;
-}
-
-/** Read all `ClauseRegistered` logs, raw, optionally narrowed to one
- *  registeredBy — the narrowing is client-side over the ONE cached scan. */
-async function fetchRegisteredClauseLogs(
-    client: typeof publicClient,
-    addr: `0x${string}`,
-    registeredBy?: `0x${string}`,
-): Promise<Log[]> {
-    const logs = (await cachedGetContractEvents(client, client.chain?.id ?? activeChain.id, {
-        address: addr,
-        abi: CLAUSE_REGISTRY_ABI,
-        eventName: "ClauseRegistered",
-    })) as Log[];
-    if (!registeredBy) return logs;
-    const want = registeredBy.toLowerCase();
-    return logs.filter((l) => String((l as { args?: { registeredBy?: string } }).args?.registeredBy ?? "").toLowerCase() === want);
-}
+/** The one paired (ClauseRegistered + DepositWithdrawn) cached scan behind
+ *  both readers — the shared factory shape (`createRegistryEventScan`), so
+ *  the fetch, the registeredBy narrowing, the `failed` contract and the row
+ *  projection can't drift between them. */
+const useClauseRegistryScan = createRegistryEventScan<RegisteredClauseEvent>({
+    getRegistry: getClauseRegistry,
+    abi: CLAUSE_REGISTRY_ABI,
+    registeredEventName: "ClauseRegistered",
+    withdrawnEventName: "DepositWithdrawn",
+    label: "useClauseRegistry",
+    toRows: (registeredLogs, withdrawnLogs) => {
+        const items = toRegisteredClauseEvents(registeredLogs, withdrawnLogs);
+        items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
+        return items;
+    },
+});
 
 /** Read all `ClauseRegistered` events filtered by the registering wallet. Sorts
  *  most-recent block first. Call `refetch` to pick up newly registered clauses. */
 export function useRegisteredClausesByWallet(registeredBy: `0x${string}` | undefined) {
     const client = usePublicClient();
-    const [data, setData] = useState<RegisteredClauseEvent[] | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [generation, setGeneration] = useState(0);
-
-    useEffect(() => {
-        const addr = CONTRACTS.clauseRegistry;
-        if (!client || !addr || addr.length !== 42 || !registeredBy) {
-            setData(null);
-            return;
-        }
-        let cancelled = false;
-        setIsLoading(true);
-
-        Promise.all([
-            fetchRegisteredClauseLogs(client as typeof publicClient, addr, registeredBy),
-            fetchWithdrawnClauseLogs(client as typeof publicClient, addr),
-        ])
-            .then(([logs, withdrawn]) => {
-                if (cancelled) return;
-                const items = toRegisteredClauseEvents(logs, withdrawn);
-                items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
-                setData(items);
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                console.warn("[useRegisteredClausesByWallet] event read failed:", err);
-                setData([]);
-                setIsLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [client, registeredBy, generation]);
-
-    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
-    const memoized = useMemo(() => ({ data, isLoading, refetch }), [data, isLoading, refetch]);
-    return memoized;
+    return useClauseRegistryScan({
+        registeredBy,
+        enabled: !!client && !!registeredBy,
+        client: client as typeof publicClient | undefined,
+    });
 }
 
 /**
@@ -168,52 +122,10 @@ export function useRegisteredClausesByWallet(registeredBy: `0x${string}` | undef
  * clause set, unfiltered. Reads through the standalone `publicClient` so it works
  * on the marketing tier. `data` is `null` while the first read is in flight, then
  * the event list (empty = registry reachable but empty, or none configured).
+ * `failed` is true when the last read THREW — distinct from resolved-empty.
  */
 export function useAllRegisteredClauses() {
-    const [data, setData] = useState<RegisteredClauseEvent[] | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    /** True when the last registry read THREW — distinct from resolved-empty:
-     *  an empty registry is absence (render it); a failed read is unknown
-     *  (never report it as loaded). */
-    const [failed, setFailed] = useState(false);
-    const [generation, setGeneration] = useState(0);
-
-    useEffect(() => {
-        const addr = CONTRACTS.clauseRegistry;
-        if (!addr || addr.length !== 42) {
-            setData([]);
-            return;
-        }
-        let cancelled = false;
-        setIsLoading(true);
-        setFailed(false);
-
-        Promise.all([
-            fetchRegisteredClauseLogs(publicClient, addr),
-            fetchWithdrawnClauseLogs(publicClient, addr),
-        ])
-            .then(([logs, withdrawn]) => {
-                if (cancelled) return;
-                const items = toRegisteredClauseEvents(logs, withdrawn);
-                items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
-                setData(items);
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                console.warn("[useAllRegisteredClauses] event read failed:", err);
-                setFailed(true);
-                setData([]);
-                setIsLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [generation]);
-
-    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
-    return useMemo(() => ({ data, isLoading, failed, refetch }), [data, isLoading, failed, refetch]);
+    return useClauseRegistryScan({});
 }
 
 // ── Revert translation (pure — unit-tested) ──────────────────────────────────
@@ -246,41 +158,18 @@ export function clauseRegisterRevertMessage(
     }
 }
 
-/** Map a decoded `withdrawDeposit` error name to a human-readable message, or
- *  null when unrecognized. The commits==resolves gate is off-chain/advisory
- *  (`useWithdrawGate`), so these are the on-chain guards only: registeredBy-only,
- *  once-only, must-exist. Mirrors assembly `assemblyWithdrawRevertMessage`. */
-export function clauseWithdrawRevertMessage(errorName: string | undefined): string | null {
-    switch (errorName) {
-        case "AlreadyWithdrawn":
-            return "This clause's registration stake has already been reclaimed.";
-        case "NotRegisteredBy":
-            return "Only the wallet that registered this clause can reclaim its stake.";
-        case "NotRegistered":
-            return "No registration binding exists for this clause.";
-        case "TransferFailed":
-            return "The stake refund transfer failed. No state changed — retry.";
-        default:
-            return null;
-    }
-}
+/** The clause noun's binding of the shared `withdrawDeposit` revert table
+ *  (`withdrawRevertMessage` — the on-chain guards only; the commits==resolves
+ *  gate is off-chain/advisory via `useWithdrawGate`). */
+export const clauseWithdrawRevertMessage = withdrawRevertMessage("clause");
 
-/** Extract the decoded revert from a viem error and route it through the pure
- *  register-message mapper; falls through to the original error. Internal —
- *  the pure `clauseRegisterRevertMessage` above is the unit-tested surface. */
+/** Extract the decoded revert (the shared preamble) and route it through the
+ *  pure register-message mapper; falls through to the original error.
+ *  Internal — the pure `clauseRegisterRevertMessage` above is the unit-tested
+ *  surface. */
 function translateClauseRegisterRevert(err: unknown, clauseId: string): Error {
-    if (err instanceof BaseError) {
-        const revert = err.walk(
-            (e) => e instanceof ContractFunctionRevertedError,
-        ) as ContractFunctionRevertedError | undefined;
-        const message = clauseRegisterRevertMessage(
-            revert?.data?.errorName,
-            revert?.data?.args,
-            clauseId,
-        );
-        if (message) return new Error(message);
-    }
-    return toError(err);
+    return translateContractRevert(err, (errorName, args) =>
+        clauseRegisterRevertMessage(errorName, args, clauseId));
 }
 
 // ── Write hooks ──────────────────────────────────────────────────────────────

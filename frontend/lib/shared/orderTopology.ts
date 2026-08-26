@@ -10,7 +10,7 @@
  * `lib/semantic/processTopology.ts`.
  */
 
-import { topologicalOrder } from "@figaro-protocol/sdk";
+import { depthsOverParents } from "@figaro-protocol/sdk";
 
 /** Topology read from first-class draft edges: order id → parent order ids.
  *  A designer draft ALWAYS carries its edges directly on the order
@@ -22,21 +22,14 @@ export function draftOrderTopology(
     return new Map(orders.map((o) => [o.orderHash, o.parentOrderHashes ?? []]));
 }
 
-/** Depth per order id — root = 0, child = max(parent depths) + 1. */
+/** Depth per order id — root = 0, child = max(parent depths) + 1. The math
+ *  is the SDK's `depthsOverParents` (the same 0-rooted convention). */
 export function deriveOrderDepths(
     orders: readonly { orderHash: string }[],
     topology: Map<string, string[]>,
 ): Map<string, number> {
-    const order = topologicalOrder(
+    return depthsOverParents(
         orders.map((o) => o.orderHash),
         (id) => topology.get(id) ?? [],
-        "break",
     );
-    const depth = new Map<string, number>();
-    for (const id of order) {
-        const parents = topology.get(id) ?? [];
-        const parentDepths = parents.map((p) => depth.get(p) ?? 0);
-        depth.set(id, parents.length === 0 ? 0 : Math.max(...parentDepths) + 1);
-    }
-    return depth;
 }

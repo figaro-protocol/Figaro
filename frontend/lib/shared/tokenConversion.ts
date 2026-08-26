@@ -27,6 +27,7 @@
  */
 
 import type { PublicClient } from "viem";
+import { QUOTER_V2_ABI, UNISWAP_V3_FEE_TIERS } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -76,42 +77,13 @@ export const DEFAULT_TOKEN_CONVERSION_SERVICE: TokenConversionService = {
     },
 };
 
-// ── Uniswap V3 QuoterV2 implementation ───────────────────────────────────────
-
-const QUOTER_V2_ABI = [
-    {
-        inputs: [
-            {
-                components: [
-                    { internalType: "address", name: "tokenIn", type: "address" },
-                    { internalType: "address", name: "tokenOut", type: "address" },
-                    { internalType: "uint256", name: "amountIn", type: "uint256" },
-                    { internalType: "uint24", name: "fee", type: "uint24" },
-                    { internalType: "uint160", name: "sqrtPriceLimitX96", type: "uint160" },
-                ],
-                internalType: "struct IQuoterV2.QuoteExactInputSingleParams",
-                name: "params",
-                type: "tuple",
-            },
-        ],
-        name: "quoteExactInputSingle",
-        outputs: [
-            { internalType: "uint256", name: "amountOut", type: "uint256" },
-            { internalType: "uint160", name: "sqrtPriceX96After", type: "uint160" },
-            { internalType: "uint32", name: "initializedTicksCrossed", type: "uint32" },
-            { internalType: "uint256", name: "gasEstimate", type: "uint256" },
-        ],
-        stateMutability: "nonpayable",
-        type: "function",
-    },
-] as const;
+// ── Uniswap V3 QuoterV2 implementation (SDK canonical ABI + tier ladder) ─────
 
 /**
  * Uniswap V3 fee tier in hundredths-of-a-bip (1e-6). The V3 contracts
- * support 100, 500, 3000, 10000. The conventional defaults for stable
- * pairs / mid-volatility / exotic pairs are 100/500, 3000, 10000.
+ * support 100, 500, 3000, 10000.
  */
-type UniswapV3FeeTier = 100 | 500 | 3000 | 10000;
+type UniswapV3FeeTier = (typeof UNISWAP_V3_FEE_TIERS)[number];
 
 export interface UniswapV3QuoterConfig {
     /** Viem public client connected to the chain whose Uniswap deployment is used. */
@@ -121,12 +93,11 @@ export interface UniswapV3QuoterConfig {
     /**
      * Fee tier(s) to attempt. When multiple tiers are listed, the quoter
      * tries them in order and returns the first one that produces a
-     * non-zero quote. Defaults to [500, 3000, 10000] if not specified.
+     * non-zero quote. Defaults to the SDK's `UNISWAP_V3_FEE_TIERS` —
+     * the one shared ladder every quoting consumer probes.
      */
     feeTiers?: UniswapV3FeeTier[];
 }
-
-const DEFAULT_FEE_TIER_ATTEMPTS: UniswapV3FeeTier[] = [500, 3000, 10000];
 
 /**
  * Build a `TokenConversionService` backed by Uniswap V3's QuoterV2.
@@ -135,9 +106,9 @@ const DEFAULT_FEE_TIER_ATTEMPTS: UniswapV3FeeTier[] = [500, 3000, 10000];
  * non-zero quote. Returns null if no tier responds with liquidity.
  */
 export function createUniswapV3Quoter(config: UniswapV3QuoterConfig): TokenConversionService {
-    const tiers = config.feeTiers && config.feeTiers.length > 0
+    const tiers: readonly UniswapV3FeeTier[] = config.feeTiers && config.feeTiers.length > 0
         ? config.feeTiers
-        : DEFAULT_FEE_TIER_ATTEMPTS;
+        : UNISWAP_V3_FEE_TIERS;
 
     return {
         async quote(request) {

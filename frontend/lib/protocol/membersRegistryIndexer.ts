@@ -6,9 +6,11 @@
  * order events (OrderCommitted/OrderResolved) live in the kernel indexer;
  * this module reads a REGISTRY, which is protocol tier, not kernel tier.
  *
- * Fetching goes through the cached indexer (`cachedGetLogsMulti`); DECODING is
- * the SDK's (`parseMembersRegistryLogs` — the one parse per family). The
- * liveness fold below stays here: it is this reader's own derived view.
+ * Fetching goes through the cached indexer (`cachedGetLogsMulti`); DECODING
+ * and the LIVENESS FOLD are the SDK's (`parseMembersRegistryLogs` +
+ * `reconstructDiscovery` — the one parse and the one fold per family, in
+ * (blockNumber, logIndex) order). The readers below are projections over
+ * that fold, never a second fold.
  *
  * Lifecycle flags (deactivate/reactivate) and on-chain role tracking remain
  * stripped — availability is signal-by-availability, and there is no
@@ -17,9 +19,15 @@
  * (registrations, clause attestations, signed commitments).
  */
 
-import type { Log, PublicClient } from "viem";
+import type { Address, Log, PublicClient } from "viem";
 import { getAbiItem } from "viem";
-import { parseMembersRegistryLogs, type MemberRegisteredEvent, type MemberWithdrawnEvent } from "@figaro-protocol/sdk";
+import {
+    parseMembersRegistryLogs,
+    reconstructDiscovery,
+    type DiscoveryGraph,
+    type MembersRegistryEvents,
+    type MemberRegisteredEvent,
+} from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS, MEMBERS_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { cachedGetLogsMulti } from "@/lib/kernel/indexer";
@@ -48,74 +56,51 @@ async function fetchMemberEvents(
     return parseMembersRegistryLogs(logs as unknown as Log[]);
 }
 
+/** All three streams through the cache, merged into the SDK's per-family
+ *  event shape. The cache stays keyed per event; the SDK fold re-orders by
+ *  (blockNumber, logIndex), so concatenation order carries no meaning. */
+async function fetchAllMemberEvents(client: PublicClient, chainId: number): Promise<MembersRegistryEvents> {
+    const [registered, profileUpdated, withdrawalRequested] = await Promise.all([
+        fetchMemberEvents(client, chainId, EV_MEMBER_REGISTERED, "MemberRegistered"),
+        fetchMemberEvents(client, chainId, EV_MEMBER_PROFILE_UPDATED, "MemberProfileUpdated"),
+        fetchMemberEvents(client, chainId, EV_MEMBER_WITHDRAWAL_REQUESTED, "MemberWithdrawalRequested"),
+    ]);
+    return {
+        registered: [...registered.registered, ...profileUpdated.registered],
+        withdrawn: withdrawalRequested.withdrawn,
+    };
+}
+
+/** The SDK's latest-lifecycle-event-wins liveness fold over the members
+ *  family (the other two registry families contribute nothing here — each
+ *  family has its own reader). */
+function foldMembers(events: MembersRegistryEvents): DiscoveryGraph {
+    return reconstructDiscovery({
+        clauseRegistered: [],
+        clauseWithdrawn: [],
+        memberRegistered: events.registered,
+        memberWithdrawn: events.withdrawn,
+        assemblyRegistered: [],
+        assemblyWithdrawn: [],
+    });
+}
+
 /** All `MemberRegistered` rows (SDK-decoded; `updated === false`). */
 export async function getAllMemberRegistered(client: PublicClient, chainId: number): Promise<MemberRegisteredEvent[]> {
     return (await fetchMemberEvents(client, chainId, EV_MEMBER_REGISTERED, "MemberRegistered")).registered;
 }
 
-async function getAllMemberProfileUpdated(client: PublicClient, chainId: number): Promise<MemberRegisteredEvent[]> {
-    return (await fetchMemberEvents(client, chainId, EV_MEMBER_PROFILE_UPDATED, "MemberProfileUpdated")).registered;
-}
-
-async function getAllMemberWithdrawalRequested(client: PublicClient, chainId: number): Promise<MemberWithdrawnEvent[]> {
-    return (await fetchMemberEvents(client, chainId, EV_MEMBER_WITHDRAWAL_REQUESTED, "MemberWithdrawalRequested")).withdrawn;
-}
-
 /**
  * Derive the current member roster: latest metadataURI per address,
- * filtered to only those currently registered (Registered minus Withdrawn).
- *
- * "Current metadataURI" is the most recent MemberRegistered or
- * MemberProfileUpdated event for an address, provided no Withdrawn
- * event sits at or after the registration block (withdraw clears the
- * dedup guard, voiding any subsequent profile updates from a stale
- * registration).
+ * filtered to only those currently registered — a projection over the SDK
+ * liveness fold (most-recent lifecycle event per address wins, in
+ * (blockNumber, logIndex) order; a withdrawal REQUEST de-surfaces).
  */
 export async function getActiveMembers(client: PublicClient, chainId: number) {
-    const [registered, profileUpdated, withdrawn] = await Promise.all([
-        getAllMemberRegistered(client, chainId),
-        getAllMemberProfileUpdated(client, chainId),
-        getAllMemberWithdrawalRequested(client, chainId),
-    ]);
-
-    // Latest withdraw block per address (re-registration after withdraw is allowed)
-    const latestWithdraw = new Map<string, number>();
-    for (const row of withdrawn) {
-        const addr = row.member.toLowerCase();
-        const prev = latestWithdraw.get(addr) ?? 0;
-        if (row.blockNumber > prev) latestWithdraw.set(addr, row.blockNumber);
-    }
-
-    // Latest Registered event per address that survives Withdrawn.
-    const members = new Map<string, { metadataURI: string; registeredBlock: number; latestBlock: number }>();
-    for (const row of registered) {
-        const addr = row.member.toLowerCase();
-        const withdrawnAfter = (latestWithdraw.get(addr) ?? 0) >= row.blockNumber;
-        if (withdrawnAfter) continue;
-        const prev = members.get(addr);
-        if (!prev || row.blockNumber > prev.registeredBlock) {
-            members.set(addr, {
-                metadataURI: row.metadataURI,
-                registeredBlock: row.blockNumber,
-                latestBlock: row.blockNumber,
-            });
-        }
-    }
-
-    // Apply ProfileUpdated events that post-date the surviving Registered event.
-    for (const row of profileUpdated) {
-        const entry = members.get(row.member.toLowerCase());
-        if (!entry) continue;
-        if (row.blockNumber < entry.registeredBlock) continue;
-        if (row.blockNumber > entry.latestBlock) {
-            entry.metadataURI = row.metadataURI || entry.metadataURI;
-            entry.latestBlock = row.blockNumber;
-        }
-    }
-
-    return Array.from(members.entries()).map(([address, op]) => ({
-        address,
-        metadataURI: op.metadataURI,
+    const graph = foldMembers(await fetchAllMemberEvents(client, chainId));
+    return graph.getMembers().map((m) => ({
+        address: m.member.toLowerCase(),
+        metadataURI: m.metadataURI,
     }));
 }
 
@@ -125,75 +110,41 @@ export async function getActiveMembers(client: PublicClient, chainId: number) {
  * after most recent registration).
  */
 export async function getMemberMetadataURI(client: PublicClient, chainId: number, member: string) {
-    const active = await getActiveMembers(client, chainId);
-    const lc = member.toLowerCase();
-    const match = active.find((op) => op.address === lc);
-    return match?.metadataURI ?? null;
+    const graph = foldMembers(await fetchAllMemberEvents(client, chainId));
+    return graph.getMember(member as Address)?.metadataURI ?? null;
 }
 
 /**
  * Full state for a single member, derived from events.
  * Returns null if the member has never registered or has left after
- * the most recent registration. `registeredBlock` backs the deposit lock-
- * expiry computation; `metadataURI` is the most recent value carried by
- * either the surviving Registered event or any subsequent ProfileUpdated.
+ * the most recent registration (the SDK fold's verdict). `registeredBlock`
+ * backs the deposit lock-expiry computation and is projected from the
+ * member's most recent `MemberRegistered` event; `metadataURI` is the
+ * fold's current value (registration, or any subsequent ProfileUpdated).
  */
 export async function getMemberState(
     client: PublicClient,
     chainId: number,
     member: string,
 ): Promise<{ metadataURI: string; registeredBlock: bigint | null } | null> {
+    const events = await fetchAllMemberEvents(client, chainId);
+    const live = foldMembers(events).getMember(member as Address);
+    if (!live) return null;
 
-    const [registered, profileUpdated, withdrawn] = await Promise.all([
-        getAllMemberRegistered(client, chainId),
-        getAllMemberProfileUpdated(client, chainId),
-        getAllMemberWithdrawalRequested(client, chainId),
-    ]);
-
-    // Most recent Registered for this address. Track the latest by block;
-    // tolerate null/0 blockNumbers by always preferring a candidate over no
-    // candidate (test indexers occasionally return blockNumber=null for the
-    // very latest tx — the SDK parser coerces those to 0; picking it is still
-    // the right answer).
-    let regRow: MemberRegisteredEvent | undefined;
+    // The surviving registration's block. Track the latest by block; tolerate
+    // null/0 blockNumbers by always preferring a candidate over no candidate
+    // (test indexers occasionally return blockNumber=null for the very latest
+    // tx — the SDK parser coerces those to 0; picking it is still the right
+    // answer).
     let regBlock = 0;
-    for (const row of registered) {
+    for (const row of events.registered) {
+        if (row.updated) continue;
         if (!hexEqual(row.member, member)) continue;
-        if (!regRow || row.blockNumber > regBlock) {
-            regBlock = row.blockNumber;
-            regRow = row;
-        }
-    }
-    if (!regRow) return null;
-
-    // If a Withdrawn event exists at or after the most recent Registered,
-    // the member has cleared the dedup guard and is no longer current.
-    // Only enforce the comparison when at least one withdraw exists for this
-    // member — otherwise a registration with blockNumber=null (regBlock=0)
-    // would spuriously look "withdrawn" against a default lastWithdrawBlock.
-    const memberWithdraws = withdrawn.filter((row) => hexEqual(row.member, member));
-    if (memberWithdraws.length > 0) {
-        const lastWithdrawBlock = memberWithdraws
-            .map((row) => row.blockNumber)
-            .reduce((max, b) => (b > max ? b : max), 0);
-        if (lastWithdrawBlock >= regBlock) return null;
-    }
-
-    // Apply the most recent ProfileUpdated that post-dates the surviving
-    // registration, if any.
-    let metadataURI = regRow.metadataURI;
-    let metadataBlock = regBlock;
-    for (const row of profileUpdated) {
-        if (!hexEqual(row.member, member)) continue;
-        if (row.blockNumber < regBlock) continue;
-        if (row.blockNumber > metadataBlock) {
-            metadataURI = row.metadataURI || metadataURI;
-            metadataBlock = row.blockNumber;
-        }
+        if (row.blockNumber > regBlock) regBlock = row.blockNumber;
     }
 
     return {
-        metadataURI,
+        metadataURI: live.metadataURI,
         registeredBlock: regBlock > 0 ? BigInt(regBlock) : null,
     };
 }

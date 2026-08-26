@@ -14,6 +14,9 @@
  * speak one shape.
  */
 
+import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
+import { pick, queryParam } from "@/lib/shared/urlQuery";
+
 export const REGISTRY_FAMILIES = ["clauses", "assemblies", "members"] as const;
 export type RegistryFamily = (typeof REGISTRY_FAMILIES)[number];
 
@@ -46,14 +49,10 @@ function defaultSortFor(family: RegistryFamily): RegistrySort {
     return family === "clauses" ? "article" : "block";
 }
 
-function pick<T extends readonly string[]>(values: T, raw: string | null | undefined, fallback: T[number]): T[number] {
-    return raw && (values as readonly string[]).includes(raw) ? (raw as T[number]) : fallback;
-}
-
 /** Parse the URL query into explorer state. Unknown values fall back to
  *  defaults; nothing throws on a hand-typed link. */
 export function parseExplorerQuery(params: URLSearchParams | Record<string, string | undefined>): ExplorerQuery {
-    const get = (k: string) => (params instanceof URLSearchParams ? params.get(k) : params[k]) ?? "";
+    const get = (k: string) => queryParam(params, k);
     const family = pick(REGISTRY_FAMILIES, get("family"), "clauses");
     return {
         family,
@@ -156,9 +155,9 @@ export function facetValues(rows: readonly ExplorerRow[], family: RegistryFamily
 
 /** The breadcrumb trail a deep-linked arrival sees — derived from the
  *  active state, never a stored taxonomy. The last item is hrefless. */
-export function explorerBreadcrumb(state: ExplorerQuery): Array<{ label: string; href?: string }> {
+export function explorerBreadcrumb(state: ExplorerQuery): BreadcrumbItem[] {
     const familyLabel = { clauses: "Clauses", assemblies: "Assemblies", members: "Members" }[state.family];
-    const trail: Array<{ label: string; href?: string }> = [
+    const trail: BreadcrumbItem[] = [
         { label: "Build", href: "/spec" },
         { label: "Registries", href: "/registries" },
     ];

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { OrderState } from "@figaro-protocol/sdk";
+import { calculateBonds, OrderState, type Order as SdkOrder } from "@figaro-protocol/sdk";
 
 // Re-export so existing consumers keep working
 export { OrderState };
@@ -41,6 +41,35 @@ export interface Order {
     blockNumber?: number;
     /** Event-derived: block.timestamp from OrderResolved (seconds). */
     resolvedAt?: number;
+}
+
+/**
+ * Project the SDK fold's `Order` (what `reconstruct`/`Topology` build from
+ * OrderCommitted/OrderResolved) into the UI shape above — the ONE mapping
+ * every log-fed hook shares. Bonds are derived by the SDK's kernel math
+ * (never read from args that don't exist, never a re-implemented 2× rule);
+ * the fold-carried payout fields stay on the SDK order.
+ */
+export function orderFromSdk(order: SdkOrder): Order {
+    // Destructured, NOT spread — calculateBonds also returns totalLocked,
+    // which must not ride along as an extra bigint field on the Order.
+    const { sellerBond, buyerBond } = calculateBonds(order.cumulativeValue, order.payment);
+    return {
+        orderHash: order.orderHash,
+        processId: order.processId,
+        buyer: order.buyer,
+        seller: order.seller,
+        currency: order.currency,
+        agreementHash: order.agreementHash,
+        payment: order.payment,
+        cumulativeValue: order.cumulativeValue,
+        state: order.state,
+        sellerBond,
+        buyerBond,
+        salt: order.salt,
+        deadline: order.deadline,
+        blockNumber: order.blockNumber,
+    };
 }
 
 interface ProcessInfo {

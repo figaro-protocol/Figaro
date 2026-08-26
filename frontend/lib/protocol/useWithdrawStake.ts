@@ -32,6 +32,54 @@ export interface WithdrawStakeConfig {
     revertMessage: (errorName: string | undefined) => string | null;
 }
 
+/**
+ * The ONE viem revert-extraction preamble: walk to the decoded
+ * `ContractFunctionRevertedError`, hand its errorName + args to the caller's
+ * message table, and fall through to the generic `toError` when the table
+ * has nothing to say. Shared by this factory and both registries' register/
+ * publish translators — the extraction can't drift between them.
+ */
+export function translateContractRevert(
+    err: unknown,
+    message: (errorName: string | undefined, args: readonly unknown[] | undefined) => string | null,
+): Error {
+    if (err instanceof BaseError) {
+        const revert = err.walk(
+            (e) => e instanceof ContractFunctionRevertedError,
+        ) as ContractFunctionRevertedError | undefined;
+        const translated = message(revert?.data?.errorName, revert?.data?.args);
+        if (translated) return new Error(translated);
+    }
+    return toError(err);
+}
+
+/**
+ * The shared `withdrawDeposit` revert table — the on-chain guards only
+ * (registeredBy-only, once-only, must-exist; the commits==resolves gate is
+ * off-chain/advisory via `useWithdrawGate`). The two registries' tables
+ * differed only by noun, so the noun is the parameter; the assembly keeps
+ * "composition" for the must-exist case because the binding's identity IS
+ * the composition.
+ */
+export function withdrawRevertMessage(noun: "clause" | "assembly") {
+    return (errorName: string | undefined): string | null => {
+        switch (errorName) {
+            case "AlreadyWithdrawn":
+                return `This ${noun}'s registration stake has already been reclaimed.`;
+            case "NotRegisteredBy":
+                return `Only the wallet that registered this ${noun} can reclaim its registration stake.`;
+            case "NotRegistered":
+                return noun === "assembly"
+                    ? "No registration binding exists for this composition."
+                    : "No registration binding exists for this clause.";
+            case "TransferFailed":
+                return "The stake refund transfer failed. No state changed — retry.";
+            default:
+                return null;
+        }
+    };
+}
+
 /** Build a `useWithdrawX()` hook bound to one registry's config. The
  *  returned function is itself the hook — call it unconditionally at a
  *  component's top level, same as any other hook. */
@@ -39,14 +87,7 @@ export function createUseWithdrawStake(config: WithdrawStakeConfig) {
     const { getRegistry, abi, notConfiguredMessage, revertMessage } = config;
 
     function translateRevert(err: unknown): Error {
-        if (err instanceof BaseError) {
-            const revert = err.walk(
-                (e) => e instanceof ContractFunctionRevertedError,
-            ) as ContractFunctionRevertedError | undefined;
-            const message = revertMessage(revert?.data?.errorName);
-            if (message) return new Error(message);
-        }
-        return toError(err);
+        return translateContractRevert(err, (errorName) => revertMessage(errorName));
     }
 
     return function useWithdrawStake() {

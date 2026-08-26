@@ -142,7 +142,8 @@ describe("createUniswapV3Quoter", () => {
         });
 
         expect(result?.amountOut).toBe(1_900_000n);
-        expect(result?.source).toBe("uniswap-v3-fee-500");
+        // The SDK ladder opens at the 100 (0.01%) tier.
+        expect(result?.source).toBe("uniswap-v3-fee-100");
         expect(simulate).toHaveBeenCalledTimes(1);
     });
 
@@ -162,7 +163,7 @@ describe("createUniswapV3Quoter", () => {
         });
 
         expect(result?.amountOut).toBe(1_500_000n);
-        expect(result?.source).toBe("uniswap-v3-fee-3000");
+        expect(result?.source).toBe("uniswap-v3-fee-500");
         expect(simulate).toHaveBeenCalledTimes(2);
     });
 
@@ -183,7 +184,7 @@ describe("createUniswapV3Quoter", () => {
         });
 
         expect(result?.amountOut).toBe(99n);
-        expect(result?.source).toBe("uniswap-v3-fee-10000");
+        expect(result?.source).toBe("uniswap-v3-fee-3000");
         expect(simulate).toHaveBeenCalledTimes(3);
     });
 
@@ -201,7 +202,7 @@ describe("createUniswapV3Quoter", () => {
         });
 
         expect(result).toBeNull();
-        expect(simulate).toHaveBeenCalledTimes(3);
+        expect(simulate).toHaveBeenCalledTimes(4);
     });
 
     it("respects custom feeTiers override", async () => {

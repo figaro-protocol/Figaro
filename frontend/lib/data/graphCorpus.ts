@@ -65,6 +65,7 @@ import { getAllAttestationRecords } from "@/lib/composition/indexer";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
 import { getSwapRouter } from "@/lib/composition/contracts";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
@@ -158,7 +159,7 @@ function attributionFromOverlays(overlays: readonly OverlayGraph[]): Map<string,
         if (!graph.spec?.fields.some((f) => f.name === "compositionHash")) continue;
         for (const entry of graph.entries) {
             const value = entry.decoded?.["compositionHash"];
-            if (typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value)) {
+            if (isBytes32Hex(value)) {
                 byProcess.set(entry.processId.toLowerCase(), value.toLowerCase());
             }
         }

@@ -4,10 +4,10 @@ import { MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { getMemberState } from '@/lib/protocol/membersRegistryIndexer';
 
 // ── Mock the event cache and contract addresses ───────────────────────────────
-// getMemberState calls getAllMemberRegistered + getAllMemberProfileUpdated
-// + getAllMemberWithdrawalRequested, which call cachedGetLogsMulti, which in turn calls
-// cachedGetLogs from eventCache. Mocking at that layer lets us inject fake
-// event logs while running the real reconstruction logic.
+// getMemberState fetches the three MembersRegistry streams through
+// cachedGetLogsMulti, which in turn calls cachedGetLogs from eventCache.
+// Mocking at that layer lets us inject fake event logs while running the real
+// SDK liveness fold (`reconstructDiscovery`).
 //
 // "Currently registered" = a Registered event newer than any Withdrawn event
 // for the same address. The current metadataURI is the most recent

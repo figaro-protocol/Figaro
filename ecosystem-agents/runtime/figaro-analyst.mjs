@@ -38,6 +38,7 @@
  */
 
 import * as http from "node:http";
+import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
 import {
     corpusStatus, dealStory, graphInventory, marketShapeAnswer, syncCorpus, walletRecordAnswer,
 } from "./analyst.mjs";
@@ -126,10 +127,10 @@ const ANALYST_SYSTEM_PROMPT = [
     "",
     "Rules you do not bend:",
     "- Every claim you make names its TRUTH BOUNDARY, verbatim from the tool result:",
-    "  protocol-enforced (economically backed by the kernel), institution-declared (the",
-    "  runtime encoded it, the protocol never validated it), protocol-derived (the anchoring",
-    "  is on chain, the content behind the fingerprint is off chain), composition-derived",
-    "  (read from a composed venue's own events). Never upgrade one boundary to another.",
+    // The gloss is the SDK's one home (`TRUTH_BOUNDARY_GLOSS`), interpolated
+    // rather than retyped, so this prompt and every reader say the same words.
+    ...Object.entries(TRUTH_BOUNDARY_GLOSS).map(([boundary, gloss]) => `    ${boundary}: ${gloss}`),
+    "  Never upgrade one boundary to another.",
     "- Absence is an answer. An empty result means this corpus does not hold that record —",
     "  it never means the trade did not happen. A process absent from the direct-path record",
     "  may be batch-settled, or outside the synced block range. Say which you mean.",

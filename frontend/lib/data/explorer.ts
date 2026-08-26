@@ -24,7 +24,14 @@
  */
 
 import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
-import { OrderState } from "@figaro-protocol/sdk";
+import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
+import { OrderState, type SettlementUniverse } from "@figaro-protocol/sdk";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
+import { filterRows, pick, queryParam } from "@/lib/shared/urlQuery";
+import { truncateHex } from "@/lib/shared/formatHex";
+
+export { filterRows };
 
 // ── The query IS the state ──────────────────────────────────────────────────
 
@@ -45,18 +52,13 @@ export interface DataExplorerQuery {
     q: string;
 }
 
-function pick<T extends readonly string[]>(values: T, raw: string | null | undefined, fallback: T[number]): T[number] {
-    return raw && (values as readonly string[]).includes(raw) ? (raw as T[number]) : fallback;
-}
-
 /** Parse the URL query into explorer state. Unknown values fall back to
  *  defaults; nothing throws on a hand-typed link. */
 export function parseDataExplorerQuery(params: URLSearchParams | Record<string, string | undefined>): DataExplorerQuery {
-    const get = (k: string) => (params instanceof URLSearchParams ? params.get(k) : params[k]) ?? "";
     return {
-        view: pick(GRAPH_VIEWS, get("view"), "market"),
-        wallet: get("wallet").trim(),
-        q: get("q").trim(),
+        view: pick(GRAPH_VIEWS, queryParam(params, "view"), "market"),
+        wallet: queryParam(params, "wallet").trim(),
+        q: queryParam(params, "q").trim(),
     };
 }
 
@@ -126,23 +128,10 @@ export function graphLayer(view: GraphView): GraphLayer {
     return GRAPH_LAYERS.find((l) => l.view === view) ?? GRAPH_LAYERS[0];
 }
 
-/** The plain-words gloss of a truth boundary — the doc's vocabulary, said
- *  once, so every layer heading and every analyst answer reads the same. */
-export const BOUNDARY_GLOSS: Record<TruthBoundary, string> = {
-    "protocol-enforced": "economically backed by the kernel",
-    "institution-declared": "the runtime encoded it; the protocol never validated it",
-    "protocol-derived": "anchored on chain, its content off chain",
-    "composition-derived": "read from a composed venue's own events",
-};
-
-// ── Free text ───────────────────────────────────────────────────────────────
-
-/** Case-insensitive substring match over a row's own haystack. */
-export function filterRows<T extends { text: string }>(rows: readonly T[], q: string): T[] {
-    if (!q) return [...rows];
-    const needle = q.toLowerCase();
-    return rows.filter((r) => r.text.toLowerCase().includes(needle));
-}
+/** The plain-words gloss of a truth boundary — the SDK's one home
+ *  (`TRUTH_BOUNDARY_GLOSS`), re-exported under the explorer's own name so
+ *  every layer heading and every analyst answer reads the same. */
+export const BOUNDARY_GLOSS: Record<TruthBoundary, string> = TRUTH_BOUNDARY_GLOSS;
 
 // ── Market shape ────────────────────────────────────────────────────────────
 
@@ -248,7 +237,7 @@ export interface OverlayRow {
     decodedCount: number;
     processCount: number;
     attesterCount: number;
-    universes: readonly ("direct" | "batch")[];
+    universes: readonly SettlementUniverse[];
     firstBlock: number | null;
     lastBlock: number | null;
     /** "decoded" — at least one entry's substance was recovered and decoded
@@ -257,11 +246,6 @@ export interface OverlayRow {
      *  or simply not served). Absence, never fabrication. */
     posture: "decoded" | "fingerprint-only";
     text: string;
-}
-
-/** Short form of a 32-byte key for a row that has no name to show. */
-function shortKey(key: string): string {
-    return key.length > 12 ? `${key.slice(0, 10)}…` : key;
 }
 
 /** Project extracted overlays into rows — one per clause family the corpus
@@ -277,7 +261,7 @@ export function overlayRows(graphs: readonly OverlayGraph[]): OverlayRow[] {
         return {
             clauseKey: g.clauseKey,
             clauseId,
-            title: g.spec?.title ?? shortKey(g.clauseKey),
+            title: g.spec?.title ?? truncateHex(g.clauseKey, { head: 10, tail: 0 }),
             specResolved: g.spec !== null,
             entryCount: g.entries.length,
             decodedCount,
@@ -430,7 +414,7 @@ export function walletRecordSummary(record: WalletRecord): WalletRecordSummary {
 export interface WalletOrderRow {
     orderHash: string;
     processId: string;
-    side: "buyer" | "seller";
+    side: PartyRole;
     counterparty: string;
     currency: string;
     payment: bigint;
@@ -445,7 +429,7 @@ export interface WalletOrderRow {
  *  what it says. */
 export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
     const rows: WalletOrderRow[] = [];
-    const push = (side: "buyer" | "seller", orders: WalletRecord["ordersAsBuyer"]) => {
+    const push = (side: PartyRole, orders: WalletRecord["ordersAsBuyer"]) => {
         for (const o of orders) {
             rows.push({
                 orderHash: o.orderHash,
@@ -470,7 +454,7 @@ export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
 
 /** The trail a deep-linked arrival sees. "Build" is the nav section the data
  *  layer lives under, and `/data` is the explainer this tool belongs to. */
-export function dataExplorerBreadcrumb(state: DataExplorerQuery): Array<{ label: string; href?: string }> {
+export function dataExplorerBreadcrumb(state: DataExplorerQuery): BreadcrumbItem[] {
     return [
         { label: "Build", href: "/spec" },
         { label: "Data", href: "/data" },

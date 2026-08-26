@@ -11,17 +11,17 @@
  * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { toError } from "@/lib/shared/errors";
 import { hexEqual, isValidAddress } from "@/lib/shared/evm";
-import { BaseError, ContractFunctionRevertedError } from "viem";
 import { parseAssemblyRegistryLogs } from "@figaro-protocol/sdk";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
-import { createUseWithdrawStake } from "@/lib/protocol/useWithdrawStake";
+import {
+    createUseWithdrawStake,
+    translateContractRevert,
+    withdrawRevertMessage,
+} from "@/lib/protocol/useWithdrawStake";
+import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import {
     deriveAssemblySlug,
     templateCompositionHash,
@@ -74,47 +74,23 @@ interface PublishedAssembly {
  *  reverted" message. Falls through to the original error for anything we
  *  don't recognize. */
 export function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
-    if (err instanceof BaseError) {
-        const revert = err.walk(
-            (e) => e instanceof ContractFunctionRevertedError,
-        ) as ContractFunctionRevertedError | undefined;
-        const name = revert?.data?.errorName;
-        if (name === "CompositionAlreadyRegistered") {
-            return new Error(
-                `This assembly is already published — an identical composition is anchored on-chain as "${attemptedSlug}". Identity is the composition, so the same composition always maps to one binding; adopt the existing one rather than re-publishing.`,
-            );
+    return translateContractRevert(err, (name, args) => {
+        switch (name) {
+            case "CompositionAlreadyRegistered":
+                return `This assembly is already published — an identical composition is anchored on-chain as "${attemptedSlug}". Identity is the composition, so the same composition always maps to one binding; adopt the existing one rather than re-publishing.`;
+            case "WrongDeposit": {
+                const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
+                const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
+                return `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`;
+            }
+            case "EmptyContentURI":
+                return "The IPFS pin returned an empty URI.";
+            case "ZeroCompositionHash":
+                return "Computed an empty composition hash — likely a assemblyTemplate-builder bug.";
+            default:
+                return null;
         }
-        if (name === "WrongDeposit") {
-            const args = revert?.data?.args as readonly bigint[] | undefined;
-            const provided = args?.[0]?.toString() ?? "?";
-            const required = args?.[1]?.toString() ?? "?";
-            return new Error(
-                `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`,
-            );
-        }
-        if (name === "EmptyContentURI") return new Error("The IPFS pin returned an empty URI.");
-        if (name === "ZeroCompositionHash") return new Error("Computed an empty composition hash — likely a assemblyTemplate-builder bug.");
-    }
-    return toError(err);
-}
-
-/** Map an `AssemblyRegistry.withdrawDeposit` revert's errorName to a
- *  human-readable message. The commits==resolves gate is off-chain/advisory
- *  (the chain carries no composition provenance), so these are the on-chain
- *  guards only: registeredBy-only, once-only, must-exist. */
-function assemblyWithdrawRevertMessage(errorName: string | undefined): string | null {
-    switch (errorName) {
-        case "AlreadyWithdrawn":
-            return "This assembly's registration stake has already been reclaimed.";
-        case "NotRegisteredBy":
-            return "Only the wallet that registered this assembly can reclaim its registration stake.";
-        case "NotRegistered":
-            return "No registration binding exists for this composition.";
-        case "TransferFailed":
-            return "The stake refund transfer failed. No state changed — retry.";
-        default:
-            return null;
-    }
+    });
 }
 
 /**
@@ -130,7 +106,7 @@ export const useWithdrawAssembly = createUseWithdrawStake({
     getRegistry: getAssemblyRegistry,
     abi: ASSEMBLY_REGISTRY_ABI,
     notConfiguredMessage: "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
-    revertMessage: assemblyWithdrawRevertMessage,
+    revertMessage: withdrawRevertMessage("assembly"),
 });
 
 /**
@@ -147,86 +123,43 @@ export const useWithdrawAssembly = createUseWithdrawStake({
  * flagged — a registering wallet must still see (and reason about) their own
  * withdrawn bindings.
  *
- * No caching, no auto-refresh. To pick up a newly published assembly
- * after mount, call `refetch`.
+ * The paired scan is the shared factory shape (`createRegistryEventScan`):
+ * both streams ride the event cache through the standalone `publicClient`
+ * (so the marketing tier, which mounts no wallet provider, renders it), and
+ * `failed` reports a read that THREW — distinct from resolved-empty. To pick
+ * up a newly published assembly after mount, call `refetch`.
  */
+const useAssemblyRegistryScan = createRegistryEventScan<PublishedAssembly>({
+    getRegistry: getAssemblyRegistry,
+    abi: ASSEMBLY_REGISTRY_ABI,
+    registeredEventName: "AssemblyRegistered",
+    withdrawnEventName: "DepositWithdrawn",
+    label: "usePublishedAssemblies",
+    toRows: (registeredLogs, withdrawnLogs, registeredBy) => {
+        // Decoding is the SDK's — one parse per family.
+        const withdrawn = new Set(
+            parseAssemblyRegistryLogs(withdrawnLogs).withdrawn
+                .map((w) => w.compositionHash.toLowerCase()),
+        );
+        const items: PublishedAssembly[] = parseAssemblyRegistryLogs(registeredLogs).registered.map((row) => ({
+            slug: deriveAssemblySlug(row.compositionHash),
+            registeredBy: row.registeredBy,
+            compositionHash: row.compositionHash,
+            contentURI: row.contentURI,
+            blockNumber: BigInt(row.blockNumber),
+            transactionHash: (row.transactionHash ?? "0x") as `0x${string}`,
+            stakeWithdrawn: withdrawn.has(row.compositionHash.toLowerCase()),
+        }));
+        items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
+        // Withdraw = de-surface: the network-wide read powers every
+        // surfacing path, so it drops withdrawn stakes; the registering
+        // wallet's own read keeps them, flagged.
+        return registeredBy ? items : items.filter((i) => !i.stakeWithdrawn);
+    },
+});
+
 export function usePublishedAssemblies(registeredBy: `0x${string}` | undefined) {
-    const [data, setData] = useState<PublishedAssembly[] | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [generation, setGeneration] = useState(0);
-
-    useEffect(() => {
-        const registry = getAssemblyRegistry();
-        if (!registry) {
-            setData([]);
-            return;
-        }
-        let cancelled = false;
-        setIsLoading(true);
-
-        // Reads through the standalone `publicClient` (not wagmi's
-        // `usePublicClient`) so the hook works on the marketing tier too,
-        // which mounts no wallet provider. App-tier callers see no
-        // behavioural change: the standalone client uses the same chain
-        // config wagmi's provider is built from.
-        // Both scans ride the event cache: from the deployment block,
-        // adaptively chunked (public gateways cap `eth_getLogs` ranges),
-        // cached across renders; the registeredBy narrowing is client-side over
-        // the one cached scan.
-        const chainId = publicClient.chain?.id ?? activeChain.id;
-        Promise.all([
-            cachedGetContractEvents(publicClient, chainId, {
-                address: registry,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                eventName: "AssemblyRegistered",
-            }),
-            cachedGetContractEvents(publicClient, chainId, {
-                address: registry,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                eventName: "DepositWithdrawn",
-            }),
-        ])
-            .then(([allLogs, withdrawnLogsRaw]) => {
-                if (cancelled) return;
-                const logs = (registeredBy
-                    ? allLogs.filter((l) => hexEqual(String((l as { args?: { registeredBy?: string } }).args?.registeredBy ?? ""), registeredBy))
-                    : allLogs) as Parameters<typeof parseAssemblyRegistryLogs>[0];
-                const withdrawnLogs = withdrawnLogsRaw as Parameters<typeof parseAssemblyRegistryLogs>[0];
-                // Decoding is the SDK's — one parse per family.
-                const withdrawn = new Set(
-                    parseAssemblyRegistryLogs(withdrawnLogs).withdrawn
-                        .map((w) => w.compositionHash.toLowerCase()),
-                );
-                const items: PublishedAssembly[] = parseAssemblyRegistryLogs(logs).registered.map((row) => ({
-                    slug: deriveAssemblySlug(row.compositionHash),
-                    registeredBy: row.registeredBy,
-                    compositionHash: row.compositionHash,
-                    contentURI: row.contentURI,
-                    blockNumber: BigInt(row.blockNumber),
-                    transactionHash: (row.transactionHash ?? "0x") as `0x${string}`,
-                    stakeWithdrawn: withdrawn.has(row.compositionHash.toLowerCase()),
-                }));
-                items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
-                // Withdraw = de-surface: the network-wide read powers every
-                // surfacing path, so it drops withdrawn stakes; the registering wallet's
-                // own read keeps them, flagged.
-                setData(registeredBy ? items : items.filter((i) => !i.stakeWithdrawn));
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                console.warn("[usePublishedAssemblies] event read failed:", err);
-                setData([]);
-                setIsLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [registeredBy, generation]);
-
-    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
-    return { data, isLoading, refetch };
+    return useAssemblyRegistryScan({ registeredBy });
 }
 
 /**

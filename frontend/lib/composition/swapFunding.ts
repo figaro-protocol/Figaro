@@ -21,6 +21,7 @@
 import { parseAbi, type PublicClient } from "viem";
 import {
     buildSwapWitnessTypedData,
+    generateSalt,
     type Hex,
     type SwapFundingLeg,
 } from "@figaro-protocol/sdk";
@@ -30,7 +31,6 @@ import {
     getWitnessSwapAndCommitCoordinator,
 } from "@/lib/composition/contracts";
 import { capWithSlippage, detectSwapVenue } from "@/lib/composition/swapVenue";
-import { bytesToHex } from "@/lib/shared/evm";
 
 const ERC20_DECIMALS_ABI = parseAbi(["function decimals() view returns (uint8)"]);
 
@@ -82,13 +82,6 @@ export function inputForOutput(amountOut: bigint, rate: VenueRate): bigint {
     return (amountOut * rate.den + rate.num - 1n) / rate.num;
 }
 
-
-/** A never-used unordered Permit2 nonce: 256 bits of client randomness. */
-function randomPermitNonce(): bigint {
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    return BigInt(`0x${bytesToHex(bytes)}`);
-}
 
 export interface QuoteFundingLegArgs {
     publicClient: PublicClient;
@@ -148,7 +141,9 @@ export async function quoteFundingLeg(
         currency: args.currency,
         router: contracts.router,
         maxInput,
-        nonce: randomPermitNonce(),
+        // A never-used unordered Permit2 nonce: 256 bits of client
+        // randomness — the SDK's salt generator, which is the same draw.
+        nonce: generateSalt(),
         deadline: args.deadline,
         chainId: args.chainId,
         permit2: contracts.permit2,

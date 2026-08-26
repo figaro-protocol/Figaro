@@ -65,7 +65,7 @@ export function RegistryExplorer() {
     // ── The three registries, each through its own walletless reader ──
     const { data: clauseEvents, failed: clausesFailed } = useAllRegisteredClauses();
     const { version: specVersion } = useClauseSpecs();
-    const { data: assemblies } = useAssemblyChoices();
+    const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices();
     const { data: members, failed: membersFailed } = useRegisteredMembers();
 
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
@@ -110,7 +110,8 @@ export function RegistryExplorer() {
     const articles = useMemo(() => facetValues(rows, "clauses", "article"), [rows]);
     const familyLoading = state.family === "clauses" ? clauseEvents === null
         : state.family === "assemblies" ? assemblies === null : members === null;
-    const familyFailed = state.family === "clauses" ? clausesFailed : state.family === "members" ? membersFailed : false;
+    const familyFailed = state.family === "clauses" ? clausesFailed
+        : state.family === "members" ? membersFailed : assembliesFailed;
     const familyTotal = rows.filter((r) => r.family === state.family && !r.stakeWithdrawn).length;
 
     return (

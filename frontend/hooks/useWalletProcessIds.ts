@@ -5,73 +5,33 @@
  * has participated in (as buyer or seller).
  *
  * Live kernel: orders are Active at commit time (no Pending state).
- * Only two events: OrderCommitted and OrderResolved.
+ * Only two events: OrderCommitted and OrderResolved. The fold is the SDK's
+ * (`projectProcessGraph` + `walletRecord` — the same one `/data/explore`
+ * answers wallet history with); this hook keeps only its own view mapping,
+ * the per-process rollup `summarise` builds.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import type { WatchContractEventOnLogsParameter } from "viem";
-import { calculateBonds } from "@figaro-protocol/sdk";
+import {
+    parseOrderCommittedLogs,
+    parseOrderResolvedLogs,
+    type Address,
+    type CoreEvents,
+} from "@figaro-protocol/sdk";
+import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
-import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
-import { hexEqual } from "@/lib/shared/evm";
+import { Order, OrderState, orderFromSdk, useOrderStore } from "@/lib/kernel/store";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
 } from "@/lib/kernel/indexer";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 
-type IndexedOrderLog = Awaited<ReturnType<typeof getAllOrderCommitted>>[number];
-
-function getLogArgs(log: IndexedOrderLog): Record<string, unknown> {
-    return log.args ?? {};
-}
-
-function getStringArg(log: IndexedOrderLog, key: string): string {
-    const value = getLogArgs(log)[key];
-    return typeof value === "string" ? value : "";
-}
-
-function getBigIntArg(log: IndexedOrderLog, key: string): bigint {
-    const value = getLogArgs(log)[key];
-    if (typeof value === "bigint") return value;
-    if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
-        return BigInt(value);
-    }
-    return 0n;
-}
-
-function toOrder(log: IndexedOrderLog): Order {
-    const bn = typeof log.blockNumber === "bigint" ? Number(log.blockNumber) : 0;
-    const payment = getBigIntArg(log, "payment");
-    const cumulativeValue = getBigIntArg(log, "cumulativeValue");
-    // Destructured, NOT spread — calculateBonds also returns totalLocked, which
-    // must not ride along as an extra bigint field on the Order.
-    const { sellerBond, buyerBond } = calculateBonds(cumulativeValue, payment);
-    return {
-        orderHash: getStringArg(log, "orderHash"),
-        processId: getStringArg(log, "processId"),
-        buyer: getStringArg(log, "buyer"),
-        seller: getStringArg(log, "seller"),
-        currency: getStringArg(log, "currency"),
-        agreementHash: getStringArg(log, "agreementHash"),
-        payment,
-        cumulativeValue,
-        state: OrderState.Active,
-        // The event does NOT emit bond fields — derive them from the emitted
-        // values via the SDK's kernel math (never read args that don't exist,
-        // never re-implement the 2x rule).
-        sellerBond,
-        buyerBond,
-        salt: getBigIntArg(log, "salt"),
-        deadline: getBigIntArg(log, "deadline"),
-        // OrderCommitted emits NO timestamp — block NUMBER is the ordering
-        // key. (A `timestamp` field once shadowed it here and rendered
-        // Jan-1970 dates downstream; chain time, when a surface needs it,
-        // comes from getBlock(blockNumber).timestamp in SECONDS.)
-        blockNumber: bn,
-    };
-}
+/** The raw-log shape the SDK parsers take — cached rows and watcher logs both
+ *  carry data/topics, so the one decoder runs over either. */
+type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 
 function summarise(orders: Order[]): ProcessSummary[] {
     const map = new Map<string, Order[]>();
@@ -94,43 +54,28 @@ function summarise(orders: Order[]): ProcessSummary[] {
     return summaries.sort((a, b) => b.createdAt - a.createdAt);
 }
 
-function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): ProcessSummary[] {
-    let found = false;
-    const next = prev.map((summary) => {
-        if (summary.processId !== order.processId) return summary;
-        found = true;
-        if (summary.orders.some((stub) => stub.id === order.orderHash)) return summary;
-
-        const orders = [...summary.orders, { id: order.orderHash, state: order.state }]
-            .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-
-        return {
-            ...summary,
-            orderCount: orders.length,
-            hasActive: summary.hasActive || order.state === OrderState.Active,
-            createdAt: Math.min(summary.createdAt, order.blockNumber ?? summary.createdAt),
-            orders,
-        };
-    });
-
-    if (!found) {
-        next.push({
-            processId: order.processId,
-            orderCount: 1,
-            hasActive: order.state === OrderState.Active,
-            createdAt: order.blockNumber ?? Date.now(),
-            orders: [{ id: order.orderHash, state: order.state }],
-        });
-    }
-
-    return next.sort((a, b) => b.createdAt - a.createdAt);
-}
-
 export function useWalletProcessIds(address: string | undefined): ProcessSummary[] {
     const [summaries, setSummaries] = useState<ProcessSummary[]>([]);
     const publicClient = usePublicClient();
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
+    // The parsed event corpus the SDK fold runs over — history replaces it,
+    // live watcher batches append to it (the fold dedupes by orderHash, so an
+    // overlapping batch is idempotent).
+    const eventsRef = useRef<CoreEvents>({ orderCommitted: [], orderResolved: [], processResolved: [] });
+
+    const rebuild = useCallback((wallet: string) => {
+        const graph = projectProcessGraph(eventsRef.current);
+        const record = walletRecord(graph, wallet as Address);
+        const seen = new Set<string>();
+        const combined: Order[] = [];
+        for (const o of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
+            if (seen.has(o.orderHash)) continue;
+            seen.add(o.orderHash);
+            combined.push(orderFromSdk(o));
+        }
+        setSummaries(summarise(combined));
+    }, []);
 
     useEffect(() => {
         if (!address || !publicClient || !contractAddr) return;
@@ -141,48 +86,17 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
 
         async function load() {
             try {
-                const allCommitted = await getAllOrderCommitted(client, chainId);
+                const [committed, resolved] = await Promise.all([
+                    getAllOrderCommitted(client, chainId),
+                    getAllOrderResolved(client, chainId),
+                ]);
                 if (cancelled) return;
-
-                const buyerOrders: Order[] = allCommitted
-                    .filter((log) => hexEqual(getStringArg(log, "buyer"), address))
-                    .map(toOrder);
-                const sellerOrders: Order[] = allCommitted
-                    .filter((log) => hexEqual(getStringArg(log, "seller"), address))
-                    .map(toOrder);
-
-                const seen = new Set<string>();
-                const combined: Order[] = [];
-                for (const o of [...buyerOrders, ...sellerOrders]) {
-                    if (!seen.has(o.orderHash)) {
-                        seen.add(o.orderHash);
-                        combined.push(o);
-                    }
-                }
-
-                if (combined.length === 0) { setSummaries([]); return; }
-
-                const processIds = [...new Set(combined.map((o) => o.processId))];
-                const pidSet = new Set(processIds);
-
-                const allResolved = await getAllOrderResolved(client, chainId);
-                if (cancelled) return;
-
-                const stateMap = new Map<string, OrderState>();
-                for (const log of allResolved) {
-                    const processId = getStringArg(log, "processId");
-                    const orderHash = getStringArg(log, "orderHash");
-                    if (processId && orderHash && pidSet.has(processId)) {
-                        stateMap.set(orderHash, OrderState.Resolved);
-                    }
-                }
-
-                const withState = combined.map((o) => {
-                    const s = stateMap.get(o.orderHash);
-                    return s !== undefined ? { ...o, state: s } : o;
-                });
-
-                setSummaries(summarise(withState));
+                eventsRef.current = {
+                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
+                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
+                    processResolved: [],
+                };
+                rebuild(address!);
             } catch (e) {
                 console.warn("[useWalletProcessIds] indexer error:", e);
             }
@@ -190,7 +104,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
 
         void load();
         return () => { cancelled = true; };
-    }, [address, publicClient, contractAddr, processReloadKey]);
+    }, [address, publicClient, contractAddr, processReloadKey, rebuild]);
 
     const realEnabled = !!contractAddr;
     const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
@@ -202,14 +116,10 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
     const onCommittedLogs = useCallback(
         (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderCommitted">) => {
             if (!normalizedAddress) return;
-            logs.forEach((l) => {
-                const buyer = ((l.args.buyer as string) ?? "").toLowerCase();
-                const seller = ((l.args.seller as string) ?? "").toLowerCase();
-                if (buyer !== normalizedAddress && seller !== normalizedAddress) return;
-                setSummaries((prev) => insertOrderIntoSummaries(prev, toOrder(l)));
-            });
+            eventsRef.current.orderCommitted.push(...parseOrderCommittedLogs(logs as unknown as SdkLogs));
+            rebuild(normalizedAddress);
         },
-        [normalizedAddress],
+        [normalizedAddress, rebuild],
     );
     useWatchContractEvent({
         address: realAddr,
@@ -219,28 +129,13 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
         enabled: realEnabled && !!normalizedAddress,
     });
 
-    const applyStateChange = useCallback(
-        (orderHash: string, newState: OrderState) => {
-            setSummaries((prev) =>
-                prev.map((s) => {
-                    const updatedOrders = s.orders.map((o) =>
-                        o.id === orderHash ? { ...o, state: newState } : o
-                    );
-                    return {
-                        ...s,
-                        orders: updatedOrders,
-                        hasActive: updatedOrders.some((o) => o.state === OrderState.Active),
-                    };
-                })
-            );
-        },
-        []
-    );
-
     const onResolvedLogs = useCallback(
-        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderResolved">) =>
-            logs.forEach((l) => applyStateChange(l.args.orderHash as string, OrderState.Resolved)),
-        [applyStateChange],
+        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderResolved">) => {
+            if (!normalizedAddress) return;
+            eventsRef.current.orderResolved.push(...parseOrderResolvedLogs(logs as unknown as SdkLogs));
+            rebuild(normalizedAddress);
+        },
+        [normalizedAddress, rebuild],
     );
     useWatchContractEvent({
         address: realAddr,

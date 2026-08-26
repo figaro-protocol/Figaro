@@ -1,9 +1,9 @@
-import { isAddress, getAddress, type Address, type Hex } from "viem";
+import { isAddress, getAddress, type Address } from "viem";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
-export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
-// The kernel's root-commitment sentinel — single home is the SDK.
-export { ZERO_PROCESS_ID } from "@figaro-protocol/sdk";
+// The bytes32 sentinels and the 32-byte shape predicate — single home is the
+// SDK; re-exported here so frontend call sites keep one import path.
+export { ZERO_BYTES32, ZERO_PROCESS_ID, isBytes32Hex } from "@figaro-protocol/sdk";
 
 /**
  * Case-insensitive equality for any 0x-hex value: addresses (which
@@ -48,16 +48,6 @@ export function isEmptyHex<T extends string>(
  */
 export function isValidAddress(addr: string): addr is `0x${string}` {
     return isAddress(addr, { strict: false });
-}
-
-/**
- * True iff `hex` is a 0x-prefixed 32-byte hex string — the shape shared by a
- * `contentRef`/`compositionHash` fingerprint, a process ID, or any other
- * keccak-sized digest. Format-only, like `isValidAddress`'s 20-byte sibling;
- * returns a type predicate so callers can narrow to the typed hex form.
- */
-export function isBytes32Hex(hex: string): hex is `0x${string}` {
-    return /^0x[0-9a-fA-F]{64}$/.test(hex);
 }
 
 export type AddressIntegrity =

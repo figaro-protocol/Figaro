@@ -40,20 +40,17 @@
 
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { safeJsonFromResponse, safeJsonParse } from "@/lib/shared/safeJson";
-import { readUserEndpoints } from "@/lib/shared/userEndpoints";
+import { readUserEndpoints, sanitizeEndpointUrl } from "@/lib/shared/userEndpoints";
 
 /** The analyst this deployment points at by default. No fallback value — see
  *  the posture above. */
 const ANALYST_URL = process.env.NEXT_PUBLIC_ANALYST_URL || "";
 
-/** Mirrors `userEndpoints.sanitize`: an endpoint is an http(s) base URL, and
- *  anything else is refused outright rather than handed to `fetch`. */
+/** `userEndpoints.sanitizeEndpointUrl` with this resolver's null-not-undefined
+ *  contract: an endpoint is an http(s) base URL, and anything else is refused
+ *  outright rather than handed to `fetch`. */
 function resolveAnalystEndpoint(raw: string | undefined): string | null {
-    if (typeof raw !== "string") return null;
-    const trimmed = raw.trim();
-    if (!trimmed) return null;
-    if (!/^https?:\/\//.test(trimmed)) return null;
-    return trimmed.replace(/\/$/, "");
+    return sanitizeEndpointUrl(raw) ?? null;
 }
 
 /**

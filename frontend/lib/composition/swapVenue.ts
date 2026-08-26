@@ -22,7 +22,7 @@
  * never a clause.
  */
 import { encodeFunctionData, decodeFunctionResult, parseAbi, type PublicClient } from "viem";
-import { SWAP_ROUTER_02_ABI, QUOTER_V2_ABI, type Hex } from "@figaro-protocol/sdk";
+import { SWAP_ROUTER_02_ABI, QUOTER_V2_ABI, UNISWAP_V3_FEE_TIERS, type Hex } from "@figaro-protocol/sdk";
 import { getSwapQuoter } from "@/lib/composition/contracts";
 
 type SwapVenueKind = "devnet-mock" | "uniswap-v3";
@@ -89,9 +89,9 @@ function mockVenue(publicClient: PublicClient, router: Hex): SwapVenue {
 
 // ── Uniswap v3 venue: SwapRouter02 + QuoterV2 (SDK canonical ABIs) ──────────
 
-/** Uniswap v3's fee tiers; the venue quotes every one and takes the cheapest
- *  input — the pool set is a fact of the chain, read per quote. */
-const UNISWAP_V3_FEE_TIERS: readonly number[] = [100, 500, 3000, 10000];
+// The venue quotes every tier in the SDK's shared `UNISWAP_V3_FEE_TIERS`
+// ladder and takes the cheapest input — the pool set is a fact of the chain,
+// read per quote.
 /** Live-pool headroom between quote and execution. */
 const UNISWAP_SLIPPAGE_BPS = 100;
 

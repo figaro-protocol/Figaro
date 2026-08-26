@@ -42,7 +42,10 @@ export interface UserEndpointOverrides {
     analystUrl?: string;
 }
 
-function sanitize(value: unknown): string | undefined {
+/** An endpoint is an http(s) base URL — anything else is refused outright
+ *  rather than handed to `fetch`. The one sanitizer every endpoint resolver
+ *  shares (relay, analyst, and the overrides below). */
+export function sanitizeEndpointUrl(value: unknown): string | undefined {
     if (typeof value !== "string") return undefined;
     const trimmed = value.trim();
     if (!trimmed) return undefined;
@@ -54,22 +57,22 @@ function sanitize(value: unknown): string | undefined {
 export function readUserEndpoints(): UserEndpointOverrides {
     const raw = readJsonStorage<UserEndpointOverrides>(STORAGE_KEY, {});
     return {
-        rpcUrl: sanitize(raw.rpcUrl),
-        ipfsApiUrl: sanitize(raw.ipfsApiUrl),
-        ipfsGatewayUrl: sanitize(raw.ipfsGatewayUrl),
-        geocodeUrl: sanitize(raw.geocodeUrl),
-        batchRelayUrl: sanitize(raw.batchRelayUrl),
-        analystUrl: sanitize(raw.analystUrl),
+        rpcUrl: sanitizeEndpointUrl(raw.rpcUrl),
+        ipfsApiUrl: sanitizeEndpointUrl(raw.ipfsApiUrl),
+        ipfsGatewayUrl: sanitizeEndpointUrl(raw.ipfsGatewayUrl),
+        geocodeUrl: sanitizeEndpointUrl(raw.geocodeUrl),
+        batchRelayUrl: sanitizeEndpointUrl(raw.batchRelayUrl),
+        analystUrl: sanitizeEndpointUrl(raw.analystUrl),
     };
 }
 
 export function writeUserEndpoints(next: UserEndpointOverrides): void {
     writeJsonStorage(STORAGE_KEY, {
-        rpcUrl: sanitize(next.rpcUrl),
-        ipfsApiUrl: sanitize(next.ipfsApiUrl),
-        ipfsGatewayUrl: sanitize(next.ipfsGatewayUrl),
-        geocodeUrl: sanitize(next.geocodeUrl),
-        batchRelayUrl: sanitize(next.batchRelayUrl),
-        analystUrl: sanitize(next.analystUrl),
+        rpcUrl: sanitizeEndpointUrl(next.rpcUrl),
+        ipfsApiUrl: sanitizeEndpointUrl(next.ipfsApiUrl),
+        ipfsGatewayUrl: sanitizeEndpointUrl(next.ipfsGatewayUrl),
+        geocodeUrl: sanitizeEndpointUrl(next.geocodeUrl),
+        batchRelayUrl: sanitizeEndpointUrl(next.batchRelayUrl),
+        analystUrl: sanitizeEndpointUrl(next.analystUrl),
     });
 }

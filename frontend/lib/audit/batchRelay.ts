@@ -90,10 +90,10 @@ import type { PublicClient, Hex } from "viem";
 import { getBatchVerifier } from "@/lib/composition/contracts";
 import { getAllBatchSettled } from "@/lib/composition/indexer";
 import { getStringArg } from "@/lib/kernel/indexer";
-import { readUserEndpoints } from "@/lib/shared/userEndpoints";
+import { readUserEndpoints, sanitizeEndpointUrl } from "@/lib/shared/userEndpoints";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { Order } from "@/lib/kernel/store";
+import { orderFromSdk, type Order } from "@/lib/kernel/store";
 
 // ── Relay endpoint — deployment config, resolved-empty means ABSENCE ─────────
 
@@ -107,14 +107,11 @@ import type { Order } from "@/lib/kernel/store";
  */
 const BATCH_RELAY_URL = process.env.NEXT_PUBLIC_BATCH_RELAY_URL || "";
 
-/** Mirrors `userEndpoints.sanitize`: an endpoint is an http(s) base URL, and
- *  anything else is refused outright rather than handed to `fetch`. */
+/** `userEndpoints.sanitizeEndpointUrl` with this resolver's null-not-undefined
+ *  contract: an endpoint is an http(s) base URL, and anything else is refused
+ *  outright rather than handed to `fetch`. */
 function resolveRelayUrl(raw: string | undefined): string | null {
-    if (typeof raw !== "string") return null;
-    const trimmed = raw.trim();
-    if (!trimmed) return null;
-    if (!/^https?:\/\//.test(trimmed)) return null;
-    return trimmed.replace(/\/$/, "");
+    return sanitizeEndpointUrl(raw) ?? null;
 }
 
 /**
@@ -399,11 +396,14 @@ function finish(
 /**
  * Project a verified commitment into the `Order` shape every other `/audit`
  * surface already consumes, so the financial statements, the audit bundle and
- * the clause evidence need no batch-specific branch.
+ * the clause evidence need no batch-specific branch. The field mapping and
+ * bond math are the shared projection (`orderFromSdk`); only the
+ * batch-universe facts are this function's own.
  *
  * `blockNumber` is deliberately absent: a batch record carries a block
- * TIMESTAMP, not a number, and inventing one would fabricate chain state. The
- * batch reference is carried alongside instead.
+ * TIMESTAMP, not a number, and inventing one would fabricate chain state
+ * (the placeholder fed to the shared mapping is stripped, never exposed).
+ * The batch reference is carried alongside instead.
  */
 function toOrder(
     orderHash: string,
@@ -412,10 +412,9 @@ function toOrder(
     resolved: boolean,
     batch: SequencerBatchRef,
 ): Order {
-    const bonds = calculateBonds(c.expectedCumulativeValue, c.payment);
-    return {
-        orderHash,
-        processId,
+    const { blockNumber: _stripped, ...order } = orderFromSdk({
+        orderHash: orderHash as Hex,
+        processId: processId as Hex,
         buyer: c.buyer,
         seller: c.seller,
         currency: c.currency,
@@ -423,10 +422,12 @@ function toOrder(
         cumulativeValue: c.expectedCumulativeValue,
         payment: c.payment,
         state: resolved ? OrderState.Resolved : OrderState.Active,
-        sellerBond: bonds.sellerBond,
-        buyerBond: bonds.buyerBond,
         salt: c.salt,
         deadline: c.deadline,
+        blockNumber: 0,
+    });
+    return {
+        ...order,
         resolvedAt: resolved ? batch.block_timestamp : undefined,
     };
 }

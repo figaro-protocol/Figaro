@@ -25,6 +25,7 @@ import {
     BATCH_VERIFIER_ABI,
     EV_ATTESTATION,
     parseAttestationLogs,
+    tagAttestationUniverses,
     type UniverseAttestationEvent,
 } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator, getBatchVerifier } from "@/lib/composition/contracts";
@@ -154,11 +155,9 @@ export async function getAllAttestationRecords(
         getAllAttestations(client, chainId),
         getAllBatchAttestations(client, chainId),
     ]);
-    const out: UniverseAttestationEvent[] = [];
-    for (const [logs, universe] of [[direct, "direct"], [batch, "batch"]] as const) {
-        for (const ev of parseAttestationLogs(logs as unknown as Log[])) out.push({ ...ev, universe });
-    }
-    return out.sort((a, b) => a.blockNumber - b.blockNumber);
+    // The pure fold is the SDK's — tag each address-filtered stream and merge
+    // in (blockNumber) order.
+    return tagAttestationUniverses(direct as unknown as Log[], batch as unknown as Log[]);
 }
 
 /** A process attestation flattened to the fields the runtime model needs:

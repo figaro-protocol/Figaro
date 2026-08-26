@@ -21,13 +21,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWatchContractEvent } from "wagmi";
 import {
+    OrderState,
+    parseOrderCommittedLogs,
+    parseOrderResolvedLogs,
+    type Address,
+    type Order,
+} from "@figaro-protocol/sdk";
+import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
+import {
     getAllOrderCommitted,
     getAllOrderResolved,
-    getOrderCommittedByBuyer,
-    getOrderCommittedBySeller,
 } from "@/lib/kernel/indexer";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
-import type { OrderState } from "@/lib/kernel/store";
 
 /** The two roles in a Figaro order commitment. */
 export type PartyRole = "buyer" | "seller";
@@ -58,19 +63,9 @@ export interface ProcessRow {
     isResolved: boolean;
 }
 
-type CommittedLog = Awaited<ReturnType<typeof getAllOrderCommitted>>[number];
-
-function arg(log: CommittedLog, key: string): string {
-    const value = (log.args ?? {} as Record<string, unknown>)[key];
-    return typeof value === "string" ? value : "";
-}
-
-function bigintArg(log: CommittedLog, key: string): bigint {
-    const value = (log.args ?? {} as Record<string, unknown>)[key];
-    if (typeof value === "bigint") return value;
-    if (typeof value === "number" || typeof value === "string") return BigInt(value);
-    return 0n;
-}
+/** The raw-log shape the SDK parsers take — cached rows carry data/topics, so
+ *  the one decoder runs over them directly. */
+type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 
 /**
  * Reads the connected wallet's commitments filtered by role. For
@@ -99,47 +94,48 @@ export function useWalletProcessRows(role: PartyRole): {
 
         (async () => {
             try {
-                const fetcher = role === "buyer"
-                    ? getOrderCommittedByBuyer
-                    : getOrderCommittedBySeller;
-                const allRoleLogs = await fetcher(publicClient, chainId, address);
+                // The SDK fold — the same one `/data/explore` answers wallet
+                // history with — fed from the cached logs; only the row
+                // mapping below is this hook's own.
+                const [committed, resolved] = await Promise.all([
+                    getAllOrderCommitted(publicClient, chainId),
+                    getAllOrderResolved(publicClient, chainId),
+                ]);
                 if (cancelled) return;
+                const graph = projectProcessGraph({
+                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
+                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
+                    processResolved: [],
+                });
+                const record = walletRecord(graph, address as Address);
+
+                const toRow = (order: Order, counterpartyOf: (o: Order) => string): ProcessRow => ({
+                    processId: order.processId,
+                    rootOrderHash: order.orderHash,
+                    counterparty: counterpartyOf(order),
+                    payment: order.payment,
+                    currency: order.currency,
+                    blockNumber: order.blockNumber,
+                    isResolved: order.state === OrderState.Resolved,
+                });
 
                 // BUYER rows dedupe to the root commit — the buyer is buyer
-                // on every order in its process (kernel star shape), so
-                // without this filter each sub-order would add a duplicate
-                // row for the same process. Root detection: cumulativeValue
-                // == payment iff this is the root commit (FigaroCore.sol:177;
-                // every sub-order accumulates parent + payment > payment).
+                // on every order in its process (kernel star shape), so the
+                // fold's per-root-buyer processes give one row each. Root
+                // detection within the process: cumulativeValue == payment
+                // iff this is the root commit (FigaroCore.sol:177; every
+                // sub-order accumulates parent + payment > payment).
                 // SELLER rows are per-order: a seller holds only its own
                 // order(s), and a sub-order seller in someone else's process
                 // must still see what it is fulfilling — no root filter.
-                const roleLogs = role === "buyer"
-                    ? allRoleLogs.filter(
-                        (log) => bigintArg(log, "cumulativeValue") === bigintArg(log, "payment"),
-                    )
-                    : allRoleLogs;
-                if (roleLogs.length === 0) {
-                    if (!cancelled) setRows([]);
-                    return;
-                }
-
-                // Resolved-state map covers each order we care about.
-                const allResolved = await getAllOrderResolved(publicClient, chainId);
-                if (cancelled) return;
-                const resolvedSet = new Set(
-                    allResolved.map((log) => arg(log, "orderHash")).filter(Boolean),
-                );
-
-                const built: ProcessRow[] = roleLogs.map((log) => ({
-                    processId: arg(log, "processId"),
-                    rootOrderHash: arg(log, "orderHash"),
-                    counterparty: arg(log, role === "buyer" ? "seller" : "buyer"),
-                    payment: bigintArg(log, "payment"),
-                    currency: arg(log, "currency"),
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    isResolved: resolvedSet.has(arg(log, "orderHash")),
-                }));
+                const built: ProcessRow[] = role === "buyer"
+                    ? record.processesAsRootBuyer.flatMap((process) => {
+                        const root = [...process.orders.values()].find(
+                            (o) => o.cumulativeValue === o.payment,
+                        );
+                        return root ? [toRow(root, (o) => o.seller)] : [];
+                    })
+                    : record.ordersAsSeller.map((o) => toRow(o, (order) => order.buyer));
                 built.sort((a, b) => b.blockNumber - a.blockNumber);
                 if (!cancelled) setRows(built);
             } catch (cause) {

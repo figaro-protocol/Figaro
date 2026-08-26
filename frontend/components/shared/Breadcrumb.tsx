@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/shared/utils";
 
-interface BreadcrumbItem {
+export interface BreadcrumbItem {
     /** Crumb text. */
     label: string;
     /** Omit on the current (usually last) crumb — it renders as plain text,
