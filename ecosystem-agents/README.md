@@ -34,7 +34,7 @@ the whole model first.
 > until real-stakes operation has soaked, keep keys sized to what you can
 > afford to lose and leave `figaro-operator`'s human-in-the-loop default on.
 
-## The three capacities
+## The four capacities
 
 - **`figaro-operator`** — *operate* a buyer/seller wallet: sign every transaction on the
   owner's behalf (accept an order, resolve a process, originate a chain, attest), using
@@ -45,8 +45,12 @@ the whole model first.
 - **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one: an
   `AssemblyTemplate` → IPFS → a permissionless `AssemblyRegistry` registration under the
   user's wallet.
+- **`figaro-analyst`** — *read and analyze* a market's public graphs (`@figaro-protocol/sdk/derive`):
+  it holds no key and signs nothing; substance it was not given it BUYS as an ordinary
+  data-market buyer, through the operator; and it sells **analyses**, never the data it
+  bought.
 
-All three are **prompts** (frontmatter + body). They drive `@figaro-protocol/sdk` (the SDK), act for
+All four are **prompts** (frontmatter + body). They drive `@figaro-protocol/sdk` (the SDK), act for
 a user's key, and never touch this repo. Authored clauses and assemblies belong to the user (RPGF rewards
 them); forks are first-class.
 
@@ -58,7 +62,7 @@ explicitly designed for it — these three are those exceptions.
 | World | Home | For | Touches the repo? |
 |---|---|---|---|
 | **Maintainer-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the maintainer only** | yes (that's their job) |
-| **Public ecosystem** — operate / author / fork (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-designer`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
+| **Public ecosystem** — operate / author / fork / analyze (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-designer`, `figaro-analyst`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
 A public ecosystem agent that writes a repo file has crossed the line: it re-imposes the
 permission barrier (repo access + a merge) the open world exists to remove.

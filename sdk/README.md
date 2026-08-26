@@ -336,7 +336,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `DISABLED_SWAP_FUNDING_LEG` | root | The inert swap-funding leg — pass it for the party that is not swapping. |
 | `encodeContentFromSpec` | `/clauses` | JSON clause content to canonical ABI bytes — one generic encoder, no per-clause path. |
 | `executeAction` | `/agent` | The single dispatch point for any `ProposedAction`; restores each root's signed `processId` for you. |
+| `extractOverlays` | `/derive` | Group attestations into one overlay graph per clause family PRESENT — the open graph class. |
 | `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
+| `fetchAttestationRecords` | root | Attestations from BOTH settlement universes, address-filtered and tagged per row. |
 | `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the RPGF mirror. |
 | `fetchCoreEvents` | root | Every `FigaroCore` event in a block range, grouped and typed; chunks `getLogs` internally. |
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
@@ -361,6 +363,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `makeSellerOfferHandler` | `/agent` | SELLER LOOP: validate, apply both refusal floors, approve the bond, counter-sign. |
 | `makeSellerQuoteHandler` | `/agent` | Mountable seller responder for the RFQ quote leg. |
 | `makeSellerRaceHandler` | `/agent` | Mountable candidate responder for the dispatch-race leg. |
+| `marketShape` | `/derive` | Per-assembly aggregates over the process graph; attribution is caller-supplied, never guessed. |
 | `maxOrdersResolvablePerProcess` | root | The largest N whose `resolveProcess` fits the active chain's block gas budget. |
 | `offerFromA2aMessage` | `/agent` | Read a commitment payload back out of an A2A message; `null` when the message is not an offer. |
 | `originateProcess` | `/agent` | BUYER LOOP: instantiate, sign, offer, await the counter-signature, approve, commit. |
@@ -374,6 +377,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag and complete version map. |
 | `profileValuesFor` | root | The profile-authored clause values a given seller publishes, read from its catalogue. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
+| `projectProcessGraph` | `/derive` | The process graph, labelled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
+| `projectSettlementGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into the kernel's LINEAR per-process chains. |
+| `projectValueFlow` | `/derive` | Denomination nodes and flow edges; venue legs are caller-parsed, so no venue list is bundled. |
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
@@ -406,6 +412,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
 | `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
+| `walletRecord` | `/derive` | One wallet's public trading record; resolved-empty is the answer for a wallet with no history. |
 | `warnProcessLogFillsTrap` | root | Warn when a spec pins design/checkout fills on a process-log clause — content that commits unchecked. |
 | `withholdSectionContent` | root | Swap a section's plaintext for its fingerprint — same leaf, same root, the content never travels. |
 | `wrapWithSharedSecret` | `/handoff` | Encrypt a string payload under the ECDH shared secret (12-byte IV ‖ AES-256-GCM, base64url). |
@@ -1163,8 +1170,10 @@ table, and the run-your-own recipe are in
 
 *Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
 
-Clause-agnostic attestation filtering, geo math, and the commits==resolves
-withdraw gate.
+Clause-agnostic attestation filtering, geo math, the commits==resolves withdraw
+gate, and the **graph projections** — the semantic graphs a Figaro deployment
+emits, as first-class objects you can query. The model they project is
+`docs/PUBLIC_GRAPH_MODEL.md`; this section is the calling convention.
 
 ```ts
 import {
@@ -1214,6 +1223,54 @@ const clauseGate = deriveClauseWithdrawGate("figaro-emissions", agreements);
 const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
 // gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat
 ```
+
+#### The graph projections
+
+Pure folds over events you already fetched — no chain client, no network. Each
+projection carries the **truth boundary** of its own rows (`TruthBoundary`: one
+of `protocol-enforced`, `institution-declared`, `protocol-derived`,
+`composition-derived`), so a consumer never conflates a protocol guarantee with
+an institution-level claim.
+
+```ts
+import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
+import {
+  projectProcessGraph, projectSettlementGraph, extractOverlays, projectValueFlow,
+  marketShape, walletRecord,
+} from "@figaro-protocol/sdk/derive";
+
+const core = await fetchCoreEvents(client, addresses, BigInt(record.deploymentBlock));
+const process    = projectProcessGraph(core);      // boundary: "protocol-enforced"
+const settlement = projectSettlementGraph(core);   // boundary: "protocol-enforced"
+
+// Overlays: ONE per attestable clause family the corpus actually contains.
+// fetchAttestationRecords folds BOTH settlement universes and tags each row;
+// you supply the content bytes (an attestation's contentRef is keccak256 of
+// off-chain content — the chain never holds the preimage) and a SpecSource.
+// null content, or an unresolvable spec, degrades that entry to
+// FINGERPRINT-ONLY rather than fabricating a value.
+const atts = await fetchAttestationRecords(client, addresses, BigInt(record.deploymentBlock));
+const overlays = extractOverlays(atts.map((event) => ({ event, content: null })), specs);
+
+// Composition: venue events are parsed by YOU against the venue's own ABI
+// (resolved from the deployment record or a clause field) — nothing bundles a
+// venue list, and a venue this code has never seen feeds the same shape.
+const valueFlow = projectValueFlow(settlement, swapLegs, pins);
+
+// Queries are thin folds over the graphs. Assembly attribution is
+// CALLER-SUPPLIED: a process you cannot key is reported in
+// `unattributedProcessCount`, never binned under a guess.
+const shape = marketShape(process, (processId) => assemblyKeyFor(processId));
+const rec   = walletRecord(process, "0x…");        // empty arrays = no history
+```
+
+The five graphs named in `PUBLIC_GRAPH_MODEL.md` are the canonical presentation
+grouping; **the class is open**. Process and Settlement fall out of the
+must-have clauses by construction, overlays are spec-derived one per attestable
+clause family in use, and composition graphs come from whatever on-network
+venues a record touches — so `extractOverlays` groups by the attestation's
+opaque on-chain clause key and decodes through the spec you loaded, and a family
+registered after this SDK shipped flows through unchanged.
 
 ### `@figaro-protocol/sdk/clauses` — Clause-Spec Format + Content Encoding
 

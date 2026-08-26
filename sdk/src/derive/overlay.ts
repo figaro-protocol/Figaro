@@ -24,8 +24,13 @@
  * telemetry, one registered yesterday — reads the same way from its own spec.
  *
  * Pure fold, no I/O: the caller fetches attestations (`fetchAttestationRecords`
- * folds BOTH settlement universes), recovers content bytes from calldata where
- * it can, and warms the SpecSource from ClauseRegistry → IPFS.
+ * folds BOTH settlement universes), recovers the content bytes OFF-CHAIN, and
+ * warms the SpecSource from ClauseRegistry → IPFS. The preimage is never in
+ * calldata — `AttestationCoordinator` records only `contentRef =
+ * keccak256(content)` — so recovery means resolving that fingerprint's own
+ * content address (the bytes are pinned as a raw block multihashed with
+ * keccak-256, making the fingerprint the lookup) or holding the bytes already,
+ * as a party or as a data-market buyer.
  */
 
 import type { Hex, Address } from "../types.js";
@@ -37,8 +42,8 @@ import { computeClauseKey } from "../discovery.js";
 // ── Input: an attestation with caller-recovered content ─────────────────────
 
 /** An attestation event paired with its recovered canonical content bytes —
- *  `null` when the caller could not (or chose not to) recover the calldata.
- *  The event's `contentRef` fingerprint is always present either way. */
+ *  `null` when the caller could not (or chose not to) recover them. The
+ *  event's `contentRef` fingerprint is always present either way. */
 export interface RecoveredAttestation {
     event: UniverseAttestationEvent;
     content: Hex | null;

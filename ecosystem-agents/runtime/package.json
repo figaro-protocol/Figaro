@@ -5,6 +5,7 @@
     "description": "Host-shaped half of the sandboxed signer runtime: the data-channel envelope (framed, provenance-tagged fetches) and the sandbox wrapper (loopback-only OS sandbox + policy-driven egress proxy). The protocol-shaped half is @figaro-protocol/sdk/signer.",
     "type": "module",
     "bin": {
+        "figaro-analyst": "./figaro-analyst.mjs",
         "figaro-fetch": "./figaro-fetch.mjs",
         "figaro-run-sandboxed": "./run-sandboxed.mjs"
     },

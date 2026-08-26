@@ -14,6 +14,17 @@ coordination infrastructure**, not accidental data leakage.
 Every Figaro institution produces up to five distinct graphs. Each graph has
 its own truth boundary, purpose, and consumer profile.
 
+**The class is open; the five are its named instances** (maintainer-ruled
+2026-08-26). The two protocol-enforced graphs fall out of the must-have
+clauses by construction; overlay graphs are spec-derived — every attestable
+clause family a market composes draws its own overlay on the process spine
+(Geo and GHG are the worked instances); and composition graphs are read from
+the fifth-noun contracts a record touches (a swap venue's value flow, the
+multisender's fiscal routing, a forum's rulings), the venues discovered from
+clause fields and the deployment record, never a bundled list. A market
+composing a clause or venue this document has never named draws its graph
+the same way.
+
 ### 1. Process Graph (Protocol-Enforced)
 
 **Source:** `FigaroCore` — orders, bonds, processes, settlement.

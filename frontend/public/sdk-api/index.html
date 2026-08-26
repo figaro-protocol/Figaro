@@ -474,9 +474,19 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>The single dispatch point for any <code>ProposedAction</code>; restores each root's signed <code>processId</code> for you.</td>
 </tr>
 <tr>
+<td><code>extractOverlays</code></td>
+<td><code>/derive</code></td>
+<td>Group attestations into one overlay graph per clause family PRESENT — the open graph class.</td>
+</tr>
+<tr>
 <td><code>extractServiceEndpoints</code></td>
 <td><code>/agent</code></td>
 <td>Read a DID document's <code>service</code> entries — WHERE to reach the agent behind it.</td>
+</tr>
+<tr>
+<td><code>fetchAttestationRecords</code></td>
+<td>root</td>
+<td>Attestations from BOTH settlement universes, address-filtered and tagged per row.</td>
 </tr>
 <tr>
 <td><code>fetchBatchUsageRecords</code></td>
@@ -599,6 +609,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Mountable candidate responder for the dispatch-race leg.</td>
 </tr>
 <tr>
+<td><code>marketShape</code></td>
+<td><code>/derive</code></td>
+<td>Per-assembly aggregates over the process graph; attribution is caller-supplied, never guessed.</td>
+</tr>
+<tr>
 <td><code>maxOrdersResolvablePerProcess</code></td>
 <td>root</td>
 <td>The largest N whose <code>resolveProcess</code> fits the active chain's block gas budget.</td>
@@ -662,6 +677,21 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>projectAgentServices</code></td>
 <td>root</td>
 <td>Read the agent service endpoints out of a profile document, tolerating partial ones.</td>
+</tr>
+<tr>
+<td><code>projectProcessGraph</code></td>
+<td><code>/derive</code></td>
+<td>The process graph, labelled protocol-enforced — <code>reconstruct()</code>'s topology as a first-class object.</td>
+</tr>
+<tr>
+<td><code>projectSettlementGraph</code></td>
+<td><code>/derive</code></td>
+<td>Per-order bonds locked and payouts at resolve, grouped into the kernel's LINEAR per-process chains.</td>
+</tr>
+<tr>
+<td><code>projectValueFlow</code></td>
+<td><code>/derive</code></td>
+<td>Denomination nodes and flow edges; venue legs are caller-parsed, so no venue list is bundled.</td>
 </tr>
 <tr>
 <td><code>proposeActions</code></td>
@@ -822,6 +852,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>verifyRaceReply</code></td>
 <td><code>/agent</code></td>
 <td>Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate.</td>
+</tr>
+<tr>
+<td><code>walletRecord</code></td>
+<td><code>/derive</code></td>
+<td>One wallet's public trading record; resolved-empty is the answer for a wallet with no history.</td>
 </tr>
 <tr>
 <td><code>warnProcessLogFillsTrap</code></td>
@@ -1173,11 +1208,29 @@ table, and the run-your-own recipe are in
 <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md"><code>prover/sequencer/README.md</code></a>.</p>
 <h3 id="-clause-agnostic-derivations" class="tsd-anchor-link"><code>@figaro-protocol/sdk/derive</code> — Clause-Agnostic Derivations<a href="#-clause-agnostic-derivations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p><em>Lost track of where a name below lives? → <a href="#synopsis--which-entry-point-is-each-export-from">Synopsis</a>.</em></p>
-<p>Clause-agnostic attestation filtering, geo math, and the commits==resolves
-withdraw gate.</p>
+<p>Clause-agnostic attestation filtering, geo math, the commits==resolves withdraw
+gate, and the <strong>graph projections</strong> — the semantic graphs a Figaro deployment
+emits, as first-class objects you can query. The model they project is
+<code>docs/PUBLIC_GRAPH_MODEL.md</code>; this section is the calling convention.</p>
 <pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">computeClauseKey</span><span class="hl-1">, </span><span class="hl-5">fetchCoreEvents</span><span class="hl-1">, </span><span class="hl-5">EV_ATTESTATION</span><span class="hl-1">, </span><span class="hl-5">parseAttestationLogs</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">filterByClause</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">haversineDistance</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">geohashesMatch</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">deriveInFlightOrders</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">deriveClauseWithdrawGate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">deriveAssemblyWithdrawGate</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk/derive&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">// Attestations live on the AttestationCoordinator, NOT in fetchCoreEvents</span><br/><span class="hl-3">// (which returns only orderCommitted / orderResolved / processResolved). Read</span><br/><span class="hl-3">// the Attestation logs straight from the coordinator, then parse them into</span><br/><span class="hl-3">// typed AttestationEvents:</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">attestationLogs</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-5">client</span><span class="hl-1">.</span><span class="hl-0">getLogs</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-5">address:</span><span class="hl-1"> </span><span class="hl-5">addresses</span><span class="hl-1">.</span><span class="hl-5">attestationCoordinator</span><span class="hl-1">!,</span><br/><span class="hl-1">  </span><span class="hl-5">event:</span><span class="hl-1"> </span><span class="hl-7">EV_ATTESTATION</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">fromBlock:</span><span class="hl-1"> </span><span class="hl-0">BigInt</span><span class="hl-1">(</span><span class="hl-5">record</span><span class="hl-1">.</span><span class="hl-5">deploymentBlock</span><span class="hl-1">),  </span><span class="hl-3">// never 0n on a public network</span><br/><span class="hl-1">});</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">attestations</span><span class="hl-1"> = </span><span class="hl-0">parseAttestationLogs</span><span class="hl-1">(</span><span class="hl-5">attestationLogs</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Derive the on-chain clause key (name, version), then filter for it. The SDK</span><br/><span class="hl-3">// knows no specific clause — the stage/contentRef meaning is clause-spec data</span><br/><span class="hl-3">// read at the edge, never baked in here.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">clauseId</span><span class="hl-1"> = </span><span class="hl-0">computeClauseKey</span><span class="hl-1">(</span><span class="hl-2">&quot;figaro-emissions&quot;</span><span class="hl-1">, </span><span class="hl-8">1</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">forClause</span><span class="hl-1"> = </span><span class="hl-0">filterByClause</span><span class="hl-1">(</span><span class="hl-5">attestations</span><span class="hl-1">, </span><span class="hl-5">clauseId</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Geo: check delivery proximity</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">close</span><span class="hl-1"> = </span><span class="hl-0">geohashesMatch</span><span class="hl-1">(</span><span class="hl-2">&quot;dr5ru7&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;dr5ru8&quot;</span><span class="hl-1">, </span><span class="hl-8">5</span><span class="hl-1">); </span><span class="hl-3">// true (5-char prefix match)</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">km</span><span class="hl-1"> = </span><span class="hl-0">haversineDistance</span><span class="hl-1">(</span><span class="hl-8">40.71</span><span class="hl-1">, -</span><span class="hl-8">74.00</span><span class="hl-1">, </span><span class="hl-8">34.05</span><span class="hl-1">, -</span><span class="hl-8">118.24</span><span class="hl-1">); </span><span class="hl-3">// ~3944 km</span><br/><br/><span class="hl-3">// Withdraw gate (advisory): a clause-or-assembly author must not reclaim their</span><br/><span class="hl-3">// registration stake while deals composed from that clause or assembly are in flight.</span><br/><span class="hl-3">// The join is derived at read time from chain + IPFS, never stored:</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">events</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">fetchCoreEvents</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">, </span><span class="hl-5">addresses</span><span class="hl-1">, </span><span class="hl-8">0</span><span class="hl-4">n</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">inFlight</span><span class="hl-1"> = </span><span class="hl-0">deriveInFlightOrders</span><span class="hl-1">(</span><span class="hl-5">events</span><span class="hl-1">); </span><span class="hl-3">// committed, process unresolved</span><br/><span class="hl-3">// You resolve each ref&#39;s pinned agreement (the SDK does no IPFS I/O), pairing</span><br/><span class="hl-3">// it as { processId, agreement } — a null agreement (party-private/unreachable)</span><br/><span class="hl-3">// is COUNTED as unverified and surfaced, but never blocks: agreement bodies are</span><br/><span class="hl-3">// party-private, and the on-chain inclusion-proof hardening doesn&#39;t lock the</span><br/><span class="hl-3">// stake on unrevealed deals either. Then:</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">clauseGate</span><span class="hl-1"> = </span><span class="hl-0">deriveClauseWithdrawGate</span><span class="hl-1">(</span><span class="hl-2">&quot;figaro-emissions&quot;</span><span class="hl-1">, </span><span class="hl-5">agreements</span><span class="hl-1">);</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">assemblyGate</span><span class="hl-1"> = </span><span class="hl-0">deriveAssemblyWithdrawGate</span><span class="hl-1">(</span><span class="hl-5">assemblyTemplate</span><span class="hl-1">, </span><span class="hl-5">agreements</span><span class="hl-1">);</span><br/><span class="hl-3">// gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat</span>
 </code><button type="button">Copy</button></pre>
 
+<h4 id="the-graph-projections" class="tsd-anchor-link">The graph projections<a href="#the-graph-projections" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4>
+<p>Pure folds over events you already fetched — no chain client, no network. Each
+projection carries the <strong>truth boundary</strong> of its own rows (<code>TruthBoundary</code>: one
+of <code>protocol-enforced</code>, <code>institution-declared</code>, <code>protocol-derived</code>,
+<code>composition-derived</code>), so a consumer never conflates a protocol guarantee with
+an institution-level claim.</p>
+<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">fetchCoreEvents</span><span class="hl-1">, </span><span class="hl-5">fetchAttestationRecords</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">projectProcessGraph</span><span class="hl-1">, </span><span class="hl-5">projectSettlementGraph</span><span class="hl-1">, </span><span class="hl-5">extractOverlays</span><span class="hl-1">, </span><span class="hl-5">projectValueFlow</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">marketShape</span><span class="hl-1">, </span><span class="hl-5">walletRecord</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk/derive&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">core</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">fetchCoreEvents</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">, </span><span class="hl-5">addresses</span><span class="hl-1">, </span><span class="hl-0">BigInt</span><span class="hl-1">(</span><span class="hl-5">record</span><span class="hl-1">.</span><span class="hl-5">deploymentBlock</span><span class="hl-1">));</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">process</span><span class="hl-1">    = </span><span class="hl-0">projectProcessGraph</span><span class="hl-1">(</span><span class="hl-5">core</span><span class="hl-1">);      </span><span class="hl-3">// boundary: &quot;protocol-enforced&quot;</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">settlement</span><span class="hl-1"> = </span><span class="hl-0">projectSettlementGraph</span><span class="hl-1">(</span><span class="hl-5">core</span><span class="hl-1">);   </span><span class="hl-3">// boundary: &quot;protocol-enforced&quot;</span><br/><br/><span class="hl-3">// Overlays: ONE per attestable clause family the corpus actually contains.</span><br/><span class="hl-3">// fetchAttestationRecords folds BOTH settlement universes and tags each row;</span><br/><span class="hl-3">// you supply the content bytes (an attestation&#39;s contentRef is keccak256 of</span><br/><span class="hl-3">// off-chain content — the chain never holds the preimage) and a SpecSource.</span><br/><span class="hl-3">// null content, or an unresolvable spec, degrades that entry to</span><br/><span class="hl-3">// FINGERPRINT-ONLY rather than fabricating a value.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">atts</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">fetchAttestationRecords</span><span class="hl-1">(</span><span class="hl-5">client</span><span class="hl-1">, </span><span class="hl-5">addresses</span><span class="hl-1">, </span><span class="hl-0">BigInt</span><span class="hl-1">(</span><span class="hl-5">record</span><span class="hl-1">.</span><span class="hl-5">deploymentBlock</span><span class="hl-1">));</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">overlays</span><span class="hl-1"> = </span><span class="hl-0">extractOverlays</span><span class="hl-1">(</span><span class="hl-5">atts</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">((</span><span class="hl-5">event</span><span class="hl-1">) </span><span class="hl-4">=&gt;</span><span class="hl-1"> ({ </span><span class="hl-5">event</span><span class="hl-1">, </span><span class="hl-5">content:</span><span class="hl-1"> </span><span class="hl-4">null</span><span class="hl-1"> })), </span><span class="hl-5">specs</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Composition: venue events are parsed by YOU against the venue&#39;s own ABI</span><br/><span class="hl-3">// (resolved from the deployment record or a clause field) — nothing bundles a</span><br/><span class="hl-3">// venue list, and a venue this code has never seen feeds the same shape.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">valueFlow</span><span class="hl-1"> = </span><span class="hl-0">projectValueFlow</span><span class="hl-1">(</span><span class="hl-5">settlement</span><span class="hl-1">, </span><span class="hl-5">swapLegs</span><span class="hl-1">, </span><span class="hl-5">pins</span><span class="hl-1">);</span><br/><br/><span class="hl-3">// Queries are thin folds over the graphs. Assembly attribution is</span><br/><span class="hl-3">// CALLER-SUPPLIED: a process you cannot key is reported in</span><br/><span class="hl-3">// `unattributedProcessCount`, never binned under a guess.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">shape</span><span class="hl-1"> = </span><span class="hl-0">marketShape</span><span class="hl-1">(</span><span class="hl-5">process</span><span class="hl-1">, (</span><span class="hl-5">processId</span><span class="hl-1">) </span><span class="hl-4">=&gt;</span><span class="hl-1"> </span><span class="hl-0">assemblyKeyFor</span><span class="hl-1">(</span><span class="hl-5">processId</span><span class="hl-1">));</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">rec</span><span class="hl-1">   = </span><span class="hl-0">walletRecord</span><span class="hl-1">(</span><span class="hl-5">process</span><span class="hl-1">, </span><span class="hl-2">&quot;0x…&quot;</span><span class="hl-1">);        </span><span class="hl-3">// empty arrays = no history</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The five graphs named in <code>PUBLIC_GRAPH_MODEL.md</code> are the canonical presentation
+grouping; <strong>the class is open</strong>. Process and Settlement fall out of the
+must-have clauses by construction, overlays are spec-derived one per attestable
+clause family in use, and composition graphs come from whatever on-network
+venues a record touches — so <code>extractOverlays</code> groups by the attestation's
+opaque on-chain clause key and decodes through the spec you loaded, and a family
+registered after this SDK shipped flows through unchanged.</p>
 <h3 id="-clause-spec-format-content-encoding" class="tsd-anchor-link"><code>@figaro-protocol/sdk/clauses</code> — Clause-Spec Format + Content Encoding<a href="#-clause-spec-format-content-encoding" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p><em>Lost track of where a name below lives? → <a href="#synopsis--which-entry-point-is-each-export-from">Synopsis</a>.</em></p>
 <p>The single off-chain source of truth for clause-content well-formedness and
@@ -1846,6 +1899,9 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <ul>
 <li><a href="#the-sequencer-wire-seven-endpoints"><span>The sequencer wire: seven endpoints</span></a></li></ul></li>
 <li><a href="#-clause-agnostic-derivations"><span> — <wbr/>Clause-<wbr/>Agnostic <wbr/>Derivations</span></a></li>
+<li>
+<ul>
+<li><a href="#the-graph-projections"><span>The graph projections</span></a></li></ul></li>
 <li><a href="#-clause-spec-format-content-encoding"><span> — <wbr/>Clause-<wbr/>Spec <wbr/>Format + <wbr/>Content <wbr/>Encoding</span></a></li>
 <li><a href="#-runtime-handoff-wire-protocol"><span> — <wbr/>Runtime <wbr/>Handoff <wbr/>Wire <wbr/>Protocol</span></a></li>
 <li><a href="#-the-policy-signer"><span> — <wbr/>The <wbr/>Policy <wbr/>Signer</span></a></li></ul></li>

@@ -10,6 +10,8 @@
  *   figaro-fetch assembly <compositionHash>      template via AssemblyRegistry → IPFS
  *   figaro-fetch profile <address>               profile via MembersRegistry → IPFS
  *   figaro-fetch ipfs <cid>                      raw content by CID
+ *   figaro-fetch witness <contentRef>            an attestation's substance —
+ *                                                the fingerprint IS the address
  *
  * Env: RPC_URL, DEPLOYMENT_RECORD (path to deployments/<chainId>.json),
  * IPFS_GATEWAY_URL (+ optional IPFS_FALLBACK_GATEWAY_URL),
@@ -22,6 +24,8 @@ import {
     fetchDiscoveryEvents, reconstructDiscovery, computeClauseKey,
 } from "@figaro-protocol/sdk";
 import { frame } from "./dataChannel.mjs";
+import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
+import { fetchWitnessContent } from "./witnessContent.mjs";
 
 function fail(message) {
     console.error(`figaro-fetch: ${message}`);
@@ -35,31 +39,17 @@ function requireEnv(name) {
 }
 
 const [, , mode, ...args] = process.argv;
-if (!mode) fail("usage: figaro-fetch <clause|assembly|profile|ipfs> <ref>");
-
-const GATEWAYS = [
-    process.env.IPFS_GATEWAY_URL,
-    process.env.IPFS_FALLBACK_GATEWAY_URL ?? "https://ipfs.io",
-].filter(Boolean);
-
-function cidOf(uri) {
-    return uri.startsWith("ipfs://") ? uri.slice("ipfs://".length) : uri;
-}
+if (!mode) fail("usage: figaro-fetch <clause|assembly|profile|ipfs|witness> <ref>");
 
 async function fetchIpfs(cid) {
-    let lastError = "no gateway configured";
-    for (const gateway of GATEWAYS) {
-        try {
-            const res = await fetch(`${gateway.replace(/\/$/, "")}/ipfs/${cid}`, {
-                signal: AbortSignal.timeout(30_000),
-            });
-            if (res.ok) return await res.text();
-            lastError = `${gateway} answered ${res.status}`;
-        } catch (e) {
-            lastError = `${gateway}: ${e instanceof Error ? e.name : String(e)}`;
-        }
+    let text;
+    try {
+        text = await fetchIpfsText(cid);
+    } catch (e) {
+        return fail(e instanceof Error ? e.message : String(e));
     }
-    return fail(`content ${cid} unreachable — ${lastError}`);
+    if (text === null) fail(`content ${cid} is not published — absence, not an error`);
+    return text;
 }
 
 async function discovery() {
@@ -79,6 +69,24 @@ async function main() {
         const cid = args[0] ?? fail("usage: figaro-fetch ipfs <cid>");
         const content = await fetchIpfs(cidOf(cid));
         console.log(frame({ source: "ipfs", refKind: "cid", ref: cidOf(cid), content }));
+        return;
+    }
+
+    if (mode === "witness") {
+        // The substance behind an Attestation event's fingerprint. No registry
+        // read: `contentRef` IS the content address, and the bytes are verified
+        // to hash back to it before anything is printed.
+        const contentRef = args[0] ?? fail("usage: figaro-fetch witness <contentRef>");
+        let hit;
+        try {
+            hit = await fetchWitnessContent(contentRef);
+        } catch (e) {
+            return fail(e instanceof Error ? e.message : String(e));
+        }
+        if (!hit) fail(`no published content for ${contentRef} — private, erased, or never published (absence, not an error)`);
+        console.log(frame({
+            source: "attestation-content", refKind: "cid", ref: hit.cid, content: hit.content,
+        }));
         return;
     }
 
