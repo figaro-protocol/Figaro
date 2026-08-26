@@ -23,6 +23,15 @@ Import via: <code>import { ... } from &quot;@figaro-protocol/sdk/derive&quot;</c
 <li>Geo math: geohash encode/decode, prefix matching, Haversine distance</li>
 <li>Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
 composed from a clause or assembly, derived from chain + IPFS</li>
+<li>Truth boundaries: the trust labels of docs/PUBLIC_GRAPH_MODEL.md — every
+graph projection names the guarantee behind its rows</li>
+<li>Base graphs: Process + Settlement projections (protocol-enforced), pure
+folds over already-fetched core events</li>
+<li>Overlays: per-clause-family attestation streams (the open graph class),
+spec-decoded via the caller's SpecSource, fingerprint-only on absence</li>
+<li>Composition: venue-parameterized fifth-noun projections — the value-flow
+graph over settlement denominations + caller-parsed swap legs</li>
+<li>Queries: market-shape and wallet-record, thin folds over the graphs</li>
 </ul>
 </div></section>
 <section class="tsd-panel">
