@@ -24,6 +24,7 @@
  */
 import { bytesToHex, hexToBytes, keccak256, type Hex } from "viem";
 import { contentFieldsFor } from "@figaro-protocol/sdk/clauses";
+import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import {
     DEFAULT_IPFS_SERVICE,
     fetchCappedBinary,
@@ -33,42 +34,6 @@ import {
 } from "@/lib/shared/ipfsService";
 import { clauseIdForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
-
-// CIDv1 prefix for [raw codec 0x55, keccak-256 multihash 0x1b, length 32],
-// multibase base16 ("f"). Appending the fingerprint's hex yields the full CID.
-const KECCAK_RAW_CID_PREFIX = "f01551b20";
-
-/** The content address a `contentRef` fingerprint resolves to — derivable by
- *  any reader from the Attestation event alone. */
-function witnessContentCid(contentRef: Hex): string {
-    return KECCAK_RAW_CID_PREFIX + contentRef.slice(2).toLowerCase();
-}
-
-// Kubo reports block/put CIDs in multibase base32 lowercase; encode our
-// expected CID bytes the same way so the pin can be verified by comparison.
-const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
-
-function base32Lower(bytes: Uint8Array): string {
-    let bits = 0;
-    let value = 0;
-    let out = "";
-    for (const byte of bytes) {
-        value = (value << 8) | byte;
-        bits += 8;
-        while (bits >= 5) {
-            out += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
-            bits -= 5;
-        }
-    }
-    if (bits > 0) out += BASE32_ALPHABET[(value << (5 - bits)) & 31];
-    return out;
-}
-
-/** The base32 form of the same CID (`bafkrwi…`) — what Kubo's block/put
- *  reports, compared verbatim to detect a node that ignored the multihash. */
-function witnessContentCidBase32(contentRef: Hex): string {
-    return "b" + base32Lower(hexToBytes(`0x${KECCAK_RAW_CID_PREFIX.slice(1)}${contentRef.slice(2)}` as Hex));
-}
 
 export interface PublishWitnessContentParams {
     /** The clause attested — the event's clauseId HASH or the readable id. */

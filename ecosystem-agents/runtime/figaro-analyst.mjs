@@ -27,6 +27,12 @@
  *                                        SMALLER corpus, and /status says so.
  *   FIGARO_ANALYST_PORT                  default 8620
  *   FIGARO_ANALYST_RESYNC_SECS           default 0 (sync once at boot)
+ *   FIGARO_ANALYST_CROSSCHECK_RPC_URLS   comma-separated EXTRA endpoints beside
+ *                                        RPC_URL; when set, every sync also
+ *                                        cross-checks the pinned range across
+ *                                        all endpoints and /status reports the
+ *                                        agreement. Unset = no check, silently
+ *                                        (one endpoint cannot corroborate).
  *   ANTHROPIC_API_KEY + ANTHROPIC_MODEL  BOTH required for /prompt to exist
  *   ANTHROPIC_API_URL                    default https://api.anthropic.com
  */
@@ -299,6 +305,15 @@ function requireEnv(name) {
     return v;
 }
 
+/** The EXTRA endpoints to corroborate against, beside RPC_URL. Unset or empty
+ *  = no cross-check — one endpoint cannot corroborate, and that is silence. */
+export function crosscheckRpcUrls(env = process.env) {
+    return (env.FIGARO_ANALYST_CROSSCHECK_RPC_URLS ?? "")
+        .split(",")
+        .map((url) => url.trim())
+        .filter(Boolean);
+}
+
 async function main() {
     const config = modelConfig();
     const gateways = ipfsGateways();
@@ -311,6 +326,7 @@ async function main() {
         gateways,
         agreementsDir: process.env.FIGARO_AGREEMENTS_DIR,
         recoverSubstance: gateways.length > 0,
+        crosscheckRpcUrls: crosscheckRpcUrls(),
         ...(process.env.FIGARO_ANALYST_FROM_BLOCK
             ? { fromBlock: BigInt(process.env.FIGARO_ANALYST_FROM_BLOCK) }
             : {}),

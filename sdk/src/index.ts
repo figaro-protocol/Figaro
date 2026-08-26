@@ -100,6 +100,19 @@ export {
     type UniverseAttestationEvent,
 } from "./events.js";
 
+// Cross-endpoint log agreement — divergent public-RPC answers made checkable
+export {
+    checkEndpointLogAgreement,
+    fetchEndpointLogAgreement,
+} from "./logAgreement.js";
+export type {
+    EndpointLogSet,
+    EndpointLogCount,
+    EndpointLogAgreementVerdict,
+    EndpointLogAgreementReport,
+    EndpointClient,
+} from "./logAgreement.js";
+
 // State reconstruction
 export { reconstruct, Topology } from "./state.js";
 export type { CoreEvents } from "./state.js";

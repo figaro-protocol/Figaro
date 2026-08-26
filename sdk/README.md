@@ -317,6 +317,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
 | `canonicalContentHash` | root | `keccak256` over the canonical serialization — the digest the registries anchor. |
 | `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
+| `checkEndpointLogAgreement` | root | Agreement over the event sets N endpoints returned for one pinned range — pure, caller-fetched. |
 | `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
 | `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves. |
 | `computeClauseKey` | root | `keccak256(abi.encode(clauseId, version))` — the registry key, and the attest calls' `clauseId`. |
@@ -342,6 +343,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the RPGF mirror. |
 | `fetchCoreEvents` | root | Every `FigaroCore` event in a block range, grouped and typed; chunks `getLogs` internally. |
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
+| `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the RPGF mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalogue and process set. |
 | `fillCargoSection` | root | Fold the order's summed mass and volume onto its cargo leaf, found by declared field. |
@@ -484,6 +486,29 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // public RPC provider's block-range cap; pass a trailing `chunkSize` to tune
 // it for a stricter (or more permissive) provider.
 const events = await fetchCoreEvents(client, addresses, 0n);
+
+// Cross-endpoint corroboration. A load-balanced public RPC is a POOL whose
+// members can answer the SAME query differently — the same pinned block range
+// has returned 2 vs 0 orders and 0 vs 16 clause registrations across runs —
+// and a single-endpoint reader silently under-reports. With a second endpoint
+// configured, make agreement a checked fact. Pin the range first: a moving
+// "latest" resolves differently per endpoint and reports mere lag as
+// divergence.
+const toBlock = await client.getBlockNumber();
+const report = await fetchEndpointLogAgreement(
+  [
+    { endpoint: "https://rpc-one.example", client },
+    { endpoint: "https://rpc-two.example", client: secondClient },
+  ],
+  { address: addresses.core, fromBlock: BigInt(record.deploymentBlock), toBlock },
+);
+// → per-endpoint counts with each endpoint's missing keys named, the
+//   union/intersection delta (`disputedKeys`), and a verdict you render:
+//   "agree" | "diverge" | "unchecked". Below two endpoints the verdict is
+//   "unchecked" — corroboration needs a second witness, and its absence is
+//   absence, never a warning. Fetched the sets yourself (any event shape)?
+//   `checkEndpointLogAgreement(range, sets, keyOf)` is the same report with
+//   no fetching inside.
 
 // Reconstruct full process/order state from events
 const topology = new Topology();

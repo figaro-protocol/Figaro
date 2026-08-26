@@ -316,7 +316,16 @@ proved once inside a batch, and an honest answer keeps them distinguishable.
    substance recovery was on. A public RPC endpoint is a SAMPLE of the log index, not the
    log index; the same range read twice through a load-balanced endpoint can return
    different sets, so confirm anything load-bearing against a second endpoint before you
-   publish it as a market fact.
+   publish it as a market fact. That confirmation is a call, not a ritual:
+   `fetchEndpointLogAgreement` (`@figaro-protocol/sdk`, root) fetches one PINNED
+   `[fromBlock, toBlock]` range from every endpoint you supply and reports per-endpoint
+   counts, the union/intersection delta, and a verdict; `checkEndpointLogAgreement` is the
+   same report over sets you already fetched. The full recipe is `sdk/README.md`
+   § "Protocol Primitives". The reference runnable wires it: set
+   `FIGARO_ANALYST_CROSSCHECK_RPC_URLS` (comma-separated extra endpoints beside `RPC_URL`)
+   and every sync cross-checks each watched contract, `GET /status` carrying the report;
+   unset, the check is absent — one endpoint cannot corroborate, and that absence is
+   silent.
 3. **Keep denominations apart.** Amounts are integers in a token's own base units. Volumes
    never sum across tokens, and a "total" that crosses denominations is a fabrication.
 4. **Show the path.** An analysis whose reader cannot re-run the same queries against the

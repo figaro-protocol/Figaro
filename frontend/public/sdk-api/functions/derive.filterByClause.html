@@ -20,6 +20,9 @@ Import via: <code>import { ... } from &quot;@figaro-protocol/sdk/derive&quot;</c
 <ul>
 <li>Attestation: clause-agnostic event filtering (clause-key derivation is
 <code>computeClauseKey</code>, a root export)</li>
+<li>Witness content addressing: the fingerprint→content-address derivation —
+an Attestation event's <code>contentRef</code> IS the keccak-CID digest of the
+published preimage; pure, all IPFS I/O stays with the caller</li>
 <li>Geo math: geohash encode/decode, prefix matching, Haversine distance</li>
 <li>Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
 composed from a clause or assembly, derived from chain + IPFS</li>

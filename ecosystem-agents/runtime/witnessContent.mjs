@@ -16,29 +16,16 @@
  * Substance withheld from the commons is bought on the data market, never
  * inferred here.
  *
- * Why this lives in the runtime and not in the SDK: the equivalent reader is
- * `frontend/lib/composition/witnessContent.ts` (searched 2026-08-26; it is
- * the only other implementation), and it is inside a Next application, not an
- * importable package. The SDK exports no keccak-CID helper and does no IPFS
- * I/O by design. One home for this would be better than two — see the
- * runtime README.
+ * The fingerprint→address derivation is `witnessContentCid`
+ * (`@figaro-protocol/sdk/derive` — pure, no I/O); this module holds only the
+ * runtime's I/O half: the gateway read that verifies the bytes hash back.
  */
 
 import { keccak256 } from "viem";
+import { witnessContentCid } from "@figaro-protocol/sdk/derive";
 import { fetchIpfsBytes } from "./ipfsRead.mjs";
 
-/** CIDv1, multibase base16 ("f") over [raw codec 0x55, keccak-256 multihash
- *  0x1b, digest length 32]. Appending the fingerprint's hex yields the CID. */
-const KECCAK_RAW_CID_PREFIX = "f01551b20";
-
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
-
-/** The content address a `contentRef` resolves to — derivable by any reader
- *  from the Attestation event alone. */
-export function witnessContentCid(contentRef) {
-    if (!BYTES32_RE.test(contentRef)) throw new Error(`not a bytes32 contentRef: ${contentRef}`);
-    return KECCAK_RAW_CID_PREFIX + contentRef.slice(2).toLowerCase();
-}
 
 function bytesToHex(bytes) {
     let out = "0x";

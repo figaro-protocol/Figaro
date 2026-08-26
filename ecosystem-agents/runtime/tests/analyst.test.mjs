@@ -22,13 +22,13 @@ import { keccak256 } from "viem";
 import { computeAgreementHash } from "@figaro-protocol/sdk";
 import {
     projectProcessGraph, projectSettlementGraph, extractOverlays, projectValueFlow,
+    witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
 import {
-    corpusStatus, dealStory, graphInventory, jsonSafe, loadHeldAgreements,
+    corpusStatus, corroborateEndpoints, dealStory, graphInventory, jsonSafe, loadHeldAgreements,
     marketShapeAnswer, walletRecordAnswer,
 } from "../analyst.mjs";
-import { analystTools, makeAnalystHandler, modelConfig, runPrompt } from "../figaro-analyst.mjs";
-import { witnessContentCid } from "../witnessContent.mjs";
+import { analystTools, crosscheckRpcUrls, makeAnalystHandler, modelConfig, runPrompt } from "../figaro-analyst.mjs";
 
 // ── A fixture corpus ────────────────────────────────────────────────────────
 // Two orders in one process (a value-added chain), one resolved attestation.
@@ -123,10 +123,10 @@ test("a contentRef derives its own content address — no locator, no registry",
 });
 
 test("the derivation agrees with the vector a real Kubo produced", () => {
-    // Golden vector from frontend/tests/lib/witnessContent.test.ts: these exact
-    // bytes `block/put` to this exact key on Kubo 0.42. Two independent
-    // implementations of the address must agree, or a reader derived from one
-    // resolves nothing the other pinned.
+    // Golden vector shared with frontend/tests/lib/witnessContent.test.ts:
+    // these exact bytes `block/put` to this exact key on Kubo 0.42. The ONE
+    // derivation (the SDK export) must agree with what a real node pinned, or
+    // a reader deriving from the event resolves nothing.
     const GOLDEN_BYTES = new Uint8Array([0, 0, 0, 1, ...new TextEncoder().encode("hello-witness-content")]);
     const GOLDEN_REF = "0xf79b5d7502f9be068188a0f4a287418d11bd6e8aaa42c3ba28777e707571b7d6";
     assert.equal(keccak256(GOLDEN_BYTES), GOLDEN_REF, "the fixture's own hash still holds");
@@ -257,6 +257,98 @@ test("an empty corpus answers zeroes — resolved-empty is absence, not failure"
     assert.equal(status.attestations, 0);
     assert.deepEqual(status.attestationsByUniverse, { direct: 0, batch: 0 });
     assert.equal(graphInventory(emptyCorpus()).overlays.length, 0);
+});
+
+// ── Cross-endpoint corroboration ────────────────────────────────────────────
+// Load-balanced public RPC endpoints can answer the same pinned range with
+// divergent event sets; with a second endpoint supplied the sync makes that a
+// reported fact — and with one endpoint the feature is ABSENT, silently.
+
+test("divergent endpoints over the same pinned range are reported, gap attributed", async () => {
+    // Stubbed transports: the primary sees one log the extra endpoint lacks.
+    const log = (blockNumber, transactionHash, logIndex) => ({ blockNumber, transactionHash, logIndex });
+    const byUrl = {
+        "http://rpc-full.test": [log(10n, "0xaaa", 0), log(11n, "0xbbb", 1)],
+        "http://rpc-short.test": [log(10n, "0xaaa", 0)],
+    };
+    const report = await corroborateEndpoints({
+        endpoints: ["http://rpc-full.test", "http://rpc-short.test"],
+        addresses: { core: "0x000000000000000000000000000000000000c0de" },
+        fromBlock: 0n,
+        toBlock: 99n,
+        makeClient: (url) => ({ getLogs: async () => byUrl[url] }),
+    });
+    assert.deepEqual(report.endpoints, ["http://rpc-full.test", "http://rpc-short.test"]);
+    assert.equal(report.perContract.core.verdict, "diverge");
+    assert.equal(report.perContract.core.unionCount, 2);
+    assert.equal(report.perContract.core.intersectionCount, 1);
+    assert.deepEqual(report.perContract.core.endpoints, [
+        { endpoint: "http://rpc-full.test", count: 2, missing: [] },
+        { endpoint: "http://rpc-short.test", count: 1, missing: ["11:0xbbb:1"] },
+    ]);
+});
+
+test("an endpoint that cannot answer is reported as such — never conflated with divergence", async () => {
+    const report = await corroborateEndpoints({
+        endpoints: ["http://rpc-a.test", "http://rpc-down.test"],
+        addresses: { core: "0x000000000000000000000000000000000000c0de" },
+        fromBlock: 0n,
+        toBlock: 99n,
+        makeClient: (url) => ({
+            getLogs: async () => {
+                if (url === "http://rpc-down.test") throw new Error("endpoint down");
+                return [];
+            },
+        }),
+    });
+    assert.equal(report.error, "endpoint down");
+    assert.equal(report.perContract, undefined);
+});
+
+test("only configured contract addresses are corroborated — absence contributes nothing", async () => {
+    const calls = [];
+    const report = await corroborateEndpoints({
+        endpoints: ["http://a.test", "http://b.test"],
+        addresses: { core: "0x000000000000000000000000000000000000c0de" }, // registries unconfigured
+        fromBlock: 0n,
+        toBlock: 9n,
+        makeClient: () => ({ getLogs: async ({ address }) => { calls.push(address); return []; } }),
+    });
+    assert.deepEqual(Object.keys(report.perContract), ["core"]);
+    assert.equal(report.perContract.core.verdict, "agree");
+});
+
+test("crosscheck endpoints come from FIGARO_ANALYST_CROSSCHECK_RPC_URLS; unset is empty, silently", () => {
+    assert.deepEqual(crosscheckRpcUrls({}), []);
+    assert.deepEqual(
+        crosscheckRpcUrls({ FIGARO_ANALYST_CROSSCHECK_RPC_URLS: " http://a.test , http://b.test ,," }),
+        ["http://a.test", "http://b.test"],
+    );
+});
+
+test("/status carries the corroboration only when it ran — one endpoint is silence", () => {
+    assert.equal("endpointAgreement" in corpusStatus(fixtureCorpus()), false);
+    const withReport = {
+        ...fixtureCorpus(),
+        endpointAgreement: {
+            endpoints: ["http://a.test", "http://b.test"],
+            perContract: {
+                core: {
+                    fromBlock: 0n, toBlock: 99n, verdict: "agree",
+                    unionCount: 0, intersectionCount: 0, disputedKeys: [],
+                    endpoints: [
+                        { endpoint: "http://a.test", count: 0, missing: [] },
+                        { endpoint: "http://b.test", count: 0, missing: [] },
+                    ],
+                },
+            },
+        },
+    };
+    const status = corpusStatus(withReport);
+    assert.equal(status.endpointAgreement.perContract.core.verdict, "agree");
+    // The wire's rule holds here too: block bounds leave as decimal strings.
+    assert.equal(status.endpointAgreement.perContract.core.toBlock, "99");
+    assert.doesNotThrow(() => JSON.stringify(status));
 });
 
 // ── The wire ────────────────────────────────────────────────────────────────

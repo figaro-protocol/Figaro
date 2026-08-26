@@ -12,6 +12,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { hexToBytes, keccak256, toHex, type Hex } from "viem";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
+import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import {
     fetchWitnessContent,
     publishWitnessContent,
@@ -76,6 +77,9 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn().mockResolvedValue(GOLDEN_KUBO_KEY);
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         expect(keccak256(GOLDEN_BYTES)).toBe(GOLDEN_REF);
+        // The SDK export IS the derivation under test: both CID forms, direct.
+        expect(witnessContentCidBase32(GOLDEN_REF)).toBe(GOLDEN_KUBO_KEY);
+        expect(witnessContentCid(GOLDEN_REF)).toBe("f01551b20" + GOLDEN_REF.slice(2));
         await publishWitnessContent({
             clauseId: "figaro-proximity-policy",
             stage: 1,

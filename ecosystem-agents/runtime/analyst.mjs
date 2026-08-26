@@ -29,6 +29,7 @@ import {
     computeClauseKey,
     fetchAttestationRecords,
     fetchCoreEvents,
+    fetchEndpointLogAgreement,
     fetchDiscoveryEvents,
     parseProjectionHints,
     reconstructDiscovery,
@@ -149,10 +150,48 @@ export function loadHeldAgreements(dir, events) {
 // ── Sync ────────────────────────────────────────────────────────────────────
 
 /**
+ * Cross-endpoint corroboration: the SAME pinned `[fromBlock, toBlock]` range,
+ * asked of every endpoint the operator supplied, per watched contract.
+ * Load-balanced public RPC endpoints can answer the same query with divergent
+ * event sets — a reader on one endpoint silently under-reports; the report
+ * (`@figaro-protocol/sdk` `fetchEndpointLogAgreement`) makes that a checkable
+ * fact. An endpoint that cannot answer is reported as unreachable for this
+ * pass — the corpus itself still stands on the primary endpoint's answer.
+ */
+export async function corroborateEndpoints({
+    endpoints,
+    addresses,
+    fromBlock,
+    toBlock,
+    makeClient = (url) => createPublicClient({ transport: http(url) }),
+}) {
+    const clients = endpoints.map((url) => ({ endpoint: url, client: makeClient(url) }));
+    const watched = Object.entries({
+        core: addresses.core,
+        attestationCoordinator: addresses.attestationCoordinator,
+        batchVerifier: addresses.batchVerifier,
+        clauseRegistry: addresses.clauseRegistry,
+        membersRegistry: addresses.membersRegistry,
+        assemblyRegistry: addresses.assemblyRegistry,
+    }).filter(([, address]) => Boolean(address));
+    try {
+        const perContract = {};
+        for (const [name, address] of watched) {
+            perContract[name] = await fetchEndpointLogAgreement(clients, { address, fromBlock, toBlock });
+        }
+        return { endpoints, perContract };
+    } catch (err) {
+        return { endpoints, error: err instanceof Error ? err.message : String(err) };
+    }
+}
+
+/**
  * One full pass: fetch, recover, project. Returns the corpus every query folds
  * over. `recoverSubstance: false` skips step 2 entirely — the settlement
  * skeleton alone, which is what a reader with no gateway can honestly answer
- * from.
+ * from. `crosscheckRpcUrls` (extra endpoints beside `rpcUrl`) turns on
+ * cross-endpoint corroboration; absent, the corroboration is absent — one
+ * endpoint cannot be cross-checked, and that is silence, not a warning.
  */
 export async function syncCorpus({
     rpcUrl,
@@ -161,6 +200,7 @@ export async function syncCorpus({
     gateways = ipfsGateways(),
     agreementsDir,
     recoverSubstance = true,
+    crosscheckRpcUrls = [],
 }) {
     const record = typeof deploymentRecord === "string"
         ? JSON.parse(fs.readFileSync(deploymentRecord, "utf-8"))
@@ -179,6 +219,17 @@ export async function syncCorpus({
         await fetchDiscoveryEvents(client, addresses, start, syncedToBlock),
     );
     const { specs, loaded: specsLoaded, skipped: specsSkipped } = await loadSpecSource(discovery, { gateways });
+
+    // 1b. CORROBORATE — only when the operator supplied a second endpoint;
+    //     the same pinned range every fetch above used, per watched contract.
+    const endpointAgreement = crosscheckRpcUrls.length > 0
+        ? await corroborateEndpoints({
+            endpoints: [rpcUrl, ...crosscheckRpcUrls],
+            addresses,
+            fromBlock: start,
+            toBlock: syncedToBlock,
+        })
+        : null;
 
     // 2. RECOVER — substance at the edge. Every recovered payload is FRAMED at
     //    the moment it arrives: it is attacker-authorable data, and whatever
@@ -251,6 +302,7 @@ export async function syncCorpus({
         framedSubstance,
         substanceRecovered,
         held,
+        endpointAgreement,
         graphs: { process, settlement, overlays, valueFlow },
     };
 }
@@ -463,5 +515,10 @@ export function corpusStatus(corpus) {
         specsSkipped: corpus.specsSkipped.length,
         heldAgreements: corpus.held.byHash.size,
         rejectedAgreements: corpus.held.rejected,
+        // Present only when the operator supplied a second endpoint — one
+        // endpoint cannot be cross-checked, and that absence is silent.
+        ...(corpus.endpointAgreement
+            ? { endpointAgreement: jsonSafe(corpus.endpointAgreement) }
+            : {}),
     };
 }

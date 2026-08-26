@@ -73,13 +73,13 @@ No signer socket: the analyst holds no key and signs nothing, so the policy's
 signing half is inert for it and the `egress` list is the half that binds. A
 purchase is a TRADE and goes through `figaro-operator` instead.
 
-`witnessContent.mjs` (the fingerprint→address derivation and the verified read)
+`witnessContent.mjs` (the verified read behind an attestation's fingerprint)
 and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
-under both. **Known duplication:** `frontend/lib/composition/witnessContent.ts`
-holds the same derivation for the browser; the two agree on a golden vector a
-real Kubo produced (asserted in `tests/analyst.test.mjs`), but one home would
-be better than two — the natural one is an SDK `/derive` export, since the
-derivation is pure.
+under both. The fingerprint→address derivation itself is `witnessContentCid`
+(`@figaro-protocol/sdk/derive` — pure, no I/O); this runtime and
+`frontend/lib/composition/witnessContent.ts` both consume that one export,
+each supplying its own I/O, and the derivation is asserted against a golden
+vector a real Kubo produced (`tests/analyst.test.mjs`).
 
 ## The sandbox wrapper — the boundaries prose cannot enforce
 

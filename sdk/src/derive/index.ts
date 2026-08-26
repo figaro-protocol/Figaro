@@ -8,6 +8,9 @@
  * Modules:
  * - Attestation: clause-agnostic event filtering (clause-key derivation is
  *   `computeClauseKey`, a root export)
+ * - Witness content addressing: the fingerprint→content-address derivation —
+ *   an Attestation event's `contentRef` IS the keccak-CID digest of the
+ *   published preimage; pure, all IPFS I/O stays with the caller
  * - Geo math: geohash encode/decode, prefix matching, Haversine distance
  * - Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
  *   composed from a clause or assembly, derived from chain + IPFS
@@ -30,6 +33,10 @@ export {
     filterByOrder,
     filterByStage,
 } from "./attestation.js";
+
+// ── Witness content addressing ──────────────────────────────────────────────
+
+export { witnessContentCid, witnessContentCidBase32 } from "./witnessContent.js";
 
 // ── Withdraw gate (commits==resolves) ─────────────────────────────────────────
 
