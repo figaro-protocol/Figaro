@@ -2286,7 +2286,12 @@ further bonded order (or hand-off) under the same agreement's terms**, and a
 renewal is a new bonded process. That is what makes the obligation self-policing
 without any enforcement machinery — a licensee who breaches loses the continuing
 stream, a seller who degrades it loses the renewal, and gas is paid per
-subscription rather than per data point.
+subscription rather than per data point. Who triggers period N+1 is the buyer's
+side of the repeated game: their agent re-runs the sign-and-commit ceremony under
+whatever policy rule the owner set — there is deliberately no on-chain scheduler,
+keeper, or streaming-payment machinery to do it for them, because a standing
+third actor with the power to move the next period is exactly the kind of party
+the kernel exists to remove.
 
 A worked reference of exactly this shape ships with the protocol and anchors on
 the devnet "Your first commit" brings up — an assembly composing a license

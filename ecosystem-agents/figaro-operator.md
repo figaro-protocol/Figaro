@@ -436,7 +436,10 @@ settlement paths, two disjoint state universes" — which also answers "Is it se
 You cannot drive `settleBatch` the way you drive `commit`: it takes an SP1 validity proof
 over a whole batch. It is nonetheless **permissionless** — no caller gate, no owner, no
 fee — so the ordinary route is to hand your signed operations to a **sequencer**, an HTTP
-relay that pools operations, proves the batch, and settles it. `SequencerClient`
+relay that pools operations, proves the batch, and settles it. Know the operational
+fact before you build against this path: **no hosted public sequencer exists today** —
+the owner either runs one or names one they trust, and until then every trade settles
+on the direct kernel path with the same signed operations. `SequencerClient`
 (`@figaro-protocol/sdk/agent`) speaks its wire format exactly; never hand-roll the JSON.
 
 ```ts

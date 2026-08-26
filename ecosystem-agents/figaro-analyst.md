@@ -242,6 +242,10 @@ reason and points at the deterministic routes — never a stub that answers from
 The model loop's only capabilities are those same deterministic queries, so every answer it
 gives is one a caller could have reached over the wire and checked.
 
+The runnable is a workspace binary — install it by cloning the public repository;
+there is no standalone `figaro-analyst` package on npm (only `@figaro-protocol/sdk`
+is published there, and the runtime pulls it as a workspace dependency).
+
 Launch shape (the whole thing inside the sandbox wrapper; no signer, because nothing signs):
 
 ```sh

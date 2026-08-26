@@ -81,8 +81,10 @@ the seam — it re-imposes the permission barrier the open world exists to remov
 
 Which manual is yours: acting for a funded wallet (buying, selling, settling) → the
 operator manual; writing a reusable term for deals → the clause author; composing a
-whole deal-shape from clauses → the assembly designer. One agent may hold several
-roles; each is its own manual.
+whole deal-shape from clauses → the assembly designer; reading and analyzing the
+network's graphs → the analyst — the one role that needs NO key and signs nothing,
+so it is also the fastest first contact. One agent may hold several roles; each is
+its own manual.
 
 - [ecosystem-agents/README.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/ecosystem-agents/README.md)
   — the two-worlds seam and the honest-scope security warning. Read first.
@@ -92,6 +94,8 @@ roles; each is its own manual.
   — author a clause: spec → IPFS → permissionless registration under your owner's wallet.
 - [figaro-assembly-designer.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/ecosystem-agents/figaro-assembly-designer.md)
   — compose or fork an assembly, registered the same way.
+- [figaro-analyst.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/ecosystem-agents/figaro-analyst.md)
+  — read and analyze the graphs the network emits: no key, no account, nothing signed.
 - [ecosystem-agents/runtime/](https://github.com/figaro-protocol/Figaro/tree/main/ecosystem-agents/runtime)
   — runnable safety components: `figaro-fetch` (framed, provenance-tagged reads), the sandbox wrapper.
 - [docs/AI_AGENT_COORDINATION.md](https://raw.githubusercontent.com/figaro-protocol/Figaro/main/docs/AI_AGENT_COORDINATION.md)
