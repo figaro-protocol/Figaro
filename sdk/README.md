@@ -404,8 +404,10 @@ definition) and `RPGF_*` constant is a **root** export.
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
 | `validateDraft` | `/agent` | The structural check a candidate MUST run before countersigning a race draft. |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
+| `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
 | `warnProcessLogFillsTrap` | root | Warn when a spec pins design/checkout fills on a process-log clause — content that commits unchecked. |
+| `withholdSectionContent` | root | Swap a section's plaintext for its fingerprint — same leaf, same root, the content never travels. |
 | `wrapWithSharedSecret` | `/handoff` | Encrypt a string payload under the ECDH shared secret (12-byte IV ‖ AES-256-GCM, base64url). |
 | `writeTopologySection` | root | Write the REAL parent order hashes into the topology leaf; the template carries only local ids. |
 
@@ -692,6 +694,79 @@ balance, and approve `FigaroBatchVerifier` (not `FigaroCore`) until the batch
 settles. POST-settlement composition is identical on both paths — both deliver
 ERC-20 to the party's own address, so wallet-side routing of what you received is
 path-blind.
+
+## Routing what you received — a POST-settlement composition
+
+The kernel has already paid out, so this is a wallet spending its own balance:
+one settled receipt, many earmarked recipients, one atomic transaction — fiscal
+remittance, a savings address, a co-worker's share, an obligation. The network
+already supplies the contract, so the protocol owns none of it: **Disperse**
+(`0xD152f549545093347A162Dce210e7293f1452150`), verified, ownerless, live since
+2018 at the same address across 16 chains. It reads no `FigaroCore` state, no
+bond and no registry; it is composition, not protocol. So the SDK carries the
+ADDRESS but not the interface: `addressesFromDeploymentRecord` maps a record's
+`multisender` key onto `addresses.multisender`, and there is no `DISPERSE_ABI`
+export — you declare the three functions yourself. A record that omits the key
+(the published Sepolia record does) is not a missing deployment: the canonical
+contract sits at the same address on every chain it is on, so read it off the
+record when it is there and use the canonical address when it is not — after
+checking `getCode` is non-empty on the chain you are actually on.
+
+```ts
+import { ERC20_ABI } from "@figaro-protocol/sdk";
+import { parseAbi } from "viem";
+
+// The canonical Disperse surface — three functions, no owner, no fee.
+const DISPERSE_ABI = parseAbi([
+  "function disperseToken(address token, address[] recipients, uint256[] values)",
+  "function disperseTokenSimple(address token, address[] recipients, uint256[] values)",
+  "function disperseEther(address[] recipients, uint256[] values) payable",
+]);
+
+const legs = [                                   // shares of the settled receipt,
+  { recipient: taxAddress,     amount: parseEther("21") },   // in the order's OWN
+  { recipient: savingsAddress, amount: parseEther("30") },   // currency units
+  { recipient: partnerAddress, amount: parseEther("49") },
+];
+const total = legs.reduce((sum, leg) => sum + leg.amount, 0n);
+
+// `disperseToken` PULLS the aggregate with transferFrom, then pays each leg —
+// so it needs an allowance for the TOTAL, and the approval target is the
+// multisender, never FigaroCore. (`disperseTokenSimple` pulls per leg instead:
+// same allowance, one transferFrom per recipient — cheaper for two legs,
+// dearer for ten. `disperseEther` is the native-token form and refunds any
+// remainder to the caller.)
+const allowance = await publicClient.readContract({
+  address: token, abi: ERC20_ABI, functionName: "allowance",
+  args: [account.address, multisender],
+});
+if (allowance < total) {
+  await publicClient.waitForTransactionReceipt({
+    hash: await walletClient.writeContract({
+      address: token, abi: ERC20_ABI, functionName: "approve", args: [multisender, total],
+    }),
+  });
+}
+
+// Simulate first: EVERY batch is atomic, so one over-balance leg reverts the
+// whole call — better before the wallet prompt than after it.
+const args = [token, legs.map((l) => l.recipient), legs.map((l) => l.amount)] as const;
+await publicClient.simulateContract({
+  address: multisender, abi: DISPERSE_ABI, functionName: "disperseToken", args, account,
+});
+const hash = await walletClient.writeContract({
+  address: multisender, abi: DISPERSE_ABI, functionName: "disperseToken", args,
+});
+```
+
+Measured on a local chain against the mirrored devnet interface: three token
+legs settle in one transaction at ~117k gas, each recipient's balance equal to
+its leg, and an over-balance batch reverts in simulation with nothing partially
+routed. **The trail is the point.** Which address received which share of which
+receipt is now a chain fact anyone the wallet chooses can be shown — a
+self-sovereign fiscal record produced as a byproduct of being paid, not a report
+assembled afterwards. Nothing here is protocol-aware: do it whenever you like,
+in any token you hold, for receipts from either settlement path.
 
 ## Verifying what you are about to sign
 
@@ -1763,7 +1838,7 @@ registration at all.
     (absent = any counterparty, once offered); `calendar` says when
     (`{ embargoDaysAfterSettlement?, notBefore?, notAfter? }`). Prices never
     appear here — a data product is priced as an item in the member's own
-    catalogue (fixed | rate), the item referencing the class via `recordClass`.
+    catalogue (fixed | rate), the item referencing the class via `dataSold`.
     Field absent = the paper-contract default: each party holds its own
     copy; absence of a policy is NOT a policy of openness.
   - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
@@ -1778,7 +1853,7 @@ registration at all.
   `version` is a **string** (`"1"`, never `1`): `parseMemberCatalogueDocument`
   throws `…version must be a string.` on a number rather than coercing it.
   Each item requires `id`, `name`, `price`, `available`; optional are
-  `description`, `category`, `image`, `recordClass` (marks a DATA-PRODUCT
+  `description`, `category`, `image`, `dataSold` (marks a DATA-PRODUCT
   item: `{ compositionHash, clauseId, posture }` referencing one of the
   member's own declared data offers — the policy declares the terms,
   this item is the price), physical measures (`massGrams`,
@@ -1912,6 +1987,310 @@ member's current `metadataURI`, by design (state is event-derived; discovery
 reconstructs it). `registered(member)` answers only whether the stake is live.
 The event log is the read path: verify an update landed by re-running discovery
 (`reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n))`).
+
+## Data products — sell, deliver, verify, subscribe
+
+A data sale is not a special mode of the protocol. It is an **ordinary bonded
+order whose value-added IS access to records** — so everything above applies
+unchanged: the same 2× bonds, the same bilateral signature, the same atomic
+resolve. What is specific is which clauses the order composes, and one property
+that falls out of the merkle commitment: the records a buyer receives are
+**self-authenticating** — each disclosed section verifies against a chain fact,
+so provenance never rests on the seller's word.
+
+Four moments below. The clause ids named are **worked examples of an open set**,
+never a fixed corpus: a designer can compose different clauses for the same
+trade, so route by the field a clause DECLARES (`sourceProcesses`,
+`contentHandoff`, `licenseScope`) with `sectionByField`, never by matching a
+name.
+
+### 1. SELL — declare the terms, price the item
+
+Two documents you already own (both from "Member Profile + Catalogue Documents"
+above), each carrying exactly half of the offer:
+
+- The **profile's `disclosurePolicy`** carries the DISCLOSURE terms: one entry
+  per kind of record,
+  `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`.
+  What a row names is derived, never a stored taxonomy — the assembly you bind
+  or subscribe to × the clause whose leaf holds the record × the side you traded
+  on. Absence of a row is the paper-contract default (each party holds its own
+  copy), **not** a policy of openness; `offered: false` is an explicit
+  withholding, which is a different statement.
+- The **catalogue item's `dataSold`** carries the PRICE: `{ compositionHash,
+  clauseId, posture }` pointing at one of your own declared rows, plus the
+  ordinary `price` / `pricingPolicy` fields every other item uses. Prices never
+  appear in the policy, and the terms of the SALE (§2) ride the item's
+  `clauseValues`, not `dataSold`.
+
+```ts
+import { parseMemberProfileDocument, parseMemberCatalogueDocument } from "@figaro-protocol/sdk";
+
+// The record is a LEAF of an assembly this wallet already trades under — here,
+// the flight-record leaf of a survey assembly, co-produced as its seller. Pick
+// it by reading the assembly's own composed clauses, never from a list of
+// "data clauses": any leaf of any assembly you traded under can be a product.
+const dataOffer = {
+  compositionHash: surveyCompositionHash,
+  clauseId: "figaro-geolocation",
+  posture: "seller" as const,
+};
+
+const profile = {
+  name: "Survey operator",
+  catalogueURI: "ipfs://…",
+  disclosurePolicy: [{ ...dataOffer, offered: true,
+                       calendar: { embargoDaysAfterSettlement: 30 } }],
+};
+const catalogue = {
+  subjectAddress: me, version: "1",
+  items: [{
+    id: "telemetry-2026q3", name: "Flight telemetry — 2026 Q3",
+    price: "50", available: true,              // HUMAN DECIMAL, like every item
+    dataSold: dataOffer,                        // WHAT is sold — the policy row above
+    clauseValues: {                             // the SALE's catalogue-authored terms
+      "figaro-data-license": {
+        licenseScope: "Flight telemetry — 2026 Q3 survey window",
+        access: "stream", redistribution: "prohibited",
+        sourceProcesses: [processIdA, processIdB],
+      },
+    },
+  }],
+};
+parseMemberProfileDocument(profile);            // validate BEFORE pinning — both throw
+parseMemberCatalogueDocument(catalogue);        // on malformed input
+// …then pin + updateProfile exactly as the publish flow above does.
+```
+
+Both postures are first class: a wallet sells the records it produced as a
+seller AND the records it produced as a buyer, on the same terms structure. A
+buyer-posture row draws its candidate assemblies from `buyerAssemblies`, a
+seller-posture row from `assemblyBindings`.
+
+### 2. COMPOSE — the sale is an order like any other
+
+The sale composes the settlement clause plus, typically, a license clause and a
+hand-off clause; where the subject is **this process's own** co-produced records
+rather than someone else's, a data-terms clause composes into that process
+instead, fixing the disclosure regime the parties co-sign.
+
+```ts
+const clauses = {
+  "figaro-commerce":        { currency, payment: price.toString(), lineItems },
+  "figaro-data-license":    {
+    licenseScope:   "Flight telemetry — 2026 Q3 survey window",
+    purpose:        "internal analytics only; model training excluded",
+    access:         "stream",          // or "snapshot" — §4
+    redistribution: "prohibited",      // co-signed evidence, not an on-chain block
+    sourceProcesses: [processIdA, processIdB],  // the provenance anchors — §3
+  },
+  "figaro-content-handoff": { contentHandoff: ["encrypted-transfer"] },
+};
+const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses, specs, versions);
+assertAgreementSignable(agreement, agreementHash, specs, commitment, "data sale");
+```
+
+The literal map above is the hand-authored form. In a catalogue checkout you do
+not write those license values at all — `fillClassSections` folds them out of
+the line item's `clauseValues` onto the leaf, found by the spec's declared
+`block.checkout.catalogueFills` and never by clause name (Checkout Planning
+above). One hazard rides with it: the fold takes the **first** line carrying
+values for that clause, so keep one data product per order rather than mixing
+two licenses into one cart.
+
+Two placement rules the specs themselves state, readable with
+`parseProjectionHints` — do not hand-place these:
+
+- The license terms are **catalogue-authored**: `figaro-data-license` declares
+  all five of its fields in `block.checkout.catalogueFills`, so the record's
+  owner writes them on the data item and checkout folds them into the agreement
+  both parties sign. The item's price stays the item's own field, and who may
+  buy and when stay the profile's policy — neither is a field on the clause.
+- The disclosure regime is **designer-authored**: `figaro-data-terms` declares
+  `disclosure` in `block.design.fills` (the designer fixes `closed` /
+  `each-own` / `open` at design time, so **regime variants are sibling
+  assemblies**, not a runtime toggle), while `buyerDisclosure` is the buyer's
+  per-order choice over their own half, filled at checkout and committed at
+  signing.
+
+Then originate it like any other order — "From Adopted Template to Signed
+Agreement — the ONE walk" is unchanged, and so is every gate in it.
+
+**Why a bond makes this tradeable at all.** Data cannot be inspected before
+purchase without giving it away, which is what makes pricing it hard everywhere
+else. Here the seller's 2× bond stands in for pre-inspection: the seller is
+staked against the delivery being what the co-signed license says it is, and the
+buyer resolves only after receiving it.
+
+### 3. DELIVER + VERIFY — the self-authenticating leaf
+
+**Delivery** rides the hand-off clause's `encrypted-transfer` mode: the artifact
+— or, more usually, the decryption key or the stream credential, since the
+corpus itself moves over whatever transport you already have — travels the
+**per-order ECDH channel**. The ceremony is exactly the one in
+`@figaro-protocol/sdk/handoff` above (`generateOrderKeypair` →
+`deriveSharedSecretAsSender` / `deriveSharedSecretAsReceiver` →
+`wrapWithSharedSecret` / `unwrapWithSharedSecret`); nothing about a data sale
+changes it. Two joins that are specific:
+
+- **Completion evidence is the delivered bytes' hash.** The hand-off clause
+  declares a stage-1 witness carrying `contentHash` (`keccak256` of what you
+  actually sent) and an optional `contentUri` — **omit the locator for a
+  counterparty-private transfer**; it exists for the public-release and
+  repository-grant modes. File it with the same `attestAsSeller` recipe as any
+  other clause (see `/agent` above): the proof merkle-binds the section to the
+  signed agreement, and only the fingerprint reaches calldata, so the payload
+  never becomes public.
+- **The buyer re-hashes what it received** and compares to the attested
+  `contentHash`. That is the whole delivery check, and it needs no third party.
+
+**Verification** is the part that has no analogue off-chain. When the license
+names `sourceProcesses`, every disclosed record is provable against a chain
+fact:
+
+```ts
+import {
+  fetchCoreEvents, computeAgreementHash, buildSectionInclusionProof,
+  verifyInclusionProof, withholdSectionContent, sectionByField,
+} from "@figaro-protocol/sdk";
+
+// (a) Read the provenance anchors off the license by DECLARED FIELD.
+const license = sectionByField(saleAgreement, "sourceProcesses", specs);
+const sourceIds = license!.data.sourceProcesses as `0x${string}`[];
+
+// (b) The ROOT comes from the chain, never from the licensor. OrderCommitted
+//     carries the agreementHash the two parties actually signed.
+const events = await fetchCoreEvents(client, addresses, BigInt(record.deploymentBlock));
+const rootsFor = (processId: string) => events.orderCommitted
+  .filter((e) => e.processId.toLowerCase() === processId.toLowerCase())
+  .map((e) => e.agreementHash);
+
+// (c) The licensor hands over the source agreement with every section it is
+//     NOT licensing in CONTENT-WITHHELD form — same leaf, same root, and the
+//     withheld plaintext never travels.
+const disclosed = {
+  ...sourceAgreement,
+  sections: sourceAgreement.sections.map((s) =>
+    s.clause === licensedClause ? s : withholdSectionContent(s)),
+};
+
+// (d) Whole-document check: the root you recompute must BE the committed one.
+const chainRoot = rootsFor(sourceIds[0])[0];
+if (computeAgreementHash(disclosed) !== chainRoot) throw new Error("not the committed document");
+
+// (e) Per-leaf check, for when only a leaf and its proof travel:
+const { leaf, proof } = buildSectionInclusionProof(disclosed, licensedClause);
+if (!verifyInclusionProof(chainRoot, leaf, proof)) throw new Error("leaf not under the committed root");
+```
+
+Verified end to end against the shipped `dist`: the withheld form reproduces the
+plaintext form's root exactly, the disclosed leaf verifies against it, and a leaf
+built from tampered section data does **not** — the check is not vacuous.
+
+**State the boundary honestly to whoever you build for.** What this proves is
+that *this content sat under that agreement's root, signed by those two parties,
+at that commit* — provenance and integrity, not veracity: no chain can testify
+that a sensor was pointed where its record says. And `redistribution:
+"prohibited"` is not enforcement — copying cannot be prevented on chain. The
+co-signed term is timestamped evidence for the layers outside the kernel (the
+co-sellers' live interest in the same unresolved process, a composed arbitration
+forum, ordinary courts), the same posture as every other off-chain obligation.
+
+### 4. SUBSCRIBE — `access: "stream"` is the repeated game
+
+`snapshot` is a one-time delivery verified by content hash. `stream` is the
+sustainable form and the more interesting one: **each period's delivery is a
+further bonded order (or hand-off) under the same agreement's terms**, and a
+renewal is a new bonded process. That is what makes the obligation self-policing
+without any enforcement machinery — a licensee who breaches loses the continuing
+stream, a seller who degrades it loses the renewal, and gas is paid per
+subscription rather than per data point.
+
+A worked reference of exactly this shape ships with the protocol and anchors on
+the devnet "Your first commit" brings up — an assembly composing a license
+clause, a hand-off clause and a schedule clause for the access window, published
+as *Data stream subscription*. Whether you are on that devnet or a public chain,
+find it the way you find any assembly — **by shape, from the registry**, never by
+a name and never from a bundled file (a chain that anchors none returns nothing,
+which is the correct answer, not an error):
+
+```ts
+const graph = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, fromBlock));
+for (const a of graph.getAssemblies()) {
+  const template = await (await fetch(gateway(a.contentURI))).json();
+  const composed = Object.keys(template.agreements[0].clauses);
+  const licenses = composed.some((c) => (specs.get(c)?.fields ?? []).some((f) => f.name === "licenseScope"));
+  if (licenses) { /* this template sells access to records */ }
+}
+```
+
+Fork it, compose your own, or compose none of it — a data sale needs no
+particular assembly, only the clauses your buyer and you both sign.
+
+## Claiming the author's mint — `RpgfMinter.claim`
+
+Everything above earns. If the wallet registered a clause or an assembly and
+other people's trade composed it, the 600M retroactive distribution is claimed
+by the **author of record** — the wallet each registry stored as `registeredBy`,
+and only while its registration deposit is still un-withdrawn (that is the
+author-side half of the two-sided live-stake gate; the seller-side half lives in
+`UsageCounter`). One call per wallet per period, carrying **every** clause and
+assembly that wallet authored:
+
+```ts
+import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
+
+// The keys are the registries' own identities: a clause is
+// computeClauseKey(id, version); an assembly IS its compositionHash.
+const mine = [computeClauseKey("figaro-my-clause", 1), myCompositionHash];
+
+// A period must be CLOSED before it can be claimed (claim reverts
+// PeriodStillAccruing otherwise), and `claimable` returns 0 — not a revert —
+// for a wallet that already claimed. Read before you write:
+const closed = await client.readContract({
+  address: addresses.usageCounter!, abi: USAGE_COUNTER_ABI,
+  functionName: "periodClosed", args: [periodId],
+});
+const amount = await client.readContract({
+  address: addresses.rpgfMinter!, abi: RPGF_MINTER_ABI,
+  functionName: "claimable", args: [periodId, me, mine],
+});
+
+if (closed && amount > 0n) {
+  await walletClient.writeContract({
+    address: addresses.rpgfMinter!, abi: RPGF_MINTER_ABI,
+    functionName: "claim", args: [periodId, mine],   // periodId is uint8
+  });
+}
+```
+
+The list is a **lookup key, never a claim of ownership**: each entry is verified
+against its own registry, so a key you do not author reverts `NotAuthorOfRecord`
+and a repeated entry reverts `DuplicateClauseOrAssembly`. `claim` adds two of
+its own: `AlreadyClaimed` (once per wallet per period) and
+`NoClausesOrAssemblies` (the empty list). Every one of those fragments is in
+`RPGF_MINTER_ABI`, so they decode by name instead of arriving as opaque bytes.
+
+**`claimable` is a weaker preflight than it looks, in two ways — measured, not
+inferred.** It shares `claim`'s entitlement path, so a malformed list usually
+reverts there first and you learn it without spending gas; but when the period
+has NO score at all the path short-circuits to `0` before checking anything, and
+a duplicate list, and even a key the caller does not author, both answer `0`
+rather than reverting. And it never checks CLOSURE — during accrual it returns a
+live figure that moves with every recorded usage and cannot yet be claimed;
+`claim` is the one that refuses, with `PeriodStillAccruing`. So a `0` is four
+facts wearing one answer (already claimed · nothing scored by you · nothing
+scored at all · a list that would have reverted on a live period), and a
+non-zero on an open period is an estimate, not an entitlement. Read
+`periodClosed` beside it, always. Once a period is closed there is no claim
+expiry, no owner and no sweep — its arithmetic is stable forever, so a late
+claim is exactly the same share as a prompt one.
+
+The amount is `periodAmount · yourScore / totalScoreInPeriod`, uniform: no tag,
+category, weight or cap. To predict it before the period closes, or to audit a
+claim afterwards, run the off-chain mirror `computeRpgfAllocations` (Protocol
+Primitives above) — and fold **both** usage event streams, or every clause whose
+trade moved to the batch path under-reports.
 
 ## Design Principles
 

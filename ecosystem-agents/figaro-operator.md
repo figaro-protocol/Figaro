@@ -244,6 +244,52 @@ well-formed `compositionHash` and requires that composition to hold a live regis
 so an agreement with no provenance section credits no designer at all. Report the report,
 never "it reverted, so it failed".
 
+## Trading the wallet's data — an ordinary bonded order
+
+What the wallet co-produced inside settled processes — as buyer or as seller, both
+postures on the same terms structure — is tradeable value: it licenses onward as an
+ordinary bonded order whose value-added IS access to those records. Mechanically nothing
+is new (same 2× bonds, same bilateral signature, same atomic resolve, same gate before
+every signature). What is specific is a pair of declarations the owner authors (the
+profile's `disclosurePolicy` — offered or explicitly withheld, to whom, from when; a
+catalogue item's `dataSold` plus its `clauseValues` — the price and the license terms),
+an encrypted per-order delivery, and the property the owner is actually selling: every
+disclosed leaf verifies by merkle inclusion against the source process's ON-CHAIN
+`agreementHash`, so the buyer checks provenance against the chain instead of the owner's
+word. **The recipe is the SDK README, "Data products — sell, deliver, verify,
+subscribe"** — sell, compose, deliver, verify, subscribe, executable as written. Two
+things to keep straight when you report to the owner: the proof is provenance and
+integrity, never veracity (no chain testifies that a record is true about the world), and
+a "no redistribution" term is co-signed evidence for the outer recourse layers, never an
+on-chain block on copying. Say both plainly rather than implying enforcement the protocol
+does not have.
+
+## Recipes you do not re-derive
+
+Five things an owner asks for that are already written down and executable in the SDK
+README. Read the section; never reconstruct one from the ABI.
+
+- **Writing an attestation** — inclusion proof → section fingerprint → content
+  fingerprint → `attestAsSeller` / `attestAsBuyer` (and `attestViaResolver` when the
+  order's seller is a mechanism contract): `@figaro-protocol/sdk/agent` — Agent Coordination.
+- **The encrypted hand-off ceremony** — a per-order ephemeral keypair and the
+  DIRECTIONAL ECDH derivation (the two sides call different halves; the reverse pairing
+  yields a different secret), then wrap/unwrap: `@figaro-protocol/sdk/handoff` — Runtime
+  Handoff Wire Protocol.
+- **Bonding in a token the wallet does not hold** — Permit2 witness + swap + commit in
+  one transaction on the direct path; the batch path has no funding leg, so swap in the
+  wallet first and approve the verifier, not the kernel: "Bonding in a token you do not
+  hold".
+- **Routing a settled receipt onward** — one payment in, many earmarked addresses out,
+  one atomic transaction through the composed public multisender; approve the multisender
+  for the batch total (never `FigaroCore`), and simulate first because a single
+  over-balance leg reverts the whole batch: "Routing what you received". It reads no
+  process state, so it behaves identically for receipts from either settlement universe —
+  and the fiscal trail it leaves is a byproduct the owner can show anyone.
+- **Claiming what the owner's clauses and assemblies earned** — `RpgfMinter.claim`, once
+  per wallet per CLOSED period, carrying every registry key the wallet authored (a
+  duplicate entry or a key it does not author reverts): "Claiming the author's mint".
+
 ## Reclaiming a registration stake — apply the K4 withdraw gate yourself
 
 If the owner registered a clause or an assembly, its deposit comes back with one call
@@ -473,6 +519,51 @@ leg's (a quote request is never counter-signed at the ceiling; a buyer-signed of
 `makeSellerOfferHandler`'s); a wallet serving several legs on one address dispatches on
 payload shape — `buyerSig` present → offer handler, `quoteRequest` present → quote
 handler, else race handler.
+
+## When performance goes wrong — the posture before you touch anything
+
+This is conduct, not mechanism: nothing here changes what the kernel does, and every
+sentence is something to get RIGHT in front of an owner who arrives with platform priors.
+
+- **The window is BEFORE resolve, and it is the only one.** While a process is
+  unresolved, both sides' bonds sit locked in the kernel and nobody has been paid — that
+  is the pressure the mechanism exists to create, and it is symmetric: the buyer's own
+  bond is locked too, so waiting costs both sides. Remedies are what the PARTIES
+  negotiate inside that window — re-performance, a replacement delivery, a further bonded
+  order that corrects the shortfall, a side agreement they both sign. The kernel knows
+  none of them and the SDK proposes none of them; your job is to surface the state and
+  the options, then do what the owner instructs.
+- **Resolution is TERMINAL acceptance.** `resolveProcess` settles every order in the
+  process atomically, only the buyer can call it, and there is no recourse afterwards —
+  no timeout, no recovery path, no admin, nobody who can undo it. So never resolve while
+  the owner has an open complaint: resolving IS accepting. If the owner asks anyway,
+  state the finality first and get an explicit instruction.
+- **Never propose an escape hatch, however it is dressed.** A recovery path, a partial
+  release, a timeout that returns bonds "if the seller goes quiet" — each is an invariant
+  break arriving as customer service. Refuse it and name the invariant (see Discipline).
+- **Forums rule on the record regardless of whether one was composed in.** An arbitration
+  clause composed into the assembly fixes the VENUE in advance; where none was composed,
+  the parties pick a venue afterwards and ordinary courts rule on the very same evidence.
+  Either way a forum holds no protocol role: it cannot call `resolveProcess`, cannot hold
+  a bond, cannot move a token. Its ruling acts on the PARTIES, who then act on chain
+  themselves. Never tell an owner that recourse is unavailable because nothing was
+  composed — that is false, and it is the single most common thing to get wrong here.
+- **The evidence already exists — the process record IS the bundle.** The commitment
+  payloads carried by `OrderCommitted` (both parties' signed terms, the agreement root,
+  the deadline), the merkle-bound attestations each side filed, and the agreement's own
+  sections. Any SINGLE term is provable to an outsider without revealing the rest:
+  disclose that section with `buildSectionInclusionProof` + `verifyInclusionProof`
+  against the committed `agreementHash`, and put every other section into its
+  content-withheld form with `withholdSectionContent` — same root, plaintext never
+  travels (the worked recipe is the SDK README's data-products section, step 3). A
+  counterparty cannot deny a term that verifies against the root they signed. Walletless
+  per-order verdicts for the owner: `/audit/view?process=`.
+- **The co-sellers are a live layer, not a metaphor.** In a multi-order process nobody is
+  paid until the buyer resolves, so every other seller in the chain holds a bonded
+  interest in one seller's fault being remedied — reaching them early is a real
+  coordination move, available before any forum, and the layer strangers most often do
+  not know exists. State the stack in full, never truncated: the chain, the kernel's
+  bonding and evidence, the co-sellers, a composed arbitration forum, and ordinary law.
 
 ## The safety net you can lean on
 

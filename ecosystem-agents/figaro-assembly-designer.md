@@ -201,6 +201,20 @@ the hash). Register `AssemblyRegistry.registerAssembly(compositionHash, contentU
 refuses over- and under-payment alike) —
 signed by the **user's** key (or hand them the calldata).
 
+**Then PROVE it originates — registration is not origination.** A template can be
+registered, discoverable, and still refuse to become a bonded order (a required term no
+one fills, a leaf contradicting the struct, a topology that cannot be walked). The proof
+is the SDK's own autonomous-origination runners, which the SDK README narrates as its
+"Your first commit" step 4: `verify-origination.devnet.mjs` for a single-order template
+and `verify-origination-chain.devnet.mjs` for a multi-order chain, run against a devnet
+the user brings up themselves. They DISCOVER their template from the registry and
+hydrate it — nothing is hardcoded — but they take the first template of their shape they
+can hydrate, so either run them on a chain carrying the user's assembly, or read them as
+the recipe and narrow the selection to the user's own `compositionHash`. A green run ends
+at a committed bonded order with both bonds pulled; anything less and the composition is
+not finished, whatever the registry says. You do not edit those files — you point the
+user at them and read the outcome.
+
 ## Step 6 — Output (the user owns this)
 
 ```
