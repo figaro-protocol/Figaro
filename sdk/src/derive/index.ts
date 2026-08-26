@@ -11,6 +11,15 @@
  * - Geo math: geohash encode/decode, prefix matching, Haversine distance
  * - Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
  *   composed from a clause or assembly, derived from chain + IPFS
+ * - Truth boundaries: the trust labels of docs/PUBLIC_GRAPH_MODEL.md — every
+ *   graph projection names the guarantee behind its rows
+ * - Base graphs: Process + Settlement projections (protocol-enforced), pure
+ *   folds over already-fetched core events
+ * - Overlays: per-clause-family attestation streams (the open graph class),
+ *   spec-decoded via the caller's SpecSource, fingerprint-only on absence
+ * - Composition: venue-parameterized fifth-noun projections — the value-flow
+ *   graph over settlement denominations + caller-parsed swap legs
+ * - Queries: market-shape and wallet-record, thin folds over the graphs
  */
 
 // ── Attestation filtering ───────────────────────────────────────────────────
@@ -45,3 +54,48 @@ export {
     decodeGeohash,
     geohashCentroidDistanceKm,
 } from "./geo.js";
+
+// ── Truth boundaries ────────────────────────────────────────────────────────
+
+export type { TruthBoundary } from "./truth.js";
+
+// ── Base-graph projections (Process + Settlement) ───────────────────────────
+
+export { projectProcessGraph, projectSettlementGraph } from "./graphs.js";
+export type {
+    ProcessGraph,
+    SettlementGraph,
+    SettlementChain,
+    SettlementEntry,
+} from "./graphs.js";
+
+// ── Overlay extraction (the open graph class) ───────────────────────────────
+
+export { extractOverlays } from "./overlay.js";
+export type {
+    RecoveredAttestation,
+    OverlayEntry,
+    OverlayGraph,
+} from "./overlay.js";
+
+// ── Composition projections (venue-parameterized) ───────────────────────────
+
+export { projectValueFlow } from "./composition.js";
+export type {
+    VenueEvent,
+    SwapLeg,
+    ValueFlowNode,
+    ValueFlowEdge,
+    ValueFlowGraph,
+} from "./composition.js";
+
+// ── Canonical graph queries ─────────────────────────────────────────────────
+
+export { marketShape, walletRecord } from "./queries.js";
+export type {
+    ChainShape,
+    DenominationVolume,
+    MarketShapeGroup,
+    MarketShape,
+    WalletRecord,
+} from "./queries.js";
