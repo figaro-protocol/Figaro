@@ -10,7 +10,7 @@
  *   structural template fingerprint the withdraw gate uses) — the query never
  *   guesses, and an unattributed process is counted as such, never binned
  *   under a fabricated key. Chain shapes come from caller-supplied parent
- *   edges (decoded topology sections) via `topologicalOrder`; without them
+ *   edges (decoded topology sections) via `depthsOverParents`; without them
  *   the kernel's own linear view stands.
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
@@ -22,14 +22,15 @@
 
 import type { Hex, Address, Process, Order } from "../types.js";
 import { OrderState } from "../types.js";
-import { topologicalOrder } from "../topology.js";
+import { depthsOverParents } from "../topology.js";
 import type { ProcessGraph } from "./graphs.js";
 
 // ── Market-shape ────────────────────────────────────────────────────────────
 
 /** A distinct chain shape and how many processes take it. Depth/width are
- *  computed over caller-supplied parent edges; the kernel's own view (no
- *  parent edges supplied) is linear: depth == orderCount, maxWidth == 1. */
+ *  computed over caller-supplied parent edges, 0-rooted (a root order is
+ *  depth 0 — the shipped UI convention); the kernel's own view (no parent
+ *  edges supplied) is linear: depth == orderCount - 1, maxWidth == 1. */
 export interface ChainShape {
     orderCount: number;
     depth: number;
@@ -71,21 +72,17 @@ export interface MarketShape {
     unattributedProcessCount: number;
 }
 
-/** Depth and width of one process's chain over in-set parent edges. */
+/** Depth and width of one process's chain over in-set parent edges —
+ *  0-rooted via `depthsOverParents`. */
 function chainShapeOf(
     orders: readonly Order[],
     parentOrderHashesOf: (orderHash: Hex) => readonly Hex[],
 ): { orderCount: number; depth: number; maxWidth: number } {
     const ids = orders.map((o) => o.orderHash);
-    const idSet = new Set(ids);
-    const ordered = topologicalOrder(ids, (id) => [...parentOrderHashesOf(id as Hex)], "break");
-    const depthOf = new Map<string, number>();
+    const depths = depthsOverParents(ids, (id) => [...parentOrderHashesOf(id as Hex)]);
     let depth = 0;
     const widthAt = new Map<number, number>();
-    for (const id of ordered) {
-        const parents = parentOrderHashesOf(id as Hex).filter((p) => p !== id && idSet.has(p));
-        const d = 1 + parents.reduce((max, p) => Math.max(max, depthOf.get(p) ?? 0), 0);
-        depthOf.set(id, d);
+    for (const d of depths.values()) {
         depth = Math.max(depth, d);
         widthAt.set(d, (widthAt.get(d) ?? 0) + 1);
     }
@@ -157,7 +154,11 @@ export function marketShape(
 
         const shape = parentOrderHashesOf
             ? chainShapeOf(orders, parentOrderHashesOf)
-            : { orderCount: orders.length, depth: orders.length, maxWidth: orders.length > 0 ? 1 : 0 };
+            : {
+                orderCount: orders.length,
+                depth: Math.max(0, orders.length - 1),
+                maxWidth: orders.length > 0 ? 1 : 0,
+            };
         const shapeKey = `${shape.orderCount}|${shape.depth}|${shape.maxWidth}`;
         const shapes = shapesOf.get(key)!;
         const existing = shapes.get(shapeKey);
@@ -195,19 +196,16 @@ export interface WalletRecord {
  */
 export function walletRecord(graph: ProcessGraph, wallet: Address): WalletRecord {
     const lc = wallet.toLowerCase();
-    const processesAsRootBuyer: Process[] = [];
+    const processesAsRootBuyer = graph.topology.getProcessesByBuyer(wallet);
     const ordersAsBuyer: Order[] = [];
-    const ordersAsSeller: Order[] = [];
     for (const process of graph.processes.values()) {
-        if (process.rootBuyer.toLowerCase() === lc) processesAsRootBuyer.push(process);
         for (const order of process.orders.values()) {
             if (order.buyer.toLowerCase() === lc) ordersAsBuyer.push(order);
-            if (order.seller.toLowerCase() === lc) ordersAsSeller.push(order);
         }
     }
     const byBlock = (a: { blockNumber: number }, b: { blockNumber: number }) =>
         a.blockNumber - b.blockNumber;
     ordersAsBuyer.sort(byBlock);
-    ordersAsSeller.sort(byBlock);
+    const ordersAsSeller = graph.topology.getOrdersBySeller(wallet).sort(byBlock);
     return { boundary: "protocol-enforced", wallet, processesAsRootBuyer, ordersAsBuyer, ordersAsSeller };
 }

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { encodeAbiParameters } from "viem";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
-import { encodeContentFromSpec } from "../../src/clauses/encode.js";
+import { encodeContentFromSpec, decodeContentFromSpec } from "../../src/clauses/encode.js";
+import dataLicenseSpecRaw from "../../../clauses/figaro-data-license.json" with { type: "json" };
+import dataTermsSpecRaw from "../../../clauses/figaro-data-terms.json" with { type: "json" };
+import chainOfCustodySpecRaw from "../../../clauses/figaro-chain-of-custody.json" with { type: "json" };
+import acceptanceCriteriaSpecRaw from "../../../clauses/figaro-acceptance-criteria.json" with { type: "json" };
 import assemblyProvenanceSpecRaw from "../../../clauses/figaro-assembly-provenance.json" with { type: "json" };
 import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
@@ -735,6 +739,153 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec).ok).toBe(false);
         // windowEnd is required.
         expect(validateContent({ windowStart: "2026-07-22T09:00:00Z" }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-data-license ──
+
+    it("figaro-data-license spec parses cleanly", () => {
+        expect(parseClauseSpec(dataLicenseSpecRaw).ok).toBe(true);
+    });
+
+    it("figaro-data-license accepts a full grant and round-trips through the generic encoder", () => {
+        const parsed = parseClauseSpec(dataLicenseSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const grant = {
+            licenseScope: "Depot lane telemetry, 2026 H1",
+            purpose: "internal analytics only",
+            access: "snapshot",
+            redistribution: "prohibited",
+            sourceProcesses: ["0x" + "ab".repeat(32), "0x" + "cd".repeat(32)],
+        };
+        expect(validateContent(grant, parsed.spec).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, grant);
+        expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(grant);
+    });
+
+    it("figaro-data-license rejects an undeclared access mode", () => {
+        const parsed = parseClauseSpec(dataLicenseSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            licenseScope: "Depot lane telemetry, 2026 H1",
+            access: "perpetual",
+            redistribution: "prohibited",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-data-terms ──
+
+    it("figaro-data-terms spec parses cleanly and pins the regime as a designer fill", () => {
+        const parsed = parseClauseSpec(dataTermsSpecRaw);
+        expect(parsed.ok).toBe(true);
+        const fills = (dataTermsSpecRaw as { block?: { design?: { fills?: string[] } } })
+            .block?.design?.fills;
+        expect(fills).toEqual(["disclosure"]);
+    });
+
+    it("figaro-data-terms accepts a regime + buyer choice and round-trips through the generic encoder", () => {
+        const parsed = parseClauseSpec(dataTermsSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const terms = { disclosure: "each-own", buyerDisclosure: "permit" };
+        expect(validateContent(terms, parsed.spec).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, terms);
+        expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(terms);
+    });
+
+    it("figaro-data-terms rejects a missing buyer choice — consent is explicit, never inferred", () => {
+        const parsed = parseClauseSpec(dataTermsSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ disclosure: "closed" }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-chain-of-custody ──
+
+    it("figaro-chain-of-custody spec parses cleanly", () => {
+        expect(parseClauseSpec(chainOfCustodySpecRaw).ok).toBe(true);
+    });
+
+    it("figaro-chain-of-custody accepts a committed scheme and round-trips through the generic encoder", () => {
+        const parsed = parseClauseSpec(chainOfCustodySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const committed = {
+            custodyScheme: "ISO 17712 high-security bolt seal on ISO 6346 container",
+            unitIdentifier: "MSKU1234567",
+        };
+        expect(validateContent(committed, parsed.spec).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, committed);
+        expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(committed);
+    });
+
+    it("figaro-chain-of-custody stage-1 witness round-trips a custody event", () => {
+        const parsed = parseClauseSpec(chainOfCustodySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const event = {
+            event: "inspected-intact",
+            unitIdentifier: "MSKU1234567",
+            sealIdentifier: "SL-4471",
+            locationGeohash: "u4pruyd",
+            occurredAt: "2026-08-01T10:00:00Z",
+            evidenceUri: "ipfs://bafyseal",
+        };
+        expect(validateContent(event, parsed.spec, { stage: 1 }).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, event, { stage: 1 });
+        expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toEqual(event);
+    });
+
+    it("figaro-chain-of-custody rejects a missing scheme and an undeclared custody event", () => {
+        const parsed = parseClauseSpec(chainOfCustodySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ unitIdentifier: "MSKU1234567" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({
+            event: "opened",
+            unitIdentifier: "MSKU1234567",
+            occurredAt: "2026-08-01T10:00:00Z",
+        }, parsed.spec, { stage: 1 }).ok).toBe(false);
+    });
+
+    // ── figaro-acceptance-criteria ──
+
+    it("figaro-acceptance-criteria spec parses cleanly", () => {
+        expect(parseClauseSpec(acceptanceCriteriaSpecRaw).ok).toBe(true);
+    });
+
+    it("figaro-acceptance-criteria accepts a committed basis and round-trips through the generic encoder", () => {
+        const parsed = parseClauseSpec(acceptanceCriteriaSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const committed = {
+            acceptanceBasis: "AQL 2.5 per ISO 2859-1 against PO 4711",
+            criteriaHash: "0x" + "ef".repeat(32),
+            criteriaUri: "ipfs://bafycriteria",
+        };
+        expect(validateContent(committed, parsed.spec).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, committed);
+        expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(committed);
+    });
+
+    it("figaro-acceptance-criteria stage-1 witness round-trips an outcome", () => {
+        const parsed = parseClauseSpec(acceptanceCriteriaSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const outcome = {
+            outcome: "conditionally-accepted",
+            occurredAt: "2026-08-02T15:30:00Z",
+            evidenceUri: "ipfs://bafyinspection",
+        };
+        expect(validateContent(outcome, parsed.spec, { stage: 1 }).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, outcome, { stage: 1 });
+        expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toEqual(outcome);
+    });
+
+    it("figaro-acceptance-criteria rejects a malformed criteria hash and an undeclared outcome", () => {
+        const parsed = parseClauseSpec(acceptanceCriteriaSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // criteriaHash carries the bytes32-hex format — the SPEC's gate.
+        expect(validateContent({
+            acceptanceBasis: "AQL 2.5 per ISO 2859-1 against PO 4711",
+            criteriaHash: "not-hex",
+        }, parsed.spec).ok).toBe(false);
+        expect(validateContent({
+            outcome: "rejected",
+            occurredAt: "2026-08-02T15:30:00Z",
+        }, parsed.spec, { stage: 1 }).ok).toBe(false);
     });
 
 });

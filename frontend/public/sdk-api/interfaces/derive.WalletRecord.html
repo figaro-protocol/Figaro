@@ -17,7 +17,7 @@ graph's own <code>Process</code>/<code>Order</code> shapes — settlement outcom
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">WalletRecord</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#boundary">boundary</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;protocol-enforced&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#ordersasbuyer">ordersAsBuyer</a><span class="tsd-signature-symbol">:</span> <a href="index.Order.html" class="tsd-signature-type tsd-kind-interface">Order</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#ordersasseller">ordersAsSeller</a><span class="tsd-signature-symbol">:</span> <a href="index.Order.html" class="tsd-signature-type tsd-kind-interface">Order</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#processesasrootbuyer">processesAsRootBuyer</a><span class="tsd-signature-symbol">:</span> <a href="index.Process.html" class="tsd-signature-type tsd-kind-interface">Process</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#wallet">wallet</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L180">sdk/src/derive/queries.ts:180</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L181">sdk/src/derive/queries.ts:181</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -38,33 +38,33 @@ graph's own <code>Process</code>/<code>Order</code> shapes — settlement outcom
 <h3 class="tsd-anchor-link" id="boundary"><span>boundary</span><a href="#boundary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">boundary</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;protocol-enforced&quot;</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L181">sdk/src/derive/queries.ts:181</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L182">sdk/src/derive/queries.ts:182</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ordersasbuyer"><span>orders<wbr/>As<wbr/>Buyer</span><a href="#ordersasbuyer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">ordersAsBuyer</span><span class="tsd-signature-symbol">:</span> <a href="index.Order.html" class="tsd-signature-type tsd-kind-interface">Order</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Orders this wallet is the per-order buyer of (root and sub-orders).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L186">sdk/src/derive/queries.ts:186</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L187">sdk/src/derive/queries.ts:187</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ordersasseller"><span>orders<wbr/>As<wbr/>Seller</span><a href="#ordersasseller" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">ordersAsSeller</span><span class="tsd-signature-symbol">:</span> <a href="index.Order.html" class="tsd-signature-type tsd-kind-interface">Order</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Orders this wallet added value on.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L188">sdk/src/derive/queries.ts:188</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L189">sdk/src/derive/queries.ts:189</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="processesasrootbuyer"><span>processes<wbr/>As<wbr/>Root<wbr/>Buyer</span><a href="#processesasrootbuyer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">processesAsRootBuyer</span><span class="tsd-signature-symbol">:</span> <a href="index.Process.html" class="tsd-signature-type tsd-kind-interface">Process</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Processes this wallet resolves (kernel star shape: the one resolver).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L184">sdk/src/derive/queries.ts:184</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L185">sdk/src/derive/queries.ts:185</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="wallet"><span>wallet</span><a href="#wallet" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">wallet</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L182">sdk/src/derive/queries.ts:182</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/queries.ts#L183">sdk/src/derive/queries.ts:183</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

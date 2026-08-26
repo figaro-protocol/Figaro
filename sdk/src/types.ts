@@ -1,13 +1,31 @@
 /**
  * @figaro-protocol/sdk — Types
  *
- * Domain types for the Figaro protocol. No runtime dependencies — pure type definitions.
+ * Domain types for the Figaro protocol. No runtime dependencies — pure type
+ * definitions plus the two dependency-free hex shape predicates.
  */
 
 // ── Hex-branded type (matches viem's convention) ────────────────────────────
 
 export type Hex = `0x${string}`;
 export type Address = `0x${string}`;
+
+// ── Hex shape predicates (the ONE home for these regexes) ───────────────────
+
+const BYTES32_HEX_RE = /^0x[0-9a-fA-F]{64}$/;
+const ADDRESS_HEX_RE = /^0x[0-9a-fA-F]{40}$/;
+
+/** True for a 32-byte hex string (`0x` + 64 hex chars) — order hashes,
+ *  process ids, content fingerprints, composition hashes. */
+export function isBytes32Hex(value: unknown): value is Hex {
+    return typeof value === "string" && BYTES32_HEX_RE.test(value);
+}
+
+/** True for a 20-byte hex string (`0x` + 40 hex chars) — an EVM address
+ *  (shape only; no checksum verification). */
+export function isAddressHex(value: unknown): value is Address {
+    return typeof value === "string" && ADDRESS_HEX_RE.test(value);
+}
 
 // ── Order state ─────────────────────────────────────────────────────────────
 

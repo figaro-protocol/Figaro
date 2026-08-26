@@ -326,6 +326,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `computeSectionLeaf` | root | One merkle leaf — double-hashed, so a leaf preimage can never be replayed as an internal node. |
 | `counterSignDraft` | `/agent` | Candidate side: validate an inbound race draft and countersign, or decline. |
 | `decodeContentFromSpec` | `/clauses` | Canonical ABI bytes back to JSON content — the exact inverse of `encodeContentFromSpec`. |
+| `depthsOverParents` | root | Depth per node over in-set parent edges — root = 0, child = max(parent depths) + 1. |
 | `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's registration deposit is withdrawable, and what still blocks it. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's registration deposit is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
@@ -361,6 +362,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `HttpChannel` | `/agent` | Coordination channel over plain HTTP; `204` is the seller declining, not an error. |
 | `InProcessChannel` | `/agent` | In-process channel — both parties run real sign/validate logic; only the wire is elided. |
 | `instantiateRootAgreement` | `/agent` | Instantiate a template's ROOT order into the signable agreement; same inputs rebuild it identically. |
+| `isAddressHex` | root | Is this value a 20-byte hex string? The one home for the address-shape regex. |
+| `isBytes32Hex` | root | Is this value a 32-byte hex string? The one home for the bytes32-shape regex. |
 | `makeA2aOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic A2A responder. |
 | `makeSellerOfferHandler` | `/agent` | SELLER LOOP: validate, apply both refusal floors, approve the bond, counter-sign. |
 | `makeSellerQuoteHandler` | `/agent` | Mountable seller responder for the RFQ quote leg. |
@@ -403,10 +406,13 @@ definition) and `RPGF_*` constant is a **root** export.
 | `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the publication reads. |
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
+| `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
 | `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — an assembly's identity IS its composition. |
 | `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |
 | `Topology` | root | The mutable shadow state an agent keeps, updated incrementally as events arrive. |
+| `TRUTH_BOUNDARY_GLOSS` | `/derive` | The one-line meaning of each truth boundary — render-ready gloss text, one home. |
 | `tryParseMemberProfileDocument` | root | Lenient profile parse — returns `null` instead of throwing, for discovery lists. |
+| `UNISWAP_V3_FEE_TIERS` | root | The Uniswap v3 fee tiers a quote probe walks: 100, 500, 3000, 10000. |
 | `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
 | `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
@@ -417,8 +423,11 @@ definition) and `RPGF_*` constant is a **root** export.
 | `walletRecord` | `/derive` | One wallet's public trading record; resolved-empty is the answer for a wallet with no history. |
 | `warnProcessLogFillsTrap` | root | Warn when a spec pins design/checkout fills on a process-log clause — content that commits unchecked. |
 | `withholdSectionContent` | root | Swap a section's plaintext for its fingerprint — same leaf, same root, the content never travels. |
+| `witnessContentCid` | `/derive` | The content address a `contentRef` fingerprint resolves to, multibase base16. |
+| `witnessContentCidBase32` | `/derive` | The same CID in multibase base32 — what a Kubo node prints, for verbatim pin checks. |
 | `wrapWithSharedSecret` | `/handoff` | Encrypt a string payload under the ECDH shared secret (12-byte IV ‖ AES-256-GCM, base64url). |
 | `writeTopologySection` | root | Write the REAL parent order hashes into the topology leaf; the template carries only local ids. |
+| `ZERO_BYTES32` | root | The zero bytes32 sentinel — `ZERO_PROCESS_ID` is its processId-named alias. |
 
 ### `@figaro-protocol/sdk` — Protocol Primitives
 
@@ -1150,6 +1159,52 @@ const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) :
 const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
 ```
 
+#### The offer envelope
+
+Originating a process is a two-party commit: the buyer builds a commitment and
+signs it; the seller must counter-sign the **same** EIP-712 struct before it
+can land. The message that carries this is the offer envelope
+(`CommitmentPayload`) — this section is its wire spec:
+
+```jsonc
+{
+  "commitment": { /* the EIP-712 Commitment: processId, buyer, seller, currency, payment,
+                     expectedCumulativeValue, agreementHash, salt, deadline */ },
+  "agreement":  { /* the full off-chain agreement whose merkle root == agreementHash,
+                     pinned inline so the recipient hydrates everything from one message */ },
+  "buyerSig":   "0x…",   // filled by the buyer
+  "sellerSig":  "0x…",   // filled by the seller on accept; absent until then
+  "buyerFunding":  { /* OPTIONAL — the buyer's swap-funded bond leg, witness-signed:
+                        when present, whoever broadcasts routes through
+                        WitnessSwapAndCommitCoordinator.swapAndCommit, not the kernel's
+                        commit. Absent when the buyer self-funds. */ },
+  "quoteRequest":  { /* OPTIONAL — present ONLY on an RFQ quote-request draft, naming the
+                        pricedFields the candidate may re-price. Absent on every offer. */ }
+}
+```
+
+It serializes to compact JSON (bigints → hex) — `serializeCommitmentPayload` /
+`deserializeCommitmentPayload` are the codec, and the deserializer parses
+through `strippingReviver` (a relayed envelope is untrusted input). The
+envelope is the entire wire payload — there is no side channel — and it is
+size-capped at `MAX_COMMITMENT_PAYLOAD_BYTES` (256 KiB) wherever it travels:
+a real payload is KB-scale, and megabytes of inline field content belong
+behind a content-handoff clause, not inline in the signed agreement.
+
+Two of the commitment's fields carry rules a hand-rolled implementation gets
+wrong:
+
+- **`processId`** — a ROOT commitment signs `ZERO_PROCESS_ID` (32 zero bytes)
+  and the kernel derives the real id at commit; a sub-order carries the root's
+  DERIVED id. Signing a made-up id for a root is a commit that never lands.
+- **`deadline` is CHAIN time, and it is mandatory.** The kernel compares it
+  against `block.timestamp` and reverts `DeadlineExpired`; the SDK's
+  origination calls take `deadline` as a REQUIRED parameter with no default,
+  precisely so nobody reaches for the host clock. Read it from the chain
+  (`readChainTimestamp`) and offset from there (`computeDeadline`) —
+  wall-clock drift between a signer's machine and the chain expires offers
+  that both parties signed in good faith.
+
 #### The sequencer wire: seven endpoints
 
 What `SequencerClient` speaks, so you can read a relay's answer (or a curl of
@@ -1195,10 +1250,11 @@ table, and the run-your-own recipe are in
 
 *Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
 
-Clause-agnostic attestation filtering, geo math, the commits==resolves withdraw
-gate, and the **graph projections** — the semantic graphs a Figaro deployment
-emits, as first-class objects you can query. The model they project is
-`docs/PUBLIC_GRAPH_MODEL.md`; this section is the calling convention.
+Clause-agnostic attestation filtering, witness content addressing, geo math,
+the commits==resolves withdraw gate, and the **graph projections** — the
+semantic graphs a Figaro deployment emits, as first-class objects you can
+query. The model they project is `docs/PUBLIC_GRAPH_MODEL.md`; this section is
+the calling convention.
 
 ```ts
 import {
@@ -1206,6 +1262,8 @@ import {
 } from "@figaro-protocol/sdk";
 import {
   filterByClause,
+  witnessContentCid,
+  witnessContentCidBase32,
   haversineDistance,
   geohashesMatch,
   deriveInFlightOrders,
@@ -1229,6 +1287,14 @@ const attestations = parseAttestationLogs(attestationLogs);
 // read at the edge, never baked in here.
 const clauseId = computeClauseKey("figaro-emissions", 1);
 const forClause = filterByClause(attestations, clauseId);
+
+// Witness content addressing: an attestation's `contentRef` IS the keccak-CID
+// digest of the published preimage — derive the content address from the
+// event alone and fetch the bytes yourself (the SDK does no IPFS I/O). Both
+// forms name the SAME CID: base16 is the direct hex embedding, base32 is what
+// a Kubo node prints, so a pin verifies verbatim against the daemon's output.
+const cid = witnessContentCid(forClause[0].contentRef);          // multibase base16 ("f01551b20…")
+const cidB32 = witnessContentCidBase32(forClause[0].contentRef); // multibase base32 ("bafkrwi…")
 
 // Geo: check delivery proximity
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)

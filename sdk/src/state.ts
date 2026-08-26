@@ -11,7 +11,6 @@ import type {
     Address,
     Order,
     Process,
-    OrderState,
     OrderCommittedEvent,
     OrderResolvedEvent,
     ProcessResolvedEvent,

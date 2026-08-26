@@ -35,7 +35,7 @@ export {
     BATCH_VERIFIER_ABI,
     // External canonical contracts (not Figaro's) the swap-funded bond path
     // composes with — curated so integrators don't hand-roll or re-fetch them.
-    PERMIT2_ABI, SWAP_ROUTER_02_ABI, QUOTER_V2_ABI,
+    PERMIT2_ABI, SWAP_ROUTER_02_ABI, QUOTER_V2_ABI, UNISWAP_V3_FEE_TIERS,
     // Kernel Commitment struct tuple — a core primitive, used by composition-layer
     // contract ABIs that take a Commitment as a calldata arg.
     COMMITMENT_TUPLE,
@@ -87,7 +87,13 @@ export type {
     RegisteredMember,
     RegisteredAssembly,
 } from "./types.js";
-export { OrderState, addressesFromDeploymentRecord, type FigaroDeploymentRecord } from "./types.js";
+export {
+    OrderState,
+    addressesFromDeploymentRecord,
+    isBytes32Hex,
+    isAddressHex,
+    type FigaroDeploymentRecord,
+} from "./types.js";
 
 // Event parsers
 export {
@@ -97,6 +103,8 @@ export {
     parseAttestationLogs,
     fetchCoreEvents,
     fetchAttestationRecords,
+    tagAttestationUniverses,
+    type SettlementUniverse,
     type UniverseAttestationEvent,
 } from "./events.js";
 
@@ -153,6 +161,7 @@ export {
     computeOrderHash,
     orderToCommitment,
     restoreSignedProcessId,
+    ZERO_BYTES32,
     ZERO_PROCESS_ID,
 } from "./commitments.js";
 export type { CommitmentParams } from "./commitments.js";
@@ -178,13 +187,12 @@ export {
     readProcessResolveCapacity,
     assertOrderFitsResolveCap,
 } from "./gasCeilings.js";
-export type { ProcessResolveCapacity } from "./gasCeilings.js";
+export type { ProcessResolveCapacity, ResolveCapReader } from "./gasCeilings.js";
 
 // Agreement + merkle root + inclusion proofs + the canonical-JSON convention
 export {
     canonicalize,
     canonicalContentHash,
-    canonicalizeSectionData,
     computeSectionLeaf,
     computeAgreementHash,
     buildSectionInclusionProof,
@@ -223,6 +231,7 @@ export {
 } from "./projection.js";
 export type {
     CommitmentAgreementIssue,
+    CommitmentMirror,
     OrderAgreement,
     ProjectionHints,
     ProjectionSpecView,
@@ -242,7 +251,7 @@ export type {
     ReconstructParams,
     ReconstructedOrder,
 } from "./reconstructOrders.js";
-export { topologicalOrder } from "./topology.js";
+export { topologicalOrder, depthsOverParents } from "./topology.js";
 
 // Checkout planning — fill-where-composed section writers, the sub-order
 // seller plan, live contributor pricing, the rate-quantity-source registry

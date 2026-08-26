@@ -20,7 +20,7 @@
 import type { Hex, Address, Process, BondBreakdown, SettlementBreakdown } from "../types.js";
 import { OrderState } from "../types.js";
 import type { CoreEvents } from "../state.js";
-import { reconstruct, Topology } from "../state.js";
+import { Topology } from "../state.js";
 import { calculateBonds, calculateSettlement } from "../bonds.js";
 
 // ── Process graph ───────────────────────────────────────────────────────────
@@ -30,6 +30,10 @@ import { calculateBonds, calculateSettlement } from "../bonds.js";
 export interface ProcessGraph {
     boundary: "protocol-enforced";
     processes: Map<Hex, Process>;
+    /** The reconstruction's own `Topology`, carried whole — queries delegate
+     *  its address filters (`getProcessesByBuyer`/`getOrdersBySeller`)
+     *  instead of re-deriving them. `processes` is this object's map. */
+    topology: Topology;
 }
 
 /**
@@ -37,7 +41,9 @@ export interface ProcessGraph {
  * labeled. The graph object is what the canonical queries fold over.
  */
 export function projectProcessGraph(events: CoreEvents): ProcessGraph {
-    return { boundary: "protocol-enforced", processes: reconstruct(events) };
+    const topology = new Topology();
+    topology.applyEvents(events);
+    return { boundary: "protocol-enforced", processes: topology.processes, topology };
 }
 
 // ── Settlement graph ────────────────────────────────────────────────────────

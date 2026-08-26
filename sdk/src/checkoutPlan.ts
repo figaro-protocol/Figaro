@@ -28,6 +28,7 @@ import {
 } from "./projection.js";
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
+import { isAddressHex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
 import type { CatalogueItemMetadata } from "./memberCatalogue.js";
 
@@ -167,9 +168,7 @@ export function readUtilityTokenPin(
 ): `0x${string}` | undefined {
     const clauseId = composedClauseWhere(clauses, specs, (spec) => specDeclaresDesignFill(spec, "currency"));
     const value = clauseId ? clauses[clauseId]?.currency : undefined;
-    return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value)
-        ? (value as `0x${string}`)
-        : undefined;
+    return isAddressHex(value) ? value : undefined;
 }
 
 /**

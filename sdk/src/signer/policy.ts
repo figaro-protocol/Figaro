@@ -10,6 +10,7 @@
  */
 
 import type { Address, Hex } from "viem";
+import { isAddressHex } from "../types.js";
 
 /** Value ceilings, all amounts as decimal strings in base units.
  *
@@ -55,7 +56,6 @@ export type PolicyResult =
     | { ok: true; policy: SignerPolicy }
     | { ok: false; errors: string[] };
 
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
 const DECIMAL_RE = /^[0-9]+$/;
 
@@ -96,7 +96,7 @@ export function validatePolicy(raw: unknown): PolicyResult {
         errors.push("verifyingContracts must be a non-empty array");
     } else {
         for (const a of raw.verifyingContracts) {
-            if (typeof a !== "string" || !ADDRESS_RE.test(a)) {
+            if (!isAddressHex(a)) {
                 errors.push(`verifyingContracts: not an address: ${String(a)}`);
             } else {
                 vcs.push(a.toLowerCase() as Address);
@@ -109,7 +109,7 @@ export function validatePolicy(raw: unknown): PolicyResult {
         errors.push("contracts must be a non-empty object of address → selectors");
     } else {
         for (const [addr, sels] of Object.entries(raw.contracts)) {
-            if (!ADDRESS_RE.test(addr)) {
+            if (!isAddressHex(addr)) {
                 errors.push(`contracts: not an address: ${addr}`);
                 continue;
             }
@@ -130,7 +130,7 @@ export function validatePolicy(raw: unknown): PolicyResult {
     }
 
     let token: Address | null = null;
-    if (typeof raw.token !== "string" || !ADDRESS_RE.test(raw.token)) {
+    if (!isAddressHex(raw.token)) {
         errors.push("token must be an address");
     } else {
         token = raw.token.toLowerCase() as Address;

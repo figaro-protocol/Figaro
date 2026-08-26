@@ -26,7 +26,6 @@ import { createPublicClient, http } from "viem";
 import {
     addressesFromDeploymentRecord,
     computeAgreementHash,
-    computeClauseKey,
     fetchAttestationRecords,
     fetchCoreEvents,
     fetchEndpointLogAgreement,
@@ -76,7 +75,7 @@ export function jsonSafe(value) {
  * one registered before it. A spec that will not parse or will not fetch is
  * skipped and counted — its overlay degrades to fingerprint-only.
  */
-export async function loadSpecSource(discovery, { gateways } = {}) {
+async function loadSpecSource(discovery, { gateways } = {}) {
     const views = [];
     const skipped = [];
     for (const clause of discovery.getClauses()) {
@@ -317,7 +316,7 @@ export async function syncCorpus({
  * settlement skeleton is public, the body that says WHICH assembly produced it
  * is party-private until someone discloses or sells it.
  */
-export function assemblyAttribution(corpus) {
+function assemblyAttribution(corpus) {
     const byProcess = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
         const section = sectionByField(agreement, "compositionHash", corpus.specs);
@@ -333,7 +332,7 @@ export function assemblyAttribution(corpus) {
  * carries edges — the caller then omits the argument and `marketShape` reports
  * the kernel's own linear view rather than a fabricated DAG.
  */
-export function parentEdges(corpus) {
+function parentEdges(corpus) {
     const byOrder = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
         const section = sectionByField(agreement, "parentOrderHashes", corpus.specs);

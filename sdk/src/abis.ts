@@ -213,7 +213,13 @@ export const SWAP_ROUTER_02_ABI = parseAbi([
 
 export const QUOTER_V2_ABI = parseAbi([
     "function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountIn,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
+    "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
 ]);
+
+/** The Uniswap v3 fee tiers (hundredths of a bip) a quote probe walks —
+ *  0.01%, 0.05%, 0.3%, 1%. One shared list so every quoting consumer probes
+ *  the same tier set. */
+export const UNISWAP_V3_FEE_TIERS = [100, 500, 3000, 10000] as const;
 
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
@@ -390,14 +396,6 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed)",
     "error AccrualWentBackwards(bytes32 clauseOrAssembly)",
 ]);
-
-/// The batch path's accrual event. An indexer summing adoption must fold BOTH
-/// this and `UsageRecorded` — and fold them differently: `UsageRecorded` is a
-/// per-process increment, while this carries a clause or assembly's CUMULATIVE (c, d)
-/// for the period and REPLACES the previous value rather than adding to it.
-export const EV_BATCH_USAGE_RECORDED = parseAbiItem(
-    "event BatchUsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
-);
 
 export const EV_USAGE_RECORDED = parseAbiItem(
     "event UsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",

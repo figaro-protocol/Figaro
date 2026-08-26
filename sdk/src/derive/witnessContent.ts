@@ -16,13 +16,11 @@
  * the same way.
  */
 
-import type { Hex } from "../types.js";
+import { type Hex, isBytes32Hex } from "../types.js";
 
 // CIDv1 prefix for [raw codec 0x55, keccak-256 multihash 0x1b, digest length
 // 32], multibase base16 ("f"). Appending the fingerprint's hex yields the CID.
 const KECCAK_RAW_CID_PREFIX = "f01551b20";
-
-const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
 /**
  * The content address a `contentRef` fingerprint resolves to — derivable by
@@ -32,7 +30,7 @@ const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
  * bytes32 hex string.
  */
 export function witnessContentCid(contentRef: Hex): string {
-    if (!BYTES32_RE.test(contentRef)) throw new Error(`not a bytes32 contentRef: ${contentRef}`);
+    if (!isBytes32Hex(contentRef)) throw new Error(`not a bytes32 contentRef: ${contentRef}`);
     return KECCAK_RAW_CID_PREFIX + contentRef.slice(2).toLowerCase();
 }
 

@@ -214,12 +214,12 @@ describe("marketShape", () => {
         const volume = group.volumeByDenomination.get(TOKEN.toLowerCase())!;
         expect(volume.committed).toBe(250n);
         expect(volume.settled).toBe(250n);
-        // Kernel view without parent edges: linear.
-        expect(group.shapes).toEqual([{ orderCount: 2, depth: 2, maxWidth: 1, processCount: 1 }]);
+        // Kernel view without parent edges: linear, 0-rooted (root order = depth 0).
+        expect(group.shapes).toEqual([{ orderCount: 2, depth: 1, maxWidth: 1, processCount: 1 }]);
     });
 
     it("derives chain shapes from caller-supplied parent edges via topological order", () => {
-        // Root + two co-equal children of the root: depth 2, width 2.
+        // Root + two co-equal children of the root: 0-rooted depth 1, width 2.
         const fanOut = mkEvents({
             orderCommitted: [
                 mkCommit({ blockNumber: 1 }),
@@ -237,7 +237,7 @@ describe("marketShape", () => {
             (orderHash) => parents.get(orderHash) ?? [],
         );
         expect(shape.groups.get("assembly-y")!.shapes).toEqual([
-            { orderCount: 3, depth: 2, maxWidth: 2, processCount: 1 },
+            { orderCount: 3, depth: 1, maxWidth: 2, processCount: 1 },
         ]);
     });
 });

@@ -64,6 +64,7 @@ export {
 
 // ── Truth boundaries ────────────────────────────────────────────────────────
 
+export { TRUTH_BOUNDARY_GLOSS } from "./truth.js";
 export type { TruthBoundary } from "./truth.js";
 
 // ── Base-graph projections (Process + Settlement) ───────────────────────────

@@ -23,6 +23,7 @@ import {
     asRecord,
     asString,
 } from "./documentParse.js";
+import { isBytes32Hex } from "./types.js";
 
 /**
  * Seller's preferred unit system for the catalogue editor + display.
@@ -202,11 +203,11 @@ function parseOptionalDataSold(
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     const compositionHash = record.compositionHash;
-    if (typeof compositionHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(compositionHash)) {
+    if (!isBytes32Hex(compositionHash)) {
         throw new Error(`${path}.compositionHash must be a 32-byte hex hash.`);
     }
     return {
-        compositionHash: compositionHash as `0x${string}`,
+        compositionHash,
         clauseId: asString(record.clauseId, `${path}.clauseId`),
         posture: asEnum(record.posture, DATA_SOLD_POSTURES, `${path}.posture`),
     };

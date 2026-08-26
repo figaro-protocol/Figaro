@@ -128,9 +128,9 @@ describe("SWAP_ROUTER_02_ABI", () => {
 });
 
 describe("QUOTER_V2_ABI", () => {
-    it("carries exactly quoteExactOutputSingle — the read-side sibling the venue seam quotes through", () => {
+    it("carries exactly the two single-hop quote functions the venue seam quotes through", () => {
         const functions = (QUOTER_V2_ABI as AbiFunction[]).filter((item) => item.type === "function");
-        expect(functions.map((f) => f.name)).toEqual(["quoteExactOutputSingle"]);
+        expect(functions.map((f) => f.name)).toEqual(["quoteExactOutputSingle", "quoteExactInputSingle"]);
     });
 
     it("quoteExactOutputSingle takes QuoterV2's 5-field params tuple and returns four values; nonpayable (read via eth_call)", () => {

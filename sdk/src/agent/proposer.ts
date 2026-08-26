@@ -7,14 +7,14 @@
  * Each ProposedAction includes:
  *   - Type and human-readable description
  *   - Pre-validated parameters
- *   - Bond math (approval amounts, payouts)
+ *   - Settlement math (the payouts a resolve produces)
  *
  * The agent (human or autonomous) decides which to execute.
  */
 
-import type { Hex, Address, Process, Order, Commitment, BondBreakdown, SettlementBreakdown, RegisteredAssembly } from "../types.js";
+import type { Hex, Address, Process, Commitment, SettlementBreakdown, RegisteredAssembly } from "../types.js";
 import { OrderState } from "../types.js";
-import { calculateBonds, calculateSettlement } from "../bonds.js";
+import { calculateSettlement } from "../bonds.js";
 import { orderToCommitment, ZERO_PROCESS_ID } from "../commitments.js";
 
 // ── Action types ────────────────────────────────────────────────────────────

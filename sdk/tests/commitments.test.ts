@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { keccak256, toBytes, encodeAbiParameters, encodePacked, hashTypedData } from "viem";
 import {
     buildDomain,

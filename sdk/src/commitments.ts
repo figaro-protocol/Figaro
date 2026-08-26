@@ -63,9 +63,14 @@ export function buildDomain(chainId: number, coreAddress: Address): EIP712Domain
 // encoding are DERIVED from COMMITMENT_TYPES above, so they can never drift from
 // the type the parties sign. Frontends import these — they do not re-implement.
 
+/** The zero bytes32 sentinel — the ONE home for `0x` + 64 zeros (merkle
+ *  zero-hash padding, the unsigned root processId). */
+export const ZERO_BYTES32 = `0x${"0".repeat(64)}` as Hex;
+
 /** The kernel's zero processId — what a ROOT commitment signs before the kernel
- *  derives the real id. Exported so reconstruction callers can restore it. */
-export const ZERO_PROCESS_ID = `0x${"0".repeat(64)}` as Hex;
+ *  derives the real id. The semantically-named alias of `ZERO_BYTES32`;
+ *  exported so reconstruction callers can restore it. */
+export const ZERO_PROCESS_ID: Hex = ZERO_BYTES32;
 
 /** The EIP-712 type string, derived from COMMITMENT_TYPES (single source). */
 const COMMITMENT_TYPE_STRING =

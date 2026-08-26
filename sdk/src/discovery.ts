@@ -190,14 +190,6 @@ export interface DiscoveryEvents {
     assemblyWithdrawn: AssemblyWithdrawnEvent[];
 }
 
-const EMPTY_DISCOVERY: DiscoveryEvents = {
-    clauseRegistered: [],
-    clauseWithdrawn: [],
-    memberRegistered: [],
-    memberWithdrawn: [],
-    assemblyRegistered: [],
-    assemblyWithdrawn: [],
-};
 
 /**
  * Fetch registry events across the given block range. Each family degrades

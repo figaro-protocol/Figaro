@@ -22,6 +22,7 @@ import type {
     ObjectFieldSpec,
 } from "./spec.js";
 import { safeRegexTest } from "./safeRegex.js";
+import { isBytes32Hex, isAddressHex } from "../types.js";
 
 export interface ValidationError {
     /** JSON-pointer-style path to the problem. */
@@ -38,8 +39,6 @@ export interface ValidateOptions {
     stage?: number;
 }
 
-const BYTES32_HEX_RE = /^0x[0-9a-fA-F]{64}$/;
-const ADDRESS_HEX_RE = /^0x[0-9a-fA-F]{40}$/;
 const BYTES_HEX_RE = /^0x([0-9a-fA-F]{2})*$/;
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 /** The bigint grammar: a plain decimal integer, optionally negative.
@@ -79,8 +78,8 @@ function validateString(value: unknown, spec: StringFieldSpec, path: string, err
         // (permissionlessly-declared) format validates as a plain string —
         // the open format axis (see StringFormat in spec.ts).
         const matches =
-            spec.format === "bytes32-hex" ? BYTES32_HEX_RE.test(value) :
-            spec.format === "address-hex" ? ADDRESS_HEX_RE.test(value) :
+            spec.format === "bytes32-hex" ? isBytes32Hex(value) :
+            spec.format === "address-hex" ? isAddressHex(value) :
             spec.format === "bytes-hex" ? BYTES_HEX_RE.test(value) :
             spec.format === "iso-datetime" ? ISO_DATETIME_RE.test(value) :
             true;

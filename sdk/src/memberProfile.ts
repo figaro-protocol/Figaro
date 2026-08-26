@@ -38,6 +38,7 @@ import {
     asString,
     type UnknownRecord,
 } from "./documentParse.js";
+import { isBytes32Hex } from "./types.js";
 
 // ── Dependent identity types ──────────────────────────────────────────────────
 
@@ -365,10 +366,10 @@ function parseDisclosurePolicyEntry(value: unknown, path: string): DisclosurePol
 /** A compositionHash is a 32-byte keccak digest, not a 20-byte address —
  *  validate the `0x` + hex shape at digest length. */
 function asCompositionHash(value: unknown, path: string): `0x${string}` {
-    if (typeof value !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value)) {
+    if (!isBytes32Hex(value)) {
         throw new Error(`${path} must be a 32-byte hex hash.`);
     }
-    return value as `0x${string}`;
+    return value;
 }
 
 function parseDisclosurePolicy(value: unknown, path: string): DisclosurePolicyEntry[] | undefined {

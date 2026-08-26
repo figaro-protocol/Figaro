@@ -34,7 +34,7 @@
  */
 
 import type { Hex, Address } from "../types.js";
-import type { UniverseAttestationEvent } from "../events.js";
+import type { SettlementUniverse, UniverseAttestationEvent } from "../events.js";
 import type { SpecSource, ProjectionSpecView } from "../projection.js";
 import { decodeContentFromSpec } from "../clauses/index.js";
 import { computeClauseKey } from "../discovery.js";
@@ -61,7 +61,7 @@ export interface OverlayEntry {
     stage: number;
     /** Which settlement universe emitted the anchor (direct = re-verifiable
      *  from calldata, batch = proved once inside a batch). */
-    universe: "direct" | "batch";
+    universe: SettlementUniverse;
     blockNumber: number;
     /** The on-chain content fingerprint — present on every entry. */
     contentRef: Hex;

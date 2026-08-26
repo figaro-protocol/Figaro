@@ -39,3 +39,29 @@ export function topologicalOrder(
     }
     return ordered;
 }
+
+/**
+ * Depth per node over in-set parent edges — a root (no in-set parents) is
+ * depth 0, a child is max(parent depths) + 1. The 0-rooted convention is the
+ * shipped UI's (the frontend draft-depth derivation). Parents outside `ids`
+ * and self-parents are ignored. A cyclic topology degrades via
+ * `topologicalOrder`'s "break" mode: nodes on a cycle take depth from
+ * whichever parents settled before them.
+ */
+export function depthsOverParents(
+    ids: string[],
+    parentIdsOf: (id: string) => string[],
+): Map<string, number> {
+    const idSet = new Set(ids);
+    const depths = new Map<string, number>();
+    for (const id of topologicalOrder(ids, parentIdsOf, "break")) {
+        const parents = parentIdsOf(id).filter((p) => p !== id && idSet.has(p));
+        depths.set(
+            id,
+            parents.length === 0
+                ? 0
+                : 1 + parents.reduce((max, p) => Math.max(max, depths.get(p) ?? 0), 0),
+        );
+    }
+    return depths;
+}

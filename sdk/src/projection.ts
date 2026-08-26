@@ -40,6 +40,7 @@ import {
 } from "./agreement.js";
 import { templateCompositionHash, type AssemblyTemplate } from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
+import { isAddressHex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
@@ -375,9 +376,7 @@ export interface CommitmentAgreementIssue {
  *  Layer-A failure of its own where the field is required). */
 function addressLeaf(section: AgreementSection | undefined, field: string): `0x${string}` | undefined {
     const value = section?.data?.[field];
-    return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value)
-        ? (value as `0x${string}`)
-        : undefined;
+    return isAddressHex(value) ? value : undefined;
 }
 
 /** A bigint-valued leaf (stored as its canonical decimal string), or undefined

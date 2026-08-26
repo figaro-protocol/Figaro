@@ -21,7 +21,7 @@ import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import { buildSectionInclusionProof, sectionDataHash, type Agreement } from "../agreement.js";
 import { computeClauseKey } from "../discovery.js";
-import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
+import { type Hex, type Address, type FigaroAddresses, type Commitment, isBytes32Hex } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
 // ── Transaction result ──────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ export async function recordProcessUsage(
             }
             const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
             if (report.assemblyRecorded || composition === undefined) continue;
-            if (typeof composition !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(composition)) {
+            if (!isBytes32Hex(composition)) {
                 report.failures.push(`${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
                 continue;
             }

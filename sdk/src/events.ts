@@ -11,13 +11,6 @@
 
 import { type PublicClient, type Log, decodeEventLog } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "./abis.js";
-import {
-    EV_ORDER_COMMITTED,
-    EV_ORDER_RESOLVED,
-    EV_PROCESS_RESOLVED,
-    EV_ORDER_SELLER,
-    EV_ATTESTATION,
-} from "./abis.js";
 import type {
     Hex,
     Address,
@@ -98,13 +91,31 @@ export function parseProcessResolvedLogs(logs: Log[]): ProcessResolvedEvent[] {
     return results;
 }
 
+/** The two settlement universes an attestation anchor can come from:
+ *  "direct" = the coordinator's own emission, re-verifiable from calldata;
+ *  "batch" = the batch verifier's re-emission, proved once inside a batch. */
+export type SettlementUniverse = "direct" | "batch";
+
 /** An attestation record with its SETTLEMENT UNIVERSE named. The two emitters
  *  share one topic hash (`FigaroBatchVerifier.Attestation` deliberately
  *  mirrors the coordinator's), so the EMITTING ADDRESS is the only thing that
  *  says which universe a row came from — direct = re-verifiable from
  *  calldata, batch = proved once inside a batch. The tag preserves that
  *  evidentiary difference through the fold. */
-export type UniverseAttestationEvent = AttestationEvent & { universe: "direct" | "batch" };
+export type UniverseAttestationEvent = AttestationEvent & { universe: SettlementUniverse };
+
+/**
+ * The pure fold under `fetchAttestationRecords`: tag each already-fetched
+ * stream with its universe and merge in (blockNumber) order. The emitters
+ * share one topic hash, so the caller's ADDRESS-FILTERED fetch is what
+ * separates the streams — this fold only preserves that separation.
+ */
+export function tagAttestationUniverses(directLogs: Log[], batchLogs: Log[]): UniverseAttestationEvent[] {
+    const out: UniverseAttestationEvent[] = [];
+    for (const ev of parseAttestationLogs(directLogs)) out.push({ ...ev, universe: "direct" });
+    for (const ev of parseAttestationLogs(batchLogs)) out.push({ ...ev, universe: "batch" });
+    return out.sort((a, b) => a.blockNumber - b.blockNumber);
+}
 
 /**
  * Fetch attestations from BOTH settlement universes — the coordinator (direct
@@ -125,15 +136,11 @@ export async function fetchAttestationRecords(
     toBlock: bigint | "latest" = "latest",
     chunkSize?: bigint,
 ): Promise<UniverseAttestationEvent[]> {
-    const streams: Array<{ address: Address; universe: "direct" | "batch" }> = [];
-    if (addresses.attestationCoordinator) streams.push({ address: addresses.attestationCoordinator, universe: "direct" });
-    if (addresses.batchVerifier) streams.push({ address: addresses.batchVerifier, universe: "batch" });
-    const out: UniverseAttestationEvent[] = [];
-    for (const { address, universe } of streams) {
-        const logs = await fetchLogsChunked(client, { address, fromBlock, toBlock, chunkSize });
-        for (const ev of parseAttestationLogs(logs)) out.push({ ...ev, universe });
-    }
-    return out.sort((a, b) => a.blockNumber - b.blockNumber);
+    const fetchFrom = async (address: Address | undefined): Promise<Log[]> =>
+        address ? fetchLogsChunked(client, { address, fromBlock, toBlock, chunkSize }) : [];
+    const directLogs = await fetchFrom(addresses.attestationCoordinator);
+    const batchLogs = await fetchFrom(addresses.batchVerifier);
+    return tagAttestationUniverses(directLogs, batchLogs);
 }
 
 export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {

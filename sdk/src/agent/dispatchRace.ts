@@ -25,7 +25,7 @@
  */
 
 import type { WalletClient } from "viem";
-import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, COMMITMENT_TYPES } from "../commitments.js";
+import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, COMMITMENT_TYPES, ZERO_PROCESS_ID } from "../commitments.js";
 import { computeAgreementHash, type Agreement } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
@@ -284,7 +284,7 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
     const agreement = substitutePricedValue(instantiated, params.pricedFields, params.ceiling);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment } = buildCommitment({
-        processId: `0x${"0".repeat(64)}` as Hex,
+        processId: ZERO_PROCESS_ID,
         buyer: params.buyer,
         seller: params.seller,
         currency: params.currency,

@@ -22,6 +22,7 @@
 
 import { keccak256, toHex, concat, type Hex } from "viem";
 import { computeClauseKey } from "./discovery.js";
+import { ZERO_BYTES32 } from "./commitments.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
 
@@ -90,14 +91,6 @@ export function canonicalize(value: unknown): string {
     return JSON.stringify(value, sortedReplacer);
 }
 
-/**
- * Deterministic JSON serialization of one agreement section's data.
- * Used by both parties so the same logical data always produces the same hash.
- */
-export function canonicalizeSectionData(data: Record<string, unknown>): string {
-    return canonicalize(data);
-}
-
 /** keccak256 over the canonical serialization — the digest the registries
  *  anchor (`contentHash` for clause specs, `compositionHash` for assembly
  *  compositions). Publishers hash with it; readers verify with it after fetch. */
@@ -106,8 +99,6 @@ export function canonicalContentHash(value: unknown): Hex {
 }
 
 // ── Merkle primitives ───────────────────────────────────────────────────────
-
-const ZERO_HASH = `0x${"0".repeat(64)}` as Hex;
 
 /**
  * Return the on-chain `sectionData` bytes for an agreement section: the
@@ -125,7 +116,7 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
             `Section ${section.clause} is content-withheld (dataHash only) — its plaintext bytes are not available`,
         );
     }
-    return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
+    return toHex(new TextEncoder().encode(canonicalize(section.data)));
 }
 
 /**
@@ -177,7 +168,7 @@ function hashPair(a: Hex, b: Hex): Hex {
 }
 
 function buildMerkleRoot(leaves: readonly Hex[]): Hex {
-    if (leaves.length === 0) return ZERO_HASH;
+    if (leaves.length === 0) return ZERO_BYTES32;
     let layer: Hex[] = [...leaves];
     while (layer.length > 1) {
         const next: Hex[] = [];
