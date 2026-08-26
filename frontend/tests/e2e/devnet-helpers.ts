@@ -97,6 +97,7 @@ type DeploymentConfig = {
     florinToken?: `0x${string}`;
     usageCounter?: `0x${string}`;
     rpgfMinter?: `0x${string}`;
+    batchVerifier?: `0x${string}`;
     daoTreasury?: `0x${string}`;
 };
 
@@ -141,6 +142,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS') config.florinToken = value;
             if (key === 'NEXT_PUBLIC_USAGE_COUNTER') config.usageCounter = value;
             if (key === 'NEXT_PUBLIC_RPGF_MINTER') config.rpgfMinter = value;
+            if (key === 'NEXT_PUBLIC_BATCH_VERIFIER') config.batchVerifier = value;
             if (key === 'NEXT_PUBLIC_DAO_TREASURY') config.daoTreasury = value;
         }
     }
@@ -154,6 +156,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.clauseRegistrationHelper = config.clauseRegistrationHelper ?? (contents as any).clauseRegistrationHelper;
         config.membersRegistry = config.membersRegistry ?? contents.membersRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
+        config.batchVerifier = config.batchVerifier ?? (contents as any).batchVerifier;
     }
 
     return config;

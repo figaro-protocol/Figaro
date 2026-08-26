@@ -209,9 +209,20 @@ export async function runPrompt(question, tools, config, { maxTurns = 8, fetchIm
 
 // ── The wire ────────────────────────────────────────────────────────────────
 
+/** Browsers are first-class callers of this wire — the data explorer's prompt
+ *  box reads it cross-origin from whatever host serves the site — so every
+ *  response carries the open CORS grant and preflight is answered (the same
+ *  rule the operator manual states for any browser-reachable endpoint). The
+ *  wire is public and descriptive; there is nothing to scope an origin to. */
+const CORS_HEADERS = { "access-control-allow-origin": "*" };
+
 function send(res, status, body) {
     const text = JSON.stringify(body, null, 2);
-    res.writeHead(status, { "content-type": "application/json", "content-length": Buffer.byteLength(text) });
+    res.writeHead(status, {
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(text),
+        ...CORS_HEADERS,
+    });
     res.end(text);
 }
 
@@ -232,6 +243,19 @@ export function makeAnalystHandler(getCorpus, config = modelConfig()) {
     return async function handler(req, res) {
         const url = new URL(req.url, "http://analyst.local");
         const corpus = getCorpus();
+
+        // CORS preflight — browsers send it before a cross-origin POST with a
+        // JSON body (`/prompt`). Answered for every path: preflight asks what
+        // is allowed, it never invokes the route.
+        if (req.method === "OPTIONS") {
+            res.writeHead(204, {
+                ...CORS_HEADERS,
+                "access-control-allow-methods": "GET, POST, OPTIONS",
+                "access-control-allow-headers": "content-type",
+                "access-control-max-age": "86400",
+            });
+            return res.end();
+        }
 
         try {
             if (req.method === "GET" && url.pathname === "/status") {

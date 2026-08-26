@@ -383,6 +383,25 @@ test("the deterministic routes answer with their truth boundaries", async () => 
     } finally { await close(); }
 });
 
+test("the wire answers browsers: CORS grant on every response, preflight answered", async () => {
+    const { base, close } = await serve(fixtureCorpus(), { enabled: false, reason: "test" });
+    try {
+        // Every response — success and error alike — carries the open grant,
+        // or a cross-origin page (the explorer's prompt box) reads nothing.
+        const status = await fetch(`${base}/status`);
+        assert.equal(status.headers.get("access-control-allow-origin"), "*");
+        const missing = await fetch(`${base}/nowhere`);
+        assert.equal(missing.headers.get("access-control-allow-origin"), "*");
+
+        // Preflight: what a browser sends before a cross-origin JSON POST.
+        const preflight = await fetch(`${base}/prompt`, { method: "OPTIONS" });
+        assert.equal(preflight.status, 204);
+        assert.equal(preflight.headers.get("access-control-allow-origin"), "*");
+        assert.match(preflight.headers.get("access-control-allow-methods"), /POST/);
+        assert.match(preflight.headers.get("access-control-allow-headers"), /content-type/);
+    } finally { await close(); }
+});
+
 test("with no model configured /prompt is ABSENT — an honest 404 naming why, never a stub", async () => {
     const config = modelConfig({});
     assert.equal(config.enabled, false);
