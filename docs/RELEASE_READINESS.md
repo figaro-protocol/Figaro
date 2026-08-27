@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-08-26 (the sandbox runtime's Linux container deny cases first ran green in CI — `on-demand-docker.yml`, dispatch-only; see Pre-Mainnet). Earlier, 2026-08-13: the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the CI workflows exist (the `.github/workflows/` listing is the census — `TESTING.md` § CI) — and since the same-day publication, both are LIVE. Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-08-27 (staleness sweep: the verdict names the external audit as the single open gate — the freeze closed 2026-08-13; Task 7.3's smoke-test, Task 7.4's Sepolia prerequisites, and Task 13's redeploy list converted to executed records — the whole-stack redeploy ran 2026-08-19; the two deleted `/builders/*` runtime-posture items removed; the freeze-verification section rebased on the recorded amendments — the kernel diff stays empty). Earlier, 2026-08-26: the sandbox runtime's Linux container deny cases first ran green in CI — `on-demand-docker.yml`, dispatch-only; see Pre-Mainnet. Earlier, 2026-08-13: the Solidity freeze is STAMPED at `c7f85d0d` — Task 1 closed, see the Freeze Notice; Tasks 4 and 5 collapsed to their closed records; Task 12 items 2–3 updated to verified tree state — `SECURITY.md` and the CI workflows exist (the `.github/workflows/` listing is the census — `TESTING.md` § CI) — and since the same-day publication, both are LIVE. Earlier, 2026-07-29: the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each clause or assembly pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owners: `docs/PUBLIC_GRAPH_MODEL.md` (mechanism) + `CONTRACTS.md` § "Teardown state — CLOSED" (contract status). Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -18,12 +18,11 @@ Kleros courts are live on Ethereum mainnet.
 
 The live V5 Solidity surface is internally consistent and the runtime hardening pass has closed the highest-value browser, build, and event-reconstruction risks.
 
-Public release should still be treated as blocked on one explicit governance-free process decision:
+Public release remains blocked on exactly one gate: the final external audit pass
+against the frozen surface (Task 2). The freeze itself closed 2026-08-13 (Task 1,
+stamped `c7f85d0d`).
 
-1. freeze the Solidity surface
-2. run a final external audit pass against that frozen surface
-
-This is not because the current pass surfaced a new contract defect. It is because the kernel is the irreducible payoff matrix, so the prudent pre-release move is independent review after churn stops, not more architectural motion during the audit window.
+This is not because the current pass surfaced a new contract defect. It is because the kernel is the irreducible payoff matrix, so the prudent pre-release move is independent review now that churn has stopped, not more architectural motion during the audit window.
 
 ## What Is Ready
 
@@ -159,8 +158,11 @@ Required output:
    `viem → isows`, runtime browser code, NOT Next — was mis-attributed to Next here until
    2026-08-04; fixed by a non-breaking bump (`ws` 8.18.3 → 8.21.2, Vitest 585/585 green
    after). Full verification in the migration commit.
-3. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a
-   public testnet). Rehearsal checks from the 2026-08-03 deploy-script audit: (a) neither
+3. ~~Sepolia smoke-test of the deployed stack through the UI~~ — DONE: the four
+   `*.sepolia.spec.ts` specs (live-order, registries, swap-funded-order, payout-routing)
+   ran green against the 2026-08-19 redeployed stack. The rehearsal checks from the
+   2026-08-03 deploy-script audit remain STANDING PROCEDURE for every future
+   `--broadcast` (Polygon Amoy, mainnet): (a) neither
    script guards `block.chainid`, so verify the `--rpc-url` target by hand immediately before
    every `--broadcast` — the devnet script would happily deploy its mock stack to a public
    chain; (b) the genesis state root is computed, not deploy-time-verified against the Rust
@@ -227,13 +229,15 @@ Required output:
      anchors) registered through the vault with the founder's Ledger approving on
      the device (`VAULT_LEDGER_HD_PATH` → `cast send --ledger`, one tap per
      registration; `SEED_ASSEMBLIES` names the nudge), chain-verified.
-   - A funded deployer key: Sepolia deployer `0xaB6002…647c` live, accumulating via
-     faucets toward ~2.1 ETH (1.90 ETH of registry deposits dominate; deploy gas ≈
-     0.025). SP1 verifier gateway confirmed deployed on Sepolia (item 3c) at the
-     canonical `0x3B6041…185e`.
-   - Remaining maintainer inputs at broadcast: FOUNDER_WALLET / SUPPORTERS_WALLET
-     addresses, the Task-3 ratification (0.05 stakes), and an `ETHERSCAN_API_KEY`
-     for `--verify`.
+   - ~~A funded deployer key~~ — funded and spent at the 2026-08-19 Sepolia redeploy
+     broadcast (stack live + Etherscan-verified). The 08-14 claim here that the SP1
+     gateway was "confirmed deployed" at `0x3B6041…185e` was the item-3(c) mistake —
+     that address is the RETIRED PLONK gateway; the live stack binds Succinct's
+     Groth16 gateway `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` (Guard 4 enforces).
+   - ~~Remaining maintainer inputs at broadcast~~ — provided at the Sepolia broadcast.
+     The same set (FOUNDER_WALLET / SUPPORTERS_WALLET, the Task-3 0.05 stakes, an
+     `ETHERSCAN_API_KEY` for `--verify`) is needed again at the Polygon Amoy and
+     mainnet legs.
    - Polygon's current testnet is **Amoy** (Mumbai is retired) — confirm at execution
      time, then pin chain id + RPC in the network config.
    - After each deploy: /spec's per-network deployments table and the SDK's published
@@ -383,8 +387,9 @@ following the over-broad "genesis seed set" wording of the 08-13 endowment recor
 registered 6 non-mandatory clauses (`figaro-courier-process`, `figaro-merchant-process`,
 `figaro-geolocation`, `figaro-handoff`, `figaro-modalities`, `figaro-proximity-policy`)
 and both assemblies (`pos` `asm-33ce205ea77e79e8`, `local-commerce`
-`asm-9398dfdc16ea296b`) under the vault. On Sepolia they stay there for life —
-accepted as the testnet lesson, not repaired. From nudge 3 on, the founder registers.
+`asm-9398dfdc16ea296b`) under the vault. On the 2026-08-17 stack they stayed there
+for life — accepted as the testnet lesson; the 2026-08-19 whole-stack redeploy
+re-registered them under the founder (the record below).
 
 **Gate criteria before mainnet genesis seeding:**
 1. Ratify the mandatory-only rule above (this section is the record; the 08-13
@@ -399,28 +404,30 @@ accepted as the testnet lesson, not repaired. From nudge 3 on, the founder regis
 4. Rehearsed end to end on an Anvil fork with the real devices, then on Sepolia
    (nudge 3 onward is that rehearsal), before mainnet.
 
-**The Sepolia REDEPLOY list (maintainer, 2026-08-18: the stack is redeployed ONCE, after
-every issue that requires a redeploy is straightened out — never piecemeal):**
-- registration ownership per the rule above (nudge-2's 8 vault-registered ids re-registered
-  under the founder; the vault keeps the mandatory three);
-- the SP1 verifier gateway rebound to Succinct's Groth16 gateway (Task 7.3(c) lesson;
-  Guard 4 enforces) — AND `SP1_PROGRAM_VKEY` set to the CURRENT guest's vkey: the
-  2026-08-18 alloy 1.x bump (which let sp1-sdk's `network` backend compile) rebuilt the
-  guest ELF, so the vkey the 08-14 stack pins (`0x00368d…1f83`, the `v0.1.0` release
-  body) is superseded; recompute at redeploy time (`SP1_VKEY_ONLY=1 cargo run -p
-  figaro-prove-test --release`, or read the next release tag's body) and never reuse the
-  old value;
-- **the DAO's operator EOA + its EIP-7702 delegation** created BEFORE the DAO's member
-  profile is registered (under the operator, not the vault — `FLORIN_TOKEN.md` § DAO
-  custody): the delegate is **MetaMask Delegation Framework's `EIP7702StatelessDeleGator`**
-  (RULED 2026-08-19, off-the-shelf over authored code; OZ offers no turnkey delegate) at
-  its canonical CREATE2 address `0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (v1.3.0 —
-  the SAME address on Sepolia and mainnet, so the testnet rehearses mainnet literally;
-  `DelegationManager` `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`): the operator signs a
-  7702 authorization at the canonical impl and grants the VAULT an ERC-7710 delegation
-  bounded by caveat enforcers — nothing is deployed by us; plus the operator's key
-  custody, per-procurement funding from the vault. Then the founder's profile as a
-  buyer-side member; both from committed reference profiles pinned under each owner's key;
+**The Sepolia REDEPLOY — RAN 2026-08-19** (per the 2026-08-18 ruling: the stack is
+redeployed ONCE, after every issue that requires a redeploy is straightened out — never
+piecemeal). The redeployed stack is live and Etherscan-verified; every list item
+executed and verified by direct reads:
+- registration ownership per the rule above — vault = exactly the mandatory three,
+  founder = 24 clauses + 9 assemblies (nudge-2's 8 vault-registered ids re-registered
+  under the founder);
+- the SP1 verifier gateway rebound to Succinct's Groth16 gateway with
+  `SP1_PROGRAM_VKEY` recomputed from the CURRENT guest (Task 7.3(c) lesson; Guard 4
+  enforced the broadcast); proven live by the two real Groth16 batches of 2026-08-20
+  on the minimal-pair-corrected stack (Task 7.3(b) owns that record). STANDING
+  PROCEDURE for the mainnet deploy: any guest rebuild supersedes the pinned vkey —
+  recompute at deploy time (`SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test
+  --release`, or read the current release tag's body) and never reuse an old value;
+- **the DAO's operator EOA (`0xCfb4…fed9`) 7702-installed** at the canonical
+  **`EIP7702StatelessDeleGator`** BEFORE the DAO's member-profile registration
+  (under the operator, not the vault — `FLORIN_TOKEN.md` § DAO custody; delegate
+  RULED 2026-08-19, off-the-shelf over authored code; canonical CREATE2 address
+  `0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B`, v1.3.0 — the SAME address on Sepolia
+  and mainnet, so the testnet rehearses mainnet literally; `DelegationManager`
+  `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`), the VAULT granted a caveat-bounded
+  ERC-7710 delegation — nothing deployed by us. The DAO's profile registered under
+  the operator, the founder's (buyer-side) under the founder's own wallet, both from
+  committed reference profiles pinned under each owner's key;
 - ~~`WitnessSwapAndCommitCoordinator`~~ — DONE 2026-08-18 without a redeploy (it points at
   the kernel and nothing points back, so it deployed ALONE onto the live stack:
   `0xdfF381730811CDec3518FA38B14f92219c5127B6`, bound to canonical Permit2 and Uniswap
@@ -437,9 +444,6 @@ every issue that requires a redeploy is straightened out — never piecemeal):**
   `disperseToken` through the canonical public Disperse
   (`0xD152f549545093347A162Dce210e7293f1452150`, same runtime on Sepolia and mainnet;
   nothing to deploy — the composition venue pre-exists).
-- anything else this list accumulates before the redeploy day. Task 7.3(b) — the real
-  Groth16 batch settling — is DONE (2026-08-20, on the minimal-pair-corrected stack;
-  see Task 3(b) above).
 
 ## Validation Commands
 
@@ -575,9 +579,7 @@ These are current design realities that are accepted by the protocol surface, no
 
 These are current runtime posture decisions, not release blockers:
 
-1. `/builders/prototype` remains an explicitly builder-scoped tooling surface rather than a consumer-facing institution route
-2. `/builders/templates` is a routing surface into assembly-based template discovery, not a legacy on-chain registry UI
-3. geolocation remains allowed for same-origin runtime surfaces instead of being narrowed to a brittle route allowlist, because handoff and delivery-attestation modules are runtime-composable across multiple live pages
+1. geolocation remains allowed for same-origin runtime surfaces instead of being narrowed to a brittle route allowlist, because handoff and delivery-attestation modules are runtime-composable across multiple live pages
 
 ## Pre-Mainnet Deployment Verification
 
@@ -669,13 +671,24 @@ The whole audited Solidity surface is now one frozen scope.
 
 ### Verifying a freeze
 
-To verify a file is unchanged from the freeze commit:
+The kernel has NO post-stamp edits — this diff is empty and must stay empty:
 
 ```bash
-git diff c7f85d0d -- src/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol
+git diff c7f85d0d -- src/kernel/
 ```
 
-Expected output: empty.
+For the rest of the frozen scope:
+
+```bash
+git diff c7f85d0d -- src/protocol/ src/rpgf/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol script/DeploySwapCoordinator.s.sol
+```
+
+Expected output: exactly the recorded post-stamp amendments and nothing more — the
+`forge fmt` rewrap (record #1), the RPGF exclusion config (record #2), the
+`registeredBy` rename (`78f96ae6`, the registries scope-table row), and the swap
+coordinator entering scope plus its SwapRouter02 rebinding (`57a93199`, `9d16301c`,
+the coordinators row). Any hunk not traceable to a recorded amendment is an
+unrecorded frozen-scope edit — a Post-Audit Policy violation.
 
 Post-stamp record (2026-08-13, same day): `script/Deploy.s.sol` received a
 `forge fmt` line-rewrapping in the first-CI alignment wave (CI's pinned
