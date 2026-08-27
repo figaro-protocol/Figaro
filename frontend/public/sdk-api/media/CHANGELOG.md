@@ -12,13 +12,47 @@ release lives under **Unreleased**.
 
 ## [Unreleased]
 
+### Added
+
+- `/data/explore` — the graph-query surface over the public record: market shape
+  per assembly, one attestation overlay per attestable clause family in use,
+  value flow per denomination, and any wallet's public trading record; each
+  layer prints its own truth boundary (`protocol-enforced` /
+  `institution-declared` / `protocol-derived` / `composition-derived`).
+- `figaro-analyst` — the fourth public ecosystem agent (operate, author,
+  design, and now analyze): reads the public graphs through the SDK's
+  `/derive` projections.
+- `docs/AUDITOR_HANDOVER.md` — the external-audit handover in one place: the
+  frozen-scope declaration and stamp, the freeze-verification commands, the
+  post-stamp records, the Post-Audit Policy, accepted risks, and the
+  validation-command gate.
+
+### Changed
+
+- `docs/RELEASE_READINESS.md` now carries the open release tasks only; the
+  freeze/audit apparatus moved to `docs/AUDITOR_HANDOVER.md`, and closed work
+  is deleted rather than recorded in place — git history is the record.
+- A full documentation-drift audit (2026-08-27, fourteen read-only auditors)
+  verified every documented surface against the tree; the ~60 verified
+  findings were fixed, so the inventories, theory docs, READMEs, and site copy
+  state current repo reality. Data fields no surface renders were deleted
+  rather than documented.
+
+### Verification
+
+- The full formal suite re-ran 2026-08-27 covering the post-freeze amendments
+  (the `registeredBy` rename and the swap coordinator's scope entry): Foundry
+  299 passed / 0 failed, Halmos 32/32 proved, Certora 6/6 specs verified with
+  `--wait_for_results all` — recorded as post-stamp record #3 in
+  `docs/AUDITOR_HANDOVER.md`, run URLs in `docs/VERIFICATION_MAP.md` §10.
+
 Summary of the current state of the protocol and its verification surface:
 
 ### Protocol
 
 - The Solidity kernel (`src/kernel/FigaroCore.sol`, `src/kernel/CommitmentTypes.sol`)
   is frozen for external audit, alongside the full protocol/registry/coordinator/
-  RPGF/florin surface — see `docs/RELEASE_READINESS.md` § "Freeze Notice —
+  RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Freeze Notice —
   Solidity Surface Frozen for External Audit" for the exact frozen scope.
 - The batch settlement path (`FigaroBatchVerifier` + the Rust `prover/` SP1
   witness prover/sequencer) is live and included in the frozen scope.
@@ -52,8 +86,10 @@ Summary of the current state of the protocol and its verification surface:
 
 ### Infrastructure
 
-- Eight GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
+- Ten GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
   `devnet-e2e-ci`, `prover-ci`, `guards-ci` (the whole-tree guard battery),
+  `estate-snapshot` (weekly perishable-observability capture),
+  `on-demand-docker` (dispatch-only container proofs),
   `sdk-release`, and `sequencer-release` (publishes the prebuilt
   `figaro-sequencer` relay binary on tag push).
 

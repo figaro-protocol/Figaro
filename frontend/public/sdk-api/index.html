@@ -38,25 +38,23 @@ the <code>rm -rf dist</code> below: measured, the published tarball's <code>dist
 with no <code>tsc</code> anywhere on <code>PATH</code>, and if you ever delete it, a plain
 <code>npm install @figaro-protocol/sdk</code> re-extracts it. What follows is
 <strong>repo-checkout-only</strong>.</p>
-<p><code>sdk/package.json</code> declares <code>&quot;prepare&quot;: &quot;npm run build&quot;</code>, and npm runs a <code>file:</code>
-dependency's <code>prepare</code> on <strong>every</strong> consumer install. <code>build</code> is
-<code>rm -rf dist &amp;&amp; tsc</code>. The <code>rm</code> always succeeds. So if <code>tsc</code> cannot be resolved
-from the SDK's own directory, the rebuild dies with <code>sh: tsc: command not found</code>,
-the install exits <code>127</code>, and <code>dist/</code> is <strong>gone</strong> — the package the README just
-told you to install no longer has an entry point (<code>Cannot find package '@figaro-protocol/sdk'</code>). <code>--ignore-scripts</code> does <strong>not</strong> save you: measured, npm runs the
-linked package's <code>prepare</code> regardless and <code>dist/</code> still goes.</p>
-<p><code>tsc</code> is a devDependency of the <code>sdk</code> workspace, hoisted to the <strong>checkout
-root's</strong> <code>node_modules</code>. That is the whole fix — do this once, in this order,
-before the consumer install:</p>
+<p><code>sdk/package.json</code> declares <code>&quot;prepare&quot;: &quot;node scripts/prepare.mjs&quot;</code>, and npm
+runs a <code>file:</code> dependency's <code>prepare</code> on <strong>every</strong> consumer install. The script
+resolves the <code>typescript</code> compiler FIRST: absent, it keeps the shipped <code>dist/</code>
+as-is and exits 0 (nothing is destroyed); present, it runs the real build
+(<code>rm -rf dist &amp;&amp; tsc</code>) and propagates its exit code, so genuine build failures
+still fail. (The earlier <code>&quot;prepare&quot;: &quot;npm run build&quot;</code> destroyed <code>dist/</code> before
+discovering <code>tsc</code> was unresolvable and bricked the package — the guard exists
+because that trap bit two adopter probes.)</p>
+<p>So a <code>file:</code> install works from any state, but a <strong>stale</strong> checkout serves a
+<strong>stale</strong> <code>dist/</code>. To build fresh, do this once, in this order, before the
+consumer install:</p>
 <pre><code class="bash"><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">clone</span><span class="hl-1"> </span><span class="hl-2">https://github.com/figaro-protocol/Figaro</span><span class="hl-1"> &amp;&amp; </span><span class="hl-0">cd</span><span class="hl-1"> </span><span class="hl-2">Figaro</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1">                       </span><span class="hl-3"># root: hoists typescript for the sdk workspace</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">build</span><span class="hl-1"> </span><span class="hl-4">--workspace</span><span class="hl-1"> </span><span class="hl-2">sdk</span><span class="hl-1">     </span><span class="hl-3"># produces sdk/dist</span>
 </code><button type="button">Copy</button></pre>
 
-<p>…and point <code>file:</code> at the <code>sdk</code> directory <strong>inside that checkout</strong>, never at a
-copy you moved somewhere else. Then the consumer's install finds <code>tsc</code> up the
-directory chain and its <code>prepare</code> <em>rebuilds</em> <code>dist/</code> instead of destroying it.
-Already hit it? Nothing is lost: rerun those two commands from the repo root.
-(Do not &quot;fix&quot; this by editing <code>sdk/package.json</code> — that <code>prepare</code> hook is what
-keeps the workspace build honest.)</p>
+<p>…and point <code>file:</code> at the <code>sdk</code> directory <strong>inside that checkout</strong>. With
+<code>typescript</code> hoisted to the checkout root, the consumer's install <em>rebuilds</em>
+<code>dist/</code> on every install; without it, the shipped <code>dist/</code> is served unchanged.</p>
 <h2 id="your-first-commit" class="tsd-anchor-link">Your first commit<a href="#your-first-commit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>The shortest path from nothing to a bonded order on chain, on a devnet you own.
 Every step is a command in a checkout of the public repo — which is also how you
