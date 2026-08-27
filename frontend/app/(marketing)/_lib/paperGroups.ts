@@ -10,7 +10,7 @@ type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
  * stable lens for reading the substrate; the list cannot grow or shrink
  * without departing from the taxonomy.
  *
- * Papers, `currentWork`, `grants`, and `venue` are all optional. Every
+ * Papers, `currentWork`, and `venue` are all optional. Every
  * discipline always has a definition; `/working-groups` renders the
  * discipline map (the `#<slug>` anchors live there). The asymmetry surfaces
  * where the project actually is.
@@ -39,12 +39,6 @@ interface PaperRef {
     formalCore?: boolean;
 }
 
-interface ReferenceLink {
-    label: string;
-    href: string;
-    note?: string;
-}
-
 export interface PaperGroup {
     /** URL slug (stable). Used for `#<slug>`-style anchors on /working-groups. */
     slug: string;
@@ -62,17 +56,12 @@ export interface PaperGroup {
     /** Papers primarily assigned to this discipline. Empty array means
      *  the discipline is an open call — no canonical work convened yet. */
     papers: PaperRef[];
-    /** Cross-references to other internal surfaces (specs, runtime,
-     *  cross-discipline papers). Optional. */
-    references?: ReferenceLink[];
     /** Current work in progress, as contributors describe it. */
     currentWork?: string[];
     /** Where the conversation happens — only when the group has its OWN
      *  dedicated channel. No project-wide channel exists to inherit;
      *  undefined means the group has not published one. */
     venue?: { label: string; href: string };
-    /** Grants received (DAO proposals, direct contributions). */
-    grants?: { label: string; href: string; amount?: string }[];
     /** Addresses or handles contributors choose to publish. */
     contributors?: string[];
 }
@@ -91,10 +80,6 @@ export const PAPER_GROUPS: PaperGroup[] = [
             { title: "From Firms to Transaction-Scoped Institutions: A Coasean Re-Examination", href: "/papers/transaction-scoped-institutions" },
             { title: "The Florin: A Schelling-Point Token for the Figaro Coordination Ecosystem", href: "/papers/florin-schelling-point-token" },
             { title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through Bonded Settlement", href: "/papers/self-authenticating-data-sales" },
-        ],
-        references: [
-            { label: "Protocol — two mechanisms", href: "/kernel", note: "two-mechanism + contract-law overview" },
-            { label: "RPGF", href: "/rpgf", note: "the reward formula for clause authors AND assembly designers" },
         ],
     },
     {
@@ -119,12 +104,6 @@ export const PAPER_GROUPS: PaperGroup[] = [
         papers: [
             { title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Scope of the Claim", href: "/papers/verified-settlement-kernel", formalCore: true },
             { title: "Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern", href: "/papers/protocol-composition", formalCore: true },
-        ],
-        references: [
-            { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
-            { label: "Freeze notice + audit handover", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md" },
-            { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/DESIGN_DECISIONS.md", note: "the patterns that look like bugs but are correct by design" },
-            { label: "Clauses", href: "/clauses", note: "implementation work — clauses, contracts, assemblies, frontend" },
         ],
     },
     {
@@ -178,9 +157,6 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "Agent-mediated coordination over bonded commitments: the kernel's actor-neutrality property turns them into the missing enforcement layer for mutually-untrusted multi-agent systems. This group reads the substrate as control theorists and multi-agent-systems people read it; the Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization the paper reads back as control.",
         papers: [
             { title: "Actor-Neutral Coordination over Bonded Commitments", href: "/papers/actor-neutral-coordination" },
-        ],
-        references: [
-            { label: "SDK — agent surface", href: "https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md", note: "FigaroContext, ActionQueue, proposer" },
         ],
     },
     {
