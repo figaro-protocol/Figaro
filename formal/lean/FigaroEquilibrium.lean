@@ -189,4 +189,39 @@ theorem cooperation_is_equilibrium (c : Chain) :
   fun i hi =>
     ⟨fun r hr => no_seller_deviation c i hi r hr, no_buyer_deviation c i hi⟩
 
+/-! ### The reduction — there is no N in the primitive
+
+The primitive is ONE bonded edge, and a chain is that edge replicated. Nothing
+in Layer 2 is a second theory about many parties: at position `i` the two
+comparisons read that position's own two numbers — its payment `Pᵢ` and the
+inclusive accumulator `Gᵢ` at its link — and no other position's payment enters
+either side of either comparison. The whole coupling between positions is the
+single monotone scalar `Gᵢ`, which the prefix-sum lemmas above compute and hand
+to Layer 1. That is why `no_seller_deviation` and `no_buyer_deviation` are
+proved by APPLYING `Order.seller_performs` and `Order.buyer_resolves` rather
+than by re-deriving anything at chain scale: the arbitrary-length claim reduces
+definitionally to the bilateral claim, instantiated once per link. Scale is
+replication of a verified primitive, not a bound on what is verified — how many
+links a single process may carry is a fact about the substrate (block gas), not
+about the mechanism. The one genuinely N-party object — WHICH equilibrium the
+co-sellers select, the weakest-link structure atomic resolution induces — is not
+in this file and is not claimed as machine-checked; `Order.holdout_when_dead`
+fixes only the conditionality that makes selection the live question.
+-/
+
+/-- **Every position of a chain IS an order**: the chain-level payoffs at
+position `i` are, definitionally, the primitive's payoffs on that position's own
+data `(Pᵢ, Gᵢ)`, and each deviation comparison there is a comparison between
+expressions in those two scalars alone. The emblem of the reduction: Layer 2
+states the same inequalities as Layer 1, once per link. -/
+theorem chain_position_is_order (c : Chain) (i : Nat) (hi : i < c.payments.length) :
+    (c.order i hi).payment = c.payments[i] ∧
+    (c.order i hi).cumulative = c.cumulative i ∧
+    (∀ r : Int,
+      ((c.order i hi).performPayoff > (c.order i hi).holdoutPayoff r
+        ↔ c.payments[i] > -(2 * c.cumulative i) + r)) ∧
+    ((c.order i hi).resolvePayoff > (c.order i hi).withholdPayoff
+      ↔ -c.payments[i] > -(2 * c.payments[i])) :=
+  ⟨rfl, rfl, fun _ => Iff.rfl, Iff.rfl⟩
+
 end Chain

@@ -178,6 +178,16 @@ extend it).
 - MaxProcesses: 2, MaxSubOrders: 2
 - All 9 invariants enabled, deadlock checking disabled (bounded slots)
 
+**What this configuration is (ruled 2026-08-27 — the primitive framing):** the
+small config is exhaustive STATE-MACHINE COVERAGE of the primitive's operations —
+two buyers and two sellers exercise every transition and interference class the
+kernel has — never bounded sampling of an N-body space. There is no N in the
+primitive: the payoff comparison at any chain position depends only on that
+position's (payment, cumulative) pair, the coupling between positions is the one
+monotone accumulator scalar, and the arbitrary-N claim reduces definitionally to
+the per-position two-party claim (the Lean `Chain` theorems are that reduction,
+machine-checked). N lives in the graph tier above the primitive.
+
 **Verification result (2026):**
 - 9/9 invariants verified, exit code 0
 - 6M+ states explored, all distinct states checked
