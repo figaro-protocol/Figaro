@@ -36,7 +36,7 @@ interface PaperRef {
 export interface PaperGroup {
     /** URL slug (stable). Used for `#<slug>`-style anchors on /working-groups. */
     slug: string;
-    /** 1–8 — stable ordinal within the taxonomy (display only; the URL anchor is driven by `slug`). */
+    /** 1–8 — the paper's own stable taxonomy ordinal (identity, not display; the URL anchor is driven by `slug`). */
     disciplineIndex: DisciplineIndex;
     /** Zargham's discipline name. */
     name: string;

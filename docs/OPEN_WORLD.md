@@ -282,34 +282,28 @@ risks, capabilities + obligations, and graph relationships.
 
 ### Canonical model objects
 
-Not final APIs — the shapes the frontend should represent:
+The shipped shapes (`frontend/lib/semantic/models.ts`):
 
-- **InstitutionModel** — top-level container for a composed institution.
-- **MechanismModel** — semantic wrapper for one coordination mechanism (what it does, what
-  it secures, what it can touch, who acts through it, where it's attached).
-- **RoleContext** — a role held by a *specific actor in a specific context* (buyer-of-this-
-  order, seller-of-this-sub-order, attesting-seller-of-this-order). A wallet
-  alone is not a sufficient semantic object; role is **derived in context**, not stored.
-- **ProcessModel** — a FigaroCore process + attached mechanisms (orders, topology, state +
-  economic summary, upstream/downstream links).
-- **OrderNodeModel** — one operational commitment node (counterparties, payment, bond, state,
-  valid actions, settlement breakdown).
-- **AttachmentModel** — a semantic link between a mechanism and an institution object.
-- **CapabilityModel** — one valid next action for an actor (precondition, owning mechanism,
-  write target, priority).
-- **GuaranteeModel** — an explicit statement of what is secured, and whether it's enforced,
-  derived, or declared.
-- **RiskBoundaryModel** — what a mechanism can and cannot affect (custody? reprice? signal-only?).
-- **EconomicBreakdownModel** — economically meaningful values for one object/context (locked
-  bond, settled-available, typed outputs) — fields may differ in provenance; the layer
-  preserves that.
+- **ProcessModel** — a FigaroCore process (orders, topology root, committed
+  modality, process-level capabilities).
+- **OrderNodeModel** — one operational commitment node (counterparties, payment,
+  state, topology parents, agreement hash, capabilities, settlement breakdown).
+- **CapabilityModel** — one valid next action for an actor (action descriptor,
+  generic input fields, scope, preconditions, provenance source).
+- **EconomicBreakdownModel** — economically meaningful values for one
+  object/context (locked bond, settled-available, typed outputs) — fields may
+  differ in provenance; the layer preserves that.
+
+Role is **derived in context**, never stored — a wallet alone is not a
+sufficient semantic object; the capability builder derives
+buyer-of-this-order / seller-of-this-order per order (`PartyRole`).
 
 ### Required properties
 
 1. **Deterministic where possible** — derive from protocol state + public formulas when you can.
 2. **Explicit about provenance** — every field carries a truth class (below).
 3. **Mechanism-aware** — one institution may combine multiple mechanisms over one process graph.
-4. **Role-in-context, not role-in-general** — see RoleContext.
+4. **Role-in-context, not role-in-general** — role is derived per order, never stored.
 5. **Graph-aware** — process topology, upstream/downstream relations, cross-process provenance.
 
 ### Truth classes (a first-class design rule)
@@ -324,13 +318,12 @@ breakdowns, and provenance/accounting distinctions.
 ### Derivation pipeline (stages, not one transformer)
 
 Data Acquisition (reads/events/config/indexer) → Normalization (stable internal records) →
-Semantic Derivation (roles, capabilities, attachments, guarantees, risk, economics) →
-Institution Assembly Binding (names, labels, visibility defaults, ordering, emphasis) → UI
-Projection (stable models for reusable modules).
+Semantic Derivation (roles, capabilities, economics) → UI
+Projection (stable models for reusable surfaces).
 
-This is what lets one module work across many institution assemblies: a reusable unit is a
-component **plus a semantic contract** (it depends on `MechanismModel` / `RoleContext` /
-`CapabilityModel` / `OrderNodeModel` / `RiskBoundaryModel`), not just a visual component.
+This is what lets one surface work across many assemblies: a reusable unit is a
+component **plus a semantic contract** (it depends on `ProcessModel` /
+`OrderNodeModel` / `CapabilityModel`), not just a visual component.
 
 ---
 

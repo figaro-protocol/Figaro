@@ -120,3 +120,4 @@ surface had drifted behind the repository.
   integration walkthrough and recipes.
 
 [Unreleased]: https://github.com/figaro-protocol/Figaro
+[sdk-0.1.1]: https://github.com/figaro-protocol/Figaro/releases/tag/sdk-v0.1.1

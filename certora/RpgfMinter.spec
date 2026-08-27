@@ -2,7 +2,7 @@
 // Certora CVL specification for RpgfMinter — the 600M retroactive florin
 // distribution. This is the maintainer-approved formal-coverage gap: RpgfMinter
 // mints florins, and its two worst historical bugs (a tranche-overdraw class,
-// commit f9a6d37e, and the pre-2026-07-30 clamp that let a repeated clause-or-assembly entry
+// fixed pre-squash, and the pre-2026-07-30 clamp that let a repeated clause-or-assembly entry
 // mint an entire tranche — see the `_entitlement` doc comment in the .sol)
 // were both caught by audit, never by the Foundry suite. This spec proves the
 // six properties that class of bug would have violated.
@@ -118,7 +118,7 @@ function summarizeScoreOf(bytes32 clauseOrAssembly, uint8 period) returns uint25
 // that guard, proved to hold no matter which method (or which wallet, via
 // the free `method f` and unconstrained calldata) is exercised next.
 //
-// This is the rule the tranche-overdraw bug class (f9a6d37e) would have
+// This is the rule the tranche-overdraw bug class (fixed pre-squash) would have
 // failed: any regression that lets `spent` exceed the budget slip through
 // (e.g. dropping the comparison, or computing `spent` after the write)
 // violates this assertion on the very call that overdraws.

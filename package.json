@@ -15,7 +15,6 @@
         "start": "npm --prefix frontend run start",
         "test:unit": "npm test --workspaces --if-present",
         "test:e2e": "npm --prefix frontend run test:e2e --",
-        "test:e2e:mock": "npm --prefix frontend run test:e2e:mock --",
         "test:e2e:devnet": "npm --prefix frontend run test:e2e:devnet --",
         "prepare": "husky || true"
     },

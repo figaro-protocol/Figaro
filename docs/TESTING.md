@@ -218,9 +218,8 @@ derived, never a stored count).
   `MemberTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`, …
 - **Lib tier** (`tests/lib/`) — pure-client unit tests: commitment
   preparation + stores, clause-spec source, discovery +
-  catalogue pipeline, emissions disclosure, delivery/handoff attestation, dispute
-  evidence, IPFS service, token conversion, geocode, and per-hook tests
-  (`useOrderCommitmentFlow`, `useTokenApproval`, …).
+  catalogue pipeline, IPFS service, token conversion, geocode, and the rest —
+  the directory listing is the census, never this prose.
 
 The hash- and wire-load-bearing choreography suites live with their code in
 `sdk/tests/` (`npm --prefix sdk test`): agreement/template projection, the
@@ -246,8 +245,9 @@ a hard gate.
 
 ## Playwright — the project model (`playwright.config.ts`)
 
-`npm run test:e2e:devnet` (preflight → populate-test-data (clauses + ONE seed
-assembly + sellers; seeding is pre-population, never a test) → run) and
+`npm run test:e2e:devnet` (preflight → populate-test-data (clauses + two inline
+test-scaffolding templates + every reference assembly from `assemblies/*.json` +
+sellers; seeding is pre-population, never a test) → run) and
 `npm run test:e2e:mobile`.
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
@@ -499,4 +499,4 @@ two halves unconditionally.
 
 ## Opportunistic — Mythril
 
-Mythril runs out-of-loop via `scripts/mythril-docker.sh` (Docker image `mythril/myth`, 300s execution timeout, solc 0.8.26). Not wired into pre-commit or CI; invoked by hand on specific contracts when a deep symbolic-execution pass is wanted alongside Halmos / Certora / Echidna. See CLAUDE.md "Docker-hosted services" for the Docker convention.
+Mythril runs out-of-loop via `scripts/mythril-docker.sh` (Docker image `mythril/myth`, 300s execution timeout, solc 0.8.26). Not wired into pre-commit or CI; invoked by hand on specific contracts when a deep symbolic-execution pass is wanted alongside Halmos / Certora / Echidna. See `docs/LOCAL_DEV.md` § "Docker-hosted services" for the Docker convention.
