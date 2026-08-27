@@ -1,5 +1,5 @@
 /** Semantic-model union types — the runtime semantic layer's canonical
- *  taxonomy for truth class, mechanism risk, scope, and roles. */
+ *  taxonomy for truth class, scope, and roles. */
 
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
@@ -11,39 +11,12 @@ type TruthClass =
     | "indexer-derived"
     | "ui-local";
 
-type MechanismRiskClass =
-    | "read-only-inherited"
-    | "low-risk-coordination"
-    | "medium-risk-composition"
-    | "high-risk-economic";
-
 type ScopeType = "assembly" | "process" | "order" | "mechanism";
 
 interface SemanticSource {
     truthClass: TruthClass;
     sourceLabel: string;
     referenceId?: string;
-}
-
-interface GuaranteeModel {
-    id: string;
-    mechanismId: string;
-    label: string;
-    description: string;
-    guaranteeClass: string;
-    source: SemanticSource;
-}
-
-interface RiskBoundaryModel {
-    id: string;
-    mechanismId: string;
-    riskClass: MechanismRiskClass;
-    touchesAssets: boolean;
-    canCustody: boolean;
-    canReprice: boolean;
-    canOnlySignal: boolean;
-    dependsOn: string[];
-    failureModes: string[];
 }
 
 interface ResolveProcessCapabilityAction {
@@ -168,19 +141,6 @@ export interface CapabilityModel {
     source: SemanticSource;
 }
 
-export interface AttachmentModel {
-    id: string;
-    mechanismId: string;
-    targetType: ScopeType;
-    targetId: string;
-    label: string;
-    description?: string;
-    attachmentKind: string;
-    state: string;
-    visibleByDefault: boolean;
-    source: SemanticSource;
-}
-
 export interface EconomicBreakdownValue {
     label: string;
     amount: bigint;
@@ -196,19 +156,6 @@ export interface EconomicBreakdownModel {
     downstreamReferencedAmount?: EconomicBreakdownValue;
 }
 
-interface MechanismModel {
-    id: string;
-    kind: string;
-    name: string;
-    description: string;
-    riskClass: MechanismRiskClass;
-    moduleBindings: string[];
-    contracts: string[];
-    touchesAssets: boolean;
-    guarantees: GuaranteeModel[];
-    attachments: AttachmentModel[];
-}
-
 export interface OrderNodeModel {
     orderId: string;
     processId: string;
@@ -222,7 +169,6 @@ export interface OrderNodeModel {
      *  agreement and read its clauses (e.g. a courier handoff's
      *  proximity-policy band). */
     agreementHash: `0x${string}`;
-    attachments: AttachmentModel[];
     capabilities: CapabilityModel[];
     settlementBreakdown?: EconomicBreakdownModel;
 }
@@ -237,21 +183,5 @@ export interface ProcessModel {
      *  uncommitted. */
     rootModality?: string | null;
     orders: OrderNodeModel[];
-    stateSummary: string;
     capabilities: CapabilityModel[];
-    economicSummary?: EconomicBreakdownModel;
-    attachments: AttachmentModel[];
-}
-
-interface AssemblyModel {
-    id: string;
-    name: string;
-    slug: string;
-    description?: string;
-    network: string;
-    availableNetworks: string[];
-    mechanisms: MechanismModel[];
-    processes: ProcessModel[];
-    riskProfile: MechanismRiskClass[];
-    source: SemanticSource;
 }

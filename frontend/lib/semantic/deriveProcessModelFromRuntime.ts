@@ -8,7 +8,6 @@ import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSp
 import { computeClauseKey } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
-    AttachmentModel,
     CapabilityModel,
     EconomicBreakdownModel,
     EconomicBreakdownValue,
@@ -26,25 +25,6 @@ function runtimeSource(sourceLabel: string, referenceId?: string) {
         sourceLabel,
         referenceId,
     };
-}
-
-function ledgerSource(sourceLabel: string, referenceId?: string) {
-    return {
-        truthClass: "protocol-enforced" as const,
-        sourceLabel,
-        referenceId,
-    };
-}
-
-/** Build one attachment, deriving the id ONCE — the same string names the
- *  attachment and its source reference. */
-function attach(
-    id: string,
-    reason: string,
-    fields: Omit<AttachmentModel, "id" | "source">,
-    source: (sourceLabel: string, referenceId?: string) => AttachmentModel["source"] = runtimeSource,
-): AttachmentModel {
-    return { id, ...fields, source: source(reason, id) };
 }
 
 /** Pre-indexed runtime state, built ONCE per process derivation so the
@@ -386,254 +366,6 @@ function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], ad
     };
 }
 
-function deriveProcessEconomicSummary(
-    processId: string,
-    orders: Order[],
-    topology: Map<string, string[]>,
-    address?: string,
-): EconomicBreakdownModel | undefined {
-    if (!address || orders.length === 0) return undefined;
-
-    const normalized = address.toLowerCase();
-    const totalPayment = orders.reduce((sum, order) => sum + order.payment, 0n);
-    const actorBuyerBond = orders.reduce(
-        (sum, order) => sum + (hexEqual(order.buyer, normalized) ? order.buyerBond : 0n),
-        0n
-    );
-    const actorSellerBond = orders.reduce(
-        (sum, order) => sum + (hexEqual(order.seller, normalized) ? order.sellerBond : 0n),
-        0n
-    );
-    const downstreamReferenced = orders
-        .filter((order) => (topology.get(order.orderHash) ?? []).length > 0)
-        .reduce((sum, order) => sum + order.payment, 0n);
-    const lockedBondAmount = actorBuyerBond + actorSellerBond;
-
-    return {
-        scopeType: "process",
-        scopeId: processId,
-        lockedBond: lockedBondAmount > 0n
-            ? {
-                label: "Actor locked bond capital",
-                amount: lockedBondAmount,
-                source: {
-                    truthClass: "protocol-derived",
-                    sourceLabel: "sum of actor bond obligations across process orders",
-                    referenceId: `${processId}:locked-bond`,
-                },
-            }
-            : undefined,
-        typedOutputs: [
-            {
-                label: "Gross payment commitments",
-                amount: totalPayment,
-                source: {
-                    truthClass: "protocol-derived",
-                    sourceLabel: "sum of order payments in process",
-                    referenceId: `${processId}:gross-payment`,
-                },
-            },
-            {
-                label: "Buyer-side bond obligations",
-                amount: actorBuyerBond,
-                source: {
-                    truthClass: "protocol-derived",
-                    sourceLabel: "sum of buyer bond obligations for connected actor",
-                    referenceId: `${processId}:buyer-bonds`,
-                },
-            },
-            {
-                label: "Seller-side bond obligations",
-                amount: actorSellerBond,
-                source: {
-                    truthClass: "protocol-derived",
-                    sourceLabel: "sum of seller bond obligations for connected actor",
-                    referenceId: `${processId}:seller-bonds`,
-                },
-            },
-        ],
-        downstreamReferencedAmount: downstreamReferenced > 0n
-            ? {
-                label: "Downstream referenced value",
-                amount: downstreamReferenced,
-                source: {
-                    truthClass: "protocol-derived",
-                    sourceLabel: "sum of payments on descendant orders",
-                    referenceId: `${processId}:downstream-referenced`,
-                },
-            }
-            : undefined,
-    };
-}
-
-function deriveOrderAttachments(order: Order, parentOrderHashes: string[], address?: string): AttachmentModel[] {
-    const attachments: AttachmentModel[] = [];
-    const orderId = order.orderHash.toString();
-    const normalized = address?.toLowerCase();
-
-    if (parentOrderHashes.length === 0) {
-        attachments.push(attach(`${order.processId}:${orderId}:root`, "no topology parents identifies the root order", {
-            mechanismId: "core-orders",
-            targetType: "order",
-            targetId: orderId,
-            label: "Root order",
-            description: "This order anchors the process (no parent orders in its committed topology).",
-            attachmentKind: "topology-root",
-            state: "derived",
-            visibleByDefault: true,
-        }));
-    } else {
-        attachments.push(attach(`${order.processId}:${orderId}:child`, "committed topology parents identify a sub-order", {
-            mechanismId: "core-orders",
-            targetType: "order",
-            targetId: orderId,
-            label: "Sub-order",
-            description: "This order extends the process as a downstream node.",
-            attachmentKind: "topology-child",
-            state: "derived",
-            visibleByDefault: true,
-        }));
-    }
-
-    if (hexEqual(order.buyer, normalized)) {
-        attachments.push(attach(`${order.processId}:${orderId}:buyer-role`, "connected wallet matches order buyer", {
-            mechanismId: "core-orders",
-            targetType: "order",
-            targetId: orderId,
-            label: "Connected as buyer",
-            description: "The connected actor is the buyer on this order.",
-            attachmentKind: "actor-participation",
-            state: "buyer",
-            visibleByDefault: true,
-        }));
-    }
-
-    if (hexEqual(order.seller, normalized)) {
-        attachments.push(attach(`${order.processId}:${orderId}:seller-role`, "connected wallet matches order seller", {
-            mechanismId: "core-orders",
-            targetType: "order",
-            targetId: orderId,
-            label: "Connected as seller",
-            description: "The connected actor is the seller on this order.",
-            attachmentKind: "actor-participation",
-            state: "seller",
-            visibleByDefault: true,
-        }));
-    }
-
-    if (order.agreementHash && order.agreementHash !== ZERO_BYTES32) {
-        attachments.push(attach(`${order.processId}:${orderId}:agreement`, "OrderCommitted agreementHash field", {
-            mechanismId: "core-orders",
-            targetType: "order",
-            targetId: orderId,
-            label: "Agreement commitment",
-            description: "This order includes an agreement hash committed at order creation.",
-            attachmentKind: "agreement-reference",
-            state: "committed",
-            visibleByDefault: false,
-        }));
-    }
-
-    return attachments;
-}
-
-function deriveProcessAttachments(
-    processId: string,
-    orders: Order[],
-    rootOrderId: string,
-    address?: string,
-    currencyAddress?: string,
-): AttachmentModel[] {
-    if (orders.length === 0) return [];
-
-    const attachments: AttachmentModel[] = [
-        attach(`${processId}:root-order`, "root order derived from process order topology", {
-            mechanismId: "core-orders",
-            targetType: "process",
-            targetId: processId,
-            label: `Root order #${rootOrderId}`,
-            description: "Primary process anchor derived from the first order without parents.",
-            attachmentKind: "root-order",
-            state: rootOrderId ? "derived" : "missing",
-            visibleByDefault: true,
-        }),
-    ];
-
-    if (currencyAddress) {
-        attachments.push(attach(`${processId}:currency`, "first process order currency", {
-            mechanismId: "core-orders",
-            targetType: "process",
-            targetId: processId,
-            label: "Settlement currency",
-            description: `Runtime process settlement currency ${currencyAddress}.`,
-            attachmentKind: "currency-binding",
-            state: "active",
-            visibleByDefault: true,
-        }, ledgerSource));
-    }
-
-    const activeCount = orders.filter((order) => order.state === OrderState.Active).length;
-    const descendantCount = orders.filter((order) => order.orderHash.toString() !== rootOrderId).length;
-
-    attachments.push(attach(`${processId}:state-summary`, "aggregate order states within the process", {
-        mechanismId: "core-orders",
-        targetType: "process",
-        targetId: processId,
-        label: "Runtime state summary",
-        description: `${activeCount} active, ${orders.length} total orders.`,
-        attachmentKind: "state-summary",
-        state: activeCount > 0 ? "active" : "closed",
-        visibleByDefault: true,
-    }));
-
-    if (descendantCount > 0) {
-        attachments.push(attach(`${processId}:descendants`, "orders beyond the topology root are descendants", {
-            mechanismId: "core-orders",
-            targetType: "process",
-            targetId: processId,
-            label: "Composed descendants",
-            description: `${descendantCount} descendant order${descendantCount === 1 ? "" : "s"} reference upstream value in this process.`,
-            attachmentKind: "topology-summary",
-            state: "composed",
-            visibleByDefault: true,
-        }));
-    }
-
-    const normalized = address?.toLowerCase();
-    if (normalized) {
-        const buyerCount = orders.filter((order) => hexEqual(order.buyer, normalized)).length;
-        const sellerCount = orders.filter((order) => hexEqual(order.seller, normalized)).length;
-
-        if (buyerCount > 0) {
-            attachments.push(attach(`${processId}:buyer-presence`, "connected wallet matches process order buyer fields", {
-                mechanismId: "core-orders",
-                targetType: "process",
-                targetId: processId,
-                label: "Connected buyer presence",
-                description: `The connected actor is buyer on ${buyerCount} order${buyerCount === 1 ? "" : "s"} in this process.`,
-                attachmentKind: "actor-presence",
-                state: "buyer",
-                visibleByDefault: true,
-            }));
-        }
-
-        if (sellerCount > 0) {
-            attachments.push(attach(`${processId}:seller-presence`, "connected wallet matches process order seller fields", {
-                mechanismId: "core-orders",
-                targetType: "process",
-                targetId: processId,
-                label: "Connected seller presence",
-                description: `The connected actor is seller on ${sellerCount} order${sellerCount === 1 ? "" : "s"} in this process.`,
-                attachmentKind: "actor-presence",
-                state: "seller",
-                visibleByDefault: true,
-            }));
-        }
-    }
-
-    return attachments;
-}
-
 function deriveOrderNodeModelFromOrder(
     order: Order,
     topology: Map<string, string[]>,
@@ -642,7 +374,6 @@ function deriveOrderNodeModelFromOrder(
     address?: string,
 ): OrderNodeModel {
     const parentOrderHashes = topology.get(order.orderHash) ?? [];
-    const attachments = deriveOrderAttachments(order, parentOrderHashes, address);
 
     return {
         orderId: order.orderHash.toString(),
@@ -654,7 +385,6 @@ function deriveOrderNodeModelFromOrder(
         state: OrderState[order.state],
         parentOrderHashes,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
-        attachments,
         capabilities: roleCapabilities(order, agreements, indexes, address),
         settlementBreakdown: deriveSettlementBreakdown(order, parentOrderHashes, address),
     };
@@ -684,21 +414,12 @@ export function deriveProcessModelFromRuntime(
     const rootModality = rootAgreement
         ? ((sectionByField(rootAgreement, "modality", specSource())?.data as { modality?: string } | undefined)?.modality ?? null)
         : null;
-    const stateCounts = {
-        active: processOrders.filter((order) => order.state === OrderState.Active).length,
-        closed: processOrders.filter((order) => order.state === OrderState.Resolved).length,
-    };
     return {
         processId: summary.processId,
         rootOrderId,
         currency: processOrders[0]?.currency as `0x${string}` | undefined,
         rootModality,
         orders: semanticOrders,
-        stateSummary: stateCounts.active > 0
-            ? `Active · ${stateCounts.active} active / ${processOrders.length} total`
-            : `Closed · ${stateCounts.closed} settled / ${processOrders.length} total`,
         capabilities: deriveProcessCapabilities(summary.processId, processOrders, address),
-        economicSummary: deriveProcessEconomicSummary(summary.processId, processOrders, topology, address),
-        attachments: deriveProcessAttachments(summary.processId, processOrders, rootOrderId, address, currencyAddress),
     };
 }
