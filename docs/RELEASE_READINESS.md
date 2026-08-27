@@ -707,6 +707,14 @@ included), Halmos 32/32, Certora 6/6 specs (`--wait_for_results`, run URLs in
 `VERIFICATION_MAP.md` §10). Doctrine record: memory
 `project_dao_endowment_ruling_2026_08_13`; paper §4/§9 revised the same day.
 
+Post-stamp record #3 (2026-08-27): the Post-Audit-Policy formal re-run for the
+08-18/19 amendment wave — the `registeredBy` rename (`78f96ae6`) and the swap
+coordinator's scope entry + SwapRouter02 rebinding (`57a93199`, `9d16301c`) — which
+had no re-run record. All green: Foundry 299 passed / 0 failed (3 skipped =
+the `MAINNET_RPC_URL`-gated mainnet-fork suite; env unset on this run — the release
+gate still runs it), Halmos 32/32, Certora 6/6 specs exit 0 with
+`--wait_for_results all` (run URLs in `VERIFICATION_MAP.md` §10).
+
 **STAMPED 2026-08-13: the freeze commit is `c7f85d0d`**
 (`c7f85d0dd79298d1add2623993cc60b21321fed3`, 2026-08-12) — the last commit touching the
 frozen scope; the stamp never moves again. Frozen-scope commits after the 2026-08-04

@@ -275,9 +275,11 @@ exit 0 (the freeze-stamp re-run).
 
 ### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol` + `test/protocol/usage/HalmosUsageCounter.t.sol` + `test/protocol/registries/HalmosClauseAndAssemblyRegistries.t.sol`
 
-Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — all 32 properties
+Last verified run: **2026-08-27** (the post-stamp-record-#3 re-run covering the
+08-18/19 amendment wave — `RELEASE_READINESS.md` § Freeze Notice) — all 32 properties
 proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry +
-6 AssemblyRegistry), exit 0; the freeze-stamp re-run.
+6 AssemblyRegistry), exit 0. Prior full run: 2026-08-13 at the freeze commit
+`c7f85d0d`.
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),
@@ -429,20 +431,21 @@ load-bearing, not vacuous.
 37 declared rules across 6 specs (FigaroCore 8 + FlorinToken 6 +
 AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4 +
 RpgfMinter 8).
-**All green** — full 6-spec suite re-run **2026-08-13 at the freeze commit `c7f85d0d`**
-with `--wait_for_results all` (exit 0 = every rule verified; every `Violated` line in
-the stream was the `rule_not_vacuous` healthy polarity). This is the freeze-stamp
-re-run required by `RELEASE_READINESS.md`'s staleness policy — the prior full-green
-run (2026-08-04, URLs in git history) predated the `827fafe2` identifier rename.
+**All green** — full 6-spec suite re-run **2026-08-27** with `--wait_for_results all`
+(exit 0 = every rule verified; every `Violated` line in the stream was the
+`rule_not_vacuous` healthy polarity). This is the Post-Audit-Policy re-run covering
+the 08-18/19 amendment wave (post-stamp record #3 — `RELEASE_READINESS.md` § Freeze
+Notice); the prior full-green runs (2026-08-13 at the freeze stamp; 2026-08-04) are
+in git history.
 
 | Spec | Report URL |
 |---|---|
-| FigaroCore | https://prover.certora.com/output/9512759/d03ad4e8fc94446e80a3c814a892d2b0 (2026-08-13 evening, exclusion-wave re-run at freeze `c7f85d0d`) |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/d4614628e1bd4871a26271f11d41a6ba (2026-08-13 evening) |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/9b2bd9f369354806b9235dbfbce6add3 (2026-08-13 evening) |
-| FlorinToken | https://prover.certora.com/output/9512759/502e22335ef94090b61bb2ec12ff7a42 (2026-08-13 evening) |
-| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/accbbe50177f4894895267d6889c5ef8 (2026-08-13 evening) |
-| RpgfMinter | https://prover.certora.com/output/9512759/190e0ab0a9054ef5af792ac6281abb8f (2026-08-13 evening) |
+| FigaroCore | https://prover.certora.com/output/9512759/f7d9478c70eb45b081750671c158d01e (2026-08-27, amendment-wave re-run) |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/ad0172900adf4b3f952c37f6ba02d2af (2026-08-27) |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/1abfe0ceb23e40b0ab8c3151039bb1da (2026-08-27) |
+| FlorinToken | https://prover.certora.com/output/9512759/864adb11f68145a98f2de9b081f6181e (2026-08-27) |
+| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/d364d98732d04db2ae5a9c7e2a578d74 (2026-08-27) |
+| RpgfMinter | https://prover.certora.com/output/9512759/7a68e4562d8e461ab93256dbac6740c4 (2026-08-27) |
 
 ```bash
 # Install
