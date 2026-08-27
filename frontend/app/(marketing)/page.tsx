@@ -60,7 +60,7 @@ export default function Home() {
                     in the first screen). The copy is the ruled closing-section
                     copy MOVED, not re-authored — one canonical home, up here. */}
                 <p className="text-body-lead text-ink-muted max-w-2xl mt-5">
-                    If you keep one sentence, keep this one: one thin, ownerless layer that makes any deal between strangers safe &mdash; and everything above it buildable by anyone. Start where you are:
+                    If you keep one sentence, keep this one: one thin, ownerless layer that makes any deal between strangers safe &mdash; and above it, any value-added process anyone cares to build, in whatever currency that market&apos;s author chose, a stablecoin or a community&apos;s own token, the mechanism identical either way, with everything the process produces left in the hands that produced it. Start where you are:
                     new to all of this, begin with{" "}
                     <Link href="/local-commerce" className="text-ink-heading hover:underline">one deal, lived end to end</Link>;
                     building on it, start at{" "}

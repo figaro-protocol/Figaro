@@ -67,23 +67,18 @@ export default function Join() {
                         </tbody>
                     </table>
                 </div>
-                <p className="text-base text-ink-body leading-relaxed mb-10">
+                <p className="text-base text-ink-body leading-relaxed mb-8">
                     Registration is permissionless and posts a reclaimable ETH deposit, on the terms every registry here shares (<Link href="/faq#builders-registries" className="text-ink-heading hover:underline">what the deposit does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases only after a cooldown &mdash; coming back later costs a second deposit. The review step shows the live amount before you sign.
-                </p>
-                <p className="text-sm text-ink-muted mb-4">
-                    Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, claim a released deposit.
                 </p>
                 <div className="mb-8">
                     <RegistryCountLink family="members" />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <CtaLink href="/members/identity" data-testid="cta-register">
-                        Register
-                    </CtaLink>
-                    <CtaLink href="/discover" data-testid="cta-discover">
-                        Browse members
-                    </CtaLink>
-                </div>
+                <CtaLink href="/members/identity" data-testid="cta-register">
+                    Register
+                </CtaLink>
+                <p className="text-sm text-ink-muted mt-6">
+                    Reading rather than joining? The same registrations are browsable as a <Link href="/discover" className="text-ink-heading hover:underline">member directory</Link>. Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, claim a released deposit.
+                </p>
             </MarketingSection>
         </>
     );

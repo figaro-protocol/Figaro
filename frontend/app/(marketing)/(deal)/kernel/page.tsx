@@ -67,7 +67,7 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 More than two pairs of hands.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
+                Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a deal is a property of the deal somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
                 <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">
                     Assemblies
                 </Link>
@@ -108,7 +108,7 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 Resolved or left to sit, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Everything else Figaro does is built on those two facts and changes neither.
+                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and no custodian anywhere in any of it.
             </p>
         </section>
     );
