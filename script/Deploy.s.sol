@@ -195,7 +195,8 @@ contract Deploy is Script {
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
         // a randomized throwaway key (deploy-local.sh), so no anvil account
         // inherits the constructor mint; anvil[0] is funded here like every
-        // other index. anvil must launch with `--accounts 20` so these
+        // other index. anvil must launch with `--accounts 38` (the count
+        // lint-anvil-accounts-lockstep.sh enforces across devup/CI) so these
         // indices also hold ETH for gas (see scripts/devup.sh). Headroom
         // for per-scenario dedicated sellers beyond the original anvil[5..9].
         address[20] memory testAccounts = [
