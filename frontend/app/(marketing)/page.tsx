@@ -76,7 +76,7 @@ export default function Home() {
                     <Link href="/glossary#clause" className="text-ink-heading hover:underline">Clauses</Link> and <Link href="/glossary#assembly" className="text-ink-heading hover:underline">assemblies</Link> are public building blocks, not paperwork filed away. Anyone can write a clause and publish it for reuse. Anyone can compose clauses into an assembly &mdash; a whole deal-shape &mdash; and publish that. A deal is an assembly put to work: the shape filled in with real hands, amounts, and signatures. Markets need no operator either: a buyer&apos;s request races to whichever sellers want it, or goes out for quotes &mdash; offers form on their own, from the network.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The commons pays for its own growth: the florin, the protocol&apos;s own token, has a supply fixed at a billion, and 600 million of it are set aside for authors whose clauses and assemblies get used, paid pro-rata by real use, after the fact. Where the other 400 million sits is itemized on{" "}
+                    The commons pays for its own growth: <Link href="/tokenomics" className="text-ink-heading hover:underline">the florin</Link>, the protocol&apos;s own token, has a supply fixed at a billion, and 600 million of it are set aside for authors whose clauses and assemblies get used, paid pro-rata by real use, after the fact. Where the other 400 million sits is itemized on{" "}
                     <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for authors</Link>. The whole split is readable on the chain.
                 </p>
             </MarketingSection>

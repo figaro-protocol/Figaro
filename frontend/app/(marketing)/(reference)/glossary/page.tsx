@@ -93,7 +93,7 @@ const TERMS: Term[] = [
         term: "The florin (FLORIN, ƒ)",
         definition:
             "The protocol's own coordination token — a focal point participants can rally around, not a fee, not yield, not governance over anyone's deal. What one is worth is a market question, settled by whoever trades it; this project makes no claim about it.",
-        readMore: <Link href="/rpgf" className="hover:underline">RPGF</Link>,
+        readMore: <Link href="/tokenomics" className="hover:underline">Tokenomics</Link>,
     },
     {
         id: "gas",

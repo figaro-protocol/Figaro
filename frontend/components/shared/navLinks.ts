@@ -136,6 +136,12 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/pitfalls", label: "Sharp edges" },
             { href: "/security", label: "Security" },
             { href: "/rpgf", label: "Rewards for authors" },
+            // The (rewards) group's second page (maintainer-ruled 2026-08-27):
+            // /rpgf owns the PROGRAM (how usage becomes a reward), /tokenomics
+            // owns the TOKEN (supply, who holds what, the DAO's economics).
+            // Reading order is program-then-token: the reward is the reason a
+            // reader asks what it is paid in.
+            { href: "/tokenomics", label: "Tokenomics" },
         ],
     },
     {

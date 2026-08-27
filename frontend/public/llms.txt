@@ -72,6 +72,9 @@ the seam — it re-imposes the permission barrier the open world exists to remov
   hash covers, and how to publish one; same live count, same explorer.
 - [/rpgf/](https://figaroprotocol.com/rpgf/) — the reward rule for clause authors and assembly
   designers: the formula, the schedule, the three-seller floor, and the live-deposit condition.
+- [/tokenomics/](https://figaroprotocol.com/tokenomics/) — the token those rewards are paid in: one
+  billion florins, minted once and closed by a one-way latch; who holds what and on what terms; how
+  the DAO earns its living; and where the florin sits among the units a deal can settle in.
 - [/composition/](https://figaroprotocol.com/composition/) — what already composes with a Figaro deal
   (a swap, fiscal routing, a forum), and the seam anything else attaches through.
 - [/faq/](https://figaroprotocol.com/faq/) — the questions strangers actually ask, including the ones

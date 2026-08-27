@@ -28,24 +28,8 @@ export default function Rpgf() {
             />
 
             <MarketingSection title="Reward Terms &amp; Conditions.">
-                <div className="overflow-x-auto mb-4">
-                    <table className="w-full max-w-md text-sm text-left">
-                        <thead>
-                            <tr className="border-b border-default text-ink-heading">
-                                <th className="py-2 pr-4 font-semibold">Years</th>
-                                <th className="py-2 pr-4 font-semibold">Share of the 600M</th>
-                                <th className="py-2 font-semibold">Per year</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-ink-body">
-                            <tr className="border-b border-default"><td className="py-2 pr-4">1&ndash;2</td><td className="py-2 pr-4">15%</td><td className="py-2">7.5%</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">3&ndash;5</td><td className="py-2 pr-4">30%</td><td className="py-2">10%</td></tr>
-                            <tr><td className="py-2 pr-4">6&ndash;9</td><td className="py-2 pr-4">55%</td><td className="py-2">13.75%</td></tr>
-                        </tbody>
-                    </table>
-                </div>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Paid once a year, each year from its own tally, fixed at deployment; the biggest payouts wait for the most evidence.
+                    The 600 million pay out over nine annual periods in three rising steps &mdash; 15%, then 30%, then 55% of the reserve &mdash; paid once a year, each year from its own tally, fixed at deployment; the biggest payouts wait for the most evidence. The full schedule, year by year and florin by florin, is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>, which owns the supply side of this program.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body leading-relaxed list-disc pl-5">
                     <li>Every <Link href="/glossary#clause" className="text-ink-heading hover:underline">clause</Link> and <Link href="/glossary#assembly" className="text-ink-heading hover:underline">assembly</Link> earns the same way: by how much real settled trade reached for it.</li>
@@ -64,6 +48,9 @@ export default function Rpgf() {
             <MarketingSection title="Where the other 400 million sits." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
                     The florin&apos;s supply is fixed at a billion, and this reserve is 600 million of it. 300 million sit in the DAO&apos;s treasury, spent by human judgment &mdash; a one-time grant to the human layer, a different object from the usage-paid reserve above. 100 million went to the founders and early supporters &mdash; 70 and 30 respectively. The whole split is readable on the chain.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mt-5">
+                    The token these rewards are paid in &mdash; the supply and the latch that closes it, each holding&apos;s terms, and how the DAO earns its own living &mdash; is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>.
                 </p>
             </MarketingSection>
 
