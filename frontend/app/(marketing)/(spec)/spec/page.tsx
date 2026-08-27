@@ -863,7 +863,7 @@ function attestViaResolver(
                     Record key &rarr; SDK field &rarr; contract.
                 </h3>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>The keys in that record are not the SDK&apos;s field names.</strong> Spread a record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, four carry no SDK field at all (<code>florinToken</code>, <code>swapQuoter</code>, <code>chainId</code>, <code>deploymentBlock</code>), and every other address key passes through under the same name.
+                    <strong>The keys in that record are not the SDK&apos;s field names.</strong> Spread a record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, five carry no SDK field at all (<code>florinToken</code>, <code>swapQuoter</code>, <code>permitTokenAddress</code>, <code>chainId</code>, <code>deploymentBlock</code>), and every other address key passes through under the same name.
                 </p>
                 <pre
                     tabIndex={0}

@@ -459,8 +459,10 @@ de-Bashing lands with the sandbox wrapper.
 ruling): `dataChannel.mjs` (`makeEnvelope`/`renderEnvelope`/`frame` — the typed
 envelope rendered with a per-render BOUNDARY NONCE, so content cannot close its own
 block and speak as instructions; a fixed untrusted-data notice rides inside the frame)
-and `figaro-fetch` (clause spec / assembly template / member profile / raw CID, each
-resolved through the live registries and emitted as ONE framed block; smoke-verified
+and `figaro-fetch` (five modes — clause spec / assembly template / member profile /
+raw CID / attestation witness; the registry-addressed modes resolve through the live
+registries, the ipfs and witness modes by content address, each emitted as ONE
+framed block; smoke-verified
 against the live Sepolia stack). Tested from the attacker's side: a forged closing
 delimiter cannot escape the frame. F4 is structural at the fetch boundary when the
 host wires all network arrivals (coordination messages included) through `frame()`.
@@ -475,7 +477,9 @@ policy's `egress` hosts (`proxy-bootstrap.mjs` routes node's fetch through it). 
 cases tested on macOS (write escape, secret read, direct outbound — each must fail)
 plus the composed proof: a framed live fetch from inside the sandbox via the proxy
 against the live Sepolia stack. Residuals, stated where they bind: the Linux
-container variant is documented, not exercised on the authoring host; sandboxed reads
+container variant is exercised in CI on demand (`on-demand-docker.yml` Job 2 runs
+the container deny cases; first green 2026-08-26), never on the authoring host
+(no container runtime here); sandboxed reads
 are deny-listed (named secrets), not default-denied — the key itself is never on the
 sandboxed side; `Bash` inside the wrapper persists until the runtime grows typed
 tools. **All four components stand** — the tier-gate criterion and its launch shape

@@ -3,8 +3,9 @@ import { render, screen } from "@testing-library/react";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import type { CapabilityModel } from "@/lib/semantic/models";
 
-// The rail renders only id/label/actionKind/eventCode/preconditions; cast a
-// minimal object (the nested action/source aren't read for rendering).
+// The rail renders only id/label/actionKind/eventCode/inputFields; cast a
+// minimal object (preconditions and the nested action/source aren't read for
+// rendering).
 const cap = (over: Partial<CapabilityModel> = {}): CapabilityModel => ({
     id: "p:o:figaro-merchant-process-seller-prep-started",
     label: "Preparation started",

@@ -315,7 +315,9 @@ Not final APIs — the shapes the frontend should represent:
 ### Truth classes (a first-class design rule)
 
 Every semantic field is one of: `protocol-enforced` · `protocol-derived` ·
-`institution-declared` · `indexer-derived` · `ui-local`. This prevents confusing a secured
+`assembly-declared` · `indexer-derived` · `ui-local` (the `TruthClass` union in
+`lib/semantic/models.ts` — distinct from the data explorer's four-value
+`TruthBoundary`). This prevents confusing a secured
 guarantee with helpful presentation — load-bearing especially for guarantees, settlement
 breakdowns, and provenance/accounting distinctions.
 

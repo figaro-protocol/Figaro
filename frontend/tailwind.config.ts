@@ -45,13 +45,12 @@ const config: Config = {
             },
             // Per docs/DESIGN_TOKENS.md §4 (Radius tokens).
             // Spec ties `link`, `button`, `input` all to 0.75rem; deduplicated
-            // here to a single `tile` key. `section`, `invariant`, `glyph`
+            // here to a single `tile` key. `section` and `invariant`
             // keep their distinct roles.
             borderRadius: {
                 section: '1.25rem',
                 invariant: '1rem',
                 tile: '0.75rem',   // shared by .muji-links a, button, input
-                glyph: '0.25rem',
             },
             // Per docs/DESIGN_TOKENS.md §2 (Typography tokens — Font stack).
             // Fonts are loaded via `next/font/google` in `app/layout.tsx` and
@@ -68,20 +67,6 @@ const config: Config = {
                     'sans-serif',
                 ],
                 mono: [
-                    'var(--font-jetbrains-mono)',
-                    'ui-monospace',
-                    'SFMono-Regular',
-                    'Menlo',
-                    'monospace',
-                ],
-                'muji-sans': [
-                    'var(--font-noto-sans-jp)',
-                    'var(--font-inter)',
-                    'Helvetica Neue',
-                    'Arial',
-                    'sans-serif',
-                ],
-                'muji-mono': [
                     'var(--font-jetbrains-mono)',
                     'ui-monospace',
                     'SFMono-Regular',

@@ -60,4 +60,4 @@ content. (This is the instruction-system form of "derive, don't store.")
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `RELEASE_READINESS.md` (the open release tasks, TODO only — closed work is deleted; git is the log)
 - **Audit / verification**: `AUDITOR_HANDOVER.md` (freeze notice + stamp, post-audit policy, validation gate, accepted risks), `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
-- **Research**: `BOL_RESEARCH.md` (project lineage / naming history is folded into `VISION.md` "Appendix: Project Lineage")
+- **Research**: `BOL_RESEARCH.md` (project lineage / naming history is folded into `VISION.md` § "Project Lineage")

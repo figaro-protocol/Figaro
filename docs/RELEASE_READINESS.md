@@ -172,8 +172,8 @@ live. These are separate from the external-audit gate above:
   the fetch boundary), and the sandbox wrapper (`run-sandboxed` — loopback-only OS
   sandbox + policy-driven egress proxy + scrubbed environment, F5/F6; deny cases
   tested on macOS). Honest residuals, named where they live: the Linux container
-  variant is EXERCISED in CI on demand (`on-demand-docker.yml` Job B runs the container
-  deny cases) but never on the
+  variant is EXERCISED in CI on demand (`on-demand-docker.yml` Job 2, "Linux sandbox
+  variant", runs the container deny cases) but never on the
   authoring host — CI-on-demand only; the read surface inside
   the sandbox is deny-listed (named secret paths), not default-denied — acceptable
   because the signing key is never on the sandboxed side at all; and `Bash` remains in

@@ -97,7 +97,8 @@ weakens the Nash equilibrium. An exit that requires a third party J ∉ {B,
 S} whose incentives are not bond-constrained — including arbitrator,
 escrow, mediator, or governance vote — is forbidden at the kernel layer.
 External legal forums adjudicating under duress / frustration /
-impossibility are not this kind of escape hatch (Remark 4.8); they
+impossibility are not this kind of escape hatch (the "On judicial review"
+remark, /papers/asymmetric-bonding §4.2); they
 operate on the bonded commitment as evidentiary input, not as a kernel
 override.
 

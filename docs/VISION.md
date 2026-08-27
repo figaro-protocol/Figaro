@@ -57,8 +57,8 @@ What makes this more than a clever escrow:
    state, exactly as ants follow chemical trails without central planning.
 
 4. **Composable institutions** — the protocol provides settlement security;
-   additional mechanisms (auctions, attestation coordinators, disclosure
-   modules, member registries) layer on top without weakening the bonding
+   additional mechanisms (attestation coordinators, swap coordinators, member
+   registries, arbitration forums) layer on top without weakening the bonding
    guarantee.
    An institution is a composition of mechanisms, not a monolithic application.
 
@@ -121,9 +121,9 @@ from graph intersection, not from a single signal. Private details (exact
 address, notes) are sealed with per-order AES-256-GCM keys and exchanged
 out-of-band. The public layer coordinates; the private layer protects.
 
-**GHG disclosures** — Public accountability graph. Reporting entities open
-process-level boundaries, buyers create order-level requirements, and sellers
-submit disclosure references. All anchored to settlement — you cannot game the
+**GHG disclosures** — Public accountability graph. The `figaro-emissions`
+clause rides in the signed agreement, and the disclosure itself arrives as an
+attestation on the order. All anchored to settlement — you cannot game the
 disclosure without breaking the bond. Opt-in, but tamper-proof once committed.
 
 **Cross-process links (templates, cascades)** — Public trade network graph.
@@ -146,7 +146,7 @@ that constitute the information layer of the public coordination economy:
 
 1. **Process graph** (protocol-enforced) — orders, bonds, settlement, DAG
 2. **Spatial graph** (institution-declared) — geohashes, routing signals, zones
-3. **Disclosure graph** (protocol-derived) — clauses, requirements, submissions
+3. **Disclosure graph** (protocol-derived) — emissions clauses + their attestations
 4. **Settlement graph** (protocol-enforced) — per-order bonds, settlement payouts (linear; topology is the process graph's)
 5. **Cross-process graph** (protocol-derived) — template provenance, settlement links
 
@@ -168,7 +168,7 @@ the named "entity" is not a firm — it is a process of independent
 value-adders:
 
 - **Ride-hail**: buyer + driver (+ vehicle owner, + maintenance provider…),
-  geohash routing, auction allocation
+  geohash routing, dispatch-race allocation
 - **Prepared food**: buyer + cook + ingredient sourcer + kitchen seller +
   courier, value flowing through the DAG to every contributor
 - **Repair dispatch**: buyer + diagnostician + parts sourcer + technician,
@@ -391,7 +391,7 @@ coordination network.
 The singleton stays safe because of a critical architectural separation:
 **bonds are deterrents; payments are income.** The core bonding mechanism locks
 and releases bonds — that is all it does. Compositions (attestation
-coordinators, auctions, disclosure modules, member registries) operate on
+coordinators, swap coordinators, member registries) operate on
 coordination, discovery, and evidence surfaces around the process. They can
 inform routing, allocation, and attestations, but they do not alter the bond
 mechanism or buyer-only resolution. This is how the protocol scales
@@ -405,7 +405,7 @@ confuse tiers (e.g., "add yield to locked bonds") misidentify what they touch.
 | Tier | What it is | Boundary |
 |---|---|---|
 | **Kernel** | `FigaroCore`. The irreducible settlement primitive: 2 external functions, 3 mappings, no owner, no fee, no escape hatches. Secures the process graph via asymmetric bonding. | Nothing modifies the kernel's payoff matrix. |
-| **Protocol** | Kernel + composition doctrine + public graphs. Attestation, clause registry, mechanism modules (auctions, lifecycle coordinators, members registry), five semantic graphs. | Compositions read kernel state but never weaken its guarantees. |
+| **Protocol** | Kernel + composition doctrine + public graphs. Attestation, clause registry, mechanism modules (attestation + swap coordinators, members registry), five semantic graphs. | Compositions read kernel state but never weaken its guarantees. |
 | **Runtime** | Protocol + semantic derivation layer + institution assembly clause + builder surfaces + UI. The complete operational environment. | Institutions grow on top; they can wither or be replaced without shaking the kernel. |
 
 The kernel is bedrock; the protocol is law; the runtime is the shared workshop;
@@ -447,9 +447,10 @@ AES-256-GCM key that seals sensitive details (address, notes, coordination
 data). Compromise of one order does not expose any other. There is no master
 key, no platform-held decryption capability, no data silo.
 
-The protocol core (`FigaroCore`) treats the agreement field as opaque bytes —
-it stores nothing, interprets nothing, and only emits the raw bytes and their
-hash in the `OrderCreated` event. What goes into the agreement, how it is
+The protocol core (`FigaroCore`) never sees the agreement at all — it stores
+nothing, interprets nothing, and carries only the 32-byte `agreementHash`,
+emitted in the `OrderCommitted` event; the agreement body is pinned off-chain
+and fetched by its fingerprint. What goes into the agreement, how it is
 encrypted, and what clause it conforms to are **dapp-level policy decisions**.
 A delivery archetype might use geohash-6 + AES-sealed street address. A
 procurement archetype might use H3 hexagons + cleartext warehouse codes. A

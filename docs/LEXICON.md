@@ -24,15 +24,15 @@ concept's name per tier.
 | value-adding party | **seller** | operator · author · provider | merchant · courier · driver · vendor · supplier *(projections)* | `lint-no-product-party-terms` |
 | relationship unit | — | **clause** (+ the Layer-A SDK validator — per-clause validator *contracts* do not exist, permanently) | clause | `lint-no-clause-grouping-synonyms` (one grouping mechanism, by `article`) |
 | ↳ clause group | — | **`block.design.article`** — the one grouping word (`categories` array + on-chain `family` removed 2026-06-26) | grouped by `article` | `lint-no-clause-grouping-synonyms` |
-| ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **runtime event logs** (`clauseIsProcessLog` — empty anchor at commit) and **witness stages** (`spec.stages[N≥1]`) vs content committed at signing (stage 0); all one runtime-evidence category — coordination attestations | `lint-architecture-lexicon` — retired: **`block.tier`** and its `cross-checked`/`runtime` tiers, `category-1/2`, `manifest-only` |
+| ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **runtime event logs** (`clauseIsProcessLog` — empty anchor at commit) and **witness stages** (`spec.stages[N≥1]`) vs content committed at signing (stage 0); all one runtime-evidence category — coordination attestations | `lint-architecture-lexicon` mechanically blocks `category-1/2` + `manifest-only`; **`block.tier`** and its `cross-checked`/`runtime` tiers are retired by record (the script's comment), not by pattern |
 | reusable composition | — | **assembly** | assembly | `lint-architecture-lexicon` |
 | ↳ serialized form | — | — | **`AssemblyTemplate`** (one name; `AssemblyDocument` retired → 0 occurrences) | — |
-| ↳ template node | — | — | **agreement** (`AssemblyTemplateAgreement`) — the design-time draft of one buyer↔seller relationship; its `id` names the kernel-order slot (`order-<i>`) it commits into at checkout | grep-verified canonical (template `orders` array retired 2026-07-05) |
+| ↳ template node | — | — | **agreement** (`TemplateAgreement`) — the design-time draft of one buyer↔seller relationship; its `id` names the kernel-order slot (`order-<i>`) it commits into at checkout | grep-verified canonical (template `orders` array retired 2026-07-05) |
 | ↳ assembly identity | — | **`compositionHash`** (AssemblyRegistry binding key; keccak of the canonical composition subset — editorial excluded) | slug = presentation, derived (`deriveAssemblySlug`) | grep-verified canonical (caller-chosen `slug`/`slugHash` retired 2026-07-05) |
 | deal instance | **order** → **process** · commitment | — | order · process | `lint-architecture-lexicon` (`order-received` banned) |
 | the agreement | **`agreementHash`** (the EIP-712 fingerprint field) | — | `Agreement` (off-chain JSON) · `agreementUri` (IPFS location) | grep-verified canonical |
 | evidence | — | **attestation** (`contentRef` = `keccak256(content)`) | attestation | `lint-architecture-lexicon` |
-| value | currency · payment | — | consumer copy via `vocab.ts` (deposit/place/complete) | — |
+| value | currency · payment | — | consumer copy inline in the components (deposit/place/complete — `vocab.ts` was deleted with the orphan burn) | — |
 | token concepts | `currency` = ANY ERC-20 (the kernel is token-agnostic) | **three distinct, never assimilated**: the **florin** (a pure Schelling point — NOTHING is conditioned on it) ≠ **`figaro-utility-token`** (a generic pin: the designer names any ERC-20; no economics in the clause) ≠ the **privileged token** (VISION doctrine: an assembly-author's OWN token) | florin · utility-token pin | `lint-architecture-lexicon` (same-line florin↔pin / florin↔privileged coupling banned) |
 
 **Distinct concepts that are NOT drift** (do not collapse): `compositionHash` = the *assembly's*
@@ -93,7 +93,7 @@ program — usage is counted at resolve and `sdk/src/rpgf` only MIRRORS chain st
 an answer. **merkle root** = ONE agreement's clauses (`agreementHash`, the root over its signed
 sections); the RPGF posts NO payout root — nothing is posted at all. **Kleros** = an optional
 TRADE-dispute forum a DESIGNER composes (the `figaro-arbitration-kleros` clause +
-`block.composes.forumUrl`, config only — the parties' own recourse); the RPGF has NO bond referee
+`block.design.composes.forumUrl`, config only — the parties' own recourse); the RPGF has NO bond referee
 (the `KlerosRpgfAdapter` / bond-arbitrator apparatus was deleted). **The crease:** System B — the
 600M RPGF (`UsageCounter` → `RpgfMinter`) — is COUNT-AT-RESOLVE and has NO proof apparatus of its
 own: no posted payout root, no bond, no referee, gated only by the two-sided live ETH stake.

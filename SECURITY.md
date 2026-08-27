@@ -63,7 +63,7 @@ external audit.
 
 ## Bug bounty
 
-There is no paid bug-bounty program. Figaro is pre-deployment and runs no
-treasury — there is nothing to fund a bounty from. This may change if the
-protocol is deployed to a public network. Disclosure is asked for on the
+There is no paid bug-bounty program. Figaro is deployed only to testnet (no
+real value at stake) and runs no treasury — there is nothing to fund a bounty
+from. This may change when the protocol is deployed to mainnet. Disclosure is asked for on the
 merits.

@@ -41,7 +41,7 @@ export interface TimelineEvent {
     txHash: string;
     /** Content-addressed order hash. */
     orderHash: string;
-    /** Source contract event name (e.g. "OrderCreated"). */
+    /** Source contract event name (e.g. "OrderCommitted"). */
     eventName: string;
     /** Key fields from the event, stringified for display. */
     details: Record<string, string>;

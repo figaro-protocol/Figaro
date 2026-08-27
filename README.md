@@ -51,7 +51,7 @@ handover in [docs/AUDITOR_HANDOVER.md](docs/AUDITOR_HANDOVER.md).
 
 - **Kernel** — `FigaroCore.sol`: two state-changing entry points (`commit`, `resolveProcess`), 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, members registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
-- **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
+- **The florin** — 1B fixed supply, 7/3/30/60 split (founders / supporters / DAO / RPGF); founder + supporters + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across nine annual periods in three rising tranches (15/30/55 — see `docs/CONTRACTS.md` § RPGF)
 - **SDK** — `@figaro-protocol/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
@@ -99,8 +99,8 @@ ecosystem-agents/           Public agent prompts (act for a user's wallet, never
 
 frontend/                   Next.js 14 runtime
   app/                      App Router routes
-  components/               assemblies, marketing, modules, papers, runtime, sellers, shared, ui, icons
-  lib/                      agent, audit, checkout, composition, designer, handoff, kernel, protocol, seller, semantic, shared
+  components/               assemblies, data, figures, icons, marketing, members, modules, papers, registries, runtime, shared, ui
+  lib/                      agent, audit, checkout, composition, data, designer, handoff, kernel, member, protocol, registries, semantic, shared
   tests/                    Vitest unit tests
   tests/e2e/                Playwright specs (devnet, mobile)
 
@@ -166,7 +166,7 @@ forge test --via-ir
 cd sdk && npm test
 ```
 
-`script/` holds the Foundry deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `MintTokens.s.sol`).
+`script/` holds the Foundry deploy scripts (`Deploy.s.sol`, `DeploySepolia.s.sol`, `DeployMainnet.s.sol`, `DeploySwapCoordinator.s.sol`, `MintTokens.s.sol`).
 
 ---
 

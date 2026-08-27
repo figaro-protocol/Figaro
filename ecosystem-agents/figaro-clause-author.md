@@ -109,8 +109,9 @@ there is content the author believes is checked and that in fact never is. Run
 it returns to the user. It is a WARNING, not a parse error, and deliberately so: the article
 is free text and a third-party clause may declare anything, and `"attestations"` is correct
 and meaningful for a genuine process-log clause — the two shipped ones,
-`figaro-merchant-process` and `figaro-courier-process`, declare no fill list at all, which is
-the shape a real one always has. The warning fires only on that specific combination.
+`figaro-merchant-process` and `figaro-courier-process`, declare explicit EMPTY fill
+lists (`"fills": []`), which is the shape a real one always has. The warning fires
+only on that specific combination.
 
 **And one field attribute is mis-typed as UI metadata: `default`.** A field's `default`
 is documented as composition metadata, but it is NOT inert — when the composing input

@@ -25,7 +25,8 @@ the whole model first.
 > provenance and a boundary nonce; fetch through it, never bare), and so is
 > the sandbox wrapper (`figaro-run-sandboxed` — workspace-scoped writes,
 > loopback-only network behind a policy-driven egress proxy, scrubbed
-> environment; deny cases tested on macOS, Linux variant documented). Run the
+> environment; deny cases tested on macOS and, for the Linux container
+> variant, in CI on demand). Run the
 > full shape — signer outside, agent inside the wrapper, reads framed — and
 > the F1–F6 requirements are structural; run any piece bare and that piece
 > falls back to BEHAVIORAL, the prompt asking where nothing outside it makes
@@ -57,11 +58,11 @@ them); forks are first-class.
 ## The seam — two worlds, do not blur them
 
 Pre-defined agents are **maintainer-private by default**; "public" is the exception, only when
-explicitly designed for it — these three are those exceptions.
+explicitly designed for it — these four are those exceptions.
 
 | World | Home | For | Touches the repo? |
 |---|---|---|---|
-| **Maintainer-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the maintainer only** | yes (that's their job) |
+| **Maintainer-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, builders-docs, papers-editor, paper-reviewer, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage) | `.claude/agents/` | **the maintainer only** | yes (that's their job) |
 | **Public ecosystem** — operate / author / fork / analyze (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-designer`, `figaro-analyst`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
 A public ecosystem agent that writes a repo file has crossed the line: it re-imposes the

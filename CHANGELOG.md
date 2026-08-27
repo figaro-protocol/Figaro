@@ -18,7 +18,7 @@ Summary of the current state of the protocol and its verification surface:
 
 - The Solidity kernel (`src/kernel/FigaroCore.sol`, `src/kernel/CommitmentTypes.sol`)
   is frozen for external audit, alongside the full protocol/registry/coordinator/
-  RPGF/florin surface — see `docs/RELEASE_READINESS.md` § "Freeze Notice —
+  RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Freeze Notice —
   Solidity Surface Frozen for External Audit" for the exact frozen scope.
 - The batch settlement path (`FigaroBatchVerifier` + the Rust `prover/` SP1
   witness prover/sequencer) is live and included in the frozen scope.
@@ -52,8 +52,10 @@ Summary of the current state of the protocol and its verification surface:
 
 ### Infrastructure
 
-- Eight GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
+- Ten GitHub Actions workflows: `foundry-ci`, `sdk-ci`, `frontend-ci`,
   `devnet-e2e-ci`, `prover-ci`, `guards-ci` (the whole-tree guard battery),
+  `estate-snapshot` (weekly perishable-observability capture),
+  `on-demand-docker` (dispatch-only container proofs),
   `sdk-release`, and `sequencer-release` (publishes the prebuilt
   `figaro-sequencer` relay binary on tag push).
 

@@ -66,9 +66,9 @@ cd frontend && RPC_URL=<chain rpc or http://127.0.0.1:18546> \
   build and the embedded vkey silently diverges from the docker one.
 - **`FIGARO_CORE_ADDRESS` is set to the BATCH VERIFIER** in `run-sequencer.sh`:
   the batch universe's EIP-712 domain is the verifier, never `FigaroCore`.
-- **Watch the sequencer's log, not just `/status`.** A deterministic settle
-  revert is retried as transient and `/status` has no failure counter (both
-  punch-listed), so a dead batch is invisible to a polling driver.
+- **`/status` carries the failure surface.** A deterministic settle revert is
+  dead-lettered (never re-proved), and `/status` reports `dead_lettered_ops` +
+  `last_settle_error` — a polling driver sees a dead batch without tailing the log.
 - **Deleting the box deletes the relay archive** — the batched orders' only
   off-chain publication. The parties' own persisted records
   (`frontend/batch-records/`) are the custody that survives it.

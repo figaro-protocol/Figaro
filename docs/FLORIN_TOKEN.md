@@ -122,8 +122,10 @@ DAO-decided at any time, nothing hardcoded (ruled 2026-07-17):
 **DAO custody**: the DAO wallet is a **multisig** (mainnet: a canonical Safe instance —
 deployment config via `DAO_WALLET`, never authored code). The concrete custody detail —
 signer set, threshold, and the founder/supporter wallet addresses — is deployment
-configuration and will be disclosed in the deployment record when a public deployment
-exists; none is named now because none exists yet, not because any is withheld. *No vault contract exists or is
+configuration, disclosed in the deployment record per network
+(`deployments/11155111.json` names the Sepolia treasury; the operator EOA and its
+delegation in `deployments/dao-operator-delegation.11155111.json`); mainnet's is
+named when mainnet deploys, not before — never withheld, just not yet real. *No vault contract exists or is
 needed* — custody is composed, not authored. **The DAO meets the ecosystem through ONE
 account: its operator EOA, an externally-owned account carrying an EIP-7702 delegation to
 governance-controlled code** (ruled 2026-08-18; the same delegation shape

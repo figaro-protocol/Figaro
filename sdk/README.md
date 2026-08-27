@@ -35,18 +35,18 @@ with no `tsc` anywhere on `PATH`, and if you ever delete it, a plain
 `npm install @figaro-protocol/sdk` re-extracts it. What follows is
 **repo-checkout-only**.
 
-`sdk/package.json` declares `"prepare": "npm run build"`, and npm runs a `file:`
-dependency's `prepare` on **every** consumer install. `build` is
-`rm -rf dist && tsc`. The `rm` always succeeds. So if `tsc` cannot be resolved
-from the SDK's own directory, the rebuild dies with `sh: tsc: command not found`,
-the install exits `127`, and `dist/` is **gone** — the package the README just
-told you to install no longer has an entry point (`Cannot find package
-'@figaro-protocol/sdk'`). `--ignore-scripts` does **not** save you: measured, npm runs the
-linked package's `prepare` regardless and `dist/` still goes.
+`sdk/package.json` declares `"prepare": "node scripts/prepare.mjs"`, and npm
+runs a `file:` dependency's `prepare` on **every** consumer install. The script
+resolves the `typescript` compiler FIRST: absent, it keeps the shipped `dist/`
+as-is and exits 0 (nothing is destroyed); present, it runs the real build
+(`rm -rf dist && tsc`) and propagates its exit code, so genuine build failures
+still fail. (The earlier `"prepare": "npm run build"` destroyed `dist/` before
+discovering `tsc` was unresolvable and bricked the package — the guard exists
+because that trap bit two adopter probes.)
 
-`tsc` is a devDependency of the `sdk` workspace, hoisted to the **checkout
-root's** `node_modules`. That is the whole fix — do this once, in this order,
-before the consumer install:
+So a `file:` install works from any state, but a **stale** checkout serves a
+**stale** `dist/`. To build fresh, do this once, in this order, before the
+consumer install:
 
 ```bash
 git clone https://github.com/figaro-protocol/Figaro && cd Figaro
@@ -54,12 +54,9 @@ npm install                       # root: hoists typescript for the sdk workspac
 npm run build --workspace sdk     # produces sdk/dist
 ```
 
-…and point `file:` at the `sdk` directory **inside that checkout**, never at a
-copy you moved somewhere else. Then the consumer's install finds `tsc` up the
-directory chain and its `prepare` *rebuilds* `dist/` instead of destroying it.
-Already hit it? Nothing is lost: rerun those two commands from the repo root.
-(Do not "fix" this by editing `sdk/package.json` — that `prepare` hook is what
-keeps the workspace build honest.)
+…and point `file:` at the `sdk` directory **inside that checkout**. With
+`typescript` hoisted to the checkout root, the consumer's install *rebuilds*
+`dist/` on every install; without it, the shipped `dist/` is served unchanged.
 
 ## Your first commit
 

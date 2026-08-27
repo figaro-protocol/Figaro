@@ -122,8 +122,6 @@ Tailwind stacks resolve to these variables at runtime:
 |--------------------|------------------------------------------------------------------------------|
 | `font-sans`        | `var(--font-noto-sans-jp), var(--font-inter), Helvetica Neue, Arial, sans-serif` |
 | `font-mono`        | `var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace`     |
-| `font-muji-sans`   | Same as `font-sans` (alias retained for explicit semantic naming).           |
-| `font-muji-mono`   | Same as `font-mono` (alias retained).                                        |
 
 Body inherits `font-sans` via `globals.css @layer base body { @apply font-sans }`.
 
@@ -173,7 +171,6 @@ Container side-padding is `px-6 sm:px-10` (`1.5rem` / `2.5rem`) — matches `spa
 | `section`    | `rounded-section`  | `1.25rem`  | Section cards, modals, dialogs.           |
 | `invariant`  | `rounded-invariant`| `1rem`     | Invariant cards, framed content.          |
 | `tile`       | `rounded-tile`     | `0.75rem`  | Buttons, inputs, link tiles, primary CTAs. |
-| `glyph`      | `rounded-glyph`    | `0.25rem`  | Discipline glyph, fixed-size badges.      |
 
 Tailwind's default `rounded-{none,sm,md,lg,xl,2xl,3xl,full}` scale also remains available.
 
@@ -301,13 +298,6 @@ Section-card shape lifted off the page. `ModalChrome` is the owning primitive �
 ### Toast (`components/ui/toast.ts`)
 
 The one notification helper over sonner — success (optional tx-hash description), error (contract reverts, wallet rejections, RPC failures decoded via `extractErrorMessage`, the same logic inline error displays use). Feature call sites import this module, never `sonner` directly; the `<Toaster>` mount lives in `app/providers.tsx`.
-
-### Glyph (`DisciplineGlyph`)
-
-```
-bg-surface border border-default rounded-glyph
-text-ink-heading font-mono font-semibold
-```
 
 ### Nav current state ("you are here")
 

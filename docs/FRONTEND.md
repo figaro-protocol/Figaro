@@ -1,10 +1,9 @@
 # Frontend — Structure
 
 Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only
-active frontend.** The prior V4 frontend was moved to `archive-frontend/` on
-2026-04-26 and untracked from the repo in `a6110c6` (2026-05-24); it is not
-present in fresh clones. If a frontend change is needed, it ships in
-`frontend/` only.
+active frontend.** The prior V4 product-app frontend lives in `archive-v4/`
+(CLAUDE.md § Pointers owns the archive map). If a frontend change is needed,
+it ships in `frontend/` only.
 
 CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-route catalogue, lib map, designer surface, and wallet-provider scope live here.
 
@@ -12,7 +11,7 @@ CLAUDE.md keeps the active-frontend declaration and indexes this file; the per-r
 
 Audit by `ls app/(marketing)/ app/(app)/ app/(tools)/`. Source of truth is the directory listing, not this paragraph. **This is the ONE route catalogue**, classified by wallet-provider tier (tier definitions + rules: § "Wallet-provider scope per route" below).
 
-**Marketing — `(marketing)/`, no wallet provider — seven ruled sections (maintainer 2026-08-07), one route group per protocol object:** `(deal)`: `/kernel`, `/local-commerce` (the worked example — nav-visible per maintainer ruling 2026-08-07, on the standing condition that sitewide copy stays demoted: one example among unbounded kinds, never the default telling), `/invariants` (renamed from `/physics`), `/faq` (moved from `(reference)` same ruling — the public's decision document); `(compose)`: `/clauses`, `/assemblies`, `/registries` (the registry explorer — the ONE reads-only search surface over all three registries, maintainer ruling 2026-08-17; h1 "Registry explorer", nav label "Registries"), `/composition` (renamed from `/composes`), `/data` (moved from `(deal)` by the 2026-08-24 safe→build reorientation — the data market is a market built from two ordinary clauses, not a property of one deal); `(participants)`: `/members` (the membership pitch — the wizard lives beneath it in `(app)`), `/agents`; `(rewards)`: `/rpgf`; `(spec)`: `/spec`, `/pitfalls` (renamed from `/builders/pitfalls`), `/security` (testing + audit results only); `(research)`: `/why`, `/working-groups`, `/consequences`, plus `/papers/<slug>` reached through Working Groups; `(reference)` — footer chrome, never nav: `/glossary`. The `/builders` hub is DELETED (an audience carve; its payloads live on Clauses, Assemblies, and RPGF). The nav's Market section bridges the `(app)` tools `/discover`, `/orders`, `/audit`; the Build section likewise bridges the two `(tools)` AUTHORING surfaces `/clauses/register` and `/assemblies/designer` (superseding ruling, maintainer 2026-08-25 — the build seam is emphasized in nav AND as a CTA on each object page; Claim/Join stay page-buttons) plus the `(app)` graph-query surface `/data/explore` beside its own object page (maintainer-ruled 2026-08-26); `lint-nav-structure.sh` admits exactly these three. The `/registries` explorer (and the live counts `/clauses`, `/assemblies`, `/members` keep) read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider; the explorer's members family reads through `lib/member/useRegisteredMembers.ts` (every registered wallet — the registry, unlike `/discover`'s buyer list of members with an anchored assembly binding).
+**Marketing — `(marketing)/`, no wallet provider — seven ruled sections (maintainer 2026-08-07), one route group per protocol object:** `(deal)`: `/kernel`, `/local-commerce` (the local-commerce example — nav-visible per maintainer ruling 2026-08-07, on the standing condition that sitewide copy stays demoted: one example among unbounded kinds, never the default telling), `/invariants` (renamed from `/physics`), `/faq` (moved from `(reference)` same ruling — the public's decision document); `(compose)`: `/clauses`, `/assemblies`, `/registries` (the registry explorer — the ONE reads-only search surface over all three registries, maintainer ruling 2026-08-17; h1 "Registry explorer", nav label "Registries"), `/composition` (renamed from `/composes`), `/data` (moved from `(deal)` by the 2026-08-24 safe→build reorientation — the data market is a market built from two ordinary clauses, not a property of one deal), `/worked-example` (the freelance value-chain process story — nav-visible in the Build section, maintainer ruling 2026-08-24); `(participants)`: `/members` (the membership pitch — the wizard lives beneath it in `(app)`), `/agents`; `(rewards)`: `/rpgf`; `(spec)`: `/spec`, `/pitfalls` (renamed from `/builders/pitfalls`), `/security` (testing + audit results only); `(research)`: `/why`, `/working-groups`, `/consequences`, plus `/papers/<slug>` reached through Working Groups; `(reference)` — footer chrome, never nav: `/glossary`. The `/builders` hub is DELETED (an audience carve; its payloads live on Clauses, Assemblies, and RPGF). The nav's Market section bridges the `(app)` tools `/discover`, `/orders`, `/audit`; the Build section likewise bridges the two `(tools)` AUTHORING surfaces `/clauses/register` and `/assemblies/designer` (superseding ruling, maintainer 2026-08-25 — the build seam is emphasized in nav AND as a CTA on each object page; Claim/Join stay page-buttons) plus the `(app)` graph-query surface `/data/explore` beside its own object page (maintainer-ruled 2026-08-26); `lint-nav-structure.sh` admits exactly these three. The `/registries` explorer (and the live counts `/clauses`, `/assemblies`, `/members` keep) read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider; the explorer's members family reads through `lib/member/useRegisteredMembers.ts` (every registered wallet — the registry, unlike `/discover`'s buyer list of members with an anchored assembly binding).
 
 **URL-depth rule.** Concept pages — pages that explain a protocol object in plain language, for a reader who isn't necessarily about to act — live at the site root (`/clauses`, `/assemblies`, `/composition`, `/security`, …). The authoring tools that DO what a concept page explains live one level beneath their object (`/clauses/register`, `/assemblies/designer`, …). How each concept page names its tool is per-page, not one shape: `/assemblies` states the seam as a one-line pointer near the top — "This page explains X. To do X, go to [tool]." (`frontend/app/(marketing)/(compose)/assemblies/page.tsx`); `/clauses`' maintainer-ruled shape (2026-08-12, amended 2026-08-17 when the inventory moved to `/registries`: definition / writing-requirements bullets / the live registry count + explorer link / the hash-identity + enforcement reference / add-your-own) places its one register link in the add-your-own section near the bottom, not near the top (`frontend/app/(marketing)/(compose)/clauses/page.tsx`); `/data` states its seam in one line inside the section that describes the public half of the record, pointing at `/data/explore` (the tool that reads that map); `/composition` is the ruled single composition page with no separate tool to hand off to. Where a seam exists, the tool it points to keeps at most one intro paragraph plus a pointer back to the concept page for the full explanation, rather than re-deriving it.
 
@@ -80,7 +79,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `ClausesList.tsx` — clauses catalogue on the landing.
 - Shared DAG canvas: `components/runtime/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
 
-**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage); agreements via `lib/designer/syntheticAgreementStore.ts` (`saveAgreement`). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
 **The agreement build (composition rules).** The published **template is the faithful record** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) auto-fold into every draft generically (the SDK's fold iterates the loaded spec set, so a never-seen mandatory clause folds in with zero code). Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
 
@@ -95,10 +94,16 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 ## Components (`components/`)
 
-- **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shell: `AssemblyProcessWorkspace` (all `Institution*` names have been renamed)
-- **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`) plus `readingPathSteps.ts` — the homepage reading path's ordered steps (data, not a component; the ruled spine, rendered on `/` only)
+- **`runtime/`** — order flows, bond/token, attestation + capability surfaces (the lens system; e.g. `CapabilityRail`)
+- **`members/`** — member onboarding shell + edit panels (profile, catalogue)
+- **`registries/`** — the registry-explorer surfaces (`RegistryExplorer`)
+- **`assemblies/`** — assembly display + designer surfaces
+- **`data/`** — the data-explorer surfaces (`DataExplorer`)
+- **`papers/`** — the paper-corpus chrome (`PaperLayout`)
+- **`figures/`** — shared SVG figures (papers + marketing)
+- **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`) plus `readingPathSteps.ts` — the homepage reading path's ordered steps (data, not a component; the ruled spine, rendered on `/` and continued per-route by `ReadingPathNext`, mounted in the marketing layout)
 - **`modules/`** — feature modules (e.g. `MemberBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
-- **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`sellers/`** — route-specific panels (onboarding shell + edit forms)
+- **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs
 
 ## Canonical exemplars — copy these shapes
 
@@ -117,7 +122,7 @@ Y", not as an open-ended build.)
   the one `FieldControl`, offered to both parties, repeatable while the order
   is active — mechanism owned by `docs/CLAUSES.md` § "Witness stages").
   Order ARRIVAL + acceptance + resolution are CORE (the `OrderCommitted` event +
-  the bell notification, `lib/kernel/useNotifications.ts`) — never a clause
+  the your-turn badge, `components/shared/YourTurnBadge.tsx` in the Header) — never a clause
   lifecycle stage or a capability; clause state/labels surface from the clause
   DATA via the spec's `valueLabels` (`describeAttestation`), never a frontend
   label enum.

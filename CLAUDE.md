@@ -243,7 +243,7 @@ Verify 3× before touching kernel invariants — the MAD equilibrium is fragile;
 
 ### Why the Name
 
-**Protocol = Figaro; its token = the florin** (FLORIN, ƒ — common noun: lowercase, plural florins). Figaro is Rossini's factotum: coordinates everything, owns nothing; the metaphor is the thesis, not decoration. **A token name DENOMINATES, never DESCRIBES**; factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` "Appendix: Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
+**Protocol = Figaro; its token = the florin** (FLORIN, ƒ — common noun: lowercase, plural florins). Figaro is Rossini's factotum: coordinates everything, owns nothing; the metaphor is the thesis, not decoration. **A token name DENOMINATES, never DESCRIBES**; factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` § "Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
 
 ### Framing Discipline
 

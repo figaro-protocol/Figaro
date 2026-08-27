@@ -18,7 +18,7 @@ import { Footer } from "@/components/shared/Footer";
  * Does NOT mount `<Providers>` (WagmiProvider + ChainGuard
  * + CommerceProvider + HandoffCleanupProvider + CommitmentSignPreviewProvider
  * + ConfigurationBanner + ClientInit + Toaster + RpcBanner) — pure
- * publication pages have no wallet semantics. See CLAUDE.md
+ * publication pages have no wallet semantics. See docs/FRONTEND.md
  * "Wallet-provider scope per route" for the canonical classification.
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

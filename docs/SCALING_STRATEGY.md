@@ -248,7 +248,7 @@ cost is dominated by token transfers, not kernel logic.
 
 | Step | Gas | Notes |
 |---|---|---|
-| `commit()` execution | ~224k (root) / ~144k (sub) | ECDSA recovery × 2, storage writes, 2–4 token transfers |
+| `commit()` execution | ~235k (root) / ~144k (sub) | ECDSA recovery × 2, storage writes, 2–4 token transfers |
 | Transaction base cost | 21k | Per-transaction overhead |
 | `resolveProcess()` per order | ~12.5k marginal / ~23k all-in | hashStruct + SLOAD + 2 safeTransfer + SSTORE + event |
 | **Total per order** | **~190k (sub) – ~257k (root)** | Across 2+ separate transactions |

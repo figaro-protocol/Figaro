@@ -20,9 +20,9 @@ forge test --via-ir
 (cd formal/lean && lake build) # Lean 4 equilibrium proof (see TESTING.md § Lean 4). Prereq: elan (curl elan.lean-lang.org); toolchain auto-pinned
 ./scripts/test-certora.sh     # Certora (paid cloud). Prereq: pip install certora-cli ; export CERTORAKEY=...
                               #   Prelude: scripts/lint-token-ops.sh gates certora/token-ops.inventory
+                              #   against every ERC20 token-moving call site in production src/.
 cd prover && cargo test       # Rust prover workspace. Prereq: SP1 toolchain (cargo prove); without it,
-                              #   cargo test -p figaro-clause -p figaro-kernel (host-only crates, = prover-ci)
-                              #   against every ERC20 transfer call site in src/.
+                              #   cargo test -p figaro-clause -p figaro-kernel (host-only crates, = prover-ci).
 
 # Direct Halmos invocation (single contract)
 FOUNDRY_PROFILE=halmos halmos --contract HalmosFigaroCore \
@@ -36,8 +36,7 @@ cd frontend && npm run test:e2e:mobile   # responsive/viewport chrome
 cd frontend && npm run test:e2e:devnet   # e2e — real UI against Anvil + contracts
 cd frontend && E2E_CHAIN=sepolia SMOKE_SELLER_KEY=0x… SMOKE_BUYER_KEY=0x… npx playwright test --project=sepolia   # the Sepolia smoke (funded keys; TESTING.md § projects)
 cd frontend && npm run estate:crawl      # whole-estate residue/vocab sweep (scripts/estate-crawl.mjs): every sitemap route + machine text (/llms.txt, index.txt, /_headers) + ALL pinned contentURIs from the three registries; read-only, exit 1 on any hit; ESTATE_SKIP_PINS=1 for site-only
-                                         #   webServer = prod build on :3100 (~90 s). Kill :3100 after FORCE_REDEPLOY
-                                         #   or app-code edits (stale baked build); PLAYWRIGHT_WEB_MODE=dev for HMR iteration.
+                                         #   crawls the LIVE deployed site by default (ESTATE_SITE_URL overrides) — no local webServer involved.
 
 # --- SDK ---
 cd sdk && npm test
@@ -63,7 +62,7 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 - `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
 - `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `SUPPORTERS_WALLET`, `DAO_WALLET`, `SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`, `RPGF_GENESIS`, `SWAP_ROUTER` = Uniswap SwapRouter02 on the chain — probed for behaviour; `PERMIT2` defaults to the canonical address). Deploys the kernel, all three registries (Clause / Members / Assembly), BOTH coordinators (attestation + the swap-funded on-ramp `WitnessSwapAndCommitCoordinator`, added 2026-08-18 — it had been omitted since it landed 2026-07-12), `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/supporters/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
-- `script/DeploySepolia.s.sol` — Sepolia; mirror of `DeployMainnet.s.sol` with exactly ONE testnet divergence (`MockTreasuryMultisig` deployed as the DAO wallet — mock-as-code, mainnet Safe = config). Real yearly periods + 28d cooldown: the weekly compression was reverted 2026-08-14 — Sepolia is the public incremental release; compressed-time rehearsal is devnet's job. Env contract = mainnet's minus `DAO_WALLET` (so `SWAP_ROUTER` too — Sepolia's SwapRouter02 `0x3bFA…48E`).
+- `script/DeploySepolia.s.sol` — Sepolia; mirror of `DeployMainnet.s.sol` with exactly ONE testnet divergence (`MockTreasuryMultisig` deployed as the DAO wallet — mock-as-code, mainnet Safe = config). Real yearly periods + 28d cooldown: the weekly compression was reverted 2026-08-14 — Sepolia is the public incremental release; compressed-time rehearsal is devnet's job. Env contract = mainnet's minus `DAO_WALLET`, plus `SWAP_QUOTER`; `SWAP_ROUTER` stays required (Sepolia's SwapRouter02 is supplied via env, not defaulted).
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.
 
 `forge script` is harness-denied; deploy via the `.sh` wrappers, not by calling `forge script` directly.
@@ -82,7 +81,8 @@ sequencer environment table.
 
 ## Docker-hosted services
 
-Four project tools run in Docker, not natively on the host. **Convention:
+The project tools below run in Docker — except Kubo, which is NATIVE on the
+current dev host (its own bullet rules it). **Convention:
 whoever runs the testing stack — a contributor or a coding agent — runs it
 end to end (Anvil, Kubo, and the frontend server included),
 starting/stopping/restarting as testing needs, and reports what it started,
@@ -176,7 +176,10 @@ NEXT_PUBLIC_ANALYST_URL=
 # connector; there is no WalletConnect project id to configure.
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 
-# Chain reads — public networks only. NEXT_PUBLIC_RPC_URL is the DEFAULT read
+# Chain reads — public networks only. NEXT_PUBLIC_CHAIN selects the target chain
+# ("sepolia" → Sepolia; unset → the local Anvil devnet — lib/shared/chains.ts);
+# a public-network build MUST set it or the export targets Anvil.
+# NEXT_PUBLIC_RPC_URL is the DEFAULT read
 # endpoint (a connected wallet's provider takes over); NEXT_PUBLIC_DEPLOYMENT_BLOCK
 # is where every event scan starts (the deployment record's `deploymentBlock`) —
 # public gateways cap eth_getLogs ranges, so the event cache scans from here in

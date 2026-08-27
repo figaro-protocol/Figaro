@@ -111,8 +111,9 @@ secret read, a direct outbound connection — each an attempt that must fail,
 plus the composed proof: a framed live fetch from inside the sandbox through
 the proxy.
 
-**The Linux variant** (documented, not exercised on the authoring host — no
-container runtime here): run the same launcher minus `sandbox-exec` inside a
+**The Linux variant** (exercised in CI on demand — `on-demand-docker.yml` Job 2
+runs these deny cases on ubuntu runners; never on the authoring host, which has no
+container runtime): run the same launcher minus `sandbox-exec` inside a
 container with equivalent boundaries — workspace and temp mounted writable,
 the repo read-only, no secret mounts, network `--internal` plus the proxy
 published on the loopback, the signer socket bind-mounted. The proxy and the

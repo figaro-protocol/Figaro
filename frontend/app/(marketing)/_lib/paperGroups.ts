@@ -10,7 +10,7 @@ type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
  * stable lens for reading the substrate; the list cannot grow or shrink
  * without departing from the taxonomy.
  *
- * Papers, `currentWork`, and `venue` are all optional. Every
+ * Papers and `venue` are optional. Every
  * discipline always has a definition; `/working-groups` renders the
  * discipline map (the `#<slug>` anchors live there). The asymmetry surfaces
  * where the project actually is.
@@ -31,12 +31,6 @@ interface PaperRef {
     /** Page route (`/papers/<slug>`) for a migrated paper, or path to the
      *  PDF (`/papers/<name>.pdf`) for one still authored in LaTeX. */
     href: string;
-    /** One-line description surfaced in the listing, derived from the paper's
-     *  own abstract. Adds no claim the paper does not already make. */
-    /** Marks the formal/engineering-core papers (mechanism-design proof,
-     *  verified kernel, composition discipline, behavioral game theory) apart
-     *  from the interpretive essays. Rendered as a lightweight tag. */
-    formalCore?: boolean;
 }
 
 export interface PaperGroup {
@@ -56,14 +50,10 @@ export interface PaperGroup {
     /** Papers primarily assigned to this discipline. Empty array means
      *  the discipline is an open call — no canonical work convened yet. */
     papers: PaperRef[];
-    /** Current work in progress, as contributors describe it. */
-    currentWork?: string[];
     /** Where the conversation happens — only when the group has its OWN
      *  dedicated channel. No project-wide channel exists to inherit;
      *  undefined means the group has not published one. */
     venue?: { label: string; href: string };
-    /** Addresses or handles contributors choose to publish. */
-    contributors?: string[];
 }
 
 export const PAPER_GROUPS: PaperGroup[] = [
@@ -75,8 +65,8 @@ export const PAPER_GROUPS: PaperGroup[] = [
         intro: "The micro-foundations: mechanism design as reverse game theory — constructing the game so that the desired behavior is what self-interested actors converge on — tempered by the evolution-of-cooperation result that cooperation among selfish actors is a sufficient condition, not a necessary one, so richer theories of human behavior belong here too.",
         definition: "What a market can be built out of, once the standing firm is no longer the uniquely efficient unit of production. This group reads the substrate as economists and game theorists read it — the bonding equilibrium and its extension from two parties to N, institutional form, market formation, monetary design.",
         papers: [
-            { title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination", href: "/papers/asymmetric-bonding", formalCore: true },
-            { title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Settlement Layer", href: "/papers/markets-without-a-venue", formalCore: true },
+            { title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination", href: "/papers/asymmetric-bonding" },
+            { title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Settlement Layer", href: "/papers/markets-without-a-venue" },
             { title: "From Firms to Transaction-Scoped Institutions: A Coasean Re-Examination", href: "/papers/transaction-scoped-institutions" },
             { title: "The Florin: A Schelling-Point Token for the Figaro Coordination Ecosystem", href: "/papers/florin-schelling-point-token" },
             { title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through Bonded Settlement", href: "/papers/self-authenticating-data-sales" },
@@ -102,8 +92,8 @@ export const PAPER_GROUPS: PaperGroup[] = [
         intro: "Economic policies embedded in software: protocol and smart-contract code as the rule layer, cryptographic tools combined with economic incentives so that the cost of wrongdoing is disproportionate to its benefit.",
         definition: "Two complementary lenses on the protocol's CS surface: what stands above the kernel as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. This group reads the substrate as engineers, cryptographers and verification people read it; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
         papers: [
-            { title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Scope of the Claim", href: "/papers/verified-settlement-kernel", formalCore: true },
-            { title: "Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern", href: "/papers/protocol-composition", formalCore: true },
+            { title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Scope of the Claim", href: "/papers/verified-settlement-kernel" },
+            { title: "Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern", href: "/papers/protocol-composition" },
         ],
     },
     {
@@ -167,7 +157,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         intro: "How individuals actually decide, given knowledge of the rules and uncertainty about the decisions of others; the security of any incentive system depends on how people respond to incentives — an empirical question, not a theorem.",
         definition: "How participants read a bonded equilibrium under uncertainty, and how legible the incentive structure is to a non-specialist. This group reads the substrate as behavioral game theorists and decision scientists read it — what the comparison at a party's own node actually asks of them, and where the experimental literature on coordination failure does and does not carry over.",
         papers: [
-            { title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/behavioral-game-theory", formalCore: true },
+            { title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/behavioral-game-theory" },
         ],
     },
 ];

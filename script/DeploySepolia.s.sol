@@ -232,7 +232,7 @@ contract DeploySepolia is Script {
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
 
-        // Divergence 3: the DAO wallet is a mock 2-of-3 deployed here, owners
+        // The one testnet divergence: the DAO wallet is a mock 2-of-3 deployed here, owners
         // founder + supporters + deployer. Mainnet reads a canonical Safe from
         // DAO_WALLET instead and deploys nothing.
         address deployer = vm.addr(privateKey);

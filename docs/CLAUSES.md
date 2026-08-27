@@ -57,7 +57,7 @@ and is wrong on sight.)
   `decodeContentFromSpec`, recovers a witness's structured values from calldata for
   readers (audit, timeline). The former per-clause encoders (`encodeCommerceContent`,
   `encodeGeoContent`, … one per clause) were **DELETED** — encoding is generic, not
-  per-clause. Topology has no encoder — no assembly attests it at runtime yet
+  per-clause. No assembly attests topology at runtime yet
   (a current-state fact, not a design limit; see the topology note below).
 
 **Witness stages — the runtime feedback loop, declared in the spec.** A clause
@@ -193,8 +193,8 @@ clause carries a bounded enum):
   field-shape heuristic ("non-mandatory ∧ has enum") that misread
   committed-choice clauses as lifecycles.
 - **`coordination`** — committed declarations of WHICH scenario everyone runs
-  (modalities). Committed content, not a runtime lifecycle — topology carries an
-  enum but never surfaces an attestation capability.
+  (modalities). Committed content, not a runtime lifecycle — a coordination
+  clause never surfaces an attestation capability.
 
 Other articles (the live set is whatever the registered clauses declare —
 today: logistics, emissions, dispute-resolution, consent, settlement,

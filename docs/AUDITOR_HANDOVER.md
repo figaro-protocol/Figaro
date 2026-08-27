@@ -116,9 +116,11 @@ re-deriving they are intentional:
 - A blacklisted seller (a token that reverts transfers to that address) bricks
   `resolveProcess` for the whole process — `FigaroCore.sol:294`; accepted (the buyer
   chose the token and the seller), a token-choice concern, not a kernel escape hatch.
-- `FigaroCore.sol:238-240` — the multisig-vs-ECDSA note: the kernel recovers an ECDSA
-  signer, so a smart-contract-wallet (multisig) party cannot be a kernel party directly;
-  it transacts through an EOA it controls (the off-protocol auxiliary pattern).
+- The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
+  smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
+  through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
+  comment at `FigaroCore.sol:238-240` recommends social recovery or multisig for the
+  buyer role — upstream of the kernel, consistent with the same pattern.
 
 ## Accepted risks
 

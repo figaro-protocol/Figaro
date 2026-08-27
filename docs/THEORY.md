@@ -978,11 +978,11 @@ The five enforcement layers work together. The goal is not redundancy for its ow
 
 | Layer | Mechanism | Primary Cases |
 |-------|-----------|---------------|
-| **0. Blockchain security** | Host-chain consensus — signatures, ordering, immutability | The foundation everything above inherits |
-| **1. Bonding equilibrium** | Asymmetric bonding at two parties and at N (evidence record co-resident) — after performance the buyer's preference for resolving is unconditional, and given it performance is each seller's strict best response at every chain position | The default: crediting a defector with everything it retains, defection is still out of pocket |
-| **2. Co-Seller Remedy** | Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect) | Multi-seller failures |
-| **3. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-2 record | Disputes the economics did not dissolve |
-| **4. Courts** | Traditional legal systems consume the same record from outside | Irrational or adversarial actors |
+| **1. Blockchain security** | Host-chain consensus — signatures, ordering, immutability | The foundation everything above inherits |
+| **2. Bonding equilibrium** | Asymmetric bonding at two parties and at N (evidence record co-resident) — after performance the buyer's preference for resolving is unconditional, and given it performance is each seller's strict best response at every chain position | The default: crediting a defector with everything it retains, defection is still out of pocket |
+| **3. Co-Seller Remedy** | Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect) | Multi-seller failures |
+| **4. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-2 record | Disputes the economics did not dissolve |
+| **5. Courts** | Traditional legal systems consume the same record from outside | Irrational or adversarial actors |
 
 **Note on what Figaro does NOT include**: No governance layer. No timeout. No protocol-run dispute machinery. No insurance tranche. No oracle. The locked bonds are the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces a unilateral escape hatch from a committed order destroys Layer 2. Any feature that introduces partial resolution destroys Layer 3. These are hard constraints.
 
