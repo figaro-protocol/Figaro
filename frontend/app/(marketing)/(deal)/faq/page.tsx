@@ -160,6 +160,9 @@ export default function Faq() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Then five layers stand behind the deal, and the next answer walks all five with the figure. What this answer owns is the honest caveat underneath them:
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    But start with how rarely the question should arise: the deal&apos;s own arithmetic is built so that performing and resolving beat every alternative while the stakes are locked &mdash; so the ordinary ending of a disagreement is a remedy the parties settle between themselves, before resolution, with both deterrents still in force. A dispute is the exception the deterrent failed to dissolve. That is why dispute resolution lives at the edge of the design rather than at its center: not because disagreement is ignored, but because the mechanism is built to starve it.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     There is no on-chain verdict, and there will not be one. The protocol does not adjudicate. Disagreements that exhaust the first three layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the kernel takes no position on which forum a community uses. A Kleros clause is published, so composing that forum into an assembly is a design-time choice an author makes &mdash; and any other forum composes the same way. The full external-composition catalogue &mdash; forums, and everything else the kernel deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
                 </p>
