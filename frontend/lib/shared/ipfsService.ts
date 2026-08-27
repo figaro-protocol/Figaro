@@ -70,7 +70,7 @@ function gatewayAlternates(url: string): string[] {
 }
 
 /**
- * Managed pinning service (testnet tier — `RELEASE_READINESS.md` Task 6.1).
+ * Managed pinning service (testnet tier — `RELEASE_READINESS.md` Task 6).
  * When a JWT is baked into the deploy build, `add`/`unpin` target a service
  * speaking the Pinata-style pinning API instead of a Kubo node; gateway reads
  * are unaffected. A user's own runtime endpoint override still WINS — their

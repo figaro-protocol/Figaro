@@ -6,7 +6,7 @@ import { findInjectedConnector } from "@/lib/shared/connectors";
 
 /**
  * Connect through wagmi's injected connector — the only connector this app
- * registers (Task 7.2, 2026-08-03: RainbowKit has no wagmi-3 support, so
+ * registers (ruled 2026-08-03: RainbowKit has no wagmi-3 support, so
  * the fallback is injected()-only; see `lib/shared/connectors.ts`).
  *
  * Replaces RainbowKit's `useConnectModal().openConnectModal` at every call

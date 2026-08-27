@@ -129,8 +129,10 @@ account: its operator EOA, an externally-owned account carrying an EIP-7702 dele
 governance-controlled code** (ruled 2026-08-18; the same delegation shape
 `DESIGN_DECISIONS.md` § key-loss records for any buyer). The delegated code is
 **MetaMask Delegation Framework's `EIP7702StatelessDeleGator`** at its canonical CREATE2
-address (ruled 2026-08-19 — audited, off-the-shelf, the same address on Sepolia and
-mainnet; `RELEASE_READINESS.md` Task 13 carries the addresses): the multisig's authority
+address `0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (v1.3.0; ruled 2026-08-19 —
+audited, off-the-shelf, the SAME address on Sepolia and mainnet, so the testnet
+rehearses mainnet literally; `DelegationManager`
+`0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`): the multisig's authority
 is an ERC-7710 delegation the operator grants it, bounded by caveat enforcers, redeemed
 through the framework's `DelegationManager` to act from the operator's address. The treasury contract itself can
 never sign kernel commitments (the kernel is ECDSA-only), so the multisig authorises
@@ -148,8 +150,8 @@ drives fund → bonded commit → resolve → sweep-back, asserting the treasury
 exactly the payment. Threshold-ECDSA (a multisig in cryptography, an EOA on-chain) is the
 recorded custody upgrade for the operator's key, rehearsed on testnet before adoption. On
 Sepolia the operator EOA and its delegation are created BEFORE the DAO's member profile is
-registered under it (RELEASE_READINESS Task 13's redeploy list); the vault address itself
-holds no profile.
+registered under it (`RELEASE_READINESS.md` Task 13 rules the ordering); the vault address
+itself holds no profile.
 
 ### The DAO's income — the endowment logic (ruled 2026-08-13)
 

@@ -9,8 +9,8 @@ import { truncateHex } from "@/lib/shared/formatHex";
 /**
  * ConnectWallet — the ONE connect affordance for the whole app.
  *
- * Replaces RainbowKit's `<ConnectButton>` (Task 7.2, RELEASE_READINESS.md
- * § Task 7: RainbowKit has no wagmi-3 support, so the ratified fallback is
+ * Replaces RainbowKit's `<ConnectButton>` (ruled 2026-08-03:
+ * RainbowKit has no wagmi-3 support, so the ratified fallback is
  * wagmi's bare `injected()` connector — no wallet-picker modal, no
  * WalletConnect QR code). Renders:
  *  - disconnected (or pre-mount, to avoid a hydration mismatch — see

@@ -41,8 +41,9 @@ deployment is LIVE on Sepolia — every contract Etherscan-verified, addresses
 committed at [deployments/11155111.json](deployments/11155111.json), and both
 settlement universes exercised on the public chain: the direct-path e2e suite
 and real Groth16 batch settles through `FigaroBatchVerifier`. Ethereum mainnet
-awaits the external audit. The release gates live in
-[docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
+awaits the external audit. The open release tasks live in
+[docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md); the external-audit
+handover in [docs/AUDITOR_HANDOVER.md](docs/AUDITOR_HANDOVER.md).
 
 ## What This Repo Contains
 

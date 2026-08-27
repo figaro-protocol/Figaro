@@ -276,7 +276,7 @@ exit 0 (the freeze-stamp re-run).
 ### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol` + `test/protocol/usage/HalmosUsageCounter.t.sol` + `test/protocol/registries/HalmosClauseAndAssemblyRegistries.t.sol`
 
 Last verified run: **2026-08-27** (the post-stamp-record-#3 re-run covering the
-08-18/19 amendment wave — `RELEASE_READINESS.md` § Freeze Notice) — all 32 properties
+08-18/19 amendment wave — `AUDITOR_HANDOVER.md` § Freeze Notice) — all 32 properties
 proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry +
 6 AssemblyRegistry), exit 0. Prior full run: 2026-08-13 at the freeze commit
 `c7f85d0d`.
@@ -434,7 +434,7 @@ RpgfMinter 8).
 **All green** — full 6-spec suite re-run **2026-08-27** with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream was the
 `rule_not_vacuous` healthy polarity). This is the Post-Audit-Policy re-run covering
-the 08-18/19 amendment wave (post-stamp record #3 — `RELEASE_READINESS.md` § Freeze
+the 08-18/19 amendment wave (post-stamp record #3 — `AUDITOR_HANDOVER.md` § Freeze
 Notice); the prior full-green runs (2026-08-13 at the freeze stamp; 2026-08-04) are
 in git history.
 

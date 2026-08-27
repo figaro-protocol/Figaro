@@ -1,6 +1,6 @@
 /**
- * live-order.sepolia.spec.ts — the transactional smoke of a PUBLIC deployment
- * (RELEASE_READINESS Task 7.3), driven through the real UI.
+ * live-order.sepolia.spec.ts — the transactional smoke of a PUBLIC deployment,
+ * driven through the real UI.
  *
  * One trade, end to end, exactly as a stranger would do it on the live site:
  *   1. the seller registers through the onboarding WIZARD (identity, one

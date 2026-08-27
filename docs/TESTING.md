@@ -274,8 +274,8 @@ list, is the census):
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
   suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a
   maintainer observation, not a CI gate.
-- **`sepolia`** — MAINTAINER-MANUAL: the PUBLIC rehearsal (RELEASE_READINESS
-  Task 7.3), `frontend/tests/e2e/live-order.sepolia.spec.ts` — one trade through
+- **`sepolia`** — MAINTAINER-MANUAL: the PUBLIC rehearsal,
+  `frontend/tests/e2e/live-order.sepolia.spec.ts` — one trade through
   the real UI against the live Sepolia deployment (wizard registration → discover →
   order → accept/commit → resolve → audit), every step asserted out-of-band from
   Sepolia. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
@@ -309,8 +309,8 @@ list, is the census):
   `disperseToken`; chain facts: each earmark received its leg exactly, the seller paid
   exactly the total, the multisender retains nothing (its bytecode carries the selector
   the panel calls — behaviour on the public chain, never the mirror alone).
-  Live-run records — tx hashes, blocks, addresses, dates — are `RELEASE_READINESS.md`'s
-  (Task 7 and the Sepolia redeploy list), never duplicated here.
+  Live-run records — tx hashes, blocks, addresses, dates — live in `git log` (the
+  commits that landed each run), never duplicated here.
   All four run after each other on one chain (the smoke first: it registers the seller
   and leaves the resolved process the others start from). Every
   spec's out-of-band scans go through `scanContractEvents` (`devnet-helpers.ts`) —
@@ -489,8 +489,8 @@ Per workflow, what it runs and when:
   only, gates no merge.
 - **`sdk-release`** — on an `sdk-v<version>` tag (refused unless it equals
   `sdk/package.json`'s version): type-check, pure-surface tests (`SKIP_ANVIL=1`),
-  build, `npm publish --provenance` (RELEASE_READINESS Task 10 — the Sigstore
-  attestation binds the tarball to this repo + commit); auth is npm Trusted
+  build, `npm publish --provenance` (the Sigstore attestation binds the tarball
+  to this repo + commit); auth is npm Trusted
   Publishing (OIDC — the package's npm settings name this workflow as the
   trusted publisher; no stored token). Gates no merge.
 

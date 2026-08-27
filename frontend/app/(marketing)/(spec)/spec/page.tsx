@@ -924,8 +924,8 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                 </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
-                    for gate criteria, the frozen-surface declaration, and the hardening completion record.
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md" target="_blank" rel="noopener noreferrer" className="underline">AUDITOR_HANDOVER.md</a>{" "}
+                    for the frozen-surface declaration, how to verify it, and the validation gate.
                 </p>
             </MarketingSection>
 

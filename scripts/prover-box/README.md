@@ -9,7 +9,7 @@ measured peak ~18 GB, ~6–7 min per wrap on 16 CPU cores).
 
 First run: 2026-08-20 — the layered rehearsal that caught the guest's
 public-values encoding bug on a fork before a live wei moved, then settled the
-first two real batches on public Sepolia (RELEASE_READINESS Task 7.3(b)).
+first two real batches on public Sepolia.
 
 ## Order of operations
 

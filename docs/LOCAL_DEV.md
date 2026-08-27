@@ -171,7 +171,7 @@ NEXT_PUBLIC_BATCH_RELAY_URL=
 # read the substance that user OWNS or BOUGHT.
 NEXT_PUBLIC_ANALYST_URL=
 
-# Wallet + dev helpers — injected-only (Task 7.2, 2026-08-03): RainbowKit has
+# Wallet + dev helpers — injected-only (ruled 2026-08-03): RainbowKit has
 # no wagmi-3 support, so the wallet-provider fallback is the bare injected()
 # connector; there is no WalletConnect project id to configure.
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
@@ -202,7 +202,7 @@ NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL=
 NEXT_PUBLIC_XMTP_ENV=
 
 # Managed pinning service — DEPLOY BUILDS ONLY (testnet tier, RELEASE_READINESS
-# Task 6.1). Presence of the JWT switches ipfsService add/unpin to a
+# Task 6). Presence of the JWT switches ipfsService add/unpin to a
 # Pinata-style pinning API; a user's own endpoint override still wins; dev and
 # e2e builds carry no JWT and stay on Kubo. NEVER in a checked-in env file —
 # pass via the deploy command:  set -a; source ~/.figaro-deploy.env; set +a; npm run build

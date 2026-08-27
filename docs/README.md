@@ -38,7 +38,8 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Canonical names per tier | `LEXICON.md` |
 | The florin, allocations | `FLORIN_TOKEN.md` |
 | Batch-scaling design (BUILT — witness prover/verifier/sequencer beside the direct path) | `SCALING_STRATEGY.md` |
-| Release gates, frozen audit surface | `RELEASE_READINESS.md` |
+| Open release tasks (testnet + mainnet) | `RELEASE_READINESS.md` |
+| External-audit handover (freeze notice, validation gate, accepted risks) | `AUDITOR_HANDOVER.md` |
 | Public-graph / RPGF incentive rationale (why the flow-map gets built under a uniform reward) | `PUBLIC_GRAPH_MODEL.md` |
 | RPGF mechanics (UsageCounter, RpgfMinter — uniform reward, live ETH stake) | `CONTRACTS.md` |
 | Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
@@ -57,6 +58,6 @@ content. (This is the instruction-system form of "derive, don't store.")
 - **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the five split-out inventory docs (contracts / clauses / frontend / tests / commands; `CLAUSES.md` also carries the anchoring doctrine)
 - **Composition and disclosure**: `PUBLIC_GRAPH_MODEL.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`; the aspirational GHG protocol spec was deleted 2026-07-10 — its two load-bearing rulings, reader-derived scope and offset-out-of-scope, live in `CLAUSES.md`)
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
-- **Status and readiness**: `RELEASE_READINESS.md` (carries the hardening-completion record + the freeze notice for the audited Solidity surface)
-- **Audit / verification**: `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
+- **Status and readiness**: `RELEASE_READINESS.md` (the open release tasks, TODO only — closed work is deleted; git is the log)
+- **Audit / verification**: `AUDITOR_HANDOVER.md` (freeze notice + stamp, post-audit policy, validation gate, accepted risks), `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
 - **Research**: `BOL_RESEARCH.md` (project lineage / naming history is folded into `VISION.md` "Appendix: Project Lineage")

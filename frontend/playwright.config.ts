@@ -223,7 +223,7 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'] },
         },
         {
-            // MAINTAINER-MANUAL — the PUBLIC rehearsal (RELEASE_READINESS 7.3):
+            // MAINTAINER-MANUAL — the PUBLIC rehearsal:
             //     E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… \
             //       npx playwright test --project=sepolia
             // Drives the live Sepolia contracts through the real UI with the

@@ -343,9 +343,9 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 **`docs/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 
-**Delete on completion.** When a strategy/plan/audit doc's work is closed, **delete the file** — never move it to `archive-v5/` (legacy v4 docs only), never mark items done in place; git history retrieves.
+**Git is the log, not the documents** (ruled 2026-08-27). When work closes, **delete** its lines or file from every doc — never move to `archive-v5/` (legacy v4 only), never mark done in place; exception: policy-owed records, terse.
 
-**One punch-list; no audit-findings docs.** All open work lives in exactly one place — the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal); an audit produces punch-list items, never a doc; closed work is recovered from `git log`. Pre-2026-07-03 items get a closed-world cruft check first (`feedback_verify_punchlist_referents` memory). Verification *coverage* lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks and release-gate criteria in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`.
+**One punch-list; no audit-findings docs.** All open work lives in exactly one place — the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal); an audit produces punch-list items, never a doc. Pre-2026-07-03 items get a closed-world cruft check first (`feedback_verify_punchlist_referents` memory). Verification *coverage* lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks in `DESIGN_DECISIONS.md` / `AUDITOR_HANDOVER.md`; release tasks in `RELEASE_READINESS.md`.
 
 **No new top-level docs without destination.** Agents creating new files in `docs/` must either edit a whitelisted doc or get explicit user approval to extend the whitelist — there is no auto-allowed new-file pattern. New strategy/plan/notes files require approval before creation — write them as sections in the relevant whitelisted doc, or as backlog items.
 
@@ -409,7 +409,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Core theory:** `VISION.md` (post-firm economy, Coasean collapse, token denomination), `THEORY.md` (game-theoretic derivation of the six protocol properties).
 
-**Security & verification:** `DESIGN_DECISIONS.md` (the catalogue of intentional patterns that look like vulnerabilities — **read before auditing**; count it there, never quote a remembered number), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based batch scaling — BUILT: witness prover/verifier/sequencer beside the direct path).
+**Security & verification:** `DESIGN_DECISIONS.md` (the catalogue of intentional patterns that look like vulnerabilities — **read before auditing**; count it there, never quote a remembered number), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (open release tasks), `AUDITOR_HANDOVER.md` (external-audit handover), `SCALING_STRATEGY.md` (proof-based batch scaling — BUILT: witness prover/verifier/sequencer beside the direct path).
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 

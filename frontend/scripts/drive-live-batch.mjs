@@ -2,7 +2,7 @@
 /**
  * drive-live-batch.mjs — drive ONE full batch lifecycle against a PUBLIC
  * chain's deployed stack, through a running sequencer (RELEASE_READINESS
- * Task 7.3(b): one real Groth16 batch settling is the genesis-root +
+ * § Pre-Mainnet: one real Groth16 batch settling is the genesis-root +
  * SP1-routing proof).
  *
  * The batch sibling of the direct-path Sepolia smoke: where

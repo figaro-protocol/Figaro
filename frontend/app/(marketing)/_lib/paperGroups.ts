@@ -122,7 +122,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         ],
         references: [
             { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
-            { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" },
+            { label: "Freeze notice + audit handover", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md" },
             { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/DESIGN_DECISIONS.md", note: "the patterns that look like bugs but are correct by design" },
             { label: "Clauses", href: "/clauses", note: "implementation work — clauses, contracts, assemblies, frontend" },
         ],
