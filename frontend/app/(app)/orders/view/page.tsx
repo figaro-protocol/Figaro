@@ -32,7 +32,7 @@ export default function OrderPage() {
         <Suspense
             fallback={
                 <div className="container mx-auto px-6 py-12">
-                    <p className="text-sm text-ink-muted">Loading order…</p>
+                    <p className="text-sm text-ink-muted">Loading…</p>
                 </div>
             }
         >

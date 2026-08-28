@@ -23,7 +23,7 @@ export default function Page() {
         <Suspense
             fallback={
                 <div className="container mx-auto px-6 py-12">
-                    <p className="text-sm text-ink-muted">Loading designer…</p>
+                    <p className="text-sm text-ink-muted">Loading…</p>
                 </div>
             }
         >

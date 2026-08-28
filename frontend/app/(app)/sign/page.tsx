@@ -625,7 +625,7 @@ export default function SignPage() {
             fallback={
                 <div className="max-w-lg mx-auto px-4 py-12 space-y-6">
                     <h1 className="text-2xl font-bold text-ink-primary">Counter-Sign Commitment</h1>
-                    <p className="text-sm text-ink-body">Loading shared commitment context…</p>
+                    <p className="text-sm text-ink-body">Loading…</p>
                 </div>
             }
         >
