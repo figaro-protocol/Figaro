@@ -18,6 +18,16 @@ name: Estate Snapshot
 # traffic capture on, add a repo secret ESTATE_TRAFFIC_TOKEN: a fine-grained
 # PAT scoped to THIS repository only, with Administration: read (costs
 # nothing, but it is a PAT). The npm capture succeeds either way.
+#
+# SITE TRAFFIC — the same posture, third channel (ruled 2026-08-26:
+# server-side-only Cloudflare metrics; no client beacon before the launch
+# flip). The figaroprotocol.com zone's edge already counts every request;
+# this captures the daily series (requests, page views, uniques, threats)
+# over the GraphQL Analytics API before the free-plan retention window
+# rolls. Needs a repo secret ESTATE_CF_ANALYTICS_TOKEN: a Cloudflare API
+# token scoped to the figaroprotocol.com zone only, permission
+# Zone / Analytics / Read. Absent the secret, the run records the miss
+# without failing — same contract as the GitHub traffic leg.
 
 on:
     schedule:
@@ -58,6 +68,34 @@ jobs:
                   done
                   if [ "$ok" = false ]; then
                       echo "::warning::GitHub traffic capture incomplete — the traffic API needs push access (fine-grained: Administration read), which GITHUB_TOKEN cannot be granted. Add the ESTATE_TRAFFIC_TOKEN secret (see the comment at the top of this workflow)."
+                  fi
+
+            - name: Capture Cloudflare site traffic (figaroprotocol.com, daily series)
+              env:
+                  CF_TOKEN: ${{ secrets.ESTATE_CF_ANALYTICS_TOKEN }}
+                  # Zone id of figaroprotocol.com — an identifier, not a secret.
+                  CF_ZONE: cc0b0e36ea0b447f7c7dc680f21adacb
+              run: |
+                  out=snapshot/cloudflare-http-requests-daily.json
+                  if [ -z "$CF_TOKEN" ]; then
+                      printf '{"error":"capture skipped","detail":"ESTATE_CF_ANALYTICS_TOKEN secret not set"}\n' > "$out"
+                      echo "::warning::Cloudflare site-traffic capture skipped — add the ESTATE_CF_ANALYTICS_TOKEN secret (zone-scoped, Zone/Analytics/Read; see the comment at the top of this workflow)."
+                      exit 0
+                  fi
+                  since=$(date -u -d '14 days ago' +%Y-%m-%d)
+                  until=$(date -u +%Y-%m-%d)
+                  query=$(jq -n --arg zone "$CF_ZONE" --arg since "$since" --arg until "$until" \
+                      '{query: "query ($zone: String!, $since: String!, $until: String!) { viewer { zones(filter: {zoneTag: $zone}) { httpRequests1dGroups(limit: 31, filter: {date_geq: $since, date_leq: $until}, orderBy: [date_ASC]) { dimensions { date } sum { requests pageViews cachedRequests bytes threats } uniq { uniques } } } } }",
+                        variables: {zone: $zone, since: $since, until: $until}}')
+                  if ! curl -fsS https://api.cloudflare.com/client/v4/graphql \
+                          -H "Authorization: Bearer $CF_TOKEN" \
+                          -H "Content-Type: application/json" \
+                          -d "$query" > "$out" \
+                      || ! jq -e '.data.viewer.zones[0].httpRequests1dGroups' "$out" > /dev/null; then
+                      echo "::warning::Cloudflare site-traffic capture failed — token invalid/expired, or the GraphQL response shape changed."
+                      jq -n --slurpfile r "$out" '{"error":"capture failed","response":$r[0]}' > "$out.tmp" 2>/dev/null \
+                          && mv "$out.tmp" "$out" \
+                          || printf '{"error":"capture failed","detail":"no parseable response"}\n' > "$out"
                   fi
 
             # Independent of the traffic token by design; this step IS a gate —
