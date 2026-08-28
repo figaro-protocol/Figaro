@@ -30,18 +30,10 @@ frontend/tsconfig.tsbuildinfo
 frontend/.figaro/
 .vercel
 
-# Local Claude Code state. Contributor-facing artifacts (agents/, skills/,
-# hooks/, and project-level settings.json) are tracked as ecosystem artifacts;
-# personal overrides go in .claude/settings.local.json which stays out of git.
-.claude/*
-!.claude/agents/
-!.claude/skills/
-!.claude/hooks/
-!.claude/settings.json
-# ...except personal/machine-specific hooks: the grievance hook hardcodes a
-# per-user path and reads a personal memory file, so it stays out of the repo
-# (registered in the gitignored settings.local.json instead).
-.claude/hooks/grievance-startup.sh
+# The maintainers' Claude Code harness is PRIVATE and never ships (ruled
+# 2026-08-28: the public agent prompts are ecosystem-agents/, nothing else —
+# .claude/ agents, skills, hooks, and settings are internal tooling).
+.claude/
 
 # Environment variables
 .env

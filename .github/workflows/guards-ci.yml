@@ -88,5 +88,11 @@ jobs:
                       BASE="HEAD~1"
                   fi
                   git diff --name-only "$BASE"...HEAD 2>/dev/null | xargs -r git add -- 2>/dev/null || true
-                  bash scripts/semantic-precommit-audit.sh frontend '^frontend/.*\.tsx?$' .claude/agents/figaro-open-world-auditor.md
-                  bash scripts/semantic-precommit-audit.sh protocol '^(src/.*\.sol|prover/.*\.rs)$' .claude/agents/figaro-protocol-open-world-auditor.md
+                  # The auditor prompts are maintainer-private (not in the public
+                  # tree); the gate runs only where a checkout carries them.
+                  if [ -f .claude/agents/figaro-open-world-auditor.md ]; then
+                      bash scripts/semantic-precommit-audit.sh frontend '^frontend/.*\.tsx?$' .claude/agents/figaro-open-world-auditor.md
+                      bash scripts/semantic-precommit-audit.sh protocol '^(src/.*\.sol|prover/.*\.rs)$' .claude/agents/figaro-protocol-open-world-auditor.md
+                  else
+                      echo "semantic gate skipped — auditor prompts are maintainer-private and absent from this checkout"
+                  fi
