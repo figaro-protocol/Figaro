@@ -13,14 +13,14 @@ in `src/`.
 
 ## Ownership Map — one owner per concept
 
-Every concept has exactly ONE owning statement; every other surface (CLAUDE.md, other
-docs, agent prompts, skills, memories, marketing prose) states it only as a summary plus
+Every concept has exactly ONE owning statement; every other surface (agent prompts,
+skills, memories, marketing prose, other docs) states it only as a summary plus
 a pointer to its owner. When the owner changes, sweep the pointers — never fork the
 content. (This is the instruction-system form of "derive, don't store.")
 
 | Concept | Owner |
 |---|---|
-| The system: 2 kernel mechanisms + 5 nouns | `CLAUDE.md` (top section) |
+| The system: 2 kernel mechanisms + 5 nouns | maintainer-private build tooling — `ARCHITECTURE.md` and `THEORY.md` carry the public restatement |
 | The whole-system stack, the `clause.block` seam | `ARCHITECTURE.md` |
 | Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
 | Game-theoretic derivation, six properties | `THEORY.md` |
@@ -32,7 +32,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Route catalogue, lib map, designer surface | `FRONTEND.md` |
 | Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |
-| Guard scripts (`scripts/lint-*.sh`) — each guard's rule, rationale, and ruling | the script's own header comment (TESTING.md inventories test harnesses, not guards; a guard's header is its ONE owning statement) |
+| Guard scripts — each guard's rule, rationale, and ruling | maintainer-private build tooling (not shipped in a public clone; TESTING.md inventories test harnesses, not guards) |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Design system — color/type/spacing tokens, component shapes, a11y anti-patterns | `DESIGN_TOKENS.md` |
 | Canonical names per tier | `LEXICON.md` |

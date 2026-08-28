@@ -63,7 +63,7 @@ composability contracts (`SettlementCascade`, `SettlementRouter`,
 `TemplateRegistry`) proved the pattern. This is not a scaling layer
 to build. It is an existing kernel property. (The kernel sees LINEAR
 process chains; DAG topology lives off-chain — canonical statement in
-`OPEN_WORLD.md` §1, restated in CLAUDE.md.)
+`OPEN_WORLD.md` §1.)
 
 ## Track 1: Launch
 
@@ -259,7 +259,7 @@ cost is dominated by token transfers, not kernel logic.
 > source of truth for anything downstream is the lint-pinned pair
 > `COMMIT_GAS_PER_ORDER = 144_000` and `RESOLVE_GAS_PER_ORDER = 23_000`
 > (`sdk/src/gasCeilings.ts` ↔ `test/kernel/GasCeilingTest.t.sol`, enforced by
-> `scripts/lint-chain-gas.sh`) — the same anchors the ceilings table below uses,
+> the maintainers' pre-commit guard battery) — the same anchors the ceilings table below uses,
 > which is why the summary quotes ~167k/order for a sub-order. Quote those, add
 > the 21k base per TRANSACTION when counting a full lifecycle, and do not
 > re-derive from this table.

@@ -488,7 +488,7 @@ export CERTORAKEY=<your-key>
 ## 12) Test inventory summary
 
 The formal layers carry their property counts here (stable, and
-existence-gated by `scripts/lint-formal-targets.sh`). The volatile suites
+existence-gated by the maintainers' pre-commit guard battery). The volatile suites
 (Foundry / SDK / frontend / Playwright) store NO counts anywhere — the count
 is derived, never stored; run the command in the Census column. `TESTING.md`
 owns the harness inventory.

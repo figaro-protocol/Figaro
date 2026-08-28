@@ -100,7 +100,7 @@ it *could* fail.
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model 2026-07-16; realigned again 2026-08-03 to the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
 | `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor` author-of-record gate), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked (conservation, double-claim, eligibility) 2026-08-03. |
 
-Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
+Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; a maintainer-side pre-commit guard (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
 ## Echidna — 2 harnesses, 15 properties
 
@@ -331,7 +331,7 @@ navigation IS the read — so a smoke, not a scenario; it catches the read path
 breaking or silently reverting to bundled data.
 
 **e2e means end-to-end: action → reaction, both in the UI** (the canonical
-definition — CLAUDE.md points here). A genuine e2e test performs an action
+definition — owned here). A genuine e2e test performs an action
 *through the UI*; the action travels the full real stack (UI → contract → chain
 → indexer); the reaction returns and is asserted *in the UI*. Driving a
 participant via a viem helper breaks the action end; asserting only on-chain
@@ -468,13 +468,11 @@ Per workflow, what it runs and when:
   (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`). The highest-catch
   layer, no longer maintainer-discipline-only. Broader devnet specs stay
   maintainer-run.
-- **`guards-ci`** — push/PR, NOT path-filtered: two npm-audit legs (root
-  production deps at high+; frontend production deps at critical-only), then
-  the whole-tree guard battery — the guards are repo-wide and lint-staged only
-  ever sees a commit's touched files, so this job re-certifies the whole tree
-  on every push/PR — plus the optional Claude semantic open-world gate
-  (skipped entirely without `ANTHROPIC_API_KEY`; fail-open on missing infra,
-  blocking on a genuine FAIL verdict).
+- **`Dependency Audit CI`** — push/PR, NOT path-filtered: two npm-audit legs (root
+  production deps at high+; frontend production deps at critical-only). The
+  whole-tree guard battery and the Claude semantic open-world gate run
+  maintainer-side, in pre-commit — they are private tooling and not part of
+  the public CI tree.
 - **`estate-snapshot`** — weekly (Mondays 05:23 UTC) + dispatch: captures the
   perishable estate signals (GitHub traffic, which the API retains only ~14
   days; the Cloudflare daily site-traffic series for figaroprotocol.com; the

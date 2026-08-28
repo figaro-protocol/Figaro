@@ -30,10 +30,16 @@ frontend/tsconfig.tsbuildinfo
 frontend/.figaro/
 .vercel
 
-# The maintainers' Claude Code harness is PRIVATE and never ships (ruled
-# 2026-08-28: the public agent prompts are ecosystem-agents/, nothing else —
-# .claude/ agents, skills, hooks, and settings are internal tooling).
+# The maintainers' build harness is PRIVATE and never ships (ruled 2026-08-28:
+# the seam is BUILD vs USE — the public prompts are ecosystem-agents/, nothing
+# else; the guards, hooks, and discipline files are internal tooling).
 .claude/
+/CLAUDE.md
+scripts/lint-*.sh
+scripts/semantic-precommit-audit.sh
+scripts/verify-guards.sh
+.husky/pre-commit
+.lintstagedrc.json
 
 # Environment variables
 .env

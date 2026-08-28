@@ -75,8 +75,8 @@ frozen-scope edit — a Post-Audit Policy violation.
    env unset on that run — the release gate runs it), Halmos 32/32, Certora 6/6
    specs with `--wait_for_results all` (run URLs in `VERIFICATION_MAP.md` §10).
 4. **2026-08-27** — `script/Deploy.s.sol` comment-only: an anvil accounts count
-   in a mint-block comment corrected 20 → 38 (the value
-   `lint-anvil-accounts-lockstep.sh` enforces). No bytecode change; recorded
+   in a mint-block comment corrected 20 → 38 (the value the maintainers'
+   pre-commit guard battery enforces). No bytecode change; recorded
    per the record-#1 precedent, no re-run required.
 
 ### Post-Audit Policy

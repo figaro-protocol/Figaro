@@ -199,7 +199,7 @@ See [formal/README.md](formal/README.md) and [docs/VERIFICATION_MAP.md](docs/VER
 
 All active docs live in `docs/`. Start with [README.md](docs/README.md) for the doc map + reading path.
 
-Inventories indexed by CLAUDE.md:
+Inventories (see [docs/README.md](docs/README.md) for the full doc map):
 
 - [CONTRACTS.md](docs/CONTRACTS.md) — Smart-contract inventory
 - [CLAUSES.md](docs/CLAUSES.md) — Clause validation architecture + per-clause table

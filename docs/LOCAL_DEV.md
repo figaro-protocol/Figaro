@@ -1,9 +1,9 @@
 # Local Development
 
-Everything needed to run, test, and deploy Figaro locally. CLAUDE.md holds the
-discipline; this file holds the commands, env vars, and service/script
-inventories. The `scripts/lint-claude-md.sh` env-var and deploy-script drift
-guards read from this file.
+Everything needed to run, test, and deploy Figaro locally. This file holds the
+commands, env vars, and service/script inventories. The maintainers'
+pre-commit guard battery (private tooling) checks env-var and deploy-script
+drift against this file.
 
 ---
 
@@ -19,8 +19,9 @@ forge test --via-ir
 ./scripts/test-tla.sh         # TLA+ (48 invariants / 4 models — see TESTING.md § TLA+). Prereq: Java 11+ and a one-time manual `tla2tools.jar` download into `formal/` (the script prints the curl and exits if absent)
 (cd formal/lean && lake build) # Lean 4 equilibrium proof (see TESTING.md § Lean 4). Prereq: elan (curl elan.lean-lang.org); toolchain auto-pinned
 ./scripts/test-certora.sh     # Certora (paid cloud). Prereq: pip install certora-cli ; export CERTORAKEY=...
-                              #   Prelude: scripts/lint-token-ops.sh gates certora/token-ops.inventory
-                              #   against every ERC20 token-moving call site in production src/.
+                              #   Prelude: the maintainers' pre-commit guard battery gates
+                              #   certora/token-ops.inventory against every ERC20 token-moving
+                              #   call site in production src/.
 cd prover && cargo test       # Rust prover workspace. Prereq: SP1 toolchain (cargo prove); without it,
                               #   cargo test -p figaro-clause -p figaro-kernel (host-only crates, = prover-ci).
 

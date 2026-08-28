@@ -17,8 +17,8 @@ never-seen clause is attestable — and batch-settleable — with **zero
 per-clause on-chain code**, open-world by construction
 (`figaro-protocol-open-world-auditor` is the gate).
 
-CLAUDE.md keeps the lockstep principle (spec ↔ SDK ↔ on-chain registration);
-this file owns the full clause table, the architectural detail, and the
+This file owns the lockstep principle (spec ↔ SDK ↔ on-chain registration),
+the full clause table, the architectural detail, and the
 adding-a-clause checklist below.
 
 ## Every clause is a merkle leaf (ruled 2026-08-11)
@@ -319,8 +319,8 @@ The clause layer stays grounded in concrete coordination problems — process
 obligations, disclosures, verifiable reference integrity — not in possibility.
 
 Clauses are one registry family among several (sellers, assemblies); each
-family carries its own anchor and never nests inside another — see CLAUDE.md
-"Separation of Concerns — Registry Families". Clause identity is append-only:
+family carries its own anchor and never nests inside another (Separation of
+Concerns — Registry Families). Clause identity is append-only:
 new meaning is a new `clauseId`, never a mutation of an old one.
 
 ## Composition and decomposition — when to merge or split clauses

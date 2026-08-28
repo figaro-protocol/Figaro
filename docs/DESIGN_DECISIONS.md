@@ -24,7 +24,7 @@ signatures alone gate extension. "If both parties want a follow-on round,
 let them sign one against the same processId" sounds protocol-aligned.
 
 **Why the gate is correct**: Each bonded process is a transaction-scoped
-institution that dissolves at settlement (`docs/VISION.md`; CLAUDE.md). The closure is the
+institution that dissolves at settlement (`docs/VISION.md`). The closure is the
 *dissolution*. Parties wanting a follow-on bonded relationship sign a
 fresh root commitment, getting a new `processId`; cross-process
 composition (a sub-order in process A roots process B) carries the

@@ -1,10 +1,10 @@
 # Architecture — the whole system, read as one stack
 
-The unifying frame the rest of the docs are shadows of. CLAUDE.md holds the **discipline**
-(what not to do and why); this file holds the **shape** (where the protocol ends and a
-presentation begins). Read it once and the recurring confusions — "is this silt?",
-"is the frontend the product?", "what's verified vs cosmetic?" — become one *testable*
-question instead of a list of prohibitions.
+The unifying frame the rest of the docs are shadows of. `docs/README.md`'s Ownership Map
+holds the **discipline** (what not to do and why, and where each rule lives); this file
+holds the **shape** (where the protocol ends and a presentation begins). Read it once and
+the recurring confusions — "is this silt?", "is the frontend the product?", "what's
+verified vs cosmetic?" — become one *testable* question instead of a list of prohibitions.
 
 This is a map, not an inventory: the per-contract surfaces live in `CONTRACTS.md`, the
 clause layers in `CLAUSES.md`, the routes/lib map in `FRONTEND.md`, the invariant→test
@@ -104,7 +104,8 @@ Three recurring questions collapse to "which side of the seam?":
 1. **Silt vs designed.** A surface driven by `block` metadata (the drawer's article grouping,
    the capability rail, a lens panel) is the *designed presentation of verified clauses* — not
    silt. A hardcoded list, a stored role/archetype/category, or a bundled catalogue is product
-   drift (closed-world). The seam is the test; the prohibitions in CLAUDE.md are its shadows.
+   drift (closed-world). The seam is the test; the prohibitions catalogued across `docs/` are
+   its shadows.
 2. **Product vs protocol.** "Am I building a product feature?" sharpens to "am I above the seam
    (presentation) or below it (verified substance)?" Below the seam, you compose from `lib/` and
    the registries; you never build an app shell, because the clause spec itself shows the UI is
@@ -194,12 +195,12 @@ fifth-noun composition of the external public Disperse multisender
 (`frontend/lib/composition/payoutRouting.ts`; `CONTRACTS.md` § "Multisender — composed,
 not owned"): the settled seller splits its own receipts — a payment-leg rail, never the
 bond return — through a contract the network already supplies. If the answer seems to be no, the
-proposal is adding a mechanism to the kernel — stop (CLAUDE.md § "Common Misframings").
+proposal is adding a mechanism to the kernel — stop.
 Per-contract surfaces: `CONTRACTS.md`.
 
 ## Related
 
-`CLAUDE.md` (the discipline + the five nouns), `OPEN_WORLD.md` (the open-world paradigm + the
+`docs/README.md` (the discipline + the five nouns, via its Ownership Map), `OPEN_WORLD.md` (the open-world paradigm + the
 7-pattern lens), `CLAUSES.md` (the three validation layers + the clause table), `CONTRACTS.md`
 (the kernel + registries + validators), `LEXICON.md` (the `article` / clause-lifecycle
 rows), `THEORY.md` (why the kernel's two mechanisms make cooperation dominant),

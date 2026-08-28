@@ -146,14 +146,16 @@ canonical across kernel + SDK + frontend, rivals (`agreementId`/`Ref`/`Cid`) = 0
 
 ## Verifiers
 
-- **`lint-no-product-party-terms.sh`** — party rows: blocks `merchant`/`operator`/etc. as a *party*
+The maintainers' pre-commit guard battery (private tooling) mechanically enforces this grid:
+
+- **Party rows** — blocks `merchant`/`operator`/etc. as a *party*
   on permanent surfaces (routes, types, hooks, test-ids); ALLOWS the `merchant-process` clause id.
-- **`lint-no-clause-grouping-synonyms.sh`** — clause row: bans `category`/`family`/`clauseCategories`.
-- **`lint-no-closed-world-vocab.sh`** — bans stored taxonomy fields (`roleKind`/`archetypeId`/etc.).
-- **`lint-architecture-lexicon.sh`** — cross-cutting retired terms (`process tree`, `progressive
+- **Clause row** — bans `category`/`family`/`clauseCategories`.
+- **Closed-world vocab** — bans stored taxonomy fields (`roleKind`/`archetypeId`/etc.).
+- **Cross-cutting retired terms** — `process tree`, `progressive
   collateralization`, `schema`, `order-received`, the retired clause tiers `category-1/2` /
   `manifest-only`, `manifest` as off-chain-content, and the retired package name `@figaro/core` —
-  the SDK is `@figaro-protocol/sdk`) plus the token-concept coupling bans
+  the SDK is `@figaro-protocol/sdk` — plus the token-concept coupling bans
   (florin↔`figaro-utility-token`, florin↔privileged-token, "florin structural demand"); grows
   tier by tier.
 - **synonym-audit reasoning pass (future work)** — a reasoning backstop for a *newly-minted* synonym
@@ -241,5 +243,5 @@ first. The V3–V5 history of expensive de-product-ification renames (`figaro-ea
 why; on a live chain a registered clauseId makes such a rename unrecoverable, not
 just costly.
 
-Related: `CLAUDE.md` "Three-Tier Naming"; `OPEN_WORLD.md` §1 (the projection
+Related: the Three-Tier Naming discipline (kernel / protocol / runtime); `OPEN_WORLD.md` §1 (the projection
 distinction).

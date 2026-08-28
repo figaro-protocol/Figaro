@@ -6,7 +6,7 @@ All contracts in `src/`. Solidity 0.8.26, Foundry. (V3 lives in `archive-v3/`, a
 
 No contract belongs to a dapp. Every contract is a permissionless primitive.
 
-This file is the canonical inventory. CLAUDE.md indexes it; agents must not reference contracts not listed here.
+This file is the canonical inventory. `docs/README.md` indexes it; agents must not reference contracts not listed here.
 
 ## The contract-edge graph
 
@@ -14,7 +14,7 @@ Every arrow is an **immutable pointer fixed at construction** (reads, unless
 marked); parenthesized nodes are external canonical contracts, not this repo's.
 Two structural facts the graph makes visible: the kernel is the star's center
 and pins nothing, and the three registries carry ZERO edges among themselves —
-parallel anchors, never nested (§ Separation of Concerns in CLAUDE.md).
+parallel anchors, never nested (Separation of Concerns — Registry Families).
 
 ```
 AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordinator ──▶ (Permit2)
@@ -42,7 +42,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
 
 ## Kernel (`src/kernel/`)
 
-The frozen settlement primitive. Never edited — see CLAUDE.md § Agent Permissions.
+The frozen settlement primitive. Never edited — an agent-permissions rule enforced by the maintainers' private tooling.
 
 **`src/kernel/FigaroCore.sol`** — The protocol kernel. No owner, no fee, no escape hatches.
 - 2 state-changing entry points: `commit` (unified dual-signed), `resolveProcess`
@@ -649,5 +649,5 @@ deployment. A public network deployment exists: `deployments/11155111.json` is c
 its addresses are the ones `/spec` renders, and the batch path settled real Groth16
 batches through the `batchVerifier` in it (the transactions `/spec` § "The sequencer"
 links). The remaining two-tense fact is narrower: **no mainnet deployment exists**, so no
-surface may claim one. Public copy names no network at all — `lint-mainnet-posture.sh`
-bans the network words outright; the deployment-record table is the statement.
+surface may claim one. Public copy names no network at all — the maintainers'
+pre-commit guard battery bans the network words outright; the deployment-record table is the statement.

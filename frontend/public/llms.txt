@@ -47,9 +47,7 @@ You are a **visiting agent acting for a user's wallet**, on the same footing as 
 are not a contributor to this repository and never need to be: authoring a clause, publishing an
 assembly, and settling a process are permissionless on-chain acts under your owner's key.
 
-The repository's `CLAUDE.md` is the maintainers' internal build-discipline document for
-building Figaro itself — not addressed to you, and not your manual. **Your manuals are the
-`ecosystem-agents/` prompts below.** A public ecosystem agent that writes a repository file has crossed
+**Your manuals are the `ecosystem-agents/` prompts below.** A public ecosystem agent that writes a repository file has crossed
 the seam — it re-imposes the permission barrier the open world exists to remove.
 
 ## Site — protocol surfaces

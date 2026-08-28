@@ -1,8 +1,8 @@
 # Open-World Runtime
 
 The canonical doctrine for Figaro's open-world model and how the runtime composes
-it. CLAUDE.md's top section is the one-paragraph summary; **this is the full
-statement** it points to.
+it. **This is the full statement** of the open-world paradigm summarized elsewhere
+in the docs.
 
 Four parts: the **paradigm** (§1), how the ecosystem **extends** (§2), how the
 runtime **composes** an institution (§3), and the **semantic layer** that bridges
@@ -25,8 +25,8 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    singular "participant", roles merged ("buyer composes"). The subtle collapse:
    "anyone may design" (true — permissionless) does NOT mean anyone composes *while*
    binding or buying — one wallet may play all three roles, but composition happens
-   only on the designer surface, never mid-checkout or mid-profile-edit (guard:
-   `lint-composition-is-designer-only.sh`).
+   only on the designer surface, never mid-checkout or mid-profile-edit (guarded
+   by the maintainers' pre-commit guard battery).
 
 2. **The SET is the live registry, read at runtime.** Clauses/sellers/assemblies
    are an UNBOUNDED set defined by the network — read from ClauseRegistry /
@@ -141,9 +141,8 @@ every composition.
 
 - **Each registry family gets its own anchor** (clauses → ClauseRegistry; sellers →
   MembersRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
-  one way: assemblies use clauses; clauses don't know assemblies exist. (The rule's
-  owner — the test, the temptation to refuse — is CLAUDE.md § "Separation of Concerns —
-  Registry Families"; this is the open-world restatement.)
+  one way: assemblies use clauses; clauses don't know assemblies exist. (This is the
+  open-world restatement of the Separation of Concerns — Registry Families discipline.)
 
 ### Where a composed contract may stand — the four placements
 

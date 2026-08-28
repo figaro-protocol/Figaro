@@ -90,7 +90,7 @@ at the moment `FigaroCore.commit` lands on chain. After commit, neither
 party can be substituted without invalidating the bond. There is no
 mechanism in the kernel to nominate a new buyer or seller for an existing
 order; the only way to change a party is a new commitment, which is a new
-order. (See `CLAUDE.md` § "What Figaro Is Not" and `docs/THEORY.md`.)
+order. (See `docs/THEORY.md`.)
 
 **No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.2). Any unilateral exit path
 weakens the Nash equilibrium. An exit that requires a third party J ∉ {B,
@@ -569,7 +569,6 @@ to design.)
 ---
 
 **Cross-references inside the repo**:
-- `CLAUDE.md` § "What Figaro Is", § "What Figaro Is Not", § "Common Misframings — Do Not Propose"
 - `docs/THEORY.md` — game-theoretic derivation of the kernel invariants
 - `docs/DESIGN_DECISIONS.md` — the intentional patterns that look like vulnerabilities but are correct by design (count them there; entry #12 captures the MLETR-non-implementability finding from this research)
 - `docs/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
