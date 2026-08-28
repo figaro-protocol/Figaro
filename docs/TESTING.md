@@ -477,9 +477,12 @@ Per workflow, what it runs and when:
   blocking on a genuine FAIL verdict).
 - **`estate-snapshot`** — weekly (Mondays 05:23 UTC) + dispatch: captures the
   perishable estate signals (GitHub traffic, which the API retains only ~14
-  days; the npm downloads trend) as a workflow artifact with 90-day retention.
-  The traffic legs need the punch-listed `ESTATE_TRAFFIC_TOKEN` fine-grained
-  PAT — without it they warn and the npm leg still lands.
+  days; the Cloudflare daily site-traffic series for figaroprotocol.com; the
+  npm downloads trend) as a workflow artifact with 90-day retention. The
+  GitHub-traffic legs need the punch-listed `ESTATE_TRAFFIC_TOKEN`
+  fine-grained PAT and the site-traffic leg the punch-listed
+  `ESTATE_CF_ANALYTICS_TOKEN` zone-scoped Cloudflare token — without them
+  they warn and the npm leg still lands.
 - **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Two
   independent jobs: the xmtpd stack proof (hermetic broker bring-up) and the
   Linux sandbox variant (the signer runtime's container deny cases).
