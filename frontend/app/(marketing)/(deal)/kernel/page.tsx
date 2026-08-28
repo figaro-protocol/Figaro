@@ -48,7 +48,7 @@ export default function Kernel() {
 A forfeited stake is simply value that never comes home, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a deal nobody closes strands both stakes in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Value you part with has always had two modes: spent, or invested. A stake is a third. It is not consumed and it is not earning. It is a promise made expensive to break &mdash; and it comes home intact every honest time.
+                Value you part with has always had two modes: spent, or invested. A stake is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the deal&apos;s duration that capital stands idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it comes home intact every honest time.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Who opens the box.
