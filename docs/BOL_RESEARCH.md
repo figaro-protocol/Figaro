@@ -345,14 +345,31 @@ that the bank be a committed party from the start (e.g., as the buyer
 on the order, with a separate buyer↔bank arrangement off-Figaro for the
 financing) or that financing happen entirely outside the protocol.
 
-**Cargo resale in transit.** The classical pattern — the consignee on a
-moving ship sells the cargo to a downstream buyer by endorsing the BoL —
-requires substituting the consignee, which Figaro forbids. A Figaro
-analog would be that the original buyer triggers `resolveProcess` to
-take delivery of the cargo at intermediate point P, then commits a new
-process to ship the cargo from P to the new buyer. This is not
-equivalent: it discloses delivery at P (which the parties may not want),
-and it costs two full bond cycles instead of one transferable record.
+**Cargo resale in transit — the SUBSTITUTION stays closed; the RESALE is
+expressible (ruled 2026-08-28, maintainer).** The classical pattern — the
+consignee on a moving ship sells the cargo by endorsing the BoL — requires
+substituting a process party, which Figaro forbids, and nothing here reopens
+that. What the ruling records is that the commercial resale never needed a
+substitution: the endorsement is an event EXTERNAL to the process, and like
+every external event it is squared by the parties BEFORE the buyer's one
+terminal call (the same doctrine as remedy-before-resolve). The pattern: title
+moves outside the protocol by the real-world instrument; the parties negotiate
+the reallocation as pre-resolve transfers — sellers downstream of the transfer
+point return their committed payment amounts to the buyer, and any performance
+variation (a new discharge port, a new receiving party) is attested as what
+actually happened; then the buyer's single `resolveProcess` settles the
+committed schedule atomically — the pre-paid legs net to zero, every bond
+releases, one bond cycle, no early resolution, no disclosure of an
+intermediate delivery. The equilibrium survives the netting: every bond stays
+hostage through the negotiation (which is what makes the netting credible),
+and resolving remains strictly dominant for the buyer after collecting the
+transfers — keeping netting amounts ≤ P while forfeiting a 2P bond is strictly
+worse than resolving. The honest limit: this expresses the resale without
+minting a transferable in-protocol right. The new owner holds title by the
+external instrument and is never a process party; their protection between
+payment and discharge is the ordinary legal layer plus the committed record —
+so the netting agreement should itself be attested, making the record
+demonstrate why the transfers happened.
 
 **Negotiable warehouse receipts and similar instruments.** The same
 structural constraints apply to any electronic transferable record where
@@ -362,9 +379,12 @@ the right-to-claim is meant to circulate before redemption.
 
 The protocol's job is to enforce bilateral agreements between parties
 who committed to each other. The cargo itself does not carry rights in
-Figaro; the *commitment* carries rights. When the cargo needs to carry
-rights — as in trade finance, in cargo resale, in negotiable warehouse
-receipts — Figaro is the wrong tool, by design.
+Figaro; the *commitment* carries rights. When a right must CIRCULATE as
+an instrument — as in bank-collateral trade finance or negotiable
+warehouse receipts — Figaro is the wrong tool, by design. Cargo resale
+in transit turned out not to need a circulating right at all (§6.2's
+ruled netting pattern); what remains closed is the instrument, not the
+commerce.
 
 This is not a deficiency to apologize for. It is the same kind of
 positioning Bitcoin took relative to fiat clearing, or that TCP/IP took
