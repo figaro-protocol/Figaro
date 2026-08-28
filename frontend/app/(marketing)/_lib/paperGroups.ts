@@ -68,6 +68,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             { title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination", href: "/papers/asymmetric-bonding" },
             { title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Settlement Layer", href: "/papers/markets-without-a-venue" },
             { title: "From Firms to Transaction-Scoped Institutions: A Coasean Re-Examination", href: "/papers/transaction-scoped-institutions" },
+            { title: "Coordination Substrates: Firm, Platform, Court, and Bond", href: "/papers/coordination-substrates" },
             { title: "The Florin: A Schelling-Point Token for the Figaro Coordination Ecosystem", href: "/papers/florin-schelling-point-token" },
             { title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through Bonded Settlement", href: "/papers/self-authenticating-data-sales" },
         ],

@@ -41,6 +41,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Open release tasks (testnet + mainnet) | `RELEASE_READINESS.md` |
 | External-audit handover (freeze notice, validation gate, accepted risks) | `AUDITOR_HANDOVER.md` |
 | Public-graph / RPGF incentive rationale (why the flow-map gets built under a uniform reward) | `PUBLIC_GRAPH_MODEL.md` |
+| Comparative-substrates analysis (firm/platform/court/bond as institutional axes: fiscal legibility, monetary neutrality, transparency-verifiability-privacy conjunction, discriminating alignment) | `/papers/coordination-substrates` (`frontend/app/(marketing)/papers/coordination-substrates/page.tsx`) |
 | RPGF mechanics (UsageCounter, RpgfMinter — uniform reward, live ETH stake) | `CONTRACTS.md` |
 | Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
 | Open work | GitHub Issues (public); the maintainer's working punch-list is private |
