@@ -281,7 +281,7 @@ revelation. Raw coordinates and stable device identifiers never land on a
 public artifact. Where the rule caps a public field's precision, the cap is a
 protocol-tier rule, never one frontend's taste: the spec carries the structural
 ceiling and every reader derives the public grain from the committed spec
-(`docs/CLAUSES.md`'s `figaro-geolocation` row owns the derivation).
+(the `figaro-geolocation` spec in `clauses/` states the derivation).
 
 ### The private side is the owner's asset
 
