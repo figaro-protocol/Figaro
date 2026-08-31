@@ -40,9 +40,7 @@ runs a `file:` dependency's `prepare` on **every** consumer install. The script
 resolves the `typescript` compiler FIRST: absent, it keeps the shipped `dist/`
 as-is and exits 0 (nothing is destroyed); present, it runs the real build
 (`rm -rf dist && tsc`) and propagates its exit code, so genuine build failures
-still fail. (The earlier `"prepare": "npm run build"` destroyed `dist/` before
-discovering `tsc` was unresolvable and bricked the package — the guard exists
-because that trap bit two adopter probes.)
+still fail.
 
 So a `file:` install works from any state, but a **stale** checkout serves a
 **stale** `dist/`. To build fresh, do this once, in this order, before the
@@ -90,7 +88,7 @@ returns nothing. Fill it either way:
 - **the real path**, identical to what you would do on a public chain: publish a
   profile + catalogue (`MembersRegistry` — "Member Profile + Catalogue
   Documents" below) and register an assembly
-  (`AssemblyRegistry.registerAssembly`), each against its registration deposit;
+  (`AssemblyRegistry.registerAssembly`), each under its stake;
 - **the shortcut**, to reach a commit today — the repo's test seeder, which
   registers a few seed assemblies and sellers through those same contracts:
 
@@ -155,7 +153,7 @@ AUTONOMOUS ORIGINATION PROVEN — no human in the loop
 ```
 
 Three siblings run the same recipe with exactly one thing changed:
-`verify-origination-chain.devnet.mjs` (a three-order value-added chain, one
+`verify-origination-chain.devnet.mjs` (a three-order process, one
 seller taking two of the nodes), `verify-origination-http.devnet.mjs` (the
 offer envelope crosses a real HTTP socket instead of the in-process channel),
 and `verify-origination-a2a.devnet.mjs` (the same envelope rides the A2A
@@ -174,8 +172,7 @@ const [resolve] = proposeActions(ctx.getProcess(processId)!, buyer)
   .filter((a) => a.type === "resolve-process");
 await executeAction(walletClient, publicClient, addresses, resolve);
 
-// AND RECORD THE USAGE — at settlement, not later. The RPGF path pays clause
-// authors and assembly designers from records the BUYER's side writes when the
+// AND RECORD THE USAGE — at settlement, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
 // process resolves; a deferred record is permanently deniable (a seller can
 // unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
 // headless twin of what the frontend does at the same moment. The mandatory
@@ -198,10 +195,10 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
 ]);
 ```
 
-Every order in the process settles atomically, `ProcessResolved` lands, and the
+Every order in the process is resolved atomically, `ProcessResolved` lands, and the
 process reads `resolved` on the next `ctx.sync()`. No timeout, no arbitrator, no
 third party who can do this instead — and resolution is terminal. A buyer agent
-that resolves without recording credits no author and no designer — the reward
+that resolves without recording credits no designer — the reward
 mechanism's uniformity across actors is exactly this call.
 
 **Two things bite here. Both are silent.**
@@ -226,10 +223,9 @@ does NOT, and neither does hand-rolled `cast`.
 *`AccrualClosed()`.* `recordClauseUsage` and `recordAssemblyUsage` both open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
 last accrual period has ended (`src/protocol/usage/UsageCounter.sol:389-395`) —
-the nine annual periods are the RPGF mechanism's whole life, and after the ninth
-boundary usage is permanently unrecordable. Two consequences before that day: a
-record is attributed to the period **open when you call**, not the one the
-process resolved in, so crossing a boundary between resolve and record moves the
+the nine annual periods are the reward's whole life, and after the ninth
+boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period **open when you call**, not the one the
+process resolved in, so crossing a boundary between resolving and recording moves the
 credit into the next period's budget and denominator; and `recordProcessUsage`
 tolerates per-leg reverts by design, so a closed accrual does not throw — it
 returns a report where every leg sits in `failures` and `recorded` is `0`. Check
@@ -237,14 +233,13 @@ before you trust a run, and never after: `currentPeriod()` (it reverts, so wrap
 it — the revert IS the answer), `periodClosed(uint8)`, `periodCount()`, and
 `periodEnd(uint256)` are all in `USAGE_COUNTER_ABI`, and `AccrualClosed()` is in
 it too so the revert decodes by name instead of arriving as opaque bytes. This
-is the mechanical form of the at-settlement rule: record in the same
-transaction batch as the resolve and none of it can happen.
+is the mechanical form of the at-resolution rule: make the recording in the same transaction batch as the resolution and none of this can happen.
 
 **6. Know the traps before you extend this.** The site's `/pitfalls` page is the
 canonical list; the first one a chain integration hits is **sub-order
 approval** — every `commit`, root or sub-order, pulls the FULL per-order bond
 and nets nothing against bonds the kernel already holds, so approving the
-increment reverts inside the settlement token with `ERC20InsufficientAllowance`
+increment reverts inside the token with `ERC20InsufficientAllowance`
 while the earlier bonds stay locked until the buyer resolves. Size it with
 `calculateSubOrderApproval` and check it with `assertApprovalCoversBond` (both
 below).
@@ -307,7 +302,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
 | `buildSectionInclusionProof` | root | Merkle proof that one clause section sits under a signed `agreementHash`. |
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
-| `buildUsageClaims` | root | Turn a settled BATCH order plus its agreement into the RPGF claims a sequencer proves. |
+| `buildUsageClaims` | root | Turn a batch-resolved order plus its agreement into the usage claims a sequencer proves. |
 | `calculateBonds` | root | `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment`. |
 | `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
 | `calculateSettlement` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
@@ -324,8 +319,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `counterSignDraft` | `/agent` | Candidate side: validate an inbound race draft and countersign, or decline. |
 | `decodeContentFromSpec` | `/clauses` | Canonical ABI bytes back to JSON content — the exact inverse of `encodeContentFromSpec`. |
 | `depthsOverParents` | root | Depth per node over in-set parent edges — root = 0, child = max(parent depths) + 1. |
-| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's registration deposit is withdrawable, and what still blocks it. |
-| `deriveClauseWithdrawGate` | `/derive` | Whether a clause's registration deposit is withdrawable, and what still blocks it. |
+| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable, and what still blocks it. |
+| `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
 | `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
 | `deriveSharedSecretAsSender` | `/handoff` | ECDH shared secret from your private key and the receiver's public key. |
@@ -337,19 +332,19 @@ definition) and `RPGF_*` constant is a **root** export.
 | `executeAction` | `/agent` | The single dispatch point for any `ProposedAction`; restores each root's signed `processId` for you. |
 | `extractOverlays` | `/derive` | Group attestations into one overlay graph per clause family PRESENT — the open graph class. |
 | `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
-| `fetchAttestationRecords` | root | Attestations from BOTH settlement universes, address-filtered and tagged per row. |
-| `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the RPGF mirror. |
+| `fetchAttestationRecords` | root | Attestations from BOTH paths, address-filtered and tagged per row. |
+| `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the rewards mirror. |
 | `fetchCoreEvents` | root | Every `FigaroCore` event in a block range, grouped and typed; chunks `getLogs` internally. |
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
-| `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the RPGF mirror. |
+| `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalogue and process set. |
 | `fillCargoSection` | root | Fold the order's summed mass and volume onto its cargo leaf, found by declared field. |
-| `fillClassSections` | root | Fold catalogue-authored class values (freight class, hazmat, cold chain, …) onto their leaves. |
+| `fillClassSections` | root | Fold catalogue-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
 | `fillCommerceSection` | root | Write payment, currency and (root only) the cart's line items into the commerce leaf. |
 | `fillDerivedSections` | root | Run every logistics fill the order composes — cargo, class, profile, then dimweight. |
-| `fillDimweightSection` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never authored. |
-| `fillProfileSections` | root | Fold the seller's profile-authored clause values onto their leaves. |
+| `fillDimweightSection` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled. |
+| `fillProfileSections` | root | Fold the seller's profile-filled clause values onto their leaves. |
 | `fillProvenanceSection` | root | Write the template's own `compositionHash` into the provenance leaf. |
 | `filterByClause` | `/derive` | Narrow attestation events to one clause. |
 | `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
@@ -377,7 +372,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
 | `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag and complete version map. |
-| `profileValuesFor` | root | The profile-authored clause values a given seller publishes, read from its catalogue. |
+| `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalogue. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labelled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
 | `projectSettlementGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into the kernel's LINEAR per-process chains. |
@@ -385,11 +380,11 @@ definition) and `RPGF_*` constant is a **root** export.
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
-| `readUtilityTokenPin` | root | The designer's pinned settlement token, read from a template's composed clauses. |
+| `readUtilityTokenPin` | root | The designer's pinned denomination, read from a template's composed clauses. |
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
 | `reconstructOrdersFromTemplate` | root | THE template→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
-| `recordProcessUsage` | `/agent` | Record direct-path RPGF usage AT settlement; per-leg reverts land in `failures`, never thrown. |
+| `recordProcessUsage` | `/agent` | File direct-path usage at resolution; per-leg reverts land in `failures`, never thrown. |
 | `registerRateQuantitySource` | root | Register a resolver for a catalogue's rate-quantity source (a composition tenant, no core edit). |
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
@@ -417,7 +412,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
 | `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
-| `walletRecord` | `/derive` | One wallet's public trading record; resolved-empty is the answer for a wallet with no history. |
+| `walletRecord` | `/derive` | One wallet's public trading history; resolved-empty is the answer for a wallet with no history. |
 | `warnProcessLogFillsTrap` | root | Warn when a spec pins design/checkout fills on a process-log clause — content that commits unchecked. |
 | `withholdSectionContent` | root | Swap a section's plaintext for its fingerprint — same leaf, same root, the content never travels. |
 | `witnessContentCid` | `/derive` | The content address a `contentRef` fingerprint resolves to, multibase base16. |
@@ -431,22 +426,21 @@ definition) and `RPGF_*` constant is a **root** export.
 *Lost track of where a name below lives? → [Synopsis](#synopsis--which-entry-point-is-each-export-from).*
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
-chain gas ceilings. Also home to the distribution mirror —
+chain gas ceilings. Also home to the rewards mirror —
 `computeRpgfAllocations` (`src/rpgf/formula.json`): a deterministic integer
 pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
-on chain for the 600M retroactive distribution. Usage is counted as the facts
+on chain for the 600M designer-rewards reserve. Usage is counted as the facts
 happen — recorded against a resolved order — so **there is nothing to post,
-nothing to bond and nothing to dispute**. Trade settled through
+nothing to bond and nothing to dispute**. Trade resolved through
 `FigaroBatchVerifier` never acquires kernel status, so it reaches the counter by
-a second route: `buildUsageClaims` turns a settled batch order plus its
+a second route: `buildUsageClaims` turns a batch-resolved order plus its
 agreement into the claims a sequencer proves, and the mirror folds BOTH event
 streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
 under-reports every clause or assembly whose trade moved to batches, and the two merge as
 SCORES, never as components. The reward is UNIFORM (no tag,
 category or weight — every clause or assembly's score is `icbrt(c·d²·10^18)`, its real
 usage alone) and UNCAPPED; the only eligibility gate is a two-sided live ETH
-stake (usage counts only for a live-staked seller-of-record, and an author earns
-only while the clause or assembly's registration deposit stays un-withdrawn). The mirror
+stake (usage counts only for a live-staked seller of record, and a designer earns only while the clause or assembly's stake stays un-withdrawn). The mirror
 exists to display a distribution, predict a claim, and verify a recorded
 accrual; `formula.json` is the normative prose statement of the mechanism and
 the source of every constant the mirror uses.
@@ -603,10 +597,10 @@ KERNEL only *pulls exactly*: `src/kernel/FigaroCore.sol:208-209` is two
 `_pullExact` transfer calls, `c.payment * 2` from `c.buyer` and
 `c.expectedCumulativeValue * 2` from `c.seller`, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the
-`transferFrom` reverts inside the settlement token and the kernel never sees
+`transferFrom` reverts inside the token and the kernel never sees
 the reason. WHAT TO APPROVE is therefore an off-chain calculation, and the
 SDK's `calculateRootApproval` / `calculateSubOrderApproval` (`sdk/src/bonds.ts`)
-are the authority for it. Approve the settlement ERC-20 for both legs before
+are the authority for it. Approve the denomination ERC-20 for both legs before
 each commit:
 
 ```ts
@@ -623,7 +617,7 @@ const approvals = calculateSubOrderApproval(payment, newCumulativeValue);
 //   this order, NOT the increment over the previous order's bond.
 ```
 
-**Worked: one root plus a two-link chain.** Whole settlement-token units (scale
+**Worked: one root plus a two-link chain.** Whole denomination units (scale
 by your token's `decimals`). Each row is one `commit`; the seller column is
 THAT order's seller, bonding twice the cumulative value at their own link.
 
@@ -643,11 +637,9 @@ Every one of those 330 + 810 units stays locked in the kernel until the buyer
 calls `resolveProcess`; nothing is released order by order.
 
 Approving the *increment* instead of the full `2 × newCumulativeValue` is the
-reverting mistake: `commit` reverts inside the settlement token with
+reverting mistake: `commit` reverts inside the token with
 `ERC20InsufficientAllowance`, and the bonds already pulled for the earlier
-orders stay locked in the kernel until the buyer resolves the process. (The
-helper was `calculateSubOrderSellerApproval` before; it is now
-`calculateSubOrderApproval` and returns both legs.)
+orders stay locked in the kernel until the buyer resolves the process.
 
 Catch the mistake before it reverts on-chain: pass the approval you're about
 to submit and the calculator's own output to `assertApprovalCoversBond` —
@@ -663,7 +655,7 @@ assertApprovalCoversBond({ buyerApproval, sellerApproval }, required); // throws
 
 ## Bonding in a token you do not hold — a DIRECT-path composition
 
-A party who does not hold the process settlement currency can still bond in one
+A party who does not hold the process's denomination can still bond in one
 transaction, through `WitnessSwapAndCommitCoordinator.swapAndCommit`: it pulls
 their input token via a Permit2 WITNESS signature, swaps it at the coordinator's
 immutable venue, forwards the proceeds to the party's own address, then calls
@@ -718,7 +710,7 @@ const permitSignature = await walletClient.signTypedData({ account, ...typedData
 
 // swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding) — one leg
 // per party; pass DISABLED_SWAP_FUNDING_LEG for a party that self-funds.
-// Per-party prerequisites: approve(FigaroCore) for the bond currency (as
+// Per-party prerequisites: approve(FigaroCore) for the denomination (as
 // always) plus a one-time approve(Permit2) for the input token.
 ```
 
@@ -728,26 +720,22 @@ nothing else — no funding leg in the wire format, none in the proof — and
 `FigaroBatchVerifier.settleBatch` pulls each party's NET deposit with
 `transferFrom` when the batch lands. So on the batch path: **swap in your own
 wallet first**, then sign the commitment in the process currency, hold that
-balance, and approve `FigaroBatchVerifier` (not `FigaroCore`) until the batch
-settles. POST-settlement composition is identical on both paths — both deliver
+balance, and approve `FigaroBatchVerifier` (not `FigaroCore`) until the batch resolves. post-resolution composition is identical on both paths — both deliver
 ERC-20 to the party's own address, so wallet-side routing of what you received is
 path-blind.
 
-## Routing what you received — a POST-settlement composition
+## Routing what you received — a post-resolution composition
 
 The kernel has already paid out, so this is a wallet spending its own balance:
-one settled receipt, many earmarked recipients, one atomic transaction — fiscal
+one resolved receipt, many earmarked recipients, one atomic transaction — fiscal
 remittance, a savings address, a co-worker's share, an obligation. The network
 already supplies the contract, so the protocol owns none of it: **Disperse**
 (`0xD152f549545093347A162Dce210e7293f1452150`), verified, ownerless, live since
 2018 at the same address across 16 chains. It reads no `FigaroCore` state, no
 bond and no registry; it is composition, not protocol. So the SDK carries the
-ADDRESS but not the interface: `addressesFromDeploymentRecord` maps a record's
-`multisender` key onto `addresses.multisender`, and there is no `DISPERSE_ABI`
-export — you declare the three functions yourself. A record that omits the key
-(the published Sepolia record does) is not a missing deployment: the canonical
-contract sits at the same address on every chain it is on, so read it off the
-record when it is there and use the canonical address when it is not — after
+ADDRESS but not the interface: `addressesFromDeploymentRecord` maps a deployment record's `multisender` key onto `addresses.multisender`, and there is no `DISPERSE_ABI`
+export — you declare the three functions yourself. A deployment record that omits the key (the published one does) is not a missing deployment: the canonical
+contract sits at the same address on every chain it is on, so read it off the deployment record when it is there and use the canonical address when it is not — after
 checking `getCode` is non-empty on the chain you are actually on.
 
 ```ts
@@ -798,17 +786,17 @@ const hash = await walletClient.writeContract({
 ```
 
 Measured on a local chain against the mirrored devnet interface: three token
-legs settle in one transaction at ~117k gas, each recipient's balance equal to
+legs land in one transaction at ~117k gas, each recipient's balance equal to
 its leg, and an over-balance batch reverts in simulation with nothing partially
 routed. **The trail is the point.** Which address received which share of which
 receipt is now a chain fact anyone the wallet chooses can be shown — a
-self-sovereign fiscal record produced as a byproduct of being paid, not a report
+self-sovereign fiscal trail produced as a byproduct of being paid, not a report
 assembled afterwards. Nothing here is protocol-aware: do it whenever you like,
-in any token you hold, for receipts from either settlement path.
+in any token you hold, for receipts from either path.
 
 ## Verifying what you are about to sign
 
-**Settlement is UI-independent; presentation at the signing moment is not.** The
+**Resolution is UI-independent; presentation at the signing moment is not.** The
 kernel verifies both EIP-712 signatures itself over a struct whose
 `agreementHash` is the merkle ROOT of the agreement's sections — so what was
 agreed is fixed by arithmetic once committed, and no origin can restate it. But
@@ -1117,7 +1105,7 @@ if (!(await seq.isAvailable())) { /* direct path instead */ }
 const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // Admission is IDEMPOTENT on ON-CHAIN IDENTITY (order hash / process id /
 // attestation identity) — a retry, even a RE-SIGNED one, returns the original
-// id and enqueues nothing. `{ id }` is a queue receipt, NOT settlement:
+// id and enqueues nothing. `{ id }` is a queue receipt, NOT resolution:
 // confirm from chain (BatchSettled, the ERC-20 transfers, scoreOf).
 // FigaroCore.orderStatus(orderHash) stays 0 for this order FOREVER — 0 means
 // "not on this path", never "not settled". Gating any read on orderStatus is
@@ -1125,12 +1113,12 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // "Two settlement paths, two DISJOINT state universes".
 await seq.submitResolve(processId, commitments, buyerSig);
 await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sellerSig, proof });
-await seq.submitUsageClaim(claim);  // the RPGF leg — build with buildUsageClaims
+await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
 await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, archive }
 
-// READING BATCHED TRADE BACK. A batch-settled order has no kernel event and no
+// READING BATCHED TRADE BACK. A batch-resolved order has no kernel event and no
 // per-order flag on chain, so do NOT chase stateRoot() and BatchSettled by
-// hand: the relay PUBLISHES the batch universe's mirror of the kernel's
+// hand: the relay PUBLISHES the batch path's mirror of the kernel's
 // events, and the client encodes the 404 rule you must not get wrong.
 const view = await seq.process(processId);   // the orders + the resolution facts
 const one  = await seq.order(orderHash);     // one published order
@@ -1212,7 +1200,7 @@ should build them.
 
 | Route | Request | `200` body | Client method |
 |---|---|---|---|
-| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** settlement | `submitCommit` · `submitResolve` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
+| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
 | `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `archive: { first_batch, last_batch, retained_batches, max_batches }` | `status()` |
@@ -1235,7 +1223,7 @@ client raises it as a `SequencerError` carrying `.statusCode`:
 | `415` | wrong content type | send `application/json` |
 | `422` | valid JSON that is not the operation or claim shape | wrong shape, unknown variant, missing field |
 | `404` | `/orders` and `/processes` only | **absence in THIS relay**, never "the trade did not happen"; the client returns `null` rather than throwing |
-| `503` | mempool at capacity | capacity, never rejection — retry after the next batch settles |
+| `503` | mempool at capacity | capacity, never rejection — retry after the next batch resolves |
 
 `/batches` never answers `404`: an empty relay returns an empty page.
 
@@ -1332,7 +1320,7 @@ const process    = projectProcessGraph(core);      // boundary: "protocol-enforc
 const settlement = projectSettlementGraph(core);   // boundary: "protocol-enforced"
 
 // Overlays: ONE per attestable clause family the corpus actually contains.
-// fetchAttestationRecords folds BOTH settlement universes and tags each row;
+// fetchAttestationRecords folds BOTH settlement paths and tags each row;
 // you supply the content bytes (an attestation's contentRef is keccak256 of
 // off-chain content — the chain never holds the preimage) and a SpecSource.
 // null content, or an unresolvable spec, degrades that entry to
@@ -1356,7 +1344,7 @@ The five graphs named in `PUBLIC_GRAPH_MODEL.md` are the canonical presentation
 grouping; **the class is open**. Process and Settlement fall out of the
 must-have clauses by construction, overlays are spec-derived one per attestable
 clause family in use, and composition graphs come from whatever on-network
-venues a record touches — so `extractOverlays` groups by the attestation's
+venues a deployment record touches — so `extractOverlays` groups by the attestation's
 opaque on-chain clause key and decodes through the spec you loaded, and a family
 registered after this SDK shipped flows through unchanged.
 
@@ -1371,16 +1359,16 @@ ANY clause — no clause is known to this module, nothing is bundled. Adding a
 clause adds a spec, never a code path here.
 
 **Validation surfaces (present state).** Well-formedness is checked in ONE place
-off-chain: this Layer-A TypeScript module (frontend form gates + SDK agent-action
+off-chain: this off-chain TypeScript module (frontend form gates + SDK agent-action
 preflight). On-chain, the `AttestationCoordinator` merkle-binds each attestation
 to its signed agreement and content-hashes the evidence — it does NOT validate
 clause content. So a never-seen clause is attestable with zero per-clause on-chain
 code.
 
-> On the BATCHED path the proof apparatus (rebuilt 2026-07-16) DOES validate
-> content in-proof: a Rust mirror of this same Layer A validates and re-encodes
+> On the BATCHED path the proof apparatus DOES validate
+> content in-proof: a Rust mirror of this same module validates and re-encodes
 > the content against the clause's spec supplied as a witness input, and
-> `FigaroBatchVerifier` settles only if the witness's hash matches
+> `FigaroBatchVerifier` resolves the batch only if the witness's hash matches
 > `ClauseRegistry.contentHashOf` — so never-seen clauses stay attestable AND
 > batch-settleable with zero per-clause code. There are no per-clause validator
 > contracts, permanently. The contract catalogue that states this is published
@@ -1428,7 +1416,7 @@ first-write-wins (`src/protocol/registries/ClauseRegistry.sol:154-170`) — an
 `id`+`version` someone already registered is taken **permanently** (no
 overwrite, no version bump onto the same slot; the adding-a-clause checklist
 is `docs/CLAUSES.md`). Compute the exact key the registry hashes and read
-whether it is already live BEFORE spending the registration deposit:
+whether it is already live BEFORE placing the registration stake:
 
 ```ts
 import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
@@ -1569,7 +1557,7 @@ passphrase at start) and exposes signing as an operation over a local UNIX
 socket — every request passing an out-of-model policy gate before anything is
 signed. The gate enforces: EIP-712 **domain binding** (chainId + a
 verifyingContract on the policy's allowlist — `FigaroCore` and
-`FigaroBatchVerifier`, the batch universe's own domain), a **contract +
+`FigaroBatchVerifier`, the batch path's own domain), a **contract +
 selector allowlist** for transactions, **per-action and rolling-period value
 ceilings** (token risk = the wallet's own bond side of a Commitment plus every
 `approve` at its amount; native risk = a payable call's `value`, refused
@@ -1597,9 +1585,8 @@ const account = socketSignerAccount({ socketPath: "/tmp/figaro-signer.sock", add
 const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
 ```
 
-A reference policy for the live Sepolia stack ships at
-`deployments/signer-policy.11155111.json`, generated from the deployment
-record and the SDK ABIs — addresses and selectors are derived, never
+A reference policy for the live public deployment ships at
+`deployments/signer-policy.11155111.json`, generated from the deployment record and the SDK ABIs — addresses and selectors are derived, never
 hand-typed. The host-shaped half (the sandbox wrapper carrying the policy's
 `egress` allowlist) lives beside the agent prompts, not in this package.
 
@@ -1624,7 +1611,7 @@ import { parseProjectionHints } from "@figaro-protocol/sdk";
 import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 
 // Build a SpecSource from the raw spec JSON you fetched from the registry.
-// A view is the Layer-A spec PLUS the hash-load-bearing `block` hints
+// A view is the parsed spec PLUS the hash-load-bearing `block` hints
 // (`design.article`, `design.scope`, `design.fills`, `checkout.catalogueFills`,
 // `checkout.profileFills`) that parseProjectionHints extracts — everything
 // else in `block` is presentation the SDK never reads. `design.fills` names
@@ -1686,10 +1673,10 @@ warm before projecting.
 (`{ [clauseId]: fieldValues }`), injects each spec's own declared-field defaults
 for omitted fields (the SPEC speaks; the code injects nothing of its own), sorts
 sections deterministically, and returns the `Agreement` + its merkle-root
-`agreementHash`. `assertAgreementSignable` is the single Layer-A gate every
+`agreementHash`. `assertAgreementSignable` is the single off-chain gate every
 signature routes through — buyer sign, seller counter-sign, and the checkout's
 pre-wallet check all call it, so no path signs an agreement whose sections
-violate their specs, whose settlement currency differs between the signed TERM
+violate their specs, whose denomination differs between the signed TERM
 and the signed STRUCT, or whose hash mismatches its recomputed root
 (`validateCommitmentAgreement` is the non-throwing form, returning
 `{ ok, issues }`). The mirror check is why the gate takes the commitment's
@@ -1715,7 +1702,7 @@ const { agreement, agreementHash } = buildOrderAgreement(
 // The 4th argument is the commitment's mirrored pair (currency + payment) —
 // the struct side of the leaf==struct assertion; a full Commitment satisfies
 // it. The last argument is the label used in the error.
-assertAgreementSignable(agreement, agreementHash, specs, commitment, "checkout"); // throws on any Layer-A issue
+assertAgreementSignable(agreement, agreementHash, specs, commitment, "checkout"); // throws on any validation issue
 
 // Read sections by DECLARED FIELD, never by clause id — any registered clause
 // carrying the field participates.
@@ -1733,7 +1720,7 @@ value, and derive each order's hash and the process id from the root.
 `reconstructOrdersFromTemplate` (`dist/reconstructOrders.d.ts`) is that walk's
 single home — hand-assembling sections order-by-order is no longer the recipe.
 
-**Who fills what**: the designer selected the clauses and authored any
+**Who fills what**: the designer selected the clauses and wrote any
 `design.fills` values (the tailoring); the seller filled profile/catalogue
 master data at first use (`checkout.profileFills` / `checkout.catalogueFills`,
 folded at checkout); the buyer fills the remaining checkout values here as
@@ -1769,7 +1756,7 @@ const orders = await reconstructOrdersFromTemplate(template, {
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
     payment: paymentFor(node.nodeId),
-    // The settlement currency is a TERM (a merkle leaf on the commerce
+    // The denomination is a TERM (a merkle leaf on the commerce
     // clause) that the commitment's `currency` param above MIRRORS — write
     // the same address into both, or the sign gate refuses the agreement.
     // A pinned assembly's value comes from its denomination clause
@@ -1821,12 +1808,11 @@ import {
 } from "@figaro-protocol/sdk";
 ```
 
-- **Section fills** (by declared field): `fillCommerceSection` (settlement
-  terms — `lineItems` supplied only for the root cart), `writeTopologySection`
+- **Section fills** (by declared field): `fillCommerceSection` (payment terms — `lineItems` supplied only for the root cart), `writeTopologySection`
   (the REAL parent-order hashes into `parentOrderHashes`), and the logistics
   fills `fillDerivedSections` folds together — `fillCargoSection` (mass/volume
-  sum × quantity), `fillClassSections` (catalogue-authored freight-class/hazmat/…),
-  `fillProfileSections` (the seller's PROFILE-authored master data — dimweight's
+  sum × quantity), `fillClassSections` (catalogue-filled freight-class/hazmat/…),
+  `fillProfileSections` (the seller's profile-filled master data — dimweight's
   divisor, a declared credential id — restricted to each spec's declared
   `block.checkout.profileFills` subset, with the template's committed terms winning),
   and the DERIVED `fillDimweightSection` (`billed = max(gross, volumetric)`,
@@ -1840,7 +1826,7 @@ import {
 - **Pricing**: `resolveSubOrderPricing` prices a sub-order from its contributor's
   OWN catalogue (`billedQuantity × unitPrice = payment` always holds, so the
   committed line item replays the payment with no reference back to the mutable
-  catalogue); `profileValuesFor` looks up a seller's profile-authored clause
+  catalogue); `profileValuesFor` looks up a seller's profile-filled clause
   values for the profile fold.
 - **Open rate-quantity registry**: `registerRateQuantitySource(source, resolver)`
   / `getRateQuantityResolver(source)` — a `pricingPolicy: "rate"` item resolves
@@ -1928,7 +1914,7 @@ creditable to its assembly's designer of record
 
 ## Member Profile + Catalogue Documents
 
-Two off-chain JSON documents describe a participant. Both are **Layer-A** — their
+Two off-chain JSON documents describe a participant. Both are **off-chain SDK types** — their
 types and strict parsers are exported from the ROOT `@figaro-protocol/sdk` (next to
 `RegisteredMember` / `reconstructDiscovery`), so an integrator reading a
 participant learns the shape from the SDK instead of the frontend bundle. Neither
@@ -1971,14 +1957,12 @@ registration at all.
     sub-order counterparty's wallet from. The seller's ROLE in the assembly is
     event-derived, never declared here.
   - `disclosurePolicy` is an array of `DisclosurePolicyEntry` — the member's
-    self-declared terms for the records they co-produce inside bonded processes
+    self-declared terms for the data they co-produce inside bonded processes
     (the voluntary data market), each
     `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`. The
     data a row names is DERIVED, never a stored taxonomy: `compositionHash` (the
-    `AssemblyRegistry` key of an assembly the member binds) × `clauseId` (the
-    record's leaf section) name clauses the member already composes.
-    `posture: "buyer" | "seller"` says which side the member co-produced the
-    record on — members hold both, on the same terms structure. `offered` is the
+    `AssemblyRegistry` key of an assembly the member binds) × `clauseId` (the data's leaf section) name clauses the member already composes.
+    `posture: "buyer" | "seller"` says which side the member co-produced the data on — members hold both, on the same terms structure. `offered` is the
     toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
     (absent = any counterparty, once offered); `calendar` says when
     (`{ embargoDaysAfterSettlement?, notBefore?, notAfter? }`). Prices never
@@ -1988,7 +1972,7 @@ registration at all.
     copy; absence of a policy is NOT a policy of openness.
   - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
     assembly SUBSCRIPTIONS, `{ compositionHash }` each: which registered
-    assemblies this member buys through and monetizes records from.
+    assemblies this member buys through and monetizes data from.
     Independent of `assemblyBindings` (the seller's list — a wallet does not
     buy through the assemblies it sells through); subscribing is the buyer's
     verb, binding stays the seller's. Buyer-posture `disclosurePolicy` entries
@@ -2077,10 +2061,10 @@ function setMechanismClause(bytes32 idHash) external
 is the identity. Both registering calls are `payable`; `msg.value` must equal
 `registrationDeposit()` exactly (`setMechanismClause` is not — it takes no deposit).
 
-**All three registries take the same reclaimable ETH deposit.** `MembersRegistry`,
+**All three registries take the same reclaimable stake.** `MembersRegistry`,
 `ClauseRegistry`, and `AssemblyRegistry` each require a `registrationDeposit` on
 the registering call (`register` / `registerClause` / `registerAssembly`, all
-`payable`) — a spam-deterrent stake, not a fee: no party can seize it, and `msg.value`
+`payable`) — a stake no party can seize, and `msg.value`
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
 figure. Clause and assembly deposits come back in one call —
@@ -2104,8 +2088,7 @@ without it one deposit is recycled through identity after identity, so fabricati
 breadth costs no capital at all. De-surfacing and release are deliberately
 different moments — nobody is held on a surface they asked to leave, while the
 capital stays committed. **Anything tracking who is currently surfaced must fold
-`MemberWithdrawalRequested`, not `MemberWithdrawn`**; the latter is the custody
-event and can arrive a whole cooldown later. `reconstructDiscovery` already does.
+`MemberWithdrawalRequested`, not `MemberWithdrawn`**; the latter is the release event and can arrive a whole cooldown later. `reconstructDiscovery` already does.
 
 **Reading an assembly binding.** `AssemblyRegistry.bindings(compositionHash)` returns
 the tuple `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
@@ -2118,8 +2101,7 @@ freshly registered assembly correctly reads `depositWithdrawn == false`; that fa
 `ClauseRegistry`'s parallel stake struct (`depositOf[idHash]`, surfaced to the SDK as
 `RegisteredClause.registeredBy`) spells the same field the same way — both registries
 name the registering wallet `registeredBy` (one role, one name), and
-`RpgfMinter._isAuthor` treats it as the clause-or-assembly's author for 600M reward
-eligibility.
+`RpgfMinter._isAuthor` treats it as the clause-or-assembly's designer of record for reward eligibility.
 
 The catalogue follows the same shape: `parseMemberCatalogueDocument(cat)` →
 `pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and
@@ -2136,10 +2118,10 @@ The event log is the read path: verify an update landed by re-running discovery
 ## Data products — sell, deliver, verify, subscribe
 
 A data sale is not a special mode of the protocol. It is an **ordinary bonded
-order whose value-added IS access to records** — so everything above applies
+order whose value-added IS access to data** — so everything above applies
 unchanged: the same 2× bonds, the same bilateral signature, the same atomic
 resolve. What is specific is which clauses the order composes, and one property
-that falls out of the merkle commitment: the records a buyer receives are
+that falls out of the merkle commitment: the data a buyer receives is
 **self-authenticating** — each disclosed section verifies against a chain fact,
 so provenance never rests on the seller's word.
 
@@ -2155,10 +2137,10 @@ Two documents you already own (both from "Member Profile + Catalogue Documents"
 above), each carrying exactly half of the offer:
 
 - The **profile's `disclosurePolicy`** carries the DISCLOSURE terms: one entry
-  per kind of record,
+  per kind of data,
   `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`.
   What a row names is derived, never a stored taxonomy — the assembly you bind
-  or subscribe to × the clause whose leaf holds the record × the side you traded
+  or subscribe to × the clause whose leaf holds the data × the side you traded
   on. Absence of a row is the paper-contract default (each party holds its own
   copy), **not** a policy of openness; `offered: false` is an explicit
   withholding, which is a different statement.
@@ -2193,7 +2175,7 @@ const catalogue = {
     id: "telemetry-2026q3", name: "Flight telemetry — 2026 Q3",
     price: "50", available: true,              // HUMAN DECIMAL, like every item
     dataSold: dataOffer,                        // WHAT is sold — the policy row above
-    clauseValues: {                             // the SALE's catalogue-authored terms
+    clauseValues: {                             // the SALE's catalogue-filled terms
       "figaro-data-license": {
         licenseScope: "Flight telemetry — 2026 Q3 survey window",
         access: "stream", redistribution: "prohibited",
@@ -2207,15 +2189,14 @@ parseMemberCatalogueDocument(catalogue);        // on malformed input
 // …then pin + updateProfile exactly as the publish flow above does.
 ```
 
-Both postures are first class: a wallet sells the records it produced as a
-seller AND the records it produced as a buyer, on the same terms structure. A
+Both postures are first class: a wallet sells the data it produced as a seller AND the data it produced as a buyer, on the same terms structure. A
 buyer-posture row draws its candidate assemblies from `buyerAssemblies`, a
 seller-posture row from `assemblyBindings`.
 
 ### 2. COMPOSE — the sale is an order like any other
 
-The sale composes the settlement clause plus, typically, a license clause and a
-hand-off clause; where the subject is **this process's own** co-produced records
+The sale composes the commerce clause plus, typically, a license clause and a
+hand-off clause; where the subject is **this process's own** co-produced data
 rather than someone else's, a data-terms clause composes into that process
 instead, fixing the disclosure regime the parties co-sign.
 
@@ -2235,7 +2216,7 @@ const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses,
 assertAgreementSignable(agreement, agreementHash, specs, commitment, "data sale");
 ```
 
-The literal map above is the hand-authored form. In a catalogue checkout you do
+The literal map above is the hand-written form. In a catalogue checkout you do
 not write those license values at all — `fillClassSections` folds them out of
 the line item's `clauseValues` onto the leaf, found by the spec's declared
 `block.checkout.catalogueFills` and never by clause name (Checkout Planning
@@ -2246,12 +2227,11 @@ two licenses into one cart.
 Two placement rules the specs themselves state, readable with
 `parseProjectionHints` — do not hand-place these:
 
-- The license terms are **catalogue-authored**: `figaro-data-license` declares
-  all five of its fields in `block.checkout.catalogueFills`, so the record's
-  owner writes them on the data item and checkout folds them into the agreement
+- The license terms are **catalogue-filled**: `figaro-data-license` declares
+  all five of its fields in `block.checkout.catalogueFills`, so the data's owner writes them on the data item and checkout folds them into the agreement
   both parties sign. The item's price stays the item's own field, and who may
   buy and when stay the profile's policy — neither is a field on the clause.
-- The disclosure regime is **designer-authored**: `figaro-data-terms` declares
+- The disclosure regime is **designer-filled**: `figaro-data-terms` declares
   `disclosure` in `block.design.fills` (the designer fixes `closed` /
   `each-own` / `open` at design time, so **regime variants are sibling
   assemblies**, not a runtime toggle), while `buyerDisclosure` is the buyer's
@@ -2290,7 +2270,7 @@ changes it. Two joins that are specific:
   `contentHash`. That is the whole delivery check, and it needs no third party.
 
 **Verification** is the part that has no analogue off-chain. When the license
-names `sourceProcesses`, every disclosed record is provable against a chain
+names `sourceProcesses`, every disclosed leaf is provable against a chain
 fact:
 
 ```ts
@@ -2335,7 +2315,7 @@ built from tampered section data does **not** — the check is not vacuous.
 **State the boundary honestly to whoever you build for.** What this proves is
 that *this content sat under that agreement's root, signed by those two parties,
 at that commit* — provenance and integrity, not veracity: no chain can testify
-that a sensor was pointed where its record says. And `redistribution:
+that a sensor was pointed where its data says. And `redistribution:
 "prohibited"` is not enforcement — copying cannot be prevented on chain. The
 co-signed term is timestamped evidence for the layers outside the kernel (the
 co-sellers' live interest in the same unresolved process, a composed arbitration
@@ -2377,15 +2357,12 @@ for (const a of graph.getAssemblies()) {
 Fork it, compose your own, or compose none of it — a data sale needs no
 particular assembly, only the clauses your buyer and you both sign.
 
-## Claiming the author's mint — `RpgfMinter.claim`
+## Claiming the designer's mint — `RpgfMinter.claim`
 
 Everything above earns. If the wallet registered a clause or an assembly and
-other people's trade composed it, the 600M retroactive distribution is claimed
-by the **author of record** — the wallet each registry stored as `registeredBy`,
-and only while its registration deposit is still un-withdrawn (that is the
-author-side half of the two-sided live-stake gate; the seller-side half lives in
-`UsageCounter`). One call per wallet per period, carrying **every** clause and
-assembly that wallet authored:
+other people's trade composed it, the 600M designer-rewards reserve is claimed by the **designer of record** — the wallet each registry stored as `registeredBy`,
+and only while its registration stake is still un-withdrawn (that is the designer-side half of the two-sided live-stake gate; the seller-side half lives in
+`UsageCounter`). One call per wallet per period, carrying **every** clause and assembly that wallet registered:
 
 ```ts
 import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
@@ -2415,7 +2392,7 @@ if (closed && amount > 0n) {
 ```
 
 The list is a **lookup key, never a claim of ownership**: each entry is verified
-against its own registry, so a key you do not author reverts `NotAuthorOfRecord`
+against its own registry, so a key you did not register reverts `NotAuthorOfRecord`
 and a repeated entry reverts `DuplicateClauseOrAssembly`. `claim` adds two of
 its own: `AlreadyClaimed` (once per wallet per period) and
 `NoClausesOrAssemblies` (the empty list). Every one of those fragments is in
@@ -2425,7 +2402,7 @@ its own: `AlreadyClaimed` (once per wallet per period) and
 inferred.** It shares `claim`'s entitlement path, so a malformed list usually
 reverts there first and you learn it without spending gas; but when the period
 has NO score at all the path short-circuits to `0` before checking anything, and
-a duplicate list, and even a key the caller does not author, both answer `0`
+a duplicate list, and even a key the caller did not register, both answer `0`
 rather than reverting. And it never checks CLOSURE — during accrual it returns a
 live figure that moves with every recorded usage and cannot yet be claimed;
 `claim` is the one that refuses, with `PeriodStillAccruing`. So a `0` is four
