@@ -3,7 +3,7 @@
 /**
  * useMemberTrackRecord — a seller's public-graph track record, fetched
  * from the indexer. Recomputed from on-chain events on every load; nothing
- * is stored as a score. See PUBLIC_GRAPH_MODEL.md §"Reputation derivation".
+ * is stored as a score. See DATA_LAYER.md §"Reputation derivation".
  */
 
 import { useEffect, useState } from "react";

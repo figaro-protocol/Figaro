@@ -6,7 +6,7 @@ on what meter, on what schedule, and what deliberately does not exist.
 
 The contract surfaces — `UsageCounter`, `RpgfMinter`, their proof shapes and
 revert reasons — are `docs/CONTRACTS.md` § "Designer rewards". The stake's
-rationale and the honest Sybil bound are `docs/PUBLIC_GRAPH_MODEL.md` § "What
+rationale and the honest Sybil bound are `docs/DATA_LAYER.md` § "What
 the stake does and does not do". The academic form is
 `/papers/substrate-broadening-rpgf`. The 600M's place in the supply is one row
 of the allocation table in `docs/FLORIN_TOKEN.md`.
@@ -100,7 +100,7 @@ who withdraws de-surfaces the entry for new compositions and stops earning on
 it, while every agreement already committed against it keeps resolving forever.
 
 What the stake does and does not do against Sybil attacks is stated at its
-honest strength in `docs/PUBLIC_GRAPH_MODEL.md`; it is not restated here.
+honest strength in `docs/DATA_LAYER.md`; it is not restated here.
 
 ---
 

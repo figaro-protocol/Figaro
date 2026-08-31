@@ -131,7 +131,7 @@ Inventories: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`,
 `LOCAL_DEV.md`. Design: `VISION.md`, `THEORY.md`, `LEXICON.md`,
 `FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md`, `SCALING_STRATEGY.md`,
 `OPEN_WORLD.md`,
-`PUBLIC_GRAPH_MODEL.md`. Security: `DESIGN_DECISIONS.md` (patterns that look
+`DATA_LAYER.md`. Security: `DESIGN_DECISIONS.md` (patterns that look
 like vulnerabilities and are correct by design — read before raising a
 finding), `VERIFICATION_MAP.md`, `AUDITOR_HANDOVER.md`, `RELEASE_READINESS.md`.
 

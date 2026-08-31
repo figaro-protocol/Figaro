@@ -5,7 +5,7 @@
  * questions of the PUBLIC GRAPHS, with an analyst's help where a reader has
  * one configured.
  *
- * The IA is `docs/PUBLIC_GRAPH_MODEL.md` § "Graph Separation in the UI": one
+ * The IA is `docs/DATA_LAYER.md` § "Truth boundaries": one
  * layer at a time, each carrying its own truth boundary, so a kernel guarantee
  * and an institution's declaration are never rendered as the same kind of
  * fact. The rows inside a layer are derived from the record — the overlay list

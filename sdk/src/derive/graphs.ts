@@ -1,7 +1,7 @@
 /**
  * @figaro-protocol/sdk/derive — Base-graph projections
  *
- * The two protocol-enforced graphs of docs/PUBLIC_GRAPH_MODEL.md, projected
+ * The two protocol-enforced graphs of docs/DATA_LAYER.md, projected
  * as first-class objects from already-fetched core events. Pure folds — the
  * caller supplies `CoreEvents` (a frontend cache or a node-side fetcher);
  * nothing here does I/O. Both COMPOSE the existing reconstruction path

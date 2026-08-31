@@ -14,7 +14,7 @@
  * - Geo math: geohash encode/decode, prefix matching, Haversine distance
  * - Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
  *   composed from a clause or assembly, derived from chain + IPFS
- * - Truth boundaries: the trust labels of docs/PUBLIC_GRAPH_MODEL.md — every
+ * - Truth boundaries: the trust labels of docs/DATA_LAYER.md — every
  *   graph projection names the guarantee behind its rows
  * - Base graphs: Process + Settlement projections (protocol-enforced), pure
  *   folds over already-fetched core events

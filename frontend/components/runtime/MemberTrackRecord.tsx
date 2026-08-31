@@ -3,7 +3,7 @@
 /**
  * MemberTrackRecord — renders a seller's public-graph track record:
  * the settlement + coordination history reconstructed from on-chain events
- * (PUBLIC_GRAPH_MODEL.md §"Reputation derivation"). Pure render — the
+ * (DATA_LAYER.md §"Reputation derivation"). Pure render — the
  * caller supplies the record via useMemberTrackRecord.
  *
  * Every figure is recomputed from events, never a stored score. A seller

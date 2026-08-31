@@ -7,7 +7,7 @@ import { FigureFrame } from "@/components/figures/FigureFrame";
 export type RpgfValueLoopFigureProps = BaseFigureProps;
 
 // The deposit rationale, drawn. Source of truth for the mechanic:
-// docs/PUBLIC_GRAPH_MODEL.md § "Neutrality comes from the stake, not from the
+// docs/DATA_LAYER.md § "Neutrality comes from the stake, not from the
 // weight" — the ETH stake is a value loop, not a cost: more trade means more
 // base-currency demand for gas, aligned upside for every registry staker. The
 // neighboring § "What the stake does and does not do" BOUNDS the wording here:

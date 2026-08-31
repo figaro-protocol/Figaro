@@ -13,11 +13,11 @@
 <h1>Type Alias TruthBoundary</h1></div>
 <div class="tsd-signature"><span class="tsd-kind-type-alias">TruthBoundary</span><span class="tsd-signature-symbol">:</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;protocol-enforced&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;institution-declared&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;protocol-derived&quot;</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;composition-derived&quot;</span></div>
 <div class="tsd-comment tsd-typography"><p>@figaro-protocol/sdk/derive — Truth boundaries</p>
-<p>The trust labels a graph projection carries, verbatim from
-docs/PUBLIC_GRAPH_MODEL.md (&quot;Graph Separation in the UI&quot; + the composed-venue
-trail): every projection in this layer names which guarantee stands behind
+<p>The trust labels a graph projection carries. This module is their one home;
+docs/DATA_LAYER.md § &quot;Truth boundaries&quot; states the concept and points here.
+Every projection in this layer names which guarantee stands behind
 its rows, so a consumer never conflates protocol guarantees with
-institution-level claims. The label set is the doc's own vocabulary — a
+institution-level claims. The label set is closed — a
 projection picks from it, never coins a new one. What each label means is
 <code>TRUTH_BOUNDARY_GLOSS</code> below — the one home for the gloss text.</p>
 </div><aside class="tsd-sources">

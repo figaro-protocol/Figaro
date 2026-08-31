@@ -14,7 +14,7 @@ which order, and what prices clear the market. The platform is the
 intermediary, the data silo, and the rent-extractor.
 
 Figaro replaces this with **permissionless graph publication**. Every
-institution emits public coordination signals (see PUBLIC_GRAPH_MODEL.md)
+institution emits public coordination signals (see DATA_LAYER.md)
 that any agent can read, analyze, and act on.
 
 ---
@@ -300,7 +300,7 @@ unknown, not idle, and nothing stands in for it.
 
 Whether these signals add up to a usable map of the network is therefore not a protocol
 guarantee — it depends on which clauses got composed and filled
-(`PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built" owns that incentive argument;
+(`DATA_LAYER.md` § "Why the flow-map gets built" owns that incentive argument;
 the economics it serves are `VISION.md`'s).
 
 ---

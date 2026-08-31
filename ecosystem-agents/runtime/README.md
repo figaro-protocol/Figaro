@@ -57,7 +57,7 @@ block.
 library) are the executable form of `ecosystem-agents/figaro-analyst.md`: fetch
 the event record from both settlement universes, recover the substance behind
 the fingerprints through the framed channel, project the graphs of
-`docs/PUBLIC_GRAPH_MODEL.md`, and answer canonical queries over them. It rides
+`docs/DATA_LAYER.md`, and answer canonical queries over them. It rides
 the INDEXER tooling and shares nothing with the sequencer but a chain; its wire
 is its OWN — five deterministic routes plus a `POST /prompt` endpoint that EXISTS
 only when `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` are both set (absent

@@ -31,7 +31,7 @@ of one analyst, and this manual is the thing under it.
 
 ## The graph vocabulary — and why the class is OPEN
 
-`docs/PUBLIC_GRAPH_MODEL.md` is the owner of this model; read it once before your first
+`docs/DATA_LAYER.md` is the owner of this model; read it once before your first
 analysis. Five graphs are NAMED there, and they are the canonical grouping you present
 answers in — but **the class itself is open**, and treating the five as a closed enum is
 the single mistake that makes an analyst wrong about a market it has never seen.

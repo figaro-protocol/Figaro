@@ -213,7 +213,7 @@ interface TrackRecordAttestations {
  * A seller's public-graph track record — every indicator reconstructed from
  * on-chain events, recomputable by anyone. NOT a stored or soulbound score;
  * it is the raw settlement/coordination history the public graph exposes
- * (PUBLIC_GRAPH_MODEL.md §"Reputation derivation").
+ * (DATA_LAYER.md §"Reputation derivation").
  */
 export interface MemberTrackRecord {
     operatingSinceBlock: bigint | null;

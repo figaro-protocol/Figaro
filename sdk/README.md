@@ -1238,7 +1238,7 @@ table, and the run-your-own recipe are in
 Clause-agnostic attestation filtering, witness content addressing, geo math,
 the commits==resolves withdraw gate, and the **graph projections** — the
 semantic graphs a Figaro deployment emits, as first-class objects you can
-query. The model they project is `docs/PUBLIC_GRAPH_MODEL.md`; this section is
+query. The model they project is `docs/DATA_LAYER.md`; this section is
 the calling convention.
 
 ```ts
@@ -1340,7 +1340,7 @@ const shape = marketShape(process, (processId) => assemblyKeyFor(processId));
 const rec   = walletRecord(process, "0x…");        // empty arrays = no history
 ```
 
-The five graphs named in `PUBLIC_GRAPH_MODEL.md` are the canonical presentation
+The five graphs named in `DATA_LAYER.md` are the canonical presentation
 grouping; **the class is open**. Process and Settlement fall out of the
 must-have clauses by construction, overlays are spec-derived one per attestable
 clause family in use, and composition graphs come from whatever on-network

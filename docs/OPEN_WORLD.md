@@ -326,6 +326,6 @@ component **plus a semantic contract** (it depends on `ProcessModel` /
 
 ---
 
-Related: [PUBLIC_GRAPH_MODEL.md](PUBLIC_GRAPH_MODEL.md) (the public graphs the runtime
+Related: [DATA_LAYER.md](DATA_LAYER.md) (the public graphs the runtime
 renders against — an open class with five named instances, ruled 2026-08-26), [CLAUSES.md](CLAUSES.md) (the versioning/validation mechanics §2 relies on),
 [CONTRACTS.md](CONTRACTS.md) (the registries §1–§2 read from).

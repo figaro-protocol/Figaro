@@ -432,7 +432,7 @@ audit reads this as a GDPR-shaped defect next to the ECDH address channel, which
 keeps its plaintext off-chain.
 
 **Why it is correct**: the public/confidential boundary rule
-(`PUBLIC_GRAPH_MODEL.md` § "What Is Not Public") puts a datum on the committed side iff
+(`DATA_LAYER.md` § "What Is Not Public") puts a datum on the committed side iff
 the mechanism needs it beyond the two endpoints — and line items are exactly that:
 invoices and audit documents derive from them, disputes verify against them, and
 bond/price checks read them. Mitigation is compositional, not mechanical: item

@@ -1,11 +1,11 @@
 /**
  * @figaro-protocol/sdk/derive — Truth boundaries
  *
- * The trust labels a graph projection carries, verbatim from
- * docs/PUBLIC_GRAPH_MODEL.md ("Graph Separation in the UI" + the composed-venue
- * trail): every projection in this layer names which guarantee stands behind
+ * The trust labels a graph projection carries. This module is their one home;
+ * docs/DATA_LAYER.md § "Truth boundaries" states the concept and points here.
+ * Every projection in this layer names which guarantee stands behind
  * its rows, so a consumer never conflates protocol guarantees with
- * institution-level claims. The label set is the doc's own vocabulary — a
+ * institution-level claims. The label set is closed — a
  * projection picks from it, never coins a new one. What each label means is
  * `TRUTH_BOUNDARY_GLOSS` below — the one home for the gloss text.
  */

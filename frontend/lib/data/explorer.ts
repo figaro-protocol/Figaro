@@ -3,7 +3,7 @@
  * GRAPHS the network emits and lets a human ask the canonical questions of
  * them, with an analyst's help where one is configured.
  *
- * The IA is `docs/PUBLIC_GRAPH_MODEL.md` § "Graph Separation in the UI": each
+ * The IA is `docs/DATA_LAYER.md` § "Truth boundaries": each
  * graph is rendered as its OWN semantic layer carrying its own truth boundary
  * (protocol-enforced / institution-declared / protocol-derived /
  * composition-derived), never one blended surface — so a reader never

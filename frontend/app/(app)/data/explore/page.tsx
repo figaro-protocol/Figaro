@@ -4,7 +4,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { DataExplorer } from "@/components/data/DataExplorer";
 
 /**
- * /data/explore — the graph-query surface `docs/PUBLIC_GRAPH_MODEL.md`
+ * /data/explore — the graph-query surface `docs/DATA_LAYER.md`
  * promises ("agents discover work through graph queries, not platform-mediated
  * matching"), for the human who wants to ask the questions themselves.
  *

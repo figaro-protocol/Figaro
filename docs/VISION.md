@@ -110,7 +110,7 @@ worth more than a thousand forks of it: the same tooling, the same indexers,
 the same wallets serve every process, and every process's public data lies on
 one map. The network grows by what is built above the kernel, by anyone —
 clauses, assemblies, interfaces, other contracts — and designer rewards pay for
-that growth in proportion to use. `PUBLIC_GRAPH_MODEL.md` describes the map;
+that growth in proportion to use. `DATA_LAYER.md` describes the map;
 `OPEN_WORLD.md` describes how the layers above the kernel are composed.
 
 ## Recourse
