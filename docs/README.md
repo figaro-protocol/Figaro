@@ -20,8 +20,10 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 | Concept | Owner |
 |---|---|
-| The system: 2 kernel mechanisms + 5 nouns | maintainer-private build tooling — `ARCHITECTURE.md` and `THEORY.md` carry the public restatement |
-| The whole-system stack, the `clause.block` seam | `ARCHITECTURE.md` |
+| The system: 2 kernel mechanisms + 5 nouns | maintainer-private build tooling — `THEORY.md` carries the public restatement |
+| The `clause.block` seam (fields = protocol, block = presentation) | `CLAUSES.md` § "Clause-spec format" |
+| The coordinator pattern (composing the kernel) | `CONTRACTS.md` § Coordinators |
+| The public/confidential data rule | `PUBLIC_GRAPH_MODEL.md` § "What Is Not Public" |
 | Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
 | Game-theoretic derivation, six properties | `THEORY.md` |
 | Vision, post-firm economy, lineage | `VISION.md` |

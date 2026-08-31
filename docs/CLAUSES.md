@@ -141,30 +141,33 @@ Lives off-chain as JSON at the `contentURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-**The spec has two halves either side of the UI/protocol crease** (format
-ratified 2026-07-28; the published definition is
-`sdk/src/clauses/clause-spec.schema.json`):
+**The spec has two halves, and the protocol ends between them.**
 
-- **Top level = protocol + registration**: identity (`clauseId`, `version`,
-  `title`, `description`) and the content `fields`/`stages`.
-  **Stage 0 IS the committed content** (declared by `fields`); `stages[N≥1]`
-  are the runtime-evidence shapes.
-- **`block` = the UI half**, organized into PHASE SECTIONS named for their
-  reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`), `checkout`
-  (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`).
-  `runtime.fields` serves ON-NETWORK COMPOSITION INPUTS only (paired with
-  `design.composes`); runtime REPORTING is witness stages (`spec.stages`),
-  never `runtime.fields`. Its former tenants were deleted for cause — the
-  auction composition (`bef1886e`) and the carbon-retirement leg
-  (`f206d306`: no live mainnet router); the seam stays for the next
-  on-chain-invoke tenant (maintainer rulings 2026-07-02 + 2026-07-28).
-  Nothing on-chain or in the SDK's content layer reads it;
+- **Top level — the protocol**: identity (`clauseId`, `version`, `title`,
+  `description`) and the content `fields`/`stages`. Stage 0 is the committed
+  content (declared by `fields`); `stages[N≥1]` are the evidence shapes attested
+  while the process is open. Every section is a merkle leaf under the signed
+  `agreementHash`; the SDK validates the content against the spec off-chain, and
+  the bonds secure what was signed. The chain registers clauses and binds
+  attestations to the signed agreement; it reads no content shape.
+- **`block` — the presentation**, organized into phase sections named for their
+  reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`),
+  `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`,
+  `fields`). `runtime.fields` serves on-network composition inputs only (paired
+  with `design.composes`); reporting is witness stages (`spec.stages`), never
+  `runtime.fields`. Nothing on-chain or in the SDK's content layer reads `block`;
   the reference parser is `ClauseBlockBinding`
-  (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list
-  from that type, don't quote a remembered one. **One verb — `fills` — says
-  who authors which content fields** (designer / catalogue / profile); the
-  buyer owns every field named in no fills list, derived as the complement,
-  never stored.
+  (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list from
+  that type. **One verb — `fills` — says who fills which content fields**
+  (designer / catalogue / profile); the buyer owns every field named in no fills
+  list, derived as the complement, never stored.
+
+`fields` are the protocol; everything in `block` is replaceable presentation.
+Anyone can build a different frontend — ignore `block`, invent their own
+presentation — and still get the contracts, the mechanisms, the verified
+`fields`, and designer rewards. A surface driven by `block` is the designed
+presentation of verified clauses; a hardcoded list, a stored role or category,
+or a bundled copy of a registry is drift.
 
 **THE STANDARD (maintainer ruling 2026-07-28): every attribute expressed —
 zero, empty, or `null`, never absent.** The repo's specs all comply (count derived: `ls clauses/*.json | wc -l`), enforced

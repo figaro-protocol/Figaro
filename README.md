@@ -208,7 +208,6 @@ Inventories (see [docs/README.md](docs/README.md) for the full doc map):
 
 Core theory + design:
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — The whole-system stack, top to bottom, and the `clause.block` seam
 - [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
 - [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
 - [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF distribution

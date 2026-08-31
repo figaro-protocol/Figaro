@@ -162,7 +162,41 @@ tests in `test/protocol/registries/AssemblyRegistryTest.t.sol`.
 
 ## Coordinators (`src/protocol/coordinators/`)
 
-Contracts that compose the kernel without becoming a party to it — the coordinator pattern (`ARCHITECTURE.md` § "Composing the kernel").
+Contracts that compose the kernel without becoming a party to it. A new
+capability beside the kernel is a NEW parallel contract composing kernel
+state — never a kernel edit, never a tenant inside an existing registry. The
+copyable shape:
+
+1. **Bind through a minimal, immutable surface.** Declare only the kernel
+   functions you call and bind at construction: each coordinator declares its
+   own local `interface IFigaroCore` naming exactly the surface it uses
+   (`commit` in `WitnessSwapAndCommitCoordinator.sol`; `orderStatus` +
+   `DOMAIN_SEPARATOR` in `AttestationCoordinator.sol`) and holds it
+   `immutable`. The local-minimal interface is the pattern for external
+   composers too: a third party composing the deployed kernel cannot import
+   this repo's files, only its ABI. (`CommitmentTypes` is the shared
+   struct/hashing library both import.)
+2. **Read kernel state as the single source of truth; never re-implement
+   kernel logic.** A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`),
+   call (`commit`), and — when it cannot import a constant from the frozen
+   kernel — mirror one with a comment pinning the source (the 2× bond
+   multiplier in `WitnessSwapAndCommitCoordinator`). The kernel does the
+   enforcing: the bond pull, the status transition, the atomic resolution. A
+   contract that enforces bonding or resolution itself is re-implementing the
+   kernel, not composing it.
+3. **Hold no resolution-time discretion.** A coordinator carries setup or
+   evidence legs (a swap before `commit`; a merkle-checked attestation), never a
+   lever over a live process's resolution.
+4. **The arrow points one way.** The kernel never knows the coordinator exists
+   (its one mention of `AttestationCoordinator`, in the `DOMAIN_SEPARATOR` doc
+   comment, is illustrative, not a dependency). Tenant names — Kleros, Uniswap,
+   a lender — live at the edge: in the composing contract, in a clause's
+   `block.design.composes`, in the UI dispatch. Never in the kernel, never in
+   the SDK's protocol modules.
+
+The test before building anything beside the kernel: *can this be a parallel
+contract that reads kernel state and lets the kernel enforce?* If the answer
+seems to be no, the proposal is adding a mechanism to the kernel — stop.
 
 **`src/protocol/coordinators/AttestationCoordinator.sol`** — Unified zero-storage attestation,
 **merkle-only**, receipt-bound to the signed `agreementHash`. Three modes:
@@ -188,8 +222,7 @@ attestable with **zero per-clause on-chain code**.
 No new kernel state: `agreementHash` is read from the caller-supplied
 Commitment struct, which `_requireKnownCommitment` verifies matches a
 committed orderHash via `core.orderStatus`. One of the two live embodiments of
-the coordinator pattern — canonical statement in `ARCHITECTURE.md`
-§ "Composing the kernel".
+the coordinator pattern stated at the top of this section.
 
 4 Certora CVL rules in `certora/AttestationCoordinator.spec` (role-gate +
 parametric Core-immutability). Binding-integrity, the `contentRef` emission,
@@ -248,8 +281,7 @@ fails witness verification) using `src/mocks/MockWitnessPermit2.sol`, which
 verifies the witness signature; digest parity with the canonical Permit2
 deployment is proven by `test/protocol/coordinators/WitnessSwapAndCommitCoordinatorForkTest.t.sol`
 (mainnet fork, `MAINNET_RPC_URL`-gated). Its local-minimal `IFigaroCore` binding is the
-copyable exemplar of the coordinator pattern — canonical statement in
-`ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
+copyable exemplar of the coordinator pattern stated at the top of this section. EIP-7702 and ERC-4337 variants are
 out of scope.
 
 ## Verifier (`src/protocol/verifier/`)

@@ -263,11 +263,25 @@ That is what levels the field.
 
 ## What Is Not Public
 
-Private delivery details (exact street address, apartment number, recipient
-phone, special instructions) are never stored on-chain. They travel the
-per-order ECDH channel with a wallet-signed hash anchor on-chain for tamper
-evidence — `ARCHITECTURE.md` § "The other boundary — public vs confidential
-data" owns that design.
+**A datum is a committed public field iff the mechanism needs it beyond the
+two order endpoints** — bond and payment verification, document derivation
+(invoice, bill of lading), or read-time and dispute verification — **and it is
+committed at no finer grain than that need requires** (a neighborhood geohash
+cell, never a door; a keccak hash, never the plaintext). **A datum only the
+counterparty operationally needs** (door-grade address, addressee name, floor,
+instructions) **travels the per-order channel** (`@figaro-protocol/sdk/handoff`),
+**with a wallet-signed hash anchor on-chain for tamper evidence** — revealed to
+a dispute forum by the party who holds it, verifiable against the anchor, and
+crypto-shreddable until then.
+
+Evidence follows the same pattern: the public artifact carries the coarsest
+mechanism-sufficient grain (the geohash cell, hashed device identifiers) plus
+the hash of the raw capture; full fidelity stays party-held for dispute-time
+revelation. Raw coordinates and stable device identifiers never land on a
+public artifact. Where the rule caps a public field's precision, the cap is a
+protocol-tier rule, never one frontend's taste: the spec carries the structural
+ceiling and every reader derives the public grain from the committed spec
+(`docs/CLAUSES.md`'s `figaro-geolocation` row owns the derivation).
 
 ### The private side is the owner's asset
 
