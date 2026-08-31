@@ -162,7 +162,7 @@ prior state root under V5 rules.
 A first prototype was built, verified locally, and deleted in the 2026-06-25
 proof-apparatus teardown; the 2026-07-16 rebuild returned every piece as the
 witness-based apparatus below — all of it live in the tree and inside the
-frozen audit scope (`CONTRACTS.md` § "Teardown state — CLOSED" owns the
+frozen audit scope (`CONTRACTS.md` § "What the protocol has no contract for" owns the
 teardown/rebuild statement):
 
 **Rust kernel mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
@@ -452,7 +452,7 @@ which clauses exist. The kernel owns nothing; a prover that knows the
 clause list owns something. The 2026-07-16 rebuild landed the corrected
 architecture directly; per-clause anything — embedded specs, `clauseId`
 dispatch, per-clause validator contracts — is permanently rejected
-(`CONTRACTS.md` § "Teardown state — CLOSED" owns that ruling).
+(`CONTRACTS.md` § "What the protocol has no contract for" owns that ruling).
 
 **The live architecture.** The guest holds a generic clause *engine* —
 parse + validate + encode (`prover/clause/src/spec.rs`, `validate.rs`,

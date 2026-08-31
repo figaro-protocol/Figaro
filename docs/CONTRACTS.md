@@ -1,20 +1,23 @@
-# Smart Contracts — What Actually Exists (V5)
+# Smart Contracts — the inventory
 
-All contracts in `src/`. Solidity 0.8.26, Foundry. (V3 lives in `archive-v3/`, a local-only directory that is not in any clone; git history preserves prior versions.)
+Every contract in `src/`. Solidity 0.8.26, Foundry. The directory is the tier
+map — `src/kernel/` · `src/protocol/{registries,coordinators,verifier,usage}/`
+· `src/florin/` · `src/rpgf/` · `src/mocks/` · `src/echidna/` — and the
+sections below mirror it; if they diverge, the filesystem is right.
 
-**The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier,usage}/` · `src/florin/` · `src/rpgf/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
-
-No contract belongs to a dapp. Every contract is a permissionless primitive.
-
-This file is the canonical inventory. `docs/README.md` indexes it; agents must not reference contracts not listed here.
+**This file is the canonical inventory. A contract not listed here does not
+exist in this repo.** Every contract is a permissionless primitive; none
+belongs to an interface. Verification coverage per contract is derived in
+`VERIFICATION_MAP.md`; commands, environment variables, and deploy scripts are
+in `LOCAL_DEV.md`; the mechanism's derivation is in `THEORY.md`.
 
 ## The contract-edge graph
 
-Every arrow is an **immutable pointer fixed at construction** (reads, unless
-marked); parenthesized nodes are external canonical contracts, not this repo's.
-Two structural facts the graph makes visible: the kernel is the star's center
-and pins nothing, and the three registries carry ZERO edges among themselves —
-parallel anchors, never nested (Separation of Concerns — Registry Families).
+Every arrow is an immutable pointer fixed at construction (a read, unless
+marked); parenthesized nodes are external canonical contracts, not this
+repo's. Two structural facts: the kernel is the centre and points at nothing,
+and the three registries carry no edges among themselves — parallel anchors,
+never nested.
 
 ```
 AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordinator ──▶ (Permit2)
@@ -25,140 +28,116 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
              writes accrual │   │ reads accrual
                             │   │
           FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AssemblyRegistry
-              │        │            │              (author of record)
+              │        │            │              (designer of record)
               ▼        ▼            ▼
        (SP1 gateway)  ClauseRegistry   FlorinToken
                       (contentHashOf)  (registered minter at genesis, 600M cap)
 ```
 
 - `FigaroCore` — no outbound edges: the kernel reads no contract above it.
-- `UsageCounter.applyBatchAccrual` is the verifier's ONE write edge and the
-  counter's one privileged caller (`DESIGN_DECISIONS.md` §16); everything else
-  on the graph is a read.
-- `FlorinToken` — no outbound edges either: minters point at it, registered by
-  the deployer at genesis before `renounceDeployerMint` closes the registry.
-- Assembly→clause and seller→assembly relationships are OFF-chain (template
+- `UsageCounter.applyBatchAccrual` is the verifier's one write edge and the
+  counter's one privileged caller; everything else on the graph is a read.
+- `FlorinToken` — no outbound edges: minters point at it, registered by the
+  deployer at genesis before `renounceDeployerMint` closes the registry.
+- Assembly→clause and seller→assembly relationships are off-chain (assembly
   content, profile bindings) — deliberately absent from this graph.
 
 ## Kernel (`src/kernel/`)
 
-The frozen settlement primitive. Never edited — an agent-permissions rule enforced by the maintainers' private tooling.
+The two frozen contracts. Never edited.
 
-**`src/kernel/FigaroCore.sol`** — The protocol kernel. No owner, no fee, no escape hatches.
-- 2 state-changing entry points: `commit` (unified dual-signed), `resolveProcess`
-- 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
-- EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 6 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
+**`src/kernel/FigaroCore.sol`** — Holds every deposit and resolves a process
+when its buyer signs.
+- Two state-changing entry points: `commit(Commitment c, bytes buyerSig,
+  bytes sellerSig)` and `resolveProcess(bytes32 processId, Commitment[]
+  commitments)`.
+- Three mappings: `processes` (`ProcessState{rootBuyer, currency,
+  cumulativeValue, activeOrderCount}`), `orderStatus` (`uint8`: 0 unknown,
+  1 committed, 2 resolved), `orderProcessId` (`bytes32`).
+- `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment`
+  from the buyer and `2 × expectedCumulativeValue` from the seller. A root
+  order (`c.processId == 0`) opens a process; any other order extends one and
+  must carry `c.buyer == process.rootBuyer` and `expectedCumulativeValue`
+  equal to the live accumulator plus `payment` (`CumulativeValueMismatch`).
+- `resolveProcess` requires `msg.sender == rootBuyer` (`NotProcessBuyer`) and
+  the complete active-order list (`IncompleteOrderList`), then pays every order
+  at once: seller `2 × expectedCumulativeValue + payment`, buyer `payment`.
+  Every deposited token leaves; the kernel never holds a withdrawable balance.
+- No owner, no admin, no pause, no upgrade, no timeout, no third entry point.
+  `ReentrancyGuard` on both functions.
 
-**`src/kernel/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
-Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
-`salt` is identity (repeat orders hash distinctly); `deadline` is expiry of the
-unconsummated dual-signature window — a signature cannot be revoked (no cancel,
-by doctrine), so it must age out (`DeadlineExpired` gates commit; nothing
-expires post-commit). See `DESIGN_DECISIONS.md` §13.
+**`src/kernel/CommitmentTypes.sol`** — The `Commitment` struct and its EIP-712
+hashing: `{processId, buyer, seller, currency, payment, expectedCumulativeValue,
+agreementHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
+`deadline` bounds the window in which an unconsummated pair of signatures can
+be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
+out; nothing expires after commit. `DESIGN_DECISIONS.md` §13 owns the
+reasoning.
 
 ## Registries (`src/protocol/registries/`)
 
-The three registry-family anchors — **parallel, not nested**. Each has its own identity scheme, evolution path, and event stream; none references another's existence.
+Three parallel anchors, each with its own identity scheme, event stream, and
+withdrawal behaviour; none references another. Registering publishes; it
+never qualifies — the kernel gates nothing on registry state.
 
-**`src/protocol/registries/ClauseRegistry.sol`** — Permissionless clause anchoring with a
-reclaimable ETH deposit (staked intent — K4).
-`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from. `contentHashOf[idHash]` stores the anchor (never cleared) — the trust anchor `FigaroBatchVerifier` checks each proof's witness-spec binding against.
-`registerClause` is first-write-wins, immutable, and `payable` (requires the
-immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registeredBy-only,
-once, no time lock) returns the stake and emits `DepositWithdrawn` — the
-binding stays permanent, but readers DE-SURFACE the clause for new
-compositions (surfacing derives from the live stake; committed agreements
-keep resolving it). Version migration = withdraw the old version's stake +
-register the new. `setMechanismClause(idHash)` is the registry's third external
-function — permissionless mechanism SELF-DECLARATION: any contract may call it,
-it writes no storage, it emits `MechanismClauseSet(msg.sender, idHash)` for
-indexers, and it reverts `NotRegistered(idHash)` on an unanchored key. It
-confers nothing (`discovery.ts` skips the event as a non-discovery input).
-The commits == resolves withdraw gate is protocol-surface:
-the count lives in the indexer (the same count RPGF pays on), and the contract
-cannot hold it (the kernel is frozen, with no composition provenance), so the
-gate has no on-chain hardening. There is **no on-chain
-clause-content validation** on this surface — registration anchors the spec
-locator (IPFS) + content hash only; the validation model (off-chain Layer A,
-in-proof on the batched path, the merkle/fingerprint binding) is owned by
-`CLAUSES.md`.
+**`src/protocol/registries/ClauseRegistry.sol`** — Permissionless clause
+anchoring under a stake.
+- Key: `idHash = keccak256(abi.encode(clauseId, version))`. `contentHash` is
+  keccak256 of the canonical spec JSON; `contentURI` is where readers fetch it.
+  `contentHashOf[idHash]` is never cleared — it is the anchor
+  `FigaroBatchVerifier` checks every witness-spec binding against.
+- `registerClause` — first-write-wins, immutable, `payable`, requires exactly
+  `registrationDeposit` (`WrongDeposit`); emits `ClauseRegistered`.
+- `withdrawDeposit(idHash)` — the registering wallet only, once, no time lock;
+  refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
+  remove the clause from view for new compositions, and committed agreements
+  keep resolving it.
+- `setMechanismClause(idHash)` — permissionless self-declaration by any
+  contract; writes no storage, emits `MechanismClauseSet(msg.sender, idHash)`,
+  reverts `NotRegistered` on an unanchored key. It confers nothing.
+- Registration anchors a locator and a content hash only; the contract
+  validates no content. `CLAUSES.md` owns the validation model.
 
-Note: `figaro-topology` is an **agreement-only clause** — parties commit to
-it at contract-signing time inside the off-chain agreement, and it's
-never fired as a runtime attestation. It is *not* off-chain-only, though: the
-topology section is a merkle leaf under the on-chain `agreementHash`,
-inclusion-provable via OpenZeppelin `MerkleProof` (`buildSectionInclusionProof`
-in `agreement.ts`) — "no runtime attestation" is not "no on-chain verification".
-Its `ClauseRegistry` entry anchors the clauseId as off-chain vocabulary; the DAG
-itself is reconstructed by indexers/frontend reading topology sections from the
-signed agreement.
+**`src/protocol/registries/MembersRegistry.sol`** — Permissionless member
+registration under a stake. A member is a wallet that publishes a
+declaration — buyer, seller, or both; the declaration is one document, split
+between the identity envelope here and the item list behind `catalogueURI`.
+- `register(metadataURI)` — sets the dedup guard, takes the stake, emits
+  `MemberRegistered`.
+- `updateProfile(metadataURI)` — caller-only replacement, no stake movement,
+  emits `MemberProfileUpdated`.
+- `requestWithdrawal()` — clears the dedup guard at once (the member leaves
+  view and may re-register), schedules the stake for release, emits
+  `MemberWithdrawalRequested` — the signal discovery and erasure readers fold.
+- `withdraw()` — refunds the stake once `withdrawalCooldown` has elapsed,
+  emits `MemberWithdrawn`.
+- State: `_registered`, `pendingDeposit`, `releaseAt`. No active flag, no role
+  field, no deactivate. `UsageCounter` reads one field, `registered`, as the
+  seller-side gate for designer rewards.
+- The cooldown is what prices an identity: without it one stake serves N
+  identities in sequence; with it, sustaining N identities across a period `P`
+  costs `stake · N · T / P`. Leaving view and refunding are different moments
+  by design.
 
-**`src/protocol/registries/MembersRegistry.sol`** — Permissionless participant
-self-registration with a reclaimable ETH deposit (staked intent — K4). **MEMBER, not
-seller:** the kernel is actor-neutral, but a seller-only registry left a pure buyer
-nowhere to publish a price, a whitelist, or a calendar. "Member" is registry-tier
-vocabulary for *a wallet that publishes a declaration* — **not a sixth noun and not a
-role**; role stays DERIVED from the orders a wallet holds and the clauses they carry.
-Registering is how a wallet PUBLISHES, never how it QUALIFIES: transacting through the
-kernel requires no registration at all.
+**`src/protocol/registries/AssemblyRegistry.sol`** — Permissionless assembly
+anchoring under a stake.
+- Identity is the composition: `compositionHash = keccak256` of the assembly's
+  canonical composition (the composed agreements — clauses, values, topology;
+  editorial prose excluded). Identical compositions collapse to one binding;
+  no caller-chosen name exists on-chain. The human-readable slug is derived
+  off-chain (`deriveAssemblySlug`).
+- `registerAssembly(compositionHash, contentURI)` — first-write-wins, requires
+  exactly `registrationDeposit`, emits `AssemblyRegistered`.
+- `withdrawDeposit(compositionHash)` — the registering wallet only, once, no
+  time lock; refunds the stake and emits `DepositWithdrawn`. The binding is
+  permanent: buyers and sellers that reference the assembly rely on its content
+  staying stable.
+- State: `bindings: compositionHash → AssemblyBinding{registeredBy,
+  registeredAt, depositWithdrawn, contentURI}`. No owner, no transfer, no
+  removal. The contract validates no content.
 
-The declaration is **ONE document, no halves** (ruled 2026-07-30) — it is already split
-on stable↔volatile (identity envelope here, item list behind `catalogueURI`), and a
-buyer/seller split would be a second, crossing axis.
-
-Four external functions: `register(metadataURI)` (sets the dedup guard, consumes the
-deposit, emits `MemberRegistered`); `updateProfile(metadataURI)` (caller-only metadata
-replacement, no deposit movement, emits `MemberProfileUpdated`);
-`requestWithdrawal()` (clears the dedup guard **immediately** — the member de-surfaces
-and may re-register at once — schedules the ETH for release and emits
-`MemberWithdrawalRequested`); and `withdraw()` (transfers the pending deposit once
-`withdrawalCooldown` has elapsed, emits `MemberWithdrawn`).
-
-**The cooldown is what makes `registrationDeposit` a real Sybil price.** Without it one
-deposit is recyclable across N identities in sequence, so capital cost is O(1) however
-much breadth is fabricated; with it, sustaining N identities across a reward period `P`
-costs `deposit · N · T / P`. De-surfacing and release are deliberately different
-moments: nobody is held on a surface they asked to leave (discovery removal and erasure
-are immediate), while the capital stays committed. The two ID-keyed registries
-(`ClauseRegistry`, `AssemblyRegistry`) carry **no** cooldown — their withdrawal is
-one-shot per key and the binding is permanent, so there is nothing to recycle.
-
-Four events: `MemberRegistered`, `MemberProfileUpdated`, `MemberWithdrawalRequested`
-(**the de-surfacing signal discovery and erasure readers fold** — not `MemberWithdrawn`),
-`MemberWithdrawn`. State is the dedup guard plus the pending-release schedule
-(`_registered`, `pendingDeposit`, `releaseAt`). **No `_active` flag, no role enum, no
-`deactivate` / `reactivate`**: availability is signal-by-availability off-chain, not
-registry state. The deposit is a spam-protection knob only; profile updates do not
-require withdrawing. The kernel does not gate any operation on registry state — this is
-advisory metadata for off-chain discovery surfaces. `UsageCounter` reads exactly one
-field of it (`registered`) as the seller-side RPGF gate.
-
-**`src/protocol/registries/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
-reclaimable ETH deposit. An assembly is a composition template that USES
-clauses; this registry is the assembly registry family's anchor, parallel to
-`ClauseRegistry` (clauses) and `MembersRegistry` (participants) per the
-separation-of-concerns doctrine. Two external functions:
-`registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
-immutable `registrationDeposit`, emits `AssemblyRegistered`) and
-`withdrawDeposit(compositionHash)` (registeredBy-only, callable once, no time lock —
-K4: withdrawing DE-SURFACES the assembly; the commits == resolves gate is
-protocol-surface against the indexer's count, emits `DepositWithdrawn`). Identity IS the
-composition: `compositionHash` = keccak256 of the template's canonical
-composition subset (the composed agreements — clauses, values, topology;
-editorial prose excluded), so identical compositions collapse to one binding
-and no caller-chosen name exists on-chain to squat; the human-readable slug is
-presentation, derived off-chain as a pure function of the hash
-(`deriveAssemblySlug`). State is one mapping `bindings: compositionHash →
-AssemblyBinding` {registeredBy, registeredAt, depositWithdrawn, contentURI}. The
-composition binding is permanent — `withdrawDeposit` returns only the ETH and
-never clears the binding, because buyers and sellers that reference the
-assembly rely on its content staying stable; the deposit is a reclaimable
-Sybil-resistance stake, not a fee, and the surfacing readers derive
-visibility from it. No owner, no admin, no fee, no `transferAssembly`, no
-`removeAssembly`. The contract does not validate content — well-formedness is an
-off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
-tests in `test/protocol/registries/AssemblyRegistryTest.t.sol`.
+The two hash-keyed registries carry no cooldown — their withdrawal is one-shot
+per key and the binding permanent, so there is nothing to recycle.
 
 ## Coordinators (`src/protocol/coordinators/`)
 
@@ -198,488 +177,279 @@ The test before building anything beside the kernel: *can this be a parallel
 contract that reads kernel state and lets the kernel enforce?* If the answer
 seems to be no, the proposal is adding a mechanism to the kernel — stop.
 
-**`src/protocol/coordinators/AttestationCoordinator.sol`** — Unified zero-storage attestation,
-**merkle-only**, receipt-bound to the signed `agreementHash`. Three modes:
-- `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
-- `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
-- `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`. **EIP-7702-only precondition**: kernel parties are ECDSA EOAs, so `target.seller` can expose `isAuthorized` code only via 7702 delegation — without it the staticcall finds no code and the path reverts.
+**`src/protocol/coordinators/AttestationCoordinator.sol`** — Zero-storage
+attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
+- `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8
+  stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — role and
+  target commitments; the same commitment twice for same-order attestation,
+  distinct commitments for cross-order attestation within a process.
+- `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes32
+  sectionHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
+  `target.buyer`.
+- `attestViaResolver(Commitment target, ...)` — caller authorized by
+  `IRoleResolver(target.seller).isAuthorized`. Kernel parties are ECDSA
+  externally owned accounts, so `target.seller` can expose `isAuthorized` only
+  through EIP-7702 delegation; without it the staticcall finds no code and the
+  path reverts. No production caller today.
 
-The call carries only **fingerprints, never preimages** (matching the batched
-path): `sectionHash = keccak256(sectionData)` and `contentRef = keccak256(content)`.
-Calldata is public and permanent, so a `private`-disposition section's plaintext
-never touches the chain — it lives off-chain (encrypted IPFS), bound to this hash.
-For every call, the coordinator verifies an OZ-style merkle inclusion proof of
-`leaf = keccak256(keccak256(clauseId || sectionHash))` (double-hashed — leaf/node domain separation) against
-`target.agreementHash`, then emits
-`Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`
-with the caller-supplied `contentRef` (emitted verbatim). It **validates no content shape** — it
-binds the attestation to the signed agreement (merkle inclusion) and content-hashes
-the evidence; well-formedness is an off-chain SDK + read-time concern. An
-attestation whose clause was not committed at contract-signing time cannot land —
-the proof won't open (`InvalidInclusionProof` revert). A never-seen clause is
-attestable with **zero per-clause on-chain code**.
+The call carries fingerprints, never preimages: `sectionHash =
+keccak256(sectionData)`, `contentRef = keccak256(content)`; a private section's
+plaintext never touches the chain. For every call the coordinator verifies an
+OpenZeppelin-style merkle inclusion proof of `leaf =
+keccak256(keccak256(clauseId || sectionHash))` (double-hashed for leaf/node
+domain separation) against `target.agreementHash`, then emits
+`Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`.
+`_requireKnownCommitment` checks the caller-supplied commitment against a
+committed `orderHash` via `core.orderStatus`. It validates no content shape;
+a clause not committed at signing cannot be attested (`InvalidInclusionProof`),
+and a never-seen clause is attestable with zero per-clause on-chain code.
 
-No new kernel state: `agreementHash` is read from the caller-supplied
-Commitment struct, which `_requireKnownCommitment` verifies matches a
-committed orderHash via `core.orderStatus`. One of the two live embodiments of
-the coordinator pattern stated at the top of this section.
+**`src/protocol/coordinators/IRoleResolver.sol`** — `isAuthorized(orderHash,
+caller)`, the interface a seller address implements to delegate attestation.
 
-4 Certora CVL rules in `certora/AttestationCoordinator.spec` (role-gate +
-parametric Core-immutability). Binding-integrity, the `contentRef` emission,
-and the inclusion-proof revert path are covered by Foundry tests.
-
-`attestViaResolver` is a latent Level-3 path — no current production caller.
-A mechanism contract adopting it must have its seller address implement
-`IRoleResolver.isAuthorized(orderHash, caller)`; the inclusion-proof gate fires
-before the resolver check.
-
-**`src/protocol/coordinators/IRoleResolver.sol`** — Role-authorization interface for mechanism-delegated attestation.
-
-**`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`** — Off-protocol executor letting a
-buyer and/or seller post their FigaroCore bond in a token other than the process
-bond currency. One external function, `swapAndCommit(c, buyerSig, sellerSig,
-buyerFunding, sellerFunding)`: for each enabled leg it pulls the party's input
-token via a Permit2 **witness** signature (`permitWitnessTransferFrom`), forwards
-the swap calldata to an immutable `router` (Uniswap **SwapRouter02** in
-production — never the Universal Router; see the venue note below), forwards the
-swapped bond currency to the party's EOA, then calls
-`FigaroCore.commit`. Because the kernel pulls each bond from the named party
-(`c.buyer`/`c.seller`) and never checks `msg.sender`, the coordinator funds the
-party in-place rather than substituting itself — the EIP-712 commitment stays
-bilaterally signed and the coordinator never becomes a counterparty. Bond amounts
-are derived from the commitment (2·payment, 2·expectedCumulativeValue), never
-passed in, so a caller cannot under-fund the pull; the leg reverts
-(`OutputBelowBond`) if the swap yields less than the bond. The witness binds
-`{router, inputToken, maxInput, keccak256(swapData)}` into a `SwapWitness` the
-party signs (helper `swapWitness(inputToken, maxInput, swapData)` recomputes it
-for off-chain signers): substitute any of those and the recomputed witness no
-longer matches the signed digest — Permit2's own signature check reverts before a
-token moves. Without the witness a relayer/front-runner could substitute its own
-route — sandwiching the pool or routing to a just-above-bond output — and capture
-the slippage residual owed to the party (MED severity; an earlier unhardened
-coordinator with exactly that flaw was deleted before any deployment — git
-history). Bond currency/amount are NOT re-bound in the witness: they derive from
-`c`, already bilaterally EIP-712-signed and kernel-enforced. Immutable
-`figaroCore`/`permit2`/`router`, `ReentrancyGuard`, no owner/admin/pause. Kernel
-untouched; the swap venue is an off-protocol auxiliary; permissionless
-first-write-wins means alternative coordinators with different routers/MEV
-policies are valid compositions. Per-party prerequisites: a one-time
-`approve(FigaroCore, …)` for the bond currency (same as the plain flow), a
-one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2
-**witness** signature. Deploy-wired on devnet (`Deploy.s.sol`, composed with
-`MockWitnessPermit2` + `MockSwapVenue`; mainnet uses the canonical Permit2
-and a real venue) and UI-wired: the checkout's swap-funding panel builds the
-witness-signed buyer leg (`@figaro-protocol/sdk` `buildSwapWitnessTypedData` +
-`lib/composition/swapFunding.ts`), and any payload carrying one broadcasts
-through `swapAndCommit` (`lib/composition/useSwapAndCommitActions.ts`). Its two
-token-forwarding sites are tracked in `certora/token-ops.inventory` — both
-`[PENDING]` a CVL rule.
-Foundry tests in `test/protocol/coordinators/WitnessSwapAndCommitCoordinatorTest.t.sol` cover both
-funding legs, residual refunds, and
-`test_RevertWhen_SwapDataSubstituted_FrontRunImpossible` (a substituted route
-fails witness verification) using `src/mocks/MockWitnessPermit2.sol`, which
-verifies the witness signature; digest parity with the canonical Permit2
-deployment is proven by `test/protocol/coordinators/WitnessSwapAndCommitCoordinatorForkTest.t.sol`
-(mainnet fork, `MAINNET_RPC_URL`-gated). Its local-minimal `IFigaroCore` binding is the
-copyable exemplar of the coordinator pattern stated at the top of this section. EIP-7702 and ERC-4337 variants are
-out of scope.
+**`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`** — Lets a
+buyer and/or seller fund a bond from a token other than the process's
+denomination, in the same transaction as `commit`. One external function,
+`swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)`: for each
+enabled leg it pulls the party's input token through a Permit2 witness
+signature (`permitWitnessTransferFrom`), forwards the swap calldata to the
+immutable `router` (Uniswap SwapRouter02 — a venue that pulls by ERC-20
+allowance; never the Universal Router), forwards the swapped denomination to
+the party's own address, then calls `FigaroCore.commit`.
+- The kernel pulls each bond from the named party and never checks
+  `msg.sender`, so the coordinator supplies the party in place and never becomes
+  a counterparty; the commitment stays bilaterally signed.
+- Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`),
+  never from calldata; a leg reverts `OutputBelowBond` if the swap yields less.
+- The witness binds `{router, inputToken, maxInput, keccak256(swapData)}` into
+  a `SwapWitness` the party signs (`swapWitness(inputToken, maxInput,
+  swapData)` recomputes it for off-chain signers); substituting any of them
+  fails Permit2's own signature check before a token moves, so no relayer can
+  reroute the swap and capture the residual.
+- Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no owner,
+  no admin, no pause. Alternative coordinators with other routers are valid
+  compositions.
+- Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
+  denomination, a one-time `approve(Permit2, …)` for the input token, and a
+  per-commit Permit2 witness signature.
 
 ## Verifier (`src/protocol/verifier/`)
 
-The proof-based settlement path that runs beside the direct kernel path (`SCALING_STRATEGY.md`).
+The proof-based path that resolves batches of processes beside the direct
+kernel path. `SCALING_STRATEGY.md` owns the design; this is the surface.
 
-**`src/protocol/verifier/FigaroBatchVerifier.sol`** — Proof-based batch settlement (the Track-2
-scaling path, `SCALING_STRATEGY.md`; rebuilt 2026-07-16 from the pre-teardown
-prototype, upgraded to the witness model). One external function,
-`settleBatch(proof, publicValues, positions, events, usage)`: verifies an SP1 proof of
-a batch of kernel operations (commits, resolves, witness-gated attestations)
-against the immutable `programVKey`, checks state-root continuity + chain
-binding, hash-verifies the calldata (positions / attestations / spec bindings,
-O(n) assembly packing — byte-exact parity with the Rust kernel's
-`compute_*_hash`), **checks every (clause key → witness-spec hash) binding
-against `ClauseRegistry.contentHashOf`** — the open-world gate: the vkey covers
-the generic clause ENGINE, the registry anchors the constraint set, so a new
-clause never touches the prover (the full argument is `SCALING_STRATEGY.md`
-§ "Prover Clause Architecture") — reconciles
-net token positions (pull net deposits / push net payouts;
-`FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
-topic as the coordinator's — indexers filter by address), **carries the RPGF
-usage accrual across to `UsageCounter`** (below), and advances the state root.
-Immutable `verifier`/`programVKey`/`clauseRegistry`/`usageCounter`, no owner,
-no fee, no upgrade path — a program change is a fresh deploy. NOT a florin
-minter.
+**`src/protocol/verifier/FigaroBatchVerifier.sol`** — One external function,
+`settleBatch(proof, publicValues, positions, events, usage)`:
+- verifies an SP1 proof of a batch of kernel operations (commits, resolutions,
+  witness-gated attestations) against the immutable `programVKey`;
+- checks state-root continuity and chain binding, and hash-verifies the
+  calldata (positions, attestations, spec bindings) byte-for-byte against the
+  Rust kernel's `compute_*_hash`;
+- checks every (clause key → witness-spec hash) binding against
+  `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine,
+  the registry anchors the constraint set, so a new clause never touches the
+  prover;
+- reconciles net token positions (pulls net deposits, pushes net payouts;
+  `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
+  topic as the coordinator's — indexers filter by address), forwards the usage
+  accrual to `UsageCounter.applyBatchAccrual`, and advances the state root.
+- Immutable `verifier` / `programVKey` / `clauseRegistry` / `usageCounter`; no
+  owner, no upgrade path — a program change is a fresh deploy. Not a florin
+  minter.
 
-**The RPGF leg** exists because the two settlement paths are DISJOINT state
-universes: a batch-settled process never acquires kernel status, so
-`UsageCounter`'s direct path — which requires `FigaroCore.orderStatus ==
-RESOLVED` — can never see batched trade, and the 600M would measure a
-shrinking fraction of real adoption exactly as the protocol scales. The guest
-proves each clause's or assembly's cumulative `(c, d)`; an 8th public value
-(`usageAccrualHash`) commits the period, the provenance clause key, those
-accruals and the distinct sellers behind them; and `settleBatch` re-derives
-that hash from calldata before forwarding to `applyBatchAccrual`. **Both array
-lengths are in the hash preimage** — an accrual record is 48 bytes and a
-seller 20, so without them the same preimage could be re-split, presenting
-accruals whose sellers were never stake-checked. The gates the proof cannot
-see (open period, the seller of record's live member stake, excluded clauses or assemblies) belong to the counter
-and are checked there, not here. A batch that credits no usage passes empty
-arrays; that call is a no-op, which is what lets trade keep settling after the
-reward's last period closes.
-The Rust side lives in `prover/` (kernel mirror, generic clause engine, SP1
-guest, sequencer); a real local SP1 Core proof of the canonical batch
-generates and verifies (`SP1_REAL_PROOF=1 cargo run -p figaro-prove-test
---release`, ~1.2M cycles with the k256 precompile patch). The sequencer is a
-liveness convenience, never a trust assumption — direct `FigaroCore` remains
-the fallback path. Its two token-moving sites are tracked in
-`certora/token-ops.inventory` (`BatchVerifierTokenOps.spec` — cloud run green
-2026-07-16, re-run green in the 2026-08-13 freeze suite; `VERIFICATION_MAP.md` §10).
+The two paths share no state: a batch-resolved process never acquires kernel
+status (`core.orderStatus` stays 0 for it), so every reader folds both
+streams. The usage accrual is the one thing that crosses: the guest proves each
+clause's or assembly's cumulative `(c, d)`, an eighth public value
+(`usageAccrualHash`) commits the period, the provenance clause key, the
+accruals and the distinct sellers behind them (both array lengths in the
+preimage), and `settleBatch` re-derives that hash from calldata before
+forwarding. What the proof cannot see — the open period, each seller's live
+stake, the excluded set — is checked in the counter. A batch that credits no
+usage passes empty arrays; that call is a no-op, which lets trade keep
+resolving after the reward's last period closes.
 
-**`src/protocol/verifier/ISP1Verifier.sol`** — the Succinct SP1 verifier-gateway ABI
-(`verifyProof(programVKey, publicValues, proof)`); devnet wires
-`MockSP1Verifier`, mainnet the canonical gateway (env `SP1_VERIFIER_GATEWAY`).
+**`src/protocol/verifier/ISP1Verifier.sol`** — the Succinct SP1
+verifier-gateway ABI, `verifyProof(programVKey, publicValues, proof)`.
 
 ## Usage accounting (`src/protocol/usage/`)
 
-**`src/protocol/usage/UsageCounter.sol`** — counts how much real trade a clause or
-assembly carried, **on chain, at the moment it happens**.
+**`src/protocol/usage/UsageCounter.sol`** — Counts how much real trade a
+clause or assembly carried, on chain, at the moment it happens. The chain
+cannot look backwards — the kernel calls no registry and contracts cannot read
+events — so the fact is recorded when it occurs, and nothing is posted,
+bonded, challenged, or adjudicated afterward.
 
-It exists because the chain cannot look backwards: `FigaroCore` never calls the
-registries, the kernel is frozen, and contracts cannot read events — so no contract
-can learn a clause's or assembly's usage after the fact. Reconstructing it later is what forced
-the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
-the fact as it happens leaves no claim to believe and nothing to adjudicate.
+Two permissionless functions and one proof-gated writer:
+- `recordClauseUsage(order, clauseOrAssembly, sectionHash, proof)` — proves
+  the order is RESOLVED (`core.orderStatus == 2`) and that the clause was
+  committed in that order's signed agreement (merkle inclusion against
+  `agreementHash`). Fingerprint only, never the preimage. The same check
+  `AttestationCoordinator` performs, with the status gate inverted:
+  attestation is evidence during an open process; usage is counted once it
+  has resolved. Recording is opt-in and gas-paid by whoever benefits.
+- `recordAssemblyUsage(order, compositionHash, proof)` — credits an assembly.
+  Agreement leaves are keyed by clause, so a `compositionHash` is never a leaf
+  key; what is a leaf is `figaro-assembly-provenance`, whose committed content
+  is exactly the compositionHash. The contract derives that section hash from
+  `compositionHash` and proves that one leaf; a wrong hash derives a leaf that
+  is not in the tree. The provenance clause key is fixed at deploy. Without
+  that clause in the agreement, no process can credit its designer.
+- `applyBatchAccrual(period, provenanceClause, accruals, sellers)` — callable
+  only by `batchVerifier` (immutable). A proof-gated writer, not an admin: the
+  caller has no discretion, only numbers an immutable vkey committed
+  (`DESIGN_DECISIONS.md` §16). The write overwrites the clause's or
+  assembly's cumulative `(c, d)` for the period, so the batch path keeps no
+  per-process storage; counts are asserted non-decreasing
+  (`AccrualWentBackwards`). The open period (`PeriodMismatch`), each seller's
+  live stake, and the excluded set are checked here. An empty accrual returns
+  before `currentPeriod()` is consulted, so the reward's end never blocks the
+  batch path.
 
-Two permissionless functions, plus one proof-gated writer for the batch path.
-`recordClauseUsage(order, clauseOrAssembly, sectionHash, proof)`
-proves two things from data the chain already holds: the order is real and **RESOLVED**
-(`core.orderStatus == 2`), and the clause or assembly was committed in that order's signed
-agreement (merkle inclusion against `agreementHash`). It carries only the section
-FINGERPRINT (`sectionHash = keccak256(sectionData)`), never the preimage — so a
-`private`-disposition section's plaintext never touches public calldata. Same check
-`AttestationCoordinator` performs, with the status gate inverted — attestation is
-evidence *during* an open process, usage is counted only once it has settled. Nobody is
-trusted; recording is opt-in and gas-paid by whoever benefits.
-
-`recordAssemblyUsage(order, compositionHash, proof)` credits an **assembly**,
-and it exists because the two families are proved differently: an agreement's merkle leaves
-are keyed by CLAUSE (`agreement.ts`), so a `compositionHash` is never itself a leaf key. What
-IS a leaf is `figaro-assembly-provenance`, whose committed section content is exactly the
-compositionHash — **fully determined by it**, so the contract *derives* the provenance
-section hash from `compositionHash` (no section arg is taken) and proves that one leaf. A
-wrong `compositionHash` derives a leaf that is simply not in the tree, collapsing the old
-two-step inclusion-plus-content-match into a single structural gate. The provenance clause
-key is fixed at deploy, which stops a caller substituting some other clause. Without that
-clause in the agreement, no process can credit its designer.
-
-**One exclusion — attribution plumbing only (re-ruled 2026-08-13):**
-`UsageCounter.excludedClauseOrAssembly` holds exactly `figaro-assembly-provenance`;
-`recordClauseUsage` on it reverts `ClauseOrAssemblyExcluded` by design (scoring the
-credit-carrying leaf would double-pay every assembly-composed process). The two
-order-mandatory clauses (`figaro-commerce`, `figaro-topology`) EARN under the uniform
-rule: they ride every order, so scoring them levies every settled process for their
-author-of-record — the DAO treasury Safe, which registers exactly the mandatory
-clauses at genesis (every other reference clause and assembly is the founder's; a
-stranger's is theirs — `RELEASE_READINESS.md` Task 13), the commons taxing its own
-unavoidable usage into the commons pot (a usage-indexed endowment that outlives the
-nine-period sunset; competition with and donation to the DAO's registrations are
-both permissionless). The provenance clause's exclusion is what makes
-the resolve-time recording loop's clause leg and assembly leg independent: the clause
-record on provenance always reverts while `recordAssemblyUsage` still credits the
-assembly's designer of record.
-
-Per clause or assembly per period it keeps `c` (distinct settled processes), `d` (distinct
-LIVE-STAKED SELLERS of record — ruled 2026-07-31), and `score = icbrt(c·d²·1e18)` when
-`d ≥ minSellers`, else **zero** — **UNIFORM**, breadth weighted twice as heavily as
-volume, value deliberately not a term. There is **no tag, category, or weight
-multiplier**: every clause's and assembly's score is its real usage alone (ratified 2026-07-29 — the
-substrate-broadening weight and `boostedTag`/`rpgfTagOf` read are deleted). **Why sellers,
-not (buyer, seller) pairs (the pre-2026-07-31 statistic):** pairs cannot be priced — the
-buyer side holds no stake, so one staked seller plus N free buyer wallets was N units of
-the score's dominant term at gas cost, and even staking both sides prices pairs
-sublinearly (k staked buyers × m staked sellers mint k·m pairs from k+m deposits).
-Distinct staked sellers is the leverage-free statistic: n units of breadth cost n live
-stakes, exactly linear, which is what the Sybil bound's rent-dissipation argument needs.
-**The minimum-support floor** (`minSellers`, constructor-immutable; mainnet 3, devnet
-rehearses 3): a clause or assembly scores nothing in a period until 3 distinct staked sellers have
-carried it there — below the floor sit exactly the clauses and assemblies one actor can fabricate
-alone (self-farms, fragmentation shards, squatted names, trivial riders). Counting is
-never refused below the floor; the score springs whole when it is crossed. The floor
-lives in `_score`, so both settlement paths inherit it identically and PER PATH — the
-chain cannot union the paths' seller sets, and per-path flooring only ever under-pays a
-boundary case, never lets one seller straddle the universes.
-
-**Reading the exponent.** `score = d·(c/d)^(1/3)` — distinct relationships, times average
-repeat depth raised to α. So **α is the elasticity of reward to repeat depth** (8× the depth
-earns 2× the score), and when every pair trades once (`c = d`) the score is the count itself
-for any α at all. Worked rows (score in units of `1e6`-scaled `icbrt(c·d²·1e18)`,
-shown here unscaled as `d·(c/d)^(1/3)`):
-
-| c (uses) | d (staked sellers) | c/d | score ≈ | reading |
-|---|---|---|---|---|
-| 8 | 8 | 1 | 8.0 | every pair once — score is the breadth itself |
-| 8 | 2 | 4 | 3.2 | same volume, thin breadth — depth discounted |
-| 64 | 8 | 8 | 16.0 | 8× the depth of row 1 earns 2× its score |
-| 64 | 2 | 32 | 6.3 | volume farming on two counterparties barely moves it | `α < 1/2` is justified because a new relationship informs more than another
-observation of a known one; **α = 1/3 exactly is a JUDGMENT, not a derivation** — uniform
-across clauses and assemblies, so it is not curation. It is **not** a Sybil defense and must not be
-described as one (2026-07-30): no scoring shape can separate a fabricated counterparty from a
-genuine one. **Seller-side live-stake gate:** a record counts only if
-the process's seller-of-record holds a live `MembersRegistry` stake
-(`members.registered(order.seller)`, else `SellerNotStaked`) — and since `d` counts distinct
-staked sellers, this one gate prices breadth itself: fabricating `d` units costs one
-base-currency (ETH) stake per fake seller, linearly. The gate closes at
-`requestWithdrawal()`, not at `withdraw()`: eligibility ends when the member asks to
-leave, while the ETH is still locked. Scope it honestly — this prices the SELLER
-identity, not breadth itself (the buyer side is ungated by design), and the price is
-real only because the deposit carries a **withdrawal cooldown**; without one the same
-deposit is recycled through identity after identity.
-
-**Accrual buckets into fixed periods, not checkpoints.** A period's counts are final
-once it ends, so a consumer paying out for it reads a number that can no longer move —
-no snapshots, no checkpoint arrays, no history walk. Periods are generic: this contract
-knows nothing about tranches, rewards, or who pays. A running `totalScoreIn(period)` is
-maintained as an O(1) delta on every record.
-
-**The batch path — `applyBatchAccrual(period, provenanceClause, accruals, sellers)`.**
-Batch-settled trade never acquires kernel status, so it can never travel the two
-functions above; it arrives here instead, and only from `FigaroBatchVerifier`
-(`batchVerifier`, immutable). This is a **proof-gated writer, not an admin** — the
-caller has no discretion, only numbers an immutable vkey committed;
-`DESIGN_DECISIONS.md` §16 owns that argument and an auditor should read it before
-filing the finding. The write is an OVERWRITE of the clause's or assembly's CUMULATIVE `(c, d)`
-for the period, because the guest proves the running totals off-chain — so this
-contract keeps **no per-process storage for the batch path at all**, and cost is
-O(distinct clauses and assemblies in the batch) rather than O(records). That is the whole economy
-of the bridge: ~85% of a direct record's ~169k gas is storage plus `icbrt`, so
-batching only the authorisation would have saved nothing. Counts are asserted
-non-decreasing (`AccrualWentBackwards`) — free, since the previous score is read for
-the running total anyway, and it turns a guest regression into a revert rather than
-silently destroyed accrual. **What the proof cannot see is checked here**, because it
-is live chain state this contract owns: the open period (`PeriodMismatch` — the chain
-decides, never the sequencer's clock), each seller's live stake, and the excluded set.
-An EMPTY accrual returns before `currentPeriod()` is consulted, and must: otherwise
-every batch would revert `AccrualClosed` forever once the last period ended, and the
-reward path would brick the scaling path.
-
-**Merging the two paths: sum the SCORES, never the components.** `scoreOf(clauseOrAssembly,
-period)` returns `accrualOf.score + batchAccrualOf.score`, and `totalScoreIn` counts
-both. Adding `c` to `c` and `d` to `d` would over-count breadth for any (buyer, seller)
-pair active on both sides — the chain holds counts, not the pair SETS needed to union
-them, so an attacker splitting one relationship across the two universes would be paid
-twice for breadth they never had. Summing scores can never over-count: the score is
-concave and homogeneous of degree 1, so the component merge is superadditive, and the
-shortfall is EXACTLY ZERO when the split is proportional. No PROCESS is ever counted
-on both sides — the universes are disjoint. **`RpgfMinter` reads `scoreOf`**; a reader
-that reaches for `accrualOf` alone silently under-reports every clause or assembly whose trade
-moved to batches, and the batch leg emits its own `BatchUsageRecorded` (cumulative,
-REPLACES rather than adds) which an indexer must fold differently from `UsageRecorded`.
-
-`icbrt` binary-searches the floor cube root with its ceiling clamped to
-`CUBE_MAX = floor(cbrt(2^256-1))`, so the cube cannot overflow. **The bound belongs to the
-type the arithmetic is done in:** until 2026-07-30 it was `floor(cbrt(2^64-1)) = 2642245`,
-which SATURATED every score above `c·d² ≥ 19` at that constant — flattening real usage and
-collapsing the pro-rata split toward equal shares. The fuzz test that should have caught it
-sampled `uint64` only, the one domain where the wrong bound is coincidentally exact; it now
-fuzzes the whole `uint256` domain, and the fix was corroborated against solady's audited
-`FixedPointMathLib.cbrt` over 512 runs.
-
-**Idempotence is GLOBAL — a process counts ONCE EVER per clause or assembly** (ruled 2026-07-30),
-in whichever period it is first recorded. A resolved order stays resolved and its struct is
-public in the commit event, so a per-period key let the same trade be re-presented in every
-period: rational play became "re-record everything each period," which pays for *recording
-gas* rather than adoption (an author who records once and moves on collects nothing later,
-while one who knows to re-record collects three times on the same trades) and let a
-fabricated period-0 farm be milked across every later period. Each period now counts only
-usage NEW to it — what a fixed per-period budget schedule assumes.
-
-**The per-pair cap of 5 was DELETED 2026-07-30, and pairs themselves on 2026-07-31.** The
-cap was introduced as a farming defense and did not work as one: an attacker maximising
-score per unit cost always chooses ONE trade per fabricated counterparty (score per cost
-falls as `t^(-2/3)` in trades-per-counterparty), so the cap sat at 5 and never bound —
-while it did bind honest repeat trade. The `c^(1/3)` exponent already discounts repetition
-far more steeply than the cliff did. The pair statistic followed it out for the deeper form
-of the same disease (unpriceable breadth — see above); breadth is now `sellerSeen`, a
-boolean per (clause-or-assembly, period, seller). **The general rule both instances teach: Sybil
-resistance cannot live in the shape of the score.** No scoring function can separate a
-fabricated counterparty from a genuine one — any concavity that dampens fake breadth
-dampens real breadth identically — so it can only live in the cost of an identity, which is
-the registries' stake terms; the 07-31 ruling made the score's dominant statistic count
-ONLY what those terms have priced.
-
-**Gas anchor — `recordClauseUsage` costs ~175,250 in-test** (measured 2026-08-05
-after the clauseOrAssembly rename; excludes calldata charged at the tx level —
-the regression ceiling is `RECORD_USAGE_GAS = 180_000`). The anchor and its
-regression guard live in `UsageCounterTest.RECORD_USAGE_GAS`; it is deliberately NOT in
-`sdk/src/gasCeilings.ts`, which derives per-block/per-process CEILINGS and has no consumer for
-this figure. Any analysis costing manufactured usage (the RPGF soundness bound's `γ`) cites
-that anchor plus the 21,000 tx base cost — never a re-derivation. Same discipline as the
-kernel's `COMMIT_GAS_PER_ORDER`/`RESOLVE_GAS_PER_ORDER` pair: one measured home, everything
-else quotes it.
-
-No owner, no admin, no pause; records are idempotent per (clause-or-assembly, process).
-Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (the count is derived,
-never stored; incl. the fuzzed `icbrt` floor-cube-root property over all of `uint256`,
-and a no-saturation regression).
+Per clause or assembly per period it keeps `c` (distinct resolved processes),
+`d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)`
+when `d ≥ minSellers`, else zero. Uniform: no tag, category, or weight. The
+formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
+- **Seller-side stake gate:** a recording counts only if the order's
+  seller of record holds a live `MembersRegistry` stake
+  (`members.registered(order.seller)`, else `SellerNotStaked`). The gate closes at `requestWithdrawal()`, not at
+  `withdraw()`.
+- **Minimum-support floor:** `minSellers` (constructor-immutable) — a clause
+  or assembly scores nothing in a period until that many distinct staked
+  sellers have carried it; counting is never refused below the floor, and the
+  score appears whole when it is crossed. The floor lives in `_score`, so both
+  paths inherit it identically and per path.
+- **One exclusion:** `excludedClauseOrAssembly` holds exactly
+  `figaro-assembly-provenance`; `recordClauseUsage` on it reverts
+  `ClauseOrAssemblyExcluded` — scoring the credit-carrying leaf would pay every
+  assembly-composed process twice. The two order-mandatory clauses
+  (`figaro-commerce`, `figaro-topology`) earn under the uniform rule for their
+  designer of record — the DAO treasury, which registers exactly the mandatory
+  clauses at genesis.
+- **Periods, not checkpoints:** a period's counts are final once it ends;
+  `totalScoreIn(period)` is maintained as an O(1) delta on every recording. The
+  contract knows nothing about budgets or who pays.
+- **Merging the two paths — sum the scores, never the components:**
+  `scoreOf(clauseOrAssembly, period) = accrualOf.score + batchAccrualOf.score`,
+  and `totalScoreIn` counts both. Summing components would over-count breadth
+  for a seller active on both paths; the score is concave and homogeneous of
+  degree 1, so summing scores can never over-count. `RpgfMinter` reads
+  `scoreOf`; a reader that reaches for `accrualOf` alone under-reports. The
+  batch leg emits `BatchUsageRecorded` (cumulative, replaces), the direct leg
+  `UsageRecorded` (adds); indexers fold them differently.
+- **Idempotence is global:** a process counts once ever per clause or
+  assembly, in whichever period it is first recorded; each period counts only
+  usage new to it.
+- `icbrt` binary-searches the floor cube root with its ceiling at
+  `floor(cbrt(2^256−1))`, so the cube cannot overflow.
+- No owner, no admin, no pause. The measured gas anchor for
+  `recordClauseUsage` and its regression ceiling live in
+  `test/protocol/usage/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
+  analysis quotes that one home.
 
 ## The florin (`src/florin/`)
 
-**`src/florin/FlorinToken.sol`** — ERC-20 + EIP-2612 permit. 1B MAX_SUPPLY hard cap on every mint.
-Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
-caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
+**`src/florin/FlorinToken.sol`** — ERC-20 with EIP-2612 permit. `MAX_SUPPLY` of
+one billion, enforced on every mint. A minter registry with
+`totalRegisteredCap` (the sum of registered caps may not exceed
+`MAX_SUPPLY`); the deployer registers capped minters, then
+`renounceDeployerMint` closes the registry. Reentrancy-guarded. No owner after
+renounce, no upgrade, no parameter.
 
-**`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)` interface florin minter modules implement; `FlorinToken.registerMinter` is where implementations attach (before renounce).
+**`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
+registered minter implements.
 
-**Florin allocation:** `FLORIN_TOKEN.md` owns the canonical allocation table; the
-incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
+Genesis: the deployer deploys `RpgfMinter`, registers it with a 600M cap,
+registers itself as a one-shot minter with a 400M cap, mints 70M / 30M / 300M
+to the founder, supporters, and DAO wallets, then renounces. `FLORIN_TOKEN.md`
+owns the allocation and its reasoning. Nothing is minted on resolution.
 
-Deploy flow: deployer deploys `RpgfMinter`, registers it with cap 600M, registers itself
-as a one-shot genesis minter with cap 400M, mints 70M+30M+300M to the founder/supporters/DAO
-wallets, then renounces — the minter must exist at genesis because `registerMinter` precedes
-`renounceDeployerMint`. No settlement-anchored emission.
+## Designer rewards (`src/rpgf/`)
 
-## RPGF (`src/rpgf/`)
+The 600M reserve, paid to designers of record in proportion to the trade
+their clauses and assemblies carried: one claim per period, nine annual
+periods, per-period budgets rising over three groups (15% of the reserve
+over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each group).
+`FLORIN_TOKEN.md` and `PUBLIC_GRAPH_MODEL.md` own the schedule's reasoning.
 
-The **600M retroactive distribution** — one claim per ANNUAL accrual period, budgets
-grouped into three RISING tranches (ruled 2026-07-31): 15% of the reserve over years 1–2,
-30% over years 3–5, 55% over years 6–9, each tranche split equally across its years
-(45M/45M · 60M×3 · 82.5M×4). Rising, because the largest share should pay on the
-most-measured evidence — the early network is the thinnest, most manipulable denominator,
-and early evidence-poor funding is the 300M DAO treasury's job. Annual, because authors
-cannot price a multi-year lag in an unpriced token, and shorter periods shrink the deposit
-recycling window. Paid to clause authors and assembly designers of record, in proportion
-to the trade their clauses and assemblies actually carried. No donors, no pool. No buyer or seller
-touches it.
+**`src/rpgf/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
+`periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;
+a wallet passes every clause and assembly it designed in that one call.
+- `claim` requires `counter.periodClosed(periodId)`: the numbers it reads are
+  final, so there is no snapshot, checkpoint, or history walk.
+- The list must be duplicate-free (`DuplicateClauseOrAssembly`); with distinct
+  entries `score ≤ total` holds structurally.
+- Each entry is verified against its own registry with a live stake —
+  `ClauseRegistry.depositOf` (`registeredBy == caller` and not withdrawn) or
+  `AssemblyRegistry.bindings` (`registeredBy == caller` and not withdrawn);
+  both anchors are consulted because neither knows the other exists. This is
+  the designer-side half of the two-sided live-stake gate; the seller-side
+  half is `UsageCounter`'s.
+- Payout is uniform pro rata with no cap. The budget array is validated
+  against `UsageCounter.periodCount()` at deploy (`AmountsPeriodsMismatch`), so
+  the two schedules cannot drift; the budget is enforced twice — `minted` per
+  period here and the token's 600M minter cap.
+- No owner, no pause, no sweep, no claim expiry; a closed period's arithmetic
+  is stable forever. The minter must exist at florin genesis because
+  `registerMinter` precedes `renounceDeployerMint`.
 
-**`src/rpgf/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period (a wallet passes every clause or assembly it authored in that one call). The tranche grouping is deploy-script data; the minter knows only periods and their budgets, and validates its budget array against `UsageCounter.periodCount()` at deploy so the two schedules cannot drift (`AmountsPeriodsMismatch`).
+`sdk/src/rpgf/` mirrors the scoring off-chain for display and verification —
+recomputing what the chain holds, never posting an answer. The 300M DAO
+treasury pays for public goods by human decision; there is no match round and
+no crowd mechanism.
 
-**There is nothing to post, nothing to bond, and nothing to dispute.** `UsageCounter` (above) records verified usage as it happens, so a period's payout is arithmetic over numbers that are already final. `claim` requires `counter.periodClosed(periodId)`, which is why no snapshot, checkpoint array, or history walk is needed.
+## Test and mock contracts (`src/mocks/`, `src/echidna/`)
 
-**The caller's list must be duplicate-free** — a repeat reverts `DuplicateClauseOrAssembly`. Until
-2026-07-30 duplicates were summed and the sum then CLAMPED to the period total, so an author
-of record for ANY clause or assembly with a non-zero score could repeat it until the sum reached the
-denominator and mint the entire period budget, leaving every other author to revert on
-the budget backstop; the clamp was what made it maximal, silently rounding a malformed
-claim up to the whole pool rather than letting the budget backstop reject it. Both are gone —
-with distinct clauses and assemblies `score ≤ total` holds structurally, so there is nothing to clamp.
-(The test that was supposed to cover this passed a SOLE clause or assembly, where taking 100% is the
-correct answer either way — a case that cannot distinguish inflation from correctness.)
+Never deployed to a public network. `LOCAL_DEV.md` owns which the devnet
+deploy script wires and under which environment variable.
 
-Each clause or assembly in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registeredBy == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (registeredBy == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your clause's or assembly's stake stays live. Payout is **UNIFORM pro rata with no cap** — `periodAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
-
-No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per period here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` + `test/rpgf/RpgfIntegrationTest.t.sol` (no stubs — real process → real counter → real mint).
-
-`sdk/src/rpgf/` mirrors the scoring off-chain for display and verification (and `sdk/src/rpgf/formula.json` states the mechanism normatively). It **recomputes what the chain already holds** — nothing is anchored, so there is no `formulaHash` and no posted answer for the mirror to assert.
-
-**No match rounds, no quadratic funding.** The 300M DAO treasury funds public goods by DECIDING to — discretionary spend, the human-judgment layer the 600M deliberately avoids — not through a crowd mechanism. `MatchPool`/QF was deleted (ratified 2026-07-29): nothing in the 300M intention called for a Sybil-fragile match round.
-
-## Test / Mock Contracts
-
-- `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
-- `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and a second devnet ERC-20 (EIP-2612-capable, incidental — `Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS`; used as the swap-funding input token and the MOCKP seller-catalogue token; the V3 `*WithPermit` flow it once served is gone).
-- `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
-- `src/mocks/MockTreasuryMultisig.sol` — devnet/test stand-in for the DAO treasury Safe (mainnet composes a canonical Safe at `DAO_WALLET` — config, never authored code): Safe's approveHash flow (propose → threshold approvals → anyone executes), no owner acts alone. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_DAO_TREASURY` (anvil[0..2] placeholder owners, 2-of-3) and the 300M devnet genesis mint target; `TreasuryProcurementTest` rehearses the funded operator-EOA procurement loop against it.
-- `src/mocks/MockDisperse.sol` — devnet stand-in for the canonical public multisender (Disperse.app, `0xD152f549545093347A162Dce210e7293f1452150`); mirrors its verified interface and behavior — `disperseEther` (legs + remainder refund), `disperseToken` (aggregate pull then legs), `disperseTokenSimple` (per-leg pulls), every batch atomic. Used by `MockDisperseTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_MULTISENDER`; mainnet composes the canonical deployment.
-- `src/mocks/MockSwapVenue.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens). A public deploy wires the chain's **Uniswap SwapRouter02**, not the Universal Router — the coordinator `forceApprove`s the router and calls it with the party's `swapData` verbatim, so the venue must PULL by ERC-20 allowance (`exactOutputSingle`, the shape the venue seam builds, does; the Universal Router pulls via Permit2 or spends pre-sent balances). `DeploySepolia.s.sol` and `DeploySwapCoordinator.s.sol` both probe `factory()` + `WETH9()` and refuse an address that does not answer with contracts. Like the production venue, the mock pulls its input by ERC-20 allowance; its `swap(...)` shape is a test stand-in, not the production interface (the SDK's `SWAP_ROUTER_02_ABI` carries that).
-- `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
-- `src/mocks/MockReentrantToken.sol` — Foundry-tests-only malicious ERC-20 that re-enters an armed target on `transfer`/`transferFrom` (the fee-on-transfer / ERC-777 hook an attacker gets). Used by `ReentrancyAdversarialTest` to prove the `nonReentrant` guards on `FigaroCore.commit`/`resolveProcess` and `FigaroBatchVerifier.settleBatch` actually fire under a live re-entry attempt. Never deployed.
+- `MockERC20.sol` — the devnet denomination; permissionless `mint(to, amount)`.
+- `MockERC20FeeOnTransfer.sol` — fee-on-transfer ERC-20, Foundry tests only.
+- `MockPermitToken.sol` — a second devnet ERC-20 (EIP-2612), the swap-funding
+  input token.
+- `MockWitnessPermit2.sol` — stand-in for Permit2's `permitWitnessTransferFrom`
+  with real witness-signature verification (same digest as canonical Permit2;
+  deadline and amount enforced).
+- `MockTreasuryMultisig.sol` — stand-in for the DAO treasury's Safe
+  (propose → threshold approvals → anyone executes; no owner acts alone).
+- `MockDisperse.sol` — mirrors the canonical public multisender's verified
+  interface (`disperseEther`, `disperseToken`, `disperseTokenSimple`, every
+  batch atomic).
+- `MockSwapVenue.sol` — a swap venue at a settable rate, pulling its input by
+  ERC-20 allowance like the production router; its `swap(...)` shape is a test
+  stand-in, not the production interface.
+- `MockSP1Verifier.sol` — accepts any proof, so the batch path runs end to end
+  on a devnet without proving hardware.
+- `MockReentrantToken.sol` — a malicious ERC-20 that re-enters on transfer;
+  proves the `nonReentrant` guards on `commit`, `resolveProcess`, and
+  `settleBatch` fire under a live attempt. Foundry tests only.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFlorinToken.sol`, `EchidnaToken.sol`
+  — the Echidna property targets.
 
-## What Does NOT Exist
+## Composed, not owned
 
-**Dutch auction — DELETED 2026-07-02.** Competitive pricing was abandoned: a mid-chain order whose price or counterparty is unknown at signing is structurally incompatible with the kernel's exact-match cumulative accumulator, and the V3-style workaround (contract-as-seller + float-vault bond lending) is banned three ways. Pricing is a catalogue concern (e.g. rate × geohash distance).
+**Multisender.** Batch dispersal — one payment, many recipients, one
+transaction — is a wallet splitting its own receipts after resolution to
+earmarked addresses, leaving a fiscal trail as a byproduct. It reads neither
+the kernel nor any registry, and the network already supplies it: the
+canonical public Disperse deployment
+(`0xD152f549545093347A162Dce210e7293f1452150`, ownerless, the same address
+across chains) is composed, never duplicated. `MockDisperse.sol` mirrors its
+interface so a devnet rehearses the composition.
 
-**Carbon-offset apparatus — DELETED 2026-07-03.** `ProcessOffsetReceipt.sol`,
-`MockOffsetAggregator.sol`, the aggregator bridge, and the
-`figaro-offset-policy` clause were removed: the deployment network (Ethereum
-Mainnet) has no live documented retirement router to compose with (Toucan is
-Polygon/Celo; Klima's aggregator is deprecated in favor of an off-network REST
-API; Moss has none), and a cross-chain retirement can't be verified from the
-process's chain without a trusted bridge. Emissions *disclosure*
-(`figaro-emissions` + attestations) survives — it never depended on a router. An
-offset re-enters, permissionlessly, as a new clause naming a mainnet router's
-interface when one exists.
+**Permit2, the Uniswap router, the SP1 gateway, the DAO's Safe** — external
+canonical contracts the coordinators, the verifier, and the treasury compose;
+addresses are deployment configuration, never code written here.
 
-**Multisender — composed, not owned.** Batch dispersal (one payment, many
-recipients, one transaction) is post-settlement fiscal routing: a wallet
-splits its own receipts — fiscal remittance, savings, obligations — to
-earmarked addresses, producing a self-sovereign fiscal trail as a byproduct.
-It never reads FigaroCore, bonds, or any registry, and the network already
-supplies it: mainnet composes the canonical public **Disperse** deployment
-(`0xD152f549545093347A162Dce210e7293f1452150` — verified, ownerless, live
-since 2018 at the same address across 16 chains) — fifth-noun composition,
-never a Figaro-owned duplicate. `src/mocks/MockDisperse.sol` mirrors its
-verified interface so devnet rehearses the composition; `Deploy.s.sol`
-deploys it as `NEXT_PUBLIC_MULTISENDER` (mainnet points the same variable at
-the canonical address).
+## What the protocol has no contract for
 
-**Per-clause validator contracts — permanently.** The 17 `src/clauseValidators/*`
-validators, `IClauseValidator.sol`, `MockClauseValidator.sol`,
-`ClauseRegistrationHelper.sol`, and `JSONSchemaValidator.sol` were deleted in the
-2026-06-25 teardown and never return: a clause is DATA (a spec JSON anchored on
-`ClauseRegistry`), not code. In-proof clause validation lives in the rebuilt
-generic prover engine (see `FigaroBatchVerifier` above) — the engine validates
-against witness specs anchored by `contentHashOf`, so no clause ever needs a
-contract. On the DIRECT path, validation remains off-chain Layer-A (SDK
-`validate.ts`/`encode.ts`) + the coordinator's merkle/content-hash binding.
-
-**The optimistic posting apparatus — DELETED 2026-07-27, permanently.** `IRpgfArbitrator`,
-`KlerosRpgfAdapter`, `MockArbitrator`, `MockKlerosCourt`, `DonationRail`,
-`OptimisticMatchPool`, and its successor `MatchPool`/all quadratic funding are gone, along
-with every posted root, ETH bond, challenge window,
-dispute window, and forum callback in the reward path. They existed because the chain
-cannot look backwards — `FigaroCore` never calls the registries, the kernel is frozen, and
-contracts cannot read events — so usage had to be reconstructed off-chain, POSTED, made
-costly with a BOND, contestable with a CHALLENGE, and settled by a FORUM. `UsageCounter`
-counts the fact as it happens instead, and every layer of
-that apparatus disappears with it. The 300M DAO treasury funds public goods by discretionary
-decision, not a crowd/match mechanism. **This does not touch clause-tier arbitration:**
-`figaro-arbitration-kleros`, the `composesForumUrl` recourse seam, and the evidence bundle
-are a different object at a different tier and are untouched (`CLAUSES.md`,
-`THEORY.md` Layer 3).
-
-Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
-`FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`,
-`TrancheVesting.sol` (founder, supporters, and DAO receive tokens at genesis with no vesting),
-`ProximityTypes.sol`, `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
-upgradeable proxy, protocol fee, owner, or admin surface.
-The florin is not a governance token.
-
-### Teardown state — CLOSED (the canonical statement)
-
-This subsection is the OWNER of teardown state (per the ownership map in `docs/README.md`).
-Every other surface — docs, marketing pages, agent prompts, memories — states this only
-as a summary plus a pointer here.
-
-**Every surface removed in the 2026-06-25 proof-apparatus teardown has been rebuilt;
-nothing remains deferred:**
-
-- **The RPGF distribution** is live as `UsageCounter` + `RpgfMinter` (recipients =
-  clause authors + assembly designers of record; usage counted on chain as it happens,
-  paid pro rata from a closed accrual period; the minter deploys with the stack from the
-  first public network onward and gates florin genesis). The 2026-07-15 optimistic intermediate — posted merkle root under an
-  ETH bond, challenge window, arbitrator seam (`IRpgfArbitrator`, `KlerosRpgfAdapter`,
-  `MockArbitrator`, `MockKlerosCourt`) — was **deleted 2026-07-27** and does not return:
-  the whole apparatus existed only to make the chain believe a claim about the past, and
-  recording the fact as it happens leaves no claim to believe.
-  `FLORIN_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the rationale.
-- **On-chain clause-content validation + the batch prover/verifier/sequencer**
-  returned 2026-07-16 as the witness-based proof apparatus (`prover/` +
-  `FigaroBatchVerifier` above). It is a STRICT upgrade over the removed prototype:
-  the SP1 guest holds a generic clause ENGINE and no clauses — specs arrive as
-  witness inputs bound to `ClauseRegistry.contentHashOf`, so registering a clause
-  never touches the prover, the vkey, or the verifier. The per-clause Layer-C
-  validators never return (see "What Does NOT Exist").
-
-**PERMANENT — the property the rebuild preserves:** a never-seen clause is attestable
-permissionlessly with zero per-clause on-chain code, and the coordinator's merkle
-binding stays the direct path's integrity floor. In-proof content validation is a
-property of the BATCHED path; the direct path validates no content shape.
-
-**Reading rule:** the "rebuild pre-launch" markers that guarded launch-state literature
-are retired — present-state surfaces state the apparatus AS BUILT, and that now includes
-deployment. A public network deployment exists: `deployments/11155111.json` is committed,
-its addresses are the ones `/spec` renders, and the batch path settled real Groth16
-batches through the `batchVerifier` in it (the transactions `/spec` § "The sequencer"
-links). The remaining two-tense fact is narrower: **no mainnet deployment exists**, so no
-surface may claim one. Public copy names no network at all — the maintainers'
-pre-commit guard battery bans the network words outright; the deployment-record table is the statement.
+Clause content is validated off-chain by the SDK against the spec, and in
+proof on the batch path against specs anchored by `contentHashOf`; there are
+no per-clause validator contracts, and a never-seen clause is attestable and
+batch-resolvable with zero per-clause code (`CLAUSES.md`). Usage for designer
+rewards is counted as it happens; there is no posted root, no reward bond, no
+challenge window, and no reward referee. Clause-tier arbitration
+(`figaro-arbitration-<provider>` clauses, `block.design.composes.forumUrl`) is a
+different object and is untouched. There is no factory, router, governance,
+compliance, vesting, airdrop, or proxy contract; no protocol-level owner or
+admin surface; the florin votes on nothing.

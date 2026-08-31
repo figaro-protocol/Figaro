@@ -124,7 +124,7 @@ Before mainnet genesis seeding:
    is invoked with `SEED_CLAUSES` naming exactly the mandatory three, and every
    other run uses the founder's Ledger as direct registrar.
 2. Rehearse the plan on an Anvil fork with the real devices before mainnet.
-3. Keep `CONTRACTS.md` § RPGF, `LEXICON.md` (the vault-registrar seam), and
+3. Keep `CONTRACTS.md` § "Designer rewards", `LEXICON.md` (the vault-registrar seam), and
    `FLORIN_TOKEN.md` in sync if the rule moves.
 
 ## Pre-Mainnet Deployment Verification

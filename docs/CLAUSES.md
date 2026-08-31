@@ -104,7 +104,7 @@ Two on-chain touch points remain:
   content hash (identity + integrity only — no group field; grouping is
   `block.design.article` in the spec JSON, which stays off-chain). No RPGF tag
   reaches the chain — the reward is uniform on real usage, with no per-clause
-  category (contract surface: `CONTRACTS.md` § RPGF). No validator
+  category (contract surface: `CONTRACTS.md` § "Designer rewards"). No validator
   is registered or bound; a registered clause is immediately attestable.
   **Versioning convention (RULED 2026-07-21): `version` is an integer lineage counter,
   never semver.** Semver's three-part contract (MAJOR.MINOR.PATCH) is a compatibility

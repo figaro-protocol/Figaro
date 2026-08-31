@@ -211,7 +211,7 @@ singular, no competing runtime to exit to — so a levy on it would be the meter
 charging for reading itself. It meters; it never earns.
 
 Academic form: `/papers/substrate-broadening-rpgf` §4 ("Why the clauses every
-order carries earn"). On-chain surface: `CONTRACTS.md` § RPGF (the one-entry
+order carries earn"). On-chain surface: `CONTRACTS.md` § "Designer rewards" (the one-entry
 exclusion list, `RpgfMinter._isAuthor` reading `registeredBy`).
 
 ### The 600M RPGF allocation
@@ -220,7 +220,7 @@ The *intent* of this allocation is unchanged: 60% of the supply is reserved for
 the people whose clauses and assemblies broaden the protocol's substrate — clause authors
 and assembly designers of record (recipients widened by the 2026-07-09
 redesign). The reward was ratified UNIFORM on 2026-07-29 (contract surface:
-`CONTRACTS.md` § RPGF): every clause and assembly earns by its **real
+`CONTRACTS.md` § "Designer rewards"): every clause and assembly earns by its **real
 usage alone**, with no category, tag, or weight tilting the split toward any kind
 of contribution.
 

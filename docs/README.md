@@ -28,7 +28,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Game-theoretic derivation, six properties | `THEORY.md` |
 | Vision, post-firm economy, where value goes after the firm | `VISION.md` |
 | Intentional vulnerability-lookalike patterns | `DESIGN_DECISIONS.md` |
-| Teardown state: deferred vs permanent, what does NOT exist | `CONTRACTS.md` § What Does NOT Exist |
+| What the protocol has no contract for (not listed = does not exist) | `CONTRACTS.md` § "What the protocol has no contract for" |
 | Contract inventory | `CONTRACTS.md` |
 | Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
 | Route catalogue, lib map, designer surface | `FRONTEND.md` |

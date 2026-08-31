@@ -118,7 +118,7 @@ every composition.
   reasons: (1) **validatable** — the Layer-A validator checks membership off-chain
   before any signature, and on the batched path the generic in-proof clause engine
   checks it again against the registered spec (per-clause validator contracts do not
-  exist, permanently — `CONTRACTS.md` § "Teardown state — CLOSED" owns it); (2)
+  exist, permanently — `CONTRACTS.md` § "What the protocol has no contract for" owns it); (2)
   **deterministically encodable** — the generic encoder maps value → 0-based ordinal,
   which a free string cannot; (3) **renderable** as a real choice control.
 

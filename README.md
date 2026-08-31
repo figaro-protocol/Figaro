@@ -51,7 +51,7 @@ handover in [docs/AUDITOR_HANDOVER.md](docs/AUDITOR_HANDOVER.md).
 
 - **Kernel** — `FigaroCore.sol`: two state-changing entry points (`commit`, `resolveProcess`), 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, members registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
-- **The florin** — 1B fixed supply, 7/3/30/60 split (founders / supporters / DAO / RPGF); founder + supporters + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across nine annual periods in three rising tranches (15/30/55 — see `docs/CONTRACTS.md` § RPGF)
+- **The florin** — 1B fixed supply, 7/3/30/60 split (founders / supporters / DAO / designer rewards); founder + supporters + DAO mint at genesis with no vesting; the 600M designer-rewards reserve is wired and registered at genesis — `UsageCounter` counts verified clause and assembly usage on chain as it happens, and `RpgfMinter` pays the designers of record pro rata across nine annual periods in three rising tranches (15/30/55 — see `docs/CONTRACTS.md` § "Designer rewards")
 - **SDK** — `@figaro-protocol/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
