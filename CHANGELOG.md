@@ -44,7 +44,7 @@ release lives under **Unreleased**.
   (the `registeredBy` rename and the swap coordinator's scope entry): Foundry
   299 passed / 0 failed, Halmos 32/32 proved, Certora 6/6 specs verified with
   `--wait_for_results all` — recorded as post-stamp record #3 in
-  `docs/AUDITOR_HANDOVER.md`, run URLs in `docs/VERIFICATION_MAP.md` §10.
+  `docs/AUDITOR_HANDOVER.md`, with the run URLs recorded there too.
 
 Summary of the current state of the protocol and its verification surface:
 

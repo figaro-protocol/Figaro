@@ -73,11 +73,41 @@ frozen-scope edit — a Post-Audit Policy violation.
    entry + SwapRouter02 rebinding (`57a93199`, `9d16301c`). All green: Foundry
    299 passed / 0 failed (3 skips = the `MAINNET_RPC_URL`-gated mainnet-fork suite,
    env unset on that run — the release gate runs it), Halmos 32/32, Certora 6/6
-   specs with `--wait_for_results all` (run URLs in `VERIFICATION_MAP.md` §10).
+   specs with `--wait_for_results all` (report URLs below, § Formal run evidence).
 4. **2026-08-27** — `script/Deploy.s.sol` comment-only: an anvil accounts count
    in a mint-block comment corrected 20 → 38 (the value the maintainers'
    pre-commit guard battery enforces). No bytecode change; recorded
    per the record-#1 precedent, no re-run required.
+
+### Formal run evidence
+
+The proof layers are re-run at each stamp and after each amendment listed above.
+Those runs are kept here because the evidence is owed to a reader outside the
+project. Which invariant each layer carries is `VERIFICATION_MAP.md`.
+
+- **2026-08-13, freeze commit `c7f85d0d`** — all four TLA+ models, every invariant,
+  TLC exit 0 (`SettlementUniverses` explored 7.46M states, no error); both Echidna
+  harnesses held every property across the configured 50,000-call budget, exit 0;
+  Halmos 32/32; Certora 6/6.
+- **2026-08-19** — `FigaroCore.tla` re-run after `A-8`/`A-9` were added: 9/9,
+  8,380,329 states generated / 6,087,113 distinct, depth 9, TLC exit 0. The state
+  space is unchanged — the two new invariants observe it, they do not extend it.
+- **2026-08-27** (the 08-18/19 amendment wave) — Halmos 32/32 proved, exit 0; Certora 6/6 specs with `--wait_for_results all`, exit 0 (every
+  `Violated` line in the stream was the `rule_not_vacuous` healthy polarity).
+
+Certora report URLs, all from the 2026-08-27 re-run:
+
+| Spec | Report URL |
+|---|---|
+| FigaroCore | https://prover.certora.com/output/9512759/f7d9478c70eb45b081750671c158d01e |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/ad0172900adf4b3f952c37f6ba02d2af |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/1abfe0ceb23e40b0ab8c3151039bb1da |
+| FlorinToken | https://prover.certora.com/output/9512759/864adb11f68145a98f2de9b081f6181e |
+| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/d364d98732d04db2ae5a9c7e2a578d74 |
+| RpgfMinter | https://prover.certora.com/output/9512759/7a68e4562d8e461ab93256dbac6740c4 |
+
+The prior full-green runs (2026-08-13 at the freeze stamp; 2026-08-04) are in git
+history.
 
 ### Post-Audit Policy
 

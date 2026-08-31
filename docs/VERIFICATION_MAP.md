@@ -1,6 +1,4 @@
-# Figaro V5 — Verification Map (Theory → Code → Tests → TLA+ → UI)
-
-Last updated: 2026-08-13 (freeze-stamp formal re-runs recorded in §7–§10)
+# Verification Map (Theory → Code → Tests → TLA+ → UI)
 
 ## 0) Purpose
 
@@ -14,7 +12,11 @@ This document ties every protocol property to its enforcement across five layers
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
 
-The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → Code → Tests → TLA+ only. This V5 map adds the UI column to prevent feature presentation gaps — features that exist in code but are invisible to users.
+The UI column exists to prevent presentation gaps — features enforced in code but invisible to the people using them.
+
+Run evidence — when each layer last ran, at which commit, and the Certora report
+URLs — is `AUDITOR_HANDOVER.md` § "Formal run evidence". This document maps; it
+does not log.
 
 ---
 
@@ -22,7 +24,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 ### In-scope (this document)
 
-- **Kernel**: `src/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
+- **Kernel**: `src/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, nothing paid to the protocol
 - **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
 - **Florin ecosystem**: `FlorinToken` + `RpgfMinter` (implements `IFlorinMinter`; registered as a minter at genesis)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
@@ -39,19 +41,19 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 ## 2) Invariant IDs (stable references)
 
-### Kernel invariants (V5)
+### Kernel invariants
 
 - `K-1` **Asymmetric bonding**: buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$
 - `K-2` **Buyer dominance**: only root buyer can trigger `resolveProcess`
 - `K-3` **Atomic resolution**: must resolve all active orders (anti-cherry-picking)
 - `K-4` **No escape hatches**: no timeout, no admin exit, no unilateral withdrawal from Active
 - `K-5` **Cumulative bonding**: monotonic accumulator ($cumulativeValue$ only increases)
-- `K-6` **Direct settlement**: no internal ledger, no withdrawal step — ERC-20 transfer at resolution
+- `K-6` **Direct resolution**: no internal ledger, no withdrawal step — ERC-20 transfer at resolution
 - `K-7` **Single currency binding**: per-process immutable token
 - `K-8` **Dual-signed commitment**: EIP-712 typed data, both parties sign off-chain
 - `K-9` **Content-addressed order IDs**: `orderHash = keccak256(processId ‖ structHash)`, not auto-increment
 
-### Accounting invariants (V5)
+### Accounting invariants
 
 - `A-1` **Token conservation**: sum of all wallets + contract balance = initial total supply
 - `A-2` **Contract solvency**: contract balance ≥ 0 (never promises more than held)
@@ -60,19 +62,19 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 - `A-5` **Active count**: per-process $activeCount = count(committed\ orders)$
 - `A-6` **Resolution always possible**: contract can always pay out every active process
 - `A-7` **Fee-on-transfer rejection**: `_pullExact` reverts if received ≠ amount
-- `A-8` **Deterrent escrow magnitudes**: held escrow = 2×payment (buyer) + 2×cumulativeValue (seller) for every committed order — the bond is the *deterrent* the equilibrium argument reasons over, not merely enough to pay out
-- `A-9` **Settled net positions**: resolution moves exactly `payment` from buyer to seller per order and returns both bonds whole
+- `A-8` **Deterrent deposit magnitudes**: held deposits = 2×payment (buyer) + 2×cumulativeValue (seller) for every committed order — the bond is the *deterrent* the equilibrium argument reasons over, not merely enough to pay out
+- `A-9` **Net positions at resolution**: resolution moves exactly `payment` from buyer to seller per order and returns both bonds whole
 - `A-8`/`A-9` are the PAYOFF TABLE the equilibrium proof reasons over; the choosing itself — best responses and the N-party chain equilibrium — is machine-checked in Lean 4 over that table (`formal/lean/FigaroEquilibrium.lean`; `TESTING.md` § Lean 4)
 
 ### Composition invariants
 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
-- `E-3` — unassigned (the id was skipped historically; ids are stable references and are never renumbered)
-- `E-4` **Member deposit reclaim**: de-surfacing is immediate on request; the ETH releases only after the cooldown
-- `E-5` **The stake mechanics the RPGF Sybil bound assumes**: the registry is solvent, a deposit cannot be recycled across identities, eligibility ends at request time, and the counter reads exactly that gate
+- `E-3` — unassigned. Ids are stable references and are never renumbered.
+- `E-4` **Member stake reclaim**: de-surfacing is immediate on request; the ETH releases only after the cooldown
+- `E-5` **The stake mechanics the designer-reward Sybil bound assumes**: the registry is solvent, a stake cannot be recycled across identities, eligibility ends at request time, and the counter reads exactly that gate
 - `E-6` **Florin supply cap**: total minted ≤ 1,000,000,000 florins (enforced on every mint path)
-- `E-7` **Batch usage accrual is proof-gated and once-ever**: batch-settled trade counts for RPGF only via a proof, cannot be replayed across batches, and merges with the direct path as SCORES, never as components
+- `E-7` **Batch usage accrual is proof-gated and once-ever**: trade resolved on the batch path counts for designer rewards only via a proof, cannot be replayed across batches, and merges with the direct path as SCORES, never as components
 - `E-8` **Private-section withholding**: a `private`-disposition section's plaintext never reaches a public surface (public pin, audit bundle); the chain sees only the section fingerprint, so `agreementHash` is unchanged
 
 ---
@@ -81,7 +83,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 | ID | Statement | Code enforcement | Tests | TLA+ | Echidna | UI presentation |
 |---|---|---|---|---|---|---|
-| K-1 | Buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$ | `_pullExact(token, buyer, payment * 2)` and `_pullExact(token, seller, cumVal * 2)` in `commit()` | `FigaroCoreTest`: bond-amount coverage; SDK `bonds.test.ts`: the 2× math the frontend/agents derive from | `DeterrentEscrowMagnitudes` — the 2×payment + 2×cumulativeValue held-escrow magnitudes, a checked invariant (see A-8 and §7); bond correctness also carried by Halmos + Certora | `echidna_solvency` — core holds ≥ sum of active bonds | `/kernel` → /papers/asymmetric-bonding (mechanism); `/spec` → Kernel (`FigaroCore.sol`) |
+| K-1 | Buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$ | `_pullExact(token, buyer, payment * 2)` and `_pullExact(token, seller, cumVal * 2)` in `commit()` | `FigaroCoreTest`: bond-amount coverage; SDK `bonds.test.ts`: the 2× math the frontend/agents derive from | `DeterrentEscrowMagnitudes` — the 2×payment + 2×cumulativeValue held-deposit magnitudes, a checked invariant (see A-8 and §7); bond correctness also carried by Halmos + Certora | `echidna_solvency` — core holds ≥ sum of active bonds | `/kernel` → /papers/asymmetric-bonding (mechanism); `/spec` → Kernel (`FigaroCore.sol`) |
 | K-2 | Only root buyer can call `resolveProcess` | `if (msg.sender != ps.rootBuyer) revert NotProcessBuyer()` in `resolveProcess()` | `FigaroCoreTest`: buyer-only paths; `FigaroCoreRevertBranchTest`: the revert-branch suite (count derived from the file, never stored here) | `ResolveProcess` constrains resolver to root buyer | `echidna_buyer_dominance` — non-buyer resolve always fails | `/kernel` → /papers/asymmetric-bonding; `/spec` → Kernel (`FigaroCore.sol`) |
 | K-3 | Must resolve all active orders (anti-cherry-picking) | `if (commitments.length != ps.activeOrderCount) revert IncompleteOrderList()` + per-order status check | `FigaroCoreTest`: multi-order arrays; `FigaroCoreRevertBranchTest`: incomplete list reverts | `ResolveProcess` uses `ActiveOrdersInProcess` + count check | `echidna_atomic_resolution` — incomplete lists always fail | `/kernel` → /papers/asymmetric-bonding (atomic resolution); `/spec` → Kernel (`FigaroCore.sol`) |
 | K-4 | No timeout, no admin exit from Active state | No timeout action exists; only `resolveProcess` transitions Active→Resolved; no owner, no admin functions | `FigaroCoreRevertBranchTest`: no alternate exit paths | Model has no timeout action; only Committed→Resolved via buyer | `echidna_state_monotonicity` — status only moves forward (0→1→2) | `/kernel` → /papers/asymmetric-bonding (the Escape-Hatch Weakness theorem); `/faq` → "no admin, no owner, no pause function" |
@@ -103,7 +105,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 | A-4 | Per-process $cumulativeValue = \sum(order.payment)$ | `actualCumulative = ps.cumulativeValue + c.payment` with mismatch revert | `FigaroCoreTest`: accumulator arithmetic | `CumulativeIntegrity` — verified | `echidna_cumulative_accounting` | `/spec` → Kernel (`FigaroCore.sol`) |
 | A-5 | Per-process $activeCount = count(committed)$ | `ps.activeOrderCount++` on commit, `ps.activeOrderCount--` on resolve with count match | `FigaroCoreTest`: multi-order lifecycle | `ActiveCountCorrect` — verified | `echidna_active_count_consistent` | Not directly presented |
 | A-6 | Contract can resolve any active process | Follows from A-1 + A-2 + bond calculation | `GasCeilingTest`: the resolveProcess per-order gas regression guard (~23k warm marginal, mirrored in the frontend's gas ceilings) | `ResolutionAlwaysPossible` — verified | — | Not directly presented |
-| A-8 | Held escrow = 2×payment (buyer) + 2×cumulativeValue (seller) per committed order | `commit`: `_pullExact` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller | `FigaroCoreTest`: `test_sellerBond_scalesWithCumulativeValue` | `DeterrentEscrowMagnitudes` — verified | — | `/invariants`, `/kernel` |
+| A-8 | Held deposits = 2×payment (buyer) + 2×cumulativeValue (seller) per committed order | `commit`: `_pullExact` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller | `FigaroCoreTest`: `test_sellerBond_scalesWithCumulativeValue` | `DeterrentEscrowMagnitudes` — verified | — | `/invariants`, `/kernel` |
 | A-9 | Resolution moves exactly `payment` buyer → seller; both bonds return whole | `resolveProcess`: seller receives `2*cumulativeValue + payment`, buyer receives `payment` | `FigaroCoreTest`: `test_resolution_payouts_progressiveCollateral`, `test_solvency_contractBalanceZeroAfterResolve` | `SettledNetPositions` — verified | — | `/invariants`, `/kernel` |
 | A-7 | Fee-on-transfer token rejection | `_pullExact`: `uint256 received = after - before; if (received != amount) revert FeeOnTransferDetected()` | `FigaroCoreRevertBranchTest`: fee-on-transfer token test (`MockERC20FeeOnTransfer`) | Not modeled (TLA+ abstracts ERC-20 mechanics) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 
@@ -115,7 +117,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 |---|---|---|---|---|
 | E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: all 3 paths + cross-order same-process | `/papers/on-chain-evidence` → evidentiary properties; `/spec` → Attestation & clause |
 | E-2 | Registered clauses cannot be overwritten | `registerClause`: first-write-wins storage — three mappings, incl. `contentHashOf` (load-bearing for the batch path's content validation); dedup guard rejects re-registration | `ClauseRegistryTest`: registration, dedup, deposit + withdraw paths | `/clauses` → Writing a clause. |
-| E-4 | Member deposit = staked intent (K4), reclaimed in TWO steps: `requestWithdrawal()` de-surfaces IMMEDIATELY (guard cleared, re-registration allowed at once), `withdraw()` releases the ETH only after `withdrawalCooldown`. The cooldown is what makes the deposit price identity rather than rent it — without it one deposit serves N identities in sequence | `register()`: deposit-bound match + dedup guard; `requestWithdrawal()`: requires registered, clears the guard, accrues `pendingDeposit` + sets `releaseAt`; `withdraw()`: requires something pending and `block.timestamp >= releaseAt`, else `NothingPending` / `CooldownActive`. `updateProfile()` is a separate caller-only path that emits `MemberProfileUpdated` without touching the deposit | `MembersRegistryTest`: register, deposit-bound match, dedup, de-surface-at-request, cooldown-gates-the-claim, immediate re-registration costs a SECOND deposit, repeated requests accumulate + restart the clock, double-claim refused, zero-cooldown and zero-deposit degenerate cases, fuzz `everyDepositIsEventuallyClaimable` (no strandable funds); e2e `member-withdraw.devnet.spec.ts` (UI drives BOTH steps + exact registry ETH delta, and asserts the ETH does NOT move at step 1) | `/members`; `/spec` → Optional protocol contracts (`MembersRegistry.sol`) |
+| E-4 | Member stake = staked intent (K4), reclaimed in TWO steps: `requestWithdrawal()` de-surfaces IMMEDIATELY (guard cleared, re-registration allowed at once), `withdraw()` releases the ETH only after `withdrawalCooldown`. The cooldown is what makes the stake price identity rather than rent it — without it one stake serves N identities in sequence | `register()`: stake-bound match + dedup guard; `requestWithdrawal()`: requires registered, clears the guard, accrues `pendingDeposit` + sets `releaseAt`; `withdraw()`: requires something pending and `block.timestamp >= releaseAt`, else `NothingPending` / `CooldownActive`. `updateProfile()` is a separate caller-only path that emits `MemberProfileUpdated` without touching the stake | `MembersRegistryTest`: register, stake-bound match, dedup, de-surface-at-request, cooldown-gates-the-claim, immediate re-registration costs a SECOND stake, repeated requests accumulate + restart the clock, double-claim refused, zero-cooldown and zero-stake degenerate cases, fuzz `everyDepositIsEventuallyClaimable` (nothing strandable); e2e `member-withdraw.devnet.spec.ts` (UI drives BOTH steps + exact registry ETH delta, and asserts the ETH does NOT move at step 1) | `/members`; `/spec` → Optional protocol contracts (`MembersRegistry.sol`) |
 | E-5 | The four stake properties the economic Sybil bound `deposit · N · T / P` rests on. Proving them does NOT prove the deposit is big ENOUGH — that is the Tullock rent-dissipation argument and stays paper work. It proves the machine that argument describes is the machine that shipped | `MembersRegistry`: exact-value `register` + dedup guard (solvency, and no path from locked ETH to a fresh registration); `requestWithdrawal` clears `_registered` and books `pendingDeposit` without touching it on re-register (no recycling ⇒ the `N` term survives); `withdraw` never re-registers (eligibility ends at REQUEST ⇒ the `T` term survives); `UsageCounter._accrue` / `applyBatchAccrual` gate on `members.registered` (the linkage) | **Halmos `HalmosMembersRegistry` — 7 symbolic properties, pass 3/6 of `scripts/test-halmos.sh`**: solvency under arbitrary two-member interleavings, pending-always-claimable-in-full, re-registration costs a SECOND deposit, locked ETH cannot fund a registration, de-surfacing at request + no self-heal on claim, the cooldown cannot be skipped for any instant before `releaseAt`, and the counter admits usage iff the stake is live. The two anti-recycling properties were MUTATION-CHECKED (a deliberate recycling bug produces counterexamples), so they are load-bearing rather than vacuous. Concrete companions in `MembersRegistryTest` + `UsageCounterTest.test_sellerLeavingTheRegistryStopsCounting` | `/members` leave/claim flow — the UI drives both steps and the ETH moves only at step 2 |
 | E-6 | Florin supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FlorinToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/florin-schelling-point-token` → supply integrity |
 | E-8 | A `private`-disposition section's plaintext never reaches a PUBLIC surface — the standalone public IPFS pin or the shareable audit bundle. The chain sees only the section FINGERPRINT (the merkle leaf), so `agreementHash` is unchanged whether the section carries plaintext or is withheld | SDK `publicForm(agreement, specs)` (`projection.ts`) content-withholds every section whose spec is LOADED and declares a private field (identical merkle leaf → same root) — FAIL-CLOSED: a section with an UNKNOWN spec is ALSO withheld, because a permissionlessly-registered clause could be private and keeping it plaintext would leak on any cold-cache pin (notably the RECEIVER re-pin, which never loaded the clause). To avoid over-redacting known-public clauses, `publishAgreement` (`frontend/lib/kernel/agreementFetch.ts`) WARMS the agreement's clause specs (`warmAgreementSpecs` → `ClauseRegistered` log scan → `loadClauseSpec`, only for specs actually missing) before projecting, so with the cache warm the fail-closed form is EXACT; if warming fails it over-redacts rather than leaking. The audit bundle renders a withheld section's body as absent automatically; `parseClauseSpec` REJECTS a clause mixing public + private field dispositions (the leaf model withholds a whole section, never one field). The signed + counterparty-relayed forms keep plaintext (Arm 2 encrypts that relay leg) | SDK `projection.test.ts` (withholds private, keeps public plaintext, preserves `agreementHash`, withholds an unknown-spec section fail-closed, `specHasPrivateField`); `spec.test.ts` (mixed-disposition rejected, all-private accepted) | `/data` → the disposition seam ("public = coordination commons, private = paid edge behind the fingerprint") |
@@ -148,16 +150,9 @@ This section tracks features that are not protocol invariants but are significan
 ## 7) TLA+ formal models — current posture
 
 Four models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 8
-invariants are the E-6 rows), and — added 2026-08-04 —
-`WitnessSwapAndCommitCoordinator.tla` and `SettlementUniverses.tla`
-(both detailed below; harness inventory + state counts: `TESTING.md` § TLA+).
-
-Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — all four models,
-every invariant, TLC exit 0 (SettlementUniverses explored 7.46M states, no error);
-the freeze-stamp re-run. `FigaroCore.tla` re-run **2026-08-19** after `A-8`/`A-9`
-were added: 9/9, 8,380,329 states generated / 6,087,113 distinct, depth 9, TLC exit 0
-(the state space is unchanged — the two new invariants observe it, they do not
-extend it).
+invariants are the E-6 rows), `WitnessSwapAndCommitCoordinator.tla` and
+`SettlementUniverses.tla` (both detailed below; harness inventory + state counts:
+`TESTING.md` § TLA+).
 
 ### Model file: `formal/FigaroCore.tla`
 
@@ -178,7 +173,7 @@ extend it).
 - MaxProcesses: 2, MaxSubOrders: 2
 - All 9 invariants enabled, deadlock checking disabled (bounded slots)
 
-**What this configuration is (ruled 2026-08-27 — the primitive framing):** the
+**What this configuration is — the primitive framing:** the
 small config is exhaustive STATE-MACHINE COVERAGE of the primitive's operations —
 two buyers and two sellers exercise every transition and interference class the
 kernel has — never bounded sampling of an N-body space. There is no N in the
@@ -188,7 +183,7 @@ monotone accumulator scalar, and the arbitrary-N claim reduces definitionally to
 the per-position two-party claim (the Lean `Chain` theorems are that reduction,
 machine-checked). N lives in the graph tier above the primitive.
 
-**Verification result (2026):**
+**Verification result:**
 - 9/9 invariants verified, exit code 0
 - 6M+ states explored, all distinct states checked
 
@@ -203,10 +198,10 @@ machine-checked). N lives in the graph tier above the primitive.
 | `CumulativeIntegrity` | A-4 ($cumVal = \sum payment$) | ✅ Verified |
 | `ActiveCountCorrect` | A-5 ($activeCount = count(committed)$) | ✅ Verified |
 | `ResolutionAlwaysPossible` | A-6 (solvency + atomic resolution guaranteed) | ✅ Verified |
-| `DeterrentEscrowMagnitudes` | A-8 (escrow is 2× on both sides) | ✅ Verified |
+| `DeterrentEscrowMagnitudes` | A-8 (the deposits are 2× on both sides) | ✅ Verified |
 | `SettledNetPositions` | A-9 (exactly `payment` moves; bonds return whole) | ✅ Verified |
 
-### Model file: `formal/WitnessSwapAndCommitCoordinator.tla` (2026-08-04)
+### Model file: `formal/WitnessSwapAndCommitCoordinator.tla`
 
 The swap-funded on-ramp at EVM-step granularity (explicit revert frames, so
 "swap landed, commit didn't" states are reachable and proved never quiescent).
@@ -221,30 +216,29 @@ assumed away — it is the modeled attack (`Inv_WitnessRouteBinding`).
 | `Inv_Atomicity` | A swap moved value in a call **iff** the commit landed (incl. kernel-side `InvalidRootCumulativeValue` revert after the swap) |
 | `Inv_BondFormula`, `Inv_CoreEscrowExact` | K-1 at the coordinator seam — Core ends holding exactly the doubled bonds of landed orders |
 | `Inv_WitnessRouteBinding` | No route executes that the paying party did not sign (the predecessor bug the witness variant exists to close) |
-| `Inv_CoordinatorNotCounterparty` | Kernel parties stay the EIP-712 signers; the coordinator funds in place |
+| `Inv_CoordinatorNotCounterparty` | Kernel parties stay the EIP-712 signers; the coordinator supplies the tokens in place |
 
-Mutation-checked 2026-08-04: 6 deliberate Next-relation bugs, each caught by
-exactly its target invariant.
+Mutation-checked: 6 deliberate Next-relation bugs, each caught by exactly its
+target invariant.
 
-### Model file: `formal/SettlementUniverses.tla` (2026-08-04)
+### Model file: `formal/SettlementUniverses.tla`
 
 The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier + UsageCounter +
-the off-chain guest kernel under arbitrary interleavings — the only harness
-that can see the two-settlement-universes crease (every other layer is
-per-contract). 21 invariants (AccrualNeverOverPays is a defined alias of BatchWriteReplacesNeverAdds, not a separate check); the load-bearing rows:
+the off-chain guest kernel under arbitrary interleavings — the only harness that
+can see where the two paths meet (every other layer is per-contract). 21 invariants (AccrualNeverOverPays is a defined alias of BatchWriteReplacesNeverAdds, not a separate check); the load-bearing rows:
 
 | Property | Code | Formal |
 |---|---|---|
-| A batch-settled order never acquires kernel status; `orderStatus` gates are blind to batched trade | `FigaroBatchVerifier.settleBatch` (no kernel write) | `KernelBlindToBatch`, `BatchInvisibleToKernelGates` |
-| The same signed commitment cannot settle in both universes | EIP-712 domain separation: `FigaroBatchVerifier.sol` `pv.verifyingContract == address(this)` vs the kernel's own domain; processId IS the typed-data digest | `NoDoublePayout`, `UniverseDisjointOrders` — carried by **`AssumeDomainSeparation`** (CONTRACT-ENFORCED; flipping it violates 4 invariants) |
-| Token conservation + pool disjointness across kernel + verifier | per-order exact escrow both sides | `TokenConservation`, `CoreExactEscrow`, `VerifierExactEscrow`, `ResolutionAlwaysPossible` |
+| An order resolved on the batch path never acquires kernel status; `orderStatus` gates are blind to batched trade | `FigaroBatchVerifier.settleBatch` (no kernel write) | `KernelBlindToBatch`, `BatchInvisibleToKernelGates` |
+| The same signed commitment cannot resolve on both paths | EIP-712 domain separation: `FigaroBatchVerifier.sol` `pv.verifyingContract == address(this)` vs the kernel's own domain; processId IS the typed-data digest | `NoDoublePayout`, `UniverseDisjointOrders` — carried by **`AssumeDomainSeparation`** (CONTRACT-ENFORCED; flipping it violates 4 invariants) |
+| Token conservation + pool disjointness across kernel + verifier | per-order exact deposits both sides | `TokenConservation`, `CoreExactEscrow`, `VerifierExactEscrow`, `ResolutionAlwaysPossible` |
 | `scoreOf == direct + batch`; the bridge write REPLACES the cumulative pair | `UsageCounter.applyBatchAccrual` | `ScoreComposition`, `ScoreCacheCorrect`, `TotalScoreIntegrity`, `BatchWriteReplacesNeverAdds` (unconditional) |
-| A settled process is counted toward a clause or assembly in exactly one universe | `UsageCounter` direct-path gate + guest-owned idempotence | `ProcessCountedInOneUniverse` — carried by `AssumeDomainSeparation` |
+| A resolved process is counted toward a clause or assembly on exactly one path | `UsageCounter` direct-path gate + guest-owned idempotence | `ProcessCountedInOneUniverse` — carried by `AssumeDomainSeparation` |
 | A dropped batch accrual under-pays, never over-pays; the loss is permanent at process granularity (recovered only at clause-or-assembly granularity) | `settleBatch`'s try/catch around `applyBatchAccrual` + the guest's global counted set | `AccrualNeverOverPays` (unconditional) vs `AccrualNotLost` — carried by **`AssumeAccrualGatesAligned`** (NOT contract-enforced — the documented conservative-under-pay posture, now pinned precisely) |
 
 Both assumptions ship TRUE in the `.cfg`; flipping either to FALSE is the
-model's experiment and is EXPECTED to fail. Mutation-checked 2026-08-04
-(5 mutations + 7 non-vacuity witnesses, each caught).
+model's experiment and is EXPECTED to fail. Mutation-checked: 5 mutations + 7
+non-vacuity witnesses, each caught.
 
 Known cost, accepted: `SettlementUniverses.cfg` ships `MinSellers=1`; the
 minimum-support floor case runs as a second green pass at `MinSellers=2`
@@ -255,10 +249,6 @@ under-pay only.
 ---
 
 ## 8) Echidna fuzzing — current posture
-
-Last verified run: **2026-08-13 at the freeze commit `c7f85d0d`** — both harnesses
-(kernel + FlorinToken) held every property across the configured 50,000-call budget,
-exit 0 (the freeze-stamp re-run).
 
 ### Harness: `src/echidna/EchidnaFuzzer.sol`
 
@@ -285,12 +275,6 @@ exit 0 (the freeze-stamp re-run).
 
 ### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol` + `test/protocol/usage/HalmosUsageCounter.t.sol` + `test/protocol/registries/HalmosClauseAndAssemblyRegistries.t.sol`
 
-Last verified run: **2026-08-27** (the post-stamp-record-#3 re-run covering the
-08-18/19 amendment wave — `AUDITOR_HANDOVER.md` § Freeze Notice) — all 32 properties
-proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry +
-6 AssemblyRegistry), exit 0. Prior full run: 2026-08-13 at the freeze commit
-`c7f85d0d`.
-
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),
 Halmos proves properties hold for ALL possible inputs by constructing and
@@ -316,10 +300,10 @@ actual compiled bytecode satisfies the invariants.
 
 **HalmosMembersRegistry (7 properties)** — the stake-machine proofs behind invariant E-5; the per-property map is the E-5 row in §5.
 
-**HalmosUsageCounter (6 properties, 2026-08-03)** — the accrual arithmetic on top of
+**HalmosUsageCounter (6 properties)** — the accrual arithmetic on top of
 the E-5 stake gate (which is NOT re-proved here): direct-path accrual monotonicity;
 the batch write REPLACES cumulative `(c,d)`, never adds; `scoreOf == accrualOf.score
-+ batchAccrualOf.score` (the only meeting point of the two settlement universes);
++ batchAccrualOf.score` (the only meeting point of the two paths);
 period bucketing (every timestamp lands in exactly its window; a wrong-period claim
 is rejected and the other period's slot is untouched); isolation across clauses and assemblies.
 Replace-not-add and score-composition are MUTATION-CHECKED. Enters via a test-only
@@ -328,9 +312,9 @@ proofs unreachable to the solver — the same doctrine as the ECDSA workaround i
 HalmosMembersRegistry).
 
 **HalmosClauseRegistry + HalmosAssemblyRegistry (6 properties each, one file:
-`HalmosClauseAndAssemblyRegistries.t.sol`, 2026-08-03)** — the author-side stake machines
+`HalmosClauseAndAssemblyRegistries.t.sol`)** — the designer-side stake machines
 `RpgfMinter._isAuthor` reads at claim: deposit solvency under arbitrary
-interleavings by two registering wallets; live deposits withdrawable in full; first-write-wins
+interleavings by two registering wallets; live stakes withdrawable in full; first-write-wins
 permanence (no second registration ever succeeds, for ANY caller); one-shot
 withdrawal; eligibility ends at withdraw with nothing restoring it; cross-key
 isolation. Solvency and first-write-wins MUTATION-CHECKED on both contracts
@@ -338,7 +322,7 @@ isolation. Solvency and first-write-wins MUTATION-CHECKED on both contracts
 
 **Total: 32/32 proved (FigaroCore 7 + MembersRegistry 7 + UsageCounter 6 +
 ClauseRegistry 6 + AssemblyRegistry 6), 0 failed. Typical wall time ~1–2 minutes
-(2026-08-04 full re-run: ~63s solver total across the six passes).**
+~63s solver total across the six passes.**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
@@ -394,7 +378,7 @@ that complement the Halmos token-conservation proofs.
 | `rootBuyerImmutable` | K-2 | Parametric rule (all methods) |
 | `currencyImmutable` | K-7 | Parametric rule (all methods) |
 
-**AttestationCoordinator (4 declared rules — re-authored 2026-04-23 for the commitment-arg ABI + merkle-proof receipt binding; all-green cloud run recorded 2026-08-04, see the run log below)**
+**AttestationCoordinator (4 declared rules — the commitment-arg ABI + merkle-proof receipt binding)**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
@@ -419,7 +403,7 @@ Foundry-covered companion:
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
-**RpgfMinter (8 declared rules — authored 2026-08-03; deps summarized via ghosts/wildcard dispatch)**
+**RpgfMinter (8 declared rules — deps summarized via ghosts/wildcard dispatch)**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
@@ -427,12 +411,12 @@ Foundry-covered companion:
 | `noDoubleClaimPerWalletPerPeriod` | E-5/E-6 | State-machine guard |
 | `cannotClaimWhilePeriodOpen` | E-6 | Period gating |
 | `duplicateClauseOrAssemblyReverts` | E-6 | Input-hygiene guard (the historical exploit path) |
-| `ineligibleClauseOrAssemblyCannotBePaid` | E-5 | The live-stake `_isAuthor` gate — a withdrawn deposit pays nothing |
+| `ineligibleClauseOrAssemblyCannotBePaid` | E-5 | The live-stake `_isAuthor` gate — a withdrawn stake pays nothing |
 | `mintedMonotonic` | E-6 | Parametric (never decreases) |
 | `claimableRejectsDuplicatesToo` | — | View/state parity |
 | `claimableReturnsZeroForAlreadyClaimedWallet` | — | View/state parity |
 
-Mutation-checked 2026-08-03 (conservation, double-claim, eligibility): each rule
+Mutation-checked (conservation, double-claim, eligibility): each rule
 FAILED against a deliberately broken contract, then passed clean after revert —
 load-bearing, not vacuous.
 
@@ -441,21 +425,10 @@ load-bearing, not vacuous.
 37 declared rules across 6 specs (FigaroCore 8 + FlorinToken 6 +
 AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4 +
 RpgfMinter 8).
-**All green** — full 6-spec suite re-run **2026-08-27** with `--wait_for_results all`
-(exit 0 = every rule verified; every `Violated` line in the stream was the
-`rule_not_vacuous` healthy polarity). This is the Post-Audit-Policy re-run covering
-the 08-18/19 amendment wave (post-stamp record #3 — `AUDITOR_HANDOVER.md` § Freeze
-Notice); the prior full-green runs (2026-08-13 at the freeze stamp; 2026-08-04) are
-in git history.
-
-| Spec | Report URL |
-|---|---|
-| FigaroCore | https://prover.certora.com/output/9512759/f7d9478c70eb45b081750671c158d01e (2026-08-27, amendment-wave re-run) |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/ad0172900adf4b3f952c37f6ba02d2af (2026-08-27) |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/1abfe0ceb23e40b0ab8c3151039bb1da (2026-08-27) |
-| FlorinToken | https://prover.certora.com/output/9512759/864adb11f68145a98f2de9b081f6181e (2026-08-27) |
-| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/d364d98732d04db2ae5a9c7e2a578d74 (2026-08-27) |
-| RpgfMinter | https://prover.certora.com/output/9512759/7a68e4562d8e461ab93256dbac6740c4 (2026-08-27) |
+**All green** — the full 6-spec suite verifies with `--wait_for_results all`
+(exit 0 = every rule verified; every `Violated` line in the stream is the
+`rule_not_vacuous` healthy polarity). Which run, when, and the report URLs:
+`AUDITOR_HANDOVER.md` § "Formal run evidence".
 
 ```bash
 # Install
@@ -473,7 +446,7 @@ export CERTORAKEY=<your-key>
 | SDK test file | Coverage | Maps to |
 |---|---|---|
 | `integration.test.ts` | SDK round-trip on a LIVE chain (the one sanctioned chain-touching Vitest file, skipIf-gated): built+signed commitment accepted by `commit`, events fetch + reconstruct, reconstruction resolves. Asserts no kernel math — amounts are Foundry/Certora-owned | K-8, K-9 (live-chain acceptance) |
-| `bonds.test.ts` | Bond calculations (2×), settlement payouts, approval amounts, validation | K-1, K-5 |
+| `bonds.test.ts` | Bond calculations (2×), payouts at resolution, approval amounts, validation | K-1, K-5 |
 | `commitments.test.ts` | EIP-712 domain building, salt generation, deadline, commitment building | K-8, K-9 |
 | `state.test.ts` | Event reconstruction, Topology (incremental), active/seller/buyer queries | A-4, A-5 |
 | `proposer.test.ts` | Agent proposer: proposeActions, typed action generation | K-2 (buyer action routing) |
@@ -496,7 +469,7 @@ owns the harness inventory.
 | Layer | Census | What it covers |
 |---|---|---|
 | **TLA+ model checking** | 4 models, 48 invariants (FigaroCore: 9 across 6,087,113 states; FlorinToken: 8 across 160,844 states; WitnessSwapAndCommitCoordinator: 10 across 1,979,101 distinct states; SettlementUniverses: 21 across 2,632,247 distinct states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel escrow) + the composed settlement universes (no cross-universe double payout, per-pool escrow, score composition, kernel blindness) |
-| **Halmos symbolic testing** | 4 harness files, 32 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two settlement universes, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the author-side stake machines RPGF eligibility reads. |
+| **Halmos symbolic testing** | 4 harness files, 32 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two paths, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the designer-side stake machines designer-reward eligibility reads. |
 | **Certora formal verification** | 6 specs, 37 declared rules (8 + 4 + 7 + 6 + 4 + 8) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
 | **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
