@@ -15,7 +15,7 @@ export default function Data() {
     return (
         <>
             <MarketingHero
-                title="Your records. Your terms."
+                title="Your data. Your terms."
                 lead={
                     <>
                         Every trade you settle leaves two kinds of trace: a fingerprint on the chain, and the record of what actually happened &mdash; the agreement, the evidence, the books you kept. The protocol only ever holds the first. The second stays with you, pinned where you choose, disclosed only when you choose &mdash; and because letting someone else in on it is itself a trade, you can sell access to it the same bonded way you sell anything else. None of it needed a new contract: this whole market is two ordinary clauses composed onto a bonded sale.
