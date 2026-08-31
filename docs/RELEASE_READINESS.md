@@ -1,14 +1,14 @@
-# V5 Release Readiness
+# Release Readiness
 
-Status: the open work between here and the public releases — the Sepolia testnet
-line (live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
-closed work is deleted in the session that closes it, and `git log` is the record.
+Status: the open work between here and the public releases — the testnet line
+(live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
+closed work is deleted in the session that closes it, and `git log` is the history.
 The external-audit handover — freeze notice + stamp, post-audit policy, the
 validation-command gate, accepted risks — is `docs/AUDITOR_HANDOVER.md`.
 
 ## Deployment Targets
 
-Ruled by the maintainer 2026-07-23: the public deployment target is **Ethereum mainnet**.
+The public deployment target is **Ethereum mainnet**.
 **Polygon** is a possible additional deployment. A **Cairo rewrite** of the contracts
 (Starknet) is planned as a later line of work. Testnet rehearses the mainnet deployment
 (testnet = mainnet rehearsal); chain-coupled compositions resolve against these targets —
@@ -29,21 +29,21 @@ Task numbers are stable; missing numbers are closed tasks — `git log` has each
 1. choose the auditor or audit process
 2. hand over the frozen Solidity surface and active docs (`docs/AUDITOR_HANDOVER.md`)
 3. resolve findings or explicitly accept non-critical findings in writing
-4. record the final audit outcome in the release docs
+4. state the final audit outcome in the release docs
 
-### Task 3 (residue): Record the mainnet γ-curve point
+### Task 3 (residue): state the mainnet γ-curve point
 
-The registry parameters are ratified and hardcoded in `script/DeployMainnet.s.sol`
-(reasoning inline; derivation in the RPGF paper §7). Before the mainnet broadcast:
-re-measure `g` — the marginal cost of one fabricated settled process, batch path —
-on the target chain, and record the deployment's point on the γ curve in the
-release record.
+The registry parameters are hardcoded in `script/DeployMainnet.s.sol` (reasoning
+inline; derivation in `/papers/substrate-broadening-rpgf` §7). Before the mainnet
+broadcast: re-measure `g` — the marginal cost of one fabricated resolved process,
+batch path — on the target chain, and state the deployment's point on the γ curve
+where the release facts are kept.
 
 ### Task 6: Mainnet content durability
 
 - **Sovereign per-party pinning (Option 3).** Shift durability to the parties: each
-  publishing wallet's client pins what it authors, so no single operator is the
-  custodian of availability — no central pinning dependency in the mainnet trust
+  publishing wallet's client pins what it publishes, so no single operator holds
+  availability — no central pinning dependency in the mainnet trust
   model. (The testnet tier rides the managed pinning service through the
   `ipfsService` deploy-build adapter — env vars in `docs/LOCAL_DEV.md`.)
 - **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay
@@ -64,14 +64,14 @@ Sepolia is live and rehearsed. Remaining:
 - Flip the device-only deployment-context statements across the repo docs (a
   maintainer act).
 
-### Task 9: Florin custody tail
+### Task 9: Florin treasury tail
 
 At/after mainnet: stand up the real DAO treasury — a canonical Safe at `DAO_WALLET`
 with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet first.
 Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
 Who holds the treasury, and the discipline on spending it: `docs/DAO.md`.
 
-### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
+### Task 11: WYSIWYS tail — frontend delivery integrity
 
 The signing-moment mitigations already shipped
 (`scripts/verify-signed-agreement.mjs` + the `/audit` signature verdicts); this task
@@ -106,7 +106,7 @@ deploy environment before the export is uploaded.
 
 ### Task 13: Genesis Registration Ownership — the mainnet gate
 
-The rule (maintainer, 2026-08-17): the DAO treasury vault is author-of-record for
+The rule: the DAO treasury vault is the designer of record for
 the **mandatory clauses only** (`figaro-commerce`, `figaro-topology`,
 `figaro-assembly-provenance`) plus any clause a stranger donates under it; every
 other reference clause and every reference assembly is registered by the founder's
@@ -115,7 +115,7 @@ own wallet — the founder direct as a buyer-side member, the DAO under its
 EIP-7702-delegated operator EOA, never the vault address (`DAO.md` § "Who holds
 the treasury"). Registrar = designer of record = who the 600M reserve pays
 (`RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`); first-write-wins and
-permanent per id. Rehearsed end to end on Sepolia (the 2026-08-19 redeploy).
+permanent per id. The procedure is rehearsed end to end on the testnet.
 
 Before mainnet genesis seeding:
 
@@ -144,15 +144,15 @@ live. These are separate from the external-audit gate above:
   release tag's body) — any guest rebuild supersedes the pinned vkey; never reuse
   an old value.
 - The genesis state root is computed, not deploy-time-verified against the Rust
-  value — treat one REAL batch settling cleanly post-deploy as the genesis-root
+  value — treat one REAL batch resolving cleanly post-deploy as the genesis-root
   proof, not the deploy transaction succeeding.
 - `FlorinToken.deployer` == the expected deployer EOA; `FlorinToken.deployerMintRenounced` == `true` after minter setup; `FlorinToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
 - `MembersRegistry.registrationDeposit` / `.withdrawalCooldown` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `0` placeholders). Both MembersRegistry values are immutable and cannot be corrected after deploy.
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
-- `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), `UsageCounter.periodEnd(0..8)` == nine annual boundaries derived from `RPGF_GENESIS`, and `UsageCounter.minSellers` == 3 — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.periodAmount` (45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping, ruled 2026-07-31) sums to 600M and its length is validated on-chain against `periodCount()`.
-- All settlement tokens are non-rebasing and non-fee-on-transfer.
-- **No test members on mainnet — ever** (maintainer ruling 2026-08-24). The rehearsal
+- `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), `UsageCounter.periodEnd(0..8)` == the nine annual boundaries derived from `RPGF_GENESIS`, and `UsageCounter.minSellers` == 3 — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.periodAmount` (45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping) sums to 600M and its length is validated on-chain against `periodCount()`.
+- Every token a process can be denominated in is non-rebasing and non-fee-on-transfer.
+- **No test members on mainnet — ever.** The rehearsal
   doctrine covers procedure, not tooling: the member-registering smoke specs
   (`*.sepolia.spec.ts` — `live-order` drives the onboarding wizard and registers a
   "Smoke counter …" profile) are TESTNET-ONLY and are never pointed at mainnet.
@@ -165,9 +165,9 @@ live. These are separate from the external-audit gate above:
 - `public/_headers` CSP/HSTS set is applied at the CDN — verify at the hosting layer (cannot be checked from the repo tree). The CSP ships `'unsafe-inline'` for scripts (a static export cannot do per-request nonces); it is NOT an XSS/exfil backstop — XSS safety rests on React auto-escaping, enforced by the maintainers' pre-commit guard battery. The script-hash hardening that removes `'unsafe-inline'` is the standing next step (`public/_headers` documents it).
 - `next` npm advisories are static-export-INAPPLICABLE (this deploy ships no Next server: `output:'export'`, no middleware/rewrites/RSC-server/Server-Actions). They are build-host hygiene, NOT runtime blockers — do not conflate with runtime-reachable advisories in browser-shipped dependencies (wagmi/viem tree). A patched 14.2.x bump is advisable for the build host.
 - Ecosystem-agent tier (`ecosystem-agents/`) ships ONLY behind the sandboxed signer
-  runtime — **BUILT 2026-08-20, all four components** (`AI_AGENT_COORDINATION.md` § the
-  design owns per-component status): the policy signer (`@figaro-protocol/sdk/signer` — key
-  custody, out-of-model gate, F1–F3), the operator re-pointed at the socket account,
+  runtime — **all four components must stand** (`AI_AGENT_COORDINATION.md` § the
+  sandboxed signer runtime owns them): the policy signer (`@figaro-protocol/sdk/signer` —
+  the key stays in its process, out-of-model gate, F1–F3), the operator pointed at the socket account,
   the data channel (`ecosystem-agents/runtime/` — framed, nonce-bounded fetches, F4 at
   the fetch boundary), and the sandbox wrapper (`run-sandboxed` — loopback-only OS
   sandbox + policy-driven egress proxy + scrubbed environment, F5/F6; deny cases
@@ -181,6 +181,6 @@ live. These are separate from the external-audit gate above:
   gate CRITERION — no raw host shell + no ambient key + framed content — is met when
   the operator is launched through `run-sandboxed` with the signer outside; launched
   bare, the guarantee degrades to behavioral-only and the specs say so. (Separate gate
-  from the frontend's — frontend+SDK security audit, 2026-07-23.)
-- The IPFS gateway the app resolves `ipfs://` documents through MUST be a DIFFERENT origin than the app itself. An affixed consent/criteria document may be pinned as `text/html` (`ipfsService.ts` `ALLOWED_FILE_TYPES`); on click-through the gateway serves it and any script runs in the GATEWAY origin — harmless while that is a separate origin, an app compromise if the app is ever served same-origin as its gateway (audit 2026-07-23).
-- Wallet-security screening: drive one real commit signature through MetaMask against the live deployment and confirm no Blockaid "deceptive request" flag on the EIP-712 request (legitimate contracts get false-flagged — Kleros's escrow did); if flagged, file the MetaMask/Blockaid false-positive report and re-verify before launch. (Surfaced 2026-06-12: the universal Anvil default-deployer addresses tripped the list on devnet; devnet now deploys from a randomized throwaway key.)
+  from the frontend's, and named by the frontend+SDK security audit.)
+- The IPFS gateway the app resolves `ipfs://` documents through MUST be a DIFFERENT origin than the app itself. An affixed consent/criteria document may be pinned as `text/html` (`ipfsService.ts` `ALLOWED_FILE_TYPES`); on click-through the gateway serves it and any script runs in the GATEWAY origin — harmless while that is a separate origin, an app compromise if the app is ever served same-origin as its gateway (named by the security audit).
+- Wallet-security screening: drive one real commit signature through MetaMask against the live deployment and confirm no Blockaid "deceptive request" flag on the EIP-712 request (legitimate contracts get false-flagged — a Kleros contract did); if flagged, file the MetaMask/Blockaid false-positive report and re-verify before launch. (Surfaced once already: the universal Anvil default-deployer addresses tripped the list on devnet; devnet now deploys from a randomized throwaway key.)
