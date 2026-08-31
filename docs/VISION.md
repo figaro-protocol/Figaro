@@ -100,7 +100,8 @@ Any ERC-20 may denominate a process, and the choice is itself a statement: a
 stablecoin, a designer's utility token, a community's own token. The florin is
 the protocol's own coordination token — a unit any two strangers can converge on
 when they share no other, with a supply fixed at one billion and most of it
-reserved for designer rewards. `FLORIN_TOKEN.md` holds the design.
+reserved for designer rewards. `FLORIN_TOKEN.md` holds the token's design;
+`DESIGNER_REWARDS.md` holds the reward's.
 
 ## One deployment, anyone builds
 

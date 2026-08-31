@@ -34,7 +34,9 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
   proof-based batch verifier. Inventory: `docs/CONTRACTS.md`.
 - **The florin and designer rewards** — `src/florin/`, `src/rpgf/`: a
   one-billion-cap ERC-20 and the minter that pays designers of record in
-  proportion to the use their clauses and assemblies carried. `docs/FLORIN_TOKEN.md`.
+  proportion to the use their clauses and assemblies carried.
+  `docs/FLORIN_TOKEN.md` (the token), `docs/DESIGNER_REWARDS.md` (the reward),
+  `docs/DAO.md` (the treasury that bootstraps).
 - **Clauses and assemblies** — `clauses/` (the canonical specs, the registry's
   seed data) and `assemblies/` (reference assemblies, anchored at deploy).
   `docs/CLAUSES.md`, `assemblies/README.md`.
@@ -127,7 +129,8 @@ audit's handover is `docs/AUDITOR_HANDOVER.md`.
 All in `docs/`; `docs/README.md` is the map and states one owner per concept.
 Inventories: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`,
 `LOCAL_DEV.md`. Design: `VISION.md`, `THEORY.md`, `LEXICON.md`,
-`FLORIN_TOKEN.md`, `SCALING_STRATEGY.md`, `OPEN_WORLD.md`,
+`FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md`, `SCALING_STRATEGY.md`,
+`OPEN_WORLD.md`,
 `PUBLIC_GRAPH_MODEL.md`. Security: `DESIGN_DECISIONS.md` (patterns that look
 like vulnerabilities and are correct by design — read before raising a
 finding), `VERIFICATION_MAP.md`, `AUDITOR_HANDOVER.md`, `RELEASE_READINESS.md`.

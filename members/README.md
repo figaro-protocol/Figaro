@@ -15,7 +15,7 @@ registers it from its owner's wallet — every member from its own balance
   compositionHash — stable across redeploys) and buyer-posture
   `disclosurePolicy` entries. The seller side lands later on the same profile.
 - `dao.json` — the DAO's identity, registered under its EIP-7702 OPERATOR EOA,
-  never the vault address (`FLORIN_TOKEN.md` § DAO custody).
+  never the vault address (`DAO.md` § "Who holds the treasury").
 
 A registered profile evolves by `updateProfile` — the member's own runtime act,
 not seeding; these files are the genesis content, not a mirror of live state.

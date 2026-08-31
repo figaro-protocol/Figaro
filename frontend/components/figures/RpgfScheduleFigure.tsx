@@ -29,10 +29,10 @@ export interface RpgfScheduleFigureProps extends BaseFigureProps {
  * `script/Deploy.s.sol`: 45M, 45M, 60M, 60M, 60M, 82.5M, 82.5M, 82.5M, 82.5M,
  * summing to the 600M minter cap (the script asserts the sum). The tranche
  * grouping — 15% over years 1–2, 30% over years 3–5, 55% over years 6–9, split
- * equally within each group — is `docs/FLORIN_TOKEN.md` § "The 600M RPGF
- * allocation". Nothing here is a vesting or unlock curve: the founder,
- * supporter, and DAO allocations are minted whole at genesis with no vesting
- * (same doc, § Rationale). This is the reserve's per-period BUDGET, minted only
+ * equally within each group — is `docs/DESIGNER_REWARDS.md` § "The schedule".
+ * Nothing here is a vesting or unlock curve: the founder, supporter, and DAO
+ * allocations are minted whole at genesis with no vesting
+ * (`docs/FLORIN_TOKEN.md` § Rationale). This is the reserve's per-period BUDGET, minted only
  * as authors claim against a closed period's usage.
  */
 

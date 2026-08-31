@@ -69,7 +69,7 @@ Sepolia is live and rehearsed. Remaining:
 At/after mainnet: stand up the real DAO treasury — a canonical Safe at `DAO_WALLET`
 with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet first.
 Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
-Custody posture and treasury discipline: `docs/FLORIN_TOKEN.md`.
+Who holds the treasury, and the discipline on spending it: `docs/DAO.md`.
 
 ### Task 11: WYSIWYS tail — frontend delivery integrity (RULED 2026-08-03)
 
@@ -112,8 +112,8 @@ the **mandatory clauses only** (`figaro-commerce`, `figaro-topology`,
 other reference clause and every reference assembly is registered by the founder's
 wallet, from the founder's own balance; each member profile is registered by its
 own wallet — the founder direct as a buyer-side member, the DAO under its
-EIP-7702-delegated operator EOA, never the vault address (`FLORIN_TOKEN.md` § DAO
-custody). Registrar = author-of-record = who the 600M RPGF pays
+EIP-7702-delegated operator EOA, never the vault address (`DAO.md` § "Who holds
+the treasury"). Registrar = designer of record = who the 600M reserve pays
 (`RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`); first-write-wins and
 permanent per id. Rehearsed end to end on Sepolia (the 2026-08-19 redeploy).
 
@@ -124,8 +124,8 @@ Before mainnet genesis seeding:
    is invoked with `SEED_CLAUSES` naming exactly the mandatory three, and every
    other run uses the founder's Ledger as direct registrar.
 2. Rehearse the plan on an Anvil fork with the real devices before mainnet.
-3. Keep `CONTRACTS.md` § "Designer rewards", `LEXICON.md` (the vault-registrar seam), and
-   `FLORIN_TOKEN.md` in sync if the rule moves.
+3. Keep `CONTRACTS.md` § "Designer rewards", `LEXICON.md` (the vault-registrar seam),
+   `DESIGNER_REWARDS.md`, and `DAO.md` in sync if the rule moves.
 
 ## Pre-Mainnet Deployment Verification
 

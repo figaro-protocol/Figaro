@@ -370,7 +370,8 @@ The 600M reserve, paid to designers of record in proportion to the trade
 their clauses and assemblies carried: one claim per period, nine annual
 periods, per-period budgets rising over three groups (15% of the reserve
 over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each group).
-`FLORIN_TOKEN.md` and `PUBLIC_GRAPH_MODEL.md` own the schedule's reasoning.
+`DESIGNER_REWARDS.md` owns the schedule's reasoning and the boundary;
+`PUBLIC_GRAPH_MODEL.md` owns what the stake does and does not do.
 
 **`src/rpgf/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
 `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;

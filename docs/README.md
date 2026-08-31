@@ -38,13 +38,15 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Design system — color/type/spacing tokens, component shapes, a11y anti-patterns | `DESIGN_TOKENS.md` |
 | Canonical names per tier | `LEXICON.md` |
-| The florin, allocations | `FLORIN_TOKEN.md` |
+| The florin — the token, its supply, its allocation | `FLORIN_TOKEN.md` |
+| Designer rewards — who earns the 600M, on what meter and schedule | `DESIGNER_REWARDS.md` |
+| The DAO — what it is for, how it spends, who holds the treasury | `DAO.md` |
 | Batch-scaling design (BUILT — witness prover/verifier/sequencer beside the direct path) | `SCALING_STRATEGY.md` |
 | Open release tasks (testnet + mainnet) | `RELEASE_READINESS.md` |
 | External-audit handover (freeze notice, validation gate, accepted risks) | `AUDITOR_HANDOVER.md` |
-| Public-graph / RPGF incentive rationale (why the flow-map gets built under a uniform reward) | `PUBLIC_GRAPH_MODEL.md` |
+| Public-graph incentive rationale (why the flow-map gets built under a uniform reward), and what the stake does and does not do | `PUBLIC_GRAPH_MODEL.md` |
 | Comparative-substrates analysis (firm/platform/court/bond as institutional axes: fiscal legibility, monetary neutrality, transparency-verifiability-privacy conjunction, discriminating alignment) | `/papers/coordination-substrates` (`frontend/app/(marketing)/papers/coordination-substrates/page.tsx`) |
-| RPGF mechanics (UsageCounter, RpgfMinter — uniform reward, live ETH stake) | `CONTRACTS.md` |
+| Designer-reward contract surfaces (UsageCounter, RpgfMinter) | `CONTRACTS.md` |
 | Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
 | Open work | GitHub Issues (public); the maintainer's working punch-list is private |
 
@@ -52,11 +54,11 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, the florin)
 2. `THEORY.md` — game-theoretic derivation of the six properties
-3. `FLORIN_TOKEN.md` — token canonical reference
+3. `FLORIN_TOKEN.md` — token canonical reference (`DESIGNER_REWARDS.md` and `DAO.md` sit beside it: three concepts, three files)
 
 ## Main Groups
 
-- **Protocol and framing**: `VISION.md`, `THEORY.md`, `FLORIN_TOKEN.md`
+- **Protocol and framing**: `VISION.md`, `THEORY.md`, `FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md`
 - **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalogue), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
 - **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the five split-out inventory docs (contracts / clauses / frontend / tests / commands; `CLAUSES.md` also carries the anchoring doctrine)
 - **Composition and disclosure**: `PUBLIC_GRAPH_MODEL.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`; the aspirational GHG protocol spec was deleted 2026-07-10 — its two load-bearing rulings, reader-derived scope and offset-out-of-scope, live in `CLAUSES.md`)
