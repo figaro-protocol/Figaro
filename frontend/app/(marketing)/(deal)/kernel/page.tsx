@@ -7,14 +7,14 @@ import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFig
 export const metadata: Metadata = withOg({
     title: "Kernel — Figaro Protocol",
     description:
-        "How a Figaro deal works: both sides lock a stake larger than the deal, so cheating always loses; the buyer closes it out; every step is recorded permanently.",
+        "How a Figaro trade works: both sides lock a stake larger than the payment, so cheating always loses; the buyer closes it out; every step is written down permanently.",
 });
 
-// FigaroCore's mechanism design, and ONLY that (maintainer rule 2026-08-06:
-// the kernel page never carries the stack — the stack figure lives on home).
-// Compressed 2026-08-06 from ~950 words to ~420 + the state figure (moved
-// here from /security, which owns tests and audit results) + the outcome
-// table. Probe-refined sentences kept verbatim where they survive.
+// FigaroCore's mechanism design, and ONLY that: the kernel page never carries
+// the stack — the stack figure lives on home. Short by intent, ~420 words plus
+// the state figure (which lives here, not on /security, which owns tests and
+// audit results) and the outcome table. Probe-refined sentences are kept
+// verbatim where they survive; do not re-grow this page.
 export default function Kernel() {
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
@@ -22,10 +22,10 @@ export default function Kernel() {
                 How any two parties can transact directly, anywhere.
             </h1>
             <p className="text-body-lead text-ink-muted italic mb-8">
-                Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine.
+                Two stakes, each bigger than the trade. One rule for who opens the box. That is the entire machine.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                The short version is a lockbox. Both sides put in a stake worth more than the deal. A small program holds it &mdash; running in the open, owned by no one, following one fixed rule. Say the deal is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a stake. The seller locks twenty too, all of it stake. Forty is held, and until the deal is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
+                The short version is a lockbox. Both sides put in a stake worth more than the payment. A small program holds it &mdash; running in the open, owned by no one, following one fixed rule. Say the trade is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a stake. The seller locks twenty too, all of it stake. Forty is held, and until the trade is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-4">
                 Why twice the value, and not the payment plus a small margin? Because the size of the stake is the whole mechanism. At twice the value there is no amount that is clever to steal:
@@ -39,35 +39,35 @@ export default function Kernel() {
                         </tr>
                     </thead>
                     <tbody className="text-ink-body">
-                        <tr className="border-b border-default"><td className="py-2 pr-4">honor the deal</td><td className="py-2">your stake back &mdash; and the seller is paid</td></tr>
+                        <tr className="border-b border-default"><td className="py-2 pr-4">honor the trade</td><td className="py-2">your stake back &mdash; and the seller is paid</td></tr>
                         <tr><td className="py-2 pr-4">walk away</td><td className="py-2">your double stake locked forever &mdash; and nobody else gets it</td></tr>
                     </tbody>
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-A forfeited stake is simply value that never comes home, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a deal nobody closes strands both stakes in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
+A forfeited stake is simply value that never comes home, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both stakes in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Value you part with has always had two modes: spent, or invested. A stake is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the deal&apos;s duration that capital stands idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it comes home intact every honest time.
+                Value you part with has always had two modes: spent, or invested. A stake is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the trade&apos;s duration that capital stands idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it comes home intact every honest time.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Who opens the box.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer is locked at twice the value too, so stalling costs the buyer exactly as much as anyone. No arbitrator weighs the case; no timer releases what is locked. And because nothing settles until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the deal closes.
+                One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer is locked at twice the value too, so stalling costs the buyer exactly as much as anyone. No arbitrator weighs the case; no timer releases what is locked. And because nothing resolves until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade closes.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Two mechanisms, not one.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Neither mechanism is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands settle as one deal, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close settles the whole &mdash; and the composition is the machine.
+                Neither mechanism is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands resolve as one trade, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close resolves the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 More than two pairs of hands.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a deal is a property of the deal somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
+                Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a trade is a property of the trade somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
                 <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">
                     Assemblies
                 </Link>
@@ -77,23 +77,23 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 className="my-8"
                 idPrefix="kernel-stacked-stakes"
                 legs={[
-                    { name: "First contributor", role: "opens the deal", payment: 6 },
+                    { name: "First contributor", role: "opens the trade", payment: 6 },
                     { name: "Second contributor", role: "commits next", payment: 3 },
                     { name: "Third contributor", role: "commits last", payment: 1 },
                 ]}
-                figureTitle="The same ten-token deal, shared by three contributors"
+                figureTitle="The same ten-token trade, shared by three contributors"
                 figureDesc={
-                    "A ten-token deal split across three contributors in the order they " +
+                    "A ten-token trade split across three contributors in the order they " +
                     "commit: the first is paid 6.00, the second 3.00, the third 1.00. " +
-                    "Each stakes twice the value the deal has accumulated at its own " +
+                    "Each stakes twice the value the trade has accumulated at its own " +
                     "link rather than twice its own payment, so the third contributor — " +
                     "paid least — stakes twice the whole 10.00. The buyer stakes twice " +
                     "each payment as that contributor commits, twenty in all. All three " +
-                    "settle together, or none do."
+                    "resolve together, or none do."
                 }
                 caption={
                     <>
-                        The same ten-token deal, now shared by three pairs of hands. The third
+                        The same ten-token trade, now shared by three pairs of hands. The third
                         contributor is paid the least (1.00) and locks the most
                         (2 &times; 10.00 = 20.00): by the time it commits, the running total
                         already carries the other two. The buyer&apos;s twenty is the same
@@ -102,13 +102,13 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 }
             />
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
-                The record, and the proof.
+                The data, and the proof.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Resolved or left to sit, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and no custodian anywhere in any of it.
+                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
             </p>
         </section>
     );
