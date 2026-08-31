@@ -45,7 +45,7 @@ Defection is costly; the graph is tamper-proof by design.
 
 The geo graph encodes **where** coordination happens: pickup locations,
 delivery drop-off zones, and service areas. This data is public by design
-— it serves as "economic pheromones" (see THEORY.md §Philosophy) that allow
+— it serves as "economic pheromones" that allow
 autonomous agents (human or AI) to discover, filter, and route work.
 
 **Contents:** Pickup geohashes, drop-off geohashes, off-chain metadata,

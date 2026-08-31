@@ -209,7 +209,7 @@ Inventories (see [docs/README.md](docs/README.md) for the full doc map):
 Core theory + design:
 
 - [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
-- [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
+- [THEORY.md](docs/THEORY.md) — The equilibrium derivation, bound to the kernel's transfers and the formal layers
 - [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF distribution
 - [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1 (deferred design baseline)
 - [OPEN_WORLD.md](docs/OPEN_WORLD.md) — Why this is a runtime, not just contracts (paradigm + frontend composition model + semantic layer; consolidates the former RUNTIME.md)
