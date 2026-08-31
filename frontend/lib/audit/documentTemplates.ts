@@ -51,7 +51,7 @@ const COMMERCIAL_INVOICE: DocumentTemplate = {
 
 /** Non-negotiable Bill of Lading — one per carriage-leg ORDER. Never a document of
  *  title: FigaroCore forbids substituting a bonded order's parties mid-flight, so
- *  the consignee is fixed at signing (see docs/BOL_RESEARCH.md). */
+ *  the consignee is fixed at signing (/papers/after-tradelens §7). */
 const BILL_OF_LADING: DocumentTemplate = {
     genre: "bill-of-lading",
     title: "Bill of Lading (non-negotiable)",

@@ -386,14 +386,12 @@ variation is attested, and a single `resolveProcess` nets the legs to
 zero in one bond cycle. The new owner never becomes a process party, so
 no in-protocol right is minted; their protection between payment and
 discharge is the ordinary legal layer plus the attested data.
-`BOL_RESEARCH.md` §6.2 owns the pattern.
 
-See `docs/BOL_RESEARCH.md` for the full comparison against CargoX,
-TradeTrust, MLETR, and TradeLens, including the field-level mapping of
-what *is* expressible (non-negotiable BoLs in any topology the buyer commits upfront, including multi-leg supply-chain carriage) and what is closed
-off. Its canonical header answers the question this entry states: the
-kernel forbids mid-flight resale — a structural property, not a parked
-design.
+`/papers/after-tradelens` §7 states this in full, and its §8 compares the
+approach against CargoX, TradeTrust, MLETR, and TradeLens. What remains
+expressible here is the non-negotiable BoL — the consignee fixed at signing,
+the document a read-only projection over committed leaves, in any topology the
+buyer commits upfront.
 
 ---
 
