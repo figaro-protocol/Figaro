@@ -15,14 +15,14 @@ import { GasCrossoverFigure } from "@/components/figures/GasCrossoverFigure";
 
 export const metadata: Metadata = withOg({
     title: "Specifications — Figaro Protocol",
-    description: "Canonical protocol surface: kernel, attestation coordinator, registries, token, optional protocol contracts — plus the sequencer, the batch path's one off-chain piece, the deployment-record-to-SDK field crosswalk, and every named revert an integrator can hit.",
+    description: "Canonical protocol surface: kernel, attestation coordinator, registries, token, optional contracts — plus the sequencer, the batch path's one off-chain piece, the deployment-record-to-SDK field crosswalk, and every named revert an integrator can hit.",
 });
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
 
 /** The committed public deployment record, read at build time — the record is
  *  the canonical address source (`deployments/README.md`), never hand-typed
- *  constants. Absent record (a fork without the deploy) renders no row. */
+ *  constants. An absent deployment record (a fork without the deploy) renders no row. */
 function deploymentRecord(): Record<string, string | number> | null {
     try {
         return JSON.parse(fs.readFileSync(
@@ -32,9 +32,8 @@ function deploymentRecord(): Record<string, string | number> | null {
     }
 }
 
-/** sha256 of the record's exact committed bytes, computed at build — DERIVED,
- *  never stored, so it cannot drift from the file (ruled 2026-08-25, the
- *  machine-discovery probe's ask). The security property is cross-origin:
+/** sha256 of the deployment record's exact committed bytes, computed at build — DERIVED,
+ *  never stored, so it cannot drift from the file. The security property is cross-origin:
  *  this site attests the bytes GitHub serves, so an agent hashes the raw
  *  file and compares one string — neither origin alone can forge agreement. */
 function deploymentRecordSha256(): string | null {
@@ -52,7 +51,7 @@ const JUMP_LINKS: { href: string; label: string }[] = [
     { href: "#kernel", label: "Kernel" },
     { href: "#attestation", label: "Attestation & clause" },
     { href: "#clause-validation", label: "Clause validation" },
-    { href: "#settlement-paths", label: "Two settlement paths, two disjoint state universes" },
+    { href: "#settlement-paths", label: "The two paths share no state" },
     { href: "#settlement-costs", label: "What each path costs" },
     { href: "#sequencer", label: "The sequencer" },
     { href: "#token", label: "Token" },
@@ -91,7 +90,7 @@ const ERRORS: ErrorStage[] = [
                 name: "AlreadyRegistered(clauseId)",
                 from: "ClauseRegistry.registerClause",
                 cause: "That keccak256(abi.encode(clauseId, version)) is taken. First-write-wins and permanent — no overwrite, no re-registration of the same slot.",
-                fix: "Check it BEFORE spending the deposit: computeClauseKey(id, version), then read registered(key). Pick another id or version if it is taken.",
+                fix: "Check it BEFORE placing the stake: computeClauseKey(id, version), then read registered(key). Pick another id or version if it is taken.",
             },
             {
                 name: "AlreadyRegistered()",
@@ -114,19 +113,19 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "NotRegistered() · NotRegistered(clauseId)",
                 from: "All three registries",
-                cause: "Reclaiming a deposit, reading a binding, or declaring a mechanism's clause (setMechanismClause) against a key that was never written.",
+                cause: "Reclaiming a stake, reading a binding, or declaring a mechanism's clause (setMechanismClause) against a key that was never written.",
                 fix: "Confirm the key first — registered(key), bindings(hash), or the registry's own event stream.",
             },
             {
                 name: "NotRegisteredBy(caller, registeredBy)",
                 from: "ClauseRegistry · AssemblyRegistry",
-                cause: "Only the wallet that registered may reclaim that deposit. The error names the wallet that can.",
+                cause: "Only the wallet that registered may reclaim that stake. The error names the wallet that can.",
                 fix: "Call from that wallet.",
             },
             {
                 name: "AlreadyWithdrawn()",
                 from: "ClauseRegistry · AssemblyRegistry",
-                cause: "The deposit is already reclaimed. The binding itself stays anchored forever — withdrawal moves the stake and de-surfaces the entry, it never deletes it.",
+                cause: "The stake is already reclaimed. The binding itself stays anchored forever — withdrawal moves the stake and de-surfaces the entry, it never deletes it.",
                 fix: "Nothing to do. Re-registering the same key is impossible by design.",
             },
             {
@@ -144,7 +143,7 @@ const ERRORS: ErrorStage[] = [
         ],
     },
     {
-        stage: "Committing — FigaroCore.commit, and the settlement token underneath it",
+        stage: "Committing — FigaroCore.commit, and the denomination underneath it",
         rows: [
             {
                 name: "DeadlineExpired()",
@@ -185,7 +184,7 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "ProcessAlreadyResolved()",
                 from: "FigaroCore.commit",
-                cause: "Extending a process whose orders have all settled. Resolution is terminal — there is no reopening.",
+                cause: "Extending a process whose orders have all been resolved. Resolution is terminal — there is no reopening.",
                 fix: "Commit a new process. Remedies are negotiated before resolve, never after.",
             },
             {
@@ -216,11 +215,11 @@ const ERRORS: ErrorStage[] = [
                 name: "FeeOnTransferDetected()",
                 from: "FigaroCore.commit · FigaroBatchVerifier.settleBatch",
                 cause: "The contract received a different amount than it pulled — a fee-on-transfer or rebasing ERC-20. The bond must stay exactly as committed for the equilibrium to hold.",
-                fix: "Settle in a plain, non-rebasing ERC-20 (wstETH rather than stETH).",
+                fix: "Denominate in a plain, non-rebasing ERC-20 (wstETH rather than stETH).",
             },
             {
                 name: "ERC20InsufficientAllowance(spender, allowance, needed)",
-                from: "the SETTLEMENT TOKEN — not the kernel",
+                from: "the DENOMINATION's ERC-20 — not the kernel",
                 cause: "The kernel pulls the FULL per-order bond on every commit and nets nothing against bonds it already holds; approving the increment on a sub-order falls short. The kernel never sees the reason, and the earlier orders' bonds stay locked until the buyer resolves.",
                 fix: "Size it with calculateSubOrderApproval(payment, newCumulativeValue) and pre-check with assertApprovalCoversBond, which throws in plain words before the transaction is sent.",
             },
@@ -238,13 +237,13 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "UnknownOrder()",
                 from: "AttestationCoordinator (all three modes)",
-                cause: "core.orderStatus(orderHash) is 0. Either the order never committed — or you passed the event-derived struct for a root, which signed processId = 0 and therefore hashes differently. It is also permanently true for a batch-settled order, which never acquires kernel status at all.",
-                fix: "Pass the SIGNED struct (restoreSignedProcessId). If the trade settled through the batch path, there is no kernel order to attest against; the batch re-emits its own Attestation events.",
+                cause: "core.orderStatus(orderHash) is 0. Either the order never committed — or you passed the event-derived struct for a root, which signed processId = 0 and therefore hashes differently. It is also permanently true for a batch-resolved order, which never acquires kernel status at all.",
+                fix: "Pass the SIGNED struct (restoreSignedProcessId). If the trade resolved through the batch path, there is no kernel order to attest against; the batch re-emits its own Attestation events.",
             },
             {
                 name: "OrderResolved()",
                 from: "AttestationCoordinator (all three modes)",
-                cause: "orderStatus is 2. Evidence attaches to a LIVE order; settlement is terminal.",
+                cause: "orderStatus is 2. Evidence attaches to a LIVE order; resolution is terminal.",
                 fix: "Attest before the buyer resolves.",
             },
             {
@@ -285,19 +284,19 @@ const ERRORS: ErrorStage[] = [
         ],
     },
     {
-        stage: "Recording usage and claiming RPGF — UsageCounter, RpgfMinter",
+        stage: "Recording usage and claiming designer rewards — UsageCounter, RpgfMinter",
         rows: [
             {
                 name: "AccrualClosed()",
-                from: "UsageCounter.currentPeriod, called first by both record functions",
-                cause: "The last accrual period has ended; usage is permanently unrecordable after it. currentPeriod() is a view that reverts — the revert IS the answer.",
+                from: "UsageCounter.currentPeriod, called first by both recording functions",
+                cause: "The last period has ended; usage is permanently unrecordable after it. currentPeriod() is a view that reverts — the revert IS the answer.",
                 fix: "Wrap the read; check periodClosed(uint8), periodCount() and periodEnd(uint256) before trusting a run. Note recordProcessUsage tolerates per-leg reverts, so this does not throw: it returns a report with every leg in failures.",
             },
             {
                 name: "UnknownOrder() · OrderNotResolved()",
                 from: "UsageCounter.recordClauseUsage · recordAssemblyUsage",
-                cause: "The counter proves settlement from FigaroCore.orderStatus and requires 2 (RESOLVED). Usage is what a finished process leaves behind.",
-                fix: "Record at settlement, in the same breath as the resolve. This gate is direct-path only — batch trade reaches the counter through applyBatchAccrual instead.",
+                cause: "The counter proves resolution from FigaroCore.orderStatus and requires 2 (RESOLVED). Usage is what a finished process leaves behind.",
+                fix: "File it at resolution, in the same breath as the resolve. This gate is direct-path only — batch trade reaches the counter through applyBatchAccrual instead.",
             },
             {
                 name: "InvalidInclusionProof()",
@@ -308,20 +307,20 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "ClauseOrAssemblyExcluded(clauseOrAssembly)",
                 from: "UsageCounter",
-                cause: "That key is in the counter's excluded set. Of the three mandatory clauses, commerce and topology EARN — they ride on every order and are scored for their author of record. The reference deployments exclude exactly one key, figaro-assembly-provenance: it is attribution plumbing, and scoring it would double-pay every assembly trade (its designer accrues through recordAssemblyUsage instead). ROUTINE where it appears, not a fault.",
+                cause: "That key is in the counter's excluded set. Of the three mandatory clauses, commerce and topology EARN — they ride on every order and are scored for their designer of record. The reference deployments exclude exactly one key, figaro-assembly-provenance: it is attribution plumbing, and scoring it would double-pay every assembly trade (its designer accrues through recordAssemblyUsage instead). ROUTINE where it appears, not a fault.",
                 fix: "Nothing. The set is a constructor argument, so read excludedClauseOrAssembly(key) against the deployment you are calling rather than assuming a list; expect the provenance leg in failures on any assembly run.",
             },
             {
                 name: "ClauseOrAssemblyNotRegistered(clauseOrAssembly)",
                 from: "UsageCounter",
-                cause: "The author-side stake is not live: the registration deposit was withdrawn, or the key was never registered. Authorship earns only while the stake stays live.",
-                fix: "Nothing the recorder can do — this is the author's stake, not the caller's.",
+                cause: "The designer-side stake is not live: the registration stake was withdrawn, or the key was never registered. The designer earns only while the stake stays live.",
+                fix: "Nothing the recorder can do — this is the designer's stake, not the caller's.",
             },
             {
                 name: "SellerNotStaked(seller)",
                 from: "UsageCounter",
                 cause: "The order's seller of record has no live MembersRegistry stake. Both sides of the gate are live stakes.",
-                fix: "Record before a seller unstakes — another reason recording belongs at settlement.",
+                fix: "File it before a seller unstakes — another reason recording belongs at resolution.",
             },
             {
                 name: "AlreadyCounted()",
@@ -332,7 +331,7 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "NotBatchVerifier()",
                 from: "UsageCounter.applyBatchAccrual",
-                cause: "Only the configured FigaroBatchVerifier may push a proved accrual across the settlement seam.",
+                cause: "Only the configured FigaroBatchVerifier may push a proved accrual across the path boundary.",
                 fix: "Not an integrator call. Direct-path recording goes through recordClauseUsage / recordAssemblyUsage.",
             },
             {
@@ -345,13 +344,13 @@ const ERRORS: ErrorStage[] = [
                 name: "AlreadyClaimed(periodId, account)",
                 from: "RpgfMinter.claim",
                 cause: "One claim per wallet per period.",
-                fix: "Pass every clause and assembly you author in that single call.",
+                fix: "Pass every clause and assembly you registered in that single call.",
             },
             {
                 name: "NotAuthorOfRecord(clauseOrAssembly, caller)",
                 from: "RpgfMinter.claim",
-                cause: "The caller is not the registrant of that key — or was, but withdrew the registration deposit. Eligibility is a live ETH stake.",
-                fix: "Claim from the registering wallet, with its deposit un-withdrawn.",
+                cause: "The caller is not the registrant of that key — or was, but withdrew the registration stake. Eligibility is a live stake.",
+                fix: "Claim from the registering wallet, with its stake un-withdrawn.",
             },
             {
                 name: "DuplicateClauseOrAssembly(key) · NoClausesOrAssemblies() · NothingToClaim()",
@@ -368,13 +367,13 @@ const ERRORS: ErrorStage[] = [
         ],
     },
     {
-        stage: "Settling a batch — FigaroBatchVerifier.settleBatch (sequencer-side)",
+        stage: "Landing a batch — FigaroBatchVerifier.settleBatch (sequencer-side)",
         rows: [
             {
                 name: "StateRootMismatch(expected, actual) · ChainIdMismatch · VerifyingContractMismatch",
                 from: "FigaroBatchVerifier.settleBatch",
                 cause: "The proof's public values do not describe this chain, this verifier, or the current state root — usually a batch proved against a root another batch has since advanced past.",
-                fix: "Re-read stateRoot() and re-prove. Batches settle in sequence.",
+                fix: "Re-read stateRoot() and re-prove. Batches land in sequence.",
             },
             {
                 name: "PositionHashMismatch() · AttestationHashMismatch() · SpecBindingsHashMismatch() · UsageAccrualHashMismatch()",
@@ -393,7 +392,7 @@ const ERRORS: ErrorStage[] = [
 ];
 
 export default function Specifications() {
-    const record = deploymentRecord();
+    const deployRecord = deploymentRecord();
     const recordSha = deploymentRecordSha256();
     return (
         <>
@@ -423,7 +422,7 @@ export default function Specifications() {
 
             <MarketingSection title="Inheritance" sectionId="inheritance">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
-                    This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-settlement properties &mdash; the invariants stated on <Link href="/kernel" className="underline">Kernel</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
+                    This page catalogues the <strong>on-chain composition</strong> layer (the kernel plus the permissionless primitives built around it). Each contract below inherits the kernel&apos;s ownerless / tamper-evident / atomic-resolution properties &mdash; the invariants stated on <Link href="/kernel" className="underline">Kernel</Link>. The kernel in turn inherits execution security from whichever EVM chain it is deployed on &mdash; network → kernel → on-chain composition → off-chain composition → trade. Remove any floor and what&apos;s above collapses.
                 </p>
                 <SystemLayersFigure className="my-8" />
                 <p className="text-sm text-ink-muted">
@@ -463,7 +462,7 @@ export default function Specifications() {
                         title="FigaroCore.sol"
                         href={`${GH}/kernel/FigaroCore.sol`}
                         meta="2 fns · 3 mappings · no owner"
-                        desc="The protocol kernel: holds every bonded commitment, and settles a process atomically when its buyer resolves. commit (unified dual-signed) and resolveProcess. EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution. Settlement state is the public mapping orderStatus(bytes32 orderHash) → uint8: 0 UNKNOWN, 1 ACTIVE, 2 RESOLVED. It answers for the DIRECT path only — a process settled through FigaroBatchVerifier (below) is never written here and reads 0 forever, so 0 means 'not on this path', never 'not settled'. See 'Two settlement paths' below."
+                        desc="The protocol kernel: holds every bonded commitment, and resolves a process atomically on its buyer's signature. commit (unified dual-signed) and resolveProcess. EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution. Resolution state is the public mapping orderStatus(bytes32 orderHash) → uint8: 0 UNKNOWN, 1 ACTIVE, 2 RESOLVED. It answers for the DIRECT path only — a process resolved through FigaroBatchVerifier (below) is never written here and reads 0 forever, so 0 means 'not on this path', never 'not resolved'. See 'The two paths share no state' below."
                     />
                     <ContractEntry
                         id="CommitmentTypes"
@@ -532,30 +531,30 @@ function attestViaResolver(
                         title="FigaroBatchVerifier.sol"
                         href={`${GH}/protocol/verifier/FigaroBatchVerifier.sol`}
                         meta="SP1 proof · open-world content check"
-                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-settled process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. A local development record wires MockSP1Verifier; the deployment record wires Succinct's SP1 gateway + program vkey from env wherever a network names one."
+                        desc="Batched resolution via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause resolves with zero code changes. It shares NO state with FigaroCore and never calls it: this path replaces the whole commit-plus-resolveProcess lifecycle, so a batch-resolved process writes no kernel orderStatus and emits no kernel event. Its own state is stateRoot() (bytes32) plus batchCount() (uint64), advanced per BatchSettled. No owner, no fee, no upgrade. A local development record wires MockSP1Verifier; the deployment record wires Succinct's SP1 gateway + program vkey from env wherever a network names one."
                     />
                 </ul>
             </MarketingSection>
 
             <MarketingSection title="Clause validation" sectionId="clause-validation">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK) before signing, and re-validated <strong>on-chain</strong> on the batched, proof-based settlement path &mdash; a generic SP1 engine checks each clause against its registry-anchored spec, so a never-seen clause settles with zero per-clause on-chain code. The direct attestation path merkle-binds but validates no content shape. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                    Clause content is validated <strong>off-chain</strong> (the SDK&apos;s off-chain validator) before signing, and re-validated <strong>on-chain</strong> on the proof-based batch path &mdash; a generic SP1 engine checks each clause against its registry-anchored spec, so a never-seen clause resolves with zero per-clause on-chain code. The direct attestation path merkle-binds but validates no content shape. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Two settlement paths, two disjoint state universes." sectionId="settlement-paths">
+            <MarketingSection title="The two paths share no state." sectionId="settlement-paths">
                 <SettlementPathsFigure className="mb-6" />
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other. The batch path replaces the entire direct lifecycle &mdash; <code>commit</code> and <code>resolveProcess</code> both execute inside the proof &mdash; so <strong>a batch-settled process never acquires kernel status</strong>: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds too: a kernel-settled process is never inside a batch. There is no migration between the two, and none is planned; the split is the design.
+                    <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other. The batch path replaces the entire direct lifecycle &mdash; <code>commit</code> and <code>resolveProcess</code> both execute inside the proof &mdash; so <strong>a batch-resolved process never acquires kernel status</strong>: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds too: a kernel-resolved process is never inside a batch. There is no migration between the two, and none is planned; the split is the design.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-settled process satisfies neither, forever &mdash; which is exactly why the batch proof carries the RPGF usage accrual across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process record, no attestation state. This is the sharpest read-time trap in the protocol and it fails silently &mdash; it is catalogued as such, with the rest, on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
+                    <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-resolved process satisfies neither, forever &mdash; which is exactly why the batch proof carries the usage accrual for designer rewards across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process entry, no attestation state. This is the sharpest read-time trap in the protocol and it fails silently &mdash; it is catalogued as such, with the rest, on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-4">
-                    The split is exhaustively model-checked, not just asserted: <a href="https://github.com/figaro-protocol/Figaro/blob/main/formal/SettlementUniverses.tla" target="_blank" rel="noopener noreferrer" className="underline"><code>formal/SettlementUniverses.tla</code></a> treats <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> as one composed system across every interleaving and checks 21 invariants &mdash; among them that no order settles in both universes and that a batch-settled order never flips a kernel status.
+                    The split is exhaustively model-checked, not just asserted: <a href="https://github.com/figaro-protocol/Figaro/blob/main/formal/SettlementUniverses.tla" target="_blank" rel="noopener noreferrer" className="underline"><code>formal/SettlementUniverses.tla</code></a> treats <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> as one composed system across every interleaving and checks 21 invariants &mdash; among them that no order settles in both universes and that a batch-resolved order never flips a kernel status.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    So &ldquo;is this settled?&rdquo; is answered by a different contract on each path. Ask the right one:
+                    So &ldquo;is this resolved?&rdquo; is answered by a different contract on each path. Ask the right one:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -570,7 +569,7 @@ function attestViaResolver(
                             <tr>
                                 <td className="py-2 pr-4">How do I get <em>onto</em> this path?</td>
                                 <td className="py-2 pr-4 text-ink-body">Broadcast <code className="font-mono text-xs">commit(c, buyerSig, sellerSig)</code> yourself, then <code className="font-mono text-xs">resolveProcess</code>.</td>
-                                <td className="py-2 text-ink-body"><code className="font-mono text-xs">settleBatch</code> is <strong>permissionless</strong> &mdash; anyone who can produce the SP1 proof may settle. In practice you <code className="font-mono text-xs">POST /submit</code> the same signed structs to a <strong>sequencer relay</strong> (below), which batches, proves and settles them.</td>
+                                <td className="py-2 text-ink-body"><code className="font-mono text-xs">settleBatch</code> is <strong>permissionless</strong> &mdash; anyone who can produce the SP1 proof may land it. In practice you <code className="font-mono text-xs">POST /submit</code> the same signed structs to a <strong>sequencer relay</strong> (below), which batches, proves and lands them.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">Can I bond in a token I don&apos;t hold?</td>
@@ -583,9 +582,9 @@ function attestViaResolver(
                                 <td className="py-2 text-ink-body">The <strong>proof</strong> is the on-chain evidence that both recovered: <code className="font-mono text-xs">settleBatch</code>&apos;s calldata carries net positions, events and accruals &mdash; <em>no signature bytes</em>. Keep your own copy of the signed artifact.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">Is this order settled?</td>
+                                <td className="py-2 pr-4">Is this order resolved?</td>
                                 <td className="py-2 pr-4 font-mono text-xs">orderStatus(bytes32) == 2</td>
-                                <td className="py-2 text-ink-body">No per-order flag exists on chain &mdash; the order&apos;s state lives under <code className="font-mono text-xs">stateRoot()</code>, and the on-chain facts are the batch that carried it and the transfers it executed. Ask a relay for the per-order answer: <code className="font-mono text-xs">GET /processes/&lt;processId&gt;</code> (or <code className="font-mono text-xs">/orders/&lt;orderHash&gt;</code>), which <code className="font-mono text-xs">SequencerClient.process()</code> wraps. A <code className="font-mono text-xs">null</code> there means &ldquo;not in THIS relay&apos;s archive&rdquo; &mdash; never &ldquo;not settled.&rdquo; The relay is transport; the transfers are the proof.</td>
+                                <td className="py-2 text-ink-body">No per-order flag exists on chain &mdash; the order&apos;s state lives under <code className="font-mono text-xs">stateRoot()</code>, and the on-chain facts are the batch that carried it and the transfers it executed. Ask a relay for the per-order answer: <code className="font-mono text-xs">GET /processes/&lt;processId&gt;</code> (or <code className="font-mono text-xs">/orders/&lt;orderHash&gt;</code>), which <code className="font-mono text-xs">SequencerClient.process()</code> wraps. A <code className="font-mono text-xs">null</code> there means &ldquo;not in THIS relay&apos;s archive&rdquo; &mdash; never &ldquo;not resolved.&rdquo; The relay is transport; the transfers are the proof.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">What event says so?</td>
@@ -598,7 +597,7 @@ function attestViaResolver(
                                 <td className="py-2"><code className="font-mono text-xs">Attestation</code> re-emitted by the verifier &mdash; <strong>same topic hash</strong> (<code className="font-mono text-xs">0x754607f1…</code>), so filter by contract ADDRESS, not by topic &mdash; plus the ERC-20 transfers <code>settleBatch</code> executed for the net positions.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">Did it count for RPGF?</td>
+                                <td className="py-2 pr-4">Did it count toward designer rewards?</td>
                                 <td className="py-2 pr-4 font-mono text-xs">UsageCounter.accrualOf · UsageRecorded</td>
                                 <td className="py-2 font-mono text-xs">UsageCounter.batchAccrualOf · BatchUsageRecorded</td>
                             </tr>
@@ -616,19 +615,19 @@ function attestViaResolver(
 
             <MarketingSection title="What each path costs &mdash; and when the direct path is simply correct." sectionId="settlement-costs">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Two costs, and neither falls where a platform&apos;s would. Proving is the <strong>relay operator&apos;s</strong> (a sequencer, below), paid once per batch and never once per order &mdash; no protocol fee passes it through to a buyer or a seller. Gas on <code>settleBatch</code> is paid by whoever submits it. The <em>direct</em> path carries neither: no prover, no relay, no proving host at all. Which of the two is cheaper for you is a volume question, and the numbers below are what it turns on.
+                    Two costs, and neither falls where a platform&apos;s would. Proving is the <strong>relay operator&apos;s</strong> (a sequencer, below), paid once per batch and never once per order &mdash; nothing in the protocol passes it through to a buyer or a seller. Gas on <code>settleBatch</code> is paid by whoever submits it. The <em>direct</em> path carries neither: no prover, no relay, no proving host at all. Which of the two is cheaper for you is a volume question, and the numbers below are what it turns on.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>What the proof costs to verify on chain.</strong> Per-unit, from the measured ceilings: SP1 proof verification is a <strong>~300k-gas FIXED cost per batch</strong>, then ~2k/position for hash verification and ~24k/position for the net token transfer &mdash; <strong>~26.5k marginal per net position</strong>. The direct path&apos;s comparable all-in figure is <strong>~167k gas per order</strong>, its <code>commit</code> and <code>resolveProcess</code> steps added together across the two or more separate transactions they occupy &mdash; those per-step constants, and the two process ceilings they set, are stated on <Link href="/faq#compatibility" className="underline">the FAQ</Link> and not restated here. At volume that is roughly <strong>6&times; cheaper per settled order</strong>, before netting &mdash; and netting is the structural part: the prover collapses every movement per (token, party) pair into one position, so 100 buyers paying one seller in one token is 100 commit transactions on the direct path and <em>one</em> position on the batch path. Worked at 100 orders: ~25.7M gas across 100+ transactions direct, against ~1.1M gas in a single transaction for the ~30 net positions they reduce to.
+                    <strong>What the proof costs to verify on chain.</strong> Per-unit, from the measured ceilings: SP1 proof verification is a <strong>~300k-gas FIXED cost per batch</strong>, then ~2k/position for hash verification and ~24k/position for the net token transfer &mdash; <strong>~26.5k marginal per net position</strong>. The direct path&apos;s comparable all-in figure is <strong>~167k gas per order</strong>, its <code>commit</code> and <code>resolveProcess</code> steps added together across the two or more separate transactions they occupy &mdash; those per-step constants, and the two process ceilings they set, are stated on <Link href="/faq#compatibility" className="underline">the FAQ</Link> and not restated here. At volume that is roughly <strong>6&times; cheaper per resolved order</strong>, before netting &mdash; and netting is the structural part: the prover collapses every movement per (token, party) pair into one position, so 100 buyers paying one seller in one token is 100 commit transactions on the direct path and <em>one</em> position on the batch path. Worked at 100 orders: ~25.7M gas across 100+ transactions direct, against ~1.1M gas in a single transaction for the ~30 net positions they reduce to.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>But fixed means fixed, and a small batch pays it anyway.</strong> Two real Groth16 batches settled on the public record&apos;s chain &mdash; through the <code>batchVerifier</code> in the record below &mdash; each carried <strong>2 net positions</strong> and cost:
+                    <strong>But fixed means fixed, and a small batch pays it anyway.</strong> Two real Groth16 batches landed on the public deployment&apos;s chain &mdash; through the <code>batchVerifier</code> in the deployment record below &mdash; each carried <strong>2 net positions</strong> and cost:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6 mb-4">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-default text-left font-semibold text-ink-heading">
-                                <th scope="col" className="py-2 pr-4">Settlement transaction</th>
+                                <th scope="col" className="py-2 pr-4">Batch transaction</th>
                                 <th scope="col" className="py-2 pr-4">What it carried</th>
                                 <th scope="col" className="py-2 pr-4">Net positions</th>
                                 <th scope="col" className="py-2">Gas used</th>
@@ -643,7 +642,7 @@ function attestViaResolver(
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs"><a href="https://sepolia.etherscan.io/tx/0x2f81831d449ce6f90bb15bb54abaf7a32c3473c120e6cc9c9e35e0518e795928" target="_blank" rel="noopener noreferrer" className="underline">0x2f81831d&hellip;795928</a></td>
-                                <td className="py-2 pr-4 text-ink-body">resolve + RPGF usage claim</td>
+                                <td className="py-2 pr-4 text-ink-body">resolve + usage claim</td>
                                 <td className="py-2 pr-4 font-mono">2</td>
                                 <td className="py-2 font-mono">377,885</td>
                             </tr>
@@ -655,10 +654,10 @@ function attestViaResolver(
                 </p>
                 <GasCrossoverFigure className="my-8" />
                 <p className="text-base text-ink-body leading-relaxed">
-                    <strong>When the direct path is simply correct: low volume.</strong> At a handful of orders a day it costs less per order <em>and</em> costs nothing else &mdash; no proving host, no relay to operate or trust, no vkey/gateway pairing to keep aligned, no minutes of wrap between signing and settlement, and settlement state you can read straight off <code>FigaroCore.orderStatus</code>. Nothing is lost by starting there: both paths take the <em>same signed artifacts</em>, so moving to batches later is a change of submission target, not a change to what you sign. The batch path is what you reach for when your own volume, not the protocol, makes the proof pay.
+                    <strong>When the direct path is simply correct: low volume.</strong> At a handful of orders a day it costs less per order <em>and</em> costs nothing else &mdash; no proving host, no relay to operate or trust, no vkey/gateway pairing to keep aligned, no minutes of wrap between signing and landing, and resolution state you can read straight off <code>FigaroCore.orderStatus</code>. Nothing is lost by starting there: both paths take the <em>same signed artifacts</em>, so moving to batches later is a change of submission target, not a change to what you sign. The batch path is what you reach for when your own volume, not the protocol, makes the proof pay.
                 </p>
                 <p className="text-xs text-ink-muted leading-relaxed mt-4">
-                    Per-unit gas figures and the netting model: <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md" target="_blank" rel="noopener noreferrer" className="underline">SCALING_STRATEGY.md</a> &sect; Gas Economics (measured on Anvil receipts; the direct-path pair <code>COMMIT_GAS_PER_ORDER</code>/<code>RESOLVE_GAS_PER_ORDER</code> is lint-pinned against the kernel&apos;s own gas test). The two settlement transactions are read from the chain, not restated.
+                    Per-unit gas figures and the netting model: <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md" target="_blank" rel="noopener noreferrer" className="underline">SCALING_STRATEGY.md</a> &sect; Gas Economics (measured on Anvil receipts; the direct-path pair <code>COMMIT_GAS_PER_ORDER</code>/<code>RESOLVE_GAS_PER_ORDER</code> is lint-pinned against the kernel&apos;s own gas test). The two batch transactions are read from the chain, not restated.
                 </p>
             </MarketingSection>
 
@@ -667,10 +666,10 @@ function attestViaResolver(
                     Everything else on this page is a contract. This one is not: a <strong>sequencer</strong> is an off-chain HTTP relay that pools signed operations, assembles a batch, proves it with SP1, and calls <code>settleBatch</code>. It is the ordinary way onto the batch path &mdash; not because the path is gated, but because producing a batch proof is the work it does for you.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>A relay, not an authority.</strong> <code>FigaroBatchVerifier.settleBatch</code> is <code>external</code> with no caller gate, no owner, no fee and no upgrade path &mdash; so a sequencer is one relay among any number, and running your own needs nobody&apos;s permission. It holds no keys of yours and confers no privilege: its own signer pays gas and has no protocol role. Its admission checks call the <em>same</em> kernel functions the proof runs (EIP-712 recovery; the attestation witness gates), so it can reject earlier than the proof and can never accept more. Its honest powers are exactly <strong>censor and delay</strong> &mdash; never forge, never alter a signed struct, never settle what you did not sign, never touch a bond. The fallback is always direct <code>FigaroCore</code> submission with the same artifacts.
+                    <strong>A relay, not an authority.</strong> <code>FigaroBatchVerifier.settleBatch</code> is <code>external</code> with no caller gate, no owner, no charge and no upgrade path &mdash; so a sequencer is one relay among any number, and running your own needs nobody&apos;s permission. It holds no keys of yours and confers no privilege: its own signer pays gas and has no protocol role. Its admission checks call the <em>same</em> kernel functions the proof runs (EIP-712 recovery; the attestation witness gates), so it can reject earlier than the proof and can never accept more. Its honest powers are exactly <strong>censor and delay</strong> &mdash; never forge, never alter a signed struct, never land what you did not sign, never touch a bond. The fallback is always direct <code>FigaroCore</code> submission with the same artifacts.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Seven endpoints, in two halves. <strong>Submission:</strong> <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the RPGF usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. <strong>Publication</strong> &mdash; the batch universe&apos;s mirror of the kernel&apos;s events, because a batch-settled order has none: <code>GET /orders/&lt;orderHash&gt;</code>, <code>GET /processes/&lt;processId&gt;</code>, <code>GET /batches</code> (a page bounded at 50, with a <code>next_cursor</code> to follow). Read those through <code>SequencerClient</code>&apos;s <code>order()</code>, <code>process()</code> and <code>batches()</code> rather than by hand, for the <code>404</code> rule they encode: <strong>null means &ldquo;not in THIS relay&apos;s archive&rdquo;</strong> &mdash; settled by another relay, settled directly against <code>FigaroCore</code>, or aged out of retention (<code>status().archive</code> gives the window) &mdash; and never &ldquo;the trade did not happen.&rdquo; Every other failure throws, so an unreachable relay stays distinguishable from an absent record. A relay is transport, not an authority: verify what it returns against the chain. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro-protocol/sdk/agent</code>) emits &mdash; endpoint-by-endpoint request/response shapes and the status-code table are in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#the-sequencer-wire-seven-endpoints" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>, and the run-your-own recipe is in <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
+                    Seven endpoints, in two halves. <strong>Submission:</strong> <code>POST /submit</code> (a signed kernel operation &mdash; <code>Commit</code>, <code>Resolve</code>, <code>AttestAsSeller</code>, <code>AttestAsBuyer</code>), <code>POST /submit-usage</code> (the usage claim), <code>GET /health</code>, <code>GET /status</code>. Admission is idempotent on <em>on-chain identity</em>, so a re-signed duplicate still deduplicates. <strong>Publication</strong> &mdash; the batch path&apos;s mirror of the kernel&apos;s events, because a batch-resolved order has none: <code>GET /orders/&lt;orderHash&gt;</code>, <code>GET /processes/&lt;processId&gt;</code>, <code>GET /batches</code> (a page bounded at 50, with a <code>next_cursor</code> to follow). Read those through <code>SequencerClient</code>&apos;s <code>order()</code>, <code>process()</code> and <code>batches()</code> rather than by hand, for the <code>404</code> rule they encode: <strong>null means &ldquo;not in THIS relay&apos;s archive&rdquo;</strong> &mdash; landed by another relay, landed directly against <code>FigaroCore</code>, or aged out of retention (<code>status().archive</code> gives the window) &mdash; and never &ldquo;the trade did not happen.&rdquo; Every other failure throws, so an unreachable relay stays distinguishable from an absent entry. A relay is transport, not an authority: verify what it returns against the chain. The wire format is exactly what <code>SequencerClient</code> (<code>@figaro-protocol/sdk/agent</code>) emits &mdash; endpoint-by-endpoint request/response shapes and the status-code table are in the <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#the-sequencer-wire-seven-endpoints" target="_blank" rel="noopener noreferrer" className="underline">SDK README</a>, and the run-your-own recipe is in <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
                     A sequencer endpoint is deployment configuration, not a protocol constant, and no deployment-record key carries one. Source and environment table: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
@@ -680,10 +679,10 @@ function attestViaResolver(
                     Running one yourself: what to check before you budget a host.
                 </h3>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>A laptop is not a proving host.</strong> Succinct&apos;s stated Groth16 wrap floor is <strong>~14&nbsp;GB RAM</strong> (through the <code>sp1-gnark</code> image), and the rehearsal that settled the two batches priced above measured <strong>~18&nbsp;GB peak and ~6&ndash;7 minutes per wrap</strong> on a rented 16-core / 30&nbsp;GB host at <code>SP1_PROVER=cpu</code> &mdash; with swap, because the wrap was OOM-killed at 18&nbsp;GB on 30&nbsp;GB without it. That is <em>one machine&apos;s</em> number, not a protocol constant: proof time, memory and proof size all move with your hardware, your batch size, and whether the secp256k1 precompile patch is active. <strong>Measure your own before you budget one</strong> &mdash; <code>SP1_REAL_PROOF=1 cargo run -p figaro-prove-test --release</code> from <code>prover/</code> proves the canonical batch on your machine and prints its cycle count, generation time and proof size. An operator with no hardware sets <code>SP1_PROVER=network</code> and buys the proof from the Succinct Prover Network instead; that is still the operator&apos;s cost, never the protocol&apos;s or its users&apos;.
+                    <strong>A laptop is not a proving host.</strong> Succinct&apos;s stated Groth16 wrap floor is <strong>~14&nbsp;GB RAM</strong> (through the <code>sp1-gnark</code> image), and the run that landed the two batches priced above measured <strong>~18&nbsp;GB peak and ~6&ndash;7 minutes per wrap</strong> on a rented 16-core / 30&nbsp;GB host at <code>SP1_PROVER=cpu</code> &mdash; with swap, because the wrap was OOM-killed at 18&nbsp;GB on 30&nbsp;GB without it. That is <em>one machine&apos;s</em> number, not a protocol constant: proof time, memory and proof size all move with your hardware, your batch size, and whether the secp256k1 precompile patch is active. <strong>Measure your own before you budget one</strong> &mdash; <code>SP1_REAL_PROOF=1 cargo run -p figaro-prove-test --release</code> from <code>prover/</code> proves the canonical batch on your machine and prints its cycle count, generation time and proof size. An operator with no hardware sets <code>SP1_PROVER=network</code> and buys the proof from the Succinct Prover Network instead; that is still the operator&apos;s cost, never the protocol&apos;s or its users&apos;.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Two operational gates decide whether a proof settles at all, and both fail loudly but late: the guest ELF&apos;s verification key must equal the deployed <code>FigaroBatchVerifier.programVKey()</code> or every proof reverts <code>ProofInvalid()</code>, and the proof FORM must match the form the deployed SP1 gateway routes (<code>groth16</code> or <code>plonk</code>) or it reverts <code>RouteNotFound</code>. Check both <em>before</em> a seven-minute wrap, not after. Batching cadence is yours: the reference sequencer assembles on a tick (10&nbsp;s by default) up to a batch cap (100 operations by default), so the wrap time &mdash; minutes &mdash; is what actually sets time-to-settle, not the tick.
+                    Two operational gates decide whether a proof lands at all, and both fail loudly but late: the guest ELF&apos;s verification key must equal the deployed <code>FigaroBatchVerifier.programVKey()</code> or every proof reverts <code>ProofInvalid()</code>, and the proof FORM must match the form the deployed SP1 gateway routes (<code>groth16</code> or <code>plonk</code>) or it reverts <code>RouteNotFound</code>. Check both <em>before</em> a seven-minute wrap, not after. Batching cadence is yours: the reference sequencer assembles on a tick (10&nbsp;s by default) up to a batch cap (100 operations by default), so the wrap time &mdash; minutes &mdash; is what actually sets time-to-land, not the tick.
                 </p>
                 <p className="text-xs text-ink-muted leading-relaxed mt-4">
                     Proving-host sizing and the first run&apos;s lessons: <a href="https://github.com/figaro-protocol/Figaro/blob/main/scripts/prover-box/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>scripts/prover-box</code></a>. Proving-cost posture and the benchmark command: <a href="https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md" target="_blank" rel="noopener noreferrer" className="underline"><code>prover/sequencer</code></a>.
@@ -707,25 +706,25 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M designer rewards to the designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Optional protocol contracts" sectionId="optional-contracts">
+            <MarketingSection title="Optional contracts" sectionId="optional-contracts">
                 <ul className="space-y-4">
                     <ContractEntry
                         id="MembersRegistry"
                         title="MembersRegistry.sol"
                         href={`${GH}/protocol/registries/MembersRegistry.sol`}
-                        meta="self-register · reclaimable deposit"
-                        desc="Permissionless participant self-registration with reclaimable ETH deposit — one declaration document per wallet, whichever side of a trade it takes. Four functions (register, updateProfile, requestWithdrawal, withdraw): leaving de-lists you immediately, and the deposit is released after a cooldown, so a stake cannot be recycled through identity after identity. Availability is signal-by-availability off-chain, not registry state."
+                        meta="self-register · reclaimable stake"
+                        desc="Permissionless participant self-registration under a reclaimable stake — one declaration document per wallet, whichever side of a trade it takes. Four functions (register, updateProfile, requestWithdrawal, withdraw): leaving de-lists you immediately, and the deposit is released after a cooldown, so a stake cannot be recycled through identity after identity. Availability is signal-by-availability off-chain, not registry state."
                     />
                     <ContractEntry
                         id="AssemblyRegistry"
                         title="AssemblyRegistry.sol"
                         href={`${GH}/protocol/registries/AssemblyRegistry.sol`}
-                        meta="self-register · reclaimable deposit"
-                        desc="Permissionless assembly anchoring with reclaimable ETH deposit — the assembly registry's anchor, parallel to ClauseRegistry and MembersRegistry. Two functions (registerAssembly, withdrawDeposit); first-write-wins. Identity IS the composition: compositionHash = keccak256 of the template's canonical composition subset, so identical compositions collapse to one binding and the human slug is derived off-chain (deriveAssemblySlug). The binding is permanent — withdraw returns only the deposit and de-surfaces the assembly; no owner, no admin, no content validation."
+                        meta="self-register · reclaimable stake"
+                        desc="Permissionless assembly anchoring under a reclaimable stake — the assembly registry's anchor, parallel to ClauseRegistry and MembersRegistry. Two functions (registerAssembly, withdrawDeposit); first-write-wins. Identity IS the composition: compositionHash = keccak256 of the template's canonical composition subset, so identical compositions collapse to one binding and the human slug is derived off-chain (deriveAssemblySlug). The binding is permanent — withdraw returns only the deposit and de-surfaces the assembly; no owner, no admin, no content validation."
                     />
                 </ul>
             </MarketingSection>
@@ -740,7 +739,7 @@ function attestViaResolver(
                         title="WitnessSwapAndCommitCoordinator.sol"
                         href={`${GH}/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`}
                         meta="off-protocol · swap-and-commit"
-                        desc="Off-protocol multi-token bond funding. A party (buyer or seller) holding a token the process isn't denominated in signs a Permit2 witness permit; the coordinator pulls that token, swaps it into the settlement currency, and commits in one transaction — the kernel still sees a single-currency commitment. It reads no kernel state and holds no bond; the kernel is untouched. DIRECT PATH ONLY: it calls FigaroCore.commit, and the batch path carries no funding leg — there, a party swaps in their own wallet before submitting the signed commitment to a sequencer (record key: witnessSwapAndCommitCoordinator)."
+                        desc="Off-protocol multi-token bond funding. A party (buyer or seller) holding a token the process isn't denominated in signs a Permit2 witness permit; the coordinator pulls that token, swaps it into the denomination, and commits in one transaction — the kernel still sees a single-currency commitment. It reads no kernel state and holds no bond; the kernel is untouched. DIRECT PATH ONLY: it calls FigaroCore.commit, and the batch path carries no funding leg — there, a party swaps in their own wallet before submitting the signed commitment to a sequencer (record key: witnessSwapAndCommitCoordinator)."
                     />
                     <ContractEntry
                         id="Permit2"
@@ -752,7 +751,7 @@ function attestViaResolver(
                         id="swapRouter"
                         title="swapRouter (Uniswap SwapRouter02)"
                         meta="local mock · canonical where deployed"
-                        desc="The swap venue the coordinator routes the input token through into the settlement currency. It is SwapRouter02, not the Universal Router, and the difference is load-bearing for the calldata you sign: the coordinator approves the router for your input token and forwards your signed swapData verbatim, so the venue must PULL by ERC-20 allowance — SwapRouter02's exactOutputSingle does (an exact output, the bond, for at most amountInMaximum of input); the Universal Router pulls through Permit2 or spends pre-sent balances and would not. Build that calldata with the SDK's SWAP_ROUTER_02_ABI export — it carries exactly the venue shapes the protocol composes (exactOutputSingle plus the factory() probe), so what you encode is what the coordinator's allowance can satisfy. The deploy script proves the address behaves like one before broadcasting — factory() and WETH9() must both answer with contracts — and a local development record wires the settable-rate stand-in MockSwapVenue, pre-funded with bond-token liquidity at a 1:1 default so buyer legs swap deterministically in tests (record key: swapRouter)."
+                        desc="The swap venue the coordinator routes the input token through into the denomination. It is SwapRouter02, not the Universal Router, and the difference is load-bearing for the calldata you sign: the coordinator approves the router for your input token and forwards your signed swapData verbatim, so the venue must PULL by ERC-20 allowance — SwapRouter02's exactOutputSingle does (an exact output, the bond, for at most amountInMaximum of input); the Universal Router pulls through Permit2 or spends pre-sent balances and would not. Build that calldata with the SDK's SWAP_ROUTER_02_ABI export — it carries exactly the venue shapes the protocol composes (exactOutputSingle plus the factory() probe), so what you encode is what the coordinator's allowance can satisfy. The deploy script proves the address behaves like one before broadcasting — factory() and WETH9() must both answer with contracts — and a local run's deployment record wires the settable-rate stand-in MockSwapVenue, pre-funded with bond-token liquidity at a 1:1 default so buyer legs swap deterministically in tests (record key: swapRouter)."
                     />
                     <ContractEntry
                         id="UsageCounter"
@@ -766,23 +765,23 @@ function attestViaResolver(
                         title="RpgfMinter.sol"
                         href={`${GH}/rpgf/RpgfMinter.sol`}
                         meta="600M · no owner"
-                        desc="The retroactive distribution: pays clause authors and assembly designers of record from a 600M-florin reserve, pro rata to real recorded usage. Nine annual accrual periods; the rising-budget schedule and the scoring formula are not re-derived here — see RPGF rewards. The claim unit is the PERIOD: claim(periodId, clausesOrAssemblies) pays from periodAmount[periodId] and requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. This contract knows only periods and their budgets, and its budget array is validated against UsageCounter.periodCount() at deploy so the two schedules cannot drift. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the clause's or assembly's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per period, every clause or assembly passed in that call (duplicate-free) and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[periodId] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
+                        desc="Designer rewards: pays the designers of record from a 600M-florin reserve, pro rata to real recorded usage. Nine annual accrual periods; the rising-budget schedule and the scoring formula are not re-derived here — see RPGF rewards. The claim unit is the PERIOD: claim(periodId, clausesOrAssemblies) pays from periodAmount[periodId] and requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. This contract knows only periods and their budgets, and its budget array is validated against UsageCounter.periodCount() at deploy so the two schedules cannot drift. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the clause's or assembly's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per period, every clause or assembly passed in that call (duplicate-free) and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[periodId] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
                     />
                     <ContractEntry
                         id="daoTreasury"
                         title="daoTreasury (multisig)"
-                        meta="multisig · genesis custody"
-                        desc="Holds the 300M-florin DAO genesis allocation. Three cases, and they differ: a production deploy mints to a canonical Safe read from the DAO_WALLET environment variable and deploys no treasury contract at all — config, never code. The public record above does deploy one: a MockTreasuryMultisig, 2-of-3 over the founder wallet, the supporters wallet and the deploying wallet — real signers on a real network, not placeholders, and a plain multisig rather than a Safe. A local development record deploys the same contract over that run's own anvil accounts. In every case the treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
+                        meta="multisig · genesis holding"
+                        desc="Holds the 300M-florin DAO genesis allocation. Three cases, and they differ: a production deploy mints to a canonical Safe read from the DAO_WALLET environment variable and deploys no treasury contract at all — config, never code. The public deployment record above does deploy one: a MockTreasuryMultisig, 2-of-3 over the founder wallet, the supporters wallet and the deploying wallet — real signers on a real network, not placeholders, and a plain multisig rather than a Safe. A local run's deployment record deploys the same contract over that run's own anvil accounts. In every case the treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
                     />
                     <ContractEntry
                         id="multisender"
                         title="multisender (Disperse)"
                         meta="local mock · canonical where deployed"
-                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018) exists, the deployment record composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
+                        desc="Composed post-resolution batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned from its 2018 deployment onward) exists, the deployment record composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">
-                    The RPGF reward&apos;s rising-budget schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">RPGF</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
+                    The designer-rewards schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">Rewards for authors</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
                 </p>
             </MarketingSection>
 
@@ -798,30 +797,30 @@ function attestViaResolver(
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default">
                             <tr><td className="py-2 pr-4">Local Anvil</td><td className="py-2 pr-4 font-mono">31337</td><td className="py-2 text-ink-muted">A local development run&apos;s own record</td></tr>
-                            {record && (
-                                <tr><td className="py-2 pr-4">Public record</td><td className="py-2 pr-4 font-mono">{String(record.chainId ?? 11155111)}</td><td className="py-2 text-ink-muted">Committed &mdash; addresses below</td></tr>
+                            {deployRecord && (
+                                <tr><td className="py-2 pr-4">Public deployment</td><td className="py-2 pr-4 font-mono">{String(deployRecord.chainId ?? 11155111)}</td><td className="py-2 text-ink-muted">Committed &mdash; addresses below</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-                {record && (
+                {deployRecord && (
                     <div className="overflow-x-auto -mx-6 px-6 mt-4">
                         <p className="text-xs text-ink-muted mb-2">
-                            The public record&apos;s addresses, from the committed{" "}
+                            The public deployment record&apos;s addresses, from the committed{" "}
                             <a href="https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json" target="_blank" rel="noopener noreferrer" className="underline"><code>deployments/11155111.json</code></a>{" "}
-                            (deployment block <span className="font-mono">{String(record.deploymentBlock)}</span>) &mdash; this table renders the record, it never restates it:
+                            (deployment block <span className="font-mono">{String(deployRecord.deploymentBlock)}</span>) &mdash; this table renders the record, it never restates it:
                         </p>
                         {recordSha && (
                             <p className="text-xs text-ink-muted mb-2">
-                                Verify the record in one comparison rather than address by address &mdash; its committed bytes hash to{" "}
+                                Verify the deployment record in one comparison rather than address by address &mdash; its committed bytes hash to{" "}
                                 <span className="font-mono break-all">{`sha256:${recordSha}`}</span>; check it yourself:{" "}
                                 <code className="break-all">curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256</code>.
-                                This page computes the hash from the same file at build, so the two agreeing means the site and the repository are serving the same record.
+                                This page computes the hash from the same file at build, so the two agreeing means the site and the repository are serving the same deployment record.
                             </p>
                         )}
                         <table className="w-full text-xs">
                             <tbody className="[&>tr]:border-b [&>tr]:border-default">
-                                {Object.entries(record)
+                                {Object.entries(deployRecord)
                                     .filter((entry): entry is [string, string] =>
                                         typeof entry[1] === "string" && entry[1].startsWith("0x"))
                                     .map(([key, address]) => (
@@ -847,13 +846,13 @@ function attestViaResolver(
                     Addresses are the easy half. The protocol keeps <em>fingerprints</em> on chain and publishes <em>events</em>, so every read a client makes is either a log scan or an IPFS fetch &mdash; and both endpoints are yours to choose. Nothing here is hosted by this project; the defaults baked into any build are defaults, not dependencies.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>An RPC endpoint that tolerates wide <code>eth_getLogs</code> ranges.</strong> Discovery has no getters to fall back on &mdash; there is no view returning a member&apos;s current profile URI, for one; the event log <em>is</em> the read path &mdash; so a cold client scans the whole history of each registry. Public endpoints cap a single call&apos;s block range and the cap is not standard: 1,000, 10,000 and 50,000 blocks are all in the wild, with providers rejecting an over-range call in their own wording rather than a shared error code. Provision for the class, not a vendor: <strong>keyless public endpoints in the 50,000-block class exist and serve this stack</strong> &mdash; the live batch settlements above were driven through one. Clients must chunk regardless. The SDK&apos;s bulk fetchers (<code>fetchCoreEvents</code>, <code>fetchDiscoveryEvents</code>, <code>fetchUsageRecords</code>, <code>fetchBatchUsageRecords</code>) chunk internally at 9,500 blocks and take a trailing <code>chunkSize</code> to tune for a stricter or a more permissive provider; the reference frontend instead halves its window on any range-cap refusal, down to a 500-block floor, so one build works against all three classes.
+                    <strong>An RPC endpoint that tolerates wide <code>eth_getLogs</code> ranges.</strong> Discovery has no getters to fall back on &mdash; there is no view returning a member&apos;s current profile URI, for one; the event log <em>is</em> the read path &mdash; so a cold client scans the whole history of each registry. Public endpoints cap a single call&apos;s block range and the cap is not standard: 1,000, 10,000 and 50,000 blocks are all in the wild, with providers rejecting an over-range call in their own wording rather than a shared error code. Provision for the class, not a vendor: <strong>keyless public endpoints in the 50,000-block class exist and serve this stack</strong> &mdash; the live batches above were driven through one. Clients must chunk regardless. The SDK&apos;s bulk fetchers (<code>fetchCoreEvents</code>, <code>fetchDiscoveryEvents</code>, <code>fetchUsageRecords</code>, <code>fetchBatchUsageRecords</code>) chunk internally at 9,500 blocks and take a trailing <code>chunkSize</code> to tune for a stricter or a more permissive provider; the reference frontend instead halves its window on any range-cap refusal, down to a 500-block floor, so one build works against all three classes.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>And start every scan at <code>deploymentBlock</code>.</strong> It is in the record{record && <> (<span className="font-mono">{String(record.deploymentBlock)}</span> in the public record)</>} for exactly this reason &mdash; see the crosswalk below. <code>fromBlock: 0n</code> is a local-development habit; on a public network it is a great deal of range scanned for nothing, and on a capped provider it is the difference between a client that loads and one that never does.
+                    <strong>And start every scan at <code>deploymentBlock</code>.</strong> It is in the deployment record{deployRecord && <> (<span className="font-mono">{String(deployRecord.deploymentBlock)}</span> in the public record)</>} for exactly this reason &mdash; see the crosswalk below. <code>fromBlock: 0n</code> is a local-development habit; on a public network it is a great deal of range scanned for nothing, and on a capped provider it is the difference between a client that loads and one that never does.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>IPFS pinning is the publisher&apos;s own.</strong> The chain holds the fingerprint; the agreement, the assembly template and the profile behind it live on IPFS, and a counterparty, an indexer or a dispute forum retrieves each by CID. IPFS does not auto-replicate &mdash; content lives only on the nodes that pin it, so one node is one point of failure. The production posture is <strong>sovereign per-party pinning</strong>: each publishing wallet&apos;s client pins what that wallet authors, so no operator is the custodian of anyone else&apos;s availability. Size it against the retrieval window, not the trade: a commitment&apos;s documents must stay fetchable for the life of any possible dispute or audit &mdash; a floor of <strong>six years</strong>, anchored to the tax-audit horizon (most administrations can audit ~5 years back, plus the year between a transaction and its declaration), extensible per agreement by the parties. In practice that means either a node you keep running for six years or a <strong>managed multi-node pinning service</strong> under your own account &mdash; a class, not a name, and the choice never becomes anyone else&apos;s custody.
+                    <strong>IPFS pinning is the publisher&apos;s own.</strong> The chain holds the fingerprint; the agreement, the assembly template and the profile behind it live on IPFS, and a counterparty, an indexer or a dispute forum retrieves each by CID. IPFS does not auto-replicate &mdash; content lives only on the nodes that pin it, so one node is one point of failure. The production posture is <strong>sovereign per-party pinning</strong>: each publishing wallet&apos;s client pins what that wallet publishes, so no operator holds anyone else&apos;s availability. Size it against the retrieval window, not the trade: a commitment&apos;s documents must stay fetchable for the life of any possible dispute or audit &mdash; a floor of <strong>six years</strong>, anchored to the tax-audit horizon (most administrations can audit ~5 years back, plus the year between a transaction and its declaration), extensible per agreement by the parties. In practice that means either a node you keep running for six years or a <strong>managed multi-node pinning service</strong> under your own account &mdash; a class, not a name, and the choice never puts your availability in anyone else&apos;s hands.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     <strong>Provision reads as a chain of gateways, not one.</strong> No single gateway serves both halves of an open registry: a dedicated gateway on your own pin service answers instantly for everything <em>you</em> pinned and knows nothing else, while a public gateway reaches content anyone pinned anywhere but can take many minutes to find a fresh pin. The pattern the reference frontend ships is the dedicated gateway first and a public gateway as the read fallback, with a user&apos;s own gateway override replacing the whole chain &mdash; their node, their choice, no read leaking past it. Expect the propagation lag and build for it: a surface that reads a just-pinned CID once and gives up shows a blank where a name belongs until someone reloads. The reference frontend keeps re-reading instead &mdash; 10&nbsp;s, 20&nbsp;s, 40&nbsp;s, then once a minute for as long as the reader is on screen &mdash; and treats only permanent failures (an integrity mismatch, an unparseable document) as final.
@@ -863,7 +862,7 @@ function attestViaResolver(
                     Record key &rarr; SDK field &rarr; contract.
                 </h3>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    <strong>The keys in that record are not the SDK&apos;s field names.</strong> Spread a record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, five carry no SDK field at all (<code>florinToken</code>, <code>swapQuoter</code>, <code>permitTokenAddress</code>, <code>chainId</code>, <code>deploymentBlock</code>), and every other address key passes through under the same name.
+                    <strong>The keys in that deployment record are not the SDK&apos;s field names.</strong> Spread a deployment record verbatim into a <code>FigaroAddresses</code> and the renamed fields come back <code>undefined</code> &mdash; silently, because every field but one is optional. Map it once instead, with <code>addressesFromDeploymentRecord</code> from <code>@figaro-protocol/sdk</code>: it is the single place the two vocabularies meet. Two keys are renamed, five carry no SDK field at all (<code>florinToken</code>, <code>swapQuoter</code>, <code>permitTokenAddress</code>, <code>chainId</code>, <code>deploymentBlock</code>), and every other address key passes through under the same name.
                 </p>
                 <pre
                     tabIndex={0}
@@ -884,22 +883,22 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">figaroCore</td>
                                 <td className="py-2 pr-4 font-mono text-xs">core</td>
-                                <td className="py-2 text-ink-body"><code>FigaroCore</code>. The one <em>required</em> field &mdash; the mapping throws if the record has no <code>figaroCore</code>, rather than letting an undefined kernel address surface later as an opaque transport error.</td>
+                                <td className="py-2 text-ink-body"><code>FigaroCore</code>. The one <em>required</em> field &mdash; the mapping throws if the deployment record has no <code>figaroCore</code>, rather than letting an undefined kernel address surface later as an opaque transport error.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">tokenAddress</td>
                                 <td className="py-2 pr-4 font-mono text-xs">token</td>
-                                <td className="py-2 text-ink-body">A settlement ERC-20 a local development run deploys for its own tests. <strong>Public records do not carry this key</strong>, so <code>token</code> is absent after mapping &mdash; which is correct, not a fault: a process is denominated by the <code>currency</code> inside each signed commitment, and nothing in the SDK reads <code>addresses.token</code>.</td>
+                                <td className="py-2 text-ink-body">A denomination ERC-20 a local development run deploys for its own tests. <strong>Public deployment records do not carry this key</strong>, so <code>token</code> is absent after mapping &mdash; which is correct, not a fault: a process is denominated by the <code>currency</code> inside each signed commitment, and nothing in the SDK reads <code>addresses.token</code>.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">permitTokenAddress</td>
                                 <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
-                                <td className="py-2 text-ink-body">A second local-run ERC-20 (MPMT) deployed for the permit-funded flows&apos; own tests. <strong>Public records do not carry this key</strong>, and the SDK does not read it; like <code>tokenAddress</code>, denomination comes from the <code>currency</code> inside each signed commitment.</td>
+                                <td className="py-2 text-ink-body">A second local-run ERC-20 (MPMT) deployed for the permit-funded flows&apos; own tests. <strong>Public deployment records do not carry this key</strong>, and the SDK does not read it; like <code>tokenAddress</code>, denomination comes from the <code>currency</code> inside each signed commitment.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">florinToken</td>
                                 <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
-                                <td className="py-2 text-ink-body"><code>FlorinToken</code>. Not part of <code>FigaroAddresses</code>; read it off the record and pass it where you need it (with <code>FLORIN_TOKEN_ABI</code>).</td>
+                                <td className="py-2 text-ink-body"><code>FlorinToken</code>. Not part of <code>FigaroAddresses</code>; read it off the deployment record and pass it where you need it (with <code>FLORIN_TOKEN_ABI</code>).</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">swapQuoter</td>
@@ -909,18 +908,18 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">chainId · deploymentBlock</td>
                                 <td className="py-2 pr-4 text-ink-muted">&mdash; none &mdash;</td>
-                                <td className="py-2 text-ink-body">Not addresses. <code>deploymentBlock</code> is the <code>fromBlock</code> to start every <code>getLogs</code> scan at &mdash; scanning from <code>0n</code> on a public network is a great deal of wasted range.</td>
+                                <td className="py-2 text-ink-body">Not addresses. <code>deploymentBlock</code> is the <code>fromBlock</code> to start every <code>getLogs</code> scan at &mdash; scanning from <code>0n</code> on a public network is a vast waste of range.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4 font-mono text-xs">attestationCoordinator · clauseRegistry · membersRegistry · assemblyRegistry · batchVerifier · usageCounter · rpgfMinter · permit2 · swapRouter · witnessSwapAndCommitCoordinator · multisender · daoTreasury</td>
                                 <td className="py-2 pr-4 text-ink-body">same name, all optional</td>
-                                <td className="py-2 text-ink-body">The contracts of those names catalogued above. Each passes through only when the record carries it, so a record from a network that deployed fewer of them yields a <code>FigaroAddresses</code> with fewer fields &mdash; absence, never a placeholder.</td>
+                                <td className="py-2 text-ink-body">The contracts of those names catalogued above. Each passes through only when the record carries it, so a deployment record from a network that deployed fewer of them yields a <code>FigaroAddresses</code> with fewer fields &mdash; absence, never a placeholder.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-4">
-                    <strong>Every other key is ignored, never an error.</strong> The mapping reads the keys above and nothing else, so a record carrying keys the SDK has never heard of &mdash; a local development record&apos;s own extras, a future deployment&apos;s additions &mdash; maps cleanly and silently drops them. Only a missing <code>figaroCore</code> throws.
+                    <strong>Every other key is ignored, never an error.</strong> The mapping reads the keys above and nothing else, so a deployment record carrying keys the SDK has never heard of &mdash; a local development record&apos;s own extras, a future deployment&apos;s additions &mdash; maps cleanly and silently drops them. Only a missing <code>figaroCore</code> throws.
                 </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
@@ -937,7 +936,7 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                     <strong>The boundary.</strong> Runtime errors only. Deliberately absent: constructor-argument errors (<code>ZeroAddress</code>, <code>EmptyPeriods</code>, <code>PeriodsNotAscending</code>, <code>TooManyPeriods</code>, <code>ZeroMinSellers</code>, <code>AmountsPeriodsMismatch</code>, <code>ZeroVerifier</code>, <code>VerifierNotContract</code>, <code>ZeroClauseRegistry</code>, <code>ZeroUsageCounter</code>) &mdash; a deployer&apos;s concern, not a caller&apos;s; <code>FlorinToken</code>&apos;s minter-registry errors, wired once at genesis and then renounced; and the local development mocks. The SDK&apos;s own refusals are plain JavaScript <code>Error</code>s with prose messages &mdash; the one exception is <code>SequencerError</code>, which carries a <code>.statusCode</code> (400 signature or witness-gate rejection, carrying the kernel&apos;s own reason string &mdash; or malformed JSON; 422 valid JSON that is not an operation shape; 413 over the 1&nbsp;MiB body cap; 503 mempool at capacity &mdash; capacity, never rejection, so retry after the next batch).
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-6">
-                    <strong>Decoding them.</strong> Every ABI below is a root <code>@figaro-protocol/sdk</code> export carrying its contract&apos;s error fragments, so a revert decodes by name instead of arriving as opaque bytes: <code>CORE_ABI</code> (the kernel&apos;s errors <em>and</em> the standard ERC-20 ones, including <code>ERC20InsufficientAllowance</code>), <code>CLAUSE_REGISTRY_ABI</code>, <code>MEMBERS_REGISTRY_ABI</code>, <code>ASSEMBLY_REGISTRY_ABI</code>, <code>USAGE_COUNTER_ABI</code>, <code>RPGF_MINTER_ABI</code>, <code>WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>. <code>BATCH_VERIFIER_ABI</code> carries the settlement-reachable fragments too (its constructor guards are deploy-time only and omitted).
+                    <strong>Decoding them.</strong> Every ABI below is a root <code>@figaro-protocol/sdk</code> export carrying its contract&apos;s error fragments, so a revert decodes by name instead of arriving as opaque bytes: <code>CORE_ABI</code> (the kernel&apos;s errors <em>and</em> the standard ERC-20 ones, including <code>ERC20InsufficientAllowance</code>), <code>CLAUSE_REGISTRY_ABI</code>, <code>MEMBERS_REGISTRY_ABI</code>, <code>ASSEMBLY_REGISTRY_ABI</code>, <code>USAGE_COUNTER_ABI</code>, <code>RPGF_MINTER_ABI</code>, <code>WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>. <code>BATCH_VERIFIER_ABI</code> carries the batch-landing fragments too (its constructor guards are deploy-time only and omitted).
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -971,7 +970,7 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
                     </table>
                 </div>
                 <p className="text-sm text-ink-muted leading-relaxed mt-6">
-                    Two of these fail <em>silently</em> rather than reverting where you are looking &mdash; the dual-<code>processId</code> confusion and a closed accrual period. Those, and the rest of the traps that no revert warns you about, are on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
+                    Two of these fail <em>silently</em> rather than reverting where you are looking &mdash; the dual-<code>processId</code> confusion and a closed period. Those, and the rest of the traps that no revert warns you about, are on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
             </MarketingSection>
 
