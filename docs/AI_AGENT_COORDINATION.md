@@ -25,9 +25,9 @@ Pre-defined agents are **maintainer-facing by default** — they act on this rep
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro-protocol/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
-  - **`figaro-clause-author` / `figaro-assembly-designer`** — author or **fork** a clause/assembly and register it on the permissionless registries (a Layer-A `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user (RPGF rewards it).
+  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user, and designer rewards pay for its use.
   - **`figaro-analyst`** — *read and analyze* a market's public graphs with `@figaro-protocol/sdk/derive` (base graphs from the must-have clauses, overlays spec-derived per attestable clause family in use, composition graphs from discovered venues). It holds **no key and signs nothing**; substance it was not given it BUYS as an ordinary data-market buyer, through the operator; and it sells **analyses**, never the corpus. Reference runnable: `ecosystem-agents/runtime/figaro-analyst.mjs` — a service, not a script: six HTTP routes (`GET /status`, `GET /graphs`, three `GET /queries/*`, and a key-gated `POST /prompt`), CORS answered so browsers read it directly, with opt-in cross-checking against extra RPC endpoints via `FIGARO_ANALYST_CROSSCHECK_RPC_URLS`.
-- **Maintainer-facing repo agents** (the Claude Code subagents that build THIS repo, acting only for the maintainer): definitions live in `.claude/agents/*.md` and ship with the repo. They touch the repo (that is their job); nothing in this document applies to them.
+- **Maintainer-facing repo agents** (the subagents that build THIS repo, acting only for the maintainer): their definitions are NOT in the public tree — the build side of the seam is private, and `ecosystem-agents/` is the whole public set. They touch the repo, which is their job; nothing in this document applies to them.
 
 ---
 
@@ -72,7 +72,7 @@ deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
    counter-signature ⇒ no commit — **the protocol never fabricates the counterparty's
    signature, it carries it.**
 
-A value-added chain is N handshakes (one per node, each to that node's own seller);
+A chain is N handshakes (one per node, each to that node's own seller);
 any single decline aborts before any commit lands, and commits submit root-first in
 cumulative order so the kernel sees a consistent running total.
 
@@ -143,7 +143,7 @@ doctrine — `A2aChannel` (`sdk/src/agent/a2aChannel.ts`, with `makeA2aOfferResp
 on the seller side) implements the same `CoordinationChannel` interface over the A2A
 message format, and XMTP can too — the way dispute resolution is not any one forum.
 
-**One choreography over every transport (the one-seam ruling, 2026-08-14).** The
+**One choreography over every transport.** The
 dispatch race races over the `CoordinationChannel` interface, period: the SDK's
 `startRace` engine owns the fan-out, verification, arrival-order accumulation, and
 selection, and every surface — batch script or interactive checkout — supplies only
@@ -151,110 +151,101 @@ per-candidate channels (a declared service endpoint routes to `HttpChannel`/`A2a
 a wallet counterparty routes through the frontend's relay adapter,
 `frontend/lib/handoff/relayChannel.ts`, the handoff relay's pre-commit cell speaking
 this same interface). Window duration, buyer overrides, and progress rendering are
-caller policy; the choreography is never authored twice.
+caller policy; the choreography is never written twice.
 
 ---
 
-## How an agent derives each graph
+## How an agent reads the data layer
 
-The five graphs are `PUBLIC_GRAPH_MODEL.md`'s; this section is how a reader gets from logs
-to a view. None of them is a feed to subscribe to — each is a derivation over events plus
-the documents those events commit to. The shipped projections are
-`projectProcessGraph` / `projectSettlementGraph` for the base graphs and
-`extractOverlays` for the spec-derived overlays (`@figaro-protocol/sdk/derive`).
+Processes emit data. The public part is free to anyone who reads the chain; the
+private part is sealed behind its fingerprint and bought from the member who owns
+it, as an ordinary bonded trade. There is no third category and no list of graphs:
+a graph is something a reader DERIVES from the data it holds, so what exists to be
+derived changes as the clause registry changes. Nothing here is a feed to subscribe
+to. The shipped projections are in `@figaro-protocol/sdk/derive`.
 
-### Process graph — events, reconstructed
-
-`fetchCoreEvents(client, addresses, fromBlock)` then `reconstruct(events)` (`@figaro-protocol/sdk`)
-returns the processes as a map; `FigaroContext.sync()` (`@figaro-protocol/sdk/agent`) does both and
-adds the live registry catalogue. What a wallet may then DO is read off that state
+**Reconstructing the free part.** `fetchCoreEvents(client, addresses, fromBlock)`
+then `reconstruct(events)` (`@figaro-protocol/sdk`) returns the processes as a map;
+`FigaroContext.sync()` (`@figaro-protocol/sdk/agent`) does both and adds the live
+registry catalogue. What a wallet may then DO is read off that state
 (`proposeActions` / `proposeInitiations`, above), never off a stored role.
 
 Two things the kernel does not hold, which no amount of querying will produce:
 
 - **There is no pending order and no open job board.** `OrderState` is `Active` or
-  `Resolved` — an order exists only once BOTH signatures committed it. An offer awaiting
-  acceptance lives on the coordination channel, so work reaches a seller by being ROUTED to
-  it (`makeSellerOfferHandler`, or the race / RFQ handlers), not by the seller finding it on
-  chain.
+  `Resolved` — an order exists only once BOTH signatures committed it. An offer
+  awaiting acceptance lives on the coordination channel, so work reaches a seller by
+  being ROUTED to it (`makeSellerOfferHandler`, or the race / RFQ handlers), not by
+  the seller finding it on chain.
 - **There is no unfilled edge.** The kernel sees a linear chain of commits against a
-  monotonic accumulator; parent-order edges are a committed TERM — `figaro-topology`'s
-  `parentOrderHashes`, empty for a root — so the DAG is reconstructed off-chain from
-  agreements, never queried from the kernel.
+  monotonic accumulator; parent-order edges are a committed TERM —
+  `figaro-topology`'s `parentOrderHashes`, empty for a root — so the DAG is
+  reconstructed off-chain from agreements, never queried from the kernel.
 
-Settlement history is derivable — `OrderResolved` / `ProcessResolved` per address, in
-`blockNumber` order — and it is a record, not a rating: nothing scores it and nothing gates
-on it. Read it knowing `fetchCoreEvents` is direct-path by construction; attestations are
-the one stream that folds both settlement universes (`fetchAttestationRecords`), so an
-address absent from a reconstruction has not necessarily been idle.
+**Committed content is read against the spec that declares it, never against a
+name.** A clause states the standard its values are in, and the reader takes that
+declaration first: `figaro-geolocation` commits `origin` and `destination` under a
+required `geocodeStandard`, and that axis is open — cell grids (geohash, h3, s2,
+olc) and jurisdiction codes (iso3166-1/-2, unlocode) are equally valid, geohash
+being one value of the field and the built frontend's default, never the model. A
+reader that speaks one standard skips the leaves it cannot parse rather than
+misreading them. Where the declared standard is geohash the SDK ships the readers
+(`geohashCommonPrefix`, `geohashesMatch(a, b, precision)` — **the precision is the
+caller's parameter, not a protocol constant** — `geohashCentroidDistanceKm`,
+`encodeGeohash` / `decodeGeohash`, `haversineDistance`); another standard needs its
+own reader, and nothing in the protocol privileges one. The same discipline reads
+any clause family the registry carries, including families that did not exist when
+this was written.
 
-### Geo graph — locality under a DECLARED standard
+**Evidence filed after signing is read the same way, by stage.** A spec's `stages`
+maps a stage number — the same `stage` the `AttestationCoordinator` event carries —
+to the field shape of the evidence filed at it, so one generic reader handles a
+never-seen clause: `validateContent(content, spec, { stage: 1 })` routes to the
+stage fields, and identical content fails against the committed-content shape, which
+is the point. The stream is `fetchAttestationRecords` (it folds both resolution
+paths), sliced by `filterByClause` / `filterByStage` / `filterByProcess` /
+`filterByOrder`. Of the evidence itself an attestation carries only
+`contentRef = keccak256(content)`, so a report is assembled by fetching pre-images
+and checking them against the anchors — `/audit/view?process=` is the built example.
 
-`figaro-geolocation` commits `origin` and `destination` under a required
-`geocodeStandard`, and that axis is open: cell grids (geohash, h3, s2, olc) and
-jurisdiction codes (iso3166-1/-2, unlocode) are equally valid declarations, and geohash is
-one value of the field — the built frontend's default — never the model. So the first move
-on any locality read is the standard the leaf DECLARES; a reader that speaks one standard
-skips the leaves it cannot parse rather than misreading them.
+**The figures are derived, not stored.** `OrderCommitted` carries `payment` and
+`cumulativeValue`; the bonds are computed at the invariant 2×,
+`calculateBonds(cumulativeValue, payment)` → `{sellerBond, buyerBond, totalLocked}`,
+with `calculateSettlement` for the payouts. Timing comes from the events'
+`blockNumber`: commit-to-resolve is a chain interval, never a host clock reading.
+Aggregate what the events actually name — value by denomination, by seller, by
+assembly. A clearing price is not a network object: whoever wants one computes it
+over the orders they chose to treat as comparable, and the protocol neither
+publishes that comparison nor endorses it.
 
-Where the declared standard is geohash, `@figaro-protocol/sdk/derive` ships the readers:
-`geohashCommonPrefix` (shared-prefix length as coarse proximity), `geohashesMatch(a, b,
-precision)` — **the precision is the caller's parameter, not a protocol constant** —
-`geohashCentroidDistanceKm`, `encodeGeohash` / `decodeGeohash`, `haversineDistance`.
-Another declared standard needs its own reader; nothing in the protocol privileges one.
-
-Locality as EVIDENCE of where work happened is a different clause and a different surface:
-`figaro-proximity-policy` commits the acceptable detection `bands` and its stage-1
-attestation records the band actually witnessed. Any aggregate over zones is aggregation
-the reader performs, bounded by which orders composed a locality clause at all.
-
-### Disclosure graph — a committed methodology plus a declared stage
-
-`figaro-emissions` commits one term, `standard` (the methodology), and declares a **stage-1**
-evidence shape: `gramsCO2e` plus an optional `evidenceUri`. That is the machinery in
-general form — a spec's `stages` maps a stage number (the same `stage` the
-`AttestationCoordinator` event carries) to the field shape of the evidence filed at it, so
-one generic reader handles a never-seen clause: `validateContent(content, spec, { stage: 1 })`
-routes to the stage fields, and the identical content fails against the committed-content
-shape, which is the point.
-
-The stream is `fetchAttestationRecords` (both universes), sliced by `filterByClause` /
-`filterByStage` / `filterByProcess` / `filterByOrder` (`@figaro-protocol/sdk/derive`). Of the
-evidence itself a record carries only `contentRef = keccak256(content)`, so a report is
-assembled by fetching pre-images and checking them against the anchors —
-`/audit/view?process=` is the built example of that assembly.
-
-Derivable: which orders committed a methodology, and which filed evidence against it.
-**Not derivable: whether the disclosure is substantively true** — the protocol ensures
-referential integrity, not accuracy (`PUBLIC_GRAPH_MODEL.md` §3).
-
-### Settlement graph — the figures, and what is derived from them
-
-`OrderCommitted` carries `payment` and `cumulativeValue`. The bonds are **not stored** —
-they are derived at the invariant 2×, `calculateBonds(cumulativeValue, payment)` →
-`{sellerBond, buyerBond, totalLocked}`, with `calculateSettlement` for the payouts. Timing
-comes from the events' `blockNumber`: commit-to-resolve is a chain interval, never a host
-clock reading.
-
-Aggregate what the events actually name — value by currency, by seller, by assembly. A
-clearing price is not a network object: whoever wants one computes it over the orders they
-chose to treat as comparable, and the protocol neither publishes that comparison nor
-endorses it.
-
-### Cross-process graph — provenance from committed hashes
-
-Two committed terms carry it: `figaro-assembly-provenance`'s `compositionHash` (which
-registered assembly a process instantiated — the same value the once-per-process assembly
-credit is claimed from, which counts only while that composition holds a live
-`AssemblyRegistry` binding) and `figaro-topology`'s `parentOrderHashes` (the edges the
-kernel does not store). Both are merkle leaves under `agreementHash`, so a provenance claim
-is verifiable by inclusion proof against the on-chain root instead of trusted from an index.
-
-That supports asking which processes instantiated a given assembly and how their orders
-relate. It does not support "template compliance": nothing on chain compares a live
-agreement against the template it came from. What IS enforced is that every composed
-section validates against its clause spec before a signature is emitted
+**Provenance rides committed leaves.** `figaro-assembly-provenance`'s
+`compositionHash` names which registered assembly a process instantiated — the same
+value the once-per-process assembly credit is claimed from, and it counts only while
+that composition holds a live `AssemblyRegistry` binding — and `figaro-topology`'s
+`parentOrderHashes` carries the edges the kernel does not store. Both are merkle
+leaves under `agreementHash`, so a provenance claim is verifiable by inclusion proof
+against the on-chain root instead of trusted from an index. That supports asking
+which processes instantiated a given assembly and how their orders relate. It does
+not support "template compliance": nothing on chain compares a live agreement
+against the template it came from. What IS enforced is that every composed section
+validates against its clause spec before a signature is emitted
 (`assertAgreementSignable`) and, on the batched path, inside the proof.
+
+**Buying the sealed part.** What a fingerprint anchors is not readable from the
+chain — agreement bodies, evidence pre-images, the books a process leaves behind
+stay with the wallets that produced them. An agent that needs that substance buys it
+from its owner on the owner's terms, through the same bonded commitment as any other
+trade, and verifies each disclosed leaf by merkle inclusion against the source
+process's on-chain `agreementHash`. The buyer checks provenance against the chain
+rather than the seller's word; what no chain testifies to is whether the data is
+true about the world.
+
+**Two limits worth stating before an agent claims more than it has.** Resolution
+history is derivable — `OrderResolved` / `ProcessResolved` per address, in
+`blockNumber` order — and it is data, not a rating: nothing scores it and nothing
+gates on it. And `fetchCoreEvents` is direct-path by construction, so an address
+absent from a reconstruction has not necessarily been idle; attestations are the one
+stream that folds both paths.
 
 ---
 
@@ -273,10 +264,10 @@ What is emitted, and what each thing is evidence of:
   URI resolves to the member-profile document (`parseMemberProfileDocument`) carrying the
   name, optional branding, accepted tokens, an optional `catalogueURI`, and optional
   `services`. `MemberWithdrawalRequested` / `MemberWithdrawn` are the same signal run
-  backwards. Evidence of: a counterparty holding a live, reclaimable ETH deposit — never a
+  backwards. Evidence of: a counterparty holding a live, reclaimable stake — never a
   score, never a gate.
-- **New terms and new deal-shapes exist.** `ClauseRegistry.ClauseRegistered` and
-  `AssemblyRegistry.AssemblyRegistered` carry the author and a `contentURI`; the content
+- **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered` and
+  `AssemblyRegistry.AssemblyRegistered` carry the designer and a `contentURI`; the content
   resolves chain → IPFS. Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every agreement already bound to it keeps resolving.
 - **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
@@ -289,7 +280,7 @@ What is emitted, and what each thing is evidence of:
   without knowing any clause in advance — `filterByClause` / `filterByStage` /
   `filterByProcess` (`@figaro-protocol/sdk/derive`) slice it. `contentRef` is `keccak256(content)`;
   the pre-image never enters calldata.
-- **A process ended.** `OrderResolved` and `ProcessResolved` — the whole process settling
+- **A process ended.** `OrderResolved` and `ProcessResolved` — the whole process resolving
   at once on the buyer's single call, atomically and terminally.
 - **What the network is actually composed OF.**
   `UsageCounter.UsageRecorded(clauseOrAssembly, period, processId, seller, c, d, score)`,
@@ -297,7 +288,7 @@ What is emitted, and what each thing is evidence of:
   `scoreOf(clauseOrAssembly, period)` sums both. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
   thing on the network to a demand signal for a clause or an assembly. It exists only
-  because buyers call `recordProcessUsage` at settlement; unrecorded usage is permanently
+  because buyers call `recordProcessUsage` at resolution; uncounted usage is permanently
   deniable.
 
 **Where, when, how much, and under what standard are clause TERMS, not signal types.** A
@@ -321,7 +312,7 @@ on equal footing and stores no role, species or capability field: what a wallet 
 right now is DERIVED — from its position in a process (read from chain state) and from the
 specs of the clauses that process composed. The things anyone does are the protocol's five
 nouns; an agent does them with the same calls any UI makes, and one wallet commonly holds
-several at once — buyer in one process, seller in another, author of the clause a third
+several at once — buyer in one process, seller in another, designer of the clause a third
 composes.
 
 - **Buyer** — derived as `process.rootBuyer == my address`; nothing configures it.
@@ -331,7 +322,7 @@ composes.
   returns the processes the wallet could START, one per discovered assembly. Origination is
   `originateProcess` / `originateChain` (the handshake above); resolution is
   `resolve-process` followed in the same breath by `recordProcessUsage`, without which the
-  process credits no clause author and no assembly designer.
+  process credits no clause designer and no assembly designer.
 - **Seller** — derived as an order naming my address as its seller; the same
   `proposeActions` call returns `attest-as-seller` for it. Work arrives through the
   handshake — `makeSellerOfferHandler` (the anti-tamper gate plus two decline-by-default
@@ -339,9 +330,9 @@ composes.
   DISCOVERABLE is `MembersRegistry.register(metadataURI)`; being REACHABLE for inbound
   offers is a `services` endpoint inside that profile. Two different things, and neither is
   a status.
-- **Clause author** — no process role at all:
+- **Clause designer** — no process role at all:
   `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)` under the
-  author's own key, over a spec pinned off-chain. Permissionless, first-write-wins,
+  designer's own key, over a spec pinned off-chain. Permissionless, first-write-wins,
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
 - **Assembly designer** — `AssemblyRegistry.registerAssembly(compositionHash, contentURI)`
   over a published template. Composition is the designer's act and happens only there,
@@ -360,130 +351,73 @@ observing the network.
 
 ---
 
-## The sandboxed signer runtime — design (ruled 2026-08-18; all four components BUILT 2026-08-20)
+## The sandboxed signer runtime
 
 `ecosystem-agents/*` state six requirements ON the runtime that hosts an agent
 (F1–F6 in `figaro-operator.md` § "Security requirements on the execution runtime").
-As built, the requirements are structural where the components reach: the key lives in
-the signer's process (F1–F3), fetched content arrives framed (F4), and the sandbox
-wrapper carries the write/secret/egress denials (F5, F6) — with the residual
-hardening (typed tools replacing `Bash`; the Linux container leg) stated per
-component below and punch-listed. `RELEASE_READINESS.md` § Pre-Mainnet names the
-runtime as the release gate on the whole ecosystem-agent tier. This is the design
-that closed it — four components, each mapping to the requirements it satisfies,
-with the choices the maintainer ruled.
+Four components meet them, and the requirements are structural where those
+components reach: the key lives in the signer's process (F1–F3), fetched content
+arrives framed (F4), and the sandbox wrapper carries the write, secret and egress
+denials (F5, F6). `RELEASE_READINESS.md` § Pre-Mainnet names the runtime as the
+release gate on the whole ecosystem-agent tier.
 
 **1. The policy signer — a separate PROCESS that holds the key (F1, F2, F3).**
-A small daemon, run by the wallet's owner, that loads the key into ITS memory only
-(keystore file + passphrase, or a hardware wallet — a Ledger via the same
-`cast --ledger` path the seeding uses) and exposes *signing as an operation* over a
-local UNIX socket: `signTypedData(domain, types, message)` and `signTransaction(tx)`,
-returning signatures — never bytes of key. Every request passes an **out-of-model
-policy gate** before it is signed, and the gate is configuration the model cannot
-reach (a file the signer owns, outside the agent's workspace). Its five checks —
-domain binding, a contract + selector allowlist, value ceilings (F2's hot/cold split
-follows: the operating wallet holds only the float), a simulation veto (F3: the gate
-disposes after the model proposes), and an audit log — are specified in
-`sdk/README.md` § "The Policy Signer", the manual for the shipped gate.
-The signer presents itself to the agent as a viem local account (the account interface viem's wallet clients take) (`@figaro-protocol/sdk/agent`
-already takes a `WalletClient`; a `WalletClient` over the socket-backed account is a
-drop-in), so `autonomous.ts` / `hitl.ts` need no change — the boundary moves from
-"which account object" to "which process".
+`@figaro-protocol/sdk/signer`: a daemon the wallet's owner runs, loading the key into
+ITS memory only (an encrypted keystore plus a passphrase prompt, or a hardware wallet
+over the same `cast --ledger` path the seeding uses) and exposing *signing as an
+operation* over a local UNIX socket — `signTypedData(domain, types, message)` and
+`signTransaction(tx)`. Nothing hands the model key bytes. `sdk/README.md` § "The
+Policy Signer" is the manual; the daemon ships as the `figaro-signer` bin with a
+socket-backed account for the SDK side.
 
-**2. The data channel — fetched content arrives quoted and provenance-tagged (F4).**
-Every read the agent performs through the SDK — a clause spec, a profile, a catalogue,
-a template, an offer envelope, a coordination message — is returned to the model
-inside a typed envelope `{ source, cid|txHash, fetchedAt, content }` and rendered by
-the tool layer as a delimited, provenance-labelled block, never concatenated into the
-instruction stream and never executed. That is a tool-layer convention on the runtime,
-not an SDK change: the SDK returns data; the runtime's tools frame it.
+The gate the daemon runs before anything is signed: **domain binding** against an
+allowlist of verifying contracts read from the deployment record — `FigaroCore` AND
+`FigaroBatchVerifier`, since the batch path signs over the verifier's domain and a
+core-only allowlist would lock the wallet out of batched trade; a **contract and
+selector allowlist**; **ceilings** per action and per rolling period, which survive a
+restart; and a **simulation veto**. Token approvals count at face value. Native ETH —
+the payable registry stakes — carries its OWN ceiling pair
+(`perActionNative`/`perPeriodNative`, in wei) rather than sharing the token cap, and
+absent means zero, so a value-carrying transaction is refused unless the policy grants
+it explicitly. The policy is a JSON file beside the deployment record: `chainId`,
+`contracts` (address → allowed selectors), `token`, `ceilings`, `egress`. It is
+validated at start, and a malformed policy refuses to start. A reference policy is
+generated from the deployment record plus the SDK ABIs, per network.
 
-**3. Tool scoping — no raw host shell (F5, F6).**
-The agent's tools are the SDK's typed operations (read graphs, build/sign/submit
-through the signer, pin, message) plus a workspace-scoped filesystem; no `Bash`. The
-sandbox denies: writes outside the agent's own workspace (the repo included), reads of
-keys/keystores/env secrets (they live in the signer's process, not on the agent's
-path), transactions for any wallet but the operated one (the signer holds exactly one
-key), and network egress beyond the RPC, the pin service, and the coordination channel
-(an egress allowlist at the sandbox boundary). This is what makes the own-wallet-only /
-never-the-repo seam a barrier rather than a promise (F6).
+**2. The operator prompt, pointed at the socket (F1–F3 in practice).**
+`figaro-operator` takes the socket account as its REQUIRED arrangement — see its
+§ "The signer is your only pen": never accept a raw key, and a signer refusal is
+final. F1–F3 are structural when the agent is signer-hosted; F4–F6 depend on the
+launch shape below. The tool grant is narrowed only partway by construction:
+execution still rides `Bash` until the runtime grows typed tools, but no key material
+sits anywhere a shell can read it.
 
-**Choices — RULED 2026-08-18 (maintainer: "apply all the agent recommendations"), each
-as recommended below:**
-- *Where it lives.* (a) A new SDK subpath `@figaro-protocol/sdk/signer` (the daemon + the
-  socket-backed account + the policy-file validator) — one package, one install, the SDK's
-  test/lint discipline; or (b) a sibling package beside the agent prompts (a runtime directory under
-  `ecosystem-agents/`) — keeps the SDK a library and the runtime a program. Recommendation: (a) for the signer + account
-  (they are protocol-shaped: domain, ABIs, deployment record), (b) for the sandbox
-  wrapper (it is host-shaped: processes, sockets, egress).
-- *Policy file shape.* JSON alongside the deployment record — `chainId`, `contracts`
-  (address → allowed selectors), `token`, `ceilings { perAction, perPeriod, periodSecs }`,
-  `egress []` — validated at signer start; a malformed policy refuses to start.
-- *Key custody at first ship.* Encrypted keystore + passphrase prompt at signer start
-  (no plaintext key anywhere), with the Ledger path as the second custody mode.
-- *Sandbox mechanism.* Start with process isolation the runtime already has (Claude
-  Code's tool grants without `Bash`; a workspace directory), then harden with an OS
-  sandbox (`sandbox-exec` on macOS / a container elsewhere) for the egress allowlist.
+**3. The data channel — fetched content arrives framed (F4).**
+`ecosystem-agents/runtime/`: `dataChannel.mjs` (`makeEnvelope` / `renderEnvelope` /
+`frame`) renders a typed envelope with a per-render BOUNDARY NONCE, so content cannot
+close its own block and speak as instructions, and a fixed untrusted-data notice rides
+inside the frame. `figaro-fetch` has five modes — clause spec, assembly template,
+member profile, raw CID, attestation witness — the registry-addressed modes resolving
+through the live registries and the rest by content address, each emitted as ONE
+framed block. A forged closing delimiter cannot escape the frame. F4 is structural at
+the fetch boundary when the host wires ALL network arrivals through `frame()`,
+coordination messages included.
 
-**Build order once ruled:** signer daemon + policy gate + socket account (with tests:
-domain refusal, selector refusal, ceiling refusal, simulation veto, audit log) →
-`figaro-operator` re-pointed at the socket account and its tool grant narrowed → the
-data-channel envelope in the runtime's tools → the sandbox wrapper. Ship the tier only
-when all four stand (`RELEASE_READINESS.md` gate).
+**4. The sandbox wrapper — the seam becomes a barrier (F5, F6).**
+`figaro-run-sandboxed`, beside the prompts: the OS profile denies all outbound network
+except loopback and all writes outside the workspace and temp; the launcher scrubs
+anything key-shaped from the environment and canonicalizes the named unreadable paths;
+and because an OS sandbox cannot filter egress by hostname, a **policy-driven egress
+proxy started OUTSIDE the sandbox is the only way out**, forwarding solely to the
+policy's `egress` hosts. That is what makes the own-wallet-only / never-the-repo seam
+a barrier rather than a promise.
 
-**Component 1 BUILT 2026-08-20** — `@figaro-protocol/sdk/signer` (daemon + gate + keystore +
-socket account + `figaro-signer` bin; `sdk/README.md` § "The Policy Signer" is the
-manual), with the ruled test list green plus keystore custody and a
-restart-surviving rolling window. Two same-day rulings refined the policy shape:
-- *domain binding* is an ALLOWLIST of verifying contracts from the deployment record —
-  `FigaroCore` AND `FigaroBatchVerifier` (the batch universe signs over the VERIFIER's
-  domain; core-only would structurally lock the wallet out of batch trade);
-- *approvals count at face value* stands as ruled; native ETH (payable registry
-  stakes) gets its OWN ceiling pair (`perActionNative`/`perPeriodNative`, wei) rather
-  than sharing the token cap — absent means zero, so a value-carrying transaction is
-  refused unless the policy grants it explicitly.
-The reference policy for the live Sepolia stack is committed at
-`deployments/signer-policy.11155111.json`, generated from the record + the SDK ABIs.
-
-**Component 2 DONE 2026-08-20** — `figaro-operator` re-pointed: the socket account is
-the REQUIRED custody (its § "The signer is your only pen" — launch shape, the
-never-accept-a-raw-key rule, signer-refusals-are-final), F1–F3 marked structurally
-satisfied when signer-hosted, F4–F6 explicitly still behavioral; the ecosystem README's
-honest-scope block updated to match. The tool GRANT narrowing is partial by
-construction: execution still rides `Bash` until the runtime's typed tools exist, but
-the launch contract now puts no key material anywhere a shell can read — the full
-de-Bashing lands with the sandbox wrapper.
-
-**Component 3 DONE 2026-08-20** — the data channel lives at
-`ecosystem-agents/runtime/` (host-shaped, beside the prompts, per the placement
-ruling): `dataChannel.mjs` (`makeEnvelope`/`renderEnvelope`/`frame` — the typed
-envelope rendered with a per-render BOUNDARY NONCE, so content cannot close its own
-block and speak as instructions; a fixed untrusted-data notice rides inside the frame)
-and `figaro-fetch` (five modes — clause spec / assembly template / member profile /
-raw CID / attestation witness; the registry-addressed modes resolve through the live
-registries, the ipfs and witness modes by content address, each emitted as ONE
-framed block; smoke-verified
-against the live Sepolia stack). Tested from the attacker's side: a forged closing
-delimiter cannot escape the frame. F4 is structural at the fetch boundary when the
-host wires all network arrivals (coordination messages included) through `frame()`.
-
-**Component 4 DONE 2026-08-20** — the sandbox wrapper (`figaro-run-sandboxed`,
-`ecosystem-agents/runtime/`): the OS profile denies all outbound network except
-loopback and all writes outside workspace+temp, the launcher scrubs anything
-key-shaped from the environment and canonicalizes the named unreadable paths, and —
-because an OS sandbox cannot filter egress by hostname — a **policy-driven egress
-proxy** started OUTSIDE the sandbox is the only way out, forwarding solely to the
-policy's `egress` hosts (`proxy-bootstrap.mjs` routes node's fetch through it). Deny
-cases tested on macOS (write escape, secret read, direct outbound — each must fail)
-plus the composed proof: a framed live fetch from inside the sandbox via the proxy
-against the live Sepolia stack. Residuals, stated where they bind: the Linux
-container variant is exercised in CI on demand (`on-demand-docker.yml` Job 2 runs
-the container deny cases; first green 2026-08-26), never on the authoring host
-(no container runtime here); sandboxed reads
-are deny-listed (named secrets), not default-denied — the key itself is never on the
-sandboxed side; `Bash` inside the wrapper persists until the runtime grows typed
-tools. **All four components stand** — the tier-gate criterion and its launch shape
-are recorded in `RELEASE_READINESS.md` § Pre-Mainnet.
+**The residuals, stated where they bind.** The Linux container variant is exercised in
+CI on demand rather than on the authoring host, which has no container runtime.
+Sandboxed reads are deny-listed by name, not default-denied — the key itself is never
+on the sandboxed side. And `Bash` inside the wrapper persists until the runtime grows
+typed tools. Run any component bare and that component falls back to behavioral-only,
+which the operator must be told rather than left to assume.
 
 ---
 
@@ -497,7 +431,7 @@ are recorded in `RELEASE_READINESS.md` § Pre-Mainnet.
    Advantage comes from better *interpretation*, not better *access*.
 4. **Spec-routed agents port; example-shaped ones don't**: an agent that routes by the
    fields a clause DECLARES — read from the spec it fetched (`specDeclaresField`) — works
-   over every assembly composing that clause, whoever authored it and whatever is being
+   over every assembly composing that clause, whoever designed it and whatever is being
    traded. One that branches on a clause id, an assembly, or a worked example works until
    the next registration. Local commerce is one example among unbounded kinds, never the
    model: even the geocode standard is a declared value (`figaro-geolocation`'s
@@ -510,7 +444,7 @@ are recorded in `RELEASE_READINESS.md` § Pre-Mainnet.
 ERC-8004 ("Trustless Agents", DRAFT Aug 2025) defines a standard for
 agent discoverability via service endpoint declarations. Figaro does not
 depend on ERC-8004 — the bonding mechanism already provides trust, and the
-public, derived settlement history already provides the track record (never
+public, derived resolution history already provides the track (never
 a score, never a gate). However, autonomous agents
 that want cross-protocol discoverability can declare ERC-8004-compatible
 service endpoints in their `MembersRegistry.metadataURI` JSON.
@@ -518,8 +452,8 @@ service endpoints in their `MembersRegistry.metadataURI` JSON.
 Discovery in the other direction — an outside agent finding Figaro — is the
 site's `/llms.txt` (`frontend/public/llms.txt`): the machine-facing entry
 that states the frame, the visiting-agent seam, and routes to the
-`ecosystem-agents/` manuals, this document, the SDK, and the deployment
-record.
+`ecosystem-agents/` manuals, this document, the SDK, and the deployment record
+for the network it is read on.
 
 ### Why This Is a Metadata Convention, Not a Contract Change
 
@@ -529,7 +463,7 @@ surface. Agents simply include a `services` key in that JSON.
 
 No new contracts are needed:
 - **Identity** → `MembersRegistry` already handles this (metadataURI)
-- **Reputation** → Figaro issues none. The settlement record is public and
+- **Reputation** → Figaro issues none. The resolution history is public and
   any counterparty may weigh it; the protocol keeps no score, and nothing
   gates on history (ERC-8004's permissionless feedback is Sybil-vulnerable
   precisely because it reifies a score)
@@ -588,7 +522,7 @@ an agent that originates outbound, a wallet coordinated out of band). It does no
 "human."
 
 **There is no agent status to detect.** The protocol admits any signer on equal footing and
-records no species anywhere: autonomy is a policy choice about how a wallet decides, never a
+names no species anywhere: autonomy is a policy choice about how a wallet decides, never a
 structural property of the wallet (see "The operator" above). A surface that branches on the
 presence of `services` is branching on *routability* — which endpoint, if any, to POST an
 offer to — and must not present that as identifying who or what is behind the key.
@@ -643,10 +577,10 @@ envelope signatures).
 |---------|----------|--------|
 | Identity | ERC-721 mint | MembersRegistry event + bond history |
 | Trust | Permissionless feedback (Sybil-vulnerable) | 2× bonding equilibrium (MAD) |
-| Reputation | Arbitrary int128 ratings | None issued — an open settlement record the reader weighs |
+| Reputation | Arbitrary int128 ratings | None issued — an open resolution history the reader weighs |
 | Validation | External provers (zkML, TEE) | Buyer dominance + on-chain evidence |
 
-An agent's settlement record states facts — which orders it was on, what it
-bonded, how each resolved — and a counterparty reads and weighs that record
+An agent's resolution history states facts — which orders it was on, what it
+bonded, how each resolved — and a counterparty reads and weighs that history
 for itself; no score summarizes it and no gate consumes it. The bonding
 mechanism IS the validation layer.
