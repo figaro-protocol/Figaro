@@ -1,12 +1,14 @@
 # Figaro Protocol — Design Decisions
 
-This document records intentional design choices that may appear as
+This document states intentional design choices that may appear as
 vulnerabilities or omissions to a reviewer unfamiliar with the protocol's
 architecture. Each entry states the pattern, why it looks wrong, and why it
 is correct.
 
 The intended audience is an external security auditor. Reading this document
-before reviewing the code will prevent the most common false-positive findings.
+before reviewing the code will prevent the most common false-positive
+findings. The catalogue's size is the summary table at the bottom — count it
+there, never quote a remembered number.
 
 ---
 
@@ -24,7 +26,7 @@ signatures alone gate extension. "If both parties want a follow-on round,
 let them sign one against the same processId" sounds protocol-aligned.
 
 **Why the gate is correct**: Each bonded process is a transaction-scoped
-institution that dissolves at settlement (`docs/VISION.md`). The closure is the
+institution that dissolves at resolution (`docs/VISION.md`). The closure is the
 *dissolution*. Parties wanting a follow-on bonded relationship sign a
 fresh root commitment, getting a new `processId`; cross-process
 composition (a sub-order in process A roots process B) carries the
@@ -57,10 +59,10 @@ against any other order in process P, even if that order has a different seller.
 **Why it looks wrong**: Standard access control would require the attester to
 be the seller of the specific order being attested.
 
-**Why it is correct**: The `Attestation` event always records `attester =
+**Why it is correct**: The `Attestation` event always sets `attester =
 msg.sender` truthfully. There is no identity forgery. Off-chain indexers
 consuming the event can always determine who attested and compare that against
-the on-chain commitment record for the target order.
+the on-chain commitment events for the target order.
 
 Enforcing "attester must be seller of this specific order" on-chain would
 require storing per-order seller data — state the kernel explicitly avoids.
@@ -125,7 +127,7 @@ breaks buyer dominance. Breaking buyer dominance breaks the MAD equilibrium
 (if the seller knows the buyer can be timed out, withholding cooperation
 becomes a viable strategy).
 
-**The mitigation matches the kernel** (ruled 2026-07-14): the kernel verifies
+**The mitigation matches the kernel**: the kernel verifies
 both parties by ECDSA recovery alone (`FigaroCore.sol:161-165`), so a contract
 wallet — multi-sig, ERC-1271 smart account — can never hold the buyer role,
 and the frozen kernel forecloses adding contract-signature support. The live
@@ -176,26 +178,24 @@ between the same parties with the same terms.
 `OrderResolved` for orders with `orderStatus == 2` (resolved); only
 `orderStatus == 1` (committed, active) orders are attestable.
 
-**Why it looks wrong**: Post-settlement evidence (a warranty claim, a late
-temperature-record download) looks legitimate, so rejecting it looks like
+**Why it looks wrong**: Post-resolution evidence (a warranty claim, a late
+temperature-log download) looks legitimate, so rejecting it looks like
 data loss.
 
 **Why it is correct**: A bonded process is a transaction-scoped institution
 and `resolveProcess` dissolves it. Attestation is runtime evidence *within*
 that open institution — letting the merkle-bound evidence stream continue
-after atomic settlement would dilute the finality the resolve mechanism is
-designed to produce. Post-settlement claims belong to off-chain forums, which
-receive the resolved process's complete, closed evidentiary record as input.
-(An earlier revision permitted post-resolve attestation; that was closed-world
-residue — closed by maintainer ruling, 2026-07-10.)
+after atomic resolution would dilute the finality the resolve mechanism is
+designed to produce. Post-resolution claims belong to off-chain forums, which
+receive the resolved process's complete, closed evidentiary data as input.
 
 ---
 
 ## 8. ClauseRegistry is fully permissionless
 
 **Pattern**: Anyone can call `registerClause` with any `clauseId`, `version`,
-`contentHash`, and `contentURI`, staking the fixed `registrationDeposit`
-(ETH, immutable at deploy). There is no approval and no identity check.
+`contentHash`, and `contentURI`, placing the fixed registration stake
+(`registrationDeposit`, immutable at deploy). There is no approval and no identity check.
 First write wins per `(clauseId, version)` (`AlreadyRegistered` revert) and
 the binding is permanent — `withdrawDeposit` returns the stake without
 clearing it; readers de-surface a withdrawn clause for new compositions.
@@ -203,35 +203,32 @@ clearing it; readers de-surface a withdrawn clause for new compositions.
 **Why it looks wrong**: Permissionless registration enables namespace
 squatting and spam. The clause names are public, human-readable strings, so
 a squatter can register a well-known name (or the next version of one)
-before its author does — nothing about the id is secret.
+before its designer does — nothing about the id is secret.
 
-**Why it is correct**: Nothing that settles trusts the registry's binding.
+**Why it is correct**: Nothing that resolves trusts the registry's binding.
 Integrity routes through `agreementHash` and `contentHash`, never through
 the registry: an agreement merkle-commits the clause CONTENT under the hash
 both parties sign, and every consumer of a registry entry fetches the spec
 from `contentURI` and verifies its bytes against the anchored `contentHash`
 before trusting a field. A squatted or garbage entry can therefore pollute
 DISCOVERY only — it cannot alter, impersonate, or invalidate any commitment,
-attestation, or settlement. The staked-intent deposit prices that pollution
-in deposit × time-surfaced, and the permanent binding means a squatter buys
-one dead `(name, version)` slot, not the name: honest authors register the
-next version.
+attestation, or resolution. The stake prices that pollution
+in stake × time-surfaced, and the permanent binding means a squatter buys
+one dead `(name, version)` slot, not the name: honest designers register the next version.
 
 Clause governance — which clauses are authoritative — is a convention-layer
 concern resolved off-chain, consistent with the event-sourced architecture.
 
-**RPGF escalation, accepted (audit 2026-08-01, finding H-2; ruled 2026-08-01):**
-once RPGF pays authors, registry authorship is also the reward PAYEE key
+**Reward escalation, accepted:**
+once designer rewards pay designers, the registering wallet is also the reward PAYEE key
 (`RpgfMinter._isAuthor`), so a front-runner who copies an in-flight registration
 captures its future reward, not just a discovery slot. This was weighed and the
 first-write-wins design KEPT, for two reasons. First, the shared flat clause
-namespace IS the coordination commons — namespacing ids under the author address
-(the structural fix) would fragment it, and signature-based authorship breaks the
-author-is-staker assumption the reward's live-stake gate rests on. Second, reward
+namespace IS the coordination commons — namespacing ids under the designer's address
+(the structural fix) would fragment it, and signature-based registration breaks the designer-is-staker assumption the reward's live-stake gate rests on. Second, reward
 follows real USAGE (network truth): a squatted key earns nothing unless the
-ecosystem actually composes it, which the squatter cannot force, and the deposit
-still prices the attempt. The reactive-front-run window is already minimal —
-registration pins the spec to the author's OWN node and registers in one atomic UI
+ecosystem actually composes it, which the squatter cannot force, and the stake still prices the attempt. The reactive-front-run window is already minimal —
+registration pins the spec to the designer's OWN node and registers in one atomic UI
 action, so nothing is publicly observable before the register tx hits the mempool.
 The residual (mempool front-run of that tx; proactive squatting of a guessable
 name) is the accepted, deposit-priced cost. Assemblies are unaffected — their id is
@@ -240,19 +237,21 @@ observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
 
 ---
 
-## 9. RETIRED — DutchAuction (contract deleted 2026-07-02)
+## 9. No competitive-pricing mechanism — pricing is a catalogue concern
 
-**Was**: "DutchAuction holds no funds and enforces no role separation" — the
-auction creator could claim their own auction; the contract held no tokens.
+**Pattern**: there is no auction, order-book, or price-discovery contract
+anywhere in `src/`; every payment is a figure both parties sign.
 
-**Retirement**: competitive pricing was abandoned. A mid-chain order whose
+**Why it looks wrong**: a market protocol without a market-price primitive
+looks unfinished.
+
+**Why it is correct**: a mid-chain order whose
 price or counterparty is unknown at signing is structurally incompatible with
 the kernel's exact-match cumulative accumulator (`expectedCumulativeValue`),
-and the V3-era workaround (the market contract standing in as the kernel
-seller, bonds borrowed from a float vault) is banned three ways in V5:
-ECDSA-only parties, no bond lending, no custody. Pricing is a catalogue
-concern (e.g. rate × geohash distance). The number is kept so the pattern
-count and cross-references stay stable.
+and the workaround (a market contract standing in as the kernel
+seller, bonds borrowed from a float vault) is banned three ways:
+ECDSA-only parties, no bond lending, no intermediary holding. Pricing is a catalogue
+concern (e.g. rate × geohash distance).
 
 ---
 
@@ -278,7 +277,7 @@ cannot buy and sell in different tokens within the same process.
 **Why it looks correct and IS correct**: The 2:1 asymmetric bond ratio is
 Nash-stable from chain state alone — no oracle, no DEX dependency, no pre-agreed
 FX rate. Mixing currencies within one process would require all three to compare
-"buyer bond" against "seller bond" at settlement, and each reintroduces a
+"buyer bond" against "seller bond" at resolution, and each reintroduces a
 discretionary actor (oracle seller, DEX router, a counterparty picking the
 rate). Kernel-level single-currency binding is precisely what preserves
 trust-minimization.
@@ -297,7 +296,7 @@ trust-minimization.
    pre-bond. Modern wallets (Rabby, MetaMask Swap, Rainbow) do this natively.
    The shipped form of this pattern is `WitnessSwapAndCommitCoordinator`
    (`CONTRACTS.md`): the swap route is bound into the party's Permit2 witness
-   signature, the coordinator funds the party in-place, and the kernel pulls
+   signature, the coordinator supplies the party in-place, and the kernel pulls
    the bond as always — still one monotoken process.
 
 3. **Level-3 atomic bundler mechanism.** When all-or-nothing semantics is needed
@@ -330,7 +329,7 @@ of the document, in the same way a paper BoL transfers by physical
 endorsement. TradeTrust implements this via TitleEscrow's holder /
 beneficiary split with a two-step `nominate` + `transferBeneficiary`
 endorsement; CargoX implements it via direct ERC-721 token transfer;
-TradeLens implemented it via consortium-mediated record updates. Three
+TradeLens implemented it via consortium-mediated ledger updates. Three
 production protocols — and the legal framework all three align to —
 treat transferability as load-bearing. Figaro's absence of any
 equivalent mechanism appears to be a missing feature.
@@ -339,7 +338,7 @@ equivalent mechanism appears to be a missing feature.
 separately rule transferability out:
 
 1. **Single-buyer invariant**. A Figaro process has one buyer at
-   the root, and every order in the DAG carries that same buyer on its
+   the root, and every order in the process carries that same buyer on its
    buyer side. There is no kernel mechanism to fork the buyer (creating
    two buyer-roots) or substitute the buyer (changing the orderHash). A
    "transfer of buyer-side title" mid-process has no representation in the
@@ -379,9 +378,8 @@ is the wrong tool, by design.
 
 See `docs/BOL_RESEARCH.md` for the full comparison against CargoX,
 TradeTrust, MLETR, and TradeLens, including the field-level mapping of
-what *is* expressible (non-negotiable BoLs in any DAG the buyer commits
-upfront, including multi-leg supply-chain carriage) and what is closed
-off. Its canonical header settles the question this entry records: the
+what *is* expressible (non-negotiable BoLs in any topology the buyer commits upfront, including multi-leg supply-chain carriage) and what is closed
+off. Its canonical header answers the question this entry states: the
 kernel forbids mid-flight resale — a structural property, not a parked
 design.
 
@@ -394,9 +392,7 @@ design.
 `FigaroCore.sol:153`) and nothing else in the kernel reads the field.
 
 **Why it looks wrong**: `salt` already appears to "secure" the commitment,
-so `deadline` reads as leftover plumbing — plausibly from the deleted
-DutchAuction (it wasn't: V3's core, which lived alongside the original
-auction, had no deadline; the field arrived with the V5 baseline).
+so `deadline` reads as leftover plumbing from an earlier design (it is not).
 
 **Why it is correct**: the two fields answer different attacks. `salt` is
 IDENTITY — it makes two otherwise-identical orders hash differently, and
@@ -405,12 +401,12 @@ UNCONSUMMATED dual-signature window: signing and committing are two steps
 with real latency between them (share → counter-sign → commit), a
 signature cannot be revoked (no cancel — revocation is escape-hatch
 machinery), so without a deadline every signed-but-never-committed order
-is a perpetual option on the signer's funds, exercisable whenever standing
+is a perpetual option on the signer's balance, exercisable whenever standing
 allowances permit. The deadline makes stale signatures die on their own —
 the only passive protection a no-cancel kernel can offer. Doctrinal check:
 it gates ENTRY only; nothing expires post-commit (bonds have no timeout),
 so it is the mirror image of an escape hatch, not an instance of one.
-Questioned and ruled KEEP 2026-07-02.
+
 
 ---
 
@@ -433,8 +429,7 @@ bond/price checks read them. Mitigation is compositional, not mechanical: item
 *names* are the seller's catalogue authoring choice, so a discreet catalogue names
 discreetly ("item #123" — `itemId` is already committed alongside), and `marks`
 follows bill-of-lading practice (reference codes, never personal names — the spec
-description says so). Pseudonymity of the wallet does the rest. Ruled ACCEPT
-2026-07-21 (public/confidential boundary audit).
+description says so). Pseudonymity of the wallet does the rest.
 
 ---
 
@@ -446,33 +441,29 @@ deposit; the ETH itself is only claimable via `withdraw()` once the immutable
 its owner has explicitly asked for and cannot yet take. There is no admin path, no
 early release, and no way for anyone — including the depositor — to shorten it.
 
-**Why it looks wrong**: it reads as two separate red flags. First, held funds with a
+**Why it looks wrong**: it reads as two separate red flags. First, held ETH with a
 timer look like §5's stuck-fund shape, and this file is emphatic that the kernel has
 no time locks. Second, a mandatory waiting period on someone's own capital looks like
-the "escape hatch in reverse" — a protocol asserting custody it has no business
+the "escape hatch in reverse" — a protocol asserting a hold it has no business
 asserting.
 
-**Why it is correct**: the tier is the whole answer. **This is the PROTOCOL tier, not
-the kernel** — `LEXICON.md`'s grid places all three registries there, and the
+**Why it is correct**: the tier is the whole answer. **This is a protocol contract beside the kernel, not the kernel** — and the
 no-time-lock rule is a *kernel* law about bonded commitments, where any timer would
 hand a party a unilateral exit and break the MAD equilibrium. Nothing here touches a
-bond, a commitment, or a settlement. Citing the kernel rule at this contract is the
-Folding error.
+bond, a commitment, or a resolution. Citing the kernel rule at this contract is a tier error.
 
-What the cooldown does is make the deposit *mean* something. Withdrawal used to be a
-single call that cleared the guard and paid out at once, which made one deposit
-recyclable through identity after identity: register → transact → withdraw →
-re-register from a fresh address. The capital cost of sustaining N fabricated
-identities was therefore `deposit`, not `N · deposit` — O(1) no matter how much
-breadth was manufactured. Since the RPGF reward counts distinct LIVE-STAKED SELLERS
-(ruled 2026-07-31 — the pair statistic it replaced could not be priced at all, the buyer
-side holding no stake) and **no scoring shape can distinguish a fabricated counterparty
+What the cooldown does is make the stake *mean* something. Without it,
+withdrawal is a single call that clears the guard and pays out at once,
+making one stake recyclable through identity after identity: register →
+transact → withdraw → re-register from a fresh address. The capital cost of sustaining N fabricated
+identities is therefore one stake, not N stakes — O(1) no matter how much
+breadth was manufactured. Since designer rewards count distinct LIVE-STAKED SELLERS and **no scoring shape can distinguish a fabricated counterparty
 from a genuine one**, the
 identity stake is the only place Sybil resistance can live — and an instantly
 recyclable stake is not a stake. With the cooldown, sustaining N identities across a
-reward period `P` costs `deposit · N · T / P`.
+reward period `P` costs `stake · N · T / P`.
 
-The funds are not stuck, on any reading:
+The ETH is not stuck, on any reading:
 - **Bounded and known.** `withdrawalCooldown` is an immutable constructor parameter,
   readable on-chain before anyone deposits. Nobody is surprised by it.
 - **Unconditionally claimable.** After `releaseAt`, `withdraw()` succeeds with no
@@ -486,8 +477,7 @@ The funds are not stuck, on any reading:
 
 **Scope**: `MembersRegistry` only. `ClauseRegistry` and `AssemblyRegistry` deliberately
 have no cooldown and need none — their withdrawal is one-shot per key and the key's
-binding is permanent, so there is nothing to recycle. Ruled ACCEPT 2026-07-30, with
-the maintainer's framing: "no rage quitting."
+binding is permanent, so there is nothing to recycle.
 
 ---
 
@@ -511,14 +501,14 @@ cannot choose the accrual, cannot invent a process, cannot write twice for the
 same trade (the guest's counted set rides the batch state root, so idempotence
 holds across batches), and cannot be repointed — `batchVerifier` is
 `immutable` and no setter exists. What it can do is exactly what the direct
-path lets *anyone* do permissionlessly: present proof that settled trade used
+path lets *anyone* do permissionlessly: present proof that resolved trade used
 a clause or assembly.
 
 The distinction that matters is **discretion, not permission**. An admin
 function is one whose outcome depends on who calls it. This one's outcome
 depends only on what the proof says; the caller is a courier. The reason it
 needs a named caller at all is that the accrual is proved OFF-chain — which is
-the entire point, since ~85% of a direct record's gas is storage plus `icbrt`
+the entire point, since ~85% of a direct recording's gas is storage plus `icbrt`
 — so the fact cannot be re-derived from calldata here. The contract trusts the
 vkey, and a named caller is how a vkey's authority reaches storage.
 
@@ -529,15 +519,14 @@ owns the proof, the counter owns the reward's gates.
 
 **Blast radius if the vkey were wrong**: a bad program could inflate
 batch-path accrual for clauses or assemblies of its choosing, diluting every honest
-author's pro-rata share of a tranche. It could not mint, could not touch
-direct-path accrual, could not reach bonds or settlement, and could not
-withdraw anything — `RpgfMinter` still pays only authors of record with a live
-stake. The mitigation is the same one the whole batch path already rests on:
+designer's pro-rata share of a period's budget. It could not mint, could not touch
+direct-path accrual, could not reach bonds or resolution, and could not
+withdraw anything — `RpgfMinter` still pays only designers of record with a live stake. The mitigation is the same one the whole batch path already rests on:
 the vkey is immutable, and a program change means a NEW verifier deployment,
 reviewed as such.
 
-**Related**: the two settlement universes are DISJOINT — a batch-settled
-process never acquires kernel status, and a kernel-settled one is never in a
+**Related**: the two paths are DISJOINT — a batch-resolved
+process never acquires kernel status, and a kernel-resolved one is never in a
 batch. That is what makes guest-owned idempotence safe, and why the two
 accruals are merged as SCORES and never as components (`scoreOf`): the chain
 holds counts, not the pair sets needed to union them.
@@ -547,83 +536,82 @@ holds counts, not the pair sets needed to union them.
 
 ## 17. `UsageCounter` scores nothing below the minimum-support floor — real usage, zero score
 
-**Looks wrong because:** a clause or assembly with genuinely settled, genuinely recorded trade shows
+**Looks wrong because:** a clause or assembly with genuinely resolved, genuinely recorded trade shows
 `c > 0`, `d > 0` and `score = 0` — which reads like lost accrual, or like the counter
 penalising honest early adopters.
 
-**Is correct because (ruled 2026-07-31):** below `minSellers` (mainnet 3) distinct
+**Is correct because:** below `minSellers` (mainnet 3) distinct
 live-staked sellers sit exactly the clauses and assemblies one actor can fabricate alone — self-farms,
 fragmentation shards, squatted names, trivial riders — and a floor of 3 makes the minimum
 viable farm three deposits and three cooldowns, with no curation and no judgment. Within an
 open period nothing is lost: counting is never refused, `c` and `d` accrue below the floor,
 and the FULL score springs the moment the third distinct staked seller lands. State the
 edge honestly (the public page does): a period that CLOSES below the floor scores zero
-permanently — processes count once ever and cannot re-record into a later period, so
+permanently — processes count once ever and cannot re-enter a later period, so
 sub-floor accrual defers within a period and expires at its boundary. The floor lives in
-`_score`, so both settlement paths inherit it identically and PER PATH — the chain holds
+`_score`, so both paths inherit it identically and PER PATH — the chain holds
 counts, not seller sets, so summing the paths toward the floor would let one seller
-straddle the two universes and count twice; flooring each side separately can only ever
+straddle the two paths
+and count twice; flooring each side separately can only ever
 under-pay a boundary case. Conservative by construction, like the score merge itself.
 
-## 18. Recording has no protocol fee and no burn — and none should be added
+## 18. Recording costs gas and nothing else — no protocol charge, no burn
 
 **Looks wrong because:** `recordClauseUsage` costs only gas, so fabricating `c` looks
-underpriced — an auditor's natural fix is a flat per-record base-currency burn, or a
-per-record fee routed to the DAO treasury.
+underpriced — an auditor's natural fix is a flat per-recording burn, or a
+per-recording charge routed to the DAO treasury.
 
-**Is correct because (ruled 2026-07-31, both variants declined):** under the
+**Is correct because (both variants declined):** under the
 staked-seller breadth statistic the burn's protective job is gone — a pure-`c` attack
-grows score as `c^(1/3)` (octuple the records to double the score) against linear gas,
-the same cube-root futility that killed the per-pair cap, while the dominant term `d` is
+grows score as `c^(1/3)` (octuple the recordings to double the score) against linear gas,
+cube-root futility, while the dominant term `d` is
 priced by deposits. An app-layer ETH burn destroys real value to deter an attack the
-exponent already crushes (the EIP-1559 base fee of every record is already burned at the
-protocol level). Routing the fee to the DAO instead is WORSE, not better: it inserts an
+exponent already crushes (the EIP-1559 base fee of every recording is already burned at the
+protocol level). Routing the charge to the DAO instead is WORSE, not better: it inserts an
 institution into the identity-free mechanical path (the mechanism must survive the
 no-institutions stress tests, and the DAO is not yet instantiated), gives the treasury
 usage-coupled revenue (exactly the value-accrual coupling the pure-Schelling-point florin
-design refuses, and a fresh Howey fact), and turns permissionless recording into a fee
+design refuses, and a fresh Howey fact), and turns permissionless recording into a charge
 paid TO an entity. If the Sybil bound's algebra ever exposes a gap here, the reserve
 lever is lengthening the withdrawal cooldown — which moves no tokens at all.
 
 **The accepted posture (recorded so it is not re-litigated):** the ONLY non-recoverable
 per-trade cost in the reward path is the network's own EIP-1559 base-fee burn — in base
 currency, automatic, free of protocol machinery, and scaling with fake volume exactly as
-with real. That this is the WHOLE per-record cost is accepted, knowingly: together with
+with real. That this is the WHOLE per-recording cost is accepted, knowingly: together with
 live-stake-to-earn and the fixed 600M pool (which a farmer dilutes, never inflates), it
 is the residual anti-Sybil bite, and in the positive-sum frame that residual is a minor
 leak, not a hole. Do not "fix" it by adding a protocol-side cost — both variants above
 are declined and the door is closed on the family.
 
-## 19. Usage accrual requires the clause or assembly to hold a live registration deposit — an unregistered leaf key scores nothing
+## 19. Usage accrual requires the clause or assembly to hold a live registration stake — an unregistered leaf key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
 clause or assembly and its seller is staked — yet still reverts `ClauseOrAssemblyNotRegistered` (direct path)
-or silently skips it (batch path) unless the clause or assembly ALSO holds a live deposit in its own
-registry. A settled, proven use that earns nothing reads like lost accrual.
+or silently skips it (batch path) unless the clause or assembly ALSO holds a live stake in its own registry. A resolved, proven use that earns nothing reads like lost accrual.
 
-**Is correct because (audit 2026-08-01, finding M-2):** the clause-or-assembly key is otherwise just a
-merkle-leaf key a self-authored agreement chooses freely, so without this gate a self-dealt
+**Is correct because:** the clause-or-assembly key is otherwise just a
+merkle-leaf key a self-written agreement chooses freely, so without this gate a self-dealt
 process could accrue score to ANY `bytes32` and inflate `totalScoreIn` — the shared payout
-denominator — at gas cost, diluting every honest author. The gate is the CLAUSE-OR-ASSEMBLY-SIDE twin
-of the member-stake gate on the seller of record: score counts only what a live ETH deposit has priced. It does
-not eliminate the paid replication lever (register N keys for N deposits) — that is the
-accepted, deposit-priced cost the reward's uniform pro-rata already dilutes — it closes the
+denominator — at gas cost, diluting every honest designer. The gate is the CLAUSE-OR-ASSEMBLY-SIDE twin
+of the member-stake gate on the seller of record: score counts only what a live stake has priced. It does
+not eliminate the paid replication lever (register N keys for N deposits) — that is the accepted, stake-priced cost the reward's uniform pro-rata already dilutes — it closes the
 FREE variant. Direct path reverts (a standalone tx with nothing to unwind); the batch path
 skips (see §20).
 
-## 20. The RPGF accrual never blocks batch settlement — a reverting reward gate does not unwind trade
+## 20. The rewards accrual never blocks batch resolution — a reverting reward gate does not unwind trade
 
 **Looks wrong because:** `applyBatchAccrual` `continue`s past excluded/unregistered clauses or assemblies
 instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
-`BatchAccrualSkipped` and settling anyway. A reward write that can be silently dropped looks
+`BatchAccrualSkipped` and resolving the batch anyway. A reward write that can be silently dropped looks
 like lost or manipulable accrual.
 
-**Is correct because (audit 2026-08-01, finding "settlement/reward coupling"):** the accrual
-is a REWARD-tier write inside a SETTLEMENT-tier transaction. A reward gate that reverts
-settlement lets one party block every co-batched trader's already-reconciled payouts — a free,
+**Is correct because:** the accrual
+is a REWARD-tier write inside a RESOLUTION-tier transaction. A reward gate that
+reverts resolution lets one party block every co-batched trader's already-reconciled payouts — a free,
 unauthenticated griefing vector (a poison claim naming the excluded `figaro-assembly-provenance`,
 which rides every assembly-composed agreement; or a seller who unstakes between prove and submit). Tier separation is
-the doctrine: settlement must never be hostage to the reward. A dropped batch's accrual is
+the doctrine: resolution must never be hostage to the reward. A dropped batch's accrual is
 recovered by the next batch that touches the same clauses or assemblies (the counter's write is a
 cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as
 the per-path floor (§17). The sequencer additionally pre-filters poison claims so the catch
@@ -632,17 +620,17 @@ only ever fires on the genuine stake-race.
 ## 21. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
 **Looks wrong because:** a seller who requests withdrawal doesn't merely stop FUTURE trades
-counting — every one of their settled-but-not-yet-recorded processes becomes permanently
+counting — every one of their resolved-but-not-yet-recorded processes becomes permanently
 unrecordable once the period ends. A seller can even do it deliberately to deny a specific
-author (withdraw, then re-register). That reads like a griefing hole.
+designer (withdraw, then re-register). That reads like a griefing hole.
 
-**Is correct because (audit 2026-08-01, finding M-1; ruling 2026-08-01):** the chain cannot
+**Is correct because:** the chain cannot
 see WHEN a process resolved (the kernel is frozen and stores no per-order timestamp), which is
-the same reason `processCounted` is global — so the stake can only be gated at RECORD time,
-never at settlement time. No stateless on-chain fix exists. The mitigation is a habit, not
-state: usage is recorded AT SETTLEMENT (`createCapabilityExecutors.ts`, right after
+the same reason `processCounted` is global — so the stake can only be gated at RECORDING time,
+never at resolution time. No stateless on-chain fix exists. The mitigation is a habit, not
+state: usage is recorded AT RESOLUTION (`createCapabilityExecutors.ts`, right after
 `resolveProcess` confirms), when the seller is definitionally still staked, closing the normal
-window. The residual grief is self-limiting — to deny an author the griefer must stay unstaked
+window. The residual grief is self-limiting — to deny a designer the griefer must stay unstaked
 through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
 the cost of the stateless kernel.
 
@@ -665,7 +653,7 @@ state gates (`OrderNotCommitted` / `NoActiveOrders`) — and that state rides
 the on-chain state-root chain, so no relay can rewind it. The domain pins
 `chainId` and the VERIFIER as `verifyingContract`, so the signature cannot
 travel to another chain, another verifier, or to `FigaroCore` (whose domain —
-and authorization model — differ; the two universes never share a signature,
+and authorization model — differ; the two paths never share a signature,
 see `SCALING_STRATEGY.md`). A deadline is absent because the message's meaning
 is time-invariant: it authorizes exactly one state transition whose payouts
 are fixed by the signed commitments, so late submission delivers precisely
@@ -686,19 +674,19 @@ be carried as a signature, in its minimal sufficient form.
 | 4 | No owner/admin/pause | kernel-critical | No incident response | Admin = trusted third party = breaks mechanism |
 | 5 | Buyer key loss is terminal | kernel-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
 | 6 | No prevrandao salt | kernel-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
-| 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed record |
-| 8 | Permissionless clause registry | registry/discovery | Namespace squatting | Integrity routes through contentHash, never the registry; squatting pollutes discovery only, priced by the staked deposit |
-| 9 | RETIRED (DutchAuction deleted 2026-07-02) | — | — | Competitive pricing abandoned; see §9 |
+| 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
+| 8 | Permissionless clause registry | registry/discovery | Namespace squatting | Integrity routes through contentHash, never the registry; squatting pollutes discovery only, priced by the stake |
+| 9 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalogue concern |
 | 10 | Strict token compatibility rejection | kernel-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 11 | Single currency per process | kernel-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | kernel-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
 | 13 | `deadline` alongside `salt` | kernel-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel kernel needs signatures to age out |
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
-| 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/deposit | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one deposit is recycled across identities, so the stake priced nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
+| 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
 | 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
-| 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real settled trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
-| 18 | No per-record fee or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed fee inserts an institution + usage-coupled revenue into an identity-free mechanism |
-| 19 | Usage needs a live clause-or-assembly registration deposit | reward-path | A proven, settled use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted deposit-priced replication lever |
-| 20 | RPGF accrual never reverts settlement (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind settlement-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
+| 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
+| 18 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
+| 19 | Usage needs a live clause-or-assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
+| 20 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
 | 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes settled-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-settlement closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
 | 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
