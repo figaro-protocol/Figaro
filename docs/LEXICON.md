@@ -30,11 +30,15 @@ Nouns and their definitions. One name per thing.
 
 **commitment** — The signed object the kernel accepts for one order: the process it belongs to, the parties, the payment, the cumulative value, the denomination, the agreement's merkle root, and the deadline after which it can no longer be committed.
 
+**community token** — A community's own token used as a denomination, so value spent through processes elsewhere sustains its worth at home.
+
 **composition** — Plugging a process into another contract on the chain: a swap, a payment splitter, an arbitration forum. Composition is what makes the protocol a network instead of a silo.
 
 **consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the kernel is what makes it hold.
 
 **contract** — What every trade is. A binding contract needs offer, acceptance, consideration, capacity, legality, and mutual assent, and implies a body of terms and a trail of data.
+
+**coordination token** — A token two strangers can agree on because it is neutral to both: a stablecoin, or the florin. Any process may be denominated in one.
 
 **cumulative value** — The total value a process has accumulated through a given seller's order, that seller's own payment included. A seller's bond is twice it.
 
@@ -98,5 +102,6 @@ Nouns and their definitions. One name per thing.
 
 **treasury** — The DAO's wallet: the florins and the stake it holds.
 
-**wallet** — A signing key and the balance it controls. The only identity the protocol knows.
+**utility token** — A designer's own token, pinned as the denomination of an assembly so every process that instantiates it is paid and bonded in that token. Its value is discovered through use of the assembly; it is the designer's share in what they built.
 
+**wallet** — A signing key and the balance it controls. The only identity the protocol knows.
