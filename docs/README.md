@@ -26,7 +26,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | The public/confidential data rule | `PUBLIC_GRAPH_MODEL.md` § "What Is Not Public" |
 | Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
 | Game-theoretic derivation, six properties | `THEORY.md` |
-| Vision, post-firm economy, lineage | `VISION.md` |
+| Vision, post-firm economy, where value goes after the firm | `VISION.md` |
 | Intentional vulnerability-lookalike patterns | `DESIGN_DECISIONS.md` |
 | Teardown state: deferred vs permanent, what does NOT exist | `CONTRACTS.md` § What Does NOT Exist |
 | Contract inventory | `CONTRACTS.md` |
@@ -63,4 +63,4 @@ content. (This is the instruction-system form of "derive, don't store.")
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `RELEASE_READINESS.md` (the open release tasks, TODO only — closed work is deleted; git is the log)
 - **Audit / verification**: `AUDITOR_HANDOVER.md` (freeze notice + stamp, post-audit policy, validation gate, accepted risks), `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
-- **Research**: `BOL_RESEARCH.md` (project lineage / naming history is folded into `VISION.md` § "Project Lineage")
+- **Research**: `BOL_RESEARCH.md` (the project's lineage is stated in the asymmetric-bonding paper's acknowledgement; naming in `FLORIN_TOKEN.md` § "Name")
