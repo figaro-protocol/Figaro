@@ -37,22 +37,22 @@ only — the one domain where a wrong cube bound was coincidentally exact, which
 score-saturation bug survived; never bound a fuzz domain to less than the function's own).
 `RpgfMinterTest` exercises
 the payout maths against a counter stub — uniform pro-rata share (**no per-wallet cap**: a
-dominant wallet takes its full pro-rata share), a withdrawn author forfeiting the reward,
-author-of-record verification against both registries, the closed-period requirement, and the
+dominant wallet takes its full pro-rata share), a withdrawn designer forfeiting the reward,
+the live-registration gate on both registries, the closed-period requirement, and the
 per-tranche budget backstop. `RpgfIntegrationTest` (6) proves the two compose with NO stubs: a
-real bonded process settles, its usage is recorded against the real counter, the period closes,
+real bonded process resolves, its usage is counted against the real counter, the period closes,
 and the real minter pays real florins.
 
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call
-reverts) while the outer settlement completes exactly once — across
+reverts) while the outer resolution completes exactly once — across
 `FigaroCore.commit`, `FigaroCore.resolveProcess`, and
 `FigaroBatchVerifier.settleBatch`.
 
-`FigaroBatchVerifierTest` covers the batch-settlement verifier: the happy path
+`FigaroBatchVerifierTest` covers the batch verifier: the happy path
 with value legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
 substitution + unregistered clause both revert; a never-seen registered clause
-settles with zero verifier changes), state-root continuity, calldata-tamper
+resolves with zero verifier changes), state-root continuity, calldata-tamper
 reverts, and constructor guards.
 
 `WitnessSwapAndCommitCoordinatorForkTest` is the mainnet-fork parity proof for the
@@ -73,9 +73,9 @@ allowance-pull composition end to end.
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
-| `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the RPGF Sybil bound assumes: solvency, no deposit recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two settlement universes), period bucketing ×2, isolation across clauses and assemblies. Mutation-checked (replace-not-add, score composition) 2026-08-03. |
-| `HalmosClauseAndAssemblyRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked (solvency + first-write-wins, both contracts, 4/4 counterexamples) 2026-08-03. |
+| `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
+| `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across clauses and assemblies. Mutation-checked: replace-not-add, score composition. |
+| `HalmosClauseAndAssemblyRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on both contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (six passes). **Halmos does not model
 `expectRevert`** — assert on a low-level call's own success flag instead. It
@@ -97,8 +97,8 @@ it *could* fail.
 | `AttestationCoordinator.spec` | 4 | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
-| `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model 2026-07-16; realigned again 2026-08-03 to the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
-| `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor` author-of-record gate), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked (conservation, double-claim, eligibility) 2026-08-03. |
+| `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net positions: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Aligned to the witness model and the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
+| `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
 
 Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; a maintainer-side pre-commit guard (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
@@ -117,7 +117,7 @@ harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
 `ResolutionAlwaysPossible`, `TypeOK`, and the two that tie the equilibrium
-proof's payoff table to the machine — `DeterrentEscrowMagnitudes` (held escrow
+proof's payoff table to the machine — `DeterrentEscrowMagnitudes` (the held deposits
 is exactly 2×payment from the buyer + 2×cumulativeValue from the seller of every
 committed order) and `SettledNetPositions` (resolution moves exactly `payment`
 buyer → seller and returns both bonds whole).
@@ -127,24 +127,24 @@ FlorinToken (`FlorinToken.tla` + `FlorinToken.cfg`): `Inv_MaxSupply`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
 `Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
 
-WitnessSwapAndCommitCoordinator (`WitnessSwapAndCommitCoordinator.tla` + `.cfg`,
-2026-08-04): the swap-funded on-ramp at EVM-step granularity (revert frames
+WitnessSwapAndCommitCoordinator (`WitnessSwapAndCommitCoordinator.tla` + `.cfg`):
+the swap-funded on-ramp at EVM-step granularity (revert frames
 explicit, so "swap landed, commit didn't" states are reachable and proved never
 quiescent): `Inv_TypeOK`, `Inv_Conservation`, `Inv_NonNegative`,
 `Inv_ZeroRetention`, `Inv_AllowanceHygiene`, `Inv_Atomicity`,
 `Inv_BondFormula`, `Inv_CoreEscrowExact`, `Inv_WitnessRouteBinding`,
 `Inv_CoordinatorNotCounterparty` — 38,028,525 states / 1,979,101 distinct,
-depth 17, ~3–4 min. Mutation-checked (6 mutations, each caught) 2026-08-04.
+depth 17, ~3–4 min. Mutation-checked: 6 mutations, each caught.
 
-SettlementUniverses (`SettlementUniverses.tla` + `.cfg`, 2026-08-04): the
+SettlementUniverses (`SettlementUniverses.tla` + `.cfg`): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
 off-chain guest kernel under arbitrary interleavings; the only harness that can
-see the two-settlement-universes crease (every other layer is per-contract).
+see where the two paths meet (every other layer is per-contract).
 21 invariants: no double payout across the universes, token conservation +
-exact per-pool escrow, usage-score composition (`scoreOf == direct + batch`,
+exact per-pool deposits, usage-score composition (`scoreOf == direct + batch`,
 the bridge write REPLACES never adds), kernel blindness (`settleBatch` writes
 no kernel `orderStatus`) — 7,455,943 states / 2,632,247 distinct, depth 15,
-~3 min. Mutation-checked (5 mutations + 7 non-vacuity witnesses) 2026-08-04.
+~3 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
 no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
@@ -177,12 +177,12 @@ credibility asset, not release path.
 and `figaro-sequencer`) need the SP1 toolchain (`cargo prove`) to build; without
 it, `cargo test -p figaro-clause -p figaro-kernel` runs the two host-only crates,
 the same subset `prover-ci` gates. The crates: `figaro-clause`
-(Layer-A conformance: every spec in `clauses/` parses — count derived from the
+(off-chain conformance: every spec in `clauses/` parses — count derived from the
 directory; 11 encode vectors generated from the live TS encoder lock byte
 parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
 formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve +
 the witness-gate suite: spec-identity substitution, content-hash mismatch,
-inclusion failure, attest-after-resolve; the RPGF usage bridge in
+inclusion failure, attest-after-resolve; the usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
 replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the assembly leg via provenance reproduction, and the
@@ -227,14 +227,14 @@ template→orders walk, checkout planning + sub-order pricing, the handoff
 ECDH, and the commitment envelope — several pinned byte-exact to
 `sdk/tests/fixtures/promotion-golden-vectors.json` (recorded from the
 pre-promotion frontend implementations; `HARVEST_GOLDEN_VECTORS=1` in
-`frontend/tests/lib/promotionGoldenVectors.test.ts` re-records, legitimate
+`frontend/tests/lib/promotionGoldenVectors.test.ts` regenerates them, legitimate
 only before a move).
 
 **EIP-712 parity — the unconditional cross-language lock.**
 `sdk/tests/eip712Parity.test.ts` freezes SDK-computed EIP-712 vectors (domain
 separator, struct hash, root digest/processId, order hash) into
 `test/fixtures/eip712-vectors.json` and self-checks the SDK still reproduces
-them (`HARVEST_EIP712_VECTORS=1` re-records). `test/kernel/Eip712ParityTest.t.sol`
+them (`HARVEST_EIP712_VECTORS=1` regenerates them). `test/kernel/Eip712ParityTest.t.sol`
 reads that same fixture and asserts the Solidity kernel reproduces every hash —
 `CommitmentTypes.hashStruct` directly, the order-hash derivation verbatim, and
 the domain separator both ways (SDK vector == formula, and a live
@@ -263,7 +263,7 @@ list, is the census):
   sellers anvil[5-12]) comes from `frontend/scripts/populate-test-data.mjs`, run before
   Playwright by `test:e2e:devnet` — seeding is never a test. A file-filtered
   run pulls the gate too; pass `--no-deps` when the chain is already anchored.
-- **`devnet-standalone`** — self-contained acceptance specs that author + run +
+- **`devnet-standalone`** — self-contained acceptance specs that write + run +
   audit their OWN full cycle (`permissionless-clause`, `clause-coverage`,
   `assembly-withdraw`, `clause-authoring`); they share no seeded state, so they
   do not pull the authoring gate.
@@ -279,7 +279,7 @@ list, is the census):
   the real UI against the live Sepolia deployment (wizard registration → discover →
   order → accept/commit → resolve → audit), every step asserted out-of-band from
   Sepolia. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
-  test --project=sepolia` builds the site from the committed record
+  test --project=sepolia` builds the site from the committed deployment record
   (`deployments/11155111.json`, publicnode RPC, test helpers on, dist
   `.next-e2e-sepolia`, port 3200) and drives it with the local-key signer bridge
   (`frontend/tests/e2e/local-signer.ts` — the injected wallet signs in Node with viem
@@ -294,14 +294,14 @@ list, is the census):
   chain (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
   as the deploy bakes them). Free to run after every nudge. The project's third spec,
   `swap-funded-order.sepolia.spec.ts` — the on-ramp: a buyer holding none of the
-  denomination funds their bond from another token the seller accepts, through
+  denomination pays for their bond from another token the seller accepts, through
   `WitnessSwapAndCommitCoordinator` and the chain's real venue (Sepolia: Uniswap
   SwapRouter02 + a real WETH/USDC pool; devnet: the mock venue); runs after the smoke
   on the same chain (same keys — `live-order-shared.ts`; the seller's profile is edited
   through `/members/edit/identity` to accept the funding token when it does not yet);
   chain facts: the commit went THROUGH the coordinator, funding token spent ≤ the signed
   cap, both bonds in the kernel, the coordinator empty. The fourth,
-  `payout-routing.sepolia.spec.ts` — a settled seller splits WHAT IT WAS PAID
+  `payout-routing.sepolia.spec.ts` — a resolved seller splits WHAT IT WAS PAID
   to its OWN earmarked accounts (a tax earmark and a savings earmark — sub-accounts
   derived from the seller's key; the amounts a share of the payment, never the returned
   bond) through the composed public multisender (the canonical public Disperse
@@ -309,7 +309,7 @@ list, is the census):
   `disperseToken`; chain facts: each earmark received its leg exactly, the seller paid
   exactly the total, the multisender retains nothing (its bytecode carries the selector
   the panel calls — behaviour on the public chain, never the mirror alone).
-  Live-run records — tx hashes, blocks, addresses, dates — live in `git log` (the
+  Live-run facts — tx hashes, blocks, addresses, times — live in `git log` (the
   commits that landed each run), never duplicated here.
   All four run after each other on one chain (the smoke first: it registers the seller
   and leaves the resolved process the others start from). Every
@@ -338,10 +338,10 @@ participant via a viem helper breaks the action end; asserting only on-chain
 events breaks the reaction end — either break and it is not e2e. A Playwright
 spec that drives contracts via viem and never touches the UI is a contract test
 misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the
-reaction is fabricated. The `mock` Playwright project was retired 2026-05-20;
-do not recreate it.
+reaction is fabricated. The `mock` Playwright project is retired; do not
+recreate it.
 
-### Assert CHAIN FACTS the UI is responsible for producing (doctrine, 2026-07-30)
+### Assert CHAIN FACTS the UI is responsible for producing
 
 The action→reaction rule above says where an e2e test *acts* and where it *reads*.
 This says what it must **assert**: the state the UI was supposed to write to the
@@ -353,11 +353,11 @@ be fed nothing. Every layer below can be green — Foundry, Halmos, tsc, knip, u
 tests, review — while the product does nothing, because the fault is that a call
 never happens, or happens and reverts, or happens and its result is never read.
 None of that appears in a diff, and none of it errors. Four instances, all found
-in one day (2026-07-30) and *only* by chain-fact assertions:
+in a single day and *only* by chain-fact assertions:
 
 | what was broken | what it looked like | the assertion that caught it |
 |---|---|---|
-| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts for excluded clauses or assemblies, so the **assembly-designer half of the 600M recorded nothing, on every deployment** | clause authors accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
+| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts for excluded clauses or assemblies, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
 | the audit's witness decode read calldata for a preimage WS2 had removed; the throw landed in a swallowed `catch` | the page rendered, just with zero evidence rows | witness receipts `toHaveCount(3)` |
 | the claim button compared `Date.now()` to a **block** timestamp | button simply disabled; no error anywhere | drive the claim, assert the ETH moves |
 | `UsageCounter` itself | — | *correct throughout; that is the point* |
@@ -378,7 +378,7 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
   holds only on a chain where nothing else traded; inside a suite ~28 specs have
   already accrued. Assert the real relationship (`>=`), not the isolated case.
 - **Quoting a different set than the UI acts on.** The rewards page claims EVERY
-  clause or assembly the wallet authored; quoting one and asserting equality is a category
+  clause or assembly the wallet designed; quoting one and asserting equality is a category
   error. Prefer asserting **what the UI promised the user** — the rendered figure
   — against what the chain moved: the number on screen is the number that moves.
 - **Running a consumer spec without its producer.** `tradelens-runtime` consumes
@@ -394,13 +394,13 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
 there and is cheaper to prove there. Chain-fact e2e covers the seam Foundry
 cannot see — *whether the product actually calls the contract, with the right
 arguments, and reads the answer back*. The two are complements, and the seam
-between them is where the 2026-07-30 defects lived.
+between them is where those four defects lived.
 
 
 The webServer is a **production build** by default (`next build` → static
 export served by `serve` on :3100, ~90 s build — there is no `next start` under
 `output: export`): the dev server degrades after ~25 min of compile-on-demand
-(the seller-track-record tail-position flake, 2026-06-11), and devnet is a
+(the seller-history tail-position flake), and devnet is a
 mainnet rehearsal — participants hit the exported production artifact. The build
 inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or an
 app-code edit — a reused server keeps serving the build it started with.
@@ -418,16 +418,16 @@ contracts (action in the UI, reaction in the UI, chain facts asserted
 out-of-band). A handful of specs define the PATTERNS the rest follow:
 
 - `orders-accept` — the bilateral full-cycle spine (also the CI e2e gate).
-- `assembly-chain` — the multi-order value-added chain: sellers bound +
+- `assembly-chain` — the multi-order chain: sellers bound +
   designated through the UI, walk-order accepts with exact per-party bond
   deltas, one atomic resolve paying every party, full audit.
 - `dispatch-race` / `rfq-checkout` — market formation with zero contracts:
   the countersign-first race and the buyer-ceiling RFQ leg; the cheapest
-  available candidate/quote commits, losers net zero, settlement exact.
+  available candidate/quote commits, losers net zero, the resolution exact.
 - `mixed-pairing` — HUMAN buyer × AGENT candidate in ONE race: a headless
   Node service on the HttpChannel wire counter-signs over HTTP and
   broadcasts its own commit — no browser ever acts for the agent wallet.
-- `local-commerce` — the designer-authored scenario run end to end, both
+- `local-commerce` — the designer's own scenario run end to end, both
   process ladders attested stage by stage with labels DERIVED from the
   registered specs at run time, never a roster.
 - `permissionless-clause` / `clause-coverage` — the open-world proof: a
