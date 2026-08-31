@@ -46,7 +46,7 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    fingerprint/event; content lives off-chain in IPFS (pinned), reconstructed by the
    indexer; what a node/role/modality/category IS gets DERIVED at render time from
    the composed clauses + topology + attestation state. *Tell:* "the X field", a
-   stored role/modality/category label, a checkbox that records meaning.
+   stored role/modality/category label, a checkbox that stores meaning.
    Calibration for identity: a **closed taxonomy a party picks from**
    (`archetypeId`, `role`, `businessType`, `serviceType`, `documentKind`) is
    forbidden; a party's **free-form self-prose** (`name`, `specialty`,
@@ -71,14 +71,14 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
 
 7. **The surface READS network state at the edge.** The indexer is the read path,
    registries + IPFS are the source; resolved-empty = ABSENCE (never a fabricated
-   default or coined label). *Tell:* the UI as custodian/source/the-thing-in-the-middle.
+   default or coined label). *Tell:* the UI as the source, or the-thing-in-the-middle.
 
 ### Calibration — the SSoT violation predicate (patterns 2 + 7)
 
 A surface violates the network-is-SSoT rule when it **renders a collection, count,
 or status of network state from a bundled array, static const, or JSON** — maps
 over a bundled list, prints a hardcoded count, filters a static roster. Merely
-*mentioning* a chain artifact in authored editorial prose is not a violation. The
+*mentioning* a chain artifact in editorial prose we wrote is not a violation. The
 `(marketing)`/`(app)` split doesn't matter — reading needs an RPC, not a wallet, so
 marketing pages are event-driven too.
 
@@ -115,7 +115,7 @@ every composition.
 - **A field that represents a CHOICE or CATEGORY is BOUNDED.** Declared finite in the
   spec; never a free-form string for a choice. `type:"string"` is ONLY for genuinely
   free content (description, URI, nonce). Bounded beats free-form for three load-bearing
-  reasons: (1) **validatable** — the Layer-A validator checks membership off-chain
+  reasons: (1) **validatable** — the off-chain validator checks membership
   before any signature, and on the batched path the generic in-proof clause engine
   checks it again against the registered spec (per-clause validator contracts do not
   exist, permanently — `CONTRACTS.md` § "What the protocol has no contract for" owns it); (2)
@@ -146,7 +146,7 @@ every composition.
 
 ### Where a composed contract may stand — the four placements
 
-The boundary is a **narrow waist**: EIP-712 signatures in, deterministic settlement events out.
+The boundary is a **narrow waist**: EIP-712 signatures in, deterministic resolution events out.
 Relative to the bilateral signature, a composed contract stands in exactly four places.
 
 | # | Placement | Relative to the signature | What the contract supplies |
@@ -154,23 +154,23 @@ Relative to the bilateral signature, a composed contract stands in exactly four 
 | 1 | **Terms in** | before | deterministic output that becomes content `fields` both parties sign under `agreementHash` |
 | 2 | **Funding at the kernel-pull** | inside the `commit` tx | bond currency, delivered to the party's own EOA |
 | 3 | **Attested auxiliary** (Path A) | after commit, off the bond path | an external receipt, attested against the root order under a purpose-built clause |
-| 4 | **Settlement consumer** | after resolution | consequences derived from kernel state |
+| 4 | **Resolution consumer** | after resolution | consequences derived from kernel state |
 
 **The invariant: a composed contract supplies terms, funding, evidence, or consequences —
 NEVER a signature.**
 
 - **Placement 1 constraint — the output must be fully known at signing.** The accumulator is
-  exact-match, so a composition whose result is not fixed when both parties sign cannot settle;
+  exact-match, so a composition whose result is not fixed when both parties sign cannot resolve;
   counterparty-deferring compositions are dead as a class (the auction abandonment).
 - **Placement 2 constraint — exactly one call qualifies.** `FigaroCore.commit` is the only place
   Figaro itself pulls a named party's ERC-20 (`_pullExact`, `src/kernel/FigaroCore.sol:130-135`), and it
-  never checks `msg.sender` — so a coordinator funds the party **in place** instead of
+  never checks `msg.sender` — so a coordinator supplies the party's tokens **in place** instead of
   substituting itself, and the commitment stays bilaterally signed
   (`WitnessSwapAndCommitCoordinator` demonstrates the shape). Swap-and-commit is therefore the
   WHOLE family, not the first of many: an off-protocol auxiliary needs no such helper because
   Figaro never pulls its token.
 - **Placement 4 constraint — read, never intercept.** A frozen kernel is a frozen ABI: its
-  events and getters ARE the standard API, so a settlement consumer is a parallel contract family
+  events and getters ARE the standard API, so a resolution consumer is a parallel contract family
   that reads it (`AttestationCoordinator` reads `core.orderStatus` for an OPEN process;
   `UsageCounter` reads the same getter for a RESOLVED one). A consumer that inserts itself into
   the payment leg is placement-4 cosplay for contract-as-party.
@@ -191,8 +191,8 @@ So the triage before scoping any integration is one question — **who signs the
 - **A contract** (aggregator, oracle, bridge, router) → cannot sign EIP-712 → not a seller →
   **Path A**, placement 3 above: the buyer transacts with it directly, then attests the receipt
   against the root order. Evidence, not entanglement — no bonding, no second signature, no
-  atomic-resolution coupling. (The offset apparatus that first demonstrated Path A was deleted
-  2026-07-03; the pattern is what survives.)
+  atomic-resolution coupling. (The offset apparatus that first demonstrated Path A is
+  gone; the pattern is what survives.)
 
 Never invent a "wrapper operator" to drag a contract into the bonded model — that only moves the
 problem to whoever must run the wrapper, online and signing, indefinitely.
@@ -209,29 +209,29 @@ surface, or agent control plane without redefining the protocol each time. The g
 
 ### Four architecture layers (must stay distinct)
 
-1. **Protocol kernel** — determines settlement truth.
+1. **Protocol kernel** — determines what resolution moves.
 2. **Semantic derivation** — institution-aware meaning (§4).
 3. **Assembly + mechanism layer** — what is shown and how capabilities are grouped.
 4. **Party-specific presentation** — branding, media, presentation overrides.
 
-**Presentation must never be able to change settlement semantics.** An institution may
+**Presentation must never be able to change what resolution does.** An institution may
 rename or reframe a mechanism; it must not alter what that mechanism actually does.
 
 ### The runtime pipeline
 
-`connected address → subject record → institution binding → assembly → mechanisms →
+`connected address → subject entry → institution binding → assembly → mechanisms →
 service bindings → role context → view surface`
 
 Each step answers one question: who is here · which institution context applies · which
 mechanisms/services are active · what can this actor do now · which surface to render ·
 how it should look. (Seller-address mutation happens through **subject binding** — an
-address resolves to a subject record → one or more institution bindings → an assembly +
+address resolves to a subject entry → one or more institution bindings → an assembly +
 metadata — not through bespoke app forks.)
 
 ### Composition units
 
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
-  placement, narrative defaults). Authored in `frontend/lib/designer/`, anchored on-chain
+  placement, narrative defaults). Composed in `frontend/lib/designer/`, anchored on-chain
   via `src/protocol/registries/AssemblyRegistry.sol`.
 - **Mechanism package** — the reusable unit the runtime composes: contract bindings/writes,
   semantic adapters, capability mappings, default inspector/action modules, guarantee +
@@ -286,11 +286,11 @@ The shipped shapes (`frontend/lib/semantic/models.ts`):
 - **ProcessModel** — a FigaroCore process (orders, topology root, committed
   modality, process-level capabilities).
 - **OrderNodeModel** — one operational commitment node (counterparties, payment,
-  state, topology parents, agreement hash, capabilities, settlement breakdown).
+  state, topology parents, agreement hash, capabilities, the resolution breakdown).
 - **CapabilityModel** — one valid next action for an actor (action descriptor,
   generic input fields, scope, preconditions, provenance source).
 - **EconomicBreakdownModel** — economically meaningful values for one
-  object/context (locked bond, settled-available, typed outputs) — fields may
+  object/context (locked bond, released-and-available, typed outputs) — fields may
   differ in provenance; the layer preserves that.
 
 Role is **derived in context**, never stored — a wallet alone is not a
@@ -311,12 +311,12 @@ Every semantic field is one of: `protocol-enforced` · `protocol-derived` ·
 `assembly-declared` · `indexer-derived` · `ui-local` (the `TruthClass` union in
 `lib/semantic/models.ts` — distinct from the data explorer's four-value
 `TruthBoundary`). This prevents confusing a secured
-guarantee with helpful presentation — load-bearing especially for guarantees, settlement
+guarantee with helpful presentation — load-bearing especially for guarantees, resolution
 breakdowns, and provenance/accounting distinctions.
 
 ### Derivation pipeline (stages, not one transformer)
 
-Data Acquisition (reads/events/config/indexer) → Normalization (stable internal records) →
+Data Acquisition (reads/events/config/indexer) → Normalization (stable internal shapes) →
 Semantic Derivation (roles, capabilities, economics) → UI
 Projection (stable models for reusable surfaces).
 
@@ -326,6 +326,7 @@ component **plus a semantic contract** (it depends on `ProcessModel` /
 
 ---
 
-Related: [DATA_LAYER.md](DATA_LAYER.md) (the public graphs the runtime
-renders against — an open class with five named instances, ruled 2026-08-26), [CLAUSES.md](CLAUSES.md) (the versioning/validation mechanics §2 relies on),
+Related: [DATA_LAYER.md](DATA_LAYER.md) (the data a runtime renders against, and
+the seam between what is public and what is bought from its owner),
+[CLAUSES.md](CLAUSES.md) (the versioning/validation mechanics §2 relies on),
 [CONTRACTS.md](CONTRACTS.md) (the registries §1–§2 read from).
