@@ -1110,7 +1110,7 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // FigaroCore.orderStatus(orderHash) stays 0 for this order FOREVER — 0 means
 // "not on this path", never "not settled". Gating any read on orderStatus is
 // blind to everything that settles here; see docs/SCALING_STRATEGY.md §
-// "Two settlement paths, two DISJOINT state universes".
+// "The two paths share no state".
 await seq.submitResolve(processId, commitments, buyerSig);
 await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sellerSig, proof });
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
