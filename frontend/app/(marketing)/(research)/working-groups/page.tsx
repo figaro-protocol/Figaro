@@ -81,7 +81,7 @@ export default function WorkingGroups() {
 
             <MarketingSection title="Contributing.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Work becomes visible through a pull request against <a href="https://github.com/figaro-protocol/Figaro" className="underline" rel="noreferrer"><code>frontend/app/(marketing)/_lib/paperGroups.ts</code> in the repository</a> &mdash; a new paper, a revised definition, a group&apos;s venue. When a group&apos;s work lands in the network &mdash; clauses, assemblies, the surfaces around them &mdash; the RPGF program pays the authors from the retroactive pool.
+                    Work becomes visible through a pull request against <a href="https://github.com/figaro-protocol/Figaro" className="underline" rel="noreferrer"><code>frontend/app/(marketing)/_lib/paperGroups.ts</code> in the repository</a> &mdash; a new paper, a revised definition, a group&apos;s venue. When a group&apos;s work lands in the network &mdash; clauses, assemblies, the surfaces around them &mdash; it is paid for after the fact, in proportion to the use it gets, by <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards for designers</Link>. Work that has to happen before there is any use to measure is what the <Link href="/dao" className="text-ink-heading font-medium hover:underline">DAO&apos;s treasury</Link> is for: it funds by human judgment, and a grant is one of the three ways it spends.
                 </p>
                 <p className="text-xs text-ink-muted leading-relaxed max-w-2xl mt-8">
                     <sup>1</sup> Voshmgir, S. &amp; Zargham, M.,{" "}

@@ -135,13 +135,16 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/data/explore", label: "Data explorer" },
             { href: "/pitfalls", label: "Sharp edges" },
             { href: "/security", label: "Security" },
-            { href: "/rpgf", label: "Rewards for authors" },
-            // The (rewards) group's second page (maintainer-ruled 2026-08-27):
-            // /rpgf owns the PROGRAM (how usage becomes a reward), /tokenomics
-            // owns the TOKEN (supply, who holds what, the DAO's economics).
-            // Reading order is program-then-token: the reward is the reason a
-            // reader asks what it is paid in.
+            { href: "/rpgf", label: "Rewards for designers" },
+            // The (rewards) group is THREE pages, one per concept, in reading
+            // order: the reward is the reason a reader asks what it is paid in,
+            // and the supply is where they meet the treasury holding three
+            // tenths of it. Rewards owns the PROGRAM (how use becomes a
+            // reward), Tokenomics owns the TOKEN (supply, who holds what), The
+            // DAO owns the BOOTSTRAP (what the treasury is for, how it earns,
+            // how it ends). None re-derives another's subject.
             { href: "/tokenomics", label: "Tokenomics" },
+            { href: "/dao", label: "The DAO" },
         ],
     },
     {

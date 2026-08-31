@@ -781,7 +781,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">
-                    The designer-rewards schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">Rewards for authors</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
+                    The designer-rewards schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">Rewards for designers</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
                 </p>
             </MarketingSection>
 

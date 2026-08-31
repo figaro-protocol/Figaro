@@ -225,7 +225,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 </p>
                 <RegistryCountLink family="assemblies" />
                 <p className="text-sm text-ink-body leading-relaxed mt-6">
-                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when settled deals run through an assembly, its designer of record draws a share of the florins reserved for authors. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Rewards for authors</Link>.
+                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when settled deals run through an assembly, its designer of record draws a share of the florins reserved for designers. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Rewards for designers</Link>.
                 </p>
             </MarketingSection>
 

@@ -95,7 +95,7 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
     {
         rung: "What you can build",
         href: "/rpgf",
-        label: "Rewards for authors",
+        label: "Rewards for designers",
         description: "how the commons pays its authors: real usage, retroactively.",
     },
     {

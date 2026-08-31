@@ -77,7 +77,7 @@ export default function Home() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The commons pays for its own growth: <Link href="/tokenomics" className="text-ink-heading hover:underline">the florin</Link>, the protocol&apos;s own token, has a supply fixed at a billion, and 600 million of it are set aside for authors whose clauses and assemblies get used, paid pro-rata by real use, after the fact. Where the other 400 million sits is itemized on{" "}
-                    <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for authors</Link>. The whole split is readable on the chain.
+                    <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for designers</Link>. The whole split is readable on the chain.
                 </p>
             </MarketingSection>
 

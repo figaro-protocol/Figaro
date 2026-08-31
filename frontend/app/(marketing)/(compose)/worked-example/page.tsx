@@ -142,7 +142,7 @@ export default function WorkedExample() {
                     And this assembly is one shape, published early, by one author. What the
                     protocol is built to reward is the next one: whoever composes the shape a
                     market ends up trading through draws from the reserve set aside for exactly
-                    that (<Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards for authors</Link>).
+                    that (<Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards for designers</Link>).
                     The worked example is a start, not a catalogue.
                 </p>
             </MarketingSection>
