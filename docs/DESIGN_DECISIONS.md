@@ -371,10 +371,22 @@ work. Neither is acceptable.
 The framing is the same kind of structural choice as Bitcoin's
 non-reversibility relative to fiat clearing: a substrate that does
 less, on purpose, so the less it does is unconditional. **Cargo does
-not carry rights in Figaro; the *commitment* carries rights.** When the
-cargo needs to carry rights — in trade finance with bank-as-temporary-
-holder, cargo resale in transit, negotiable warehouse receipts — Figaro
-is the wrong tool, by design.
+not carry rights in Figaro; the *commitment* carries rights.** When a
+right must CIRCULATE as an instrument — trade finance with the bank as
+temporary holder, negotiable warehouse receipts — Figaro is the wrong
+tool, by design.
+
+**What this does not close off: the commerce those instruments carry.**
+A cargo resale in transit needs no transferable right and no party
+substitution. Title moves by the outside instrument, and the parties
+square the payments before the buyer's one terminal call, exactly as
+every other outside event is squared: the sellers downstream of the
+transfer point return their committed payment amounts to the buyer, the
+variation is attested, and a single `resolveProcess` nets the legs to
+zero in one bond cycle. The new owner never becomes a process party, so
+no in-protocol right is minted; their protection between payment and
+discharge is the ordinary legal layer plus the attested data.
+`BOL_RESEARCH.md` §6.2 owns the pattern.
 
 See `docs/BOL_RESEARCH.md` for the full comparison against CargoX,
 TradeTrust, MLETR, and TradeLens, including the field-level mapping of

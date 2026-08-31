@@ -1,39 +1,47 @@
 # Bill of Lading research: CargoX, TradeTrust, MLETR, TradeLens vs Figaro
 
-**Status**: research deliverable, 2026-04-28.
-**Author**: AI-drafted, maintainer-verified; grounded in the codebase at the
-time of writing and the source citations below.
-**Closes**: the order-as-traditional-contract UI + PDF question and the
-research dependency of the supply-chain reference assembly.
+**Drafted by** AI, maintainer-verified, from the codebase and the sources cited
+at the end.
 
-This document settles whether Figaro can or should accommodate the BoL
-patterns established by CargoX, TradeTrust, the UNCITRAL Model Law on
-Electronic Transferable Records (MLETR), and the TradeLens consortium. It
-does not propose code changes; it settles the conceptual question so that
-subsequent code changes (a non-negotiable BoL projection derived from committed
-leaves, and its view) can be made on solid ground.
+This document answers whether Figaro can or should accommodate the BoL patterns
+established by CargoX, TradeTrust, the UNCITRAL Model Law on Electronic
+Transferable Records (MLETR), and the TradeLens consortium. It proposes no code
+changes; it decides the conceptual question so that any later code (a
+non-negotiable BoL projection derived from committed leaves, and its view) rests
+on solid ground.
 
-> **Canonical finding — do not re-open (restored 2026-07-08).** The central
-> question this document settles is **transferability**: can a supply chain be
-> interrupted so the goods — a barrel of oil in transit — are resold to a *new*
-> buyer mid-flight? **FigaroCore forbids it** (§5). A bonded order's parties are
-> fixed at `commit`, the process has one buyer at the root, and there are no
-> escape hatches — each invariant *independently* rules out substituting a
-> party. This is a **structural property of the kernel, not a gap to fill or a
-> mechanism to design.**
+> **Canonical finding — do not re-open.** The central question this document
+> answers is **transferability**: can a supply chain be interrupted so the goods
+> — a barrel of oil in transit — are resold to a *new* buyer mid-flight? The
+> answer has two halves, and both are load-bearing.
+>
+> **The party substitution is forbidden, structurally** (§5). A bonded order's
+> parties are fixed at `commit`, the process has one buyer at the root, and there
+> are no escape hatches — each invariant *independently* rules out substituting a
+> party. This is a **property of the kernel, not a gap to fill or a mechanism to
+> design**, and nothing below reopens it.
+>
+> **The commercial resale needs no substitution, and is expressible** (§6.2).
+> The endorsement is an event OUTSIDE the process, squared by the parties before
+> the buyer's one terminal call, exactly as every other outside event is: the
+> sellers downstream of the transfer point return their committed payment amounts
+> to the buyer, the variation is attested, and one `resolveProcess` nets the legs
+> to zero in a single bond cycle. What stays closed is the circulating
+> *instrument*, never the commerce.
 >
 > Earlier revisions accreted a "parked pending protocol-layer mechanism design"
-> hedge and a "CancellableSeller wrapper + counter-process" workaround that
-> tried to make the forbidden thing expressible after all. That was closed-world
-> drift — the base-model reflex to *build a feature* rather than accept that the
-> kernel says no — and it has been removed. What Figaro **can** express is a
-> **non-negotiable** BoL: the consignee is fixed at signing and the document is
-> a read-only projection over committed leaves (§6.1), never a transferable
-> document of title. The resale/negotiability limitation is recorded in
-> `DESIGN_DECISIONS.md` (entry #12, "No MLETR-style transferable records — by
-> design"), which cites this document for the full comparison. This file is
-> load-bearing for that entry: edits here must preserve the canonical question +
-> answer and the findings the entry cites.
+> hedge and a "CancellableSeller wrapper + counter-process" workaround that tried
+> to make the *substitution* expressible after all. That was closed-world drift —
+> the reflex to build a feature rather than accept that the kernel says no — and
+> it has been removed. Do not restore it; the netting pattern in §6.2 is a
+> different thing, and it is the maintainer's, not drift: it changes no parties,
+> adds no mechanism, and touches no kernel code. What Figaro **can** put in a
+> document is a **non-negotiable** BoL: the consignee is fixed at signing and the
+> document is a read-only projection over committed leaves (§6.1), never a
+> transferable document of title. `DESIGN_DECISIONS.md` entry #12 states the
+> limitation as a decision and cites this document for the comparison. This file
+> is load-bearing for that entry: edits here must preserve the canonical question
+> and both halves of its answer.
 
 ## 1. Handoff is not a Bill of Lading
 
@@ -45,8 +53,8 @@ prose: handoff and BoL are not the same object.
 proof-of-proximity filed as an attestation on that same clause) +
 `figaro-courier-process` together document the fact-of-custody-change
 and its conditions. Any order in any DAG that has a physical exchange opts
-in. Two parties exchanging anything physical → handoff applies. The custody
-change itself is what is being proved; no carrier role is required.
+in. Two parties exchanging anything physical → handoff applies. The
+custody-change itself is what is being proved; no carrier role is required.
 
 **BoL is a document genre, not a primitive.** It assembles handoff data
 plus the additional structural condition that *goods were entrusted to a
@@ -95,7 +103,7 @@ order. (See `docs/THEORY.md`.)
 **No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.2). Any unilateral exit path
 weakens the Nash equilibrium. An exit that requires a third party J ∉ {B,
 S} whose incentives are not bond-constrained — including arbitrator,
-escrow, mediator, or governance vote — is forbidden at the kernel layer.
+escrow agent, mediator, or governance vote — is forbidden at the kernel layer.
 External legal forums adjudicating under duress / frustration /
 impossibility are not this kind of escape hatch (the "On judicial review"
 remark, /papers/asymmetric-bonding §4.2); they
@@ -118,11 +126,11 @@ must exhibit to be the legal equivalent of a paper transferable record
 receipts). Per TradeTrust's UNCITRAL panel framing, the operative
 properties are:
 
-- **Singularity** — only one authoritative record exists at any moment.
+- **Singularity** — only one authoritative electronic record exists at any moment.
 - **Exclusive control** — exactly one party has control, and control is
   transferable.
-- **Integrity** — the record cannot be altered without detection.
-- **Identifiability** — the record can be reliably identified across
+- **Integrity** — the electronic record cannot be altered without detection.
+- **Identifiability** — the electronic record can be reliably identified across
   time and across systems (sometimes elided as a fourth property).
 
 MLETR additionally addresses requirements of writing, signature, delivery,
@@ -185,8 +193,8 @@ substantially more elaborate than CargoX's:
     `restore(tokenId)` (recovery for surrendered tokens).
 - **Endorsement chain**: the chain of TitleEscrow events — nominations,
   beneficiary transfers, holder transfers, surrender — is the auditable
-  record of who held title when.
-- **Interoperability**: as of 2026, DCSA-published standards plus the
+  history of who held title when.
+- **Interoperability**: DCSA-published standards plus the
   MLETR framing allow a token issued on Platform A to be recognized as a
   title on Platform B; *"a logbook documenting who the possessor or title
   holder was at any given time"* travels with the document.
@@ -258,7 +266,7 @@ This is the central research question. The other three projects all
 implement transferability — that is, *the right party at delivery is not
 necessarily the same party that signed at issuance*. CargoX does it via
 ERC-721 transfer; TradeTrust via TitleEscrow's beneficiary nomination
-and holder endorsement; TradeLens via consortium-mediated record updates.
+and holder endorsement; TradeLens via consortium-mediated ledger updates.
 All three patterns require a mechanism for the title to move between
 addresses after the document has been issued.
 
@@ -300,13 +308,20 @@ property and weakening the Nash equilibrium. Neither is acceptable. The
 kernel invariants are load-bearing for the protocol's central claim that
 cooperation is the dominant strategy without any third party.
 
-The honest framing: **Figaro does not implement MLETR-style transferable
-records in any DAG-spanning sense, and adopting one would require
+The honest framing: **Figaro does not implement MLETR-style transferable records
+in any DAG-spanning sense, and adopting one would require
 abandoning the equilibrium guarantees that make the protocol worth
 building.** This is the same structural choice as Bitcoin's choice not to
 implement reversible transactions — a feature traditional banking has
 that Bitcoin doesn't, by design, because reversibility requires a trusted
 third party with discretionary power.
+
+What that sentence does **not** say is that the commerce those instruments
+carry is out of reach. A resale in transit is a real trade, and it turns out
+not to need a transferable right at all: the title moves by the outside
+instrument, and the parties square the payments before the buyer resolves. That
+is §6.2, and it is the reason this section's prohibition costs less than it
+first appears.
 
 ## 6. What this leaves expressible — and what it closes off
 
@@ -327,14 +342,45 @@ buyer↔seller_i order, all under the same root buyer. Each leg resolves
 atomically when the buyer triggers `resolveProcess` on the whole graph;
 each leg has its own handoff attestations and own non-negotiable BoL
 extractable from its own agreement. The custody chain is the union of the
-per-leg handoff records, not a single transferable token.
+per-leg handoff attestations, not a single transferable token.
 
 **Multi-party non-negotiable BoLs in any DAG shape the buyer can commit
 upfront.** Whatever graph the buyer can sign at the start of the process
 is expressible. The constraint is that the consignee at every leg's
 destination must be a party committed at signing time.
 
-### 6.2 Closed off by design
+### 6.2 Cargo resale in transit — the substitution stays closed, the resale is expressible
+
+*This is the maintainer's pattern, not drift: it changes no parties, adds no
+mechanism, and touches no kernel code. Do not strip it, and do not read it as
+reopening §5.*
+
+The classical pattern — the consignee on a moving ship sells the cargo by
+endorsing the BoL — requires
+substituting a process party, which Figaro forbids, and nothing here reopens
+that. What this section states is that the commercial resale never needed a
+substitution: the endorsement is an event EXTERNAL to the process, and like
+every external event it is squared by the parties BEFORE the buyer's one
+terminal call (the same doctrine as remedy-before-resolve). The pattern: title
+moves outside the protocol by the real-world instrument; the parties negotiate
+the reallocation as pre-resolve transfers — sellers downstream of the transfer
+point return their committed payment amounts to the buyer, and any performance
+variation (a new discharge port, a new receiving party) is attested as what
+actually happened; then the buyer's single `resolveProcess` resolves the
+committed schedule atomically — the pre-paid legs net to zero, every bond
+releases, one bond cycle, no early resolution, no disclosure of an
+intermediate delivery. The equilibrium survives the netting: every bond stays
+hostage through the negotiation (which is what makes the netting credible),
+and resolving remains strictly dominant for the buyer after collecting the
+transfers — keeping netting amounts ≤ P while forfeiting a 2P bond is strictly
+worse than resolving. The honest limit: this expresses the resale without
+minting a transferable in-protocol right. The new owner holds title by the
+external instrument and is never a process party; their protection between
+payment and discharge is the ordinary legal layer plus the committed data — so
+the netting agreement should itself be attested, making the data demonstrate why
+the transfers happened.
+
+### 6.3 Closed off by design
 
 **Trade finance flows that depend on negotiability.** The classical
 pattern — buyer's bank takes the BoL as collateral at issuance, releases
@@ -345,46 +391,19 @@ that the bank be a committed party from the start (e.g., as the buyer
 on the order, with a separate buyer↔bank arrangement off-Figaro for the
 financing) or that financing happen entirely outside the protocol.
 
-**Cargo resale in transit — the SUBSTITUTION stays closed; the RESALE is
-expressible (ruled 2026-08-28, maintainer).** The classical pattern — the
-consignee on a moving ship sells the cargo by endorsing the BoL — requires
-substituting a process party, which Figaro forbids, and nothing here reopens
-that. What the ruling records is that the commercial resale never needed a
-substitution: the endorsement is an event EXTERNAL to the process, and like
-every external event it is squared by the parties BEFORE the buyer's one
-terminal call (the same doctrine as remedy-before-resolve). The pattern: title
-moves outside the protocol by the real-world instrument; the parties negotiate
-the reallocation as pre-resolve transfers — sellers downstream of the transfer
-point return their committed payment amounts to the buyer, and any performance
-variation (a new discharge port, a new receiving party) is attested as what
-actually happened; then the buyer's single `resolveProcess` settles the
-committed schedule atomically — the pre-paid legs net to zero, every bond
-releases, one bond cycle, no early resolution, no disclosure of an
-intermediate delivery. The equilibrium survives the netting: every bond stays
-hostage through the negotiation (which is what makes the netting credible),
-and resolving remains strictly dominant for the buyer after collecting the
-transfers — keeping netting amounts ≤ P while forfeiting a 2P bond is strictly
-worse than resolving. The honest limit: this expresses the resale without
-minting a transferable in-protocol right. The new owner holds title by the
-external instrument and is never a process party; their protection between
-payment and discharge is the ordinary legal layer plus the committed record —
-so the netting agreement should itself be attested, making the record
-demonstrate why the transfers happened.
-
 **Negotiable warehouse receipts and similar instruments.** The same
 structural constraints apply to any electronic transferable record where
 the right-to-claim is meant to circulate before redemption.
 
-### 6.3 The positioning
+### 6.4 The positioning
 
 The protocol's job is to enforce bilateral agreements between parties
 who committed to each other. The cargo itself does not carry rights in
 Figaro; the *commitment* carries rights. When a right must CIRCULATE as
 an instrument — as in bank-collateral trade finance or negotiable
 warehouse receipts — Figaro is the wrong tool, by design. Cargo resale
-in transit turned out not to need a circulating right at all (§6.2's
-ruled netting pattern); what remains closed is the instrument, not the
-commerce.
+in transit turned out not to need a circulating right at all (§6.2); what
+remains closed is the instrument, not the commerce.
 
 This is not a deficiency to apologize for. It is the same kind of
 positioning Bitcoin took relative to fiat clearing, or that TCP/IP took
@@ -410,7 +429,7 @@ buyer↔courier order's agreement.
 | Service class (modality + organizer) | `figaro-modalities.modality` | Modality: consume-onsite / pickup / delivery / virtual (single-select). The organizer/coordination variant — seller-assigned / buyer-assigned — is an assembly-level composition, not a clause field. |
 | Stage progression (loaded / in-transit / delivered) | `figaro-courier-process` | The `eventType` enum's 5 values in lifecycle order: en-route-pickup / arrived-pickup / in-transit / arrived-dropoff / completed; each event filed as an attestation. |
 | Custody-change verification at handoff | `figaro-proximity-policy` (committed band) + a runtime proximity attestation on that same clause (runtime nonce + sig) | The runtime proof is an attestation on the committed clause, not a separate clause. Off-chain consumers verify proof.band == policy.band. |
-| Cargo description (line items) | `figaro-commerce.lineItems` | itemId / name / quantity / unitPrice. Cleartext by design — ruled ACCEPT 2026-07-21, `DESIGN_DECISIONS.md` §14 (discreet naming is the seller's catalogue-authoring mitigation). |
+| Cargo description (line items) | `figaro-commerce.lineItems` | itemId / name / quantity / unitPrice. Cleartext by design — accepted, `DESIGN_DECISIONS.md` §14 (discreet naming is the seller's catalogue-authoring mitigation). |
 | Freight (carriage payment) | `figaro-commerce.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
 | Liability for non-performance | The bond mechanism (asymmetric bonding + atomic resolution) | Figaro's bond *is* the liability mechanism; Hague-Visby tonnage-based caps are incommensurable with this bond structure. |
 | Applicable law / forum | `figaro-applicable-law` | applicableLaw + forum + language. The doc-of-title transferability is governed by this clause, but Figaro has no transferability to govern. |
@@ -423,8 +442,8 @@ These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current clause in Figaro:
 
 - **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR); freight classification via `figaro-freight-class` (the declared NMFC class plus optional item number, anchored to the NMFTA standard); temperature via `figaro-cold-chain`. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard, temperature, and freight class are now separate standard-anchored electives.)
-- **Special-handling instructions — RESOLVED (2026-07-22, ruled: private detail, never clause content).** Fragile / orientation-sensitive / live-animal marks ride the addressee block on the ECDH private-detail channel (`frontend/lib/handoff/addressDetail.ts`, `handling` field) — like a BoL's handling marks, they travel with the label, encrypted to the order's counterparty, hash-anchored on-chain. Distinct from door-level delivery `instructions`. (Temperature-controlled handling remains committed clause content via `figaro-cold-chain`.)
-- **Notify party — RESOLVED (2026-07-22, same ruling).** The addressee block carries `notifyName`/`notifyContact` — the BoL notify-party lines, distinct from the consignee. The notify party is DATA, never a participant: no wallet, no channel message, no kernel involvement; the counterparty notifies by the off-protocol contact given.
+- **Special-handling instructions — private detail, never clause content.** Fragile / orientation-sensitive / live-animal marks ride the addressee block on the ECDH private-detail channel (`frontend/lib/handoff/addressDetail.ts`, `handling` field) — like a BoL's handling marks, they travel with the label, encrypted to the order's counterparty, hash-anchored on-chain. Distinct from door-level delivery `instructions`. (Temperature-controlled handling remains committed clause content via `figaro-cold-chain`.)
+- **Notify party — the same call.** The addressee block carries `notifyName`/`notifyContact` — the BoL notify-party lines, distinct from the consignee. The notify party is DATA, never a participant: no wallet, no channel message, no kernel involvement; the counterparty notifies by the off-protocol contact given.
 - **Cargo-detail beyond SKU.** `figaro-cargo` now carries the shipment's gross/net mass, volume, packaged dimensions (`lengthMm` / `widthMm` / `heightMm`), packaging type and count, and shipping marks & numbers — the "number and kind of packages" and "Marks & Numbers" columns of a traditional BoL — and `figaro-commerce.lineItems` carries `quantity` and `name`. Nothing at the logistic-unit grain remains unmodelled.
 - **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a clause concern.
 
@@ -447,8 +466,8 @@ generically, with zero BoL code. A *recognizable* BoL form (the familiar layout)
 is a projection over those same committed leaves; if it is ever built it must be a
 DECLARED / generic composition (a document template a generic engine renders),
 never a hand-rolled `projectBillOfLading` + a bespoke PDF page. A first attempt at
-hand-rolled invoice/BoL projections was written and then deleted 2026-07-08 for
-exactly this reason — genre code is the closed-world reflex. (The old
+hand-rolled invoice/BoL projections was written and then deleted for exactly
+this reason — genre code is the closed-world reflex; never restore it. (The old
 `extractBillOfLading`, which ran on every order and named clauses directly, was
 deleted earlier for the same reason.)
 
@@ -457,9 +476,9 @@ fully assemblable from the existing clauses. Adding a new clause would be
 ceremonial. Defer this decision until a real supply-chain customer
 demands a feature the existing clauses can't express.
 
-**8.3 Document the negotiability limitation explicitly.** ✅ Shipped as
-entry #12 in `docs/DESIGN_DECISIONS.md`: "No MLETR-style transferable
-records — by design." Captures the three-invariant rejection
+**8.3 The negotiability limitation is documented explicitly** — entry #12 in
+`docs/DESIGN_DECISIONS.md`: "No MLETR-style transferable records — by design."
+Captures the three-invariant rejection
 (single-buyer + parties-fixed-at-commit + no-escape-hatches) and
 references this document for the full comparison. A reviewer
 encountering the absence now has a written answer instead of treating
@@ -468,9 +487,8 @@ it as a gap.
 **8.4 Defer the cargo-description decision; hazmat and notify-party are
 now resolved.** Hazmat became `figaro-hazmat` (committed clause content —
 a declaration the chain of custody bonds on); notify-party and
-special-handling went the OTHER side of the seam (2026-07-22): private
-operational detail on the addressee block over the ECDH channel, never
-clause content (§7.1). The remaining cargo-description question becomes
+special-handling went the OTHER side of the seam: private operational detail on
+the addressee block over the ECDH channel, never clause content (§7.1). The remaining cargo-description question becomes
 live when the supply-chain assembly enters build phase; a pre-emptive
 `figaro-cargo-description` fork would be premature design — `figaro-cargo`
 already covers mass and volume.
@@ -533,26 +551,7 @@ useful borrow from TradeTrust is structural vocabulary (consignor /
 consignee / holder / beneficiary distinctions), not the contract
 architecture.
 
-## 10. Open follow-on questions
-
-Items the research surfaced but did not settle. (Transferability is **not**
-among them — §5 settles it: the kernel forbids it. It is not a parked mechanism
-to design.)
-
-- **Naming for the "Proof of Handoff" document genre.** Distinct from
-  "Bill of Lading"; needs to be precise about scope (any custody-change
-  event, regardless of whether a carrier was involved).
-- **Whether `figaro-handoff` needs to grow a `handoffParticipant`
-  field.** In supply-chain assemblies the merchant-as-tenderer is
-  conceptually distinct from the carrier-as-tenderee; surfacing both on
-  the handoff record may matter for evidentiary completeness.
-- **Hazmat / dangerous-goods and packaging clause decisions.** Largely
-  addressed since — `figaro-hazmat`, `figaro-cold-chain`, `figaro-freight-class`,
-  and `figaro-cargo` (gross/net mass, packaged dimensions, packaging type/count,
-  marks) now exist. Any remaining per-field call follows the adding-a-clause
-  checklist when the supply-chain assembly enters build.
-
-## 11. Sources
+## 10. Sources
 
 - CargoX content hub on eBL legality and transferability mechanism — https://cargox.io/content-hub/legality-electronic-bill-lading
 - DCSA on CargoX 2026 interoperability — https://dcsa.org/newsroom/cargox-once-interoperability-is-achieved-electronic-trade-records-will-be-moving-through-various-systems-for-true-efficiency-and-transparency-in-cross-border-trading
