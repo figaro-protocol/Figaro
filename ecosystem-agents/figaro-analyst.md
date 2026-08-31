@@ -305,8 +305,8 @@ other universe before concluding anything.
 
 The full statement — what a relay is and is not, why `null` from one means "not in THIS
 relay's archive", which chain facts to confirm against `BATCH_VERIFIER_ABI`, and why the
-attestation topic hash must be filtered by contract ADDRESS — is `figaro-operator` §§ "Two
-settlement universes" and "Getting the wallet's trade ONTO the batch path". That manual
+attestation topic hash must be filtered by contract ADDRESS — is `figaro-operator` §§ "The
+two paths share no state" and "Getting the wallet's trade ONTO the batch path". That manual
 owns it; read it there rather than a second version here. `fetchAttestationRecords` already
 folds both universes for you and tags each row, which is why an overlay entry carries its
 `universe`: direct entries are re-verifiable from the chain's own record, batch entries were

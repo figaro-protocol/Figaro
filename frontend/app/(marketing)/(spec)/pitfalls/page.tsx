@@ -98,7 +98,7 @@ export default function Pitfalls() {
                     <LabelledListRow label="orderStatus == 0" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">Zero means &ldquo;not on this path,&rdquo; never &ldquo;not settled.&rdquo;</strong> A batch-settled process reads <code>orderStatus == 0</code> forever &mdash; gate on it alone and batched trade is invisible to you, permanently. Fold both paths&apos; events, never one alone.
                         <div className="mt-2 text-sm">
-                            <Link href="/spec#settlement-paths" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Specifications, &ldquo;Two settlement paths&rdquo;</Link>
+                            <Link href="/spec#settlement-paths" className="text-ink-heading font-medium hover:underline">Full explanation &mdash; Specifications, &ldquo;The two paths share no state&rdquo;</Link>
                         </div>
                     </LabelledListRow>
                 </ul>

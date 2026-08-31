@@ -38,7 +38,7 @@ export interface SettlementPathsFigureProps extends BaseFigureProps {
  * The two disjoint settlement universes, side by side, with the single surface
  * that bridges them.
  *
- * The default prop set is /spec's, verbatim — /spec § "Two settlement paths"
+ * The default prop set is /spec's, verbatim — /spec § "The two paths share no state"
  * (the canonical #settlement-paths anchor) renders it with no props at all, and
  * its strings are identifiers on purpose: that surface names contracts. Names
  * verified against `docs/CONTRACTS.md` and `src/kernel/FigaroCore.sol` /

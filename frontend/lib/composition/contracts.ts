@@ -83,9 +83,8 @@ export function getUsageCounter(): `0x${string}` | null {
 /** The FigaroBatchVerifier — the SECOND settlement universe. It shares no state
  *  with FigaroCore and never calls it, so it is not a kernel contract and does
  *  not belong in `lib/kernel/contracts.ts`: a batch-settled process never
- *  acquires kernel status (docs/SCALING_STRATEGY.md § "Two settlement paths, two
- *  DISJOINT state universes"). Readers that fold both universes resolve the
- *  address here. Resolved-empty: null = the batch path is unreadable on this
+ *  acquires kernel status (docs/SCALING_STRATEGY.md § "The two paths share no
+ *  state"). Readers that fold both paths resolve the address here. Resolved-empty: null = the batch path is unreadable on this
  *  network, which is absence, never "not settled". */
 export function getBatchVerifier(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.batchVerifier);
