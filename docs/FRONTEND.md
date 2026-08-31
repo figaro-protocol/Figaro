@@ -111,8 +111,56 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 - **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
 - **`audit/`** — audit-bundle assembly + dispute evidence (read path for `/audit/view?process=<id>`). Witness VALUES resolve from the network: an `Attestation` event's `contentRef` is the keccak-CID digest of the published preimage (`lib/composition/witnessContent.ts`), so the reader derives the address from the event alone, verifies the bytes hash back to the fingerprint, and decodes them through the spec's declared stage fields (`describeWitness`); private-disposition, withheld, or erased content resolves absent and the fingerprint receipt still renders.
 - **`data/`** — the data explorer's read model (`/data/explore`): `explorer.ts` (PURE — the query↔permalink parse/serialise, the layer descriptors with their truth boundaries, and the row projections with their absence postures: an unresolved clause family is a fingerprint-only row, an unattributed process is counted and said to be, an unread venue is "unreadable" and never "empty"), `graphCorpus.ts` (the I/O — the existing event caches folded through `@figaro-protocol/sdk/derive`'s projections; substance recovered at the edge from each attestation's own fingerprint, assembly attribution read from the DECLARED `compositionHash` field of an attested provenance overlay, never a clause name), `analystEndpoint.ts` (the analyst wire — same configuration-not-doctrine posture as the batch relay: no shipped fallback, user override wins, unset means no prompt box at all)
-- **`checkout/`** — the Checkout lifecycle phase: cart (`cartStore.ts`, `CommerceProvider.tsx`, `useCheckout.ts`), the thin checkout wrapper driving the SDK's ONE template→orders walk (`assemblyCheckout.ts` — per-node fills/selections/compositions via the shared `checkoutNodes` resolution, root signed last; `planAssemblyOrders` is the DRY walk the dispatch race drafts with; the planning vocabulary itself — fills, sub-order seller plan, live pricing, the rate-quantity registry — is `@figaro-protocol/sdk` `checkoutPlan`), the dispatch race (`dispatchRace.ts` — `useDispatchRace` + the race relay legs; an unbound sub-order filled by racing every priceable discovered catalogue instead of the manual pick: unsigned drafts out, countersignatures back — or QUOTES back under the buyer's ceiling — cheapest valid reply wins with buyer override; per-candidate transport: a candidate whose profile declares `services.rest` is an AGENT candidate and exchanges the same artifacts over HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are this branch), wallet candidates ride the coordination channel; rendered by `components/runtime/DispatchRacePanel.tsx` beside the picker), and the commitment choreography (`draftOrders.ts`, `orderPreview.ts` — the confirm gate (before every sign AND the standalone commit broadcast) + chain-time deadline, `orderCommitmentFlow.ts` — buyer sign/share, the counter-party accept, the race candidate's `counterSignAndReturn`, and the fully-signed `commitOrder` broadcast, `orderSignedAndShared.ts`, `orderPendingSellerSignature.ts` — the pending predicates incl. `awaitsMyBroadcast`, the race winner's ready-to-submit lane on `/orders`; the gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE shared agreement-terms surface, composed by `AgreementPreviewModal` and rendered inline on `/sign`)
-- **`composition/`** — third-party on-network contract composition (the fifth noun): the generic dispatch (`compositionTarget.ts`, `useCompositionActions.ts`) + per-contract hooks/readers, incl. the swap-funded bond legs (`swapFunding.ts` — devnet venue rate/quote/route + the party-agnostic witness-signed leg builder, buyer's at checkout and seller's at accept, plus `inputForOutput` — the checkout's price conversion from the seller's default into the buyer's picked payment token; `useSwapAndCommitActions.ts` — the `swapAndCommit` broadcast either funded form routes through). Swap-and-commit is the ON-RAMP into the process denomination, never the denomination itself (the token-layer grid in `LEXICON.md` owns the model). Also the attestation choke point every attest surface routes through (`useAttestationCoordinatorActions.ts` — calldata carries fingerprints only) and the witness-content seam behind it (`witnessContent.ts` — publishes a non-re-assert payload's ABI bytes as a RAW IPFS block multihashed keccak-256, so `contentRef` IS the CID digest; FAIL-CLOSED disposition gate: unknown spec or any `private` field in the `contentFieldsFor` set withholds; fetch verifies bytes hash back to the fingerprint; erasure = best-effort unpin of the derived CID, surfaced by `components/runtime/WitnessPinErasure.tsx`). And post-resolution payout routing (`payoutRouting.ts` + `usePayoutRoutingActions.ts` — a resolved seller splits its own receipts through the composed public multisender in one atomic batch; devnet rehearses MockDisperse, mainnet composes canonical Disperse; surfaced by `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out)
+- **`checkout/`** — the Checkout lifecycle phase.
+  - *Cart:* `cartStore.ts`, `CommerceProvider.tsx`, `useCheckout.ts`.
+  - *The template→orders walk:* `assemblyCheckout.ts` is a thin wrapper over the
+    SDK's ONE walk — per-node fills/selections/compositions through the shared
+    `checkoutNodes` resolution, root signed last. `planAssemblyOrders` is the DRY
+    walk the dispatch race drafts with, and the planning vocabulary itself (fills,
+    sub-order seller plan, live pricing, the rate-quantity registry) is
+    `@figaro-protocol/sdk`'s `checkoutPlan`.
+  - *The dispatch race:* `dispatchRace.ts` — `useDispatchRace` plus the race relay
+    legs. An unbound sub-order is filled by racing every priceable discovered
+    catalogue instead of a manual pick: unsigned drafts out, counter-signatures
+    back — or QUOTES back under the buyer's ceiling — cheapest valid reply wins,
+    with buyer override. Transport is per candidate: one whose profile declares
+    `services.rest` is an AGENT candidate and exchanges the same artifacts over
+    HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are
+    this branch); wallet candidates ride the coordination channel. Rendered by
+    `components/runtime/DispatchRacePanel.tsx` beside the picker.
+  - *The commitment choreography:* `draftOrders.ts` and `orderPreview.ts` carry the
+    confirm gate — before every sign AND the standalone commit broadcast — plus the
+    chain-time deadline. `orderCommitmentFlow.ts` carries buyer sign/share, the
+    counterparty accept, the race candidate's `counterSignAndReturn`, and the
+    fully-signed `commitOrder` broadcast. `orderSignedAndShared.ts` and
+    `orderPendingSellerSignature.ts` hold the pending predicates including
+    `awaitsMyBroadcast`, the race winner's ready-to-submit lane on `/orders`. The
+    gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE
+    shared agreement-terms surface, composed by `AgreementPreviewModal` and
+    rendered inline on `/sign`.
+- **`composition/`** — third-party on-network contract composition (the fifth noun).
+  Generic dispatch is `compositionTarget.ts` + `useCompositionActions.ts`, with
+  per-contract hooks and readers beneath it.
+  - *Swap-funded bond legs:* `swapFunding.ts` — devnet venue rate/quote/route plus
+    the party-agnostic witness-signed leg builder, the buyer's at checkout and the
+    seller's at accept; `inputForOutput` converts the seller's default price into
+    the buyer's picked payment token; `useSwapAndCommitActions.ts` carries the
+    `swapAndCommit` broadcast either funded form routes through. Swap-and-commit is
+    the ON-RAMP into the process denomination, never the denomination itself — the
+    token-layer grid in `LEXICON.md` owns that model.
+  - *The attestation choke point:* `useAttestationCoordinatorActions.ts`, which
+    every attest surface routes through; calldata carries fingerprints only.
+  - *The witness-content seam behind it:* `witnessContent.ts` publishes a
+    non-re-assert payload's ABI bytes as a RAW IPFS block multihashed keccak-256, so
+    `contentRef` IS the CID digest. The disposition gate is FAIL-CLOSED — an unknown
+    spec, or any `private` field in the `contentFieldsFor` set, withholds. Fetch
+    verifies the bytes hash back to the fingerprint; erasure is a best-effort unpin
+    of the derived CID, surfaced by `components/runtime/WitnessPinErasure.tsx`.
+  - *Post-resolution payout routing:* `payoutRouting.ts` +
+    `usePayoutRoutingActions.ts` — a resolved seller splits its own receipts through
+    the composed public multisender in one atomic batch; devnet rehearses
+    MockDisperse, mainnet composes canonical Disperse. Surfaced by
+    `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `draftToAssemblyTemplate.ts` — the authoring mirror of `assemblyTemplateToDraft.ts` and the ONE draft→template walk that publish, the hand-off panel, and the canvas identity readout share — `publishAssembly.ts`; the template build itself — `buildAssemblyTemplate`/`serializeAssemblyTemplate` — is `@figaro-protocol/sdk`)
 - **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe; the per-wallet transport toggle is gone — one seam, one choreography), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
 - **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`, `memberProfileAdapter.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalogue family — authoring/publication/reads (`catalogue*.ts`, `memberCatalogueMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrolment-wizard state (`onboardingState.ts` — the wizard spans profile, catalogue, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). `lib/seller/` dissolved into it (member = what a wallet IS; seller = which side of a trade it stands on).
@@ -133,7 +181,26 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `CompositionIdentity.tsx` — the canvas's whole-composition identity readout (left inspector): derived slug + truncated compositionHash from the live draft via `snapshotCompositionIdentity`, with the one-paragraph statement that changing a composed value is a DIFFERENT assembly (regime variants are siblings) while editorial prose is hash-excluded. Nothing renders on an empty canvas.
 - `AssemblyTermsPanel.tsx` — the canvas-level composer for ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) — the denomination pin, the dispute forum: terms that compose once per assembly, partitioned from the per-order drawer by declared scope.
 - `CompositionAssist.tsx` — the composition-assist hand-off surface (toolbar "Agent assist"). The designer's OWN agent (`figaro-assembly-designer`, the public ecosystem seam — `docs/AI_AGENT_COORDINATION.md`) runs in the designer's runtime for the designer's wallet; nothing is invoked from this static export. The panel round-trips the canonical assembly template instead: OUT — the live draft serialized by the same `buildAssemblyTemplate` walk publish uses; IN — a pasted template parsed by `parseAssemblyTemplateJson` (`lib/designer/assemblyTemplateToDraft.ts`) and applied to the canvas as ordinary unsaved state (replace-confirmed when the canvas is non-trivial). Composition stays the designer's act — review/edit/publish are unchanged.
-- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.design.article`), each a checkbox (ASSEMBLY-SCOPED clauses — `design.scope: "assembly"` — are EXCLUDED here: they compose once in the canvas's `AssemblyTermsPanel`, and the two surfaces partition the registry by declared scope, so designer-side duplicates are structurally impossible; `buildAssemblyTemplate` re-verifies at draft/publish) — design time is STRUCTURAL: the designer SELECTS clauses and sub-clauses; field editors render exactly for the fields a clause names in `block.design.fills` (consent's affix, the denomination pin, the credential register: the designer's tailoring). Every other field is a transaction particular, filled at checkout (the checkout's spec-routed fill surface → `clauseFills` → `executeAssemblyCheckout`). The selection is captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`, which strips general-clause values by construction). No hardcoded clause roster. The drawer is **per-order**: a concern that resolves once per PROCESS (resolve, audit bundle, a process-wide declaration) belongs at the process-detail layer, never as a drawer clause group; a genuinely process-scoped declaration anchors on the **root order's** agreement, edited from process-level controls rather than the per-order drawer.
+- `AgreementDrawer.tsx` — per-node clause composer, with two tabs.
+  - *Parties:* buyer, seller, DAG position.
+  - *Registry:* every clause registered on `ClauseRegistry`, grouped by
+    `block.design.article`, each a checkbox — read from the network, never a
+    hardcoded roster. ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) are
+    EXCLUDED here: they compose once in the canvas's `AssemblyTermsPanel`. The two
+    surfaces partition the registry by declared scope, so designer-side duplicates
+    are structurally impossible, and `buildAssemblyTemplate` re-verifies at
+    draft/publish.
+  - *Design time is STRUCTURAL.* The designer SELECTS clauses and sub-clauses; field
+    editors render exactly for the fields a clause names in `block.design.fills` —
+    consent's affix, the denomination pin, the credential register: the designer's
+    tailoring. Every other field is a transaction particular, filled at checkout
+    (the spec-routed fill surface → `clauseFills` → `executeAssemblyCheckout`). The
+    selection is captured into the no-hash assembly template (`clausesByOrderId` →
+    `buildAssemblyTemplate`, which strips general-clause values by construction).
+  - *The drawer is per-ORDER.* A concern that resolves once per PROCESS — resolve,
+    the audit bundle, a process-wide declaration — belongs at the process-detail
+    layer, never as a drawer clause group. A genuinely process-scoped declaration
+    anchors on the ROOT order's agreement, edited from process-level controls.
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
