@@ -1,7 +1,7 @@
 /**
  * lib/member/memberCatalogueMetadata.ts
  *
- * The seller CATALOGUE document shape is owned by `@figaro-protocol/sdk` (Layer-A,
+ * The seller CATALOGUE document shape is owned by `@figaro-protocol/sdk` (off-chain,
  * published across the public seam so an integrator learns the shape from
  * the SDK, not by disassembling the frontend bundle). This module is the
  * frontend's re-export shim so existing `@/lib/member/...` call sites keep

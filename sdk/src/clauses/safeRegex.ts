@@ -7,9 +7,7 @@
  * JavaScript `RegExp` has no backtracking budget, so a pathological pattern
  * such as `(a+)+$` run against a mismatching input hangs the thread — a denial
  * of service on whoever validates that field (the signer typing into it, or the
- * SDK's Layer-A content check). See the frontend security audit 2026-07-22,
- * finding 5.
- *
+ * SDK's off-chain content check). *
  * `safeRegexTest` bounds the exposure two ways: it refuses to run a pattern that
  * exhibits the catastrophic-backtracking shape (a quantified group whose body is
  * itself quantified — the exponential class), and it refuses to test an

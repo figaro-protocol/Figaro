@@ -165,7 +165,7 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // The standards axis is OPEN (ruled 2026-07-28): iso3166-2 territory
-        // codes serve digital-delivery jurisdictions; Layer A checks shape
+        // codes serve digital-delivery jurisdictions; off-chain validation checks shape
         // (length caps), the standard's own grammar is the reader's per-
         // standard knowledge — exactly the emissions-methodology pattern.
         expect(validateContent({
@@ -189,7 +189,7 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // Character grammar is per-standard and lives with readers/frontends
-        // (the emissions-methodology pattern); what Layer A enforces is the
+        // (the emissions-methodology pattern); what off-chain validation enforces is the
         // DECLARATION: no code means anything without its standard.
         expect(validateContent({
             origin: "u4pruy",

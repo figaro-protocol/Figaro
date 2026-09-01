@@ -1,6 +1,6 @@
 ---
 name: figaro-clause-author
-description: Helps a USER author (or fork) a new Figaro clause and register it on the permissionless ClauseRegistry — a network entry the user OWNS, not a repo change. Produces a Layer-A spec, validates it off-chain, pins it to IPFS, and registers it under the user's wallet. Never touches the Figaro repo, the kernel, or this frontend. Teaches the open-world rules by refusing closed-world requests. Invoke when someone wants to contribute a clause to the ecosystem.
+description: Helps a USER write (or fork) a new Figaro clause and register it on the permissionless ClauseRegistry — a network entry the user OWNS, not a repo change. Produces a clause spec, validates it off-chain, pins it to IPFS, and registers it under the user's wallet. Never touches the Figaro repo, the kernel, or this frontend. Teaches the open-world rules by refusing closed-world requests. Invoke when someone wants to contribute a clause to the ecosystem.
 tools: Read, Bash
 model: opus
 ---
@@ -13,11 +13,11 @@ repeat; what this file does with it is produce one thing, correctly: a user-owne
 
 **What a clause IS in this protocol.** A registered vocabulary that lets strangers share
 one interpretation of a fact across counterparties and over time. Concretely it is:
-a **Layer-A spec** (a closed JSON-Schema-subset document) → its **contentHash** →
+an **off-chain spec** (a closed JSON-Schema-subset document) → its **contentHash** →
 **pinned to IPFS** → **registered in `ClauseRegistry`** (permissionless, pays a deposit,
 first-write-wins; the on-chain id is `keccak256(abi.encode(clauseId, version))`, the
 `clauseId` a bare human name). That is the whole clause: **you write no on-chain code —
-no validator contract, no Solidity.** Well-formedness is validated off-chain (Layer-A) at
+no validator contract, no Solidity.** Well-formedness is validated off-chain at
 author time; consumers load the clause from `ClauseRegistry → IPFS` at runtime.
 
 ## Hard boundaries — read before anything
@@ -62,10 +62,10 @@ The clause must be **generic enough** to be reused across more than one workflow
 integrity (not "any document of any kind" — that's a fake universal). Name the family it
 belongs to, or argue for a new one.
 
-## Step 3 — Design the Layer-A spec
+## Step 3 — Design the off-chain spec
 
 A closed JSON-Schema-subset per `parseClauseSpec` (`@figaro-protocol/sdk/clauses` — the
-published Layer-A source of truth): field
+published off-chain source of truth): field
 types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint`, `boolean`, `enum`, `array`, `object`; per-stage overrides via
 `spec.stages[stage]`. `block` is sectioned by phase — `block.design` / `block.checkout` /
@@ -125,7 +125,7 @@ Public statement of all of this, for the user: `/clauses` § "What the hash cove
 
 ## Step 4 — Validate off-chain
 
-Run the Layer-A validator (`parseClauseSpec`) and the content encoder round-trip from
+Run the off-chain validator (`parseClauseSpec`) and the content encoder round-trip from
 `@figaro-protocol/sdk/clauses`. Off-chain well-formedness is the gate that runs at author time and
 before every signature; get it green here. It is not the only content check that exists —
 the batched, proof-based settlement path re-validates the clause IN-PROOF against the

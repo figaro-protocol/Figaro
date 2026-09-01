@@ -7,7 +7,7 @@ import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFig
 export const metadata: Metadata = withOg({
     title: "Kernel — Figaro Protocol",
     description:
-        "How a Figaro trade works: both sides lock a stake larger than the payment, so cheating always loses; the buyer closes it out; every step is written down permanently.",
+        "How a Figaro trade works: both sides lock a bond larger than the payment, so cheating always loses; the buyer closes it out; every step is written down permanently.",
 });
 
 // FigaroCore's mechanism design, and ONLY that: the kernel page never carries
@@ -22,13 +22,13 @@ export default function Kernel() {
                 How any two parties can transact directly, anywhere.
             </h1>
             <p className="text-body-lead text-ink-muted italic mb-8">
-                Two stakes, each bigger than the trade. One rule for who opens the box. That is the entire machine.
+                Two bonds, each bigger than the trade. One rule for who opens the box. That is the entire machine.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                The short version is a lockbox. Both sides put in a stake worth more than the payment. A small program holds it &mdash; running in the open, owned by no one, following one fixed rule. Say the trade is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a stake. The seller locks twenty too, all of it stake. Forty is held, and until the trade is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
+                The short version is a lockbox. Both sides put in a bond worth more than the payment. A small program holds it &mdash; running in the open, owned by no one, following one fixed rule. Say the trade is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a bond. The seller locks twenty too, all of it bond. Forty is held, and until the trade is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-4">
-                Why twice the value, and not the payment plus a small margin? Because the size of the stake is the whole mechanism. At twice the value there is no amount that is clever to steal:
+                Why twice the value, and not the payment plus a small margin? Because the size of the bond is the whole mechanism. At twice the value there is no amount that is clever to steal:
             </p>
             <div className="overflow-x-auto mb-5">
                 <table className="w-full max-w-xl text-sm text-left">
@@ -39,16 +39,16 @@ export default function Kernel() {
                         </tr>
                     </thead>
                     <tbody className="text-ink-body">
-                        <tr className="border-b border-default"><td className="py-2 pr-4">honor the trade</td><td className="py-2">your stake back &mdash; and the seller is paid</td></tr>
-                        <tr><td className="py-2 pr-4">walk away</td><td className="py-2">your double stake locked forever &mdash; and nobody else gets it</td></tr>
+                        <tr className="border-b border-default"><td className="py-2 pr-4">honor the trade</td><td className="py-2">your bond back &mdash; and the seller is paid</td></tr>
+                        <tr><td className="py-2 pr-4">walk away</td><td className="py-2">your double bond locked forever &mdash; and nobody else gets it</td></tr>
                     </tbody>
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-A forfeited stake is simply value that never comes home, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both stakes in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
+A forfeited bond is simply value that never comes home, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Value you part with has always had two modes: spent, or invested. A stake is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the trade&apos;s duration that capital stands idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it comes home intact every honest time.
+                Value you part with has always had two modes: spent, or invested. A bond is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the trade&apos;s duration that capital stands idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it comes home intact every honest time.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Who opens the box.
@@ -60,14 +60,14 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 Two mechanisms, not one.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Neither mechanism is the other&apos;s consequence. The stakes are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands resolve as one trade, all together or not at all. Stakes on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the stakes secure each pair, the close resolves the whole &mdash; and the composition is the machine.
+                Neither mechanism is the other&apos;s consequence. The bonds are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands resolve as one trade, all together or not at all. Bonds on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the bonds secure each pair, the close resolves the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 More than two pairs of hands.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Most real work is not two people. The same move repeats: every contributor posts their own stake, each staking against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every stake comes home, or none do. So each contributor has a direct, stake-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a trade is a property of the trade somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
+                Most real work is not two people. The same move repeats: every contributor posts their own bond, each bonding against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every bond comes home, or none do. So each contributor has a direct, bond-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a trade is a property of the trade somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
                 <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">
                     Assemblies
                 </Link>
@@ -85,9 +85,9 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 figureDesc={
                     "A ten-token trade split across three contributors in the order they " +
                     "commit: the first is paid 6.00, the second 3.00, the third 1.00. " +
-                    "Each stakes twice the value the trade has accumulated at its own " +
+                    "Each bonds twice the value the trade has accumulated at its own " +
                     "link rather than twice its own payment, so the third contributor — " +
-                    "paid least — stakes twice the whole 10.00. The buyer stakes twice " +
+                    "paid least — bonds twice the whole 10.00. The buyer bonds twice " +
                     "each payment as that contributor commits, twenty in all. All three " +
                     "resolve together, or none do."
                 }
@@ -108,7 +108,7 @@ A forfeited stake is simply value that never comes home, locked in the box, bene
                 Resolved or left to sit, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                That is the whole of it: a stake large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
+                That is the whole of it: a bond large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
             </p>
         </section>
     );

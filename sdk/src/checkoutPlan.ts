@@ -237,7 +237,7 @@ export function mechanicallyFilledFieldNames(
  * topology data carries template-LOCAL order ids ("order-0"); the committed
  * agreement must carry the actual EIP-712 order hashes — they are the DAG
  * edges every off-chain reader (audit, derive) reconstructs from, and the
- * bytes32 shape Layer A validates. The overwrite IS this writer's contract —
+ * bytes32 shape the off-chain validator validates. The overwrite IS this writer's contract —
  * the existing value (local ids) is EXPECTED to differ from the fill (real
  * hashes), so an equality guard here would reject every legitimate call.
  */
@@ -525,7 +525,7 @@ export interface SubOrderPricing {
  * clause fields (e.g. committed geolocation endpoints) or the buyer's
  * checkout-entered units — billed per started unit. An unresolvable quantity
  * yields payment 0n + `issue`, and the surface refuses to commit (the
- * commerce clause's `payment ≥ 1` would reject it at Layer A regardless).
+ * commerce clause's `payment ≥ 1` would reject it during off-chain validation regardless).
  */
 export function resolveSubOrderPricing(args: {
     node: TemplateAgreement;

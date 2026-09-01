@@ -132,7 +132,7 @@ export default function Tokenomics() {
 
             <MarketingSection title="Four kinds of token meet in one trade.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A trade is denominated in a single unit, fixed at the first signature and binding on every later link, so the parties have to agree on one. The ordinary answer is a unit recognised widely enough to make agreeing cheap &mdash; a stablecoin, or the network&apos;s own asset. Nothing about the mechanism prefers any of them: the arithmetic compares a stake against a value, and any standard token quotes both.
+                    A trade is denominated in a single unit, fixed at the first signature and binding on every later link, so the parties have to agree on one. The ordinary answer is a unit recognised widely enough to make agreeing cheap &mdash; a stablecoin, or the network&apos;s own asset. Nothing about the mechanism prefers any of them: the arithmetic compares a bond against a value, and any standard token quotes both.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     A designer who publishes an <Link href="/glossary#assembly" className="text-ink-heading hover:underline">assembly</Link> may pin the unit every trade running it is denominated in &mdash; including a token of their own. Then demand for that token tracks their assembly&apos;s adoption: a moat they build, and whose risk they carry. A buyer who would rather not hold it picks an assembly denominated in something they already do; the exit is one click, which is what keeps the moat honest.

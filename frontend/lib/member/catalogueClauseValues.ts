@@ -1,5 +1,5 @@
 /**
- * Catalogue clause-value validation — the Layer-A gate for the product master
+ * Catalogue clause-value validation — the off-chain validation gate for the product master
  * data a seller authors per item (freight class, hazmat, cold-chain, …).
  *
  * Open-world and clause-agnostic: no clause is named. Each entry in an item's

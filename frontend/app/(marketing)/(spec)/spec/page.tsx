@@ -154,7 +154,7 @@ const ERRORS: ErrorStage[] = [
             {
                 name: "ZeroPayment()",
                 from: "FigaroCore.commit",
-                cause: "payment == 0. A commitment with nothing staked has no equilibrium to protect, so the kernel refuses it outright.",
+                cause: "payment == 0. A commitment with nothing bonded has no equilibrium to protect, so the kernel refuses it outright.",
                 fix: "Price the order. A non-market graph denominates in its own ERC-20 instead of committing zero.",
             },
             {

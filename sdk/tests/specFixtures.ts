@@ -1,5 +1,5 @@
 /**
- * Fixture SpecSource for SDK tests — built from the canonical Layer-A specs
+ * Fixture SpecSource for SDK tests — built from the canonical off-chain specs
  * (`clauses/*.json`) via `parseClauseSpec` + `parseProjectionHints`, the same
  * construction any consumer performs on registry-fetched spec JSON. (The
  * frontend's cache adapter does exactly this against ClauseRegistry → IPFS.)

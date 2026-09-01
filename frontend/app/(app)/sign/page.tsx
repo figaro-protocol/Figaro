@@ -298,7 +298,7 @@ function SignPageContent() {
         if (sellerShortOfDenomination && sellerFundingCandidates.length > 0) setFundingOpen(true);
     }, [sellerShortOfDenomination, sellerFundingCandidates.length]);
 
-    // Layer A over what was pasted/relayed: does the inline agreement merkle
+    // Off-chain validation over what was pasted/relayed: does the inline agreement merkle
     // to the signed agreementHash and conform to its clause specs? Computed at
     // review time so the party isn't reading terms that aren't the ones signed;
     // the sign/commit gates re-assert this at the exit.

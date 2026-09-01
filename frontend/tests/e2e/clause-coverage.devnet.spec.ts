@@ -12,7 +12,7 @@
  *             time; values from the checkout fill surface, the catalogue, or
  *             a designer-fills affix — design time is STRUCTURAL, ruled
  *             2026-07-14) carries its section into the committed agreement,
- *             past the Layer-A sign gate
+ *             past the off-chain validation sign gate
  *   commit  → a real bilateral order commits that agreement on-chain, and the
  *             asymmetric bonds actually move in the payment token
  *   audit   → the audit package surfaces the target clause's committed leaf,
@@ -225,7 +225,7 @@ const RUNGS: ClauseRung[] = [
         // on the AssemblyTermsPanel — never per order, never buyer-authored
         // at checkout. The spec constrains applicableLaw to a shaped
         // jurisdiction token (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose
-        // fails the Layer-A gate); convention per the field description is
+        // fails off-chain validation); convention per the field description is
         // ISO 3166-2 — 'US-NY'.
         clauseId: 'figaro-applicable-law',
         design: assemblyTermsFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
@@ -621,7 +621,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.getByTestId('review-confirm-publish').click();
             await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
 
-            // ── COMMIT: buyer orders, signs (the Layer-A gate validates the
+            // ── COMMIT: buyer orders, signs (the off-chain validator validates the
             //    target clause's section here), relays; seller accepts. ──
             const committedBefore = (await publicClient.getContractEvents({
                 address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,

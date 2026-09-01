@@ -6,7 +6,7 @@
  * Driven EXCLUSIVELY by the seller's bound assembly. The checkout names no
  * clause and knows no modality: it resolves the assembly from the seller's
  * profile, walks the assembly's own topology + clauses, computes the bond,
- * validates Layer A, runs the bilateral / multi-order commit, and redirects to
+ * validates the off-chain spec, runs the bilateral / multi-order commit, and redirects to
  * `/orders/view?process=<processId>`. Every order's clauses come straight from the assembly
  * template; every sub-order's seller is resolved generically from the assembly's
  * `counterpartyBindings`. No courier picker, no modality taxonomy, no

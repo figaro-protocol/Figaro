@@ -157,7 +157,7 @@ describe("FieldControl value-driven format + disposition grain cap", () => {
 });
 
 // Spec-declared constraints surface AT the input (display-only guidance —
-// the Layer-A sign gate stays the enforcement), and the field's own
+// the off-chain validation sign gate stays the enforcement), and the field's own
 // description is visible at the design-time authoring moment. All read from
 // the spec; no clause is named.
 describe("FieldControl constraint guidance", () => {

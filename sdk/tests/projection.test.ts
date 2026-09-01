@@ -1,9 +1,9 @@
 /**
- * Agreement projection — the Layer-A sign gate (`assertAgreementSignable`,
+ * Agreement projection — the off-chain validation sign gate (`assertAgreementSignable`,
  * the ONE thrower every signature routes through) and the golden-vector
  * byte-exactness of `buildOrderAgreement` + `buildAssemblyTemplate`.
  *
- * The SpecSource is built from the canonical Layer-A specs (`clauses/*.json`)
+ * The SpecSource is built from the canonical off-chain specs (`clauses/*.json`)
  * via `parseClauseSpec` + `parseProjectionHints` — the same construction any
  * consumer performs on registry-fetched spec JSON. (The frontend's cache
  * adapter does exactly this against ClauseRegistry → IPFS.)

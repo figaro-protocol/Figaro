@@ -129,7 +129,7 @@ export function useOrderCommitmentFlow() {
         swap: SwapConfirmationDetails | null = null,
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
-        // Layer A — the FULL gate at the sign step, so no caller can bypass
+        // Off-chain validation — the FULL gate at the sign step, so no caller can bypass
         // it: every section conforms to its clause spec AND the agreement's
         // recomputed merkle root equals the hash being signed. The /orders
         // accept card, /sign, and the buyer's checkout sign all route through
@@ -361,7 +361,7 @@ export function useOrderCommitmentFlow() {
      * commits this struct before its deadline. The SDK's draft gate rejects a
      * tampered draft — and a payload that already carries a buyer signature
      * (that is an offer; it accepts through `acceptOrder`). Signing runs the
-     * SAME Layer-A + confirm gate as every other signature. The bond is
+     * SAME off-chain validation + confirm gate as every other signature. The bond is
      * already approved (the page gated this) — being committed later pulls it.
      */
     const counterSignAndReturn = useCallback(async (
@@ -397,7 +397,7 @@ export function useOrderCommitmentFlow() {
      * CANDIDATE side (RFQ): an inbound QUOTE REQUEST → the person names their
      * price → counter-draft at that figure → counter-sign → relay back. The
      * human entering the quote IS the pricing function, and the sign step's
-     * Layer-A + confirm gate (rendering the QUOTED agreement) replaces the
+     * off-chain validation + confirm gate (rendering the QUOTED agreement) replaces the
      * autonomous floors — exactly as accept does. The counter-draft is built
      * through the SDK's shared substitution, so the buyer's reconstruction
      * reproduces it hash-for-hash; a quote above the buyer's ceiling (the
@@ -450,7 +450,7 @@ export function useOrderCommitmentFlow() {
      * Broadcast an ALREADY fully-signed payload — no signature added. For the
      * case where both signatures are present and anyone may submit it on-chain.
      *
-     * Gated like the sign step: Layer A first (a payload whose inline agreement
+     * Gated like the sign step: off-chain validation first (a payload whose inline agreement
      * doesn't merkle to the signed agreementHash is never broadcast — the chain
      * can't check it, so this is the last integrity gate), then the same
      * review-before-commit confirmation the sign step uses.

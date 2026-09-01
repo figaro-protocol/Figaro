@@ -96,16 +96,16 @@ export default function Home() {
 
             <MarketingSection title="One deal that enforces itself">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Every trade is a contract. Between strangers, one part of it always fails: promising is easy, delivering is not, and nothing about the promise makes the delivery credible. Arithmetic does. The buyer stakes twice the payment. Each seller stakes twice the value the deal has accumulated at their link. Keeping your word is now everyone&apos;s best move &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole deal settles at once on Ethereum: everyone is paid, every stake returns, and securing it all costs cents to a few dollars of fixed gas at typical network prices, batched at scale.
+                    Every trade is a contract. Between strangers, one part of it always fails: promising is easy, delivering is not, and nothing about the promise makes the delivery credible. Arithmetic does. The buyer bonds twice the payment. Each seller bonds twice the value the trade has accumulated at their link. Keeping your word becomes everyone&apos;s best move &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole trade resolves at once on Ethereum: everyone is paid, every bond returns, and securing it all costs cents to a few dollars of fixed gas at typical network prices, batched at scale.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The grower, the roaster, the caf&eacute;. The author, the editor, the printer. A deal is rarely two people; it is a chain of hands, each adding value &mdash; and the chain settles as one. When a deal goes wrong, remedies are negotiated while everyone still has something at stake; the FAQ has the long version. Anyone who can sign can take part: a person, a business, a software agent, an asset with its own wallet &mdash; the protocol has no gatekeeper to admit you or turn you away.
+                    The grower, the roaster, the caf&eacute;. The writer, the editor, the printer. A trade is rarely two people; it is a chain of hands, each adding value &mdash; and the chain resolves as one. When a trade goes wrong, remedies are negotiated while every bond is still locked; the FAQ has the long version. Anyone who can sign can take part: a person, a business, a software agent, an asset with its own wallet &mdash; the protocol has no gatekeeper to admit you or turn you away.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Every deal spins up a company — and dissolves it at settlement">
                 <p className="text-base text-ink-body leading-relaxed">
-                    A company is a bundle of functions held together long enough to make deals happen; a Figaro deal spins each one up for the length of a single deal, then winds it up. The legal department is clauses: the terms of the deal, written by anyone, published for reuse. The org chart is an assembly: who adds value in what order. The books, the audit, and compliance are the record the deal leaves behind. The treasury and the boss are the same thing &mdash; the kernel, the small settlement engine every deal runs on. It holds both sides&apos; stakes and does the manager&apos;s work by arithmetic. Nothing is incorporated and nothing is deployed. When the buyer resolves, the company that never existed winds up.
+                    A company is a bundle of functions held together long enough to make trades happen; a Figaro trade spins each one up for the length of a single trade, then winds it up. The legal department is clauses: the terms of the trade, written by anyone, published for reuse. The org chart is an assembly: who adds value in what order. The books, the audit, and compliance are the data the trade leaves behind. The treasury and the boss are the same thing &mdash; the kernel, the small resolution engine every trade runs on. It holds both sides&apos; bonds and does the manager&apos;s work by arithmetic. Nothing is incorporated and nothing is deployed. When the buyer resolves, the company that never existed winds up.
                 </p>
             </MarketingSection>
 
@@ -117,7 +117,7 @@ export default function Home() {
                     The record doubles as your paperwork: to a regulator, a tax authority, a court, you demonstrate rather than ask to be believed.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Through all of it, you hold your own keys: your wallet, your tokens, your signatures. No custodian above you. No account anyone can freeze or close. The kernel holds only live deals&apos; stakes, and only until each settles.
+                    Through all of it, you hold your own keys: your wallet, your tokens, your signatures. Nobody holds them for you. No account anyone can freeze or close. The kernel holds only live trades&apos; bonds, and only until each resolves.
                 </p>
             </MarketingSection>
 

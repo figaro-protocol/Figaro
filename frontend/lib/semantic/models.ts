@@ -103,7 +103,7 @@ interface WithdrawSellerDepositCapabilityInput {
 }
 
 /** Values a party filled into a witness capability's generic form — keyed by
- *  the declared stage's field names, validated Layer-A before encoding. */
+ *  the declared stage's field names, validated off-chain before encoding. */
 interface SubmitClauseAttestationCapabilityInput {
     kind: "submit-clause-attestation";
     values: Record<string, unknown>;

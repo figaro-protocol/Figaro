@@ -2,7 +2,7 @@
  * Content validator — validates a content value against a parsed ClauseSpec.
  *
  * Call sites: frontend form gates, SDK agent-action preflight. This is the
- * reference implementation (Layer A): the Rust prover mirror (`prover/clause`,
+ * off-chain reference implementation: the Rust prover mirror (`prover/clause`,
  * conformance-locked byte-for-byte) re-runs the same validation inside the SP1
  * proof on the batched settlement path. The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed

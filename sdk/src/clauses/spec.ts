@@ -1,7 +1,7 @@
 /**
  * Figaro clause-spec format — the single source of truth for clause-content
  * validation. This off-chain TypeScript module (frontend form gates, SDK
- * agent-action preflight) is Layer A, the reference; the Rust prover mirror
+ * agent-action preflight) is the reference implementation; the Rust prover mirror
  * (`prover/clause`) re-runs the same semantics in-proof on the batched path,
  * against the spec as a witness input anchored by ClauseRegistry.contentHashOf.
  * The DIRECT path's chain validates no content — it merkle-binds attestations
@@ -70,8 +70,8 @@ export interface BaseFieldSpec {
      *  unaffected. Shape must match the field type (validated at parse). */
     default?: string | number | boolean | readonly string[];
     /** Human display label for this field. Purely cosmetic UI metadata —
-     *  nothing on-chain reads it (like `block`), so it is a
-     *  Layer-A-only field. Lets every render surface (drawer, canvas, checkout,
+     *  nothing on-chain reads it (like `block`), so it is an
+     *  off-chain-only field. Lets every render surface (drawer, canvas, checkout,
      *  analysis) name the field from the spec; absent → callers fall back to
      *  the field `name`. */
     label?: string;
@@ -121,7 +121,7 @@ export interface EnumFieldSpec extends BaseFieldSpec {
      *  valid composition input, and generic input surfaces exclude it. */
     sentinel?: string;
     /** Per-value human display labels (value → label), e.g.
-     *  `{ "zone-wifi": "Same Wi-Fi network" }`. Purely cosmetic Layer-A
+     *  `{ "zone-wifi": "Same Wi-Fi network" }`. Purely cosmetic off-chain
      *  metadata nothing on-chain reads; a render surface labels the
      *  selected value from here, falling back to the raw value when absent.
      *  Need not cover every value — unlisted values render raw. */

@@ -31,7 +31,7 @@ export default function Clauses() {
                 title="A contract clause, made verifiable."
                 lead={
                     <>
-                        A clause here is what a clause is in a paper contract: one reusable term a deal is built from &mdash; how a dispute escalates, how emissions get reported, how a delivery address is handled. Contrary to paper clauses, a Figaro clause is verifiable: its spec is a public document, identified by a hash over its own content and anchored on-chain, so what a deal&apos;s terms say can be checked, not asserted. A clause can include <Link href="/glossary#attestation" className="underline">attestations</Link> &mdash; evidence recorded while the deal runs &mdash; but a clause is not an attestation.
+                        A clause here is what a clause is in a paper contract: one reusable term a trade is built from &mdash; how a dispute escalates, how emissions get reported, how a delivery address is handled. Contrary to paper clauses, a Figaro clause is verifiable: its spec is a public document, identified by a hash over its own content and anchored on-chain, so what a trade&apos;s terms say can be checked, not asserted. A clause can include <Link href="/attestations" className="underline">attestations</Link> &mdash; evidence filed while the trade runs &mdash; but a clause is not an attestation.
                     </>
                 }
             />

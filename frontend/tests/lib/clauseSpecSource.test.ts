@@ -26,7 +26,7 @@ describe("clauseSpecSource — chain-only cache", () => {
         expect(getClauseSpec("figaro-topology")).toBeUndefined();
     });
 
-    it("resolves a canonical Layer-A spec synchronously after an explicit load", async () => {
+    it("resolves a canonical off-chain spec synchronously after an explicit load", async () => {
         await primeClauseSpecs(["figaro-topology"]);
         expect(listKnownClauseIds()).toContain("figaro-topology");
         expect(getClauseSpec("figaro-topology")?.clauseId).toBe("figaro-topology");
@@ -144,7 +144,7 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
 
     it("a committed-choice enum clause (coordination article) is NOT a lifecycle", async () => {
         // Regression: "non-mandatory + has enum" misread modalities as a
-        // process-log — fabricated seller capabilities and skipped Layer-A
+        // process-log — fabricated seller capabilities and skipped off-chain
         // validation at both sign points.
         await primeClauseSpecs(["figaro-modalities"]);
         expect(clauseLadderField("figaro-modalities")).not.toBeNull(); // it HAS an enum…

@@ -186,7 +186,7 @@ export interface OfferPolicy {
  * leaf"): every section conforms to its clause spec, and the offer's
  * settlement-currency TERM (the commerce clause leaf, and any composed
  * denomination pin) equals the currency the seller is about to bond against —
- * the commitment struct's `currency` field. This is Layer A run on the
+ * the commitment struct's `currency` field. This is off-chain validation run on the
  * SELLER's side of the handshake (the buyer-side builders —
  * `buildBuyerOffer`, `buildChainOffers` — run the same gate when given
  * `specs`); `checkOfferPolicy`'s currency check alone only bounds the

@@ -62,6 +62,7 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/rpgf", changeFrequency: "monthly", priority: 0.7 },
     { path: "/tokenomics", changeFrequency: "monthly", priority: 0.7 },
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/attestations", changeFrequency: "weekly", priority: 0.7 },
     { path: "/assemblies", changeFrequency: "weekly", priority: 0.7 },
     { path: "/worked-example", changeFrequency: "weekly", priority: 0.7 },
     { path: "/registries", changeFrequency: "daily", priority: 0.7 },

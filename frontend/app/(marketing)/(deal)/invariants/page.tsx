@@ -40,7 +40,7 @@ export default function Invariants() {
                             <strong className="text-ink-heading">Asymmetric bonding.</strong> The buyer locks twice the payment; each seller locks twice the value the trade has accumulated at its own link. <em>What it means for you:</em> whatever the other side is thinking, honoring the trade leaves them better off than walking away from it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Cumulative bonding.</strong> A seller&apos;s stake covers everything already added ahead of it, not just its own line. <em>What it means for you:</em> a trade with six hands in it is secured the same way a trade with one is &mdash; no coordinator, and nothing new to trust as the chain gets longer.
+                            <strong className="text-ink-heading">Cumulative bonding.</strong> A seller&apos;s bond covers everything already added ahead of it, not just its own line. <em>What it means for you:</em> a trade with six hands in it is secured the same way a trade with one is &mdash; no coordinator, and nothing new to trust as the chain gets longer.
                         </li>
                         <li>
                             <strong className="text-ink-heading">Buyer dominance.</strong> Only the buyer can close a trade. Nobody can close it for them, and nothing closes it on its own. <em>What it means for you:</em> whatever was agreed gets met first, because nothing resolves until the one paying says it is finished.
@@ -71,7 +71,7 @@ export default function Invariants() {
                         .
                     </p>
                     <p>
-                        Nobody admits you, either. A wallet to sign with and a stake to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing; the kernel reads a signature, never a species, and the full treatment is on{" "}
+                        Nobody admits you, either. A wallet to sign with and a bond to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing; the kernel reads a signature, never a species, and the full treatment is on{" "}
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">
                             Agents
                         </Link>
@@ -83,7 +83,7 @@ export default function Invariants() {
             <MarketingSection title="What the chain holds.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Almost nothing of its own. Every token inside is bonded to one open process, earmarked for that process&apos;s parties and reachable by nobody else &mdash; the contract keeps no balance it could spend. Resolution sends all of it back out; a process nobody ever resolves keeps its stakes locked where they are, permanently, which is the deterrent the whole design rests on rather than a gap in it. And because each commitment only ever looks at one handoff between two parties, the chain never needs the trade itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
+                        Almost nothing of its own. Every token inside is bonded to one open process, earmarked for that process&apos;s parties and reachable by nobody else &mdash; the contract keeps no balance it could spend. Resolution sends all of it back out; a process nobody ever resolves keeps its bonds locked where they are, permanently, which is the deterrent the whole design rests on rather than a gap in it. And because each commitment only ever looks at one handoff between two parties, the chain never needs the trade itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
                     </p>
                     <figure className="my-6">
                         <MerkleTreeFigure

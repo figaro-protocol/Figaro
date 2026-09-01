@@ -332,7 +332,7 @@ export function OnboardingCatalogueForm({
             return;
         }
         const savedItems = completeItems.map((it) => toItem(it, unitSystem));
-        // Layer-A gate: catalogue-sourced clause values must conform to each
+        // Off-chain validation gate: catalogue-sourced clause values must conform to each
         // clause's registered spec before publish (reuses the sign/attest validator).
         const clauseErrors = savedItems.flatMap(validateCatalogueClauseValues);
         if (clauseErrors.length > 0) {

@@ -202,7 +202,7 @@ export async function recordProcessUsage(
 }
 
 /**
- * The headless attestation PREFLIGHT — the same Layer-A gate the frontend's
+ * The headless attestation PREFLIGHT — the same off-chain validation gate the frontend's
  * capability rail runs before every attestation it files: validate the values
  * against the clause spec (witness stages via `{ stage }`, ladder events as
  * plain content), encode canonically, and derive the content fingerprint. The

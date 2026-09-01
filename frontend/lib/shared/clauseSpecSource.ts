@@ -216,7 +216,7 @@ export function listKnownClauses(): readonly { clauseId: string; version: number
     return Array.from(SPEC_CACHE.values(), (s) => ({ clauseId: s.clauseId, version: s.version }));
 }
 
-/** A cached spec as the SDK projection sees it: the Layer-A spec plus the
+/** A cached spec as the SDK projection sees it: the off-chain spec plus the
  *  hash-load-bearing `block` hints (design.article, design.fills,
  *  checkout.catalogueFills, checkout.profileFills). */
 function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {

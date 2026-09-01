@@ -1,5 +1,5 @@
 /**
- * memberProfile.ts — the member PROFILE document (Layer-A).
+ * memberProfile.ts — the member PROFILE document (off-chain).
  *
  * The profile is the stable identity envelope a member pins to IPFS and
  * points `MembersRegistry.metadataURI` at: name, branding, location,
@@ -278,7 +278,7 @@ export interface MemberProfileMetadata {
 }
 
 /** Parse the profile-authored clause-values map (clauseId → field → value).
- *  Shape-checked only — per-clause content validity is the Layer-A
+ *  Shape-checked only — per-clause content validity is the off-chain
  *  validator's job at the points that consume the values. */
 function parseProfileClauseValues(
     value: unknown,

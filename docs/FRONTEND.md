@@ -18,7 +18,7 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | Group | Routes | Notes |
 |---|---|---|
 | `(deal)` | `/kernel`, `/local-commerce`, `/invariants`, `/faq` | `/local-commerce` is ONE example among unbounded kinds, never the default telling — nav-visible only while sitewide copy stays demoted. `/faq` is the public's decision document. |
-| `(compose)` | `/clauses`, `/assemblies`, `/registries`, `/composition`, `/data`, `/worked-example` | `/registries` is the ONE read-only search surface over all three registries (h1 "Registry explorer", nav label "Registries"). `/composition` is the single composition page. |
+| `(compose)` | `/clauses`, `/assemblies`, `/attestations`, `/registries`, `/composition`, `/data`, `/worked-example` | `/registries` is the ONE read-only search surface over all three registries (h1 "Registry explorer", nav label "Registries"). `/composition` is the single composition page. `/attestations` is the runtime-evidence companion to `/clauses` — no registry, no hash table, no CTA: an attestation is filed inside a running process, never registered or designed. |
 | `(participants)` | `/members`, `/agents` | `/members` is the pitch; its wizard lives beneath it in `(app)`. |
 | `(rewards)` | `/rpgf`, `/tokenomics`, `/dao` | Three concepts, three pages, in reading order: the PROGRAM (how use becomes a reward), the TOKEN (supply, who holds what), the BOOTSTRAP (what the treasury is for). None re-derives another's subject. |
 | `(spec)` | `/spec`, `/pitfalls`, `/security` | `/security` is testing + audit results only. |

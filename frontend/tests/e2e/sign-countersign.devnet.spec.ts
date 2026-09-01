@@ -6,7 +6,7 @@
  * channel; the SELLER opens `/sign` (not /orders), where the page's own
  * channel listener receives the payload and renders the SHARED review —
  * the full agreement terms (`AgreementReview`: parties, line items, clauses,
- * hash) plus the Layer-A integrity verdict — BEFORE the party authorizes a
+ * hash) plus the off-chain-validation integrity verdict — BEFORE the party authorizes a
  * bond or signs anything. The seller then authorizes the bond, counter-signs
  * through the same confirm gate every sign uses, and the order commits
  * on-chain with both bonds pulled.
@@ -102,7 +102,7 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
             .toBeVisible();
         await expect(page.getByTestId('preview-agreement-hash'), 'the signed hash renders beside the terms')
             .toHaveText(/^0x[0-9a-f]{64}$/i);
-        // Layer A over the relayed payload: the inline agreement recomputes to
+        // Off-chain validation over the relayed payload: the inline agreement recomputes to
         // the signed agreementHash and conforms to its clause specs.
         await expect(page.getByTestId('sign-agreement-verified'), 'the relayed terms verify against the signed hash')
             .toBeVisible();

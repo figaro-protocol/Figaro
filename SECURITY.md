@@ -33,7 +33,7 @@ In scope:
   attestation / registry / mechanism contracts, the florin token contracts,
   the usage counter + RPGF minter, and the batch verifier. (Per-clause
   validator contracts do not exist, permanently — clause content validation
-  is off-chain Layer A plus the batch path's generic proof engine.)
+  is off-chain, plus the batch path's generic proof engine.)
 - `formal/` (the TLA+ models) and `certora/` (the CVL specs) — if a spec
   asserts an invariant the kernel does not actually hold.
 

@@ -8,15 +8,15 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 export const metadata: Metadata = withOg({
     title: "Register a clause — Figaro Protocol",
     description:
-        "Paste a clause spec, validate it against the off-chain Layer-A well-formedness check, then anchor it on the ClauseRegistry. Reclaim the registration stake of clauses you registered.",
+        "Paste a clause spec, validate it against the off-chain well-formedness check, then anchor it on the ClauseRegistry. Reclaim the registration stake of clauses you registered.",
 });
 
 /**
  * /clauses/register — the wallet-scoped clause authoring surface, the
  * clause-side mirror of /assemblies/designer (assembly authoring). Two halves:
  *
- *  1. Register a clause — paste a spec, validate through the generic Layer-A
- *     surface (`@figaro-protocol/sdk/clauses`, the same gate that runs at sign-time),
+ *  1. Register a clause — paste a spec, validate through the generic off-chain
+ *     validation surface (`@figaro-protocol/sdk/clauses`, the same gate that runs at sign-time),
  *     pin to IPFS, and anchor on `ClauseRegistry.registerClause`.
  *  2. Your registered clauses — derived from `ClauseRegistered` events filtered
  *     to the connected wallet, each with a stake-reclaim affordance gated by the
@@ -45,7 +45,7 @@ export default function ClauseAuthoring() {
                     Register a clause.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl mb-4">
-                    Paste a clause spec below; it is validated against the same off-chain Layer-A check that gates signing, pinned to IPFS, and anchored on the <code>ClauseRegistry</code>. Registration is permissionless, first-write-wins, and immutable per <code>(name, version)</code>.
+                    Paste a clause spec below; it is validated against the same off-chain check that gates signing, pinned to IPFS, and anchored on the <code>ClauseRegistry</code>. Registration is permissionless, first-write-wins, and immutable per <code>(name, version)</code>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     New to clauses? The{" "}

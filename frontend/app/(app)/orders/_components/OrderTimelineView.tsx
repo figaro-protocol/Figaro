@@ -8,7 +8,7 @@
  *     state (the bilateral commit IS the order's arrival and the seller's
  *     approval; nobody "marks it received").
  *   - the GENERIC timeline — every attestation on the process, labelled
- *     straight from its clause's Layer-A spec (`describeAttestation`), the
+ *     straight from its clause's off-chain spec (`describeAttestation`), the
  *     clauseId taken from the event DATA.
  *   - the CAPABILITY rail — every action the buyer/seller can take, DERIVED by
  *     the builder (`deriveProcessModelFromRuntime`) from the clauses the

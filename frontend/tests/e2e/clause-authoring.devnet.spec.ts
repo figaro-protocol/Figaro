@@ -1,7 +1,7 @@
 /**
  * clause-authoring.devnet.spec.ts — the clause-side registration lifecycle,
  * end to end through the UI: the /clauses CTA routes to /clauses/register,
- * where the author pastes a spec, watches the Layer-A validation pass,
+ * where the author pastes a spec, watches the off-chain validation pass,
  * registers (pin + anchor + deposit), sees the clause appear in the live
  * /clauses inventory under its article, composes it into a committed order,
  * is BLOCKED from reclaiming the stake while that deal is in flight
@@ -115,7 +115,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await cta.click();
         await page.waitForURL(/\/clauses\/register/, { timeout: 15000 });
 
-        // ── REGISTER: paste the spec, watch the Layer-A validation pass, then
+        // ── REGISTER: paste the spec, watch the off-chain validation pass, then
         //    anchor. Validation is walletless and live; the write needs the
         //    connected author. ──
         const specInput = page.getByTestId('clause-spec-input');
@@ -123,7 +123,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await specInput.fill(JSON.stringify(SPEC, null, 2));
         await expect(
             page.getByTestId('clause-validation-ok'),
-            'the pasted spec passes the generic Layer-A well-formedness gate',
+            'the pasted spec passes the generic off-chain well-formedness gate',
         ).toBeVisible({ timeout: 15000 });
 
         await waitForConnected(page);

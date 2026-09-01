@@ -193,7 +193,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         } else if (isLadder) {
             // LADDER: the event code plus any companion-field fills
             // from the rail's generic form (e.g. an evidence
-            // pointer), gated by the same Layer-A validator.
+            // pointer), gated by the same off-chain validator.
             const ladderValues = { ...(values ?? {}), [action.ladderField!]: action.eventCode };
             const validation = validateContent(ladderValues, spec);
             if (!validation.ok) {
@@ -202,7 +202,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             content = encodeContentFromSpec(spec, ladderValues);
         } else {
             // WITNESS: values from the rail's generic form, gated by the
-            // same Layer-A validator that gates every sign point.
+            // same off-chain validator that gates every sign point.
             const witnessValues = values ?? {};
             const validation = validateContent(witnessValues, spec, { stage: action.stage });
             if (!validation.ok) {

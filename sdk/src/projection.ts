@@ -73,7 +73,7 @@ export interface ProjectionHints {
     profileFills?: readonly string[];
 }
 
-/** A clause spec as the projection sees it: the Layer-A spec plus the
+/** A clause spec as the projection sees it: the off-chain spec plus the
  *  hash-load-bearing hints. */
 export type ProjectionSpecView = ClauseSpec & { hints?: ProjectionHints };
 
@@ -154,7 +154,7 @@ export function specDeclaresDesignFill(spec: ProjectionSpecView, fieldName: stri
  *  public surface. Because the merkle leaf model withholds a WHOLE section (never
  *  one field), a section is treated as private if ANY of its fields is — the
  *  conservative direction (protect the private value; over-redact co-located
- *  public fields). Layer-A validation refuses to register a clause that mixes
+ *  public fields). Off-chain validation refuses to register a clause that mixes
  *  dispositions, so in practice this only ever fires on a fully-private clause. */
 export function specHasPrivateField(spec: ProjectionSpecView): boolean {
     return spec.fields.some((f) => f.disposition === "private");
@@ -249,7 +249,7 @@ export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
     return spec.hints?.profileFills ?? [];
 }
 
-/** A Layer-A WARNING (never an error — the permissionless extension axiom:
+/** An off-chain validation WARNING (never an error — the permissionless extension axiom:
  *  a third-party clause may declare ANY article) for the one construction
  *  that never makes sense under `article: "attestations"`: pinning content
  *  at DESIGN or CHECKOUT time (`design.fills` / `checkout.catalogueFills` /
@@ -363,7 +363,7 @@ export function buildOrderAgreement(
     return { agreement, agreementHash: computeAgreementHash(agreement) };
 }
 
-/** A single Layer-A issue found before signing: which clause, which field path
+/** A single off-chain validation issue found before signing: which clause, which field path
  *  (or "(merkle)"), and what's wrong. */
 export interface CommitmentAgreementIssue {
     clause: string;
@@ -372,8 +372,8 @@ export interface CommitmentAgreementIssue {
 }
 
 /** An address-valued leaf, or undefined when the section carries none (a
- *  withheld section, an unloaded spec, a malformed value — each already a
- *  Layer-A failure of its own where the field is required). */
+ *  withheld section, an unloaded spec, a malformed value — each already an
+ *  off-chain validation failure of its own where the field is required). */
 function addressLeaf(section: AgreementSection | undefined, field: string): `0x${string}` | undefined {
     const value = section?.data?.[field];
     return isAddressHex(value) ? value : undefined;
@@ -381,7 +381,7 @@ function addressLeaf(section: AgreementSection | undefined, field: string): `0x$
 
 /** A bigint-valued leaf (stored as its canonical decimal string), or undefined
  *  when the section carries none or the value is malformed — the malformed
- *  case is already a Layer-A spec failure of its own. */
+ *  case is already an off-chain validation failure of its own. */
 function bigintLeaf(section: AgreementSection | undefined, field: string): bigint | undefined {
     const value = section?.data?.[field];
     return typeof value === "string" && /^\d+$/.test(value) ? BigInt(value) : undefined;
@@ -415,7 +415,7 @@ function currencyPinSection(
 }
 
 /**
- * Layer A of the verification stack, run on BOTH sides of the bilateral commit
+ * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
  * signs an invalid agreement. Three checks: every present section conforms to
  * its clause spec (validateContent; process-log clauses are presence-markers,
@@ -529,7 +529,7 @@ export function validateCommitmentAgreement(
 }
 
 /**
- * The ONE Layer-A thrower every signature routes through — buyer sign, seller
+ * The ONE off-chain validation thrower every signature routes through — buyer sign, seller
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
  * path signs an agreement whose sections violate their clause specs, whose
  * settlement currency or payment differs between the signed term and the

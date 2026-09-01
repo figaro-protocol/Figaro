@@ -11,7 +11,7 @@
  *   - the resolve-ceiling refusal before any signature,
  *   - per-node fills from the cart / the contributor's own catalogue,
  *   - buyer-assigned selections + on-network compositions per node,
- *   - Layer-A validation through the SAME confirm gate the seller's accept
+ *   - off-chain validation through the SAME confirm gate the seller's accept
  *     uses (no checkout-only bypass),
  *   - sub-orders signed + relayed as the walk realizes them; the ROOT signed
  *     LAST and surfaced to the share panel (the walk emits it first — its
@@ -82,7 +82,7 @@ export interface AssemblyCheckoutDeps {
     }) => Promise<void>;
 }
 
-/** Layer A, early: surface an invalid agreement BEFORE the wallet opens. The
+/** Off-chain validation, early: surface an invalid agreement BEFORE the wallet opens. The
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {

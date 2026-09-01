@@ -107,10 +107,10 @@ export default function Assemblies() {
 
             <MarketingSection title="The complete P&L of a purchase, at checkout.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every line in a multi-seller assembly is its own <Link href="/glossary#bonded-commitment" className="underline">bonded commitment</Link>, settling together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under.
+                    Every line in a multi-seller assembly is its own <Link href="/kernel" className="underline">bonded commitment</Link>, resolving together or not at all &mdash; which is what turns the traditionally hidden breakdown of a purchase (who got paid what, decided privately inside a firm) into a P&amp;L visible before you commit. Two lines or six, the reading is the same: a maker and a carrier, a lead freelancer and their contributors, a container passing through six hands. Every registered assembly carries its own shape, readable in the registry explorer from the composition it was registered under.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mt-4">
-                    <strong>One of those shapes, followed order by order:</strong> a buyer and two agents run a single process on it, every stake named per party, one resolution settling all of them together &mdash; <Link href="/worked-example" className="underline">Worked example</Link>.
+                    <strong>One of those shapes, followed order by order:</strong> a buyer and two agents run a single process on it, every bond named per party, one resolution closing all of them together &mdash; <Link href="/worked-example" className="underline">Worked example</Link>.
                 </p>
             </MarketingSection>
 

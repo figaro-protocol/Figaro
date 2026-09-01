@@ -28,7 +28,7 @@ verification of the buyer signature is done in <code>counterSignOffer</code> (as
 leaf&quot;): every section conforms to its clause spec, and the offer's
 settlement-currency TERM (the commerce clause leaf, and any composed
 denomination pin) equals the currency the seller is about to bond against —
-the commitment struct's <code>currency</code> field. This is Layer A run on the
+the commitment struct's <code>currency</code> field. This is off-chain validation run on the
 SELLER's side of the handshake (the buyer-side builders —
 <code>buildBuyerOffer</code>, <code>buildChainOffers</code> — run the same gate when given
 <code>specs</code>); <code>checkOfferPolicy</code>'s currency check alone only bounds the

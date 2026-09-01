@@ -3,7 +3,7 @@
 /**
  * RegisterClauseForm — paste a clause spec, validate it, register it.
  *
- * Validation is the generic Layer-A surface from `@figaro-protocol/sdk/clauses`
+ * Validation is the generic off-chain validation surface from `@figaro-protocol/sdk/clauses`
  * (`parseClauseSpec`) — the SAME well-formedness gate that runs at sign-time,
  * no per-clause code and no bundled clause list. It runs live (walletless): a
  * visitor can check a spec without connecting. Only the register WRITE needs a
@@ -36,7 +36,7 @@ export type Validation =
     | { state: "valid"; raw: Record<string, unknown> };
 
 /** Pure — exported for unit testing. Discriminates the pasted text into the
- *  UI's validation states via `JSON.parse` + the generic Layer-A
+ *  UI's validation states via `JSON.parse` + the generic off-chain
  *  `parseClauseSpec` (the same well-formedness gate that runs at sign-time). */
 export function validate(specText: string): Validation {
     const text = specText.trim();

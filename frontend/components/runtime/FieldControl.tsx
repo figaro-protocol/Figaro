@@ -91,7 +91,7 @@ function ObjectEntryFields({
 
 /** Spec-declared string constraints (pattern / minLength / maxLength), checked
  *  as the party types — display-only guidance so a violation surfaces at the
- *  keyboard, not first at the checkout sign gate. Enforcement stays Layer A. */
+ *  keyboard, not first at the checkout sign gate. Enforcement stays off-chain validation. */
 function scalarConstraintIssue(field: FieldSpec, raw: string): string | null {
     if (field.type !== "string" || raw === "") return null;
     if (field.minLength !== undefined && raw.length < field.minLength) {
@@ -328,7 +328,7 @@ export function FieldControl({
         const issue = scalarConstraintIssue(field, current);
         // The spec's own guidance, visible at the authoring moment (design
         // mode); constraint violations surface as the party types, in BOTH
-        // modes. Display-only — the Layer-A sign gate stays the enforcement.
+        // modes. Display-only — the off-chain validation sign gate stays the enforcement.
         const guidance = (
             <>
                 {issue && (

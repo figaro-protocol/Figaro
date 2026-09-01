@@ -16,7 +16,7 @@ const baseItem = (clauseValues?: CatalogueItemMetadata["clauseValues"]): Catalog
     ...(clauseValues && { clauseValues }),
 });
 
-describe("validateCatalogueClauseValues — Layer-A gate, reused validator", () => {
+describe("validateCatalogueClauseValues — off-chain gate, reused validator", () => {
     it("passes conforming values against the registered spec", async () => {
         await primeClauseSpecs(["figaro-freight-class", "figaro-cold-chain"]);
         const errors = validateCatalogueClauseValues(baseItem({

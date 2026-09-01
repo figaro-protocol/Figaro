@@ -1,5 +1,5 @@
 /**
- * memberCatalogue.ts — the seller CATALOGUE document (Layer-A).
+ * memberCatalogue.ts — the seller CATALOGUE document (off-chain).
  *
  * The catalogue is the volatile sales-context payload a seller pins to
  * IPFS and points to from `MemberProfileMetadata.catalogueURI`: the list
@@ -108,7 +108,7 @@ export interface CatalogueItemMetadata {
      * the checkout fold both derive from the registered clause specs, so a new
      * product-property clause participates with zero change to this type.
      * Absent for non-physical / unannotated items. Validated against each
-     * clause's registered spec (Layer A) before publish.
+     * clause's registered spec (off-chain) before publish.
      */
     clauseValues?: Record<string, Record<string, unknown>>;
     /**
@@ -216,7 +216,7 @@ function parseOptionalDataSold(
 /**
  * Parse the catalogue-sourced clause-value map — a `Record<clauseId, Record<field, unknown>>`.
  * Structural only: the outer shape is a record of records; the inner field
- * values are validated against each clause's registered spec (Layer A) at
+ * values are validated against each clause's registered spec (off-chain) at
  * authoring / read time, not here (this parser has no spec cache). Field
  * values pass through as `unknown`.
  */

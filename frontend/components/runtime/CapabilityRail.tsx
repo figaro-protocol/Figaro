@@ -39,7 +39,7 @@ export function CapabilityRail({
     };
 
     /** A witness form submits only once every required declared field holds a
-     *  value — display-level gating; enforcement stays Layer A at execution. */
+     *  value — display-level gating; enforcement stays off-chain validation at execution. */
     const inputsIncomplete = (capability: CapabilityModel): boolean => {
         if (!capability.inputFields?.length) return false;
         const values = inputValues[capability.id] ?? {};
