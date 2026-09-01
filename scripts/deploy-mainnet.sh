@@ -98,8 +98,8 @@ fi
 # FigaroBatchVerifier binds the gateway IMMUTABLY and UsageCounter binds the
 # verifier — a gateway that does not route our sdk version's Groth16 (or PLONK,
 # per SP1_PROOF_MODE) verifier means every real proof reverts RouteNotFound and
-# the whole stack redeploys. The 2026-08-14 Sepolia deploy bound the retired
-# PLONK gateway; this guard is that lesson.
+# the whole stack redeploys. Binding a gateway that routes a different proof
+# system is the failure this guard exists to prevent.
 bash "$(dirname "$0")/check-sp1-gateway-route.sh" || exit 1
 
 echo ""

@@ -90,5 +90,5 @@ for port in 3000 3100; do
 done
 
 note "devnet down"
-echo "  the chain's state is gone; .env.local + .deployments/local.json now name a dead chain."
+echo "  the chain's state does not survive; .env.local + .deployments/local.json name a dead chain."
 echo "  bring it back : ./scripts/devup.sh   (its preflight fails → redeploys automatically)"
