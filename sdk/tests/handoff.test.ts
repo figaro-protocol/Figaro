@@ -1,8 +1,8 @@
 /**
  * /handoff ECDH — byte-exactness against the promotion golden vectors.
  *
- * The fixture was recorded from the pre-promotion frontend implementation
- * (eciesjs@0.5); this suite proves the noble reimplementation derives the
+ * The fixture is derived from eciesjs@0.5's `encapsulate`/`decapsulate`
+ * construction; this suite proves the noble reimplementation derives the
  * SAME secrets and unwraps the SAME frozen blob. The wrap draws a random IV,
  * so the frozen blob is proven through unwrap and a fresh wrap through a
  * round-trip.

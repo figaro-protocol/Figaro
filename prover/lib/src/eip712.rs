@@ -124,10 +124,10 @@ pub fn attest_buyer_struct_hash(
     keccak256(&data)
 }
 
-// Registry authorizations (RegisterClause / SetMechanismClause /
-// RegisterSeller / UpdateProfile) are gone: registry mutations are
-// once-per-clause-or-assembly ETH-staked intents that stay on the direct
-// path — the batch covers the kernel + attestation surface only.
+// Registry mutations (RegisterClause / SetMechanismClause / RegisterSeller /
+// UpdateProfile) are once-per-clause-or-assembly ETH-staked intents that stay
+// on the direct path — the batch covers the kernel + attestation surface
+// only, so this module defines no EIP-712 types for them.
 
 // ── Typed data hash ───────────────────────────────────────────────
 

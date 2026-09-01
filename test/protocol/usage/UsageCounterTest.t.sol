@@ -311,11 +311,11 @@ contract UsageCounterTest is Test {
     }
 
     function test_manyBuyersOneSellerIsVolumeNotBreadth() public {
-        // THE ruled property (2026-07-31): breadth counts distinct STAKED
-        // SELLERS, so a single seller reached by many buyers — the exact shape
-        // a farmer fabricates for free, since buyer wallets cost nothing —
-        // moves c only. Before the ruling this was two units of d for one
-        // stake; it is now one, however many buyers arrive.
+        // Breadth counts distinct STAKED SELLERS: a single seller reached by
+        // many buyers — the exact shape a farmer fabricates for free, since
+        // buyer wallets cost nothing — moves c only, and d holds at one for
+        // that stake however many buyers arrive; d never double-counts one
+        // seller's stake across multiple buyers.
         CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(a, CARGO_KEY);
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller1, SELLER1_KEY, 2);

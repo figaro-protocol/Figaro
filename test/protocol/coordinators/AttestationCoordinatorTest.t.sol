@@ -560,9 +560,8 @@ contract AttestationCoordinatorTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 19: Buyer attestation across processes is no longer a distinct
-    // failure mode — the new symmetric design authorizes purely on
-    // `msg.sender == target.buyer`. A buyer trying to attest under a
+    // TEST 19: Buyer attestation authorizes purely on `msg.sender ==
+    // target.buyer` — the symmetric design. A buyer trying to attest under a
     // commitment they did not buy simply triggers `NotAuthorized`; there is
     // no separate cross-process check because target is self-contained.
     // ═══════════════════════════════════════════════════════════════

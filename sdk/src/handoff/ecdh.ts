@@ -3,9 +3,9 @@
  *
  * The 32-byte shared secret is `HKDF-SHA256(senderPubUncompressed ||
  * sharedPointUncompressed)` with no salt and no info — the exact
- * `encapsulate`/`decapsulate` construction of eciesjs@0.5 (which the
- * pre-promotion frontend used), reproduced here on `@noble/curves` +
- * `@noble/hashes` so the bytes stay identical. Golden-vector-proven:
+ * `encapsulate`/`decapsulate` construction of eciesjs@0.5, reproduced here
+ * on `@noble/curves` + `@noble/hashes` so the bytes stay identical.
+ * Golden-vector-proven:
  * `sdk/tests/fixtures/promotion-golden-vectors.json` was recorded from the
  * eciesjs implementation and this module must keep matching it.
  *
@@ -14,9 +14,9 @@
  *   - the SENDER (who will encrypt) derives with own priv + receiver's pub,
  *   - the RECEIVER derives with sender's pub + own priv.
  * Both produce the same 32-byte hex string; the REVERSE pairing produces a
- * DIFFERENT secret. (A prior revision called the sender half from both sides
- * and claimed symmetry — the secrets never matched; caught by the first
- * round-trip test.)
+ * DIFFERENT secret. Never call the sender half from both sides expecting
+ * symmetry — the two derivations are directional and their secrets will not
+ * match; the round-trip test below is what catches exactly this mistake.
  *
  * Hex conventions match the wire protocol: inputs tolerate an optional `0x`
  * prefix; outputs are unprefixed lowercase (a compressed public key is 66

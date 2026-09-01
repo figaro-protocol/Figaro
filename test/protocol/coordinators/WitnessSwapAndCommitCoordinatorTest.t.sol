@@ -11,8 +11,8 @@ import "src/mocks/MockERC20.sol";
 import "src/mocks/MockSwapVenue.sol";
 import "src/mocks/MockWitnessPermit2.sol";
 
-/// @title WitnessSwapAndCommitCoordinatorTest — the swap route is now signed
-/// @notice Mirrors SwapAndCommitCoordinatorTest's coverage, but every leg
+/// @title WitnessSwapAndCommitCoordinatorTest — the swap route carries a signed witness
+/// @notice Covers WitnessSwapAndCommitCoordinator end to end: every leg
 ///         carries a real Permit2 WITNESS signature, and adds the front-run
 ///         proof: a substituted `swapData` fails signature verification.
 contract WitnessSwapAndCommitCoordinatorTest is Test {
@@ -156,7 +156,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bond.mint(party, bondAmount);
     }
 
-    // ── Mirrored coverage (now witness-signed) ─────────────────────
+    // ── Witness-signed coverage ──────────────────────────────────────
 
     function test_BuyerPaysDifferentToken() public {
         _fundInput(buyer, buyerInput, 2 * P); // rate 1:1, needs 2P input for 2P bond
@@ -287,15 +287,15 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
     // ── The front-run fix ──────────────────────────────────────────
 
-    /// @notice THE POINT OF THIS SIBLING. In the base SwapAndCommitCoordinator
-    ///         `swapData` sat outside every signature, so a relayer could
-    ///         substitute its own route — here, rerouting the swap output to
-    ///         itself — to capture value the coordinator would otherwise refund
-    ///         to the buyer. This asserts that attack is now IMPOSSIBLE: the
-    ///         buyer signs a witness over the honest route (output → coordinator),
-    ///         the relayer swaps in tampered `swapData` (output → relayer), and
-    ///         Permit2 recomputes the witness from the SUBMITTED route, recovers
-    ///         a signer that is not the buyer, and reverts before any token moves.
+    /// @notice THE POINT OF THIS TEST: `swapData` is bound by the buyer's Permit2
+    ///         witness, so a relayer cannot substitute its own route — here,
+    ///         rerouting the swap output to itself — to capture value the
+    ///         coordinator would otherwise refund to the buyer. This asserts
+    ///         that attack is IMPOSSIBLE: the buyer signs a witness over the
+    ///         honest route (output → coordinator), the relayer swaps in
+    ///         tampered `swapData` (output → relayer), and Permit2 recomputes
+    ///         the witness from the SUBMITTED route, recovers a signer that is
+    ///         not the buyer, and reverts before any token moves.
     function test_RevertWhen_SwapDataSubstituted_FrontRunImpossible() public {
         _fundInput(buyer, buyerInput, 2 * P);
         _selfFundBond(seller, 2 * P);

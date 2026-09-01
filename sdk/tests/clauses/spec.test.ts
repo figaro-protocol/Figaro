@@ -185,10 +185,11 @@ describe("parseClauseSpec — meta-clause validation", () => {
         expect(result.ok).toBe(false);
     });
 
-    // NOTE: the `block` slice (designer/runtime composition metadata) is no longer
-    // parsed by the SDK — it's frontend-owned presentation. parseClauseSpec ignores
-    // it. Its parser (`parseBlockBinding`) and tests live in the frontend:
-    // frontend/lib/shared/clauseBlockBinding.ts + frontend/tests/lib/clauseBlockBinding.test.ts.
+    // NOTE: the `block` slice (designer/runtime composition metadata) is
+    // frontend-owned presentation, not part of the SDK's spec surface —
+    // parseClauseSpec ignores it. Its parser (`parseBlockBinding`) and tests
+    // live in the frontend: frontend/lib/shared/clauseBlockBinding.ts +
+    // frontend/tests/lib/clauseBlockBinding.test.ts.
     it("ignores the block slice (frontend-owned) without failing", () => {
         const result = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",

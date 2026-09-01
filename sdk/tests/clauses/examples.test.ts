@@ -496,7 +496,7 @@ describe("example clause specs — parse + validate sample content", () => {
         // applicableLaw: must be a hyphen-joined alnum token starting with a letter.
         expect(validateContent({ applicableLaw: "US CA" }, parsed.spec).ok).toBe(false);
         expect(validateContent({ applicableLaw: "-US" }, parsed.spec).ok).toBe(false);
-        // forum: empty string is no longer a valid value (omit instead).
+        // forum: empty string is not a valid value (omit instead).
         expect(validateContent({ applicableLaw: "US", forum: "" }, parsed.spec).ok).toBe(false);
         // language: ISO 639 / BCP 47 shape — a full word is not a code.
         expect(validateContent({ applicableLaw: "US", language: "english" }, parsed.spec).ok).toBe(false);
