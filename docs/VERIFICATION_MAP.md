@@ -7,8 +7,8 @@ This document ties every protocol property to its enforcement across five layers
 - **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
-- **TLA+** — what is exhaustively model-checked (48 invariants across 4 models: FigaroCore 9 / 6M+ states, FlorinToken 8 / 160k states, WitnessSwapAndCommitCoordinator 10 / 2M distinct states, SettlementUniverses 21 / 2.6M distinct states)
-- **Halmos** — what is symbolically proved at the bytecode level (32 properties across 4 harness files, z3 solver)
+- **TLA+** — what is exhaustively model-checked (models and their counts: `TESTING.md` § TLA+)
+- **Halmos** — what is symbolically proved at the bytecode level (z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
 
@@ -90,7 +90,7 @@ does not log.
 | K-5 | Monotonic accumulator ($cumulativeValue$ only increases) | `uint256 actualCumulative = ps.cumulativeValue + c.payment` + `CumulativeValueMismatch` revert | `FigaroCoreTest`: accumulator tests | `CumulativeIntegrity` — $cumulativeValue = \sum(payment)$ | `echidna_cumulative_accounting` — accumulator = sum(payment) | `/kernel` → /papers/asymmetric-bonding (cumulative bonding); `/spec` → Kernel (`FigaroCore.sol`) |
 | K-6 | No internal ledger — direct ERC-20 transfer at resolution | `currency.safeTransfer(seller, 2*cumVal + payment)` + `currency.safeTransfer(buyer, payment)` | `FigaroCoreTest`: payout assertions; `FigaroCoreEventEmissionTest`: OrderResolved events | Not modeled (TLA+ abstracts transfer mechanics; wallets model is sufficient) | — | `/kernel` → resolution pays out directly, no internal ledger; `/spec` → Kernel (`FigaroCore.sol`) |
 | K-7 | Per-process immutable token binding | `if (c.currency != address(ps.currency)) revert CurrencyMismatch()` on sub-orders | `FigaroCoreRevertBranchTest`: currency mismatch revert | Implicitly via single-currency model | — | `/spec` → Kernel (`FigaroCore.sol`) |
-| K-8 | Both parties sign off-chain via EIP-712 typed data | `ECDSA.recover(digest, buyerSig)` + `ECDSA.recover(digest, sellerSig)` checks in `commit()` | `FigaroCoreTest`: signature verification; SDK `commitments.test.ts`: EIP-712 domain/typed-data build. SDK↔Solidity parity is now UNCONDITIONAL: `sdk/tests/eip712Parity.test.ts` freezes SDK-computed vectors, `test/kernel/Eip712ParityTest.t.sol` asserts the kernel reproduces every hash (domain separator both ways, `hashStruct`, digest, order hash) — runs in sdk-ci + foundry-ci with no chain; the skipIf-gated `integration.test.ts` round-trip is now the redundant belt | Not modeled (TLA+ abstracts signature mechanics) | — | `/sign` → commitment signing UI |
+| K-8 | Both parties sign off-chain via EIP-712 typed data | `ECDSA.recover(digest, buyerSig)` + `ECDSA.recover(digest, sellerSig)` checks in `commit()` | `FigaroCoreTest`: signature verification; SDK `commitments.test.ts`: EIP-712 domain/typed-data build. SDK↔Solidity parity is unconditional: `sdk/tests/eip712Parity.test.ts` freezes SDK-computed vectors, `test/kernel/Eip712ParityTest.t.sol` asserts the kernel reproduces every hash (domain separator both ways, `hashStruct`, digest, order hash) — runs in sdk-ci + foundry-ci with no chain; the skipIf-gated `integration.test.ts` round-trip is the redundant belt | Not modeled (TLA+ abstracts signature mechanics) | — | `/sign` → commitment signing UI |
 | K-9 | `orderHash = keccak256(processId ‖ structHash)`, content-addressed | `bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash))` + `if (orderStatus[orderHash] != 0) revert DuplicateCommitment()` — a defensive backstop: every identical-commitment replay is preempted earlier (`ProcessAlreadyExists` at the root; `CumulativeValueMismatch` on sub-orders, since the accumulator has strictly moved) | `FigaroCoreRevertBranchTest`: replay-preemption tests pin the preempting error on both paths; SDK `integration.test.ts`: live-chain acceptance of an SDK-built commitment (hash parity, skipIf-gated) | Not directly modeled (TLA+ uses sequential IDs) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 
 ---
@@ -105,9 +105,9 @@ does not log.
 | A-4 | Per-process $cumulativeValue = \sum(order.payment)$ | `actualCumulative = ps.cumulativeValue + c.payment` with mismatch revert | `FigaroCoreTest`: accumulator arithmetic | `CumulativeIntegrity` — verified | `echidna_cumulative_accounting` | `/spec` → Kernel (`FigaroCore.sol`) |
 | A-5 | Per-process $activeCount = count(committed)$ | `ps.activeOrderCount++` on commit, `ps.activeOrderCount--` on resolve with count match | `FigaroCoreTest`: multi-order lifecycle | `ActiveCountCorrect` — verified | `echidna_active_count_consistent` | Not directly presented |
 | A-6 | Contract can resolve any active process | Follows from A-1 + A-2 + bond calculation | `GasCeilingTest`: the resolveProcess per-order gas regression guard (~23k warm marginal, mirrored in the frontend's gas ceilings) | `ResolutionAlwaysPossible` — verified | — | Not directly presented |
+| A-7 | Fee-on-transfer token rejection | `_pullExact`: `uint256 received = after - before; if (received != amount) revert FeeOnTransferDetected()` | `FigaroCoreRevertBranchTest`: fee-on-transfer token test (`MockERC20FeeOnTransfer`) | Not modeled (TLA+ abstracts ERC-20 mechanics) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 | A-8 | Held deposits = 2×payment (buyer) + 2×cumulativeValue (seller) per committed order | `commit`: `_pullExact` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller | `FigaroCoreTest`: `test_sellerBond_scalesWithCumulativeValue` | `DeterrentEscrowMagnitudes` — verified | — | `/invariants`, `/kernel` |
 | A-9 | Resolution moves exactly `payment` buyer → seller; both bonds return whole | `resolveProcess`: seller receives `2*cumulativeValue + payment`, buyer receives `payment` | `FigaroCoreTest`: `test_resolution_payouts_progressiveCollateral`, `test_solvency_contractBalanceZeroAfterResolve` | `SettledNetPositions` — verified | — | `/invariants`, `/kernel` |
-| A-7 | Fee-on-transfer token rejection | `_pullExact`: `uint256 received = after - before; if (received != amount) revert FeeOnTransferDetected()` | `FigaroCoreRevertBranchTest`: fee-on-transfer token test (`MockERC20FeeOnTransfer`) | Not modeled (TLA+ abstracts ERC-20 mechanics) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 
 ---
 
@@ -120,8 +120,8 @@ does not log.
 | E-4 | Member stake = staked intent (K4), reclaimed in TWO steps: `requestWithdrawal()` de-surfaces IMMEDIATELY (guard cleared, re-registration allowed at once), `withdraw()` releases the ETH only after `withdrawalCooldown`. The cooldown is what makes the stake price identity rather than rent it — without it one stake serves N identities in sequence | `register()`: stake-bound match + dedup guard; `requestWithdrawal()`: requires registered, clears the guard, accrues `pendingDeposit` + sets `releaseAt`; `withdraw()`: requires something pending and `block.timestamp >= releaseAt`, else `NothingPending` / `CooldownActive`. `updateProfile()` is a separate caller-only path that emits `MemberProfileUpdated` without touching the stake | `MembersRegistryTest`: register, stake-bound match, dedup, de-surface-at-request, cooldown-gates-the-claim, immediate re-registration costs a SECOND stake, repeated requests accumulate + restart the clock, double-claim refused, zero-cooldown and zero-stake degenerate cases, fuzz `everyDepositIsEventuallyClaimable` (nothing strandable); e2e `member-withdraw.devnet.spec.ts` (UI drives BOTH steps + exact registry ETH delta, and asserts the ETH does NOT move at step 1) | `/members`; `/spec` → Optional protocol contracts (`MembersRegistry.sol`) |
 | E-5 | The four stake properties the economic Sybil bound `deposit · N · T / P` rests on. Proving them does NOT prove the deposit is big ENOUGH — that is the Tullock rent-dissipation argument and stays paper work. It proves the machine that argument describes is the machine that shipped | `MembersRegistry`: exact-value `register` + dedup guard (solvency, and no path from locked ETH to a fresh registration); `requestWithdrawal` clears `_registered` and books `pendingDeposit` without touching it on re-register (no recycling ⇒ the `N` term survives); `withdraw` never re-registers (eligibility ends at REQUEST ⇒ the `T` term survives); `UsageCounter._accrue` / `applyBatchAccrual` gate on `members.registered` (the linkage) | **Halmos `HalmosMembersRegistry` — 7 symbolic properties, pass 3/6 of `scripts/test-halmos.sh`**: solvency under arbitrary two-member interleavings, pending-always-claimable-in-full, re-registration costs a SECOND deposit, locked ETH cannot fund a registration, de-surfacing at request + no self-heal on claim, the cooldown cannot be skipped for any instant before `releaseAt`, and the counter admits usage iff the stake is live. The two anti-recycling properties were MUTATION-CHECKED (a deliberate recycling bug produces counterexamples), so they are load-bearing rather than vacuous. Concrete companions in `MembersRegistryTest` + `UsageCounterTest.test_sellerLeavingTheRegistryStopsCounting` | `/members` leave/claim flow — the UI drives both steps and the ETH moves only at step 2 |
 | E-6 | Florin supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FlorinToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/florin-schelling-point-token` → supply integrity |
-| E-8 | A `private`-disposition section's plaintext never reaches a PUBLIC surface — the standalone public IPFS pin or the shareable audit bundle. The chain sees only the section FINGERPRINT (the merkle leaf), so `agreementHash` is unchanged whether the section carries plaintext or is withheld | SDK `publicForm(agreement, specs)` (`projection.ts`) content-withholds every section whose spec is LOADED and declares a private field (identical merkle leaf → same root) — FAIL-CLOSED: a section with an UNKNOWN spec is ALSO withheld, because a permissionlessly-registered clause could be private and keeping it plaintext would leak on any cold-cache pin (notably the RECEIVER re-pin, which never loaded the clause). To avoid over-redacting known-public clauses, `publishAgreement` (`frontend/lib/kernel/agreementFetch.ts`) WARMS the agreement's clause specs (`warmAgreementSpecs` → `ClauseRegistered` log scan → `loadClauseSpec`, only for specs actually missing) before projecting, so with the cache warm the fail-closed form is EXACT; if warming fails it over-redacts rather than leaking. The audit bundle renders a withheld section's body as absent automatically; `parseClauseSpec` REJECTS a clause mixing public + private field dispositions (the leaf model withholds a whole section, never one field). The signed + counterparty-relayed forms keep plaintext (Arm 2 encrypts that relay leg) | SDK `projection.test.ts` (withholds private, keeps public plaintext, preserves `agreementHash`, withholds an unknown-spec section fail-closed, `specHasPrivateField`); `spec.test.ts` (mixed-disposition rejected, all-private accepted) | `/data` → the disposition seam ("public = coordination commons, private = paid edge behind the fingerprint") |
 | E-7 | Batch-settled trade counts for the 600M, and counts ONCE. The two settlement universes are disjoint (a batch-settled process never acquires kernel status), so the accrual crosses as PROVED numbers: only `FigaroBatchVerifier` may write it, only with values an immutable vkey committed. Idempotence is guest-owned and holds ACROSS batches because the counted set rides the batch state root. The two paths merge as SCORES — never components, which would over-count breadth for a pair active on both | `applyBatchAccrual()` in `UsageCounter` — `msg.sender == batchVerifier`, `period == currentPeriod()`, provenance-key match, live `members.registered` per distinct seller (reverts — caught by the verifier), a live clause-or-assembly registration deposit AND `excludedClauseOrAssembly` SKIPPED per clause or assembly (never revert — audit Fix 1a/1c), non-decreasing counts, empty accrual = no-op (so settlement outlives the reward). `settleBatch()` in `FigaroBatchVerifier` — `_hashUsage` re-derives the 8th public value from calldata, BOTH array lengths length-prefixed so the split cannot be forged; the accrual call is wrapped in try/catch (`BatchAccrualSkipped`) so a reward-gate revert NEVER unwinds the token settlement, and the sequencer pre-filters poison usage claims (excluded/unregistered/unstaked) against chain state before proving so the catch fires only on the genuine stake-race. Guest (`prover/lib/src/kernel.rs::apply_usage_claims`): post-state `orderStatus == 2`, merkle inclusion against the signed `agreementHash`, `usage_counted` insert-or-reject | Rust `prover/lib/tests/usage.rs` (same-batch credit, unresolved reject, not-in-agreement reject, cross-batch replay reject, breadth vs depth, assembly-via-provenance, wrong-composition reject, hash covers period/provenance/sellers, length-prefix anti-collision, root advances, cross-language vector); Foundry `UsageCounterTest` (writer gate, period, member stake of the seller of record, exclusion, provenance, monotonicity, overwrite-not-accumulate, empty-after-close liveness, score-merge + superadditivity) and `FigaroBatchVerifierTest` (accrual reaches the counter — read back from counter storage, tampered accrual rejected, a counter-rejection is CAUGHT so the batch still settles its positions + advances state with the accrual dropped — `test_settleBatch_settlesEvenWhenTheCounterRejectsTheAccrual`, settles after accrual closes, Rust vector matches the contract's assembly); `UsageCounterTest` also covers the clause-or-assembly registration gate (direct-path `ClauseOrAssemblyNotRegistered`, batch-path skip of excluded + unregistered); SDK `rpgf.test.ts` (both-stream fold, replace-not-accumulate); `batch-e2e.test.ts` settles through a real sequencer + counter | `/rewards` shows both paths' components and the merged `scoreOf` — the figure the minter actually pays |
+| E-8 | A `private`-disposition section's plaintext never reaches a PUBLIC surface — the standalone public IPFS pin or the shareable audit bundle. The chain sees only the section FINGERPRINT (the merkle leaf), so `agreementHash` is unchanged whether the section carries plaintext or is withheld | SDK `publicForm(agreement, specs)` (`projection.ts`) content-withholds every section whose spec is LOADED and declares a private field (identical merkle leaf → same root) — FAIL-CLOSED: a section with an UNKNOWN spec is ALSO withheld, because a permissionlessly-registered clause could be private and keeping it plaintext would leak on any cold-cache pin (notably the RECEIVER re-pin, which never loaded the clause). To avoid over-redacting known-public clauses, `publishAgreement` (`frontend/lib/kernel/agreementFetch.ts`) WARMS the agreement's clause specs (`warmAgreementSpecs` → `ClauseRegistered` log scan → `loadClauseSpec`, only for specs actually missing) before projecting, so with the cache warm the fail-closed form is EXACT; if warming fails it over-redacts rather than leaking. The audit bundle renders a withheld section's body as absent automatically; `parseClauseSpec` REJECTS a clause mixing public + private field dispositions (the leaf model withholds a whole section, never one field). The signed + counterparty-relayed forms keep plaintext (Arm 2 encrypts that relay leg) | SDK `projection.test.ts` (withholds private, keeps public plaintext, preserves `agreementHash`, withholds an unknown-spec section fail-closed, `specHasPrivateField`); `spec.test.ts` (mixed-disposition rejected, all-private accepted) | `/data` → the disposition seam ("public = coordination commons, private = paid edge behind the fingerprint") |
 
 ---
 
@@ -132,7 +132,7 @@ This section tracks features that are not protocol invariants but are significan
 | Feature | Code location | SDK coverage | UI explainer pages | UI functional surfaces | Gap? |
 |---|---|---|---|---|---|
 | **Handoff encryption (ECDH)** | `frontend/lib/handoff/` | `@figaro-protocol/sdk/handoff` (ecdh, auth, messages) | — | `AddressDetailPanel` + `ContentDeliveryPanel` (`components/runtime/` — the `ecdh-address` / `ecdh-content` ceremony surfaces) | — |
-| **Delivery attestation (4 modes)** | removed (proximity proofs live in the handoff clause runtime, `frontend/lib/handoff/`) | `@figaro-protocol/sdk/derive`: `geohashesMatch`, `haversineDistance` | `/spec` → Attestation & clause | `GeohashFieldInput` (`components/runtime/` — device-location geohash capture), `/evidence-display` | — |
+| **Proximity evidence** | `frontend/lib/handoff/` — the handoff clause runtime | `@figaro-protocol/sdk/derive`: `geohashesMatch`, `haversineDistance` | `/spec` → Attestation & clause | `GeohashFieldInput` (`components/runtime/` — device-location geohash capture), `/evidence-display` | — |
 | **DID:web identity** | `frontend/lib/agent/useDidWeb.ts` | `@figaro-protocol/sdk/agent`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/spec` → Optional protocol contracts (`MembersRegistry.sol`) | `MemberAgentIdentity` (`components/members/` — resolves the DID Document and checks it names the seller's address) | — |
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/spec` → Composition | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (root + `/agent`, `/derive`, `/clauses`, `/handoff`, `/signer`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/spec` → The sequencer (SDK README) | — | — |
@@ -141,7 +141,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `@figaro-protocol/sdk` `projection.ts` | — | `/assemblies` → What the composition hash covers. | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `/s/checkout` (`CheckoutView` + `CartLineList`); `YourTurnBadge` (header signal for orders awaiting this wallet's counter-signature) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/assemblies` → How one is composed. | `TopologyCanvas` (`/assemblies/designer/new`, `/assemblies/designer/view?slug=<slug>`) | — |
-| **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/spec` → Kernel (`FigaroCore.sol`) | checkout/order surfaces render via the SDK (the dedicated `BondCalculator` component was deleted) | — |
+| **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/spec` → Kernel (`FigaroCore.sol`) | checkout/order surfaces render via the SDK | — |
 | **Single-currency binding** | `src/kernel/FigaroCore.sol` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
 | **Fee-on-transfer rejection** | `src/kernel/FigaroCore.sol` `_pullExact()` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
 
@@ -284,7 +284,7 @@ This closes the verification gap between TLA+ (which verifies the abstract model
 and Foundry/Echidna (which test concrete/random scenarios). Halmos proves the
 actual compiled bytecode satisfies the invariants.
 
-### Properties proved (32/32)
+### Properties proved
 
 **HalmosFigaroCore (7 properties)**
 
@@ -320,16 +320,15 @@ withdrawal; eligibility ends at withdraw with nothing restoring it; cross-key
 isolation. Solvency and first-write-wins MUTATION-CHECKED on both contracts
 (4/4 mutations produced counterexamples).
 
-**Total: 32/32 proved (FigaroCore 7 + MembersRegistry 7 + UsageCounter 6 +
-ClauseRegistry 6 + AssemblyRegistry 6), 0 failed. Typical wall time ~1–2 minutes
-~63s solver total across the six passes.**
+**All proved, none failed. Typical wall time ~63s solver total across the six
+passes.**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
 exercises the full commit + resolve lifecycle symbolically (2 ECDSA recoveries,
 multiple keccak256 instances, 4 ERC-20 transfers) — is especially sensitive
-and will time out under the originally documented 5-minute per-assertion
-ceiling when batched with the other 6 properties in one `halmos` process.
+— batched with the other 6 properties in one `halmos` process it can exceed a
+5-minute per-assertion ceiling.
 The committed wrapper splits it into its own invocation for reliability.
 
 ### How to run
@@ -407,7 +406,7 @@ Foundry-covered companion:
 
 | CVL rule | Maps to | Type |
 |---|---|---|
-| `mintedNeverExceedsPeriodBudget` | E-6 (600M budget) | Inductive conservation — the tranche-overdraw bug class (caught pre-freeze; the cited pre-squash hash is gone from history) |
+| `mintedNeverExceedsPeriodBudget` | E-6 (600M budget) | Inductive conservation — the tranche-overdraw bug class |
 | `noDoubleClaimPerWalletPerPeriod` | E-5/E-6 | State-machine guard |
 | `cannotClaimWhilePeriodOpen` | E-6 | Period gating |
 | `duplicateClauseOrAssemblyReverts` | E-6 | Input-hygiene guard (the historical exploit path) |
@@ -422,10 +421,7 @@ load-bearing, not vacuous.
 
 ### Status
 
-37 declared rules across 6 specs (FigaroCore 8 + FlorinToken 6 +
-AttestationCoordinator 4 + TokenOpsVerification 7 + BatchVerifierTokenOps 4 +
-RpgfMinter 8).
-**All green** — the full 6-spec suite verifies with `--wait_for_results all`
+**All green** — the full suite verifies with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream is the
 `rule_not_vacuous` healthy polarity). Which run, when, and the report URLs:
 `AUDITOR_HANDOVER.md` § "Formal run evidence".
@@ -460,18 +456,17 @@ export CERTORAKEY=<your-key>
 
 ## 12) Test inventory summary
 
-The formal layers carry their property counts here (stable, and
-existence-gated by the maintainers' pre-commit guard battery). The volatile suites
-(Foundry / SDK / frontend / Playwright) store NO counts anywhere — the count
-is derived, never stored; run the command in the Census column. `TESTING.md`
-owns the harness inventory.
+`TESTING.md` owns the harness inventory and every count with it. The volatile
+suites (Foundry / SDK / frontend / Playwright) store NO counts anywhere either —
+the count is derived, never stored; run the command in the Census column. This
+table maps each layer to what it covers.
 
 | Layer | Census | What it covers |
 |---|---|---|
-| **TLA+ model checking** | 4 models, 48 invariants (FigaroCore: 9 across 6,087,113 states; FlorinToken: 8 across 160,844 states; WitnessSwapAndCommitCoordinator: 10 across 1,979,101 distinct states; SettlementUniverses: 21 across 2,632,247 distinct states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel escrow) + the composed settlement universes (no cross-universe double payout, per-pool escrow, score composition, kernel blindness) |
-| **Halmos symbolic testing** | 4 harness files, 32 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two paths, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the designer-side stake machines designer-reward eligibility reads. |
-| **Certora formal verification** | 6 specs, 37 declared rules (8 + 4 + 7 + 6 + 4 + 8) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
-| **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
+| **TLA+ model checking** | `TESTING.md` § TLA+ — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel deposits) + the two paths composed (no cross-path double payout, per-pool deposits, score composition, kernel blindness) |
+| **Halmos symbolic testing** | `TESTING.md` § Halmos — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two paths, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the designer-side stake machines designer-reward eligibility reads. |
+| **Certora formal verification** | `TESTING.md` § Certora — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
+| **Echidna fuzzing** | `TESTING.md` § Echidna — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
 | **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |
 | **Frontend Vitest** | derive: `cd frontend && npx vitest run` | Components, hooks, semantic derivation, assembly, runtime identity |
@@ -487,7 +482,7 @@ owns the harness inventory.
 forge test --via-ir
 ```
 
-### Halmos (32 symbolic proofs across 4 harness files)
+### Halmos
 
 ```bash
 ./scripts/test-halmos.sh
@@ -495,14 +490,14 @@ forge test --via-ir
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-### Certora (37 declared rules across 6 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter — requires API key)
+### Certora (requires API key)
 
 ```bash
 export CERTORAKEY=<key from certora.com/signup>
 ./scripts/test-certora.sh        # wrapper: checks prereqs and runs all specs
 ```
 
-### Echidna (2 harnesses, 15 properties: kernel 7 + FlorinToken 8)
+### Echidna
 
 ```bash
 ./scripts/test-echidna.sh
@@ -510,7 +505,7 @@ export CERTORAKEY=<key from certora.com/signup>
 
 Prereqs: `brew install echidna`.
 
-### TLA+ model checking (48 invariants across 4 models)
+### TLA+ model checking
 
 ```bash
 ./scripts/test-tla.sh
