@@ -39,6 +39,7 @@ contract GasCeilingTest is Test {
     // module — if you bump one, bump both.
     uint256 internal constant RESOLVE_GAS_PER_ORDER = 23_000;
     uint256 internal constant COMMIT_GAS_PER_ORDER = 144_000;
+    uint256 internal constant RESOLVE_FIXED_OVERHEAD = 38_000;
 
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);

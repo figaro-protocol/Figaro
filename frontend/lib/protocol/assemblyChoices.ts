@@ -117,6 +117,9 @@ export interface AssemblyChoice {
     /** The full assembly template when state === "loaded". Avoids re-fetching
      *  from consumers that need it (e.g. fork). */
     assemblyTemplate: AssemblyTemplate | null;
+    /** True when the registering wallet has withdrawn the stake — present only
+     *  on reads that opted in to withdrawn rows (or wallet-scoped reads). */
+    stakeWithdrawn: boolean;
 }
 
 /**
@@ -130,8 +133,9 @@ export interface AssemblyChoice {
  */
 export function useAssemblyChoices(
     registeredBy?: `0x${string}` | undefined,
+    opts?: { includeWithdrawn?: boolean },
 ): { data: AssemblyChoice[] | null; isLoading: boolean; failed: boolean; refetch: () => void } {
-    const { data: events, isLoading, failed, refetch } = usePublishedAssemblies(registeredBy);
+    const { data: events, isLoading, failed, refetch } = usePublishedAssemblies(registeredBy, opts);
     // `activeChain` is env-determined; the read uses the standalone public
     // client bound to it. Wagmi's `useChainId` would reflect the connected
     // wallet's chain, which is irrelevant for a read against a fixed chain
@@ -229,6 +233,7 @@ export function useAssemblyChoices(
                 compositionHash: event.compositionHash,
                 contentURI: event.contentURI,
                 blockNumber: event.blockNumber,
+                stakeWithdrawn: event.stakeWithdrawn,
                 networkTargets: [networkTarget],
                 state,
                 // The editorial name from the pinned template once it loads;

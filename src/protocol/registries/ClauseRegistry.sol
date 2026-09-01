@@ -41,7 +41,7 @@ pragma solidity 0.8.26;
 ///         Mechanism self-declaration: any contract can emit which clause
 ///         it uses. Frontends read these events to determine encoding.
 ///
-///         Grouping: a clause's group is `block.article` in its off-chain spec
+///         Grouping: a clause's group is `block.design.article` in its off-chain spec
 ///         JSON (integrity-bound by contentHash). There is NO on-chain group
 ///         field and never will be — grouping is a READER concern (the drawer's
 ///         headings), derived from the spec, never stored.

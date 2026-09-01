@@ -20,6 +20,7 @@ const CHOICE: AssemblyChoice = {
     agreementCount: 1,
     clauses: ["figaro-commerce"],
     assemblyTemplate: null,
+    stakeWithdrawn: false,
 };
 
 describe("DisclosurePolicyEditor — posture scoping", () => {

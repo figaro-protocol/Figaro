@@ -148,6 +148,12 @@ live. These are separate from the external-audit gate above:
   proof, not the deploy transaction succeeding.
 - `FlorinToken.deployer` == the expected deployer EOA; `FlorinToken.deployerMintRenounced` == `true` after minter setup; `FlorinToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
+- After genesis clause registration (`frontend/scripts/populate-clauses.mjs` — NOT
+  run by the deploy script, and its signer falls back to the anvil test key when
+  `REGISTRAR_PRIVATE_KEY` is unset): `ClauseRegistry` `registeredBy` for the
+  `figaro-commerce` and `figaro-topology` keys == `DAO_WALLET`. The treasury is
+  paid designer rewards as designer of record only if this holds (`/dao`,
+  `DAO.md`); nothing else enforces it.
 - `MembersRegistry.registrationDeposit` / `.withdrawalCooldown` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `0` placeholders). Both MembersRegistry values are immutable and cannot be corrected after deploy.
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
 - `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), `UsageCounter.periodEnd(0..8)` == the nine annual boundaries derived from `RPGF_GENESIS`, and `UsageCounter.minSellers` == 3 — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.periodAmount` (45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping) sums to 600M and its length is validated on-chain against `periodCount()`.

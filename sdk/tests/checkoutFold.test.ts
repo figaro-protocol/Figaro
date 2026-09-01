@@ -143,6 +143,14 @@ describe("fillClassSections — catalogue-sourced values folded onto their leave
         expect(out["figaro-freight-class"]).toMatchObject({ nmfcClass: "70", nmfcItem: "156600" });
     });
 
+    it("folds ONLY the spec's declared catalogueFills — an undeclared key never reaches the leaf", () => {
+        const out = fillClassSections({ "figaro-freight-class": {} }, [
+            line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100", rate: "0.01" } } }),
+        ], FREIGHT);
+        expect(out["figaro-freight-class"]).toMatchObject({ nmfcClass: "100" });
+        expect(out["figaro-freight-class"]).not.toHaveProperty("rate");
+    });
+
     it("an empty-string template entry is not a pin — the catalogue value fills it", () => {
         const out = fillClassSections({ "figaro-freight-class": { nmfcClass: "" } }, [
             line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100" } } }),

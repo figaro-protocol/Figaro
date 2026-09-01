@@ -294,9 +294,11 @@ export function fillCargoSection(
  * Fold the catalogue-authored class values onto their leaves. For each
  * clause the order composes with catalogue-authored fields (freight-class /
  * hazmat / cold-chain, …, discovered by `block.checkout.catalogueFills`, never
- * by name), write the first line's authored values — a homogeneous-order
- * assumption (mixed classes are a multi-ORDER concern per the aggregate
- * model). Absent when no line carries values for that clause.
+ * by name), write the first line's authored values — restricted to the spec's
+ * DECLARED catalogue-authored subset (`specCatalogueFills`), the same
+ * discipline as the profile fold — a homogeneous-order assumption (mixed
+ * classes are a multi-ORDER concern per the aggregate model). Absent when no
+ * line carries declared values for that clause.
  */
 export function fillClassSections(
     clauses: ClauseFields,
@@ -311,7 +313,12 @@ export function fillClassSections(
             (li) => li.clauseValues?.[clauseId] && Object.keys(li.clauseValues[clauseId]).length > 0,
         );
         if (!line) continue;
-        out = { ...out, [clauseId]: mergeUnderTemplate(out[clauseId], line.clauseValues![clauseId]) };
+        const declared = specCatalogueFills(spec);
+        const authored = Object.fromEntries(
+            Object.entries(line.clauseValues![clauseId]).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
+        );
+        if (Object.keys(authored).length === 0) continue;
+        out = { ...out, [clauseId]: mergeUnderTemplate(out[clauseId], authored) };
     }
     return out;
 }

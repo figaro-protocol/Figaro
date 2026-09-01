@@ -150,15 +150,26 @@ const useAssemblyRegistryScan = createRegistryEventScan<PublishedAssembly>({
             stakeWithdrawn: withdrawn.has(row.compositionHash.toLowerCase()),
         }));
         items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
-        // Withdraw = de-surface: the network-wide read powers every
-        // surfacing path, so it drops withdrawn stakes; the registering
-        // wallet's own read keeps them, flagged.
-        return registeredBy ? items : items.filter((i) => !i.stakeWithdrawn);
+        // All rows, flagged — the de-surface policy is applied in
+        // `usePublishedAssemblies`, where a consumer that must SHOW
+        // withdrawn stakes (the registry explorer's withdrawn view) can
+        // opt out of it.
+        return items;
     },
 });
 
-export function usePublishedAssemblies(registeredBy: `0x${string}` | undefined) {
-    return useAssemblyRegistryScan({ registeredBy });
+export function usePublishedAssemblies(
+    registeredBy: `0x${string}` | undefined,
+    opts?: { includeWithdrawn?: boolean },
+) {
+    const scan = useAssemblyRegistryScan({ registeredBy });
+    // Withdraw = de-surface: the network-wide read powers every surfacing
+    // path, so it drops withdrawn stakes; the registering wallet's own read
+    // keeps them, flagged, and `includeWithdrawn` keeps them for a reader
+    // whose job is showing the withdrawn set (the registry explorer).
+    const keep = !!registeredBy || !!opts?.includeWithdrawn;
+    const data = scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data;
+    return { ...scan, data };
 }
 
 /**

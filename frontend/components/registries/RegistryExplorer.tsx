@@ -65,7 +65,7 @@ export function RegistryExplorer() {
     // ── The three registries, each through its own walletless reader ──
     const { data: clauseEvents, failed: clausesFailed } = useAllRegisteredClauses();
     const { version: specVersion } = useClauseSpecs();
-    const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices();
+    const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices(undefined, { includeWithdrawn: true });
     const { data: members, failed: membersFailed } = useRegisteredMembers();
 
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
@@ -87,7 +87,7 @@ export function RegistryExplorer() {
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
                 content: a.state === "loaded" ? "resolved" : "resolving",
-                registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: false, clauses: a.clauses ?? [],
+                registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
                 text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? [])].join(" "),
             });
         }
