@@ -239,9 +239,8 @@ reads that same fixture and asserts the Solidity kernel reproduces every hash �
 `CommitmentTypes.hashStruct` directly, the order-hash derivation verbatim, and
 the domain separator both ways (SDK vector == formula, and a live
 `FigaroCore.DOMAIN_SEPARATOR()` == formula). Runs in BOTH the SDK and Foundry
-CI jobs with no chain and no skipIf — the SDK↔kernel signature agreement that
-was previously only in the skipIf-gated `integration.test.ts` round-trip is now
-a hard gate.
+CI jobs with no chain and no skipIf: a hard gate on SDK↔kernel signature
+agreement.
 
 ## Playwright — the project model (`playwright.config.ts`)
 
@@ -249,8 +248,20 @@ a hard gate.
 test-scaffolding templates + every reference assembly from `assemblies/*.json` +
 sellers; seeding is pre-population, never a test) → run) and
 `npm run test:e2e:mobile`.
-Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
-is e2e-only.
+Config: `playwright.config.ts`. Playwright is e2e-only.
+
+The webServer is a **production build** by default (`next build` → static
+export served by `serve` on :3100, ~90 s build — there is no `next start` under
+`output: export`): the dev server degrades after ~25 min of compile-on-demand
+(the seller-history tail-position flake), and devnet is a
+mainnet rehearsal — participants hit the exported production artifact. The build
+inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or an
+app-code edit — a reused server keeps serving the build it started with.
+`PLAYWRIGHT_WEB_MODE=dev` restores the dev-server webServer for HMR-speed
+iteration. In production builds, test-helper gating honors only the explicit
+`NEXT_PUBLIC_ENABLE_TEST_HELPERS` build-time opt-in (`lib/shared/testHelpers.ts`,
+`lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
+hard-off (RA-5 intent preserved).
 
 The projects, as `playwright.config.ts` declares them (the config, not this
 list, is the census):
@@ -352,8 +363,9 @@ claims to have written it.
 be fed nothing. Every layer below can be green — Foundry, Halmos, tsc, knip, unit
 tests, review — while the product does nothing, because the fault is that a call
 never happens, or happens and reverts, or happens and its result is never read.
-None of that appears in a diff, and none of it errors. Four instances, all found
-in a single day and *only* by chain-fact assertions:
+None of that appears in a diff, and none of it errors. Three instances, all found
+in a single day and *only* by chain-fact assertions (with the control that stayed
+correct throughout):
 
 | what was broken | what it looked like | the assertion that caught it |
 |---|---|---|
@@ -375,8 +387,9 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
   re-used chain because withdrawal requests accumulate BY DESIGN. Assert the
   **delta** across the action.
 - **Totals that are only true in isolation.** `periodTotal == thisClauseOrAssembly.score`
-  holds only on a chain where nothing else traded; inside a suite ~28 specs have
-  already accrued. Assert the real relationship (`>=`), not the isolated case.
+  holds only on a chain where nothing else traded; inside a suite every prior
+  spec has already accrued. Assert the real relationship (`>=`), not the
+  isolated case.
 - **Quoting a different set than the UI acts on.** The rewards page claims EVERY
   clause or assembly the wallet designed; quoting one and asserting equality is a category
   error. Prefer asserting **what the UI promised the user** — the rendered figure
@@ -394,21 +407,7 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
 there and is cheaper to prove there. Chain-fact e2e covers the seam Foundry
 cannot see — *whether the product actually calls the contract, with the right
 arguments, and reads the answer back*. The two are complements, and the seam
-between them is where those four defects lived.
-
-
-The webServer is a **production build** by default (`next build` → static
-export served by `serve` on :3100, ~90 s build — there is no `next start` under
-`output: export`): the dev server degrades after ~25 min of compile-on-demand
-(the seller-history tail-position flake), and devnet is a
-mainnet rehearsal — participants hit the exported production artifact. The build
-inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or an
-app-code edit — a reused server keeps serving the build it started with.
-`PLAYWRIGHT_WEB_MODE=dev` restores the dev-server webServer for HMR-speed
-iteration. In production builds, test-helper gating honors only the explicit
-`NEXT_PUBLIC_ENABLE_TEST_HELPERS` build-time opt-in (`lib/shared/testHelpers.ts`,
-`lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
-hard-off (RA-5 intent preserved).
+between them is where those three defects lived.
 
 **devnet (`*.devnet.spec.ts`)** — **the directory listing is the census**
 (`ls frontend/tests/e2e/*.devnet.spec.ts` — derived, never a stored count; the
@@ -466,7 +465,7 @@ Per workflow, what it runs and when:
   `populate-test-data`, the `orders-accept` devnet spec against the production
   static export — then the FOUR origination proofs on the same stack
   (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`). The highest-catch
-  layer, no longer maintainer-discipline-only. Broader devnet specs stay
+  layer, run in CI. Broader devnet specs stay
   maintainer-run.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: two npm-audit legs (root
   production deps at high+; frontend production deps at critical-only). The
