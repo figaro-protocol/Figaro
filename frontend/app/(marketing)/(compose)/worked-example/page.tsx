@@ -91,9 +91,10 @@ export default function WorkedExample() {
                     <li>&mdash; <strong className="text-ink-heading font-medium">The buyer bonds 840.</strong> Twice each payment, posted as each order joins the process.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed">
-                    None of it is a charge. A bond is a deterrent its owner posts against itself: it
-                    never moves to the other side, and it is refunded in the same transaction that
-                    pays everyone. Which is why the contributor &mdash;
+                    None of it is a charge. A bond is a deterrent its owner posts against itself: no
+                    bond ever moves to the other side as a penalty, and resolution refunds each one
+                    &mdash; the sellers&apos; whole, the buyer&apos;s less the payments it carried
+                    &mdash; in the same transaction that pays everyone. Which is why the contributor &mdash;
                     the party earning the smallest share &mdash; posts the largest seller&apos;s
                     bond, and that is the point rather than a quirk: whoever commits last is
                     carrying everyone&apos;s work forward, and stands behind all of it.
@@ -124,7 +125,7 @@ export default function WorkedExample() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-5">
                     And if the buyer never confirms? Every bond stays where it is &mdash; the
-                    buyer&apos;s own 600 included &mdash; and nobody is paid until the shortfall,
+                    buyer&apos;s own 840 included &mdash; and nobody is paid until the shortfall,
                     if there is one, is put right. What that standoff costs whom, and why the
                     close is the buyer&apos;s alone, is answered on the{" "}
                     <Link href="/faq#multi-party" className="text-ink-heading hover:underline">FAQ</Link>.

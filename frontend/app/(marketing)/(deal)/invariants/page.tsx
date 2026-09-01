@@ -37,7 +37,7 @@ export default function Invariants() {
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <ol className="space-y-4 list-decimal pl-5">
                         <li>
-                            <strong className="text-ink-heading">Asymmetric bonding.</strong> The buyer locks twice the payment; each seller locks twice the value the trade has accumulated at its own link. <em>What it means for you:</em> whatever the other side is thinking, honoring the trade leaves them better off than walking away from it.
+                            <strong className="text-ink-heading">Asymmetric bonding.</strong> The buyer locks twice the payment; each seller locks twice the value the trade has accumulated at its own link. <em>What it means for you:</em> honoring the trade is each party&apos;s best strategy against the other&apos;s &mdash; a Nash equilibrium, not a promise. Once the work is delivered, resolving is strictly the buyer&apos;s best move whatever the seller is like; with that fixed, delivering is strictly each seller&apos;s best response.
                         </li>
                         <li>
                             <strong className="text-ink-heading">Cumulative bonding.</strong> A seller&apos;s bond covers everything already added ahead of it, not just its own line. <em>What it means for you:</em> a trade with six hands in it is secured the same way a trade with one is &mdash; no coordinator, and nothing new to trust as the chain gets longer.
@@ -52,7 +52,7 @@ export default function Invariants() {
                             <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nobody can swap anything in underneath the data. A forum or a court reads what happened. It does not have to reconstruct it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the contract knows &mdash; no refund path, no timeout, no admin key, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone but the two parties to it, which is also why whatever is wrong gets put right before the close rather than argued about after it.
+                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the contract knows &mdash; no refund path, no timeout, no admin key, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone outside it &mdash; and inside it, only the buyer&apos;s close moves anything &mdash; which is also why whatever is wrong gets put right before the close rather than argued about after it.
                         </li>
                     </ol>
                     <p>

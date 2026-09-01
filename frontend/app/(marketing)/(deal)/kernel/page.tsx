@@ -7,7 +7,7 @@ import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFig
 export const metadata: Metadata = withOg({
     title: "Kernel — Figaro Protocol",
     description:
-        "How a Figaro trade works: both sides lock a bond larger than the payment, so cheating always loses; the buyer closes it out; every step is written down permanently.",
+        "How a Figaro trade works: both sides lock a bond larger than the payment, so cooperation is the equilibrium; the buyer closes it out; every step is written down permanently.",
 });
 
 // FigaroCore's mechanism design, and ONLY that: the kernel page never carries
@@ -25,7 +25,7 @@ export default function Kernel() {
                 Two bonds, each bigger than the trade. One rule for who opens the box. That is the entire machine.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                The short version is a lockbox. Both sides put in a bond worth more than the payment. A small program holds it &mdash; running in the open, owned by no one, following one fixed rule. Say the trade is worth ten tokens, in any ERC20 the participants accept. The buyer locks twenty &mdash; the ten they owe, and ten more as a bond. The seller locks twenty too, all of it bond. Forty is held, and until the trade is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
+                The short version is a lockbox. Both sides put in a bond worth more than the payment. A small program holds it &mdash; running in the open, owned by no one, following one fixed rule. Say the trade is worth ten tokens, in the ERC20 the participants chose. The buyer locks twenty &mdash; one bond of twice the payment, the ten they owe carried inside it. The seller locks twenty too, all of it bond. Forty is held, and until the trade is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-4">
                 Why twice the value, and not the payment plus a small margin? Because the size of the bond is the whole mechanism. At twice the value there is no amount that is clever to steal:
@@ -45,7 +45,7 @@ export default function Kernel() {
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-A forfeited bond is simply value that is never refunded, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is exactly why walking away is rare: it always costs the one who walks more than finishing ever could. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
+A forfeited bond is simply value that is never refunded, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is what turns walking away into the losing move: whoever walks stands worse off than finishing would have left them &mdash; counting everything they kept &mdash; so long as the rest of the chain performs. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 Value you part with has always had two modes: spent, or invested. A bond is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the trade&apos;s duration that capital stands idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it is refunded intact every honest time.
@@ -54,7 +54,7 @@ A forfeited bond is simply value that is never refunded, locked in the box, bene
                 Who opens the box.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer is locked at twice the value too, so stalling costs the buyer exactly as much as anyone. No arbitrator weighs the case; no timer releases what is locked. And because nothing resolves until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade closes.
+                One rule decides who opens the lockbox: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same box, and nothing returns to anyone until the buyer closes. No arbitrator weighs the case; no timer releases what is locked. And because nothing resolves until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade closes.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Two mechanisms, not one.

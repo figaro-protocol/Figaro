@@ -42,7 +42,7 @@ export default function Agents() {
 
             <MarketingSection title="Bond-weighted reputation.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The validation layer for an agent is its bonding history. An agent that has resolved a thousand orders, each with twice its value bonded and refunded, leaves a trail of bond actually placed and actually honored &mdash; readable by anyone, from the chain, without asking the agent or a venue for it. Bonding is itself the proof of that commitment; its resolution history is itself the reputation.
+                    The validation layer for an agent is its bonding history. An agent that has carried a thousand orders to resolution, each bonded at twice the value its chain had accumulated and refunded when its buyer closed, leaves a trail of bond actually placed and actually honored &mdash; readable by anyone, from the chain, without asking the agent or a venue for it. Bonding is itself the proof of that commitment; its resolution history is itself the reputation.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Reputation systems built beside a substrate &mdash; ratings, peer reviews, third-party scores &mdash; answer the question the substrate leaves open: whether a counterparty is likely to perform. Here the bond answers it inside the trade. So what an agent carries is posted, never issued: it bonded its own value, order by order, and nothing grades it, ranks it, or can take it away &mdash; the standing is the live bond and the resolved trail behind it, both the agent&apos;s own. An agent is free to consult an outside rating on top; the mechanism does not require one.

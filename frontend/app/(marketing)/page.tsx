@@ -12,7 +12,7 @@ import {
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol — My word is my bond",
     description:
-        "Write a process: clauses write the agreement between a buyer and a seller, and, composed into an assembly, many sellers run one process a whole market can reuse. It holds because one contract makes keeping your word the winning move — and the record it leaves answers taxation, consent, emissions, or a courtroom alike.",
+        "Write a process: clauses write the agreement between a buyer and a seller, and, composed into an assembly, many sellers run one process a whole market can reuse. It holds because one contract makes keeping your word each side's best answer to the other — and the record it leaves answers taxation, consent, emissions, or a courtroom alike.",
 });
 
 // Copy constraints the code can't show: "process" always means the economic
@@ -53,7 +53,7 @@ export default function Home() {
                 }
             >
                 <p className="text-body-lead text-ink-muted max-w-2xl mt-5">
-                    It holds because one contract makes keeping your word the winning move &mdash; disputes become the exception, not the norm &mdash; and when taxation, consent, emissions, or a courtroom still asks, the same verifiable record answers. What we built is the start, not the boundary: the protocol is designed to outlive its builders, with nine tenths of its tokens reserved for the community that extends it &mdash; paid to whoever writes the clauses and assemblies the world ends up using. All of it transparent; all of it verifiable.
+                    It holds because one contract makes keeping your word each side&apos;s best answer to the other &mdash; disputes become the exception, not the norm &mdash; and when taxation, consent, emissions, or a courtroom still asks, the same verifiable record answers. What we built is the start, not the boundary: the protocol is designed to outlive its builders, with nine tenths of its tokens reserved for the community that extends it &mdash; six tenths paid to whoever writes the clauses and assemblies the world ends up using, three held by a treasury spent by human judgment. All of it transparent; all of it verifiable.
                 </p>
                 {/* The promoted thesis + audience router (ruled 2026-08-25 on the
                     run-13 evidence: the plain pitch and the newcomer's door belong
@@ -96,7 +96,7 @@ export default function Home() {
 
             <MarketingSection title="One deal that enforces itself">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Every trade is a contract. Between strangers, one part of it always fails: promising is easy, delivering is not, and nothing about the promise makes the delivery credible. Arithmetic does. The buyer bonds twice the payment. Each seller bonds twice the value the trade has accumulated at their link. Keeping your word becomes everyone&apos;s best move &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole trade resolves at once on Ethereum: everyone is paid, every bond returns, and securing it all costs cents to a few dollars of fixed gas at typical network prices, batched at scale.
+                    Every trade is a contract. Between strangers, one part of it always fails: promising is easy, delivering is not, and nothing about the promise makes the delivery credible. Arithmetic does. The buyer bonds twice the payment. Each seller bonds twice the value the trade has accumulated at their link. Keeping your word becomes each side&apos;s best answer to the other &mdash; a theorem, not a policy. There is no amount that is clever to steal. When the buyer accepts, the whole trade resolves at once on Ethereum: everyone is paid, every bond is refunded &mdash; the buyer&apos;s less the payments it carried &mdash; and each step costs cents to a few dollars of gas at typical network prices, batched at scale.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The grower, the roaster, the caf&eacute;. The writer, the editor, the printer. A trade is rarely two people; it is a chain of hands, each adding value &mdash; and the chain resolves as one. When a trade goes wrong, remedies are negotiated while every bond is still locked; the FAQ has the long version. Anyone who can sign can take part: a person, a business, a software agent, an asset with its own wallet &mdash; the protocol has no gatekeeper to admit you or turn you away.
