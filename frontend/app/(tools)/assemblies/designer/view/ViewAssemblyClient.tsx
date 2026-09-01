@@ -336,9 +336,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     }
 
     // Receipt state: publish succeeded, awaiting seller dismissal.
-    // Mirrors the seller wizard's post-publish receipt — replaces the
-    // prior window.alert that the user dismissed instantly with no
-    // persistent record of the tx hash + IPFS URI.
+    // Mirrors the seller wizard's post-publish receipt: a persistent
+    // record of the tx hash + IPFS URI, not a dismissible alert.
     if (receipt) {
         return (
             <TransactionReceipt

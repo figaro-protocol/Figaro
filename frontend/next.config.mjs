@@ -4,7 +4,7 @@ const PHASE_PRODUCTION_BUILD = 'phase-production-build';
 
 /** @type {import('next').NextConfig} */
 
-// BUILD-TIME SAFETY GATE (security audit 2026-07-22, finding 4).
+// BUILD-TIME SAFETY GATE.
 //
 // The test-helper / test-signer paths (?e2e=mock, the injected test private key,
 // the fake dev provider) are all gated OFF in code by a `NODE_ENV==='production'`
@@ -51,16 +51,15 @@ function assertNoTestFlagsInProductionBuild() {
 // CDN or static host with no Node.js runtime.
 //
 // What a static export CANNOT do, and where each moved:
-//   - Server `headers()` / CSP  → the hosting/CDN layer. The prior per-request
-//     CSP nonce (middleware.ts, now removed — middleware is incompatible with
-//     output: export) cannot exist without a server; a static deploy applies a
-//     hash- or 'unsafe-inline'-based CSP + the HSTS/X-Frame/etc. headers at the
-//     edge. The full policy that must be reproduced there is documented in
-//     `docs/FRONTEND.md` § "Static export".
-//   - `redirects()` / `rewrites()` → the hosting layer. The legacy-URL
-//     redirects and the dev `/rpc` proxy are gone from here; the RPC transport
-//     now points straight at the chain endpoint in every environment (see
-//     `lib/shared/wagmi.ts`), which is how the production build has always run.
+//   - Server `headers()` / CSP  → the hosting/CDN layer. Per-request CSP
+//     nonces need middleware, which is incompatible with output: export;
+//     a static deploy applies a hash- or 'unsafe-inline'-based CSP +
+//     the HSTS/X-Frame/etc. headers at the edge. The full policy that must
+//     be reproduced there is documented in `docs/FRONTEND.md` §
+//     "Static export".
+//   - `redirects()` / `rewrites()` → the hosting layer. The RPC transport
+//     points straight at the chain endpoint in every environment (see
+//     `lib/shared/wagmi.ts`).
 //   - Dynamic route segments over open-world ids → query params. An id (any
 //     processId / seller address / assembly slug) is unknowable at build time,
 //     so `generateStaticParams` cannot enumerate it. The id-bearing routes read
@@ -83,7 +82,7 @@ const nextConfig = {
     // directory + index.html, and a bare nginx `$uri/` try_files hits it.
     // Under the flat `.html` shape (trailingSlash: false), `/why/` 404s on
     // hosts without a rewrite layer — external links that pick up a slash
-    // are lost (blind probe, 2026-08-07). `scripts/serve-export.mjs`
+    // are lost. `scripts/serve-export.mjs`
     // resolves both shapes, so the e2e webServer needs no change.
     trailingSlash: true,
 

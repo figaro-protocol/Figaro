@@ -12,9 +12,9 @@
  *     from the spec's `block.design.article`, never a hardcoded list), a checkbox
  *     per clause.
  *
- * The legacy per-article clause-editing tabs (and their hardcoded option
- * enums / sentinels / spec-card field controls) were removed; clause
- * composition is being migrated onto the registry surface.
+ * Clause composition happens on this registry surface, never through
+ * per-article editing tabs or hardcoded option enums / sentinels / spec-card
+ * field controls.
  *
  * Rendering modes:
  *   - `embedded` (default false): fixed-overlay positioning used by /edit.
