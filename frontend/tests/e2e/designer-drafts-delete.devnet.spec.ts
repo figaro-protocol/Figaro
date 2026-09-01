@@ -1,3 +1,4 @@
+// lint-allow-no-chain-facts: drafts live in localStorage; this spec writes nothing to the chain.
 /**
  * designer-drafts-delete.devnet.spec.ts
  *
