@@ -37,9 +37,7 @@ export function MemberCard({
             data-testid="member-card"
             data-seller-address={listing.address}
         >
-            {/* Title block — the only navigation target on the card.
-             *  The prior "Example" badge surfaced fixture-provenance listings,
-             *  which are no longer blended into discovery. */}
+            {/* Title block — the only navigation target on the card. */}
             <Link
                 href={href}
                 className="flex items-start gap-3 mb-3 group"
