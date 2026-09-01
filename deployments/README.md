@@ -34,7 +34,7 @@ gateway), so a from-genesis scan of a real network never completes.
 A public deployment's record carries only the contracts
 `script/DeployMainnet.s.sol` actually deploys — no devnet mocks
 (`MockERC20`, `MockPermitToken`, the swap/permit2 mocks, `MockTreasuryMultisig`,
-`MockDisperse`). `scripts/deploy-mainnet.sh` writes `deployments/1.json` in
+`MockDisperse`). `scripts/deploy-mainnet.sh` writes the mainnet deployment record (chain id 1) in
 this shape as part of a mainnet deploy.
 
 ## Status today
