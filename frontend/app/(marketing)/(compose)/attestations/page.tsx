@@ -95,8 +95,8 @@ export default function Attestations() {
             <MarketingSection title="Evidence, not adjudication." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The kernel never reads what an attestation says. A separate,
-                    zero-storage coordinator checks the signature, checks the inclusion
-                    proof, and checks that the order is still open &mdash; it does not
+                    zero-storage coordinator checks the caller is a party to the signed
+                    commitment, checks the inclusion proof, and checks that the order is still open &mdash; it does not
                     decode or judge the content itself. What that evidence <em>means</em>{" "}
                     is left to whoever reads it afterward: the other sellers bonded into
                     the same process, an arbitration forum a designer composed in ahead

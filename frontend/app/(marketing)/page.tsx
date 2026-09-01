@@ -117,7 +117,7 @@ export default function Home() {
                     The record doubles as your paperwork: to a regulator, a tax authority, a court, you demonstrate rather than ask to be believed.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Through all of it, you hold your own keys: your wallet, your tokens, your signatures. Nobody holds them for you. No account anyone can freeze or close. The kernel holds only live trades&apos; bonds, and only until each resolves.
+                    Through all of it, you hold your own keys: your wallet, your tokens, your signatures. Nobody holds them for you. No account anyone can freeze or close &mdash; nothing in the protocol has that power. The kernel holds only live trades&apos; bonds, and only until each resolves.
                 </p>
             </MarketingSection>
 

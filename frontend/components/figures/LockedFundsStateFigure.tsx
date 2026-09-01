@@ -111,7 +111,7 @@ export function LockedFundsStateFigure({
                 <circle cx={cx1} cy={cy} r={r} className="fill-paper stroke-default" strokeWidth="1.5" />
                 <text x={cx1} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-faint">0</text>
                 <text x={cx1} y={cy + r + 22} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">Unknown</text>
-                <text x={cx1} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">no process exists yet</text>
+                <text x={cx1} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">order not yet committed</text>
 
                 {/* Committed / Active */}
                 <circle cx={cx2} cy={cy} r={r} className="fill-subtle stroke-default-strong" strokeWidth="2.5" />
