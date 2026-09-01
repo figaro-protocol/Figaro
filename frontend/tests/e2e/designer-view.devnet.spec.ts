@@ -18,6 +18,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import { publishProbeAssembly } from './probeAssembly';
+import { discoverAnchoredAssemblies } from './devnet-helpers';
 
 
 test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
@@ -30,6 +31,10 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // in the probe clause id, so the content-derived slug is fresh each run —
         // no snapshot/revert needed; devnet is a mainnet rehearsal).
         const { slug, name } = await publishProbeAssembly(page);
+
+        // ── The publish actually anchored, read back out-of-band ─────
+        const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
+        expect(anchored, 'the published probe assembly is anchored on AssemblyRegistry').toBe(true);
 
         // ── Inspect the published assembly read-only ─────────────────
         // The publish flow deleted the local draft, so /view/<slug> resolves from

@@ -13,14 +13,13 @@
  *   - Inspect (`published-inspect-<slug>`) → /assemblies/designer/view?slug=<slug>
  *   - Fork    (`published-fork-<slug>`)    → /assemblies/designer/edit?slug=<forkSlug>
  *
- * Additive UI-tier coverage — the contract path is already covered by
- * assembly-registry.devnet.spec.ts; the publish flow by
- * designer-publish.devnet.spec.ts.
+ * Additive UI-tier coverage over the published list.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
 import { publishProbeAssembly } from './probeAssembly';
+import { discoverAnchoredAssemblies } from './devnet-helpers';
 
 
 test.describe('PublishedList fork + inspect (devnet)', () => {
@@ -35,6 +34,10 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         // snapshot/revert (devnet is a mainnet rehearsal). PublishedList then reads
         // the AssemblyRegistered event for the connected wallet.
         const { slug } = await publishProbeAssembly(page);
+
+        // ── The publish actually anchored, read back out-of-band ─────
+        const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
+        expect(anchored, 'the published probe assembly is anchored on AssemblyRegistry').toBe(true);
 
         // ── The row appears on the designer index ────────────────────
         await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
