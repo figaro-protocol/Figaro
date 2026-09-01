@@ -33,7 +33,6 @@ does not log.
 
 ### Explicitly out-of-scope
 
-- Archived V3/V4 contracts (`archive-v3/`, `archive-v4/`)
 - Frontend Vitest unit tests — these test UI components, not protocol invariants (inventory in `TESTING.md`)
 - Playwright E2E tests — these test UI rendering, not protocol properties
 
@@ -409,7 +408,7 @@ Foundry-covered companion:
 | `mintedNeverExceedsPeriodBudget` | E-6 (600M budget) | Inductive conservation — the tranche-overdraw bug class |
 | `noDoubleClaimPerWalletPerPeriod` | E-5/E-6 | State-machine guard |
 | `cannotClaimWhilePeriodOpen` | E-6 | Period gating |
-| `duplicateClauseOrAssemblyReverts` | E-6 | Input-hygiene guard (the historical exploit path) |
+| `duplicateClauseOrAssemblyReverts` | E-6 | Input-hygiene guard |
 | `ineligibleClauseOrAssemblyCannotBePaid` | E-5 | The live-stake `_isAuthor` gate — a withdrawn stake pays nothing |
 | `mintedMonotonic` | E-6 | Parametric (never decreases) |
 | `claimableRejectsDuplicatesToo` | — | View/state parity |

@@ -115,7 +115,7 @@ number of operations?
 
 The answer is validity proofs. A prover executes many kernel transitions
 off-chain and publishes a succinct proof that the resulting state root is
-reachable from the prior state root under V5 rules.
+reachable from the prior state root under the kernel's rules.
 
 ### The live surface
 
@@ -161,8 +161,8 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
 3. each attestation preserved its authorization gates, and its content
    validated against a witness spec whose bytes are bound to
    `ClauseRegistry.contentHashOf`
-4. the resulting state root follows from the prior state root under the V5
-   kernel rules — no transition skipped, reordered, or fabricated
+4. the resulting state root follows from the prior state root under the
+   kernel's rules — no transition skipped, reordered, or fabricated
 
 ### What this changes
 
@@ -545,7 +545,7 @@ successful `settleBatch`. Direct `FigaroCore` transactions never touch this
 state — the two paths share none — so nothing on the direct path can move the
 verifier's root. What CAN move it is another submitter: `settleBatch` is
 permissionless, so if a different sequencer instance lands a batch, this
-one's `prevRoot` no longer matches and it must detect the divergence and
+one's `prevRoot` fails to match and it must detect the divergence and
 re-sync before its next batch.
 
 ### Batch DoS via approval revocation

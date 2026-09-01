@@ -789,7 +789,7 @@ Measured on a local chain against the mirrored devnet interface: three token
 legs land in one transaction at ~117k gas, each recipient's balance equal to
 its leg, and an over-balance batch reverts in simulation with nothing partially
 routed. **The trail is the point.** Which address received which share of which
-receipt is now a chain fact anyone the wallet chooses can be shown — a
+receipt is a chain fact anyone the wallet chooses can be shown — a
 self-sovereign fiscal trail produced as a byproduct of being paid, not a report
 assembled afterwards. Nothing here is protocol-aware: do it whenever you like,
 in any token you hold, for receipts from either path.
@@ -1600,7 +1600,7 @@ Turning a hydrated template into the filled, hashed `Agreement` that
 second frontend, must reproduce it byte-exactly because its outputs are hashed
 (`agreementHash` — the merkle root the commitment signs; `compositionHash` —
 assembly identity). The SDK now ships that projection (`dist/projection.d.ts`) —
-you no longer hand-assemble sections.
+you do not hand-assemble sections.
 
 **The SDK holds NO spec cache.** Every projection function takes a `SpecSource`
 — the consumer's window onto its loaded `ClauseRegistry → IPFS` specs:
@@ -1718,7 +1718,7 @@ template agreements so parents precede children, detect the root, replace
 template-local parent ids with real EIP-712 order hashes, accumulate cumulative
 value, and derive each order's hash and the process id from the root.
 `reconstructOrdersFromTemplate` (`dist/reconstructOrders.d.ts`) is that walk's
-single home — hand-assembling sections order-by-order is no longer the recipe.
+single home; do not hand-assemble sections order-by-order.
 
 **Who fills what**: the designer selected the clauses and wrote any
 `design.fills` values (the tailoring); the seller filled profile/catalogue

@@ -1,6 +1,6 @@
 # External Audit Handover
 
-Status: the handover package for the external audit of the frozen V5 Solidity
+Status: the handover package for the external audit of the frozen Solidity
 surface — the single open release gate (`RELEASE_READINESS.md` Task 2). What is
 frozen, how to verify the freeze, what to read, which behaviors are intentional,
 and the validation gate the audited tree must pass.

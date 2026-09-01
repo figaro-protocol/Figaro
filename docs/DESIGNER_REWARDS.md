@@ -109,7 +109,7 @@ honest strength in `docs/DATA_LAYER.md`; it is not restated here.
 **Nine annual periods.** Accrual buckets into fixed annual periods. A period's
 counts are final once it ends, each period's budget pays for that period alone,
 and claims never expire — a closed period's arithmetic is stable forever, so a
-consumer reads a number that can no longer move.
+consumer reads a number that cannot move.
 
 **Budgets rise across three groups** — 15% of the reserve over years 1–2, 30%
 over years 3–5, 55% over years 6–9, split equally within each group. The

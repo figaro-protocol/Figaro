@@ -40,7 +40,6 @@ In scope:
 Out of scope:
 
 - `src/mocks/`, `src/echidna/` — test infrastructure, never deployed.
-- `archive-v3/`, `archive-v4/`, `archive-v5/` — retired code (local-only, untracked).
 - `frontend/` and `sdk/` for issues that do not reach on-chain state — report
   those as ordinary issues.
 

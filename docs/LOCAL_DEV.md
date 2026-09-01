@@ -96,10 +96,10 @@ a stray `:3100` rather than killing it (that may be a Playwright run in
 flight) and never touches `:3000` (the interactive dev server).
 
 - **IPFS (Kubo).** Pins member profiles, catalogues, agreements, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:v0.42.0` (pinned — `latest` at 0.40.1 segfaulted in its DHT reprovider; upgrade deliberately, container `figaro-ipfs` runs with `--restart unless-stopped`). Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
-  - **Native Kubo (no Docker) — required on macOS the current Docker Desktop no longer supports (e.g. Ventura 13.x).** Docker Desktop ≥ the macOS-14 cutoff won't install on Ventura, and the last Ventura-compatible build's VM wedged under sustained pinning. `devup.sh` uses *anything listening on :5001* (`nc -z`), so run Kubo natively instead: `brew install ipfs` (Kubo 0.42.0, same version); init a repo at a dedicated path so a stale `~/.ipfs` can't interfere — `export IPFS_PATH="$HOME/.ipfs-figaro"; ipfs init`; allowlist the dev origins — `ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:3100","http://127.0.0.1:3100"]'` + `Access-Control-Allow-Methods '["POST","GET","OPTIONS"]'`; then run it detached and **offline** (no DHT ⇒ no reprovider stalls; every devnet CID is local anyway) — `IPFS_PATH="$HOME/.ipfs-figaro" nohup ipfs daemon --offline > /tmp/figaro-ipfs-native.log 2>&1 &`. `devup`/`devdown` reference the `figaro-ipfs` Docker container by name but do not require it when :5001 is already served natively; take a native daemon down by killing that process, not `devdown.sh`.
+  - **Native Kubo (no Docker) — required where current Docker Desktop will not install (macOS Ventura 13.x).** Docker Desktop ≥ the macOS-14 cutoff won't install on Ventura, and the last Ventura-compatible build's VM wedged under sustained pinning. `devup.sh` uses *anything listening on :5001* (`nc -z`), so run Kubo natively instead: `brew install ipfs` (Kubo 0.42.0, same version); init a repo at a dedicated path so a stale `~/.ipfs` can't interfere — `export IPFS_PATH="$HOME/.ipfs-figaro"; ipfs init`; allowlist the dev origins — `ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:3100","http://127.0.0.1:3100"]'` + `Access-Control-Allow-Methods '["POST","GET","OPTIONS"]'`; then run it detached and **offline** (no DHT ⇒ no reprovider stalls; every devnet CID is local anyway) — `IPFS_PATH="$HOME/.ipfs-figaro" nohup ipfs daemon --offline > /tmp/figaro-ipfs-native.log 2>&1 &`. `devup`/`devdown` reference the `figaro-ipfs` Docker container by name but do not require it when :5001 is already served natively; take a native daemon down by killing that process, not `devdown.sh`.
 - **Mythril.** Symbolic execution via `scripts/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
 - **GraphQL indexing (subgraph).** `graph-node` + Postgres stack when a subgraph indexer is being exercised. Opportunistic; no subgraph artifacts currently in the repo.
-- **LaTeX → PDF.** No in-repo LaTeX targets — the paper corpus is web-native (`/papers/<slug>` pages); the `paper/` folder was removed (2026-05-28). The `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations) remains the way to build any ad-hoc or git-restored `.tex`; no native LaTeX on the host.
+- **LaTeX → PDF.** No in-repo LaTeX targets — the paper corpus is web-native (`/papers/<slug>` pages). The `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations) remains the way to build any ad-hoc or git-restored `.tex`; no native LaTeX on the host.
 
 ---
 
@@ -141,7 +141,7 @@ NEXT_PUBLIC_USAGE_COUNTER=0x...
 NEXT_PUBLIC_RPGF_MINTER=0x...
 NEXT_PUBLIC_DAO_TREASURY=0x...
 
-# No match-pool / quadratic-funding address: MatchPool and all QF were deleted
+# No match-pool / quadratic-funding address: the reward is uniform, with no match round
 # (2026-07-29 — the 300M DAO funds public goods by discretionary decision, not a
 # crowd/match mechanism). The 600M RPGF pays uniform pro rata on real usage.
 
@@ -222,5 +222,3 @@ with the rest of the security headers (see `docs/FRONTEND.md` § "Static
 export") — the SPACE-SEPARATED list of forum origins in CSP source syntax, e.g.
 `'self' https://resolve.kleros.io https://*.kleros.io`. Unset, the route admits
 no third-party ancestor — a forum is deployment config, never a code default.
-(The former `EVIDENCE_DISPLAY_FRAME_ANCESTORS` env var and the frontend
-middleware that read it were removed with the migration.)

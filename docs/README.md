@@ -1,15 +1,9 @@
-# V5 Documentation Map
+# Documentation Map
 
-The canonical home for live Figaro V5 documentation. ("V5" is the fifth
-internal generation of the codebase — a lineage label, distinct from release
-versioning, which starts at `v0.1.0`; see `CHANGELOG.md`.) Single-purpose
-notes, shipped-plan documents, and per-archetype specs that aren't
-load-bearing for the protocol have been moved to local-only archives
-(see `git log` for prior versions). Historical material lives in
-`archive-v5/` (legacy v4 docs), `archive-v3/` (V3 contracts/tests),
-and `archive-v4/` (pre-promotion V4 snapshot) — all local-only and
-untracked, so a fresh clone will not contain them; the live V5 code is
-in `src/`.
+The canonical home for live Figaro documentation. The code is in `src/`;
+release versioning starts at `v0.1.0` (see `CHANGELOG.md`). This map lists
+the whitelisted docs and names one owner per concept; a file not on the list
+is a deletion candidate.
 
 ## Ownership Map — one owner per concept
 

@@ -98,8 +98,8 @@ dissolves. The kernel is fixed and neutral — **it's what we and others put in 
 protocol layer that makes the difference.** Every mechanism proposal is checked
 against three forward-looking stress tests:
 
-1. **Break the platform companies** — the mechanism must work where the private
-   flow-map monopoly is gone, because it built the public one.
+1. **Break the platform companies** — the mechanism must work where no private
+   flow-map monopoly exists, because it built the public one.
 2. **Operate post-apocalyptic** — no institutions: nothing in the path may require a
    committee, a registry authority, or a standing organization.
 3. **Operate off-planet** — no Earth committee, no KYC oracle: identity-free,
@@ -120,7 +120,7 @@ The reward is UNIFORM (contract surface: `CONTRACTS.md` § "Designer rewards"): 
 alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.** The
 old "substrate-broadening weight" (`UsageCounter.BOOSTED_WEIGHT`/`BASE_WEIGHT`,
 `ClauseRegistry.rpgfTag`/`rpgfTagOf`, the counter's `boostedTag`) is **deleted.**
-Neutrality is now achieved by the **stake, not by weighting.**
+Neutrality is achieved by the **stake, not by weighting.**
 
 **The must-haves see value, not place.** Every Figaro agreement composes the core
 protocol plus two clauses present in essentially all of them: **topology** (the
@@ -191,7 +191,7 @@ asset on which platform companies build their value capture: they sit between
 participants because they alone hold the coordination data. When that same data is
 a public good — open, verifiable, permissionlessly extended, and incentivized into
 existence by the protocol's own token — the informational moat dissolves. The
-platforms are not attacked; the basis of their capture is simply no longer scarce.
+platforms are not attacked; the basis of their capture simply stops being scarce.
 That is what levels the field.
 
 ---

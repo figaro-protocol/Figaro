@@ -62,7 +62,6 @@ TLC exit code:     0 (no errors)
 | `FigaroCore.tla` | Main specification — actions, state machine, safety invariants |
 | `MC.tla` | Model-checking configuration (constants, model values) |
 | `MC.cfg` | TLC configuration (specification, constant bindings, invariant list) |
-| `archive-v3/` | Archived V3 formal specs (incompatible with the current kernel) |
 
 ## How to Run
 

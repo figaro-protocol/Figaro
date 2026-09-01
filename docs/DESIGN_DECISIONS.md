@@ -151,7 +151,7 @@ auditor handover, never edited.)
 ## 6. `prevrandao` is not used as a salt — by design
 
 **Pattern**: The `salt` field in the `Commitment` struct is party-chosen and
-not seeded from `block.prevrandao` (formerly `block.difficulty`).
+not seeded from `block.prevrandao`.
 
 **Why it looks wrong**: On-chain entropy sources like `prevrandao` are
 sometimes used to prevent replay or ensure uniqueness.
@@ -358,7 +358,7 @@ separately rule transferability out:
    authorizer is a third party J ∉ {B, S} relative to the *new*
    bilateral relationship between the new buyer and the existing seller
    — exactly the unbonded actor the Escape-Hatch Weakness theorem forbids. Even if J equals
-   the original buyer, J's incentive structure no longer binds the new
+   the original buyer, J's incentive structure does not bind the new
    relationship.
 
 Adding transferability would require either (a) abandoning the
@@ -572,7 +572,7 @@ underpriced — an auditor's natural fix is a flat per-recording burn, or a
 per-recording charge routed to the DAO treasury.
 
 **Is correct because (both variants declined):** under the
-staked-seller breadth statistic the burn's protective job is gone — a pure-`c` attack
+staked-seller breadth statistic the burn has no protective job — a pure-`c` attack
 grows score as `c^(1/3)` (octuple the recordings to double the score) against linear gas,
 cube-root futility, while the dominant term `d` is
 priced by deposits. An app-layer ETH burn destroys real value to deter an attack the

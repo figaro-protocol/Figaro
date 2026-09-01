@@ -1,9 +1,6 @@
 # Frontend — Structure
 
-Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only
-active frontend.** The prior V4 product-app frontend lives in `archive-v4/`,
-a local-only directory not in any clone. If a frontend change is needed,
-it ships in `frontend/` only.
+Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only frontend.** A frontend change ships in `frontend/` only.
 
 This file owns the per-route catalogue, lib map, designer surface, and wallet-provider scope.
 
@@ -28,9 +25,9 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | `(research)` | `/why`, `/working-groups`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. |
 | `(reference)` | `/glossary` | Footer chrome, never nav. |
 
-**No audience-carve hub.** A `/builders` hub existed once and is not coming back:
-its payloads belong on the object pages themselves. Sections are named for what a
-reader does, never for who they are.
+**No audience-carve hub.** There is no `/builders` hub and none is to be added: an
+audience's payloads belong on the object pages themselves. Sections are named for what
+a reader does, never for who they are.
 
 **Reference / read-only — `(app)/` or `(tools)/`, provider mounted for inline
 writes via `WalletGate`.**
@@ -89,17 +86,16 @@ The whole site is a **static export** (`output: 'export'` in `frontend/next.conf
 
 Consequences that shaped the code, and where each server-only feature moved:
 - **Open-world ids ride in query params, never route segments.** A processId / seller address / assembly slug is unknowable at build time, so `generateStaticParams` can't enumerate it. The id-bearing pages read it client-side via `useSearchParams` behind a `Suspense` boundary: `/orders/view?process=`, `/audit/view?process=`, `/s/view?seller=`, `/s/checkout?seller=`, `/assemblies/designer/{view,edit}?slug=`.
-- **CSP + security headers → ARTIFACT-ENFORCED at the hosting layer.** `middleware.ts` (the per-request CSP nonce) was removed — middleware is incompatible with `output: export`. The policy now ships INSIDE the export as `public/_headers` (checked in; Next copies it into the export dir), in the Cloudflare Pages / Netlify `_headers` convention: the full former set (CSP + HSTS / X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy / COOP / CORP), `'unsafe-inline'` in place of the nonce (script **hashes** are the future hardening), scheme-wide `connect-src` because the member-endpoints surface points the app at the USER'S own RPC/IPFS endpoints, and the `/evidence-display` `frame-ancestors` override (deployment config — a recognized forum edits that line) for arbitration-forum iframing. An IPFS-gateway mirror serves no custom headers — the ownerless mirror trades the header layer for re-pinnability.
+- **CSP + security headers → ARTIFACT-ENFORCED at the hosting layer.** Middleware is incompatible with `output: export`, so there is no per-request CSP nonce. The policy ships INSIDE the export as `public/_headers` (checked in; Next copies it into the export dir), in the Cloudflare Pages / Netlify `_headers` convention: the full set (CSP + HSTS / X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy / COOP / CORP), `'unsafe-inline'` in place of the nonce (script **hashes** are the future hardening), scheme-wide `connect-src` because the member-endpoints surface points the app at the USER'S own RPC/IPFS endpoints, and the `/evidence-display` `frame-ancestors` override (deployment config — a recognized forum edits that line) for arbitration-forum iframing. An IPFS-gateway mirror serves no custom headers — the ownerless mirror trades the header layer for re-pinnability.
 - **`public/llms.txt` → the machine-facing entry point.** Ships verbatim into the export root (`/llms.txt`): routes an arriving AI agent to the frame in machine register, the two-worlds seam, the `ecosystem-agents/` manuals, the SDK/npm package, and the deployment record. The `/agents` page's closing paragraph is the human-side pointer to the same set. `robots.txt` (`Disallow: /` until the launch flip) does not block direct fetches of it.
-- **`redirects()` + `rewrites()` → deleted.** Static export honors neither. The legacy-URL redirect table was dropped (retired before any public deployment
-  existed, so no external bookmarks depended on the legacy URLs); the dev `/rpc` proxy is gone — the RPC transport (`lib/shared/wagmi.ts`) now points straight at the chain endpoint in every environment, which is how the production build already ran.
+- **`redirects()` + `rewrites()` → unavailable.** Static export honors neither, so the site keeps no redirect table. The RPC transport (`lib/shared/wagmi.ts`) points straight at the chain endpoint in every environment.
 
 **Consumer flow:**
 - Buyers: `/discover` → `/s/view?seller=<addr>` (browse + cart) → `/s/checkout?seller=<addr>` (commit) → `/orders/view?process=<id>` (live timeline + Confirm receipt) → `/orders` (history).
 - Sellers: `/orders` (the "Your turn" section — incoming to accept, then in-progress + completed) → `/orders/view?process=<id>` (fire merchant-process events).
-- Designers: `/assemblies/designer/view?slug=<slug>` (assembly inspector). The prior `/i/[slug]` route was deleted.
+- Designers: `/assemblies/designer/view?slug=<slug>` (assembly inspector).
 
-The `/assemblies/designer` tool is a composition surface (`TopologyCanvas` + `AgreementDrawer`) — it composes BOTH the DAG of orders AND each order's clauses; "just a DAG editor" under-states it. The palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
+The `/assemblies/designer` tool is a composition surface (`TopologyCanvas` + `AgreementDrawer`) — it composes BOTH the DAG of orders AND each order's clauses; "just a DAG editor" under-states it. It is not a palette/canvas/inspector three-column tool, and is not to be rebuilt as one.
 
 ## Key Library Areas (`lib/`)
 
@@ -162,13 +158,13 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     MockDisperse, mainnet composes canonical Disperse. Surfaced by
     `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `draftToAssemblyTemplate.ts` — the authoring mirror of `assemblyTemplateToDraft.ts` and the ONE draft→template walk that publish, the hand-off panel, and the canvas identity readout share — `publishAssembly.ts`; the template build itself — `buildAssemblyTemplate`/`serializeAssemblyTemplate` — is `@figaro-protocol/sdk`)
-- **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe; the per-wallet transport toggle is gone — one seam, one choreography), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
-- **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`, `memberProfileAdapter.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalogue family — authoring/publication/reads (`catalogue*.ts`, `memberCatalogueMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrolment-wizard state (`onboardingState.ts` — the wizard spans profile, catalogue, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). `lib/seller/` dissolved into it (member = what a wallet IS; seller = which side of a trade it stands on).
+- **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
+- **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`, `memberProfileAdapter.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalogue family — authoring/publication/reads (`catalogue*.ts`, `memberCatalogueMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrolment-wizard state (`onboardingState.ts` — the wizard spans profile, catalogue, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
 
 ## Designer tool surface (`frontend/`)
 
-The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; the kernel itself only ever sees the linear `commit` chains that result at runtime. The three-column palette/canvas/inspector shape was rejected during this project's evolution.
+The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; the kernel itself only ever sees the linear `commit` chains that result at runtime. It is not a three-column palette/canvas/inspector tool, and is not to be rebuilt as one.
 
 **Routes:**
 - `/assemblies/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the clauses catalogue (`<ClausesList>`, read from `ClauseRegistry`).
@@ -229,7 +225,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - **`papers/`** — the paper-corpus chrome (`PaperLayout`)
 - **`figures/`** — shared SVG figures (papers + marketing)
 - **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`) plus `readingPathSteps.ts` — the homepage reading path's ordered steps (data, not a component; the spine, rendered on `/` and continued per-route by `ReadingPathNext`, mounted in the marketing layout)
-- **`modules/`** — feature modules (e.g. `MemberBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
+- **`modules/`** — feature modules (e.g. `MemberBrandingModule`). There is no module registry and no generic module-rendering route: consumer surfaces are purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs
 
 ## Canonical exemplars — copy these shapes

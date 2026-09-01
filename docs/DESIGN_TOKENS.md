@@ -29,7 +29,7 @@ Do not use these as text utilities (`text-paper`, `text-subtle`, etc.) — the v
 | `default`         | `#e0dccf` | `border-default`     | Section, card, header, divider borders (1px).        |
 | `default-strong`  | `#b3a98f` | `border-default-strong` | Hover-emphasis borders, control outlines.         |
 
-`default-strong` measures **2.14:1 on canvas / 2.34:1 on paper** — below WCAG 1.4.11's 3:1. It is admissible only where the control is already identified by something else (the base `button` shape pairs it with a `bg-subtle` fill and a label). Where a border is the SOLE carrier of a control's boundary or state, reach for a ≥3:1 value instead (`focus`, an `ink-*`, a status token). `default-strong` is no longer the focus value — focus is its own darker token; see below.
+`default-strong` measures **2.14:1 on canvas / 2.34:1 on paper** — below WCAG 1.4.11's 3:1. It is admissible only where the control is already identified by something else (the base `button` shape pairs it with a `bg-subtle` fill and a label). Where a border is the SOLE carrier of a control's boundary or state, reach for a ≥3:1 value instead (`focus`, an `ink-*`, a status token). Focus carries its own darker token (see below).
 
 ### Ink (text)
 

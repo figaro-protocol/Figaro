@@ -438,7 +438,7 @@ happened where the kernel cannot look, so the parties supply that themselves.
 Resolution is terminal acceptance, and this is the corollary on the other
 side of the same boundary. Once the buyer resolves, the transfers are made and
 the kernel holds nothing further for anyone to recover — no forum, and no
-later ruling, can reach a balance that is no longer there. A buyer with a live
+later ruling, can reach a balance that is not there. A buyer with a live
 complaint therefore resolves after the complaint is answered, not before: the
 whole of the recourse window is the interval in which the process stands
 open, which is also the interval in which both parties want their positions

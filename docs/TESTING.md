@@ -32,9 +32,9 @@ counts only trade new to it), the **member-stake gate on the seller of record** 
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses and assemblies** (no
 category, tag, or weight), period boundaries and `periodClosed`, `totalScoreIn` delta
 maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
-domain** plus a no-saturation regression (the earlier version of that fuzz sampled `uint64`
-only — the one domain where a wrong cube bound was coincidentally exact, which is how the
-score-saturation bug survived; never bound a fuzz domain to less than the function's own).
+domain** plus a no-saturation regression. Never bound a fuzz domain to less than the
+function's own: on `icbrt` a `uint64`-only domain is the one place a wrong cube bound is
+coincidentally exact, so saturation passes unseen.
 `RpgfMinterTest` exercises
 the payout maths against a counter stub — uniform pro-rata share (**no per-wallet cap**: a
 dominant wallet takes its full pro-rata share), a withdrawn designer forfeiting the reward,
@@ -225,8 +225,7 @@ The hash- and wire-load-bearing choreography suites live with their code in
 `sdk/tests/` (`npm --prefix sdk test`): agreement/template projection, the
 template→orders walk, checkout planning + sub-order pricing, the handoff
 ECDH, and the commitment envelope — several pinned byte-exact to
-`sdk/tests/fixtures/promotion-golden-vectors.json` (recorded from the
-pre-promotion frontend implementations; `HARVEST_GOLDEN_VECTORS=1` in
+`sdk/tests/fixtures/promotion-golden-vectors.json` (`HARVEST_GOLDEN_VECTORS=1` in
 `frontend/tests/lib/promotionGoldenVectors.test.ts` regenerates them, legitimate
 only before a move).
 
@@ -349,8 +348,8 @@ participant via a viem helper breaks the action end; asserting only on-chain
 events breaks the reaction end — either break and it is not e2e. A Playwright
 spec that drives contracts via viem and never touches the UI is a contract test
 misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the
-reaction is fabricated. The `mock` Playwright project is retired; do not
-recreate it.
+reaction is fabricated. There is no `mock` Playwright project; do not add
+one.
 
 ### Assert CHAIN FACTS the UI is responsible for producing
 
