@@ -146,7 +146,9 @@ plus whatever remains of the 300M — an endowment, not an annuity.
 unrestricted: public goods and private goods both, by the three paths above.
 What aligns the DAO with the network is where its income originates — the levy
 pays only when the network is used, so the DAO's interest IS network usage. No
-spending covenant could add to that, and none exists.
+spending covenant could add to that, and none exists. Each act is judgment, case
+by case — the meter that pays by measured activity belongs to the
+designer-rewards tier, never to the treasury.
 
 Academic form: `/papers/substrate-broadening-rpgf` §4, "Why the clauses every
 order carries earn".

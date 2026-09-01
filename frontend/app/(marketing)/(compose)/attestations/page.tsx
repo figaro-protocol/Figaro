@@ -30,7 +30,7 @@ export default function Attestations() {
                     <>
                         An attestation is a signed statement one party makes about a process
                         while it is still running &mdash; a courier confirming a pickup, a
-                        seller marking a stage complete, a carrier reporting a measured
+                        seller marking complete a stage the clause itself names, a carrier reporting a measured
                         figure. It is bound by a merkle proof to the very order it concerns,
                         so nobody can attest against a clause they never signed. And it can
                         only be filed while that order is open: once its buyer resolves the
@@ -97,12 +97,21 @@ export default function Attestations() {
                     The kernel never reads what an attestation says. A separate,
                     zero-storage coordinator checks the caller is a party to the signed
                     commitment, checks the inclusion proof, and checks that the order is still open &mdash; it does not
-                    decode or judge the content itself. What that evidence <em>means</em>{" "}
+                    decode or judge the content itself. No fingerprint checks a fact: the chain
+                    proves what was said and when, never that it is true. What that evidence <em>means</em>{" "}
                     is left to whoever reads it afterward: the other sellers bonded into
                     the same process, an arbitration forum a designer composed in ahead
                     of time, or an ordinary court. A forum rules on the process&apos;s
                     open data; it cannot call resolve. The one signature that ends a
                     trade belongs to its buyer alone.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    Who may file is the order&apos;s own parties &mdash; and a seller of
+                    record need not be a person&apos;s wallet. A contract seller may name,
+                    through its own role resolution, the agent authorized to attest on its
+                    behalf, and the coordinator checks that authority on-chain before
+                    accepting the record. An ordinary wallet seller has no such
+                    delegation unless it deploys one.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
                     That boundary is why dispute recourse sits at the edge of the
