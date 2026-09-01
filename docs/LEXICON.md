@@ -16,7 +16,7 @@ Nouns and their definitions. One name per thing.
 
 **batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through the kernel.
 
-**bond** — The part of a party's deposit that secures its word: the buyer twice the payment, each seller twice the cumulative value through its order. A bond is the party's own deterrent against its own defection. It is refunded at resolution.
+**bond** — What a party locks in the kernel when it commits to an order: the buyer twice the payment — the payments travel inside it — and each seller twice the cumulative value through its order. A bond is the party's own deterrent against its own defection. At resolution each seller's bond is refunded whole; the buyer's is refunded less the payments it carried.
 
 **buyer** — The one party in a process who pays, and the only party who can resolve it.
 
@@ -48,8 +48,6 @@ Nouns and their definitions. One name per thing.
 
 **denomination** — The ERC-20 token in which every payment and every bond of one process is counted. One process, one token.
 
-**deposit** — The tokens a party places in the kernel when it commits to an order: the buyer's payment and each party's bond. Payments transfer and bonds are refunded at resolution.
-
 **designer** — The wallet that writes and registers a clause or an assembly, and tailors its clauses to a market.
 
 **designer rewards** — The share of florins paid, after the fact and in proportion to real use, to the designers whose clauses and assemblies processes have used.
@@ -62,7 +60,7 @@ Nouns and their definitions. One name per thing.
 
 **judgment** — What a party decides rather than what the chain computes. Every judgment is exercised before both parties have signed — in design, in binding, at checkout, in negotiating the offer — or is kept by a named party afterwards: the buyer alone deciding to resolve, a forum ruling on a process's data, the DAO spending its treasury. The chain accepts exactly one judgment after commit — the buyer's resolution — and everything else it does is arithmetic.
 
-**kernel** — The two frozen contracts: `FigaroCore`, which holds every deposit and resolves a process when its buyer signs, and `CommitmentTypes`, which defines the commitment and how it is hashed for signing. Two operations: commit and resolve.
+**kernel** — The two frozen contracts: `FigaroCore`, which holds every bond and resolves a process when its buyer signs, and `CommitmentTypes`, which defines the commitment and how it is hashed for signing. Two operations: commit and resolve.
 
 **member** — A wallet that has registered a profile, with a stake, so that others can find it.
 
@@ -82,7 +80,7 @@ Nouns and their definitions. One name per thing.
 
 **protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The kernel and the registries enforce the rules on a chain; any interface may read them, and anyone may build another.
 
-**refund** — The return of a bond to the party that deposited it, at resolution. Only a bond is ever refunded; a payment transfers. The reversal of a payment, which commerce calls by the same name, has no path in the protocol — a shortfall is put right before the buyer resolves.
+**refund** — The return of a bond to the party that deposited it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers. The reversal of a payment, which commerce calls by the same name, has no path in the protocol — a shortfall is put right before the buyer resolves.
 
 **register** — An outside authority's public list — a licensing board, a drivers' roster — that a clause may point to. It is read where it lives; it is never copied into the protocol.
 
@@ -90,7 +88,7 @@ Nouns and their definitions. One name per thing.
 
 **request for quotes** — The other way an offer forms: a buyer's request goes out and sellers answer with terms.
 
-**resolution** — The buyer's single signature that ends a process: every payment transfers and every bond is refunded, all at once.
+**resolution** — The buyer's single signature that ends a process: every payment transfers and every bond is refunded — the buyer's less the payments it carried — all at once.
 
 **seller** — A party that adds value in one order of a process and is paid for it at resolution.
 
