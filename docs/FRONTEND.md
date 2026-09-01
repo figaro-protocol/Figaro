@@ -25,7 +25,7 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | `(research)` | `/why`, `/working-groups`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. |
 | `(reference)` | `/glossary` | Footer chrome, never nav. |
 
-**No audience-carve hub.** There is no `/builders` hub and none is to be added: an
+**No audience-carve hub.** There is no `/builders` hub, and none belongs here: an
 audience's payloads belong on the object pages themselves. Sections are named for what
 a reader does, never for who they are.
 

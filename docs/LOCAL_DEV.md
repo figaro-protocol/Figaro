@@ -51,7 +51,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology) — self-sufficient
 ./scripts/deploy-mainnet.sh              # MAINNET wrapper for script/DeployMainnet.s.sol — refuses without MAINNET_DEPLOY_CONFIRM=yes + all env vars + chain-id 1 read-back; never run casually
 ./scripts/deploy-sepolia.sh              # SEPOLIA wrapper for script/DeploySepolia.s.sol — same guard structure (SEPOLIA_DEPLOY_CONFIRM=yes + chain-id 11155111 read-back); SKIP_VERIFY=1 for the Anvil-fork rehearsal only
-./scripts/deploy-swap-coordinator.sh     # deploy WitnessSwapAndCommitCoordinator ALONE onto a LIVE public stack (script/DeploySwapCoordinator.s.sol): FIGARO_CORE from the chain's record, PERMIT2 canonical, SWAP_ROUTER = Uniswap SwapRouter02 probed by BEHAVIOUR (factory()/WETH9() must be contracts); merges the three addresses into deployments/<chainId>.json; SKIP_VERIFY=1 = fork rehearsal (record diverted). Sepolia: deployed 2026-08-18
+./scripts/deploy-swap-coordinator.sh     # deploy WitnessSwapAndCommitCoordinator ALONE onto a LIVE public stack (script/DeploySwapCoordinator.s.sol): FIGARO_CORE from the chain's record, PERMIT2 canonical, SWAP_ROUTER = Uniswap SwapRouter02 probed by BEHAVIOUR (factory()/WETH9() must be contracts); merges the three addresses into deployments/<chainId>.json; SKIP_VERIFY=1 = fork rehearsal (record diverted).
 ./scripts/check-sp1-gateway-route.sh     # both wrappers' Guard 4 (also standalone): SP1_VERIFIER_GATEWAY must ROUTE the proof form (SP1_PROOF_MODE groth16|plonk) for the sp1-sdk version prover/Cargo.lock pins — read live from the gateway + Succinct's sp1-contracts; fails closed offline
 ```
 
@@ -62,8 +62,8 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 ## Deployment scripts (`script/`)
 
 - `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
-- `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `SUPPORTERS_WALLET`, `DAO_WALLET`, `SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`, `RPGF_GENESIS`, `SWAP_ROUTER` = Uniswap SwapRouter02 on the chain — probed for behaviour; `PERMIT2` defaults to the canonical address). Deploys the kernel, all three registries (Clause / Members / Assembly), BOTH coordinators (attestation + the swap-funded on-ramp `WitnessSwapAndCommitCoordinator`, added 2026-08-18 — it had been omitted since it landed 2026-07-12), `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/supporters/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
-- `script/DeploySepolia.s.sol` — Sepolia; mirror of `DeployMainnet.s.sol` with exactly ONE testnet divergence (`MockTreasuryMultisig` deployed as the DAO wallet — mock-as-code, mainnet Safe = config). Real yearly periods + 28d cooldown: the weekly compression was reverted 2026-08-14 — Sepolia is the public incremental release; compressed-time rehearsal is devnet's job. Env contract = mainnet's minus `DAO_WALLET`, plus `SWAP_QUOTER`; `SWAP_ROUTER` stays required (Sepolia's SwapRouter02 is supplied via env, not defaulted).
+- `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `SUPPORTERS_WALLET`, `DAO_WALLET`, `SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`, `RPGF_GENESIS`, `SWAP_ROUTER` = Uniswap SwapRouter02 on the chain — probed for behaviour; `PERMIT2` defaults to the canonical address). Deploys the kernel, all three registries (Clause / Members / Assembly), BOTH coordinators (attestation + the swap-funded on-ramp `WitnessSwapAndCommitCoordinator`), `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/supporters/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
+- `script/DeploySepolia.s.sol` — Sepolia; mirror of `DeployMainnet.s.sol` with exactly ONE testnet divergence (`MockTreasuryMultisig` deployed as the DAO wallet — mock-as-code, mainnet Safe = config). Real yearly periods + 28d cooldown, never compressed time: Sepolia is the public incremental release; compressed-time rehearsal is devnet's job. Env contract = mainnet's minus `DAO_WALLET`, plus `SWAP_QUOTER`; `SWAP_ROUTER` stays required (Sepolia's SwapRouter02 is supplied via env, not defaulted).
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.
 
 `forge script` is harness-denied; deploy via the `.sh` wrappers, not by calling `forge script` directly.
@@ -142,7 +142,7 @@ NEXT_PUBLIC_RPGF_MINTER=0x...
 NEXT_PUBLIC_DAO_TREASURY=0x...
 
 # No match-pool / quadratic-funding address: the reward is uniform, with no match round
-# (2026-07-29 — the 300M DAO funds public goods by discretionary decision, not a
+# (the 300M DAO funds public goods by discretionary decision, not a
 # crowd/match mechanism). The 600M RPGF pays uniform pro rata on real usage.
 
 # Batch-settlement proof path (FigaroBatchVerifier; MockSP1Verifier accepts
@@ -172,7 +172,7 @@ NEXT_PUBLIC_BATCH_RELAY_URL=
 # read the substance that user OWNS or BOUGHT.
 NEXT_PUBLIC_ANALYST_URL=
 
-# Wallet + dev helpers — injected-only (ruled 2026-08-03): RainbowKit has
+# Wallet + dev helpers — injected-only: RainbowKit has
 # no wagmi-3 support, so the wallet-provider fallback is the bare injected()
 # connector; there is no WalletConnect project id to configure.
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only

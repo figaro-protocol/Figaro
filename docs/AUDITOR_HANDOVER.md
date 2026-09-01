@@ -1,16 +1,15 @@
 # External Audit Handover
 
-Status: the handover package for the external audit of the frozen Solidity
-surface — the single open release gate (`RELEASE_READINESS.md` Task 2). What is
-frozen, how to verify the freeze, what to read, which behaviors are intentional,
-and the validation gate the audited tree must pass.
+The handover package for the external audit of the frozen Solidity surface: what
+is frozen, how to verify the freeze, what to read, which behaviors are
+intentional, and the validation gate the audited tree must pass.
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-Initial freeze 2026-04-20; **stamped 2026-08-13: the freeze commit is `c7f85d0d`**
-(`c7f85d0dd79298d1add2623993cc60b21321fed3`, 2026-08-12 — the last commit touching
-the frozen scope; the stamp never moves). Pre-stamp amendment history is in
-`git log`; post-stamp edits are classified in the records below.
+**The freeze commit is `c7f85d0d`**
+(`c7f85d0dd79298d1add2623993cc60b21321fed3`) — the last commit touching the frozen
+scope. The stamp never moves. Post-stamp edits are classified
+below; everything before it is in `git log`.
 
 No feature changes, refactors, or dependency upgrades are made to these directories
 during the audit window. Any edit requires either a narrow follow-up review or a
@@ -18,8 +17,7 @@ repeat audit decision (the Post-Audit Policy below).
 
 ### Frozen scope
 
-Paths follow the 2026-07-27 directory reorganisation (`CONTRACTS.md` § header — the
-directory IS the tier map).
+The directory IS the tier map (`CONTRACTS.md` § header).
 
 | Directory / file | Contents |
 |---|---|
@@ -55,17 +53,17 @@ For the rest of the frozen scope:
 git diff c7f85d0d -- src/protocol/ src/rpgf/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol script/DeploySwapCoordinator.s.sol
 ```
 
-Expected output: exactly the recorded post-stamp amendments and nothing more (the
-records below). Any hunk not traceable to a recorded amendment is an unrecorded
-frozen-scope edit — a Post-Audit Policy violation.
+Expected output: exactly the post-stamp amendments listed below and nothing more.
+Any hunk not traceable to a listed amendment is an unlisted frozen-scope edit —
+a Post-Audit Policy violation.
 
-### Post-stamp records
+### Post-stamp amendments
 
 1. **2026-08-13** — `script/Deploy.s.sol` received a `forge fmt` line-rewrapping in
    the first-CI alignment wave. Formatting only, no token-level change.
 2. **2026-08-13 (config, maintainer-ruled)** — the RPGF exclusion list shrank to
-   `figaro-assembly-provenance` alone: the mandatory pair now earns for its
-   author-of-record. Scope: both deploy scripts' `excluded` arrays + comment-only
+   `figaro-assembly-provenance` alone: the mandatory pair earns for its
+   designer of record. Scope: both deploy scripts' `excluded` arrays + comment-only
    NatSpec in `UsageCounter.sol`; no contract bytecode changed. Formal re-run all
    green (Foundry 301/301 fork suite included, Halmos 32/32, Certora 6/6).
 3. **2026-08-27** — the Post-Audit-Policy formal re-run for the 08-18/19 amendment
@@ -77,7 +75,7 @@ frozen-scope edit — a Post-Audit Policy violation.
 4. **2026-08-27** — `script/Deploy.s.sol` comment-only: an anvil accounts count
    in a mint-block comment corrected 20 → 38 (the value the maintainers'
    pre-commit guard battery enforces). No bytecode change; recorded
-   per the record-#1 precedent, no re-run required.
+   per the amendment-1 precedent, no re-run required.
 
 ### Formal run evidence
 
@@ -105,9 +103,6 @@ Certora report URLs, all from the 2026-08-27 re-run:
 | FlorinToken | https://prover.certora.com/output/9512759/864adb11f68145a98f2de9b081f6181e |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/d364d98732d04db2ae5a9c7e2a578d74 |
 | RpgfMinter | https://prover.certora.com/output/9512759/7a68e4562d8e461ab93256dbac6740c4 |
-
-The prior full-green runs (2026-08-13 at the freeze stamp; 2026-08-04) are in git
-history.
 
 ### Post-Audit Policy
 

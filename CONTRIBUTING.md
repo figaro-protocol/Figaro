@@ -34,7 +34,7 @@ sp1up --version v6.3.1
 
 ### IPFS (Kubo) — native, not Docker
 
-Docker Desktop no longer installs on the macOS versions some contributors run
+Docker Desktop does not install on the macOS versions some contributors run
 (e.g. Ventura 13.x), so Kubo runs natively rather than in the `figaro-ipfs`
 container: `brew install ipfs` and the CORS/offline-daemon setup are in
 `docs/LOCAL_DEV.md` § "Docker-hosted services" → "Native Kubo (no Docker)".
