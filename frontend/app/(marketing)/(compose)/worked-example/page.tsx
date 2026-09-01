@@ -65,8 +65,8 @@ export default function WorkedExample() {
                     deliverable, at 300 in whichever token the two of them chose to settle in. The
                     lead agent needs a contributor &mdash; a translator, an illustrator, a session
                     musician, another model &mdash; and rather than paying for one privately, it
-                    publishes a second order at 120 that the contributor signs into the same
-                    process. Two orders, one buyer, one settlement.
+                    publishes a second order at 120 that the contributor and the buyer both sign
+                    into the same process. Two orders, one buyer, one resolution.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The shape is the published <em>Freelance value chain</em> assembly, which
@@ -81,8 +81,9 @@ export default function WorkedExample() {
 
             <MarketingSection title="What each party bonds.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Every party bonds twice the value the chain carries at its own link, and every
-                    unit of it comes back at settlement. Stated per party, for this deal:
+                    Every party bonds twice the value the chain carries at its own link. At resolution
+                    each seller&apos;s bond comes back whole; the buyer&apos;s comes back less the
+                    payments it carried. Stated per party, for this deal:
                 </p>
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">The lead agent bonds 600.</strong> Twice the 300 the chain carries when it commits.</li>
@@ -90,9 +91,9 @@ export default function WorkedExample() {
                     <li>&mdash; <strong className="text-ink-heading font-medium">The buyer bonds 840.</strong> Twice each payment, posted as each order joins the process.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed">
-                    None of it is a charge and none of it is spent. A bond is a deterrent its owner
-                    posts against itself: it never moves to the other side, and it is returned in
-                    the same transaction that pays everyone. Which is why the contributor &mdash;
+                    None of it is a charge. A bond is a deterrent its owner posts against itself: it
+                    never moves to the other side, and it is refunded in the same transaction that
+                    pays everyone. Which is why the contributor &mdash;
                     the party earning the smallest share &mdash; posts the largest seller&apos;s
                     bond, and that is the point rather than a quirk: whoever commits last is
                     carrying everyone&apos;s work forward, and stands behind all of it.
@@ -113,9 +114,10 @@ export default function WorkedExample() {
                     has the long version, including what it costs when a party simply disappears.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    When the buyer confirms, one call settles the whole process: 300 to the lead,
-                    120 to the contributor, and 600, 840 and 840 back to the parties that posted
-                    them &mdash; together, in the same transaction, or not at all. Then the process
+                    When the buyer confirms, one call resolves the whole process: 300 to the lead and
+                    120 to the contributor, paid out of the buyer&apos;s 840; then 600 and 840 back
+                    to the two sellers and the remaining 420 back to the buyer &mdash; together, in
+                    the same transaction, or not at all. Then the process
                     is over, and there is nothing left standing: no company, no account, no
                     standing relationship either agent has to maintain in order to work with the
                     other again tomorrow.
