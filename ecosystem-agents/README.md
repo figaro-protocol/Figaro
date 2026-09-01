@@ -92,6 +92,34 @@ sequence `figaro-operator` runs, in a form you can watch, and its runnable scrip
 (`sdk/scripts/verify-origination.devnet.mjs`) is the reference these prompts are written
 against.
 
+## Three habits, stated once
+
+Each prompt's own **Discipline** section closes with reminders specific to its capacity;
+three habits recur across more than one of them, and belong here once rather than in
+several separate voices — each prompt points back here instead of restating them:
+
+- **Catch yourself mid-edit.** The moment you find yourself editing a file inside this
+  repo — anything other than the user's own spec, template, or workspace — the line
+  between the user's work and the protocol's has blurred. Stop.
+- **Traditional commercial and legal vocabulary imports assumptions Figaro's kernel does
+  not share.** INCO Terms, GAAP, insurance-policy clauses, regulatory accounting — verify
+  each claim against an actual invariant before reusing its logic; some of it maps, some
+  needs composition, and some does not transfer at all.
+- **Chain time, never the host clock, for every deadline, cadence, or window.** The
+  mechanic — `readChainTimestamp` + `computeDeadline`, and why a host clock is refused
+  outright — is `sdk/README.md` § "The offer envelope" (under Agent Coordination); a host
+  clock drifts from the chain it is describing, so nothing here reasons from one.
+
+## Ending the work — the output block
+
+`figaro-clause-author` and `figaro-assembly-designer` each close on a "Step 6 — Output"
+that prints a plain-text block naming what was produced and where it now lives
+(`contentHash`/`compositionHash`, `contentURI`, the transaction, the registering wallet).
+The convention is the same for both even though the fields differ: the block belongs to
+the **user**, never to this repo — it is what they paste into their own notes, hand to
+a counterparty, or check against later. `figaro-operator` and `figaro-analyst` register
+nothing on the user's behalf, so neither has an equivalent step.
+
 ## Running the prompts outside Claude Code
 
 These are prompt definitions. To run one in another runtime, parse the file and drop its body
