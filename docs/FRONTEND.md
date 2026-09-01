@@ -53,9 +53,9 @@ writes via `WalletGate`.**
 | `/members/edit/{identity,agents,assemblies,buyer,catalogue,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
 | `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view. |
 
-There is no `/settings` page and there will not be one: the build-baked
-`NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never seizes users onto
-the operator's provider key or pinning node.
+The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
+seizes users onto the operator's provider key or pinning node. Endpoint configuration
+is per-wallet, at `/members/edit/endpoints`.
 
 **URL-depth rule.** Concept pages — pages that explain a protocol object in plain
 language, for a reader who isn't necessarily about to act — live at the site root
