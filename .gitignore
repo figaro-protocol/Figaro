@@ -36,6 +36,7 @@ frontend/.figaro/
 .claude/
 /CLAUDE.md
 scripts/lint-*.sh
+scripts/audit-*.sh
 scripts/semantic-precommit-audit.sh
 scripts/verify-guards.sh
 .husky/pre-commit
