@@ -141,9 +141,8 @@ NEXT_PUBLIC_USAGE_COUNTER=0x...
 NEXT_PUBLIC_RPGF_MINTER=0x...
 NEXT_PUBLIC_DAO_TREASURY=0x...
 
-# No match-pool / quadratic-funding address: the reward is uniform, with no match round
-# (the 300M DAO funds public goods by discretionary decision, not a
-# crowd/match mechanism). The 600M RPGF pays uniform pro rata on real usage.
+# The 300M DAO funds public goods by discretionary decision. The 600M RPGF pays
+# uniform pro rata on real usage.
 
 # Batch-settlement proof path (FigaroBatchVerifier; MockSP1Verifier accepts
 # any proof on devnet — a real deployment wires Succinct's SP1 verifier

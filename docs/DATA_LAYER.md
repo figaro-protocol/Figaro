@@ -165,8 +165,7 @@ ALIGNS the honest majority; it does not DETER a determined Sybil, and the mechan
 not "non-farmable". Appreciation accrues to anyone who stakes, a free-rider included.
 What actually bounds farming: the score's dominant term counts
 DISTINCT LIVE-STAKED SELLERS, so n units of breadth cost n stakes held live — linear,
-with no wallet-splitting leverage (the retired pair statistic was manufacturable on the
-unstaked buyer side); the minimum-support floor (`minSellers = 3`) keeps everything one
+with no wallet-splitting leverage; the minimum-support floor (`minSellers = 3`) keeps everything one
 actor can fabricate alone off the scoreboard; the withdrawal cooldown makes each stake
 serve at most P/T identities per period; the automatic EIP-1559 per-trade base-fee burn
 is the one non-recoverable per-trade cost, scaling with fabricated volume and accruing

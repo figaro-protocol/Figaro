@@ -348,8 +348,7 @@ participant via a viem helper breaks the action end; asserting only on-chain
 events breaks the reaction end — either break and it is not e2e. A Playwright
 spec that drives contracts via viem and never touches the UI is a contract test
 misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the
-reaction is fabricated. There is no `mock` Playwright project; do not add
-one.
+reaction is fabricated.
 
 ### Assert CHAIN FACTS the UI is responsible for producing
 

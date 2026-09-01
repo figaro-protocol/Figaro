@@ -56,7 +56,7 @@ where the release facts are kept.
 
 Sepolia is live and rehearsed. Remaining:
 
-- Polygon: the current testnet is **Amoy** (Mumbai is retired) — confirm at
+- Polygon: the testnet is **Amoy** — confirm at
   execution time, then pin chain id + RPC in the network config. After each deploy,
   /spec's per-network deployments table and the SDK's published addresses fill from
   the real deployment records — the record is the source, never hand-typed

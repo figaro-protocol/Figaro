@@ -25,8 +25,7 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | `(research)` | `/why`, `/working-groups`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. |
 | `(reference)` | `/glossary` | Footer chrome, never nav. |
 
-**No audience-carve hub.** There is no `/builders` hub, and none belongs here: an
-audience's payloads belong on the object pages themselves. Sections are named for what
+**No audience-carve hub.** An audience's payloads belong on the object pages themselves. Sections are named for what
 a reader does, never for who they are.
 
 **Reference / read-only — `(app)/` or `(tools)/`, provider mounted for inline
@@ -225,7 +224,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - **`papers/`** — the paper-corpus chrome (`PaperLayout`)
 - **`figures/`** — shared SVG figures (papers + marketing)
 - **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`) plus `readingPathSteps.ts` — the homepage reading path's ordered steps (data, not a component; the spine, rendered on `/` and continued per-route by `ReadingPathNext`, mounted in the marketing layout)
-- **`modules/`** — feature modules (e.g. `MemberBrandingModule`). There is no module registry and no generic module-rendering route: consumer surfaces are purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
+- **`modules/`** — feature modules (e.g. `MemberBrandingModule`). Consumer surfaces are purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs
 
 ## Canonical exemplars — copy these shapes
