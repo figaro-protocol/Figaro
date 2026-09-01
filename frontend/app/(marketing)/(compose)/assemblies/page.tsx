@@ -139,9 +139,9 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-body leading-relaxed">
                     Registration is permissionless and permanent once written, on the terms
                     every registry here shares (<Link href="/faq#builders-registries" className="underline">what that
-                    protects, and what the deposit does</Link>). What is specific to the{" "}
+                    protects, and what the stake does</Link>). What is specific to the{" "}
                     <strong>composition</strong> binding: identical compositions collapse to
-                    one binding, and withdrawing the deposit de-surfaces the assembly without
+                    one binding, and withdrawing the stake de-surfaces the assembly without
                     clearing it. To change an assembly, register the changed composition: it
                     hashes differently, so it is a different assembly with a different derived
                     slug, and the original author&apos;s binding is untouched.

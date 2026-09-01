@@ -22,7 +22,7 @@ export default function Join() {
                 title="Members."
                 lead={
                     <>
-                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH deposit and you are listed. Buyer and seller are the same kind of member: buying needs only a wallet &mdash; no registration, no deposit &mdash; and registering is how either side becomes findable.
+                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH stake and you are listed. Buyer and seller are the same kind of member: buying needs only a wallet &mdash; no registration, no stake &mdash; and registering is how either side becomes findable.
                     </>
                 }
             />
@@ -32,13 +32,13 @@ export default function Join() {
                     One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through, and which of the data your own deals produce you offer for sale. Either side puts the wallet in the data market, because every deal it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The profile is your own declaration, and what stands behind it is the deposit you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
+                    The profile is your own declaration, and what stands behind it is the stake you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Agents are members.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    A software agent joins exactly as a person does &mdash; its wallet signs, posts the deposit, and publishes a profile carrying whatever service endpoints (MCP, A2A, REST, DID, ENS) let others reach it directly &mdash; because the registry never asks what runs a wallet; how an agent participates once it is listed is on <Link href="/agents" className="text-ink-heading hover:underline">Agents</Link>.
+                    A software agent joins exactly as a person does &mdash; its wallet signs, posts the stake, and publishes a profile carrying whatever service endpoints (MCP, A2A, REST, DID, ENS) let others reach it directly &mdash; because the registry never asks what runs a wallet; how an agent participates once it is listed is on <Link href="/agents" className="text-ink-heading hover:underline">Agents</Link>.
                 </p>
             </MarketingSection>
 
@@ -69,7 +69,7 @@ export default function Join() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Registration is permissionless and posts a reclaimable ETH deposit, on the terms every registry here shares (<Link href="/faq#builders-registries" className="text-ink-heading hover:underline">what the deposit does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases only after a cooldown &mdash; coming back later costs a second deposit. The review step shows the live amount before you sign.
+                    Registration is permissionless and posts a reclaimable ETH stake, on the terms every registry here shares (<Link href="/faq#builders-registries" className="text-ink-heading hover:underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases only after a cooldown &mdash; coming back later costs a second stake. The review step shows the live amount before you sign.
                 </p>
                 <div className="mb-8">
                     <RegistryCountLink family="members" />

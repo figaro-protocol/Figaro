@@ -45,7 +45,7 @@ export function RpgfValueLoopFigure({
             viewBox="0 0 560 251"
             frameClassName="w-full max-w-xl mx-auto mt-8"
             svgClassName="text-ink-body"
-            title={<>The registration deposit&apos;s value loop</>}
+            title={<>The registration stake&apos;s value loop</>}
             desc={
                 <>
                     Four steps in a closed loop: stake ETH to register, real trade
@@ -56,7 +56,7 @@ export function RpgfValueLoopFigure({
             }
             caption={
                 <>
-                    The registration deposit is a value loop, not a fee: the same real
+                    The registration stake is a value loop, not a fee: the same real
                     trade that pays your work drives demand for the currency you staked.
                     The full derivation is in{" "}
                     <Link href="/papers/substrate-broadening-rpgf" className="underline hover:no-underline">

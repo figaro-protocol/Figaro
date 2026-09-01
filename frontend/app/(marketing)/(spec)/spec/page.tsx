@@ -96,7 +96,7 @@ const ERRORS: ErrorStage[] = [
                 name: "AlreadyRegistered()",
                 from: "MembersRegistry.register",
                 cause: "This wallet already has a profile.",
-                fix: "Call updateProfile(metadataURI) instead — no second deposit.",
+                fix: "Call updateProfile(metadataURI) instead — no second stake.",
             },
             {
                 name: "CompositionAlreadyRegistered(compositionHash)",
@@ -777,7 +777,7 @@ function attestViaResolver(
                         id="multisender"
                         title="multisender (Disperse)"
                         meta="local mock · canonical where deployed"
-                        desc="Composed post-resolution batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned from its 2018 deployment onward) exists, the deployment record composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
+                        desc="Composed post-resolution batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-settlement composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across 16 chains, unowned from its 2018 deployment onward) exists, a wallet composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">

@@ -23,7 +23,7 @@ export default function DesignerRewards() {
                 title="Paid for what the network uses."
                 lead={
                     <>
-                        Write a clause, publish an assembly, and when resolved trade reaches for it you draw a share of 600 million florins &mdash; sixty percent of every florin that will ever exist &mdash; by a published formula anyone can check. Nobody applies, nobody decides, and nothing is taken from anyone to pay for it. Two conditions, up front: a year that closes with fewer than three distinct sellers using your work scores nothing, and a trade counts only while both you and the seller who delivered it hold a live registration stake.
+                        Write a clause, publish an assembly, and when resolved trade reaches for it you draw a share of 600 million florins &mdash; sixty percent of every florin that will ever exist &mdash; by a published formula anyone can check. Nobody applies, nobody decides, and nothing is taken from anyone to pay for it. Two conditions, up front: on each settlement path, a year that closes with fewer than three distinct sellers using your work scores nothing there &mdash; the floor defers the count, never destroys it &mdash; and a trade counts only if the seller who delivered it holds a live registration stake at the moment it is recorded, and you hold yours when you claim.
                     </>
                 }
             />
@@ -42,7 +42,7 @@ export default function DesignerRewards() {
                 </p>
                 <RpgfValueLoopFigure />
                 <p className="text-base text-ink-body leading-relaxed mt-6">
-                    A designer reads their accrual and claims a closed period&apos;s share at <Link href="/rewards" className="text-ink-heading font-medium hover:underline">Claim rewards</Link> &mdash; connected wallet required, permission from no one.
+                    A designer reads their accrual and claims a closed period&apos;s share at <Link href="/rewards" className="text-ink-heading font-medium hover:underline">Claim rewards</Link> &mdash; connected wallet required, permission from no one. Claiming is one call per closed year, the wallet&apos;s whole portfolio in it &mdash; every clause and assembly listed together, once. A year pays only after it closes; what a closed year never pays out is never minted at all; and a claim never expires &mdash; a closed year waits as long as its designer does. The formula itself &mdash; the schedule, the two counters, the cube-root score &mdash; is stated in full on <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>.
                 </p>
             </MarketingSection>
 
