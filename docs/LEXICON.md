@@ -82,7 +82,7 @@ Nouns and their definitions. One name per thing.
 
 **protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The kernel and the registries enforce the rules on a chain; any interface may read them, and anyone may build another.
 
-**refund** — The return of a bond to the party that deposited it, at resolution.
+**refund** — The return of a bond to the party that deposited it, at resolution. Only a bond is ever refunded; a payment transfers. The reversal of a payment, which commerce calls by the same name, has no path in the protocol — a shortfall is put right before the buyer resolves.
 
 **register** — An outside authority's public list — a licensing board, a drivers' roster — that a clause may point to. It is read where it lives; it is never copied into the protocol.
 

@@ -47,7 +47,7 @@ export default function Join() {
                     You need a wallet. A <Link href="/glossary#wallet" className="text-ink-heading hover:underline">wallet</Link> is an app that holds your tokens and signs for you &mdash; like a banking app, except no bank runs it and you alone hold the key; any standard Ethereum wallet works, and there is no Figaro-specific one to install.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Selling then asks for something the registration stake does not: on every trade you take, your wallet locks twice the value that trade has accumulated at your link &mdash; a bond, not a charge, held only while the trade is open, released whole when the buyer closes it, and paid to nobody.
+                    Selling then asks for something the registration stake does not: on every trade you take, your wallet locks twice the value that trade has accumulated at your link &mdash; a bond, not a charge, held only while the trade is open, refunded whole when the buyer closes it, and paid to nobody.
                 </p>
                 <div className="overflow-x-auto mb-6">
                     <table className="w-full max-w-2xl text-sm text-left">
@@ -77,7 +77,7 @@ export default function Join() {
                     Register
                 </CtaLink>
                 <p className="text-sm text-ink-muted mt-6">
-                    Reading rather than joining? The same registrations are browsable as a <Link href="/discover" className="text-ink-heading hover:underline">member directory</Link>. Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, claim a released deposit.
+                    Reading rather than joining? The same registrations are browsable as a <Link href="/discover" className="text-ink-heading hover:underline">member directory</Link>. Already registered? <Link href="/members/manage" className="text-ink-heading hover:underline">Manage your membership</Link> &mdash; edit the profile, leave the registry, reclaim your stake after its cooldown.
                 </p>
             </MarketingSection>
         </>
