@@ -60,6 +60,8 @@ Nouns and their definitions. One name per thing.
 
 **gas** — What the chain charges to execute a transaction.
 
+**judgment** — What a party decides rather than what the chain computes. Every judgment is exercised before both parties have signed — in design, in binding, at checkout, in negotiating the offer — or is kept by a named party afterwards: the buyer alone deciding to resolve, a forum ruling on a process's data, the DAO spending its treasury. The chain accepts exactly one judgment after commit — the buyer's resolution — and everything else it does is arithmetic.
+
 **kernel** — The two frozen contracts: `FigaroCore`, which holds every deposit and resolves a process when its buyer signs, and `CommitmentTypes`, which defines the commitment and how it is hashed for signing. Two operations: commit and resolve.
 
 **member** — A wallet that has registered a profile, with a stake, so that others can find it.
