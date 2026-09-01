@@ -42,9 +42,9 @@ export const NAV_LINKS: NavLink[] = [
 //
 // The first entry (Orders) is the consumer's primary surface — the wallet's
 // single actor-neutral order list (every order it's on as buyer OR seller,
-// plus anything awaiting its action). It precedes the protocol-tier surfaces
-// (Build, Terminal, etc.) so a participant who already has a wallet
-// connected has a one-click path to "their" work.
+// plus anything awaiting its action). It precedes the wallet's other surfaces
+// (Discover, Manage membership, Audit) so a participant who already has a
+// wallet connected has a one-click path to "their" work.
 export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
     // The buyer's start-order verb — the wallet browses bonded sellers and opens
