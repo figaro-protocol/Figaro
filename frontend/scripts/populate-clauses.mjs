@@ -11,10 +11,9 @@
  *      spec integrity digest (contentHash), so any reader fetches the spec from
  *      chain state alone (the shape MembersRegistry / AssemblyRegistry already use).
  *
- * This REPLACES the placeholder clause registration that used to live in the
- * deploy scripts (which anchored `keccak256("ipfs://figaro-x/v1")` — a hash of a
- * made-up URI that no pinned spec can match) AND the deleted bundled specs.
- * After this runs, every clause is genuinely on-chain + on-IPFS — one SSoT.
+ * No deploy script anchors a placeholder hash, and no clause spec ships bundled
+ * in the frontend: `clauses/*.json` pinned to IPFS and anchored here is the only
+ * source, so every clause is genuinely on-chain + on-IPFS — one SSoT.
  *
  * Idempotent: a clause already on the registry is skipped (first-write-wins).
  *

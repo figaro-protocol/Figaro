@@ -10,12 +10,10 @@
  * interface with no entry renders nothing extra — the affordance is
  * progressive enhancement; the protocol never depends on it.
  *
- * The discipline (same as `fieldFormatInputs`, and the reason the dead lens
- * system and the V4 mechanism packages failed where this doesn't): the KEY
- * is a semantic the clause spec DECLARES — never a clause id, a mechanism
- * kind, or a component name. A never-seen clause declaring a known
- * interaction gets the surface with zero code changes; a never-seen
- * interaction degrades to nothing.
+ * The discipline (same as `fieldFormatInputs`): the KEY is a semantic the
+ * clause spec DECLARES — never a clause id, a mechanism kind, or a component
+ * name. A never-seen clause declaring a known interaction gets the surface
+ * with zero code changes; a never-seen interaction degrades to nothing.
  */
 import type { ComponentType } from "react";
 import { QrChallengePanel } from "@/components/runtime/QrChallengePanel";

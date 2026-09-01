@@ -349,11 +349,9 @@ export function composesForumUrl(clauseId: string): string | undefined {
  *  Generic surfaces derive composition behaviour from this string, never a
  *  bundled clause-id. Undefined when the clause composes with nothing, or its
  *  spec isn't loaded.
- *  @public pending consumer: the composes-seam reader (kept by maintainer ruling
- *  2026-07-02); its next consumer is the first on-chain-invoke tenant to land a
- *  handler in `useCompositionActions` (the earlier carbon-aggregator candidate
- *  is gone — no live mainnet retirement router; CONTRACTS.md § "Carbon-offset
- *  apparatus — DELETED"). */
+ *  @public pending consumer: the composes-seam reader; its next consumer is
+ *  the first on-chain-invoke tenant to land a handler in
+ *  `useCompositionActions`. No such tenant is live today. */
 export function composesInterface(clauseId: string): string | undefined {
     return getClauseSpec(clauseId)?.block?.design.composes?.interface;
 }

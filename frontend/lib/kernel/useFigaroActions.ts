@@ -1,4 +1,4 @@
-// Core Hook for V5 Protocol Actions (Unified Commit, Commitment[] Resolution)
+// Core hook for Figaro protocol actions (unified commit, Commitment[] resolution)
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
@@ -38,7 +38,7 @@ export const useFigaroActions = () => {
         });
     };
 
-    // V5: Unified commit (root and sub-orders use the same function)
+    // Unified commit: root and sub-orders use the same function.
     // Root orders: processId = 0x00...00, expectedCumulativeValue = payment
     // Sub-orders: processId = existing process, expectedCumulativeValue = prev + payment
     const commit = async (
@@ -71,7 +71,7 @@ export const useFigaroActions = () => {
         });
     };
 
-    // V5: Resolve Process — takes full Commitment[] (kernel re-derives orderHash from each)
+    // Resolve process: takes full Commitment[] (kernel re-derives orderHash from each).
     const resolveProcess = async (
         processId: string,
         commitments: Commitment[]
@@ -99,7 +99,7 @@ export const useFigaroActions = () => {
         // Token approval
         approveToken,
 
-        // Core actions (V5: unified commit, Commitment[] resolution)
+        // Core actions: unified commit, Commitment[] resolution.
         commit,
         resolveProcess,
 

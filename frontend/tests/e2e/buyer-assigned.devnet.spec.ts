@@ -5,8 +5,7 @@
  * The SAME delivery assembly as local-commerce — one composition, one
  * content-addressed identity — adopted DIFFERENTLY: the merchant binds it
  * with NO courier designation. Coordination is an ADOPTION property, not
- * stored composition (the retired figaro-coordination enum is not how
- * variants are expressed): a binding WITH a designation runs seller-assigned;
+ * stored composition: a binding WITH a designation runs seller-assigned;
  * a binding WITHOUT one leaves the courier node unbound, and checkout falls
  * to the buyer's choice — the SellerCataloguePicker, this spec's NEW
  * coverage (no other e2e drives the unbound path).

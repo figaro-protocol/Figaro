@@ -10,8 +10,7 @@
  * no entry falls back to the plain text input — the affordance is progressive
  * enhancement, never a requirement.
  *
- * The discipline (why the lens system and the V4 module packages died, and
- * this doesn't): the KEY is a semantic the clause spec DECLARES, never a
+ * The discipline: the KEY is a semantic the clause spec DECLARES, never a
  * clause id, a mechanism kind, or a component name. A never-seen clause
  * declaring `format: "geohash"` gets the picker with zero code changes; a
  * never-seen format degrades to text.

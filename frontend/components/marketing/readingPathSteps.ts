@@ -19,38 +19,22 @@ export const READING_PATH_RUNGS = [
 /**
  * The site's spine — the reading path the homepage closes with.
  *
- * THE ORDER IS THE RULING. Two rulings stand on the record, the second
- * superseding the first; neither is deleted, because the reasoning of the one
- * that was replaced is what makes the replacement legible.
+ * THE ORDER IS DELIBERATE: BUILD altitude first. A reader meets a thing they
+ * could make before the warrant that lets them believe it. Rung 1 is the
+ * invitation (clauses, assemblies, composition, the data market as the
+ * existence proof, the commons that pays authors, one published shape lived
+ * end to end); rung 2 is the warrant — why the mechanism holds; rung 3 is the
+ * door; rung 4 is the horizon. /security and /spec sit in the path as the
+ * warrant's own evidence and the door itself. /registries stays off-path: it
+ * is an explorer reached from the live counts, not a lesson.
  *
- * 1. 2026-08-21 (SUPERSEDED) — three rungs, "One deal" / "An economy" / "The
- *    world", probe-validated across four rounds of blind comprehension probes
- *    plus an expert copy wave, then REORDERED the same day by maintainer ruling
- *    on the eight-probe full-site baseline: the worked example follows the
- *    mechanism, and the hard questions follow a deal seen to succeed. Each rung
- *    earned the next — a single deal that enforces itself, then what many such
- *    deals compose into, then how those economies meet the institutions that
- *    already exist. That order was ruled against the then-current safe-led
- *    estate and was correct for it.
- * 2. 2026-08-24 (IN FORCE) — the safe→build reorientation. Four rungs. The
- *    superseding instrument is the 2026-08-22 USP ratification, which puts the
- *    BUILD altitude first: a reader meets a thing they could make before the
- *    warrant that lets them believe it. Rung 1 is the invitation (clauses,
- *    assemblies, composition, the data market as the existence proof, the
- *    commons that pays authors, one published shape lived end to end); rung 2
- *    is the warrant, unchanged in content and load-bearing precisely because it
- *    now answers a question the reader has just acquired a reason to ask;
- *    rung 3 is the door; rung 4 is the horizon. /security and /spec join the
- *    path (the warrant's own evidence, and the door itself, were off-curriculum).
- *    /registries stays off-path: it is an explorer reached from the live counts,
- *    not a lesson.
+ * Each step teaches ONE thing, and labels stay unified with the nav — one
+ * canonical name per page. Do not reorder, retitle, or insert a step on probe
+ * evidence alone — this order reflects a deliberate choice about what a
+ * reader needs first; changing it needs the same level of deliberation, not a
+ * single probe result.
  *
- * Each step still teaches ONE thing, and labels stay unified with the nav —
- * one canonical name per page. Do not reorder, retitle, or insert a step on
- * probe evidence alone — reopening this requires a maintainer ruling that
- * cites this comment and is RECORDED here alongside the ones it supersedes.
- *
- * Step 1 of the ruled path is Home itself and is therefore NOT in this array;
+ * Step 1 of the reading path is Home itself and is therefore NOT in this array;
  * a page does not link to itself. Steps are deliberately UNNUMBERED in the
  * rendering — order is positional (a visible "2." at the top of a list reads
  * as a bug, not a ruling).

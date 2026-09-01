@@ -11,12 +11,11 @@ import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/me
  *    tokens, default token, agent services.
  *  - catalogue (`MemberCatalogueMetadata`): items.
  *
- * Carries no closed-taxonomy fields. Earlier revisions had
- * `cuisine`/`rating`/`deliveryTime`/`minimumOrder` — none of those
- * exist in the underlying clauses; they were rendered from
- * hardcoded defaults and have been removed. `specialty` is the
- * free-form open-string self-description the seller authors
- * themselves.
+ * Carries no closed-taxonomy fields. A field like `cuisine`, `rating`,
+ * `deliveryTime`, or `minimumOrder` has no home here — none of those exist in
+ * the underlying clauses, so adding one back means rendering from a hardcoded
+ * default rather than from clause data. `specialty` is the free-form
+ * open-string self-description the seller authors themselves.
  */
 export interface MemberCatalogue {
     name: string;

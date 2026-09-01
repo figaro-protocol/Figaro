@@ -3,8 +3,8 @@
  *
  * Phase 4 C4a-d of the e2e remediation plan: UI coverage of the four
  * `/members/edit/<route>` surfaces. The `MembersRegistry.updateProfile`
- * contract path lives in Foundry (MembersRegistryTest — the viem-tier
- * Playwright spec was retired as a misfiled contract test); this spec
+ * contract path lives in Foundry (MembersRegistryTest) — no Playwright spec
+ * duplicates that coverage at the viem tier; this spec instead
  * drives the path through the UI forms so the round-trip
  * (fetch → hydrate → edit → re-pin → tx → redirect) is covered as a
  * single live system.

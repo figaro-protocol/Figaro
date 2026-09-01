@@ -12,9 +12,9 @@
  *      seeder (devnet-helpers.seedRegisteredMember) with a profile
  *      pointing at the catalogue AND binding an assembly DISCOVERED
  *      from the AssemblyRegistry (frontend/scripts/populate-test-data.mjs anchors
- *      them before Playwright runs). The surfacing rule is applied EVENLY (maintainer
- *      2026-07-02): a seller without ≥1 anchored binding is absent on
- *      /discover, /s, and checkout alike — browse-only is retired.
+ *      them before Playwright runs). The surfacing rule applies EVENLY:
+ *      a seller without ≥1 anchored binding is absent on
+ *      /discover, /s, and checkout alike.
  *   3. Open /s/view?seller=<sellerAddress>?e2e=devnet from a buyer wallet.
  *
  * Assertions: the seller-detail-view shell renders for the seller
@@ -148,8 +148,7 @@ test.describe('/s/view (devnet)', () => {
         // fetches profile+catalogue from IPFS. NO reload fallbacks: the
         // seeding awaited its receipts and pins before navigation, so the
         // first mount MUST discover the seller — a reload here would mask a
-        // real discovery bug (the loop that used to sit here did exactly
-        // that; removed 2026-07-20, punch-list e2e hygiene).
+        // real discovery bug.
         const detailView = page.getByTestId('member-detail-view');
         await detailView.waitFor({ state: 'visible', timeout: 30000 });
 

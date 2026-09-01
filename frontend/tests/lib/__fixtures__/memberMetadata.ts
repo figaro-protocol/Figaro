@@ -1,7 +1,7 @@
 /**
  * Synthetic example payloads for `MemberCatalogueMetadata` and
  * `MemberProfileMetadata`. Test-only — production code does not consume
- * these. Moved out of `lib/shared/` so the runtime bundle no longer carries
+ * these; kept out of `lib/shared/` so the runtime bundle never carries
  * fixture data.
  *
  * The profile example's `subjectAddress` is deliberately not a standard

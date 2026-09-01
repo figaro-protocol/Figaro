@@ -6,10 +6,10 @@ import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 /**
  * Controller-erasure for a process's committed-agreement pins.
  *
- * The signed agreement is the highest-PII IPFS artifact and was the one high-PII
- * pin with no erasure affordance (the member profile, evidence bundle, and device
- * evidence all have one). A party erases their pinned copies here — deliberately,
- * once the process's records are no longer needed. Never automatic: the committed
+ * The signed agreement is the highest-PII IPFS artifact. Like the member profile,
+ * evidence bundle, and device evidence, it has an erasure affordance: a party
+ * erases their pinned copies here — deliberately, once the process's records are
+ * no longer needed. Never automatic: the committed
  * agreement is the Layer-3 dispute record an off-chain forum receives, so it must
  * outlive `resolveProcess`.
  *

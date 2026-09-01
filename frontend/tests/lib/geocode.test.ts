@@ -30,7 +30,7 @@ describe("geocodeAddress", () => {
         expect(out).toEqual({ ok: true, result: { lat: 40.7177933, lon: -73.9954856 } });
         expect(fetchMock).toHaveBeenCalledOnce();
         // Straight from the browser to the third-party geocoder — no
-        // operator proxy in between (the /api/geocode route is retired).
+        // operator proxy in between.
         const url = (fetchMock.mock.calls[0]?.[0] ?? "") as string;
         expect(url).toBe(
             "https://nominatim.openstreetmap.org/search?q=100%20Bowery%2C%20New%20York&format=json&limit=1",

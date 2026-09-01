@@ -115,8 +115,8 @@ export interface PublishedAgreement {
  * wallet's node and forget the local URI pointer (unpin + forget — the same
  * erasure symmetry as the member profile and device-evidence paths, and the
  * controller-erasure half of "author pins → author erases"). The committed
- * agreement carries the most participant-linkable content of any pin, and until
- * now it was the one high-PII artifact with no erasure affordance.
+ * agreement carries the most participant-linkable content of any pin, and this
+ * is its erasure affordance.
  *
  * Controller-initiated, never automatic: the committed agreement is the Layer-3
  * dispute record an off-chain forum receives, so it must outlive `resolveProcess`

@@ -29,9 +29,9 @@ export interface Order {
     cumulativeValue: bigint;
     payment: bigint;
     state: OrderState;
-    /** Computed: 2 × cumulativeValue. Not emitted in V5 events. */
+    /** Computed: 2 × cumulativeValue. Not carried directly on the kernel event. */
     sellerBond: bigint;
-    /** Computed: 2 × payment. Not emitted in V5 events. */
+    /** Computed: 2 × payment. Not carried directly on the kernel event. */
     buyerBond: bigint;
     /** Salt from the commitment (for full reconstruction at resolution). */
     salt: bigint;

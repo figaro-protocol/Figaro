@@ -64,11 +64,11 @@ function sectionHoldingReader(groups: NavGroup[], pathname: string): string | nu
  * The mobile drawer — the ONE way into the site tree on a phone.
  *
  * Sections are an ACCORDION, one open at a time (`components/ui/Disclosure`):
- * the flat list ran past the fold on every small viewport, and its 11px
- * section headers read as captions BENEATH the 16px links they governed —
- * hierarchy inverted. Closed, the drawer is now one row per section, so the
- * whole map fits a small phone without scrolling; the section that holds the
- * current route opens on its own, so the reader lands where they already are.
+ * a flat list runs past the fold on a small viewport, and small section
+ * headers read as captions beneath the links they govern — do not flatten
+ * this back out. Closed, the drawer is one row per section, so the whole map
+ * fits a small phone without scrolling; the section that holds the current
+ * route opens on its own, so the reader lands where they already are.
  *
  * "You are here" runs on the same three ORTHOGONAL channels as the desktop
  * tree (`NavTreeRow`), per DESIGN_TOKENS §7: FILL is hover, RING is focus,

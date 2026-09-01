@@ -78,41 +78,36 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — the ruled site tree (maintainer, 2026-08-07), five nav
- * entries: Build (`(compose)` + `(rewards)` + `(spec)`, one flat list of pages),
- * The Deal `(deal)`, Market (the all-bridge group carrying the app
- * tier's e-commerce tools),
+ * The marketing map — the site tree, five nav entries: Build (`(compose)` +
+ * `(rewards)` + `(spec)`, one flat list of pages), The Deal `(deal)`, Market
+ * (the all-bridge group carrying the app tier's e-commerce tools),
  * Participants `(participants)`, Research `(research)`. Each group's first
- * PAGE entry is its doorway; entry ORDER within a group is the ruled
- * reading order, not alphabetical.
+ * PAGE entry is its doorway; entry ORDER within a group is the reading
+ * order, not alphabetical.
  *
  * SECTION ORDER is the maintainer's word, not machine-enforced —
  * `lint-nav-structure.sh` checks doorway-first, set equality, and
  * label==metadata.title, never the order of the sections themselves. Build
- * leads and The Deal follows it (maintainer, 2026-08-24, safe→build
- * reorientation on the 2026-08-22 USP ratification): the first doorway a
- * visitor meets resolves to a build object, and the warrant section answers a
- * question they have just acquired a reason to ask. The same ruling renamed
- * the section "Builders" → "Build" — a verb, not an audience noun (the
- * `/builders` hub was deleted for being an audience carve; do not re-grow one).
+ * leads and The Deal follows it: the first doorway a visitor meets resolves
+ * to a build object, and the warrant section answers a question they have
+ * just acquired a reason to ask. The section is named "Build" — a verb, not
+ * an audience noun; do not rename it to an audience carve like "Builders",
+ * and do not re-grow a standalone `/builders` hub.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
- * `(reference)` (Glossary) is footer chrome, never nav; papers are
- * reached through Working Groups (RE-RULED 2026-08-21: a /papers index was
- * briefly built off a misread "Fix" and deleted the same day — the corpus has
- * ONE surface, /working-groups; do not rebuild the index). Build leads
- * with Specifications (maintainer-ruled 2026-08-21). /local-commerce and /faq are nav-visible
- * under The Deal (maintainer, 2026-08-07) on the standing condition that the
- * rest of the site stays demoted — the meal is one worked example among
- * many, never THE model. The two AUTHORING tools (Register a clause,
- * Designer) are nav leaves under Build, each beside its object page
- * (SUPERSEDING ruling, maintainer 2026-08-25: the maintainer could not find
- * the designer — a build-first site whose composing surfaces hide behind an
- * inline sentence contradicts its own orientation; the seam is emphasized,
- * in nav AND as a CTA on each object page). The data explorer
- * (`/data/explore`, the (app)-tier graph-query surface) is the third such
- * leaf, beside its own object page (maintainer-ruled 2026-08-26) — same
- * shape: the concept page explains the data layer, the tool queries it.
- * Claim and Join remain buttons on their object's page, never nav slots. `scripts/lint-nav-structure.sh` enforces the mechanical half of this
+ * `(reference)` (Glossary) is footer chrome, never nav; papers are reached
+ * through Working Groups — the corpus has ONE surface, /working-groups; do
+ * not add a separate /papers index. Build leads with Specifications.
+ * /local-commerce and /faq are nav-visible under The Deal on the standing
+ * condition that the rest of the site stays demoted — the meal is one worked
+ * example among many, never THE model. The two AUTHORING tools (Register a
+ * clause, Designer) are nav leaves under Build, each beside its object page:
+ * a build-first site keeps its composing surfaces visible in nav AND as a
+ * CTA on each object page, never behind an inline sentence alone. The data
+ * explorer (`/data/explore`, the (app)-tier graph-query surface) is the
+ * third such leaf, beside its own object page — same shape: the concept
+ * page explains the data layer, the tool queries it.
+ * Claim and Join remain buttons on their object's page, never nav slots.
+ * `scripts/lint-nav-structure.sh` enforces the mechanical half of this
  * (doorway-first, set equality against the route tree, label==metadata.title,
  * and breadcrumb doorways) — section order and section names are the
  * maintainer's word, checked by review.

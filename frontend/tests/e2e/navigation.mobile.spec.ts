@@ -45,10 +45,8 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         // Desktop nav container is CSS-hidden below the md breakpoint. Assert
         // it is ATTACHED first — toBeHidden() passes vacuously for a testid
-        // that doesn't exist, which is how a rename made this assertion
-        // meaningless twice already (desktop-nav → desktop-nav-app, then back
-        // to desktop-nav when the app tier's second row was deleted and
-        // HeaderShell/NavTreeRow became the one desktop nav on every tier).
+        // that doesn't exist, so a stray rename of `desktop-nav` elsewhere
+        // would silently turn this into a no-op assertion instead of a failure.
         const desktopNav = page.getByTestId('desktop-nav');
         await expect(desktopNav).toBeAttached();
         await expect(desktopNav).toBeHidden();

@@ -193,10 +193,10 @@ export function projectDocuments(
 // ── Financial statements as DOCUMENTS ──────────────────────────────────────────
 // The balance sheet, income statement, and cash flow — derived purely from commit
 // + resolve — are documents too, so they emit the SAME RenderedDocument shape the
-// invoice/BoL use and the ONE generic renderer draws them. This replaces the
-// deleted financialsProjection.ts, whose per-order "invoice-style" line items were
-// a duplicate of the invoice document and are gone. Per-currency throughout
-// (multi-currency arithmetic is unsafe). The kernel math is never re-implemented:
+// invoice/BoL use and the ONE generic renderer draws them. There is no separate
+// per-order "invoice-style" line-item projection for financials — that would
+// duplicate the invoice document. Per-currency throughout (multi-currency
+// arithmetic is unsafe). The kernel math is never re-implemented:
 // bonds are READ from the order, settlement from the SDK's calculateSettlement.
 
 interface CurrencyAgg {

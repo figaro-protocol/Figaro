@@ -4,11 +4,9 @@
  * Free-form address-text → lat/lon resolution, straight from the
  * browser to a Nominatim-compatible geocoder — OpenStreetMap's public
  * instance by default (disclosed at the input), the user's own via the userEndpoints override
- * (`lib/shared/userEndpoints`). There is no server in between: the
- * former `/api/geocode` proxy was retired (no-PP/ToS ruling,
- * 2026-07-09) so the typed address travels from the user's browser to
- * the third party and nowhere else — only on an explicit action,
- * disclosed at the input.
+ * (`lib/shared/userEndpoints`). There is no server in between: the typed
+ * address travels from the user's browser to the third party and nowhere
+ * else — only on an explicit action, disclosed at the input.
  *
  * Trade-off carried knowingly: some privacy extensions (uBlock
  * Origin, Privacy Badger, Brave Shields) block Nominatim as a

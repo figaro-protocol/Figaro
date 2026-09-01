@@ -163,11 +163,11 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
 }
 
 
-// evmSnapshot/evmRevert were removed — devnet is a mainnet REHEARSAL, so specs
-// leave their state on-chain and stay idempotent via a per-run nonce (see
-// probeAssembly.ts), never evm_snapshot/evm_revert (lint-no-devnet-revert).
-// (evmIncreaseTime followed when the registry time locks were deleted — K4:
-// no time-locked path remains to exercise.)
+// Specs never call evm_snapshot/evm_revert (lint-no-devnet-revert): devnet is
+// a mainnet REHEARSAL, so specs leave their state on-chain and stay idempotent
+// via a per-run nonce (see probeAssembly.ts).
+// (evmIncreaseTime is unused too: K4's registries carry no time-locked path
+// to exercise.)
 
 
 /** MembersRegistry ABI fragment for seedRegisteredMember. Local copy keeps

@@ -11,7 +11,7 @@ describe("compositionTarget", () => {
         expect(compositionTarget("no-such-interface")).toBeNull();
     });
 
-    it("returns null for the retired descending-auction interface", () => {
+    it("returns null for the unregistered descending-auction interface", () => {
         expect(compositionTarget("descending-auction")).toBeNull();
     });
 });

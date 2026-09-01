@@ -55,9 +55,8 @@
  *              Harbor Provisions (anvil[11]), Sterling Goods (anvil[12]) —
  *              their catalogues price the sub-orders live.
  *
- * K3 note: cross-order sibling attest has no client plumbing — the sister-
- * clause pairing that produced it was deleted in the open-world de-hardcode,
- * and the orphaned consumer leg was buried with it. The on-chain
+ * K3 note: cross-order sibling attest has no client plumbing — no sister-
+ * clause pairing produces it, and no consumer leg reads it. The on-chain
  * attestAsSeller(role, target) surface remains (DESIGN_DECISIONS §2); a
  * cross-order verb, if ever needed, derives from a composed clause's spec —
  * never a hardcoded affordance.

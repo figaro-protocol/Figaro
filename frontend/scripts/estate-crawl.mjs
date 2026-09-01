@@ -60,9 +60,9 @@ const RETIRED =
 // wins makes the pin permanent; each entry needs a reason and a mainnet plan.
 const PIN_ALLOWLIST = new Map([
     // figaro-merchant-process v1: the description's "order-fulfillment flow"
-    // is ACCEPTED AS-IS (maintainer ruling 2026-08-24) — ordinary English in
-    // a spec description, not the retired stored-modality vocabulary. Do not
-    // reword the seed; the same bytes register on every network.
+    // is ordinary English in a spec description — not the closed-world
+    // stored-modality vocabulary the guard bans. Do not reword the seed;
+    // the same bytes register on every network.
     ["QmfEt9p5GwY1RnhfcoY1PqKcBAEuce7SVhoaeYypx1gFYR", "fulfillment wording ruled fine as-is"],
 ]);
 

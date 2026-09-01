@@ -26,9 +26,9 @@ export {   activeChain,  };
 // ---------------------------------------------------------------------------
 
 // The RPC transport points straight at the chain endpoint in every
-// environment — the static export has no server to proxy through (the former
-// dev `/rpc` rewrite is gone), and the browser reaches a CORS-permissive local
-// Anvil / a public gateway directly. NEXT_PUBLIC_RPC_URL is only the DEFAULT —
+// environment — the static export has no server to proxy through, and the
+// browser reaches a CORS-permissive local Anvil / a public gateway directly.
+// NEXT_PUBLIC_RPC_URL is only the DEFAULT —
 // the user's runtime override (their own provider key, member endpoints) wins, so a
 // hosted deploy never bills every visitor's reads to the operator's key.
 // wagmi's config is created once at module load, so an override change

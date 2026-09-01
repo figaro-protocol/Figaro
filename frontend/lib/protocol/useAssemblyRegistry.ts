@@ -28,11 +28,10 @@ import {
     type AssemblyTemplate,
 } from "@/lib/shared/assemblyTemplate";
 
-// Per-process gas ceiling moved to `@/lib/shared/chainGasCeilings`
+// Per-process gas ceiling lives in `@/lib/shared/chainGasCeilings`
 // (`maxOrdersResolvablePerProcess`) — the ceiling depends on the active
-// chain's block gas limit and is no longer a hardcoded 2,145 literal.
-// The old `MAX_NODES_PER_ASSEMBLY` export is gone; callers that need
-// the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
+// chain's block gas limit; it is never a hardcoded literal. Callers that
+// need the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
 
 export function getAssemblyRegistry(): `0x${string}` | null {
     const a = CONTRACTS.assemblyRegistry;

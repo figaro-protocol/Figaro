@@ -21,8 +21,9 @@
  * `HARVEST_GOLDEN_VECTORS=1` to (re)record it — only legitimate before any
  * code has moved, never to paper over a post-move mismatch.
  *
- * This spec is deleted in the promotion's final phase, when the frontend
- * copies it pins are gone and the SDK tests own the fixture.
+ * This spec exists only for as long as the frontend still holds these
+ * implementations directly; once the promotion retires the frontend's own
+ * copies, the SDK tests own the fixture alone.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";

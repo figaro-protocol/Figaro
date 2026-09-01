@@ -47,8 +47,8 @@ export const colorTokens = {
     // Held at the hue and saturation of `default-strong` (hsl 43 19%) and
     // darkened to L 46% so the ring clears WCAG 1.4.11's 3:1 floor on every
     // surface a ring lands on — including `subtle-hover`, the darkest
-    // (3.05:1). No longer an alias of `default-strong`, which stays light
-    // because it is a BORDER against text, not an indicator.
+    // (3.05:1). Not an alias of `default-strong`, which stays light because
+    // it is a BORDER against text, not an indicator.
     focus: '#8c7f5f',
 
     // ── Accent ──────────────────────────────────────────────────────────

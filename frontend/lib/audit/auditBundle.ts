@@ -12,9 +12,9 @@
  * invoice and bill of lading) and composed alongside the bundle by the consumer
  * (the PDF renderer draws them through its one generic document page).
  *
- * Document genres: there are NONE, and there must not be. The per-genre
- * extractors (invoice / Bill of Lading / emissions / proximity) were retired
- * with the open-world de-hardcode because they named clauses directly.
+ * Document genres: there are NONE, and there must not be. A per-genre
+ * extractor (one each for invoice, Bill of Lading, emissions, proximity) would
+ * name clauses directly, which this codebase does not do anywhere.
  * `clauseData` renders EVERY committed clause generically from its spec, so the
  * bundle certifies any committed leaf — including a clause this codebase has
  * never seen — with zero genre code. A recognizable document (an invoice, a
