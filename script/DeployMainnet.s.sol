@@ -15,7 +15,7 @@ import {UsageCounter} from "../src/protocol/usage/UsageCounter.sol";
 import {AssemblyRegistry} from "../src/protocol/registries/AssemblyRegistry.sol";
 import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 
-/// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
+/// @title DeployMainnet — Mainnet deployment of the full Figaro protocol stack
 ///
 /// @notice Deploys all production contracts with no mocks. All security-sensitive
 ///         parameters are read from environment variables so they can be verified

@@ -29,8 +29,8 @@ interface PaperLayoutProps {
  * Document-format shell for a prose paper rendered as a page. Screen view is a
  * single readable column; the print path (PrintButton → window.print()) exports
  * it to PDF with the watermark and pagination from the `paper-*` rules in
- * globals.css. The page itself is the source of truth — there is no `.tex` and
- * no committed `.pdf`.
+ * globals.css. The page itself is the sole committed source of truth, and the
+ * reader prints their own PDF from it.
  */
 export function PaperLayout({
     slug,

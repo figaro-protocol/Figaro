@@ -16,7 +16,7 @@ import {AssemblyRegistry} from "../src/protocol/registries/AssemblyRegistry.sol"
 import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 
-/// @title DeploySepolia — Sepolia testnet rehearsal of the full Figaro V5 stack
+/// @title DeploySepolia — Sepolia testnet rehearsal of the full Figaro stack
 ///
 /// @notice Mirror of `DeployMainnet.s.sol` (testnet = mainnet rehearsal). Every
 ///         deviation from the mainnet script is a TESTNET DIVERGENCE listed here;

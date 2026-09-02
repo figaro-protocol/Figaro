@@ -18,9 +18,9 @@
  *      lock period are not touched (`updateProfile` is the
  *      caller-only metadata-only path, by contract design).
  *   6. After the supersede confirms, best-effort unpin the prior
- *      profile CID and any authored artifact the successor no longer
- *      references (author pins → author erases; the erasure never
- *      fails a confirmed save).
+ *      profile CID and any authored artifact the successor
+ *      no longer references (author pins → author erases; the
+ *      erasure never fails a confirmed save).
  *
  * Hook returns a `save(partial)` function plus progress state. The
  * caller is responsible for redirect / success UI; the hook only

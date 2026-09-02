@@ -1,9 +1,10 @@
 /**
  * profileErasure — the supersede/withdraw erasure set.
  *
- * The prior profile CID and every authored artifact the successor no longer
- * references are unpinned; artifacts the successor still references survive;
- * withdraw (no successor) erases everything; unpin failures never throw.
+ * The prior profile CID and every authored artifact the successor
+ * no longer references are unpinned; artifacts the successor still
+ * references survive; withdraw (no successor) erases everything;
+ * unpin failures never throw.
  */
 import { describe, expect, it, vi } from "vitest";
 import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";

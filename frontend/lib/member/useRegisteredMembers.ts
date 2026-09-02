@@ -13,9 +13,9 @@
  * catalogue and no bindings is a member, and it surfaces here.
  *
  * `stakeWithdrawn` mirrors the K4 de-surfacing rule the indexer applies:
- * a member whose withdrawal request post-dates its registration is no longer
- * active — carried, not dropped, so the explorer's stake facet can show the
- * archival view on request.
+ * a member whose withdrawal request post-dates its registration is
+ * no longer current — carried, not dropped, so the explorer's stake facet
+ * can show the archival view on request.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
