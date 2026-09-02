@@ -66,8 +66,8 @@ deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
    onto the template's clause bag), signs its half, and sends the envelope to the
    seller over a coordination channel.
 2. **Seller** runs the anti-tamper gate (below), applies BOTH of its decision floors
-   (below), and — if accepting — approves its 2× cumulative-value bond and returns the
-   envelope with `sellerSig` filled. Declining returns nothing.
+   (below), and — if accepting — approves its 2× cumulative-value bond and
+   returns the envelope with `sellerSig` filled. Declining returns nothing.
 3. **Buyer** approves its 2× payment bond and submits the two-party commit. No
    counter-signature ⇒ no commit — **the protocol never fabricates the counterparty's
    signature, it carries it.**
