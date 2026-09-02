@@ -11,6 +11,7 @@
  * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
  */
 
+import { useMemo } from "react";
 import { hexEqual, isValidAddress } from "@/lib/shared/evm";
 import { parseAssemblyRegistryLogs } from "@figaro-protocol/sdk";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
@@ -168,7 +169,13 @@ export function usePublishedAssemblies(
     // keeps them, flagged, and `includeWithdrawn` keeps them for a reader
     // whose job is showing the withdrawn set (the registry explorer).
     const keep = !!registeredBy || !!opts?.includeWithdrawn;
-    const data = scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data;
+    // Memoized: downstream hooks key on this array's identity (e.g. the
+    // assembly-choices fold), so the filtered view must be referentially
+    // stable across renders, not rebuilt per call.
+    const data = useMemo(
+        () => (scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data),
+        [scan.data, keep],
+    );
     return { ...scan, data };
 }
 
