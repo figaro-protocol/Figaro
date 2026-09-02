@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
+import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 
 export const metadata: Metadata = withOg({
     title: "Data — Figaro Protocol",
@@ -30,9 +31,10 @@ export default function Data() {
             </MarketingSection>
 
             <MarketingSection title="What the chain keeps.">
-                <p className="text-base text-ink-body leading-relaxed">
-                    A trade commits its fingerprint on-chain &mdash; a hash of the agreement, timestamped and permanent, never the agreement itself &mdash; and resolution marks it settled. What that buys is narrow, and worth being exact about: it proves that a specific piece of data matches a specific resolved trade, and proves nothing about what that data says. Why a boundary this thin can hold an unbounded world honest is on <Link href="/invariants" className="text-ink-heading font-medium hover:underline">Invariants</Link>.
+                <p className="text-base text-ink-body leading-relaxed mb-8">
+                    A trade commits its fingerprint on-chain &mdash; a hash of the agreement, timestamped and permanent, never the agreement itself &mdash; and resolution closes it. The agreement becomes a merkle tree, the clauses its leaves, the root the fingerprint the chain keeps; the detail itself lives on storage you control, which is why the ownership is real. What the fingerprint buys is narrow, and worth being exact about: it proves that a specific piece of data matches a specific resolved trade, and proves nothing about what that data says. Why a boundary this thin can hold an unbounded world honest is on <Link href="/invariants" className="text-ink-heading font-medium hover:underline">Invariants</Link>.
                 </p>
+                <MerkleForestFigure />
             </MarketingSection>
 
             <MarketingSection title="The half that's shared.">
