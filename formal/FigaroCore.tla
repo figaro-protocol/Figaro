@@ -28,8 +28,6 @@
  *   Block.timestamp/deadline — timing concern, not economic
  *   Multi-currency          — single currency model (mechanism is per-currency)
  *   Gas limits              — operational, not mechanism concern
- *   Post-resolution continuation — contract allows sub-orders after resolve;
- *                                  modeled as single-resolution per process
  *)
 EXTENDS Integers, FiniteSets, Sequences, TLC
 
