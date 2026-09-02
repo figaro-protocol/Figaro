@@ -201,7 +201,7 @@ function EvidenceDisplayContent() {
             return;
         }
         if (coreAddressParam && !isAddress(coreAddressParam)) {
-            setError("Invalid coreAddress — must be a valid Ethereum address.");
+            setError("Invalid coreAddress — must be a valid EVM address.");
             setLoading(false);
             return;
         }
