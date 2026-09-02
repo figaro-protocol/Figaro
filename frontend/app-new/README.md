@@ -9,11 +9,11 @@ Three readers, three sections, one home:
 
 - Home — three doors: Use it → Discover; Build on it → the builders' first page;
   Check the proofs → Working Groups.
-- For laymen (members, users): your word is your bond; when something goes wrong; your
+- Participate — for laymen (members, users): your word is your bond; when something goes wrong; your
   agent; your data; your community's token; become a member; FAQ about use only.
-- For builders: what it displaces and how — institutions, the process, the network,
+- Build — for builders: what it displaces and how — institutions, the process, the network,
   agents that design, the data layer, the token, what changes — then the docs.
-- For academics: Working Groups, the papers, what changes.
+- Research — for academics: Working Groups, the papers, what changes.
 
 Guards keyed on `app/(marketing)` paths do not see this tree until the rename; run them
 by hand against `app-new/` before review.
