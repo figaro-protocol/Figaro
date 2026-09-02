@@ -33,7 +33,7 @@ export default function DesignerRewards() {
                     The 600 million pay out over nine annual periods in three rising steps &mdash; 15%, then 30%, then 55% of the reserve &mdash; paid once a year, each year from its own tally, fixed at deployment; the biggest payouts wait for the most evidence. The full schedule, year by year and florin by florin, is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>, which owns the supply side of this program.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body leading-relaxed list-disc pl-5">
-                    <li>Every <Link href="/glossary#clause" className="text-ink-heading hover:underline">clause</Link> and <Link href="/glossary#assembly" className="text-ink-heading hover:underline">assembly</Link> earns the same way: by how much real resolved trade reached for it.</li>
+                    <li>Every clause and assembly earns the same way: by how much real resolved trade reached for it.</li>
                     <li>Two numbers decide a share: resolved trades that carried it, and distinct sellers behind them. Breadth beats volume &mdash; fifty sellers reaching for it once outweighs one seller using it fifty times. Payment size never enters.</li>
                     <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the contract itself.</li>
                 </ul>

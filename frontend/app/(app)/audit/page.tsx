@@ -17,7 +17,6 @@ import { withOg } from "@/lib/shared/pageMetadata";
  * `<HashVerifier />` child carries its own `"use client"`.
  */
 
-import Link from "next/link";
 import { HashVerifier } from "./_components/HashVerifier";
 import { ProcessAuditOpen } from "./_components/ProcessAuditOpen";
 
@@ -43,7 +42,7 @@ export default function AuditPage() {
                 <p className="text-sm text-ink-muted max-w-2xl">
                     That record opens at <code>/audit/view?process=&lt;processId&gt;</code> &mdash; the
                     id is the whole handle, so the URL is shareable as it stands; a{" "}
-                    <Link href="/glossary#process" className="underline hover:text-ink-heading">process</Link>{" "}
+                    process{" "}
                     is one buyer&apos;s whole chain of orders, settling together or not at all.
                 </p>
             </header>

@@ -25,7 +25,7 @@ export default function Assemblies() {
                         a data sale, a certified repair. Somebody draws a shape once, and
                         anyone who fits it can trade through it without drawing it again.
                         An assembly is that drawing &mdash; a composition template
-                        that wires <Link href="/glossary#clause" className="underline">clauses</Link>{" "}
+                        that wires clauses{" "}
                         into a multi-order process. Each one registers on{" "}
                         <code>AssemblyRegistry</code> under its <strong>composition hash</strong>
                         {" "}&mdash; the hash IS the identity &mdash; with an IPFS pointer to its

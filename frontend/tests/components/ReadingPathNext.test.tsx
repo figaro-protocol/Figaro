@@ -37,7 +37,7 @@ describe("nextReadingPathStep", () => {
         // /registries is deliberately off-path (an explorer reached from the
         // live counts, not a lesson); /spec joined the path 2026-08-24 and is
         // therefore NOT listed here.
-        for (const off of ["/", "/registries", "/glossary", "/papers/after-tradelens"]) {
+        for (const off of ["/", "/registries", "/papers/after-tradelens"]) {
             expect(nextReadingPathStep(off)).toBeNull();
         }
     });

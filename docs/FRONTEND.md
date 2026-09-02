@@ -23,7 +23,6 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | `(rewards)` | `/rpgf`, `/tokenomics`, `/dao` | Three concepts, three pages, in reading order: the PROGRAM (how use becomes a reward), the TOKEN (supply, who holds what), the BOOTSTRAP (what the treasury is for). None re-derives another's subject. |
 | `(spec)` | `/spec`, `/pitfalls`, `/security` | `/security` is testing + audit results only. |
 | `(research)` | `/why`, `/working-groups`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. |
-| `(reference)` | `/glossary` | Footer chrome, never nav. |
 
 **No audience-carve hub.** An audience's payloads belong on the object pages themselves. Sections are named for what
 a reader does, never for who they are.
