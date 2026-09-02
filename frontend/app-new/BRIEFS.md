@@ -49,12 +49,15 @@ institutions, NO network, NO florin, NO what-changes; nouns: bond, member)
    and the buyer can check it is real. Figure: two columns, public / yours. Sources: /data
    public-private table; FAQ tax-and-law; self-authenticating-data-sales in plain words.
    Onward: /your-communitys-token.
-5. /your-communitys-token (100): Pay and be paid in your community's own token, wherever you
-   are, with anyone who takes it. A trade uses one token, chosen by the people in it. No figure.
-   Sources: VISION "Where the value goes"; florin paper §7, in plain words. Onward: /become-a-member.
+5. /your-communitys-token (130): A trade uses one token, chosen by the people in it, and any of
+   these will do: a stablecoin; the chain's own coin; your community's own token, wherever you
+   are, with anyone who takes it; the token a market was built with, when its designer chose one.
+   Figure: one table, the kinds of token and who chooses each. Sources: VISION "Where the value
+   goes"; florin paper §7; the utility-token clause, in plain words. Onward: /become-a-member.
 6. /become-a-member (130): Buying needs only a wallet. To sell, publish a profile — what you
    offer and where — post a stake you get back when you leave, and you appear on Discover. People
-   and software register the same way. No figure. Sources: /members opening; the wizard steps.
+   and software register the same way. The page LINKS TO THE REGISTRATION WIZARD (`/members/identity`,
+   its first step) as its one action. No figure. Sources: /members opening; the wizard steps.
    Onward: /discover.
 7. /faq (no cap): USING Figaro only. Who holds the tokens; refunds; change of mind; lost keys;
    what is public about me; can an agent act for me; can the site lie about what I sign (one line
@@ -77,7 +80,8 @@ institutions, NO network, NO florin, NO what-changes; nouns: bond, member)
    itself, not yet audited by an outside party, nothing to pause or upgrade, full account in the
    docs. Nouns: order, resolution. Figure: the outcome table. Sources: asymmetric-bonding, THEORY,
    disclosure-asymmetry, self-closing-ledger, the verified-kernel paper. Onward: /the-network.
-3. /the-network (200): Many buyers and many chains at once, chains rooting chains, trades formed
+3. /the-network (200): Many buyers and many chains at once — every seller is the buyer of its own
+   process for its own inputs, so processes link into chains of processes — and trades formed
    with no venue in the middle. Every asset is a wallet address, trading for itself under the same
    terms in every jurisdiction. Nouns: assembly. Figure: the process-topology figure. Sources:
    asymmetric-bonding §5, markets-without-a-venue, transaction-scoped-institutions,
@@ -94,7 +98,15 @@ institutions, NO network, NO florin, NO what-changes; nouns: bond, member)
    Figure: table regulatory/legal/fiscal/market-making — what the data gives. Sources:
    self-closing-ledger, coordination-substrates §3.8, on-chain-evidence, markets-without-a-venue,
    docs/DATA_LAYER.md, self-authenticating-data-sales. Onward: /the-token.
-6. /the-token (200): Figaro's own tokenomics. One billion florins, fixed. 600M for designers,
+6. /tokens-you-build-with (200): A designer pins ANY ERC-20 as the unit an assembly trades in:
+   a stablecoin, the chain's own asset, a community's token, or the designer's OWN token, whose
+   worth is discovered by use of what they built — the share certificate of an entity never
+   incorporated. One token per process; a swap before commit is the on-ramp. Nouns: denomination,
+   utility token. Figure: table — token kind, who chooses it, what it says. Sources: VISION "Where
+   the value goes", the Schelling-point paper §7, `clauses/figaro-utility-token.json`,
+   `assemblies/equipment-hire.json`, protocol-composition §6 (the swap as on-ramp).
+   Onward: /the-token.
+7. /the-token (200): Figaro's own tokenomics. One billion florins, fixed. 600M for designers,
    paid by a published formula on adoption counted on chain. 300M for the DAO. 100M at genesis. A
    Schelling point: no yield, no vote, no privilege at resolution. Nouns: florin, treasury. Figure:
    the supply split. Sources: florin paper, docs/FLORIN_TOKEN.md, docs/DESIGNER_REWARDS.md,
