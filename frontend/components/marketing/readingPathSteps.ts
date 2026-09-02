@@ -17,7 +17,10 @@ export const READING_PATH_RUNGS = [
 ] as const;
 
 /**
- * The site's spine — the reading path the homepage closes with.
+ * The site's spine — the reading path, rendered as the per-route "read this
+ * next" link (`ReadingPathNext`, mounted in the marketing layout). Home is a
+ * hook and a router and carries no path section; a reader enters the spine
+ * through any page in it and the next-links carry them onward.
  *
  * THE ORDER IS DELIBERATE: BUILD altitude first. A reader meets a thing they
  * could make before the warrant that lets them believe it. Rung 1 is the
@@ -34,21 +37,21 @@ export const READING_PATH_RUNGS = [
  * reader needs first; changing it needs the same level of deliberation, not a
  * single probe result.
  *
- * Step 1 of the reading path is Home itself and is therefore NOT in this array;
- * a page does not link to itself. Steps are deliberately UNNUMBERED in the
- * rendering — order is positional (a visible "2." at the top of a list reads
- * as a bug, not a ruling).
+ * Home is NOT in this array — it owns no subject and no step. Steps are
+ * deliberately UNNUMBERED in the rendering — order is positional (a visible
+ * "2." at the top of a list reads as a bug, not a ruling).
  *
  * This is a plain module, NOT a `"use client"` file: a client module's exports
- * reach server components as unmappable proxies, and the homepage is a server
- * component (the prerender throws; only `next build` catches it).
+ * reach server components as unmappable proxies, and the marketing pages are
+ * server components (the prerender throws; only `next build` catches it).
  *
  * The nav (`components/shared/navLinks.ts`) is a different object — doorways
  * grouped by protocol surface. This is a curriculum in reading order. Neither
- * derives from the other; do not merge them. The path renders on `/` ONLY:
- * never mirror it into `Footer.tsx` (the one-wayfinding-surface ruling killed
- * site-map columns) or into the nav, and the rung names stay confined to the
- * homepage section — never in nav labels, breadcrumbs, or page headers.
+ * derives from the other; do not merge them. The path renders through the
+ * next-links ONLY: never mirror the full list into `Footer.tsx` (the
+ * one-wayfinding-surface ruling killed site-map columns) or into the nav, and
+ * the rung names appear on no surface — never in nav labels, breadcrumbs, or
+ * page headers.
  */
 export const READING_PATH_STEPS: ReadingPathStep[] = [
     {

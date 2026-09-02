@@ -223,7 +223,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - **`data/`** — the data-explorer surfaces (`DataExplorer`)
 - **`papers/`** — the paper-corpus chrome (`PaperLayout`)
 - **`figures/`** — shared SVG figures (papers + marketing)
-- **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`) plus `readingPathSteps.ts` — the homepage reading path's ordered steps (data, not a component; the spine, rendered on `/` and continued per-route by `ReadingPathNext`, mounted in the marketing layout)
+- **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`, `CtaLink`) plus `readingPathSteps.ts` — the reading spine's ordered steps (data, not a component; rendered as the per-route "read this next" link by `ReadingPathNext`, mounted in the marketing layout — home carries no path section)
 - **`modules/`** — feature modules (e.g. `MemberBrandingModule`). Consumer surfaces are purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs
 
