@@ -159,6 +159,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "How participants read a bonded equilibrium under uncertainty, and how legible the incentive structure is to a non-specialist. This group reads the substrate as behavioral game theorists and decision scientists read it — what the comparison at a party's own node actually asks of them, and where the experimental literature on coordination failure does and does not carry over.",
         papers: [
             { title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment", href: "/papers/behavioral-game-theory" },
+            { title: "External Events and the Settlement Frame: One Rule for Everything the World Does Between the Two Calls", href: "/papers/external-events" },
         ],
     },
 ];
