@@ -15,7 +15,11 @@ interface OnboardingShellProps {
 
 /**
  * Per-step layout primitive. Renders the step indicator, a title,
- * an optional lead paragraph, and the step body.
+ * an optional lead paragraph, the draft-persistence line, and the step body.
+ *
+ * The persistence line is rendered here, once, for every step: the draft is
+ * wallet-keyed browser storage (`lib/member/onboardingState`), so saying so
+ * on one step and not the next would be a lie on the quiet step.
  *
  * Wallet-not-connected case: each step decides whether to render its
  * own connect-wallet prompt (the doorway does not require a
@@ -35,6 +39,11 @@ export function OnboardingShell({
                 {description && (
                     <div className="text-body-lead text-ink-body">{description}</div>
                 )}
+                <p className="text-xs text-ink-faint" data-testid="onboarding-draft-persistence">
+                    Saved in this browser as you type, under your wallet address: reload or
+                    come back later and this step reopens with what you entered. Nothing
+                    reaches the network until you publish on the last step.
+                </p>
             </header>
             <div>{children}</div>
         </div>

@@ -23,6 +23,14 @@
  *   5. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
  *
+ * A third test covers the REVIEW screen — the last surface a designer reads
+ * before an irreversible anchor. Terms composed in the drawer (and at the
+ * assembly level) must be stated there, on the client-side transition the
+ * Review button performs, with no reload to re-hydrate anything: same chips,
+ * same ticks, same composition identity as the canvas. The regression it
+ * guards is a review that showed every order as "No terms yet" while the
+ * draft — and the template publish would have anchored — carried them.
+ *
  * A second test covers what a design fill's VALUE does to the composition:
  * the enum options render through the spec's own valueLabels (a labelled
  * choice, not a raw token), and changing the chosen value MOVES the canvas's
@@ -42,6 +50,11 @@ const CONSENT_CLAUSE_KEY = 'figaro-consent';
 // the VALUES are read off the live spec the drawer rendered.
 const REGIME_CLAUSE_KEY = 'figaro-data-terms';
 const REGIME_FIELD = 'disclosure';
+// The composition a beta tester drew: two order-scoped terms plus a
+// dispute forum composed once for the whole assembly.
+const SCHEDULE_CLAUSE_KEY = 'figaro-schedule';
+const ACCEPTANCE_CLAUSE_KEY = 'figaro-acceptance-criteria';
+const FORUM_CLAUSE_KEY = 'figaro-arbitration-kleros';
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */
@@ -204,5 +217,94 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
             hashReadout,
             'editorial prose is hash-excluded — renaming never forks identity',
         ).toHaveAttribute('title', afterRegime!);
+    });
+
+    test('the Review screen states exactly the terms the canvas composed — chips, ticks, and the same identity', async ({ page }) => {
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+
+        // ── Compose two terms on the root order, through the drawer ──────────
+        const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
+        await rootNode.waitFor({ state: 'visible', timeout: 10000 });
+        const orderId = await rootNode.getAttribute('data-order-id');
+        expect(orderId, 'the canvas node carries its order id').toBeTruthy();
+        await rootNode.click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
+            const box = page.getByTestId(`drawer-registry-clause-${clauseId}`);
+            await expect(box, `the drawer surfaces ${clauseId}`).toHaveCount(1, { timeout: 20000 });
+            await box.check();
+        }
+
+        // ── Compose one ASSEMBLY-scoped term — a dispute forum, composed once
+        //    for the whole design and folded into every agreement at checkout ──
+        const forumToggle = page.getByTestId(`assembly-terms-clause-${FORUM_CLAUSE_KEY}`);
+        await expect(forumToggle, 'the assembly-terms panel surfaces the forum clause').toHaveCount(1, { timeout: 20000 });
+        await forumToggle.check();
+
+        // The canvas states the composition on the node itself — the reading the
+        // review must reproduce. Each chip carries its clause id as its tooltip.
+        const canvasChips = page.locator(`[data-testid="node-clauses-${orderId}"] span[title]`);
+        await expect(canvasChips, 'the canvas node states both composed terms').toHaveCount(2, { timeout: 10000 });
+
+        // The identity the canvas shows is the one the review must show.
+        const canvasHash = await page.getByTestId('designer-composition-hash').getAttribute('title');
+        expect(canvasHash, 'the canvas states a full composition hash').toMatch(/^0x[0-9a-f]{64}$/);
+
+        // Publishing needs the editorial identity; Review is the gate before it.
+        await page.getByTestId('designer-name-input').fill(`Review fidelity ${Date.now()}`);
+        await page.getByTestId('designer-summary-input').fill('The review states what the canvas holds.');
+        await page.getByTestId('designer-description-input').fill('Two order terms and one assembly term, composed through the UI.');
+        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+
+        // ── Review: the CLIENT-SIDE transition, with no reload to re-hydrate ──
+        await page.getByTestId('designer-review').click();
+        await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
+        await expect(page.getByTestId('view-source-badge')).toContainText('review', { timeout: 30000 });
+
+        // No order may read as termless when the canvas composed its terms.
+        await expect(
+            page.locator('[data-testid^="node-clauses-empty-"]'),
+            'the review never says "no terms yet" for an order the canvas composed',
+        ).toHaveCount(0);
+        const reviewChips = page.locator(`[data-testid="node-clauses-${orderId}"] span[title]`);
+        await expect(reviewChips, 'the review states both composed terms on the same order').toHaveCount(2, { timeout: 20000 });
+        for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
+            await expect(
+                page.locator(`[data-testid="node-clauses-${orderId}"] span[title="${clauseId}"]`),
+                `the review names ${clauseId} on the order that composed it`,
+            ).toHaveCount(1);
+        }
+
+        // The assembly-scoped term travels too — invisible here, it would be
+        // anchored unread.
+        await expect(
+            page.getByTestId('view-assembly-terms').getByTestId(`assembly-terms-clause-${FORUM_CLAUSE_KEY}`),
+            'the review states the assembly-scoped term the canvas composed',
+        ).toBeChecked({ timeout: 20000 });
+
+        // The drawer agrees with the chips: the composed clauses are ticked.
+        await page.locator(`[data-order-id="${orderId}"]`).first().click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('drawer-tab-registry').click();
+        for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
+            await expect(
+                page.getByTestId(`drawer-registry-clause-${clauseId}`),
+                `the review drawer shows ${clauseId} composed`,
+            ).toBeChecked({ timeout: 20000 });
+        }
+
+        // One template, one hash: the identity reviewed is the identity composed.
+        await expect(
+            page.getByTestId('designer-composition-hash'),
+            'the review carries the canvas composition, byte for byte',
+        ).toHaveAttribute('title', canvasHash!, { timeout: 20000 });
+
+        // …and publish is reachable, because the reviewed bytes ARE the draft's.
+        await expect(page.getByTestId('review-confirm-publish')).toBeEnabled({ timeout: 30000 });
+        await expect(page.getByTestId('review-composition-error')).toHaveCount(0);
     });
 });

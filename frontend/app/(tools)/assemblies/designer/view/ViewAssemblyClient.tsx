@@ -22,11 +22,20 @@
  * mode so clicking a node surfaces its clauses/clauses without
  * permitting edits. The action button at the right of the toolbar is
  * "Edit" for drafts and "Fork" for published assemblies.
+ *
+ * WHAT IT SHOWS IS WHAT IT PUBLISHES. Every composed term on this page —
+ * the per-node clauses, the drawer's ticks, the assembly-scoped terms — is
+ * read out of the assembly TEMPLATE: for a draft, the one built by the same
+ * `draftToAssemblyTemplate` walk publish anchors; for a published assembly,
+ * the pinned bytes. And in review mode publish is reachable only while that
+ * template builds and the stored draft still hashes to the composition on
+ * screen, so an irreversible anchor can never carry terms this page did not
+ * show.
  */
 
 import Link from "next/link";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
@@ -34,6 +43,8 @@ import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import { Button } from "@/components/ui/Button";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
+import { AssemblyTermsPanel } from "../_components/AssemblyTermsPanel";
+import { CompositionIdentity } from "../_components/CompositionIdentity";
 import {
     deleteNamedDraft,
     loadNamedDraft,
@@ -48,6 +59,10 @@ import {
 import { useWithdrawGate, withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
+import {
+    projectSnapshotForReview,
+    templateComposedByAgreement,
+} from "@/lib/designer/draftToAssemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
@@ -115,7 +130,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // clause specs; the on-chain resolution path below waits for the cache
     // (the `useClauseSpecs` contract). Drafts don't build, so they resolve
     // immediately regardless.
-    const { loaded: clauseSpecsLoaded } = useClauseSpecs();
+    const { loaded: clauseSpecsLoaded, version: clauseSpecsVersion } = useClauseSpecs();
 
     useEffect(() => {
         // Local draft first — more current than any on-chain snapshot.
@@ -246,12 +261,64 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         };
     }, [slug, client, chainId, justPublished, clauseSpecsLoaded]);
 
+    /**
+     * THE composition this screen shows — read out of the very bytes the
+     * publish call will anchor (a draft, projected through the one
+     * draft→template walk) or out of the pinned bytes themselves (a published
+     * assembly). Never a second reading of the draft: a review that projected
+     * the composition its own way could — and did — show an order as empty
+     * while publish anchored its terms.
+     *
+     * The spec cache is an input to the walk (the mandatory clauses fold from
+     * it, and scope is verified against it), so a warm re-runs the projection.
+     */
+    const review = useMemo(
+        () => (resolved.kind === "draft" ? projectSnapshotForReview(resolved.snapshot) : null),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [resolved, clauseSpecsVersion],
+    );
+    /** canvas order id → clauseId → composed values, exactly as the template states it. */
+    const composedByOrderId = useMemo(() => {
+        if (resolved.kind === "published") return templateComposedByAgreement(resolved.assemblyTemplate);
+        return review?.ok ? review.composedByOrderId : {};
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resolved, review, clauseSpecsVersion]);
+    /** The assembly-scoped terms the composition carries — composed once for the
+     *  whole design, folded into every agreement at checkout. */
+    const composedAssemblyClauses = useMemo(() => {
+        if (resolved.kind === "published") return resolved.assemblyTemplate.assemblyClauses ?? {};
+        return review?.ok ? review.assemblyClauses : {};
+    }, [resolved, review]);
+
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;
+        // One template, one hash. `review` is the composition this screen
+        // rendered; the anchor is permanent, so publish is only reachable when
+        // that composition still builds AND the stored draft still hashes to
+        // it. Either check failing means the terms on screen are not the terms
+        // that would go out — refuse before the wallet, never publish blind.
+        if (!review?.ok) {
+            setPublishError(
+                review?.error
+                    ?? "This composition could not be built, so there is nothing verified to publish.",
+            );
+            return;
+        }
+        const stored = loadNamedDraft(resolved.snapshot.slug);
+        const storedReview = stored ? projectSnapshotForReview(stored) : null;
+        if (storedReview && (!storedReview.ok
+            || !hexEqual(storedReview.compositionHash, review.compositionHash))) {
+            setPublishError(
+                "This draft changed after it was opened for review, so what is on screen is no "
+                + "longer what would be published. Nothing was published — go back to the editor "
+                + "and review it again.",
+            );
+            return;
+        }
         setConfirming(true);
         setPublishError(null);
         try {
-            const outcome = await publish(resolved.snapshot);
+            const outcome = await publish(resolved.snapshot, review.compositionHash);
             // publish() waits for receipt-confirmed status:success, so
             // it's safe to delete the named draft + clear the session here.
             clearCurrentSession();
@@ -269,7 +336,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         } finally {
             setConfirming(false);
         }
-    }, [resolved, publish]);
+    }, [resolved, publish, review]);
 
     const handleContinueAfterPublish = useCallback(() => {
         // Don't clear receipt locally — that triggers a re-render of the
@@ -425,12 +492,21 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 // Gated on the spec cache: the publish build folds the MANDATORY
                 // mandatory clauses from loaded specs — confirming before the
                 // chain→IPFS warm completes would throw "no mandatory clauses".
-                disabled={confirming || !clauseSpecsLoaded}
+                // And gated on the composition BUILDING: an assembly whose
+                // template this screen could not derive is one whose terms it
+                // could not show, so it must not be anchorable from here.
+                disabled={confirming || !clauseSpecsLoaded || !review?.ok}
                 className="font-semibold"
                 data-testid="review-confirm-publish"
                 title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
-                {confirming ? "Publishing…" : clauseSpecsLoaded ? "Confirm publish — irreversible" : "Loading clause specs…"}
+                {confirming
+                    ? "Publishing…"
+                    : !clauseSpecsLoaded
+                        ? "Loading clause specs…"
+                        : review?.ok
+                            ? "Confirm publish — irreversible"
+                            : "Composition unavailable"}
             </Button>
         </div>
     ) : resolved.kind === "draft" ? (
@@ -506,6 +582,16 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         click <strong>← Back to editor</strong> to make changes
                         before confirming.
                     </p>
+                    {review && !review.ok && (
+                        <p
+                            className="text-xs text-error-fg mt-2 max-w-3xl leading-relaxed"
+                            role="alert"
+                            data-testid="review-composition-error"
+                        >
+                            This composition could not be built, so its terms cannot be shown and
+                            it cannot be published from here: {review.error}
+                        </p>
+                    )}
                 </div>
             )}
             <div
@@ -567,10 +653,33 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </div>
             )}
             <div className="flex-1 overflow-hidden flex flex-row">
+                {/* LEFT — the composition's whole-assembly face: the identity a
+                    designer compared on the canvas, and the assembly-scoped
+                    terms (a dispute forum, an applicable law, a pinned
+                    settlement token) that fold into EVERY agreement at
+                    checkout. Read-only here; without it a review would omit
+                    terms the designer composed. */}
+                {(inReviewMode || Object.keys(composedAssemblyClauses).length > 0) && (
+                    <aside
+                        data-testid="view-assembly-terms"
+                        className="w-[300px] shrink-0 overflow-y-auto border-r border-default bg-paper px-5 py-4 space-y-4"
+                    >
+                        {resolved.kind === "draft" && (
+                            <CompositionIdentity snapshot={resolved.snapshot} />
+                        )}
+                        <AssemblyTermsPanel
+                            values={composedAssemblyClauses}
+                            onToggleClause={() => { /* read-only */ }}
+                            onSetClauseField={() => { /* read-only */ }}
+                            readOnly
+                        />
+                    </aside>
+                )}
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
                         <TopologyCanvas
                             orders={orders}
+                            clauseValuesByOrderId={composedByOrderId}
                             title={`${resolved.name} (read-only)`}
                             designerMode
                             onSelectNode={setSelectedOrderId}
@@ -580,6 +689,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <AgreementDrawer
                     order={selectedOrder}
                     onClose={() => setSelectedOrderId(null)}
+                    selectedClauseValues={
+                        selectedOrderId ? (composedByOrderId[selectedOrderId] ?? {}) : undefined
+                    }
                     embedded
                     readOnly
                 />

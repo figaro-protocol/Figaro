@@ -95,6 +95,23 @@ export function getFieldFormatInput(
  * agnostic: it reads only spec-declared field names and sibling values, never a
  * clause id.
  */
+/**
+ * Whether some SIBLING's input format follows this field's value — i.e. a
+ * sibling declares `formatFromField: <this field's name>`. The mirror of
+ * `resolveInputFormat`: the field a sibling reads its format from must be
+ * editable by whoever fills that sibling, so a form renders it even when it
+ * carries a spec `default` (figaro-geolocation's `geocodeStandard` defaults to
+ * `geohash`; a party with no device location states an origin by switching the
+ * standard to a jurisdiction code the clause's open axis already admits).
+ * Clause-agnostic: it reads only spec-declared field names.
+ */
+export function isSiblingFormatSource(
+    field: FieldSpec,
+    siblings: readonly FieldSpec[],
+): boolean {
+    return siblings.some((s) => s.type === "string" && s.formatFromField === field.name);
+}
+
 export function resolveInputFormat(
     field: FieldSpec,
     siblings: readonly FieldSpec[],

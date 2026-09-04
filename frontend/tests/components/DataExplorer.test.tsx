@@ -50,6 +50,7 @@ function corpus(over: Partial<GraphCorpus> = {}): GraphCorpus {
         tokenMeta: new Map(),
         venue: null,
         assemblyNames: new Map(),
+        attributionByProcess: new Map(),
         ...over,
     } as GraphCorpus;
 }
@@ -167,5 +168,109 @@ describe("AnalystPrompt — the box exists only where a reader does", () => {
         expect(await screen.findByTestId("analyst-prompt")).toBeInTheDocument();
         expect((await screen.findByTestId("analyst-no-prompt")).textContent).toMatch(/ANTHROPIC_MODEL is unset/);
         expect(screen.queryByTestId("analyst-question")).toBeNull();
+    });
+});
+
+describe("DataExplorer — a listed process can be carried into the audit view", () => {
+    const PROCESS = `0x${"ab".repeat(32)}`;
+    const MARKET = `0x${"cd".repeat(32)}`;
+    const BUYER = "0x5555555555555555555555555555555555555555";
+
+    /** One process as the kernel's own reconstruction hands it over. */
+    const process = (processId: string, over: Record<string, unknown> = {}) => ({
+        processId,
+        rootBuyer: BUYER,
+        currency: TOKEN,
+        cumulativeValue: 9n,
+        resolved: true,
+        orders: new Map([
+            [
+                "o1",
+                {
+                    orderHash: `0x${"11".repeat(32)}`,
+                    processId,
+                    buyer: BUYER,
+                    seller: "0x6666666666666666666666666666666666666666",
+                    currency: TOKEN,
+                    payment: 9n,
+                    cumulativeValue: 9n,
+                    agreementHash: `0x${"99".repeat(32)}`,
+                    salt: 0n,
+                    deadline: 0n,
+                    state: 1,
+                    blockNumber: 12,
+                },
+            ],
+        ]),
+        ...over,
+    });
+
+    const marketGroup = (key: string) => ({
+        key,
+        processCount: 1,
+        orderCount: 1,
+        distinctPairCount: 1,
+        volumeByDenomination: new Map([[TOKEN, { committed: 18n, settled: 9n }]]),
+        processCommitBlocks: [12],
+        shapes: [{ orderCount: 1, processCount: 1 }],
+    });
+
+    beforeEach(() => {
+        analystUrlMock.mockReturnValue(null);
+        statusMock.mockReturnValue(null);
+    });
+
+    it("the DEFAULT market layer shows each process's id and links it into /audit/view", () => {
+        // The default view — no wallet typed, no address known. This is where
+        // a reader who has only just arrived actually stands.
+        searchParams = "view=market";
+        corpusMock.mockReturnValue({
+            corpus: corpus({
+                process: { boundary: "protocol-enforced", processes: new Map([[PROCESS, process(PROCESS)]]) },
+                market: {
+                    boundary: "protocol-derived",
+                    groups: new Map([[MARKET, marketGroup(MARKET)]]),
+                    unattributedProcessCount: 0,
+                },
+                attributionByProcess: new Map([[PROCESS.toLowerCase(), MARKET.toLowerCase()]]),
+            } as Partial<GraphCorpus>),
+            isLoading: false,
+            failed: false,
+        });
+        render(<DataExplorer />);
+
+        const link = screen.getByTestId(`process-audit-link-${PROCESS.toLowerCase()}`);
+        expect(link).toHaveAttribute("href", `/audit/view?process=${PROCESS}`);
+        // The id itself is on the page, not only behind the link's href.
+        expect(screen.getByTestId(`process-row-${PROCESS.toLowerCase()}`).textContent).toContain(PROCESS.slice(0, 10));
+        expect(screen.getByTestId(`market-processes-${MARKET}`).textContent).toMatch(/most recent first/i);
+    });
+
+    it("an UNATTRIBUTED process is openable too — the posture hides no id", () => {
+        searchParams = "view=market";
+        corpusMock.mockReturnValue({
+            corpus: corpus({
+                process: { boundary: "protocol-enforced", processes: new Map([[PROCESS, process(PROCESS)]]) },
+                market: { boundary: "protocol-derived", groups: new Map(), unattributedProcessCount: 1 },
+                attributionByProcess: new Map(),
+            } as Partial<GraphCorpus>),
+            isLoading: false,
+            failed: false,
+        });
+        render(<DataExplorer />);
+
+        expect(screen.getByTestId("market-processes-unattributed")).toBeInTheDocument();
+        expect(screen.getByTestId(`process-audit-link-${PROCESS.toLowerCase()}`)).toHaveAttribute(
+            "href",
+            `/audit/view?process=${PROCESS}`,
+        );
+    });
+
+    it("an empty record lists no process rows at all — absence, never a fabricated id", () => {
+        searchParams = "view=market";
+        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+        render(<DataExplorer />);
+        expect(screen.queryByTestId("market-processes-unattributed")).toBeNull();
+        expect(screen.queryByTestId(`process-audit-link-${PROCESS.toLowerCase()}`)).toBeNull();
     });
 });

@@ -24,10 +24,11 @@ import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
+import { StoredDocument } from "@/components/registries/StoredDocument";
 import { truncateHex } from "@/lib/shared/formatHex";
 import {
     FAMILY_CONCEPT_ROUTE, REGISTRY_FAMILIES, REGISTRY_SORTS, STAKE_VIEWS,
-    explorerBreadcrumb, facetValues, parseExplorerQuery, selectRows, serializeExplorerQuery,
+    anchorForFamily, explorerBreadcrumb, facetValues, parseExplorerQuery, selectRows, serializeExplorerQuery,
     type ExplorerQuery, type ExplorerRow, type RegistryFamily,
 } from "@/lib/registries/explorer";
 
@@ -79,6 +80,7 @@ export function RegistryExplorer() {
             out.push({
                 family: "clauses", key: `clause-${e.clauseId}`, id: e.clauseId, name, article, description, content,
                 registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
+                contentURI: e.contentURI, anchoredHash: e.contentHash,
                 text: [e.clauseId, name, description, article, e.registeredBy].join(" "),
             });
         }
@@ -88,6 +90,7 @@ export function RegistryExplorer() {
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
                 content: a.state === "loaded" ? "resolved" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
+                contentURI: a.contentURI, anchoredHash: a.compositionHash,
                 text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? [])].join(" "),
             });
         }
@@ -97,6 +100,7 @@ export function RegistryExplorer() {
                 family: "members", key: `member-${m.address.toLowerCase()}`, id: m.address, name, article: "", description: m.profile?.description ?? "",
                 content: m.profile ? "resolved" : "resolving",
                 registeredBy: m.address, blockNumber: m.blockNumber, stakeWithdrawn: m.stakeWithdrawn, clauses: [],
+                contentURI: "", anchoredHash: "",
                 text: [m.address, name, m.profile?.description ?? "", m.profile?.specialty ?? ""].join(" "),
             });
         }
@@ -265,6 +269,7 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                                         {r.stakeWithdrawn ? <span className="ml-2">(stake withdrawn)</span> : null}
                                         <ContentStateNote content={r.content} />
                                     </span>
+                                    <StoredRow row={r} />
                                 </span>
                             </li>
                         ))}
@@ -303,6 +308,7 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
                             </button>
                             <ContentStateNote content={r.content} />
                         </p>
+                        <StoredRow row={r} />
                     </li>
                 );
             })}
@@ -342,6 +348,23 @@ function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; mem
                 );
             })}
         </ul>
+    );
+}
+
+/** The row's own pinned document, on demand. Mounted only where the family
+ *  anchors a digest and the event carries a locator: a members row is the
+ *  member's own re-pinnable declaration and anchors nothing, so it gets no
+ *  disclosure rather than an empty one. */
+function StoredRow({ row }: { row: ExplorerRow }) {
+    const anchor = anchorForFamily(row.family);
+    if (!anchor || !row.contentURI || !row.anchoredHash) return null;
+    return (
+        <StoredDocument
+            id={row.key}
+            contentURI={row.contentURI}
+            anchoredHash={row.anchoredHash}
+            anchor={anchor}
+        />
     );
 }
 

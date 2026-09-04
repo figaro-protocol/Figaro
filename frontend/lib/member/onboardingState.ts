@@ -2,22 +2,17 @@
  * lib/member/onboardingState.ts
  *
  * Wallet-scoped localStorage state for the multi-screen seller
- * onboarding flow at `/members/*`. The state survives page
- * reloads (B7 — "items don't persist" was the user's complaint about the
- * old single-form catalogue builder) and unblocks per-step authoring.
+ * onboarding flow at `/members/*`. The state survives page reloads and
+ * wallet reconnection, and unblocks per-step authoring: every step writes
+ * as the seller types, and re-reads its own draft when the step mounts.
  *
  * Storage key shape: `figaro:onboarding:0x<wallet-address>`.
  *
- * Each top-level field maps to a step in the seven-screen flow:
- *   - profile   → screen 2
- *   - catalogue → screen 3
- *   - link      → screen 4 (computed; not user-authored)
- *   - assemblies → screen 5
- *   - services  → screen 6
+ * Each top-level field is authored on the step of the same name; the order
+ * of the steps is `ONBOARDING_STEPS` below and nothing else.
  *
- * The `complete` flag is set after the publish path runs successfully on
- * screen 4 (or screen 7) and used by the entry route to fast-forward
- * returning users past the welcome screen.
+ * The `complete` flag is set after the publish path runs successfully on the
+ * review step, and used by the entry route to fast-forward returning users.
  */
 
 "use client";
@@ -148,11 +143,20 @@ function removeState(wallet: string | undefined): void {
 export interface UseOnboardingStateResult {
     state: OnboardingState;
     /**
-     * `true` once the localStorage read for `walletAddress` has run.
-     * Forms must gate hydration on this flag — gating on
+     * `true` once the draft OF A KNOWN WALLET has been read from
+     * localStorage. Forms must gate hydration on this flag — gating on
      * `state.X !== undefined` is unreliable because new users have no
      * draft (so `state` never transitions from `EMPTY_STATE`), and
      * returning users can have their hydration race the read.
+     *
+     * It stays `false` while `walletAddress` is undefined. On a page
+     * reload the wallet reconnects asynchronously, so there is a window
+     * where the wizard is mounted with no address: a form that hydrated
+     * in that window would hydrate from `EMPTY_STATE`, latch its
+     * `hydrated` flag, and then persist the empty form over the real
+     * draft the moment the wallet arrived — a silent wipe of everything
+     * typed. No wallet means no draft to speak of, so this reads
+     * "not loaded" until the wallet the draft is keyed by is known.
      */
     loaded: boolean;
     /** Replace the entire state. */
@@ -176,7 +180,8 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
     useEffect(() => {
         setLoaded(false);
         setStateInternal(readState(walletAddress));
-        setLoaded(true);
+        // Only a wallet-keyed read counts as loaded — see `loaded` above.
+        setLoaded(walletAddress !== undefined);
     }, [walletAddress]);
 
     const setState = useCallback((next: OnboardingState) => {
@@ -222,6 +227,15 @@ export interface OnboardingStep {
 
 // No welcome step (maintainer rule 2026-08-06): /join owns the membership
 // pitch, so the wizard opens directly on Identity.
+//
+// Assemblies precede Catalogue because the authority runs that way: the
+// assemblies a seller binds decide which clauses their trades carry, and the
+// clauses decide which item fields exist to author (a freight class, a hazmat
+// number, a cold-chain range). Ask for the items first and the catalogue has
+// nothing to derive from, so it opens every registered logistics field to a
+// seller of one mug. The same direction governs the data-product option on the
+// catalogue step, which reads the disclosure entries the assemblies step
+// derives.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },
     { id: "catalogue", number: 2, label: "Catalogue", path: "catalogue", optional: false },
@@ -235,4 +249,35 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "endpoints", number: 6, label: "Endpoints", path: "endpoints", optional: true },
     { id: "review", number: 7, label: "Review", path: "review", optional: false },
 ];
+
+/** The route of one wizard step — the one place a step's URL is written, so
+ *  the order above is the only thing that decides where a step sits. */
+export function onboardingStepHref(id: OnboardingStep["id"]): string {
+    const step = ONBOARDING_STEPS.find((s) => s.id === id);
+    return `/members${step?.path ? `/${step.path}` : ""}`;
+}
+
+/** The route of the step after `id`, or of the wizard's last step when `id`
+ *  is already it. Forms route their "Next" through this rather than naming a
+ *  sibling, so reordering `ONBOARDING_STEPS` reorders the walk. */
+export function onboardingNextHref(id: OnboardingStep["id"]): string {
+    const index = ONBOARDING_STEPS.findIndex((s) => s.id === id);
+    const next = ONBOARDING_STEPS[Math.min(index + 1, ONBOARDING_STEPS.length - 1)];
+    return onboardingStepHref(next.id);
+}
+
+/** How a step is named to the seller — "Step 3 (Catalogue)". Numbered from
+ *  the order above, so a reorder renumbers the prose with it. */
+export function onboardingStepLabel(id: OnboardingStep["id"]): string {
+    const step = ONBOARDING_STEPS.find((s) => s.id === id);
+    return step ? `Step ${step.number} (${step.label})` : "";
+}
+
+/** The route of the step before `id`, or of the first step when `id` is
+ *  already it. The default target of every step's "← Back" link. */
+export function onboardingPrevHref(id: OnboardingStep["id"]): string {
+    const index = ONBOARDING_STEPS.findIndex((s) => s.id === id);
+    const prev = ONBOARDING_STEPS[Math.max(index - 1, 0)];
+    return onboardingStepHref(prev.id);
+}
 

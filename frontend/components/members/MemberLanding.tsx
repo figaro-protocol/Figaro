@@ -31,6 +31,7 @@ import {
 } from "@/lib/member/useMembersRegistry";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import { sellerPageHref } from "@/lib/member/memberListing";
 import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
@@ -190,7 +191,7 @@ function RegisteredCard({
                     <p className="text-sm text-ink-body">{profile.specialty}</p>
                 )}
                 <Link
-                    href={`/s/view?seller=${address}`}
+                    href={sellerPageHref(address)}
                     className="inline-block text-sm text-ink-faint hover:text-ink-heading underline"
                 >
                     View public profile →

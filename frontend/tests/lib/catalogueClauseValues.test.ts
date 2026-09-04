@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { validateCatalogueClauseValues } from "@/lib/member/catalogueClauseValues";
+import {
+    catalogueClausesForBindings,
+    catalogueFieldsOfClause,
+    validateCatalogueClauseValues,
+} from "@/lib/member/catalogueClauseValues";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
 import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
 import { primeClauseSpecs } from "./primeClauseSpecs";
@@ -52,5 +56,113 @@ describe("validateCatalogueClauseValues — off-chain gate, reused validator", (
         expect(validateCatalogueClauseValues(baseItem({
             "figaro-freight-class": { nmfcClass: "whatever" },
         }))).toEqual([]);
+    });
+});
+
+/** An `AssemblyChoice`-shaped row, reduced to the two fields the derivation
+ *  reads. The real rows come from `useAssemblyChoices` (chain → IPFS). */
+const choice = (slug: string, clauses: readonly string[] | null) => ({ slug, clauses });
+
+describe("catalogueClausesForBindings — the bindings decide which item fields exist", () => {
+    it("asks for nothing before an assembly is bound", async () => {
+        await primeClauseSpecs();
+        expect(catalogueClausesForBindings([], [
+            choice("asm-haul", ["figaro-commerce", "figaro-hazmat", "figaro-freight-class"]),
+        ])).toEqual([]);
+    });
+
+    it("asks only for the catalogue-authored clauses the bound assembly composes", async () => {
+        await primeClauseSpecs();
+        const derived = catalogueClausesForBindings(
+            [{ assemblySlug: "asm-haul" }],
+            [
+                choice("asm-haul", ["figaro-commerce", "figaro-topology", "figaro-freight-class"]),
+                choice("asm-reefer", ["figaro-commerce", "figaro-cold-chain", "figaro-hazmat"]),
+            ],
+        );
+        // figaro-commerce and figaro-topology declare no catalogueFills, so
+        // they contribute no section; the UNBOUND reefer assembly's cold-chain
+        // and hazmat stay out of a haul seller's catalogue entirely.
+        expect(derived.map((c) => c.clauseId)).toEqual(["figaro-freight-class"]);
+    });
+
+    it("a seller of one mug, bound to a counter-sale assembly, is asked for no logistics fields", async () => {
+        await primeClauseSpecs();
+        expect(catalogueClausesForBindings(
+            [{ assemblySlug: "asm-pos" }],
+            [choice("asm-pos", ["figaro-commerce", "figaro-topology"])],
+        )).toEqual([]);
+    });
+
+    it("unions the clauses of every bound assembly", async () => {
+        await primeClauseSpecs();
+        const derived = catalogueClausesForBindings(
+            [{ assemblySlug: "asm-haul" }, { assemblySlug: "asm-reefer" }],
+            [
+                choice("asm-haul", ["figaro-freight-class"]),
+                choice("asm-reefer", ["figaro-cold-chain"]),
+                choice("asm-data", ["figaro-data-license"]),
+            ],
+        );
+        expect(derived.map((c) => c.clauseId).sort())
+            .toEqual(["figaro-cold-chain", "figaro-freight-class"]);
+    });
+
+    it("a bound assembly whose template has not resolved contributes nothing, not everything", async () => {
+        await primeClauseSpecs();
+        expect(catalogueClausesForBindings(
+            [{ assemblySlug: "asm-haul" }],
+            [choice("asm-haul", null)],
+        )).toEqual([]);
+    });
+
+    it("a binding with no matching published assembly asks for nothing", async () => {
+        await primeClauseSpecs();
+        expect(catalogueClausesForBindings(
+            [{ assemblySlug: "asm-withdrawn" }],
+            [choice("asm-haul", ["figaro-hazmat"])],
+        )).toEqual([]);
+    });
+
+    it("is empty while the clause specs are uncached — resolved-empty, never a guess", () => {
+        expect(catalogueClausesForBindings(
+            [{ assemblySlug: "asm-haul" }],
+            [choice("asm-haul", ["figaro-freight-class"])],
+        )).toEqual([]);
+    });
+
+    it("carries a newly registered product-property clause with no code change", async () => {
+        await primeClauseSpecs();
+        // Nothing here names a clause: whatever the registry says declares
+        // catalogueFills, and the bound assembly composes, is asked for.
+        const everyCatalogueClause = catalogueClausesForBindings(
+            [{ assemblySlug: "asm-everything" }],
+            [choice("asm-everything", [
+                "figaro-freight-class", "figaro-hazmat", "figaro-cold-chain", "figaro-data-license",
+            ])],
+        );
+        expect(everyCatalogueClause.length).toBe(4);
+        for (const { clauseId, version } of everyCatalogueClause) {
+            expect(catalogueFieldsOfClause(clauseId, version).length).toBeGreaterThan(0);
+        }
+    });
+});
+
+describe("catalogueFieldsOfClause — only the clause's own catalogue fills", () => {
+    it("returns the fields the clause assigns to the catalogue, in spec order", async () => {
+        await primeClauseSpecs(["figaro-freight-class"]);
+        expect(catalogueFieldsOfClause("figaro-freight-class").map((f) => f.name))
+            .toEqual(["nmfcClass", "nmfcItem"]);
+    });
+
+    it("leaves out fields the clause assigns to another source", async () => {
+        await primeClauseSpecs(["figaro-commerce"]);
+        // The commerce clause's fields are the buyer's checkout particulars —
+        // none of them is the catalogue's to author.
+        expect(catalogueFieldsOfClause("figaro-commerce")).toEqual([]);
+    });
+
+    it("is empty for an unloaded spec", () => {
+        expect(catalogueFieldsOfClause("figaro-freight-class")).toEqual([]);
     });
 });

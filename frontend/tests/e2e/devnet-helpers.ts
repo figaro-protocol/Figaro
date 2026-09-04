@@ -581,6 +581,11 @@ export interface DiscoveredAssembly {
     slug: string;
     compositionHash: `0x${string}`;
     agreements: Array<{ id?: string; clauses?: Record<string, unknown> }>;
+    /** The designer's editorial prose from the pinned template — what a
+     *  reading surface must show instead of the bare slug. Absent when the
+     *  designer wrote none. */
+    name?: string;
+    summary?: string;
 }
 
 /** The slug of a REFERENCE assembly identified by its IDENTITY — the
@@ -635,9 +640,18 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
         const { compositionHash, contentURI } = ev.args as { compositionHash?: `0x${string}`; contentURI?: string };
         if (!compositionHash || !contentURI) continue;
         try {
-            const doc = await (await fetch(resolveIpfsURI(contentURI))).json() as { agreements?: DiscoveredAssembly['agreements'] };
+            const doc = await (await fetch(resolveIpfsURI(contentURI))).json() as {
+                agreements?: DiscoveredAssembly['agreements'];
+                name?: string;
+                summary?: string;
+                description?: string;
+            };
             if (Array.isArray(doc.agreements) && doc.agreements.length > 0) {
-                out.push({ slug: deriveAssemblySlug(compositionHash), compositionHash, agreements: doc.agreements });
+                out.push({
+                    slug: deriveAssemblySlug(compositionHash), compositionHash, agreements: doc.agreements,
+                    name: doc.name,
+                    summary: doc.summary ?? doc.description,
+                });
             }
         } catch {
             continue; // unresolvable / non-JSON template — not discoverable
@@ -722,10 +736,11 @@ export async function fillDeliveryCheckout(page: Page): Promise<void> {
     await checkoutField(page, DELIVERY_CLAUSES.modalities, 'modality-delivery').check();
     await checkoutField(page, DELIVERY_CLAUSES.handoff, 'handoff-face-to-face').check();
     await checkoutField(page, DELIVERY_CLAUSES.proximity, 'bands-zone-wifi').check();
-    // geocodeStandard arrives PREFILLED from the spec's default ("geohash" —
-    // the built frontend); the endpoints fill as text. The format-keyed
-    // device-capture control retired with the standards generalisation
-    // (2026-07-28); its successor is standard-gated (punch-listed).
+    // geocodeStandard is its own control, empty over its spec default
+    // ("geohash" — the built frontend) as placeholder: left untouched the
+    // build commits the default, and the endpoints below fill as geohash text.
+    // The format-keyed device-capture control retired with the standards
+    // generalisation; its successor is standard-gated (punch-listed).
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'origin')
         .fill(encodeGeohash(DELIVERY_DEVICE.lat, DELIVERY_DEVICE.lon, 6));
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'destination').fill(DELIVERY_DEVICE.destination);

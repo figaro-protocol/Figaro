@@ -17,6 +17,7 @@ const CHOICE: AssemblyChoice = {
     networkTargets: ["31337"],
     state: "loaded",
     name: "Aerial survey",
+    summary: "A licensed drone operator flies for you.",
     agreementCount: 1,
     clauses: ["figaro-commerce"],
     assemblyTemplate: null,

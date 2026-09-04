@@ -28,7 +28,13 @@ import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
 import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
-import { deriveAgreementGroups, deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
+import {
+    buyerAuthoredFields,
+    deriveAgreementGroups,
+    deriveKitBreakdown,
+    isFilledValue,
+    unfilledRequiredFills,
+} from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
@@ -41,7 +47,7 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
+import { isSiblingFormatSource, resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -51,7 +57,8 @@ import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies";
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
-import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 
@@ -257,6 +264,14 @@ export function CheckoutView({ sellerAddress }: Props) {
     // commit walk makes, so the shown figure equals what commits.
     const [subOrderQuantities, setSubOrderQuantities] = useState<Record<string, number>>({});
     useEffect(() => { setSellerSelection(null); }, [selectedSlug]);
+    // The clause specs the agreement terms below are read from. The cache is a
+    // module singleton warmed from chain → IPFS, so a surface that only READS
+    // it (getClauseSpec) renders whatever happened to be cached at that instant
+    // and never re-renders when the rest lands: the terms then show as bare
+    // titles with no controls, and the sign gate refuses the fields the form
+    // never offered. Subscribing here both re-renders as specs resolve and
+    // gives the render a `loaded` flag to hold the terms until they are real.
+    const { loaded: clauseSpecsLoaded } = useClauseSpecs();
 
     // No post-place redirect: in the bilateral relay the buyer signs + shares,
     // then stays on the share panel; each order commits when its seller
@@ -322,11 +337,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // buyer's pick, whether or not the order also composes.
     const buyerPickSubOrders = unboundSubOrders;
     const buyerChoosesCounterparty = buyerPickSubOrders.length > 0;
-    // Every composition's REQUIRED block.runtime.fields must be filled before placing.
-    const isFilled = (v: unknown) =>
-        v !== undefined && v !== null && v !== "" && (!Array.isArray(v) || v.length > 0);
+    // Every composition's REQUIRED block.runtime.fields must be filled before
+    // placing — the same emptiness rule the general-clause fill gate applies.
     const compositionsReady = orderCompositions.every((c) =>
-        c.fields.every((f) => !f.required || isFilled(compositionInputs[c.nodeId]?.[f.name])),
+        c.fields.every((f) => !f.required || isFilledValue(compositionInputs[c.nodeId]?.[f.name])),
     );
     // Ready to place when a profile-bound assembly is resolved (chosen, when the
     // seller offers more than one), any buyer-chosen counterparty is selected,
@@ -404,6 +418,14 @@ export function CheckoutView({ sellerAddress }: Props) {
         leadAddress: memberCatalogue.address as `0x${string}`,
         sellerCatalogues,
     });
+    // The REQUIRED terms the buyer still has to author — the same required-ness
+    // the off-chain validator applies at the sign gate, applied HERE so the
+    // button never promises what the validator will refuse, and so the buyer
+    // reads which term is missing instead of a spec path.
+    const missingFills = unfilledRequiredFills(agreementGroups, clauseFills);
+    // The terms are placeable when their specs are real (not a half-warm cache)
+    // and every required fill is authored.
+    const termsReady = clauseSpecsLoaded && missingFills.length === 0;
 
     const cartUnitSystem = memberCatalogue.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {
@@ -753,18 +775,27 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     </span>
                                 </div>
                             )}
-                            <div className="flex justify-between">
-                                <span className="text-ink-body">Your bond (refundable on resolve)</span>
-                                <span className="text-ink-primary tabular-nums" data-testid="checkout-bond-refundable">
-                                    {formatToken(planTotal, tokenDecimals)}
-                                </span>
-                            </div>
+                            {/* The doubling on ONE line. Split across a payment
+                                row and a bond row it read as 1:1 — the eye takes
+                                "payment X · bond X" and stops, against copy that
+                                says twice the payment. The arithmetic is stated
+                                where the figure is: 2X = X + X, in the lexicon's
+                                words (the payment TRANSFERS, the bond is
+                                REFUNDED). The total keeps its own testid as a
+                                bare number — specs read it. */}
                             <div className="flex justify-between border-t border-default pt-1.5 font-semibold">
                                 <span className="text-ink-primary">Locked at commit</span>
                                 <span className="text-ink-primary tabular-nums" data-testid="checkout-locked-total">
                                     {formatToken(lockedTotal, tokenDecimals)}
                                 </span>
                             </div>
+                            <p className="text-xs text-ink-body leading-relaxed" data-testid="checkout-bond-arithmetic">
+                                {formatToken(lockedTotal, tokenDecimals)}{tokenSymbol ? ` ${tokenSymbol}` : ""} = twice the
+                                {kitBreakdown ? " total" : " payment"}: {formatToken(planTotal, tokenDecimals)} transfers to
+                                {kitBreakdown ? " the sellers" : " the seller"} when you resolve, and{" "}
+                                {formatToken(planTotal, tokenDecimals)} is your bond, refunded to you in the same
+                                transaction.
+                            </p>
                             <p className="text-[11px] text-ink-muted pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
                                 Both you and the seller lock a bond against this deal, so cooperation is the
                                 seller&apos;s only profitable move — no arbitrator, no timeout, no admin. You
@@ -792,22 +823,36 @@ export function CheckoutView({ sellerAddress }: Props) {
                         {agreementGroups.length > 0 && (
                             <div className="space-y-2 border-t border-default pt-3" data-testid="checkout-agreement-terms">
                                 <p className="text-xs font-semibold text-ink-muted">Agreement</p>
-                                {agreementGroups.map((group) => (
+                                {/* Held until the specs are real: read against a
+                                    half-warm cache a clause has no fields, so it
+                                    renders as a bare title with no controls and
+                                    the sign gate then refuses the terms the form
+                                    never offered. */}
+                                {!clauseSpecsLoaded && (
+                                    <p className="text-xs text-ink-muted" data-testid="checkout-terms-loading">
+                                        Reading the clause specs these terms are written in…
+                                    </p>
+                                )}
+                                {clauseSpecsLoaded && agreementGroups.map((group) => (
                                     <div key={group.key} className="space-y-0.5" data-testid={`agreement-order-${group.key}`}>
                                         {agreementGroups.length > 1 && (
                                             <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-ink-body space-y-0.5">
-                                            {group.clauses.map(({ clauseId, values, data, fillable }) => (
+                                            {group.clauses.map(({ clauseId, values, data, fillable }) => {
+                                                const specFields = getClauseSpec(clauseId)?.fields ?? [];
+                                                return (
                                                 <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
                                                     {getClauseSpec(clauseId)?.title ?? clauseId}
                                                     {values && <span className="text-ink-primary"> — {values}</span>}
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (
                                                         <div className="mt-1 mb-2 ml-3 space-y-2">
-                                                            {getClauseSpec(clauseId)?.fields.filter(
-                                                                (field) => !clauseDesignFills(clauseId).includes(field.name),
-                                                            ).map((field) => (
+                                                            {/* The SAME list the place-order gate
+                                                                checks (`buyerAuthoredFields`), so no
+                                                                required term can be demanded without
+                                                                a control on screen. */}
+                                                            {buyerAuthoredFields(clauseId).map((field) => (
                                                                 <FieldControl
                                                                     key={field.name}
                                                                     field={field}
@@ -815,16 +860,28 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                     onChange={(v) => setClauseFill(group.key, clauseId, field.name, v)}
                                                                     testId={`checkout-field-${group.key}-${clauseId}-${field.name}`}
                                                                     hideLabel={field.name.toLowerCase() === (getClauseSpec(clauseId)?.title ?? "").toLowerCase()}
-                                                                    resolvedFormat={resolveInputFormat(field, getClauseSpec(clauseId)?.fields ?? [], clauseFills[group.key]?.[clauseId])}
+                                                                    resolvedFormat={resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseId])}
+                                                                    siblingFormatSource={isSiblingFormatSource(field, specFields)}
                                                                 />
                                                             ))}
                                                         </div>
                                                     )}
                                                 </li>
-                                            ))}
+                                                );
+                                            })}
                                         </ul>
                                     </div>
                                 ))}
+                                {/* What is still owed, named the way the buyer
+                                    reads it — the validator's own required-ness,
+                                    before the wallet opens instead of after. */}
+                                {clauseSpecsLoaded && missingFills.length > 0 && (
+                                    <p className="text-xs text-warning-fg" data-testid="checkout-missing-fills">
+                                        Still to fill: {missingFills
+                                            .map((m) => `${m.clauseTitle} · ${m.fieldLabel}${agreementGroups.length > 1 ? ` (${m.groupLabel})` : ""}`)
+                                            .join("; ")}
+                                    </p>
+                                )}
                                 <p className="text-[11px] text-ink-faint">
                                     Placing the order signs {agreementGroups.length > 1 ? "these agreements" : "this agreement"} and locks your bond.
                                 </p>
@@ -953,6 +1010,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 || placingOrder
                                 || cartItems.length === 0
                                 || !orderReady
+                                || !termsReady
                             }
                             data-testid="btn-place-order"
                             className="w-full"
@@ -967,7 +1025,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             ? "Seller hasn't set a settlement currency"
                                             : !orderReady
                                                 ? "Select an option to order"
-                                                : "Place order"}
+                                                : !clauseSpecsLoaded
+                                                    ? "Reading the agreement terms…"
+                                                    : missingFills.length > 0
+                                                        ? "Fill the required terms above"
+                                                        : "Place order"}
                         </Button>
 
                         {(checkoutError || commitError) && (

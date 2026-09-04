@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
     AssemblyBindingRecord,
     CounterpartyBinding,
@@ -26,7 +26,7 @@ import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEdi
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
- * Step 5 of the onboarding wizard. Seller picks which published
+ * The assemblies step of the onboarding wizard. Seller picks which published
  * assemblies they participate in. Each selected assembly becomes an
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
@@ -114,6 +114,9 @@ export function OnboardingAssembliesForm({
     const { state, loaded, update } = useOnboardingState(address);
 
     const { data: choicesData } = useAssemblyChoices();
+    // `null` while the registry read is in flight; the persist effect below
+    // must not run against an empty list, or it drops every derived entry.
+    const choicesLoaded = choicesData !== null;
     const choices: AssemblyChoice[] = choicesData ?? [];
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -146,7 +149,7 @@ export function OnboardingAssembliesForm({
     }, [hydrated, loaded, state.assemblies, state.disclosurePolicy]);
 
     useEffect(() => {
-        if (!hydrated || !isConnected || !address) return;
+        if (!hydrated || !isConnected || !address || !choicesLoaded) return;
         update({
             assemblies: buildBindings(address, selected, choices, counterpartiesBySlug),
             disclosurePolicy: [
@@ -154,7 +157,7 @@ export function OnboardingAssembliesForm({
                 ...activePolicy(policyEntries, selected, choices),
             ],
         });
-    }, [selected, counterpartiesBySlug, policyEntries, otherPostureEntries, hydrated, isConnected, address, choices, update]);
+    }, [selected, counterpartiesBySlug, policyEntries, otherPostureEntries, hydrated, isConnected, address, choices, choicesLoaded, update]);
 
     function toggle(slug: string) {
         setSelected((prev) => {
@@ -201,7 +204,7 @@ export function OnboardingAssembliesForm({
             });
             return;
         }
-        router.push("/members/buyer");
+        router.push(onboardingNextHref("assemblies"));
     }
 
     if (!mounted) {
@@ -230,6 +233,13 @@ export function OnboardingAssembliesForm({
                     At least one binding is required — a profile with no assembly
                     binding cannot be ordered from. You can add more later through
                     the member-edit surface.
+                </p>
+                <p>
+                    Each row carries the designer&apos;s own name and summary for
+                    the assembly, then its shape: how many agreements it composes
+                    and which clauses they carry. Inspect opens the whole
+                    composition. Read the summary first &mdash; it is the sentence
+                    that says which trade the assembly is for.
                 </p>
                 <p>
                     Assemblies that include sub-orders you organize (e.g. a
@@ -298,7 +308,7 @@ export function OnboardingAssembliesForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/members/catalogue"}
+                    href={backHref ?? onboardingPrevHref("assemblies")}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

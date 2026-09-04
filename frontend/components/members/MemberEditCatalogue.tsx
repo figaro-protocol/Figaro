@@ -68,6 +68,11 @@ export function MemberEditCatalogue() {
                     defaultTokenAddress: existingProfile.defaultTokenAddress,
                 },
                 catalogue: { items: existingCatalogue.items, unitSystem: existingCatalogue.unitSystem },
+                // The member's bindings — read-only here (they are edited on
+                // the assemblies surface), and the form needs them: the item
+                // properties it asks for are the catalogue-authored fields of
+                // the clauses those bound assemblies compose.
+                assemblies: existingProfile.assemblyBindings ?? [],
                 // Feed the data-for-sale select's options — the member's
                 // declared data offers; read-only here (the policy is
                 // edited on the assemblies / buyer surfaces).

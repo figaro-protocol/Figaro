@@ -7,7 +7,7 @@ import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
     BuyerAssemblySubscription,
     DisclosurePolicyEntry,
@@ -124,7 +124,7 @@ export function OnboardingBuyerForm({
             });
             return;
         }
-        router.push("/members/agents");
+        router.push(onboardingNextHref("buyer"));
     }
 
     if (!mounted) {
@@ -212,7 +212,7 @@ export function OnboardingBuyerForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/members/assemblies"}
+                    href={backHref ?? onboardingPrevHref("buyer")}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

@@ -14,7 +14,9 @@
  * speak one shape.
  */
 
+import { canonicalContentHash, templateCompositionHash } from "@figaro-protocol/sdk";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
 
 export const REGISTRY_FAMILIES = ["clauses", "assemblies", "members"] as const;
@@ -102,6 +104,14 @@ export interface ExplorerRow {
      *  a `resolved` row's name/article/description mean anything; the rest
      *  show the on-chain identity alone. */
     content: "resolved" | "resolving" | "unavailable";
+    /** The IPFS locator the registration event carries — where the pinned
+     *  document actually IS. Empty for members, whose profile document is the
+     *  member's own and not anchored by a registration hash. */
+    contentURI: string;
+    /** The digest the CHAIN anchors for this row: `ClauseRegistry.contentHash`
+     *  for a clause, `AssemblyRegistry`'s `compositionHash` for an assembly.
+     *  Empty where the family anchors none. */
+    anchoredHash: string;
     text: string;
 }
 
@@ -134,6 +144,85 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
             // Most recent first; ties by name for a stable order.
             return a.blockNumber === b.blockNumber ? a.name.localeCompare(b.name) : (a.blockNumber > b.blockNumber ? -1 : 1);
     }
+}
+
+// ── The document as stored ──────────────────────────────────────────────────
+
+/**
+ * What a family's on-chain digest is computed OVER. The two are NOT the same
+ * shape, and a surface that showed one note for both would misstate one of
+ * them:
+ *
+ *   `content-hash` — clauses. `ClauseRegistry.contentHash` is the keccak256
+ *   of the canonical form of the WHOLE spec document, so re-canonicalizing
+ *   everything the gateway served and hashing it must reproduce the anchor.
+ *
+ *   `composition-hash` — assemblies. `AssemblyRegistry`'s `compositionHash` is
+ *   the keccak256 of the canonical form of the template's COMPOSITION slice
+ *   alone (`agreements`, plus `assemblyClauses` / `assemblyClauseVersions`
+ *   where composed — `templateCompositionHash`). The designer's editorial
+ *   fields (name, summary, description) ride in the same document and are
+ *   deliberately NOT covered: a differently-worded assembly is the same
+ *   assembly, a differently-termed one is not.
+ */
+export type StoredDocumentAnchor = "content-hash" | "composition-hash";
+
+/** Which digest a family anchors. Members anchor none — a profile is the
+ *  member's own declaration, re-pinnable at will, not a registration. */
+export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | null {
+    return family === "clauses" ? "content-hash" : family === "assemblies" ? "composition-hash" : null;
+}
+
+/** The one-line statement of what the chain's digest covers, per anchor. Shown
+ *  beside the hash so a reader re-deriving it knows what to hash. */
+export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
+    "content-hash":
+        "The hash on chain is the keccak256 of these bytes in canonical form — object keys sorted at every depth, no whitespace — so anyone can re-canonicalize this document and reproduce the anchor.",
+    "composition-hash":
+        "The hash on chain is the keccak256 of the canonical form of this document's composition — its agreements, and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
+};
+
+/** A pinned document read back and checked against the chain's own digest. */
+export interface StoredDocument {
+    /** Which digest was checked, and therefore which note applies. */
+    anchor: StoredDocumentAnchor;
+    /** The digest the registration event carries. */
+    anchored: string;
+    /** Recomputed from the served bytes; null when they will not parse as
+     *  JSON, which is a permanent failure and not a hash disagreement. */
+    recomputed: string | null;
+    /** True only when the recomputation reproduced the anchor. A false here is
+     *  a real finding — the pin does not answer for what the chain claims. */
+    matches: boolean;
+}
+
+/**
+ * Verify served bytes against the chain's digest. PURE — the fetch is the
+ * caller's; this is the arithmetic, and it is the same arithmetic the loaders
+ * already run before they will use a document (`loadClauseSpec`,
+ * `fetchAssemblyTemplate`). Stated separately so the reader can be SHOWN it
+ * rather than told the loader did it.
+ */
+export function storedDocument(text: string, anchored: string, anchor: StoredDocumentAnchor): StoredDocument {
+    const parsed = safeJsonParse<Record<string, unknown>>(text);
+    if (parsed === null) return { anchor, anchored, recomputed: null, matches: false };
+    let recomputed: string;
+    try {
+        recomputed =
+            anchor === "content-hash"
+                ? canonicalContentHash(parsed)
+                : templateCompositionHash(parsed as Parameters<typeof templateCompositionHash>[0]);
+    } catch {
+        // A document that parses but carries no composition to hash cannot
+        // reproduce the anchor. Absence of a recomputation, never a match.
+        return { anchor, anchored, recomputed: null, matches: false };
+    }
+    return {
+        anchor,
+        anchored,
+        recomputed,
+        matches: recomputed.toLowerCase() === anchored.toLowerCase(),
+    };
 }
 
 /** Filter + sort in one pass — the explorer's whole read model. */

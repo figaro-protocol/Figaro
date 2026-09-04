@@ -514,6 +514,58 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await expect(marketOverlays).toContainText(geoSpec.clauseId);
         await expect(marketOverlays).toContainText(`${termsSpec.clauseId} (${termsFold.entries}, fingerprint-only)`);
 
+        // ── CARRYING A PROCESS INTO THE AUDIT VIEW, from the DEFAULT layer ──
+        // A reader arrives on `view=market` holding nothing: no wallet, no
+        // processId. Before this the page could tell them 28 processes had
+        // settled and give them no way to open one — the ids are derived from
+        // the same events every figure above is derived from, so withholding
+        // them was the surface's choice.
+        //
+        // The id is read OFF THE SCREEN and nothing here supplies it; the
+        // chain fold is what it is then held to.
+        const marketProcesses = page.getByTestId(`market-processes-${marketKey}`);
+        await expect(marketProcesses, 'the market row lists the processes behind its count').toBeVisible();
+        const listedProcessIds = await marketProcesses
+            .locator('[data-testid^="process-audit-link-"]')
+            .evaluateAll((els) => els.map((el) => (el.textContent ?? '').trim()));
+        expect(listedProcessIds.length, 'the market lists at least one openable process').toBeGreaterThanOrEqual(1);
+        for (const listed of listedProcessIds) {
+            // The FULL bytes32 is on the page — a truncation is not an id a
+            // reader can record — and every one is a process the chain has.
+            expect(listed, 'the listed id is a whole bytes32').toMatch(/^0x[0-9a-fA-F]{64}$/);
+            expect(
+                marketProcessIds.has(listed.toLowerCase()),
+                `listed process ${listed} is one the chain attributes to this market`,
+            ).toBe(true);
+        }
+        expect(
+            listedProcessIds.map((id) => id.toLowerCase()),
+            'the seeded process is among the ids the default layer offers',
+        ).toContain(processId.toLowerCase());
+
+        // The link's own href, then the click: the audit view opens the SAME
+        // process the row named. href attribute, not a URL literal — the
+        // static export's trailingSlash rewrites the path half.
+        const auditLink = marketProcesses.getByTestId(`process-audit-link-${processId.toLowerCase()}`);
+        await expect(auditLink).toHaveAttribute('href', new RegExp(`^/audit/view/?\\?process=${processId}$`, 'i'));
+        await auditLink.click();
+        await expect(page, 'the reader lands on the audit view for that process').toHaveURL(
+            new RegExp(`/audit/view/?\\?process=${processId}`, 'i'),
+        );
+        await page.getByTestId('audit-page').waitFor({ timeout: 60_000 });
+        await expect(
+            page.getByTestId('financials-view'),
+            'the audit view narrates the carried process for this walletless reader',
+        ).toBeVisible({ timeout: 60_000 });
+        await expect(
+            page.getByTestId('financials-process-id'),
+            'the process the audit view opened is the one the explorer row named',
+        ).toHaveText(processId);
+        await page.goBack();
+        await expect(page.getByTestId('corpus-line')).toBeVisible({ timeout: 60_000 });
+        await page.getByTestId('market-search').fill(marketKey);
+        await expect(page.getByTestId('market-count')).toContainText('1 market attributed', { timeout: 60_000 });
+
         // Overlays — the open census. Every rendered key must exist on
         // chain; the seeded families show their out-of-band postures.
         await page.getByTestId('graph-view-overlays').click();

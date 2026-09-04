@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
 import { useMounted } from "@/hooks/useMounted";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
- * Step 6 of the onboarding wizard. Collects ERC-8004-compatible
+ * The agents step of the onboarding wizard. Collects ERC-8004-compatible
  * agent service endpoints into `state.services`. Optional: endpoints
  * declare REACHABILITY, not what runs the wallet — a wallet that
  * nothing needs to reach directly skips the step and loses nothing
@@ -125,7 +125,7 @@ export function OnboardingAgentsForm({
             });
             return;
         }
-        router.push("/members/endpoints");
+        router.push(onboardingNextHref("agents"));
     }
 
     if (!mounted) {
@@ -179,7 +179,7 @@ export function OnboardingAgentsForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/members/buyer"}
+                    href={backHref ?? onboardingPrevHref("agents")}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}

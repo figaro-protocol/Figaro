@@ -2,11 +2,25 @@
  * members-onboarding.devnet.spec.ts
  *
  * MEMBER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
- * register through the real six-step wizard (no welcome — /join owns the
- * pitch): identity → catalogue → assemblies → buyer → agents → review → publish, ending anchored on `MembersRegistry`,
- * pinned to IPFS, and surfacing on `/s/view` and `/discover`. The buyer step
- * subscribes an assembly the wallet buys through and offers some of its data
- * — the pinned document must carry BOTH halves.
+ * register through the real wizard (no welcome — /join owns the pitch):
+ * identity → assemblies → catalogue → buyer → agents → endpoints → review →
+ * publish, ending anchored on `MembersRegistry`, pinned to IPFS, and surfacing
+ * on `/s/view` and `/discover`. The buyer step subscribes an assembly the
+ * wallet buys through and offers some of its data — the pinned document must
+ * carry BOTH halves.
+ *
+ * Assemblies precede Catalogue because the bindings decide which clauses the
+ * seller's trades carry, and those clauses decide which item fields the
+ * catalogue asks for. The walk asserts that direction: on the catalogue step,
+ * every clause section rendered belongs to a clause the BOUND assembly
+ * composes, and a catalogue-authored clause from an unbound assembly is
+ * absent.
+ *
+ * The draft is browser-side and wallet-keyed, so the walk reloads mid-wizard
+ * and walks Back, asserting the entered values are still there. (The injected
+ * provider connects before first paint, so the reload here cannot reproduce
+ * the async-reconnect window that used to wipe the draft — that window is
+ * covered by tests/lib/onboardingStatePersistence.test.tsx.)
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
@@ -22,12 +36,16 @@
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
-import { expect } from "@playwright/test";
+import { clampPublicGeohash } from "../../lib/shared/geohash";
+import { expect, type Page } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
-import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, readLocalDeploymentConfig } from "./devnet-helpers";
+import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
 import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+// The one place the seller-page route is written — the spec follows the same
+// route the site links, never a second copy of the string.
+import { sellerPageHref } from '@/lib/member/memberListing';
 
 const RPC_URL = "http://127.0.0.1:8545";
 const LOCAL_ANVIL = defineChain({
@@ -64,7 +82,27 @@ async function waitForMembersReady(page: import("@playwright/test").Page) {
 
 /** Walk the registration wizard as the member's wallet and register
  *  on-chain, binding EXACTLY the given assembly. */
-async function onboardViaWizard(page: import("@playwright/test").Page, assemblySlug: string) {
+/** The wizard writes its draft to wallet-scoped localStorage in an effect after
+ *  paint; a person cannot reload faster than that, but a spec can. Wait for the
+ *  draft to carry `needle` before reloading, so the reload measures persistence
+ *  and not the race. */
+async function draftCarries(page: Page, needle: string): Promise<void> {
+    await expect
+        .poll(
+            () => page.evaluate(
+                (n: string) => Object.keys(window.localStorage).some((k) => (window.localStorage.getItem(k) ?? "").includes(n)),
+                needle,
+            ),
+            { timeout: 15_000, message: `the wizard draft carries ${needle}` },
+        )
+        .toBe(true);
+}
+
+async function onboardViaWizard(
+    page: import("@playwright/test").Page,
+    assembly: DiscoveredAssembly,
+) {
+    const assemblySlug = assembly.slug;
     await gotoAsWallet(page, SELLER.address, "/members/manage");
     await waitForMembersReady(page);
     await page.goto("/members/identity", { waitUntil: "domcontentloaded" });
@@ -83,12 +121,70 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalogue/);
 
-    // Catalogue: one product
+    // The draft is the seller's work: a reload must not cost them it. Reload
+    // here, walk Back, and read the identity fields off the restored form.
+    await draftCarries(page, SELLER.specialty);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await page.getByRole("link", { name: /^← Back/ }).click();
+    await expect(page).toHaveURL(/\/members\/identity/);
+    await expect(page.locator("#profile-name")).toHaveValue(SELLER.name, { timeout: 30_000 });
+    await expect(page.locator("#profile-specialty")).toHaveValue(SELLER.specialty);
+    // The profile geohash is PUBLIC: the form clamps it to the neighborhood
+    // grain on persist (lib/shared/geohash), so the restored value is the
+    // clamped one, never the door-grade string that was typed.
+    await expect(page.locator("#profile-geohash")).toHaveValue(clampPublicGeohash(SELLER.geohash));
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/catalogue/);
+
+    // Catalogue: one product. The clause sections on an item derive from the
+    // assemblies bound on the NEXT step, so a seller who binds none sees none.
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
+
+    // The items survive a reload too. The restored values also mean the step
+    // has hydrated, so the clause sections below are read after the assembly
+    // templates have had their chance to resolve.
+    await draftCarries(page, SELLER.product.name);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator('[id^="item-"][id$="-name"]').first())
+        .toHaveValue(SELLER.product.name, { timeout: 30_000 });
+    await expect(page.locator('[id^="item-"][id$="-price"]').first())
+        .toHaveValue(SELLER.product.price);
+
+    // Every clause section on the item belongs to a clause the BOUND assembly
+    // composes — computed from the anchored template, never a name list. A
+    // seller of one item bound to a counter-sale assembly is asked for no
+    // freight class, no hazmat number, no cold-chain range.
+    const composed = new Set(assembly.agreements.flatMap((a) => Object.keys(a.clauses ?? {})));
+    // The clause GROUPS are the direct children of the item's clause section;
+    // the field controls nest below them.
+    const renderedClauseIds = await page
+        .locator('[data-testid^="item-"][data-testid$="-clauses"] > [data-testid]')
+        .evaluateAll((nodes) =>
+            nodes
+                .map((n) => (n.getAttribute("data-testid") ?? "").split("-clause-")[1])
+                .filter((id): id is string => !!id),
+        );
+    for (const clauseId of renderedClauseIds) {
+        expect(
+            composed.has(clauseId),
+            `the catalogue asks for "${clauseId}", which the bound assembly does not compose`,
+        ).toBe(true);
+    }
+
+    // And the filter BITES: a catalogue-authored clause composed by some OTHER
+    // anchored assembly, but not by this one, has no section here.
+    const unboundClause = (await discoverAnchoredAssemblies())
+        .filter((a) => a.slug !== assemblySlug)
+        .flatMap((a) => a.agreements.flatMap((ag) => Object.keys(ag.clauses ?? {})))
+        .find((clauseId) => !composed.has(clauseId));
+    if (unboundClause) {
+        await expect(page.locator(`[data-testid$="-clause-${unboundClause}"]`)).toHaveCount(0);
+    }
+
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/assemblies/);
-
     // Assemblies: MANDATORY (user rule 2026-06-12 — a profile
     // without bindings cannot be ordered from). An update-mode run hydrates
     // the wallet's prior bindings — clear them first: this scenario's premise
@@ -110,6 +206,21 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     // Then bind the single-order seed assembly, by slug from shape discovery.
     const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
     await assemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
+
+    // The row must read as its designer WROTE it — the name and the summary
+    // from the pinned template, compared against the template read
+    // out-of-band, with the slug secondary. A picker of bare slugs is how a
+    // seller binds the wrong assembly.
+    if (assembly.name) {
+        await expect(assemblyRow).toContainText(assembly.name);
+    }
+    if (assembly.summary) {
+        await expect(
+            page.getByTestId(`seller-assembly-summary-${assemblySlug}`),
+        ).toHaveText(assembly.summary);
+    }
+    await expect(assemblyRow).toContainText(assemblySlug);
+
     await assemblyRow.locator('input[type="checkbox"]').first().check();
     // SELLER-side data: offer the first row derived from the binding — BOTH
     // market sides declare through the same editor, each on its own step.
@@ -120,8 +231,18 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     if (!(await sellerOfferBox.isChecked())) {
         await sellerOfferBox.check();
     }
+    // The binding survives a reload: it is the seller's declaration, held in
+    // this browser under this wallet until they publish it.
+    await draftCarries(page, '"offered":true');
+    await draftCarries(page, assemblySlug);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(
+        page.getByTestId(`seller-assembly-row-${assemblySlug}`).locator('input[type="checkbox"]').first(),
+    ).toBeChecked({ timeout: 30_000 });
+
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
+
 
     // Buyer: subscribe an assembly the wallet buys through, then
     // offer some of its data for sale. Subscribing is the buyer's
@@ -154,15 +275,36 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
 
     // Review + publish (pin catalogue + profile → register tx)
     await expect(page.getByText(SELLER.name)).toBeVisible();
+
+    // The route the review step PROMISES the seller must be the route the site
+    // serves: read the promise off the screen and hold it — the caller follows
+    // it once the profile is published.
+    const promisedRoute = (await page.getByTestId("review-seller-page-route").innerText()).trim();
+    expect(
+        promisedRoute,
+        "the review step must name the seller page by the route the site serves",
+    ).toBe(sellerPageHref("<address>"));
+    const promisedHref = promisedRoute.replace("<address>", SELLER.address);
+
     await page.getByTestId("review-confirm-publish").click();
     await expect(page.getByRole("heading", { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
+    // The receipt's own link is the same promise, as a real href. Next's
+    // trailingSlash and the checksummed address are spellings, not routes:
+    // compare the route (path without the trailing slash + the seller param).
+    const sameRoute = (href: string) => {
+        const u = new URL(href, "http://e2e");
+        return `${u.pathname.replace(/\/$/, "")}?seller=${(u.searchParams.get("seller") ?? "").toLowerCase()}`;
+    };
+    const receiptHref = await page.getByRole("link", { name: /View public profile/ }).getAttribute("href");
+    expect(sameRoute(receiptHref ?? ""), "the receipt link is the route the review promised").toBe(sameRoute(promisedHref));
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
     await page.waitForURL(/\/members\/manage\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
     // BOTH calls visible on the dashboard (user rule 2026-06-12): the
     // profile view/edit above, and the onboarding wizard entry.
     await expect(page.getByTestId("link-onboarding-wizard")).toBeVisible();
+    return promisedHref;
 }
 
 // Wizard + IPFS pin + register tx + multi-page reads.
@@ -178,9 +320,10 @@ test.describe("seller registration wizard (devnet)", () => {
         // SHAPE (never a hardcoded slug): the earliest anchored one-order
         // template. This wallet's scenario premise is the bilateral flow —
         // exactly this one binding.
-        const singleOrderSlug = (await discoverAnchoredAssemblies())
-            .find((a) => a.agreements.length === 1)?.slug;
-        expect(singleOrderSlug, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
+        const singleOrderAssembly = (await discoverAnchoredAssemblies())
+            .find((a) => a.agreements.length === 1);
+        expect(singleOrderAssembly, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
+        const singleOrderSlug = singleOrderAssembly?.slug;
 
         // Mainnet semantics: a seller registers ONCE and persists. Walk the
         // wizard when this wallet isn't registered yet — or when its CURRENT
@@ -224,8 +367,9 @@ test.describe("seller registration wizard (devnet)", () => {
                 && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
                 && buyerSubs.length >= 1 && buyerOffered && sellerOffered;
         }
+        let promisedSellerPage: string | undefined;
         if (!uriBefore || !conformant) {
-            await onboardViaWizard(page, singleOrderSlug!);
+            promisedSellerPage = await onboardViaWizard(page, singleOrderAssembly!);
         }
 
         // ── Anchored on MembersRegistry, profile URI on IPFS ─────────────────
@@ -254,7 +398,11 @@ test.describe("seller registration wizard (devnet)", () => {
         }
 
         // ── Surfaces where a buyer finds it: its page + /discover ───────────
-        await page.goto(`/s/view?seller=${SELLER.address}&e2e=devnet`, { waitUntil: "domcontentloaded" });
+        // Follow the route the review step promised — the seller's page must
+        // be there. On the conformant-skip path there was no promise to read,
+        // so the route comes from the helper the promise is rendered from.
+        const sellerPage = promisedSellerPage ?? sellerPageHref(SELLER.address);
+        await page.goto(`${sellerPage}&e2e=devnet`, { waitUntil: "domcontentloaded" });
         const detail = page.getByTestId("member-detail-view");
         try {
             await detail.waitFor({ state: "visible", timeout: 30000 });

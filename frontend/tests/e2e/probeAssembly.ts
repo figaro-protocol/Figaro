@@ -202,10 +202,30 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
     await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
     const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
     expect(handle, 'review navigated to a draft handle').toBeTruthy();
+
+    // BEFORE any reload: the review screen must state the composition the
+    // canvas holds. This is the client-side transition, the one a designer
+    // actually takes, and the last reading before an irreversible anchor —
+    // publishing terms the review did not show is the failure this catches.
+    await expect(
+        page.locator('[data-testid^="node-clauses-empty-"]'),
+        'no order reviews as termless when the drawer composed its terms',
+    ).toHaveCount(0, { timeout: 30000 });
+    await expect(
+        page.locator(`[data-testid^="node-clauses-"] span[title="${clauseId}"]`),
+        'the review names the clause the drawer composed',
+    ).toHaveCount(1, { timeout: 30000 });
+
     await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
     const confirmBtn = page.getByTestId('review-confirm-publish');
     await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
+    // And again on the reloaded review, immediately before confirming: what is
+    // about to be anchored is what is on screen.
+    await expect(
+        page.locator(`[data-testid^="node-clauses-"] span[title="${clauseId}"]`),
+        'the reviewed composition still names the composed clause at the moment of publish',
+    ).toHaveCount(1, { timeout: 30000 });
     await waitForConnected(page);
     await confirmBtn.click();
     await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });

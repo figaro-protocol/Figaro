@@ -9,8 +9,12 @@
  * whose spec isn't loaded is skipped (resolved-empty), never failed.
  */
 
-import { validateContent } from "@figaro-protocol/sdk/clauses";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { validateContent, type FieldSpec } from "@figaro-protocol/sdk/clauses";
+import {
+    clauseCatalogueFills,
+    getClauseSpec,
+    listCatalogueSourcedClauses,
+} from "@/lib/shared/clauseSpecSource";
 import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
 
 /**
@@ -32,4 +36,50 @@ export function validateCatalogueClauseValues(item: CatalogueItemMetadata): stri
         }
     }
     return errors;
+}
+
+/**
+ * The catalogue-authored clause sections a seller's items actually offer:
+ * every registered clause with `block.checkout.catalogueFills` that one of the
+ * assemblies this seller has BOUND composes. Two derivations, one direction —
+ * the bindings decide the clauses, the clauses decide the fields; the
+ * catalogue never opens a field no trade of this seller's can carry.
+ *
+ * Empty until an assembly is bound, and empty for a seller whose bound
+ * assemblies compose no product-property clause (the seller of one mug sees no
+ * hazmat class). A bound assembly whose template has not resolved yet
+ * contributes nothing rather than everything — absence, read at the edge.
+ *
+ * `choices` is the live registry projection (`useAssemblyChoices`); nothing
+ * here knows any clause or assembly by name.
+ */
+export function catalogueClausesForBindings(
+    bindings: readonly { assemblySlug: string }[],
+    choices: readonly { slug: string; clauses: readonly string[] | null }[],
+): readonly { clauseId: string; version: number }[] {
+    const boundSlugs = new Set(bindings.map((b) => b.assemblySlug));
+    const composed = new Set<string>();
+    for (const choice of choices) {
+        if (!boundSlugs.has(choice.slug)) continue;
+        for (const clauseId of choice.clauses ?? []) composed.add(clauseId);
+    }
+    if (composed.size === 0) return [];
+    return listCatalogueSourcedClauses().filter((c) => composed.has(c.clauseId));
+}
+
+/**
+ * The fields of one clause the CATALOGUE authors — the clause's own
+ * `block.checkout.catalogueFills`, resolved against its registered spec and
+ * returned in spec order. Fields the clause assigns to another source (the
+ * designer's fills, the buyer's checkout particulars, the seller's profile)
+ * are not the catalogue's to ask for. Empty while the spec is uncached.
+ */
+export function catalogueFieldsOfClause(
+    clauseId: string,
+    version?: number,
+): readonly FieldSpec[] {
+    const spec = getClauseSpec(clauseId, version);
+    if (!spec) return [];
+    const fills = new Set(clauseCatalogueFills(clauseId, version));
+    return spec.fields.filter((f) => fills.has(f.name));
 }

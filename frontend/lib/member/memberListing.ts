@@ -122,11 +122,24 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
 }
 
 /**
+ * The one place the seller-page URL is written. Every surface that names or
+ * links a wallet's public page — the discover card, the wizard's review step,
+ * the member dashboard — reads it from here, so the route can never be quoted
+ * from memory in prose and drift from the route that exists.
+ *
+ * `address` is interpolated verbatim, so a placeholder ("<address>") renders
+ * the same shape the reader will land on.
+ */
+export function sellerPageHref(address: string): string {
+    return `/s/view?seller=${address}`;
+}
+
+/**
  * The destination URL for a listing card click: the per-seller detail
  * page. The /s page reads the seller's catalogue and bindings; assembly
- * disambiguation happens inside that page. A seller with no bindings
- * still has a /m page — it surfaces the catalogue without a modality path.
+ * disambiguation happens inside that page. A seller with no bindings still
+ * has a page — it surfaces the catalogue without a modality path.
  */
 export function listingClickThroughHref(listing: Listing): string {
-    return `/s/view?seller=${listing.address}`;
+    return sellerPageHref(listing.address);
 }

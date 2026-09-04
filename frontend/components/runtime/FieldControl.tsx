@@ -27,6 +27,19 @@
  *
  * enum / array-of-enum / boolean / object render identically in both modes.
  *
+ * `siblingFormatSource` opens ONE door through the design-mode default rule: a
+ * required scalar whose VALUE drives a sibling's input format (the sibling
+ * declares `formatFromField`) fills here even though it carries a default —
+ * otherwise the party filling the sibling is locked into the one standard the
+ * default names (figaro-geolocation's `geocodeStandard` fixed at `geohash`,
+ * leaving a party with no device location no way to state an origin at all).
+ *
+ * What a control SAYS about itself is spec-read too: the label is the spec's own
+ * `label` (the same one `describeClause` uses on the read side), a required
+ * field carries a `required` marker, and a field that defers says WHY in the
+ * spec's own terms — `optional` only ever appears on a field the spec marks
+ * optional.
+ *
  * Enum OPTIONS display through the spec's own `valueLabels` (`labelEnumValue`,
  * the same humanizer `describeClause` uses on the read side) — the raw token
  * remains the committed value, the testid, and the option's tooltip. A clause
@@ -121,6 +134,7 @@ export function FieldControl({
     mode = "design",
     onCompanion,
     resolvedFormat,
+    siblingFormatSource = false,
 }: {
     field: FieldSpec;
     value: unknown;
@@ -140,13 +154,31 @@ export function FieldControl({
      *  from a sibling value (see `resolveInputFormat`). Overrides the field's
      *  static `format` for input dispatch only. Absent ⇒ the static `format`. */
     resolvedFormat?: string;
+    /** Set when a SIBLING's input format follows this field's value (that
+     *  sibling declares `formatFromField: <this field>`; see
+     *  `isSiblingFormatSource`). Such a field fills HERE even when it carries a
+     *  default — the party filling the sibling chooses the standard both are
+     *  written in. */
+    siblingFormatSource?: boolean;
 }) {
+    // The spec's own display label (the same `label ?? name` fallback
+    // `describeClause` uses on the read side), so a field reads identically
+    // where it is FILLED and where it is later REPORTED.
+    const labelText = field.label ?? field.name;
     const label = hideLabel ? null : (
         <span
             className={`text-xs text-ink-muted${field.description ? " cursor-help" : ""}`}
             title={field.description}
         >
-            {field.name}
+            {labelText}
+            {field.required && (
+                <span
+                    className="ml-1.5 text-[10px] uppercase tracking-wide text-ink-faint not-italic"
+                    data-testid={`${testId}-required`}
+                >
+                    required
+                </span>
+            )}
         </span>
     );
 
@@ -321,7 +353,8 @@ export function FieldControl({
     const fillHere = mode === "runtime"
         ? isScalar
         : (field.type === "string" || field.type === "integer")
-            && field.required && field.default === undefined;
+            && field.required
+            && (field.default === undefined || siblingFormatSource);
     if (isScalar && fillHere) {
         const numeric = field.type === "integer";
         const current = value === undefined || value === null ? "" : String(value);
@@ -373,6 +406,10 @@ export function FieldControl({
                 <input
                     type={numeric ? "number" : "text"}
                     value={current}
+                    // The spec's declared default, shown as the placeholder: an
+                    // untouched required field reads as what will commit
+                    // (`withSpecDefaults` applies it), never as an empty demand.
+                    placeholder={field.default !== undefined ? String(field.default) : undefined}
                     onChange={(e) => {
                         const raw = e.target.value;
                         if (raw === "") onChange(undefined);
@@ -386,16 +423,25 @@ export function FieldControl({
         );
     }
 
-    // Everything else is OPTIONAL structured content with no design fill —
-    // ruled 2026-07-10: no checkout clause-content surface exists (the old
-    // "provided at checkout" promise was legacy from the ripped-out
-    // beta-tester consent ceremony). The value comes from its PRODUCING
-    // surface (catalogue fold, derivation, spec default, companion routing)
-    // or stays absent — absence of an optional field is a valid committed
-    // state, not a gap.
+    // Everything else has no control HERE — the value comes from its PRODUCING
+    // surface (catalogue fold, derivation, spec default, companion routing) or
+    // stays absent. Absence of an OPTIONAL field is a valid committed state,
+    // not a gap: there is no checkout clause-content surface — the old
+    // "provided at checkout" promise was legacy from the ripped-out beta-tester
+    // consent ceremony.
+    //
+    // The line says which case this is, from the spec: `optional` appears ONLY
+    // on a field the spec marks optional. A REQUIRED field that defers names
+    // the default the build will apply — reading "optional" over a field the
+    // sign gate then refuses as missing is the contradiction that stops buyers.
+    const defaultText = Array.isArray(field.default) ? field.default.join(", ") : String(field.default);
     return (
         <div className="text-xs text-ink-faint italic" data-testid={`${testId}-deferred`}>
-            {field.name} — optional; filled by its producing surface or left unset
+            {labelText} — {field.required
+                ? (field.default !== undefined
+                    ? `required; commits as ${defaultText} unless its producing surface fills it`
+                    : "required; filled by its producing surface")
+                : "optional; filled by its producing surface or left unset"}
         </div>
     );
 }

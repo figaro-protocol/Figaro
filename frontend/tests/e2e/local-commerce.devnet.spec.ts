@@ -269,10 +269,74 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await expect(page.getByTestId('cart-kit-total'), 'meal 1 + delivery 1').toHaveText(/^2(\.0*)?$/, { timeout: 15000 });
         await expect(page.getByTestId('checkout-locked-total'), 'the buyer locks 2× the total').toHaveText(/^4(\.0*)?$/, { timeout: 15000 });
 
+        // ── WHAT THE REVIEW SAYS BEFORE ANYTHING IS FILLED. Three blind buyers
+        //    walked this screen into the same walls: a required term the sign
+        //    gate refuses but the form calls "optional"; endpoints fillable only
+        //    from a device location the reader does not have; and a bond line
+        //    read as 1:1 against copy that says twice the payment. Assert the
+        //    screen's own words with an EMPTY form — the state the buyer meets. ──
+        const geoControl = (field: string) =>
+            page.locator(`input[data-testid^="checkout-field-"][data-testid$="-${DELIVERY_CLAUSES.geo}-${field}"]`);
+
+        // The standard the endpoints are WRITTEN IN is a control, carrying its
+        // spec default as the placeholder: the clause's standard axis is open,
+        // so a reader with no device location states a locality by changing it.
+        await expect(geoControl('geocodeStandard'), 'the geocode standard is editable, not a label')
+            .toBeEditable({ timeout: 20000 });
+        await expect(geoControl('geocodeStandard')).toHaveAttribute('placeholder', 'geohash');
+        // …and nothing the sign gate requires is described as optional.
+        await expect(
+            page.locator('[data-testid^="checkout-field-"][data-testid$="-geocodeStandard-deferred"]'),
+            'a required field is never labelled optional',
+        ).toHaveCount(0);
+
+        // The geolocation clause requires origin + destination under EVERY
+        // modality the assembly offers — the spec makes them unconditional, so
+        // the form must say so under each choice, not only under delivery.
+        const modalityOptions = page.locator(
+            `input[type="radio"][data-testid*="-${DELIVERY_CLAUSES.modalities}-modality-"]`,
+        );
+        const modalityCount = await modalityOptions.count();
+        expect(modalityCount, 'the modalities clause offers its declared values').toBeGreaterThan(1);
+        for (let i = 0; i < modalityCount; i++) {
+            await modalityOptions.nth(i).check();
+            const chosen = await modalityOptions.nth(i).getAttribute('data-testid');
+            for (const field of ['origin', 'destination'] as const) {
+                await expect(geoControl(field), `${field} stays editable under ${chosen}`).toBeEditable();
+                await expect(
+                    page.locator(`[data-testid^="checkout-field-"][data-testid$="-${DELIVERY_CLAUSES.geo}-${field}-required"]`),
+                    `${field} is marked required under ${chosen}`,
+                ).toHaveCount(1);
+            }
+        }
+
+        // Empty form ⇒ the button must not promise what the validator refuses;
+        // what is owed is named in the buyer's words, never as a spec path.
+        await expect(page.getByTestId('checkout-missing-fills'), 'the unfilled required terms are named')
+            .toContainText('Origin', { timeout: 15000 });
+        await expect(page.getByTestId('btn-place-order'), 'an unfilled required term blocks the sign gate')
+            .toBeDisabled();
+
+        // The doubling on ONE line, in the lexicon's words — and no line that
+        // labels the payment "your bond".
+        const bondLine = page.getByTestId('checkout-bond-arithmetic');
+        await expect(bondLine, 'the locked figure states its own arithmetic').toContainText('twice the total');
+        await expect(bondLine).toContainText('transfers to the sellers when you resolve');
+        await expect(bondLine).toContainText('is your bond, refunded to you in the same transaction');
+        await expect(bondLine).toContainText('4');
+        await expect(bondLine).toContainText('2');
+        await expect(
+            page.getByTestId('checkout-bond-refundable'),
+            'the bond is stated inside the arithmetic, never as a bare line equal to the payment',
+        ).toHaveCount(0);
+
         // The buyer authors the transaction particulars (modality request,
         // hand-off mode, proximity band, geolocation endpoints) — templates
         // arrive value-free by construction (ruled 2026-07-14).
         await fillDeliveryCheckout(page);
+        // Every required term authored ⇒ the gate clears and the button says so.
+        await expect(page.getByTestId('checkout-missing-fills'), 'nothing required is left owed')
+            .toHaveCount(0, { timeout: 15000 });
 
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + assembly bound → "Place order"').toHaveText(/Place order/, { timeout: 20000 });

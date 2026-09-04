@@ -23,9 +23,9 @@
  * parses/serialises the URL query so every view is a permalink.
  */
 
-import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
+import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ProcessGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
 import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
-import { OrderState, type SettlementUniverse } from "@figaro-protocol/sdk";
+import { OrderState, type Process, type SettlementUniverse } from "@figaro-protocol/sdk";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { filterRows, pick, queryParam } from "@/lib/shared/urlQuery";
@@ -220,6 +220,88 @@ export function marketRows(shape: MarketShape, nameOf: (key: string) => string |
     // Most-traded first by PROCESS COUNT — a count, never a value ranking:
     // volumes in different denominations do not compare.
     return rows.sort((a, b) => b.processCount - a.processCount || a.name.localeCompare(b.name));
+}
+
+// ── The processes behind a market row ───────────────────────────────────────
+
+/**
+ * How many of a group's processes a row lists. A market's process count is
+ * unbounded, so an uncapped list would grow without limit; the cap is STATED
+ * in the UI ("12 of 40, most recent first") rather than hidden, exactly as
+ * the substance-recovery cap is — a reader knows they are seeing a window.
+ */
+export const PROCESS_ROW_CAP = 12;
+
+/** One process as the explorer lists it: the id a reader carries into the
+ *  audit view, and the little the process graph knows about it. Every field
+ *  is DERIVED from the kernel's own events — nothing here is stored. */
+export interface ProcessRow {
+    /** The bytes32 processId — the id `/audit/view?process=` takes. */
+    processId: string;
+    rootBuyer: string;
+    currency: string;
+    /** The accumulator at the process's last link. */
+    cumulativeValue: bigint;
+    orderCount: number;
+    resolved: boolean;
+    /** The block of the process's FIRST commit — CHAIN time, never a wall
+     *  clock. Null when the graph holds the process with no orders. */
+    firstBlock: number | null;
+    text: string;
+}
+
+function toProcessRow(process: Process): ProcessRow {
+    const orders = [...process.orders.values()];
+    const blocks = orders.map((o) => o.blockNumber);
+    return {
+        processId: process.processId,
+        rootBuyer: process.rootBuyer,
+        currency: process.currency,
+        cumulativeValue: process.cumulativeValue,
+        orderCount: orders.length,
+        resolved: process.resolved,
+        firstBlock: blocks.length > 0 ? Math.min(...blocks) : null,
+        text: [process.processId, process.rootBuyer, process.currency].join(" "),
+    };
+}
+
+/** Every process the kernel's own log carries, most recent first. The order
+ *  is by FIRST-COMMIT BLOCK (chain time); ties break on the id so the list is
+ *  stable across reads. */
+export function processRows(graph: ProcessGraph): ProcessRow[] {
+    return [...graph.processes.values()]
+        .map(toProcessRow)
+        .sort((a, b) => (b.firstBlock ?? -1) - (a.firstBlock ?? -1) || a.processId.localeCompare(b.processId));
+}
+
+/**
+ * The processes ONE market claims — narrowed by the attribution an attested
+ * provenance overlay declared, the same map the market layer counts with. Pass
+ * `null` for `marketKey` to select the processes NO attestation claims: the
+ * honest unattributed set, which is counted in `MarketShape` and would
+ * otherwise be the one part of the record a reader cannot open.
+ *
+ * `attributionByProcess` maps a lowercased processId to its attribution key —
+ * `overlaysForMarket`'s parameter, unchanged.
+ */
+export function processRowsForMarket(
+    graph: ProcessGraph,
+    attributionByProcess: ReadonlyMap<string, string>,
+    marketKey: string | null,
+): ProcessRow[] {
+    const key = marketKey === null ? null : marketKey.toLowerCase();
+    return processRows(graph).filter((row) => {
+        const attributed = attributionByProcess.get(row.processId.toLowerCase());
+        return key === null ? attributed === undefined : attributed === key;
+    });
+}
+
+/** The href that carries a process into the audit view. ONE expression of the
+ *  link, so the explorer and any other lister cannot drift from the route
+ *  `/audit/view` actually reads (`?process=<processId>`, an open-world id in a
+ *  query param — `docs/FRONTEND.md` § "Static export"). */
+export function processAuditHref(processId: string): string {
+    return `/audit/view?process=${processId}`;
 }
 
 // ── Attestation overlays (the open graph class) ─────────────────────────────

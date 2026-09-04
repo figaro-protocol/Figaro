@@ -21,7 +21,8 @@ import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import { ProfileClauseValues, type ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import { onboardingNextHref, useOnboardingState } from "@/lib/member/onboardingState";
+import { sellerPageHref } from "@/lib/member/memberListing";
 import type {
     OnboardingProfileDraft,
 } from "@/lib/member/onboardingState";
@@ -34,13 +35,13 @@ import { getCommonTokens, type CommonToken } from "@/lib/member/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
- * Step 2 of the onboarding wizard. Collects the stable identity fields
+ * The identity step of the onboarding wizard. Collects the stable identity fields
  * that live on the member profile document: name, description,
  * specialty, location, logo, accepted-token list, default-pricing token.
  *
  * State is wallet-scoped and persisted to localStorage on every change
  * (via `useOnboardingState`). On Next, validates the required fields,
- * stamps the draft into the onboarding state, and routes to step 3.
+ * stamps the draft into the onboarding state, and routes to the next step.
  */
 
 interface FormState {
@@ -374,7 +375,7 @@ export function OnboardingProfileForm({
                     // we swallow here so React's unhandled-rejection logger stays quiet.
                 });
             } else {
-                router.push("/members/catalogue");
+                router.push(onboardingNextHref("profile"));
             }
             return;
         }
@@ -489,7 +490,8 @@ export function OnboardingProfileForm({
                     it never carries a door-level location; precise pickup
                     points are shared per-order, encrypted to that order&apos;s
                     counterparty alone. The human-readable address is shown
-                    verbatim on your <code>/m/&lt;address&gt;</code> page.
+                    verbatim on your public seller page,{" "}
+                    <code>{sellerPageHref("<address>")}</code>.
                 </p>
                 <FormField label="Address" inputId="profile-address">
                     <Input
@@ -574,7 +576,8 @@ export function OnboardingProfileForm({
                 <h3 id="profile-heading-branding" className="text-heading-h3 text-ink-heading">Branding</h3>
                 <p className="text-sm text-ink-body">
                     Optional. The logo is shown on the discover card and on
-                    your <code>/m/&lt;address&gt;</code> page. It pins
+                    your public seller page,{" "}
+                    <code>{sellerPageHref("<address>")}</code>. It pins
                     alongside the rest of your identity envelope, so changing
                     the logo re-pins the profile.
                 </p>

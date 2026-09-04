@@ -33,6 +33,7 @@ import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
+import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import {
@@ -54,8 +55,17 @@ export function usePublishAssembly() {
      *  transaction, then wait for the receipt and verify status is
      *  `success`. Returns the transaction hash + IPFS URI on confirmed
      *  success. Throws on any failure — no wallet, IPFS down,
-     *  insufficient ETH, composition collision, on-chain revert, etc. */
-    async function publish(snapshot: DesignSnapshot): Promise<PublishOutcome> {
+     *  insufficient ETH, composition collision, on-chain revert, etc.
+     *
+     *  `reviewedCompositionHash` is the BYTE-EQUALITY GATE: the identity the
+     *  caller last showed a human. The anchor is permanent, so the bytes that
+     *  go out must be the bytes that were seen — if the build no longer hashes
+     *  to what was reviewed, this refuses before anything is pinned or signed
+     *  rather than anchoring a composition nobody read. */
+    async function publish(
+        snapshot: DesignSnapshot,
+        reviewedCompositionHash?: `0x${string}`,
+    ): Promise<PublishOutcome> {
         const registry = getAssemblyRegistry();
         if (!registry) {
             throw new Error(
@@ -94,6 +104,15 @@ export function usePublishAssembly() {
         // refuses, never a silent no-op.
         const template = snapshotToAssemblyTemplate(snapshot);
         const { json, compositionHash } = serializeAssemblyTemplate(template);
+        // One template, one hash: refuse before the pin and before the wallet
+        // when this build is not the composition the caller reviewed.
+        if (reviewedCompositionHash && !hexEqual(compositionHash, reviewedCompositionHash)) {
+            throw new Error(
+                `This draft now builds a different composition than the one reviewed `
+                + `(reviewed ${reviewedCompositionHash}, builds ${compositionHash}). `
+                + `Nothing was published — reopen it in the editor and review again.`,
+            );
+        }
         // The slug is presentation, derived from the composition hash —
         // identical compositions collapse to one on-chain binding (the
         // registry's first-write-wins dedups them); the user never names it.

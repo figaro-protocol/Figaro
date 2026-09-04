@@ -10,7 +10,8 @@ import { Card } from "@/components/ui/Card";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import { onboardingStepLabel, useOnboardingState } from "@/lib/member/onboardingState";
+import { sellerPageHref } from "@/lib/member/memberListing";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useMemberProfile,
@@ -23,7 +24,7 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
 /**
  * Final step — review and publish.
  *
- * Renders the wallet's pre-publish profile in /m/<address>-style
+ * Renders the wallet's pre-publish profile in seller-page-style
  * chrome: name, branding, specialty, description, location, catalogue
  * items, accepted tokens, assemblies. Each section carries an "Edit"
  * link back to its wizard step. Autosave on each wizard step means
@@ -45,14 +46,15 @@ interface DraftSummary {
 }
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
-    if (!state.profile?.name) return { error: "Step 2 (Identity) is incomplete: name is required." };
-    if (!state.profile.defaultTokenAddress) return { error: "Step 2 (Identity) is incomplete: pick the accepted token your catalogue is priced in." };
+    if (!state.profile?.name) return { error: `${onboardingStepLabel("profile")} is incomplete: name is required.` };
+    if (!state.profile.defaultTokenAddress) return { error: `${onboardingStepLabel("profile")} is incomplete: pick the accepted token your catalogue is priced in.` };
+    // Reported in wizard order, so the seller is sent to the earliest step
+    // that still needs them. A profile without assembly bindings cannot be
+    // ordered from — the register is refused, not just the step navigation
+    // (deep links and stale drafts land here too).
+    if ((state.assemblies ?? []).length === 0) return { error: `${onboardingStepLabel("assemblies")} is incomplete: bind at least one published assembly — a member profile without one cannot be ordered from.` };
     const items = state.catalogue?.items ?? [];
-    if (items.length === 0) return { error: "Step 3 (Catalogue) is incomplete: add at least one item before publishing." };
-    // A profile without assembly bindings cannot be ordered from — the
-    // register is refused, not just the step navigation (deep links and
-    // stale drafts land here too). User rule 2026-06-12.
-    if ((state.assemblies ?? []).length === 0) return { error: "Step 4 (Assemblies) is incomplete: bind at least one published assembly — a member profile without one cannot be ordered from." };
+    if (items.length === 0) return { error: `${onboardingStepLabel("catalogue")} is incomplete: add at least one item before publishing.` };
 
     const profileTemplate: Omit<MemberProfileMetadata, "catalogueURI"> = {
         subjectAddress: wallet,
@@ -236,7 +238,7 @@ export function OnboardingReview() {
                 <div className="flex items-center justify-end gap-3">
                     {address && (
                         <Link
-                            href={`/s/view?seller=${address}`}
+                            href={sellerPageHref(address)}
                             className="text-sm text-ink-faint hover:text-ink-heading underline"
                         >
                             View public profile →
@@ -257,7 +259,7 @@ export function OnboardingReview() {
 
     return (
         <div className="space-y-8">
-            {/* Hero: the /m/<address> page's header analog */}
+            {/* Hero: the seller page's header analog */}
             <Card className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Preview · pending publish</h2>

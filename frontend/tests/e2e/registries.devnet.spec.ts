@@ -17,7 +17,10 @@
  * the reference assemblies and registers the seeded members).
  */
 import { test, expect } from '@playwright/test';
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import {
+    ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
+    canonicalContentHash, computeClauseKey,
+} from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { localPublicClient, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
@@ -53,6 +56,71 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(page.getByTestId('content-unavailable')).toHaveCount(0);
         // The count line reflects the same read.
         await expect(page.getByTestId('registry-count')).toContainText(/of \d+ clauses/);
+    });
+
+    test('a clause shows the pinned document AS STORED, and its bytes hash to the anchor on chain', async ({ page }) => {
+        // The lawyer's ask: the page describes a clause in the spec's own
+        // words but never showed the document those words came from. The
+        // disclosure shows the served bytes verbatim and the digest beside
+        // them; this holds BOTH to the chain, out of band.
+        const publicClient = localPublicClient();
+        const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? readLocalDeploymentConfig().clauseRegistry) as `0x${string}`;
+        const registered = await publicClient.getContractEvents({
+            address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
+        });
+        expect(registered.length, 'the deploy registered clauses on-chain').toBeGreaterThan(0);
+
+        // DISCOVERED, never named: the most recent registration whose pinned
+        // document this gateway actually serves.
+        let subject: { clauseId: string; version: number; contentURI: string; contentHash: string; text: string } | null = null;
+        for (const event of [...registered].reverse()) {
+            const args = event.args as { clauseId?: string; version?: number | bigint; contentURI?: string; contentHash?: string };
+            if (!args.clauseId || !args.contentURI || !args.contentHash) continue;
+            const response = await fetch(resolveIpfsURI(args.contentURI));
+            if (!response.ok) continue;
+            subject = {
+                clauseId: args.clauseId,
+                version: Number(args.version ?? 1),
+                contentURI: args.contentURI,
+                contentHash: args.contentHash,
+                text: await response.text(),
+            };
+            break;
+        }
+        expect(subject, 'at least one registered clause spec is served by this gateway').not.toBeNull();
+        const found = subject!;
+
+        // The event's digest IS what the registry answers for this clause —
+        // the value `FigaroBatchVerifier` checks a batch against.
+        const anchored = await publicClient.readContract({
+            address: registry,
+            abi: CLAUSE_REGISTRY_ABI,
+            functionName: 'contentHashOf',
+            args: [computeClauseKey(found.clauseId, found.version)],
+        }) as `0x${string}`;
+        expect(anchored.toLowerCase(), 'the event digest is the registry\'s own answer').toBe(found.contentHash.toLowerCase());
+        // And the served bytes reproduce it — canonical form, per the note.
+        expect(
+            canonicalContentHash(JSON.parse(found.text)).toLowerCase(),
+            'the pinned document hashes to the anchor out-of-band',
+        ).toBe(anchored.toLowerCase());
+
+        await page.goto('/registries?family=clauses');
+        const row = page.locator(`li#clause-${found.clauseId}`);
+        await expect(row).toBeVisible({ timeout: 30_000 });
+
+        // The disclosure reads nothing until it is opened.
+        await expect(page.getByTestId(`stored-json-clause-${found.clauseId}`)).toHaveCount(0);
+        await row.getByTestId(`stored-toggle-clause-${found.clauseId}`).click();
+
+        const shown = page.getByTestId(`stored-json-clause-${found.clauseId}`);
+        await expect(shown, 'the pinned document renders').toBeVisible({ timeout: 30_000 });
+        // VERBATIM: the screen carries the same bytes the gateway served.
+        expect(await shown.innerText(), 'the document renders as stored, byte for byte').toBe(found.text);
+        // The hash beside it is the chain's, and the recomputation agrees.
+        await expect(page.getByTestId(`stored-hash-clause-${found.clauseId}`)).toHaveText(anchored);
+        await expect(page.getByTestId(`stored-verdict-clause-${found.clauseId}`)).toContainText('reproduces the anchor');
+        await expect(page.getByTestId(`stored-panel-clause-${found.clauseId}`)).toContainText('keccak256');
     });
 
     test('assemblies: an anchored assembly discovered from chain renders its row', async ({ page }) => {

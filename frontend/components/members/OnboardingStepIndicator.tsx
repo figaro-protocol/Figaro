@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cn } from "@/lib/shared/utils";
 import {
     ONBOARDING_STEPS,
+    onboardingStepHref,
     type OnboardingStep,
 } from "@/lib/member/onboardingState";
 
@@ -53,7 +54,7 @@ export function OnboardingStepIndicator({
                     isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint hidden sm:inline",
                 );
 
-                const href = `/members${step.path ? `/${step.path}` : ""}`;
+                const href = onboardingStepHref(step.id);
                 const content = (
                     <span className="flex items-center gap-2">
                         <span className={circleClasses}>{step.number}</span>

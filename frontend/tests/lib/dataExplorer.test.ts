@@ -12,6 +12,7 @@ import type {
     MarketShape,
     MarketShapeGroup,
     OverlayGraph,
+    ProcessGraph,
     ValueFlowGraph,
     WalletRecord,
 } from "@figaro-protocol/sdk/derive";
@@ -27,6 +28,9 @@ import {
     overlayRows,
     overlaysForMarket,
     parseDataExplorerQuery,
+    processAuditHref,
+    processRows,
+    processRowsForMarket,
     serializeDataExplorerQuery,
     venuePosture,
     venuePostureNote,
@@ -350,5 +354,102 @@ describe("wallet record", () => {
         expect(rows[0].resolved).toBe(true);
         expect(rows[1].counterparty).toBe(OTHER);
         expect(rows[1].resolved).toBe(false);
+    });
+});
+
+describe("processRows — the id a reader carries into the audit view", () => {
+    const PROCESS_A = `0x${"aa".repeat(32)}` as const;
+    const PROCESS_B = `0x${"bb".repeat(32)}` as const;
+
+    const order = (over: Record<string, unknown> = {}) => ({
+        orderHash: `0x${"11".repeat(32)}`,
+        processId: PROCESS_A,
+        buyer: WALLET,
+        seller: OTHER,
+        currency: TOKEN_A,
+        payment: 5n,
+        cumulativeValue: 5n,
+        agreementHash: `0x${"99".repeat(32)}`,
+        salt: 0n,
+        deadline: 0n,
+        state: OrderState.Active,
+        blockNumber: 4,
+        ...over,
+    });
+
+    const process = (processId: string, over: Record<string, unknown> = {}) =>
+        ({
+            processId,
+            rootBuyer: WALLET,
+            currency: TOKEN_A,
+            cumulativeValue: 5n,
+            orders: new Map([[`0x${"11".repeat(32)}`, order({ processId })]]),
+            resolved: false,
+            ...over,
+        }) as unknown as ProcessGraph["processes"] extends Map<infer _K, infer V> ? V : never;
+
+    const graph = (entries: Array<[string, ReturnType<typeof process>]>): ProcessGraph =>
+        ({
+            boundary: "protocol-enforced",
+            processes: new Map(entries),
+        }) as unknown as ProcessGraph;
+
+    it("carries the id, the shape and settlement state, most recent first", () => {
+        const g = graph([
+            [PROCESS_A, process(PROCESS_A, { orders: new Map([["o1", order({ processId: PROCESS_A, blockNumber: 4 })]]) })],
+            [
+                PROCESS_B,
+                process(PROCESS_B, {
+                    resolved: true,
+                    cumulativeValue: 12n,
+                    orders: new Map([
+                        ["o2", order({ processId: PROCESS_B, blockNumber: 9 })],
+                        ["o3", order({ processId: PROCESS_B, blockNumber: 11 })],
+                    ]),
+                }),
+            ],
+        ]);
+        const rows = processRows(g);
+        // Most recent FIRST-COMMIT block leads.
+        expect(rows.map((r) => r.processId)).toEqual([PROCESS_B, PROCESS_A]);
+        expect(rows[0].orderCount).toBe(2);
+        expect(rows[0].firstBlock).toBe(9);
+        expect(rows[0].resolved).toBe(true);
+        expect(rows[0].cumulativeValue).toBe(12n);
+        expect(rows[1].resolved).toBe(false);
+    });
+
+    it("an empty graph is an empty list — absence, never a fabricated row", () => {
+        expect(processRows(graph([]))).toEqual([]);
+    });
+
+    it("a process the graph holds with no orders keeps its id and states no block", () => {
+        const rows = processRows(graph([[PROCESS_A, process(PROCESS_A, { orders: new Map() })]]));
+        expect(rows).toHaveLength(1);
+        expect(rows[0].processId).toBe(PROCESS_A);
+        expect(rows[0].orderCount).toBe(0);
+        expect(rows[0].firstBlock).toBeNull();
+    });
+
+    it("narrows to one market's key, and `null` selects the UNATTRIBUTED set", () => {
+        const g = graph([
+            [PROCESS_A, process(PROCESS_A)],
+            [PROCESS_B, process(PROCESS_B)],
+        ]);
+        // The attribution map is keyed lowercased, as the corpus builds it.
+        const attribution = new Map([[PROCESS_A.toLowerCase(), KEY_A.toLowerCase()]]);
+
+        expect(processRowsForMarket(g, attribution, KEY_A).map((r) => r.processId)).toEqual([PROCESS_A]);
+        // Case-insensitive on the key the caller passes in.
+        expect(processRowsForMarket(g, attribution, KEY_A.toUpperCase()).map((r) => r.processId)).toEqual([PROCESS_A]);
+        // A market nothing claims is empty, not everything.
+        expect(processRowsForMarket(g, attribution, KEY_B)).toEqual([]);
+        // `null` is the honest unattributed set — the processes the market
+        // layer counts but names no composition for.
+        expect(processRowsForMarket(g, attribution, null).map((r) => r.processId)).toEqual([PROCESS_B]);
+    });
+
+    it("the audit href is the route /audit/view actually reads", () => {
+        expect(processAuditHref(PROCESS_A)).toBe(`/audit/view?process=${PROCESS_A}`);
     });
 });

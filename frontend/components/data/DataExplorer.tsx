@@ -43,6 +43,9 @@ import {
     overlayRows,
     overlaysForMarket,
     parseDataExplorerQuery,
+    processAuditHref,
+    processRowsForMarket,
+    PROCESS_ROW_CAP,
     serializeDataExplorerQuery,
     venuePosture,
     venuePostureNote,
@@ -50,6 +53,7 @@ import {
     walletRecordSummary,
     type DataExplorerQuery,
     type GraphView,
+    type ProcessRow,
 } from "@/lib/data/explorer";
 import { isValidAddress } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -211,6 +215,16 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                     produced it stays party-private until someone discloses or sells it.
                 </p>
             ) : null}
+            {/* Unattributed is a POSTURE, not a hiding place: those processes
+                settled on the same public record, so their ids open the same
+                way an attributed one's does. */}
+            {corpus.market.unattributedProcessCount > 0 ? (
+                <ProcessList
+                    rows={processRowsForMarket(corpus.process, corpus.attributionByProcess, null)}
+                    corpus={corpus}
+                    testId="market-processes-unattributed"
+                />
+            ) : null}
             {shown.length === 0 ? (
                 <p className="text-sm text-ink-muted" data-testid="market-empty">
                     No attributed market on the network this site reads. Absence of an
@@ -247,6 +261,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                                 ))}
                             </p>
                             <MarketOverlays corpus={corpus} marketKey={r.key} />
+                            <MarketProcesses corpus={corpus} marketKey={r.key} />
                             <p className="text-xs text-ink-muted">
                                 {r.cadence.firstBlock !== null
                                     ? `commits from block ${r.cadence.firstBlock} to ${r.cadence.lastBlock}`
@@ -300,6 +315,66 @@ function MarketOverlays({ corpus, marketKey }: { corpus: GraphCorpus; marketKey:
                 </span>
             ))}
         </p>
+    );
+}
+
+/** The processes ONE market claims, each openable. Derived from the same
+ *  attribution map the market counts with, so a row here and the count above
+ *  can never disagree. */
+function MarketProcesses({ corpus, marketKey }: { corpus: GraphCorpus; marketKey: string }) {
+    const rows = useMemo(
+        () => processRowsForMarket(corpus.process, corpus.attributionByProcess, marketKey),
+        [corpus, marketKey],
+    );
+    return <ProcessList rows={rows} corpus={corpus} testId={`market-processes-${marketKey}`} />;
+}
+
+/**
+ * A list of processes, each carrying its OWN id and the one link that opens
+ * it at `/audit/view` — the surface that already narrates a process whole
+ * (timeline, financials, clause evidence, signature verdicts). Without this a
+ * reader can count the processes on the record but cannot open one: the ids
+ * are derivable from the same events every figure above is derived from, so
+ * withholding them would be the surface's choice, not the record's.
+ *
+ * Capped at `PROCESS_ROW_CAP` with the window STATED — never silently
+ * truncated.
+ */
+function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; corpus: GraphCorpus; testId: string }) {
+    if (rows.length === 0) return null;
+    const shown = rows.slice(0, PROCESS_ROW_CAP);
+    return (
+        <div className="text-xs text-ink-muted" data-testid={testId}>
+            <ul className="mt-1 space-y-1">
+                {shown.map((r) => (
+                    <li key={r.processId} data-testid={`process-row-${r.processId.toLowerCase()}`}>
+                        {/* The FULL processId, not a truncation: it is the id
+                            `/audit/view` takes, and a reader recording one for
+                            their own books needs all of it. */}
+                        <Link
+                            href={processAuditHref(r.processId)}
+                            className="font-mono underline break-all hover:text-ink-heading"
+                            data-testid={`process-audit-link-${r.processId.toLowerCase()}`}
+                        >
+                            {r.processId}
+                        </Link>
+                        {" · "}
+                        {r.orderCount} order{r.orderCount === 1 ? "" : "s"}
+                        {" · "}
+                        <Amount value={r.cumulativeValue} token={r.currency} corpus={corpus} /> cumulative
+                        {" · "}
+                        {r.resolved ? "settled" : "active"}
+                        {r.firstBlock !== null ? ` · from block ${r.firstBlock}` : ""}
+                    </li>
+                ))}
+            </ul>
+            <p className="mt-1">
+                {rows.length > shown.length
+                    ? `${shown.length} of ${rows.length} processes, most recent first.`
+                    : `${rows.length} process${rows.length === 1 ? "" : "es"}, most recent first.`}
+                {" "}Each opens its own record at <code className="font-mono">/audit/view</code>.
+            </p>
+        </div>
     );
 }
 

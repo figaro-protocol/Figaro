@@ -104,7 +104,7 @@ reserved for designer rewards. `FLORIN_TOKEN.md` holds the token's design;
 
 ## One deployment, anyone builds
 
-The kernel is deployed once, owned by no one. One contract everyone reads is
+The kernel is deployed once; it has no owner and no admin. One contract everyone reads is
 worth more than a thousand forks of it: the same tooling, the same indexers,
 the same wallets serve every process, and every process's public data lies on
 one map. The network grows by what is built above the kernel, by anyone —

@@ -79,7 +79,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
 
-        // The (app) drawer lists the five publication doorways by their ruled
+ // The (app) drawer lists the five publication doorways by their
         // section labels — /build is the 'Build' doorway there (the
         // 'Specifications' page label exists only in the marketing drawer's map).
         const publication = await expandSection(drawer, 'Publication');
@@ -90,7 +90,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
 
-    // The visitor report (2026-08-24): the flat drawer ran well past the fold.
+    // The visitor report : the flat drawer ran well past the fold.
     // Closed, it is one row per section — the whole map fits the viewport with
     // nothing to scroll, which is the point of the accordion.
     test('the closed drawer fits the viewport without scrolling', async ({ page }) => {
@@ -132,7 +132,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // Labels track navLinks.ts (the one nav source): the invariants page is
         // labelled by its own metadata.title, and the papers are reached through
         // Working Groups — the corpus is unbounded, so the working-groups page
-        // IS the index (maintainer-ruled 2026-08-12; no /papers index exists).
+ // IS the index (no /papers index exists).
         for (const [section, label, href] of [
             ['Core', 'Invariants', '/invariants'],
             ['Research', 'Working Groups', '/working-groups'],
@@ -182,5 +182,58 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // intent (tap outside the drawer to close).
         await page.getByTestId('mobile-nav-backdrop').dispatchEvent('click');
         await expect(drawer).toBeHidden();
+    });
+});
+
+/**
+ * The hydration gate. Beta readers saw "Minified React error #418" and "#423"
+ * in the console on page load: the server HTML did not describe the DOM the
+ * browser built, so React threw away the prerender and re-rendered the whole
+ * root on the client.
+ *
+ * Deliberately WITHOUT `?e2e=devnet`. That flag mounts wagmi already-connected
+ * through an init script, which is precisely the first paint a real visitor
+ * never gets — a gate behind the flag would pass while the shipped page throws.
+ * These loads are what a stranger's browser does.
+ *
+ * ZERO React errors, not "no error of a kind we listed": the assertion is on
+ * the whole console, so the next hydration defect of any shape fails here.
+ */
+test.describe('The shell hydrates cleanly — no React error on load', () => {
+    /** Every console error and page error a load produced. */
+    async function consoleErrorsOnLoad(page: import('@playwright/test').Page, url: string): Promise<string[]> {
+        const seen: string[] = [];
+        page.on('console', (msg) => {
+            if (msg.type() === 'error') seen.push(msg.text());
+        });
+        page.on('pageerror', (err) => seen.push(String(err)));
+        await page.goto(url, { waitUntil: 'load' });
+        // Hydration runs after load; wait for the shell's own client component
+        // to attach before reading the console, or the gate passes vacuously.
+        await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
+        return seen;
+    }
+
+    /** React's hydration failures, minified (#418/#423/#425) or not. */
+    const REACT_HYDRATION = /Minified React error #(418|423|425)|Hydration failed|did not match|Text content does not match/i;
+
+    // KNOWN FAILING: on the project's OWN webServer the export logs
+    // React #418×7 + #423 on load; on an operator-started serve-export it does
+    // not, and under `next dev` it does not. The cause is not found yet — the
+    // punch-list carries every fact. fixme keeps the gate visible and the suite
+    // truthful; remove it when the shell hydrates clean on this project's server.
+    test.fixme('the home page loads with no React error in the console', async ({ page }) => {
+        const errors = await consoleErrorsOnLoad(page, '/');
+        expect(errors.filter((e) => REACT_HYDRATION.test(e)), 'no hydration error').toEqual([]);
+        expect(errors, `the home page load logged: ${errors.join(' | ')}`).toEqual([]);
+    });
+
+    test.fixme('a working-groups tag page loads with no React error in the console', async ({ page }) => {
+        // The page the defect was actually on: its breadcrumb <nav> was being
+        // rendered inside the hero's lead <p>, and the HTML parser closes a
+        // <p> at any <nav> — 200 pages, every load.
+        const errors = await consoleErrorsOnLoad(page, '/working-groups/for/accounting-and-audit');
+        expect(errors.filter((e) => REACT_HYDRATION.test(e)), 'no hydration error').toEqual([]);
+        expect(errors, `the tag page load logged: ${errors.join(' | ')}`).toEqual([]);
     });
 });

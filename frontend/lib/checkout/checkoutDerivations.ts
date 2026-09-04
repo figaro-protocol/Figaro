@@ -26,6 +26,7 @@ import {
     specSource,
 } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
+import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 
 type PlanAssembly = Parameters<typeof planSubOrderSellers>[0];
 type PricingCatalogues = Parameters<typeof resolveSubOrderPricing>[0]["sellerCatalogues"];
@@ -236,4 +237,80 @@ export function deriveAgreementGroups(args: {
                 }),
         };
     })];
+}
+
+/**
+ * The fields of a fillable clause the checkout OFFERS the buyer: the spec's own
+ * fields minus the designer's tailoring (`block.design.fills`, already valued on
+ * the template). ONE list — the form renders it and the place-order gate below
+ * checks it, so the sign gate can never demand a term the form never offered.
+ */
+export function buyerAuthoredFields(clauseId: string): readonly FieldSpec[] {
+    const designFills = clauseDesignFills(clauseId);
+    return (getClauseSpec(clauseId)?.fields ?? []).filter((f) => !designFills.includes(f.name));
+}
+
+/** A value counts as filled when it is present and non-empty — the same
+ *  emptiness the off-chain validator treats as "missing". */
+export function isFilledValue(value: unknown): boolean {
+    if (value === undefined || value === null || value === "") return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+    return true;
+}
+
+/** Whether the buyer must author this field before the order can be signed:
+ *  REQUIRED, with no spec `default` (the agreement build applies declared
+ *  defaults), and of a type the form renders a control for — a `bigint` defers
+ *  to its producing surface at design time, so it is never demanded here. */
+function isDemandedOfBuyer(field: FieldSpec): boolean {
+    if (!field.required || field.default !== undefined) return false;
+    return field.type !== "bigint";
+}
+
+/** One required buyer fill still empty, named the way the buyer reads it. */
+export interface MissingFill {
+    groupKey: string;
+    groupLabel: string;
+    clauseId: string;
+    clauseTitle: string;
+    fieldName: string;
+    fieldLabel: string;
+}
+
+/**
+ * Every REQUIRED buyer-authored fill still empty across the reviewed orders —
+ * the check the off-chain validator makes at the sign gate, made HERE, before
+ * the wallet opens, in the buyer's own words. Without it an unfilled term
+ * reaches the gate and comes back as a spec-path dump ("$.acceptanceBasis:
+ * required field is missing"), which is a developer's sentence, not a buyer's.
+ *
+ * Spec-routed and clause-agnostic: a value already composed on the template (or
+ * folded from the seller's profile) counts as filled, and a field carrying a
+ * spec `default` is never demanded — the agreement build applies it.
+ */
+export function unfilledRequiredFills(
+    groups: readonly AgreementGroup[],
+    fills: Record<string, Record<string, Record<string, unknown>>>,
+): MissingFill[] {
+    const missing: MissingFill[] = [];
+    for (const group of groups) {
+        for (const clause of group.clauses) {
+            if (!clause.fillable) continue;
+            const values = { ...clause.data, ...(fills[group.key]?.[clause.clauseId] ?? {}) };
+            for (const field of buyerAuthoredFields(clause.clauseId)) {
+                if (!isDemandedOfBuyer(field)) continue;
+                if (isFilledValue(values[field.name])) continue;
+                missing.push({
+                    groupKey: group.key,
+                    groupLabel: group.label,
+                    clauseId: clause.clauseId,
+                    clauseTitle: getClauseSpec(clause.clauseId)?.title ?? clause.clauseId,
+                    fieldName: field.name,
+                    fieldLabel: field.label ?? field.name,
+                });
+            }
+        }
+    }
+    return missing;
 }

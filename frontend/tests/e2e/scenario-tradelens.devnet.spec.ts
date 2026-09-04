@@ -216,7 +216,47 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         await waitForConnected(page);
 
+        // ── EVERY required term has a control, on EVERY order that composes it.
+        //    A buyer reached this screen and read the six orders' terms as plain
+        //    text — the clause specs load chain → IPFS and the review rendered
+        //    against a half-warm cache, so "Place order" then came back as a
+        //    validator path ("$.acceptanceBasis: required field is missing") for
+        //    fields the form never offered. The expected COUNT is derived from
+        //    the anchored template, never written down here. ──
+        const composingOrders = (clauseId: string) =>
+            (anchored.agreements as Array<{ clauses: Record<string, unknown> }>)
+                .filter((o) => clauseId in (o.clauses ?? {})).length;
+        for (const [clauseId, field] of [
+            [C.acceptance, 'acceptanceBasis'],
+            [C.custody, 'custodyScheme'],
+            [C.incoterms, 'incotermsNamedPlace'],
+            [C.emissions, 'standard'],
+            [C.geo, 'origin'],
+            [C.geo, 'destination'],
+            [C.geo, 'geocodeStandard'],
+        ] as const) {
+            await expect
+                .poll(
+                    () => page.locator(
+                        `input[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}"]`,
+                    ).count(),
+                    {
+                        timeout: 30000,
+                        message: `${clauseId}.${field}: one editable control per composing order`,
+                    },
+                )
+                .toBe(composingOrders(clauseId));
+        }
+        // Nothing filled yet ⇒ the button names the state honestly instead of
+        // offering a signature the validator will refuse.
+        await expect(page.getByTestId('btn-place-order'), 'unfilled required terms block the sign gate')
+            .toBeDisabled();
+        await expect(page.getByTestId('checkout-missing-fills'), 'what is owed is named per order')
+            .toContainText('Acceptance criteria', { timeout: 15000 });
+
         await fillTradelensCheckout(page);
+        await expect(page.getByTestId('checkout-missing-fills'), 'every required term authored')
+            .toHaveCount(0, { timeout: 15000 });
 
         // The derived chain total the buyer signs — six fixed items.
         await expect(page.getByTestId('checkout-view')).toContainText('8.45', { timeout: 20000 });

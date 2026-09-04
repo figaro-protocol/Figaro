@@ -10,8 +10,10 @@
  * an error. This spec covers the on-chain branch and the not-found branch:
  *
  *   1. Publish an assembly via the canvas, then open /view/<slug> — it
- *      resolves from chain, the source badge reads "on-chain", and a
- *      published assembly offers Fork (not Edit).
+ *      resolves from chain, the source badge reads "on-chain", the node states
+ *      the clause the composition carries (read out of the PINNED template,
+ *      the same reading the review screen makes of the bytes it is about to
+ *      anchor), and a published assembly offers Fork (not Edit).
  *   2. A slug that is neither a draft nor on-chain → the not-found error.
  *
  * Additive UI-tier coverage. Requires Anvil + ./deploy-local.sh + Kubo.
@@ -30,7 +32,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // Publish a per-run-unique assembly via the REAL canvas (the nonce lives
         // in the probe clause id, so the content-derived slug is fresh each run —
         // no snapshot/revert needed; devnet is a mainnet rehearsal).
-        const { slug, name } = await publishProbeAssembly(page);
+        const { slug, name, clauseId } = await publishProbeAssembly(page);
 
         // ── The publish actually anchored, read back out-of-band ─────
         const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
@@ -49,6 +51,17 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         await expect(page.getByTestId('view-source-badge')).toContainText('on-chain', { timeout: 15000 });
         // The on-chain assemblyTemplate's editorial name rendered in the toolbar.
         await expect(page.getByTestId('view-toolbar')).toContainText(name);
+        // The composition survives the round trip: the node states the clause
+        // the designer composed, read out of the pinned template — an assembly
+        // whose terms the inspector cannot state is one nobody can check.
+        await expect(
+            page.locator(`[data-testid^="node-clauses-"] span[title="${clauseId}"]`),
+            'the published node states the composed clause',
+        ).toHaveCount(1, { timeout: 30000 });
+        await expect(
+            page.locator('[data-testid^="node-clauses-empty-"]'),
+            'a published order carrying terms never reads as termless',
+        ).toHaveCount(0);
         // Published assemblies offer Fork; drafts offer Edit.
         await expect(page.getByTestId('view-fork-button')).toBeVisible();
         await expect(page.getByTestId('view-edit-button')).toHaveCount(0);

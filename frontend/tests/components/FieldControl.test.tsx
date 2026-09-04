@@ -331,3 +331,83 @@ describe("FieldControl enum labelling", () => {
         expect(screen.getByTestId("f-bands-zone-wifi")).toBeTruthy();
     });
 });
+
+// What a control SAYS about itself. Three blind buyers read
+// "geocodeStandard — optional; filled by its producing surface or left unset"
+// over two unmarked inputs, then had the order refused for the very fields the
+// line called optional. `optional` may appear ONLY on a field the spec marks
+// optional; a required field carries a required marker; and the field a sibling
+// reads its input format from is editable even though it carries a default.
+describe("FieldControl requirement legibility", () => {
+    const requiredNoDefault: FieldSpec = {
+        name: "acceptanceBasis", type: "string", required: true, label: "Acceptance basis",
+    };
+    const requiredDefaulted: FieldSpec = {
+        name: "geocodeStandard", type: "string", required: true, default: "geohash",
+        label: "Geocode standard",
+    };
+    const optional: FieldSpec = {
+        name: "criteriaUri", type: "string", required: false, label: "Criteria locator",
+    };
+
+    it("names the field by the spec's own label and marks it required", () => {
+        render(<FieldControl field={requiredNoDefault} value={undefined} onChange={() => {}} testId="f-acc" />);
+        expect(screen.getByText("Acceptance basis")).toBeTruthy();
+        expect(screen.getByTestId("f-acc-required").textContent).toBe("required");
+        expect(screen.getByTestId("f-acc").tagName).toBe("INPUT");
+    });
+
+    it("falls back to the field name when the spec declares no label", () => {
+        const unlabelled = { ...requiredNoDefault, label: undefined };
+        render(<FieldControl field={unlabelled} value={undefined} onChange={() => {}} testId="f-raw" />);
+        expect(screen.getByText("acceptanceBasis")).toBeTruthy();
+    });
+
+    it("an OPTIONAL field is the only one the deferred line calls optional", () => {
+        render(<FieldControl field={optional} value={undefined} onChange={() => {}} testId="f-opt" />);
+        const line = screen.getByTestId("f-opt-deferred").textContent ?? "";
+        expect(line).toContain("Criteria locator");
+        expect(line).toContain("optional");
+        expect(screen.queryByTestId("f-opt-required")).toBeNull();
+    });
+
+    it("a REQUIRED defaulted field that defers says required, and names the value that commits", () => {
+        render(<FieldControl field={requiredDefaulted} value={undefined} onChange={() => {}} testId="f-std" />);
+        const line = screen.getByTestId("f-std-deferred").textContent ?? "";
+        expect(line).toContain("required");
+        expect(line).toContain("geohash");
+        expect(line).not.toContain("optional");
+    });
+
+    it("a REQUIRED field with no default and no control says required, never optional", () => {
+        const deferring: FieldSpec = { name: "amount", type: "bigint", required: true };
+        render(<FieldControl field={deferring} value={undefined} onChange={() => {}} testId="f-big" />);
+        const line = screen.getByTestId("f-big-deferred").textContent ?? "";
+        expect(line).toContain("required");
+        expect(line).not.toContain("optional");
+    });
+
+    it("siblingFormatSource makes the defaulted standard editable, with the default as its placeholder", async () => {
+        const onChange = vi.fn();
+        render(
+            <FieldControl field={requiredDefaulted} value={undefined} onChange={onChange}
+                testId="f-std2" siblingFormatSource />,
+        );
+        const input = screen.getByTestId("f-std2") as HTMLInputElement;
+        expect(input.tagName).toBe("INPUT");
+        expect(input.placeholder).toBe("geohash");
+        expect(screen.getByTestId("f-std2-required")).toBeTruthy();
+        // Switching the standard is how a party with no device location states
+        // an origin at all — the clause's standard axis is open.
+        await userEvent.type(input, "iso3166-1");
+        // The control is value-driven by its parent, so each keystroke reports
+        // the parent's value plus the character — typed together, the standard.
+        expect(onChange.mock.calls.map((c) => c[0]).join("")).toBe("iso3166-1");
+    });
+
+    it("without a sibling reading it, a defaulted field still defers", () => {
+        render(<FieldControl field={requiredDefaulted} value={undefined} onChange={() => {}} testId="f-std3" />);
+        expect(screen.queryByTestId("f-std3")).toBeNull();
+        expect(screen.getByTestId("f-std3-deferred")).toBeTruthy();
+    });
+});

@@ -110,6 +110,12 @@ export interface AssemblyChoice {
     state: AssemblyTemplateFetchState;
     /** Display name from the assemblyTemplate; falls back to `slug` until loaded. */
     name: string;
+    /** The designer's own one-liner for what this assembly is for, from the
+     *  pinned template's editorial prose (`summary`, or `description` when the
+     *  designer wrote only that). `null` until the template loads, and for a
+     *  template that carries neither — a reader gets the slug and the shape,
+     *  never invented words. */
+    summary: string | null;
     /** Available when state === "loaded". */
     agreementCount: number | null;
     /** Available when state === "loaded". Sorted, deduped clauseIds. */
@@ -239,6 +245,7 @@ export function useAssemblyChoices(
                 // The editorial name from the pinned template once it loads;
                 // the content-derived slug is the fallback (and the identity).
                 name: assemblyTemplate?.name ?? event.slug,
+                summary: assemblyTemplate?.summary ?? assemblyTemplate?.description ?? null,
                 agreementCount: assemblyTemplate ? assemblyTemplate.agreements.length : null,
                 clauses: assemblyTemplate ? collectAssemblyClauses(assemblyTemplate) : null,
                 assemblyTemplate,

@@ -14,7 +14,12 @@ import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import {
+    onboardingNextHref,
+    onboardingPrevHref,
+    onboardingStepLabel,
+    useOnboardingState,
+} from "@/lib/member/onboardingState";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import { parseCatalogueCsv } from "@/lib/member/parseCatalogueCsv";
 import type {
@@ -36,11 +41,16 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { getClauseSpec, listCatalogueSourcedClauses } from "@/lib/shared/clauseSpecSource";
-import { validateCatalogueClauseValues } from "@/lib/member/catalogueClauseValues";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
+import {
+    catalogueClausesForBindings,
+    catalogueFieldsOfClause,
+    validateCatalogueClauseValues,
+} from "@/lib/member/catalogueClauseValues";
 
 /**
- * Step 3 of the onboarding wizard. Collects the catalogue items —
+ * The catalogue step of the onboarding wizard. Collects the catalogue items —
  * the volatile sales-context payload that gets pinned to IPFS as
  * `MemberCatalogueMetadata { subjectAddress, items, version }`.
  *
@@ -48,7 +58,7 @@ import { validateCatalogueClauseValues } from "@/lib/member/catalogueClauseValue
  * (optional), description (optional), image (optional, via IPFS
  * upload), available (default true), pricing policy (fixed | rate —
  * a rate prices per `rateUnit`, quantity from `rateQuantitySource`). Pricing is denominated in the
- * profile's `defaultTokenAddress` (set on step 2).
+ * profile's `defaultTokenAddress` (set on the identity step).
  *
  * Audit fix B7: every change is persisted to localStorage on the spot
  * via `useOnboardingState`. Items don't disappear on refresh, on
@@ -231,14 +241,19 @@ export function OnboardingCatalogueForm({
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedCount, setImportedCount] = useState<number | null>(null);
 
-    // Catalogue-sourced clauses (freight class, hazmat, cold-chain, …) — derived
-    // live from the registry, never a bundled list. A newly registered
-    // product-property clause surfaces an authoring section with zero change here.
+    // The item properties this seller is actually asked for: the
+    // catalogue-authored fields of the clauses their BOUND assemblies compose
+    // (freight class, hazmat, cold-chain, a data licence — whatever those
+    // assemblies carry). Derived live from the registry through the bindings,
+    // never a bundled list and never the whole registry: a seller of one mug
+    // binds an assembly that composes none of them and is asked for none. A
+    // newly registered product-property clause surfaces with zero change here.
     const { version: clauseSpecsVersion } = useClauseSpecs();
+    const { data: assemblyChoices } = useAssemblyChoices();
     const catalogueClauses = useMemo(
-        () => listCatalogueSourcedClauses(),
+        () => catalogueClausesForBindings(state.assemblies ?? [], assemblyChoices ?? []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [clauseSpecsVersion],
+        [clauseSpecsVersion, state.assemblies, assemblyChoices],
     );
 
     // Hydrate once the wallet-keyed state has actually been read from
@@ -348,7 +363,7 @@ export function OnboardingCatalogueForm({
             });
             return;
         }
-        router.push("/members/assemblies");
+        router.push(onboardingNextHref("catalogue"));
     }
 
     if (!mounted) {
@@ -372,7 +387,7 @@ export function OnboardingCatalogueForm({
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-ink-body">
-                    Your catalogue is priced in your profile&apos;s default token. Go back to step 2 and set it before adding items.
+                    Your catalogue is priced in your profile&apos;s default token. Go back to {onboardingStepLabel("profile")} and set it before adding items.
                 </p>
                 <Link href="/members/identity">
                     <Button variant="outline">← Set default token</Button>
@@ -489,7 +504,7 @@ export function OnboardingCatalogueForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? "/members/identity"}
+                    href={backHref ?? onboardingPrevHref("catalogue")}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}
@@ -714,17 +729,22 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                 ))}
             </div>
 
-            {/* Catalogue-sourced clause values (freight class / hazmat / cold-chain
-                / any registered product-property clause) — one spec-driven group
-                per clause, rendered from the registry, never hardcoded. Optional:
-                a shippable/regulated item authors them; everything else leaves
-                them blank. */}
+            {/* Catalogue-authored clause values — one spec-driven group per
+                clause the seller's bound assemblies compose, rendered from the
+                registry, never hardcoded. Only each clause's OWN catalogue
+                fills appear; its checkout- and profile-authored fields belong
+                to other surfaces. Optional throughout: an item that has no
+                freight class leaves it blank. */}
             {catalogueClauses.length > 0 && (
                 <div className="space-y-4 border-t border-default pt-3" data-testid={`${idPrefix}-clauses`}>
-                    <p className="text-xs text-ink-muted">Logistics classifications (optional — for shippable / regulated goods)</p>
-                    {catalogueClauses.map(({ clauseId }) => {
-                        const spec = getClauseSpec(clauseId);
+                    <p className="text-xs text-ink-muted">
+                        Item properties the assemblies you bound ask for (all optional)
+                    </p>
+                    {catalogueClauses.map(({ clauseId, version }) => {
+                        const spec = getClauseSpec(clauseId, version);
                         if (!spec) return null;
+                        const fields = catalogueFieldsOfClause(clauseId, version);
+                        if (fields.length === 0) return null;
                         const data = item.clauseValues[clauseId] ?? {};
                         const setField = (fieldName: string, next: unknown) => {
                             const nextData = { ...data };
@@ -738,7 +758,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                         return (
                             <div key={clauseId} className="space-y-2" data-testid={`${idPrefix}-clause-${clauseId}`}>
                                 <p className="text-xs font-medium text-ink-body">{spec.title}</p>
-                                {spec.fields.map((field) => (
+                                {fields.map((field) => (
                                     <FieldControl
                                         key={field.name}
                                         field={field}
