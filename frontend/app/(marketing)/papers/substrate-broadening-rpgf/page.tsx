@@ -44,7 +44,6 @@ export default function SubstrateBroadeningRpgfPaper() {
             author="Figaro"
             date="July 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="retroactive public goods funding, mechanism design, resource allocation, verified usage accounting, permissionless recording, deterministic allocation, clause authoring, assembly design, coordination protocols"
             abstract={
                 <>
                     <p>

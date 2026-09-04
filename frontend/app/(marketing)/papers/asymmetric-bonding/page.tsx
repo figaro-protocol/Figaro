@@ -45,7 +45,6 @@ export default function AsymmetricBondingPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="mechanism design, subgame-perfect equilibrium, Nash equilibrium, asymmetric bonding, multi-party coordination, process chains, peer enforcement"
             abstract={
                 <>
                     <p>

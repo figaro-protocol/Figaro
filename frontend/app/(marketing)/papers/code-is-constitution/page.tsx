@@ -19,7 +19,6 @@ export default function CodeIsConstitutionPaper() {
             author="Figaro"
             date="July 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="constitutional political economy, code is law, lex cryptographia, credible neutrality, legality, lex mercatoria, decentralized protocols, entrenchment"
             abstract={
                 <>
                     <p>

@@ -62,7 +62,6 @@ export default function ProtocolExtensionPaper() {
             author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="protocol composition, clause design, coordinator pattern, invariant-preserving composition, content-addressed identity"
             abstract={
                 <>
                     <p>

@@ -32,7 +32,6 @@ export default function CoordinationSubstratesPaper() {
             author="Figaro"
             date="August 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="comparative institutional analysis, discriminating alignment, transaction cost economics, contract enforcement, two-sided markets, private ordering, bonded commitment, institutional substrates, regulatory reporting, unit of account"
             abstract={
                 <>
                     <p>

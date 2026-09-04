@@ -21,7 +21,6 @@ export default function WalletLegalSubjectPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="labor law, employee classification, gig economy, private government, subordination, legal subject, self-sovereign identity"
             abstract={
                 <>
                     <p>

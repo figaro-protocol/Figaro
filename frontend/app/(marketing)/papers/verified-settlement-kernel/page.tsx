@@ -24,7 +24,6 @@ export default function VerifiedSettlementKernelPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="smart contracts, formal verification, model checking, symbolic execution, property-based fuzzing, EIP-712, settlement layer, verification scope"
             abstract={
                 <>
                     <p>

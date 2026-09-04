@@ -21,7 +21,6 @@ export default function CorridorsWithoutAHegemonPaper() {
             author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="weaponized interdependence, hegemony, Belt and Road Initiative, IMEC, infrastructure power, cooperation under anarchy, ownerless settlement"
             abstract={
                 <>
                     <p>

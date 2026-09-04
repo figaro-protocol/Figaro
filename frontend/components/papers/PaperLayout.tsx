@@ -1,7 +1,7 @@
 import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { getPaperNavigation } from "@/app/(marketing)/_lib/paperGroups";
+import { getPaperNavigation, getPaperRef } from "@/app/(marketing)/_lib/paperGroups";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { PrintButton } from "./PrintButton";
 import { BackToTop } from "./BackToTop";
@@ -18,7 +18,6 @@ interface PaperLayoutProps {
     coauthor?: string;
     date: string;
     abstract: ReactNode;
-    keywords?: string;
     /** Diagonal print-only watermark text. Shown on every printed page, hidden on screen. */
     watermark?: string;
     children: ReactNode;
@@ -40,12 +39,12 @@ export function PaperLayout({
     coauthor = "Claude (Anthropic)",
     date,
     abstract,
-    keywords,
     watermark = "Figaro Protocol · Preprint",
     children,
     references,
 }: PaperLayoutProps) {
     const nav = getPaperNavigation(slug);
+    const keywords = getPaperRef(slug)?.keywords.join(", ");
     return (
         <article className="container mx-auto px-6 pt-16 pb-24 max-w-[46rem]">
             <div aria-hidden className="paper-watermark">

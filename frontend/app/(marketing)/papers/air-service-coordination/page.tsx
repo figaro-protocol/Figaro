@@ -23,7 +23,6 @@ export default function AirServiceCoordinationPaper() {
             author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="scheduled-service coordination, supply-chain coordination, process modeling, resource markets, weakest-link coordination, industrial engineering"
             abstract={
                 <>
                     <p>

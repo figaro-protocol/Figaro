@@ -44,7 +44,6 @@ export default function MarketsWithoutAVenuePaper() {
             author="Figaro"
             date="August 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="market design, auction theory, matching theory, procurement, posted prices, offer formation, sealed-bid, reserve price, bonded settlement"
             abstract={
                 <>
                     <p>

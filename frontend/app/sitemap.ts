@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { PAPER_GROUPS } from "@/app/(marketing)/_lib/paperGroups";
+import { PAPER_GROUPS, tagIndex } from "@/app/(marketing)/_lib/paperGroups";
 
 // Set NEXT_PUBLIC_SITE_URL in deployment env (e.g. https://figaro.org).
 // Falls back to a placeholder so build does not fail in dev.
@@ -104,12 +104,24 @@ function paperRoutes(): Entry[] {
     return routes;
 }
 
+/** The reader's index — one page per industry and per keyword, derived
+ *  from the same registry as the papers. */
+function tagRoutes(): Entry[] {
+    return (["for", "on"] as const).flatMap((kind) =>
+        tagIndex(kind).map((t) => ({
+            path: `/working-groups/${kind}/${t.slug}`,
+            changeFrequency: "monthly" as const,
+            priority: 0.5,
+        })),
+    );
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
     const lastModified = new Date();
     // trailingSlash: true (next.config.mjs): the canonical form of every
     // route is the slash-terminated one the static hosts actually serve —
     // the sitemap must publish that form, not the redirecting one.
-    return [...PUBLIC_ROUTES, ...paperRoutes()].map(
+    return [...PUBLIC_ROUTES, ...paperRoutes(), ...tagRoutes()].map(
         ({ path, changeFrequency, priority }) => ({
             url: path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}/`,
             lastModified,

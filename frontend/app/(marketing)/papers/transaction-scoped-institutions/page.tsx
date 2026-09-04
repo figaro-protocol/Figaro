@@ -23,7 +23,6 @@ export default function TransactionScopedInstitutionsPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="transaction cost economics, theory of the firm, subordination, coordination economics, two-sided markets, organizational substrate, institutional economics"
             abstract={
                 <>
                     <p>

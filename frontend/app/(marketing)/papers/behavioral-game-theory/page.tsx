@@ -21,7 +21,6 @@ export default function BehavioralGameTheoryPaper() {
             author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="behavioral game theory, loss aversion, prospect theory, weakest-link coordination, peer pressure, incentive legibility, mechanism design, experimental economics, interface cognition"
             abstract={
                 <>
                     <p>

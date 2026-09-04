@@ -16,7 +16,6 @@ export default function CoercionVariablePaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="coercion, sovereignty, monopoly on violence, pre-commitment, bonded enforcement, political philosophy, Hobbes, Weber, Hart, boundary of state authority"
             abstract={
                 <>
                     <p>

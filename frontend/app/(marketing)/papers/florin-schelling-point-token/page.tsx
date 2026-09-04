@@ -21,7 +21,6 @@ export default function FlorinSchellingPointTokenPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="cryptoeconomics, Schelling point, focal-point coordination, token design, coordination token, utility token, community token, denomination, supply integrity, fixed supply cap, design exclusions"
             abstract={
                 <>
                     <p>

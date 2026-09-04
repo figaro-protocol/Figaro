@@ -22,7 +22,6 @@ export default function ActorNeutralCoordinationPaper() {
             author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="multi-agent coordination, bonded commitment, control theory, actor-neutrality, autonomous agents, AI agent design, human-in-the-loop"
             abstract={
                 <>
                     <p>

@@ -21,7 +21,6 @@ export default function UngovernedSubstratePaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="network state, blockchain governance, lex cryptographica, ungoverned substrate, decentralized autonomous organization, governance at the graph"
             abstract={
                 <>
                     <p>

@@ -23,7 +23,6 @@ export default function SubordinationVariablePaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="political economy, subordination, coordination rent, associated production, classical liberalism, frame collapse, conditionality of the left/right partition"
             abstract={
                 <>
                     <p>

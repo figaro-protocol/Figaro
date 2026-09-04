@@ -22,7 +22,6 @@ export default function DisclosureAsymmetryPaper() {
             author="Figaro"
             date="May 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="mechanism design, engineering of consent, manufacture of consent, disclosure, common knowledge, legitimacy, platform capitalism, surveillance capitalism, trust"
             abstract={
                 <>
                     <p>

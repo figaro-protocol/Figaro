@@ -43,7 +43,6 @@ export default function SelfClosingLedgerPeriodsPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="bookkeeping, accounting, auditing, double-entry, triple-entry, escrow accounting, audit assertions, Pacioli, e-invoicing, EN 16931"
             abstract={
                 <>
                     <p>

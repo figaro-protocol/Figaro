@@ -22,7 +22,6 @@ export default function WalletWithoutPolityPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="statelessness, refugee economies, displaced populations, the wallet as legal subject, Arendt, humanitarian economics, commerce-without-recognition"
             abstract={
                 <>
                     <p>

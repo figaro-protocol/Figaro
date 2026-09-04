@@ -23,7 +23,6 @@ export default function VisibilityOfCoordinationPaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="cultural hegemony, Gramsci, platform economy, political economy of infrastructure, coordination substrate, paradigm shift"
             abstract={
                 <>
                     <p>

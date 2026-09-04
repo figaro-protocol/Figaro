@@ -4,7 +4,8 @@ import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { DisciplineIntersectionFigure } from "@/components/figures/DisciplineIntersectionFigure";
-import { PAPER_GROUPS } from "@/app/(marketing)/_lib/paperGroups";
+import { PAPER_GROUPS, tagIndex } from "@/app/(marketing)/_lib/paperGroups";
+import { PaperRow } from "./_components/PaperRow";
 
 /** The taxonomy's source — cited ONCE, in the page footnote. */
 const TAXONOMY_URL =
@@ -18,6 +19,9 @@ export const metadata: Metadata = withOg({
 
 /** Derived, never stated: the corpus size is whatever `PAPER_GROUPS` holds. */
 const PAPER_COUNT = PAPER_GROUPS.reduce((n, g) => n + g.papers.length, 0);
+
+/** The reader's index, derived: which industries and fields the papers name as their doorway. */
+const INDUSTRIES = tagIndex("for");
 
 export default function WorkingGroups() {
     return (
@@ -36,7 +40,24 @@ export default function WorkingGroups() {
                     The eight disciplines are not ours. They are the taxonomy set out by Voshmgir &amp; Zargham<sup>1</sup>, which argues that cryptoeconomic systems are irreducibly multi-disciplinary objects and enumerates the disciplines a full account of one must pass through. The project adopts that list rather than inventing its own, so that a reader arriving from any one of the eight finds the substrate addressed in that discipline&rsquo;s own vocabulary, and so that the depth of coverage under each is measured against a list the project did not draw.
                 </p>
                 <DisciplineIntersectionFigure labels={PAPER_GROUPS.map((g) => g.name)} className="mb-10" />
-                <div className="space-y-10">
+                <div id="index" className="scroll-mt-24 lg:grid lg:grid-cols-[1fr_15rem] lg:gap-10">
+                <aside className="mb-10 lg:mb-0 lg:order-2 lg:sticky lg:top-24 lg:self-start">
+                    <h3 className="text-sm text-ink-heading font-medium">By industry.</h3>
+                    <p className="text-xs text-ink-muted leading-relaxed mt-1 mb-3">
+                        Where to start if you arrive from one of these. Each opens the papers that name it, with what each treats. Every keyword under a paper opens its own list the same way.
+                    </p>
+                    <ul className="text-sm space-y-1">
+                        {INDUSTRIES.map((t) => (
+                            <li key={t.slug}>
+                                <Link href={`/working-groups/for/${t.slug}`} className="text-ink-heading hover:underline">
+                                    {t.label}
+                                </Link>
+                                <span className="text-xs text-ink-muted"> · {t.papers.length}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </aside>
+                <div className="space-y-10 lg:order-1">
                     {PAPER_GROUPS.map((g) => (
                         <article key={g.slug} id={g.slug} className="scroll-mt-24 border-l-2 border-default pl-6">
                             <h3 className="text-heading-h3 text-ink-heading leading-snug">
@@ -51,19 +72,9 @@ export default function WorkingGroups() {
                             <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-3">
                                 {g.definition}
                             </p>
-                            <ul className="space-y-1 text-sm">
+                            <ul className="space-y-5 max-w-2xl">
                                 {g.papers.map((p) => (
-                                    <li key={p.href}>
-                                        {p.href.endsWith(".pdf") ? (
-                                            <a href={p.href} className="text-ink-heading hover:underline">
-                                                {p.title}
-                                            </a>
-                                        ) : (
-                                            <Link href={p.href} className="text-ink-heading hover:underline">
-                                                {p.title}
-                                            </Link>
-                                        )}
-                                    </li>
+                                    <PaperRow key={p.href} paper={p} group={g} showGroup={false} />
                                 ))}
                             </ul>
                             {g.venue && (
@@ -76,6 +87,7 @@ export default function WorkingGroups() {
                             )}
                         </article>
                     ))}
+                </div>
                 </div>
             </MarketingSection>
 

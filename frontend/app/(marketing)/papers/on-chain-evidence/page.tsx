@@ -23,7 +23,6 @@ export default function OnChainEvidencePaper() {
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="electronic evidence, smart-contract law, dispute resolution, blockchain evidence, eIDAS, UNCITRAL, jurisdictional flexibility"
             abstract={
                 <>
                     <p>

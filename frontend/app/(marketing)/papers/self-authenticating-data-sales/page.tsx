@@ -22,7 +22,6 @@ export default function SelfAuthenticatingDataSalesPaper() {
             author="Figaro"
             date="August 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="information paradox, mechanism design, merkle proofs, data markets, asymmetric bonding, disclosure, repeated games"
             abstract={
                 <>
                     <p>
