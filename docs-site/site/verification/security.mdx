@@ -1,0 +1,35 @@
+---
+title: Security
+description: Testing and code security — the verification stack, the external-audit posture, how to verify what you are served, and where to report.
+---
+
+Security here means what it means in crypto: testing and code security. What follows is what the public site states at [figaroprotocol.com/security](https://figaroprotocol.com/security).
+
+## External audit
+
+Not yet audited by an external auditor. That is the honest answer. The Solidity surface is frozen for that audit (amendments scoped to the freeze), and results will be published when they exist — findings, remediations, and the auditor's report, not a summary of them.
+
+## Verifying what you are served
+
+The contracts being verified says nothing about the page in front of you — a frontend could still misrepresent what you sign. The definitive, non-technical answer to that is a verifiable build: a release pinned by its own content hash (a CID) with a published rebuild recipe anyone can diff against it, plus a second, independently built frontend attesting to the same typed data — so no single origin's word is required at all. Until then, the two checks under [signing, on the FAQ](https://figaroprotocol.com/faq#signing) are the check, and the limitation stated there stands as written.
+
+## The verification stack
+
+What is in place today is a verification stack — six independent benches, each targeting the protocol's contracts — and the argument they exist to support — from a different angle. Six, and not one, because each catches a class of defect the others structurally cannot. What each method covers, what it structurally cannot reach, and the bounds every model-checked configuration runs under are set out method by method in [A Verified Settlement Kernel](https://figaroprotocol.com/papers/verified-settlement-kernel):
+
+- **Foundry**: the unit + integration suite — 302 test functions. Class: *behavioral and regression* — what a contract does on concrete inputs, and what it stops doing after an edit. It proves nothing about the inputs nobody wrote a test for.
+- **Halmos**: 32 symbolic-execution properties, proved exhaustively. Class: *the untried input* — a property is proved over every input in range at once rather than sampled, so an arithmetic or boundary case no test author imagined cannot hide.
+- **Certora**: 37 formal rules across six CVL specs — the kernel, its own token operations, attestation, batch token operations, the florin token, and the RPGF minter. Class: *state-transition* — rules quantified over reachable states and arbitrary calls, so a violation returns as a concrete counterexample trace, not a hunch.
+- **TLA+**: model-checking of four protocol state machines — the kernel, the florin token, the two settlement paths, and the swap/commit coordinator. Class: *temporal and liveness* — ordering, interleaving and races across a whole protocol, and states that can be entered but never left. No per-function bench can see these.
+- **Echidna**: 15 property-based fuzzing targets on the kernel and the florin token. Class: *adversarial sequence* — randomized call sequences hunting for an ORDER of operations that breaks an invariant, which is how an attacker actually looks.
+- **Lean 4**: the bonded chain's equilibrium — the one derived in [Asymmetric Bonding and Buyer Dominance](https://figaroprotocol.com/papers/asymmetric-bonding) — proved over the exact payoff table the TLA+ invariants pin to the shipped kernel — resolving beats withholding after performance, performing beats holding out at every retention a seller could manage, and no unilateral deviation profits at any position of a chain of arbitrary length, with the cumulative accumulator derived rather than assumed. Class: *the choosing* — what a rational party does given the numbers, which no model checker can express; dependency-free, so an auditor rebuilds it cold.
+
+Verification is a precondition for external audit. It is not a substitute for one. The protocol's position is that an audit should examine a surface that has already been pushed against from this many directions. The current contract inventory is [Contracts](/protocol/contracts/); the property-by-property map — each protocol property beside the Solidity that enforces it, the tests that regression-check it, and the formal layer that proves it — is the [Verification map](/verification/verification-map/); the full harness inventory — commands, layers, and what each bench owns — is [docs/TESTING.md](https://github.com/figaro-protocol/Figaro/blob/main/docs/TESTING.md) in the repository.
+
+## Nothing to pause or upgrade
+
+FigaroCore has no admin, no owner, no pause function, no upgrade key, no governance with discretionary power over tokens. The kernel does not contain code that any address can call to halt resolution, blacklist a participant, or move tokens it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold. (As stated on [the FAQ](https://figaroprotocol.com/faq#shutdown).)
+
+## Reporting a vulnerability
+
+Found a vulnerability? Report it privately — [GitHub private vulnerability reporting](https://github.com/figaro-protocol/Figaro/security/advisories/new), or the alternate channel in [SECURITY.md](https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md) — never a public issue.

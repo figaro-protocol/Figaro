@@ -1,0 +1,5 @@
+{
+    "title": "Building against it",
+    "defaultOpen": true,
+    "pages": ["sdk", "[API reference](/sdk-api/)", "agents", "agent-coordination"]
+}

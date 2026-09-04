@@ -1,0 +1,5 @@
+{
+    "title": "Agent prompts",
+    "defaultOpen": true,
+    "pages": ["index", "operator", "clause-author", "assembly-designer", "analyst"]
+}

@@ -1,0 +1,9 @@
+{
+    "title": "Verification and security",
+    "defaultOpen": true,
+    "pages": [
+        "verification-map",
+        "design-decisions",
+        "security"
+    ]
+}

@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Assembled at build time by scripts/assemble-content.mjs from the repo's own
+# documents (docs/, sdk/, ecosystem-agents/) and the typedoc output under
+# frontend/public/sdk-api/. The sources are the only copies that are committed.
+content/
+public/sdk-api/
+
+# Build outputs
+out/
+.next/
+.source/
+next-env.d.ts
+*.tsbuildinfo
