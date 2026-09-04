@@ -45,7 +45,7 @@ export default function Tokenomics() {
                     Two minters are ever registered. The rewards contract, at exactly 600 million. And the deploying wallet, once, for the 400 million genesis distribution &mdash; after which renouncing is permanent: no further minter can be registered, and the deploying wallet can never mint again. Its own allowance is spent to the last florin in the same run. What remains is arithmetic anyone can redo from the chain: 400 million minted and closed, 600 million reachable only through the rewards contract&apos;s per-period claims, and no path to a billion-and-one.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The residual worth stating: the cap and the latch are enforced by code, and there is no admin, no pause, and no upgrade anywhere in the florin&apos;s contracts &mdash; a wrong contract is replaced by a new one the community moves to, never patched in place. The market stance below is a different kind of thing: a commitment, enforced by nothing.
+                    The residual worth stating: the cap and the latch are enforced by code, and there is no admin, no pause, and no upgrade anywhere in the florin&apos;s contracts &mdash; a wrong smart contract is replaced by a new one the community moves to, never patched in place. The market stance below is a different kind of thing: a commitment, enforced by nothing.
                 </p>
             </MarketingSection>
 

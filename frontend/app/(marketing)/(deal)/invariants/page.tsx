@@ -52,11 +52,11 @@ export default function Invariants() {
                             <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nobody can swap anything in underneath the data. A forum or a court reads what happened. It does not have to reconstruct it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the contract knows &mdash; no refund path, no timeout, no admin key, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone outside it &mdash; and inside it, only the buyer&apos;s close moves anything &mdash; which is also why whatever is wrong gets put right before the close rather than argued about after it.
+                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the smart contract knows &mdash; no refund path, no timeout, no admin key, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone outside it &mdash; and inside it, only the buyer&apos;s close moves anything &mdash; which is also why whatever is wrong gets put right before the close rather than argued about after it.
                         </li>
                     </ol>
                     <p>
-                        They are facts, not rules. Nothing in the contract can suspend one, because there is nothing in the contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived, with the worked numbers, on{" "}
+                        They are facts, not rules. Nothing in the smart contract can suspend one, because there is nothing in the smart contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived, with the worked numbers, on{" "}
                         <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
                             Kernel
                         </Link>
@@ -83,7 +83,7 @@ export default function Invariants() {
             <MarketingSection title="What the chain holds.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Almost nothing of its own. Every token inside is bonded to one open process, earmarked for that process&apos;s parties and reachable by nobody else &mdash; the contract keeps no balance it could spend. Resolution sends all of it back out; a process nobody ever resolves keeps its bonds locked where they are, permanently, which is the deterrent the whole design rests on rather than a gap in it. And because each commitment only ever looks at one handoff between two parties, the chain never needs the trade itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
+                        Almost nothing of its own. Every token inside is bonded to one open process, earmarked for that process&apos;s parties and reachable by nobody else &mdash; the smart contract keeps no balance it could spend. Resolution sends all of it back out; a process nobody ever resolves keeps its bonds locked where they are, permanently, which is the deterrent the whole design rests on rather than a gap in it. And because each commitment only ever looks at one handoff between two parties, the chain never needs the trade itself: it needs a <em>fingerprint</em> of the agreement and nothing more.
                     </p>
                     <figure className="my-6">
                         <MerkleTreeFigure
@@ -126,7 +126,7 @@ export default function Invariants() {
                         </li>
                     </ul>
                     <p>
-                        Anything already on-chain composes too &mdash; a token, an item held in a wallet, another contract that prices or matches or pays out. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. That openness was never something Figaro had to build &mdash; it is what having a boundary instead of a platform means.
+                        Anything already on-chain composes too &mdash; a token, an item held in a wallet, another smart contract that prices or matches or pays out. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. That openness was never something Figaro had to build &mdash; it is what having a boundary instead of a platform means.
                     </p>
                 </div>
             </MarketingSection>

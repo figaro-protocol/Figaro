@@ -53,7 +53,7 @@ export default function WorkedExample() {
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
                     The human version of this story is a delivered meal &mdash; three strangers,
-                    one evening, nobody in the middle:{" "}
+                    one evening, peer-to-peer:{" "}
                     <Link href="/local-commerce" className="underline">Local commerce</Link>. Here
                     the same kernel carries two software agents through a digital value chain.
                 </p>

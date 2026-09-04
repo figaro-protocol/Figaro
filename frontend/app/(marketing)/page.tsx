@@ -40,7 +40,7 @@ export default function Home() {
 
             <MarketingSection title="Figaro makes the promise hold on its own">
                 <p className="text-base text-ink-body leading-relaxed mb-6 max-w-2xl">
-                    Each side backs its word with a bond worth more than the trade, held by a contract nobody controls. The buyer closes when satisfied &mdash; everyone is paid and every bond refunded, at once. The game theory makes honoring the agreement the best strategy.
+                    Each side backs its word with a bond worth more than the trade, held by a decentralized smart contract. The buyer closes when satisfied &mdash; everyone is paid and every bond refunded, at once. The game theory makes honoring the agreement the best strategy.
                 </p>
                 <CtaLink href="/kernel">See the mechanism</CtaLink>
             </MarketingSection>

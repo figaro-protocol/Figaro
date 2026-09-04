@@ -13,7 +13,7 @@ export const metadata: Metadata = withOg({
         "Plain-language answers to the questions people ask before sending tokens through Figaro — who holds them, what stands behind a trade, non-delivery, disputes, lost keys, privacy, ownership — with the residual risk stated beside each answer.",
 });
 
-/** The page's sixteen questions, split into two labeled groups by what each
+/** The page's seventeen questions, split into two labeled groups by what each
  *  question is actually about — plus one leading entry that is NOT a question:
  *  the pre-trade checklist (a curated digest of thirteen answers; the index
  *  POINTS at it — the map stays the complete map, the digest stays a digest,
@@ -27,6 +27,7 @@ const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
     { id: "custody", title: "Who holds the tokens?" },
     { id: "escrow", title: "Is this escrow?" },
     { id: "counterparty", title: "What if the counterparty doesn't deliver?" },
+    { id: "unresolved", title: "What if the buyer never resolves?" },
     { id: "disputes", title: "What if you genuinely disagree?" },
     { id: "layers", title: "What stands behind a trade?" },
     { id: "privacy", title: "What does the network learn about you?" },
@@ -128,16 +129,16 @@ export default function Faq() {
 
             <MarketingSection title="Who holds the tokens?" sectionId="custody">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one. When a buyer and seller commit to a process, the payment and both bonds move into <em>FigaroCore</em> &mdash; the kernel contract &mdash; and stay there until the buyer signs the atomic resolution that releases them. The tokens sit in one contract, and the only thing that moves them is the resolution the buyer signs.
+                    No one. When a buyer and seller commit to a process, the payment and both bonds move into <em>FigaroCore</em> &mdash; the kernel contract &mdash; and stay there until the buyer signs the atomic resolution that releases them. The tokens sit in one smart contract, and the only thing that moves them is the resolution the buyer signs.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    FigaroCore has no owner. No address can withdraw tokens it does not have a signed commitment against. The only path out is the resolution the buyer signs &mdash; one call that pays every seller and refunds every bond, encoded in the contract and auditable on-chain. Contracts are code, and code can have bugs. What has been done about that is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
+                    FigaroCore has no owner. No address can withdraw tokens it does not have a signed commitment against. The only path out is the resolution the buyer signs &mdash; one call that pays every seller and refunds every bond, encoded in the smart contract and auditable on-chain. Smart contracts are code, and code can have bugs. What has been done about that is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Is this escrow?" sectionId="escrow">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No, and the difference is who decides. An escrow agent is a third party that holds the value and then rules on whether the condition was met &mdash; you are trusting its judgment, its solvency, and its willingness to answer the phone. Nothing occupies that seat here. FigaroCore holds the payment and both bonds by fixed rule and has no opinion about the trade: it cannot inspect the work, cannot take a side, and cannot release anything except along the paths the two parties signed for. Each side&apos;s bond is its own deterrent, not a pot the other side can win &mdash; twice the payment for the buyer, twice the value at their link for each seller, and resolution refunds every bond &mdash; the buyer&apos;s less the payments it carried. Every decision in a trade is a person&apos;s: made before both of you sign &mdash; what, with whom, on which terms &mdash; or made after by the one key that closes it. The contract decides nothing; it only counts.
+                    No, and the difference is who decides. An escrow agent is a third party that holds the value and then rules on whether the condition was met &mdash; you are trusting its judgment, its solvency, and its willingness to answer the phone. Nothing occupies that seat here. FigaroCore holds the payment and both bonds by fixed rule and has no opinion about the trade: it cannot inspect the work, cannot take a side, and cannot release anything except along the paths the two parties signed for. Each side&apos;s bond is its own deterrent, not a pot the other side can win &mdash; twice the payment for the buyer, twice the value at their link for each seller, and resolution refunds every bond &mdash; the buyer&apos;s less the payments it carried. Every decision in a trade is a person&apos;s: made before both of you sign &mdash; what, with whom, on which terms &mdash; or made after by the one key that closes it. The smart contract decides nothing; it only counts.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     What follows from that is worth reading before you commit rather than after. There is no payment-network reversal path, by design: either one would be a third party able to undo a resolved commitment, which is precisely the seat this design leaves empty. The lever is the resolution itself. Nobody is paid until the buyer resolves, so a shortfall is put right <em>before</em> resolution &mdash; while every party still has its own bond riding on the outcome, which is what makes putting it right the seller&apos;s cheapest move, and the co-sellers&apos; too (<Link href="#layers" className="text-ink-heading font-medium hover:underline">the five layers</Link> behind that). Resolution is terminal acceptance: once the buyer signs it, the process is resolved and nothing inside the protocol reopens it.
@@ -153,6 +154,18 @@ export default function Faq() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The equilibrium bounds losses; it does not eliminate them. A counterparty willing to burn their bond can still grief you. The defense is arithmetic: whoever walks away is out of pocket even after counting everything they kept, and nothing either side abandoned ever reaches the other. For the formal derivation see the <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">papers</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="What if the buyer never resolves?" sectionId="unresolved">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Nothing moves until the buyer resolves: no payment transfers, no bond is refunded &mdash; the buyer&apos;s included. The payments it withholds are not in its wallet: they sit inside its own bond, twice what it owes, beyond everyone&apos;s reach. Leaving the process open costs it more than closing it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Your move comes before that signature. Put right any shortfall. Attest what you delivered, under a clause the agreement carries, so it is evidence, not a later claim. Take it to the forum the agreement names: it rules on the data you both hold, and its ruling is enforced against what the buyer holds outside the process. Your co-sellers&apos; bonds ride on that same resolution; they want it closed too.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The residual: a buyer willing to accept losing twice the payment to deny you yours can, and nothing on chain reaches in. That is the price of no escape hatch, and why a remedy comes before resolution, not after. The arithmetic is on the kernel page; the full treatment is in <Link href="/papers/external-events" className="text-ink-heading font-medium hover:underline">External events</Link>.
                 </p>
             </MarketingSection>
 
@@ -175,16 +188,16 @@ export default function Faq() {
                 <LayeredDefenseFigure className="mb-6" />
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">The chain.</strong> The trade runs on an EVM-compatible chain. Once its data is written, no one can rewrite it &mdash; not a counterparty, not Figaro, not the party who wrote it.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">The lockbox and its data.</strong> FigaroCore holds both sides&apos; doubled bonds by fixed rule, and writes an unforgeable, timestamped entry for every step as it happens &mdash; always, not on request. Nothing leaves the lockbox until the buyer signs the resolution.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The smart contract and its data.</strong> FigaroCore holds both sides&apos; doubled bonds by fixed rule, and writes an unforgeable, timestamped entry for every step as it happens &mdash; always, not on request. Nothing leaves the smart contract until the buyer signs the resolution.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">The other sellers.</strong> Resolution is all-or-nothing: no one is paid until the buyer confirms the whole trade. So everyone bonded into it has their own bond-backed reason to help set right whatever went wrong, before there is anything to dispute.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Arbitration.</strong> A forum the parties chose &mdash; Kleros is one, an online arbitration service that juries disputes using the data &mdash; weighs that data from outside the trade. Not the old middleman in new clothes: a venue you and your counterparty picked rather than one imposed on you, ruling on data it cannot alter, able neither to reach into the lockbox nor to close the trade &mdash; which is exactly the authority a platform had and a forum does not.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Arbitration.</strong> A forum the parties chose &mdash; Kleros is one, an online arbitration service that juries disputes using the data &mdash; weighs that data from outside the trade. Not the old platform in new clothes: a venue you and your counterparty picked rather than one imposed on you, ruling on data it cannot alter, able neither to reach into the smart contract nor to close the trade &mdash; which is exactly the authority a platform had and a forum does not.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Ordinary courts.</strong> Always available, whether or not the agreement names a forum. The data is evidence any legal system can read. Naming a forum in the agreement is a matter of clarity, never a limit on recourse.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The outer two layers act on the data from outside the trade; neither can reach into the lockbox. That is the point of the no-escape-hatch design &mdash; the same wall that keeps anyone from prying the bonds out also keeps every step legible to whoever reads the data later.
+                    The outer two layers act on the data from outside the trade; neither can reach into the smart contract. That is the point of the no-escape-hatch design &mdash; the same wall that keeps anyone from prying the bonds out also keeps every step legible to whoever reads the data later.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    A court judgment does not need to reach into the lockbox to work. It is enforced the way any ordinary judgment is &mdash; against the losing party&apos;s <em>other</em> assets, through the court&apos;s own powers of seizure, garnishment, or contempt &mdash; while the lockbox stays sealed the whole time. What the on-chain data buys is speed: a timestamped, tamper-proof account of exactly what was agreed and what was or was not delivered is the kind of evidence that gets a judgment quickly, rather than a slow trial over whose word to believe.
+                    A court judgment does not need to reach into the smart contract to work. It is enforced the way any ordinary judgment is &mdash; against the losing party&apos;s <em>other</em> assets, through the court&apos;s own powers of seizure, garnishment, or contempt &mdash; while the smart contract stays sealed the whole time. What the on-chain data buys is speed: a timestamped, tamper-proof account of exactly what was agreed and what was or was not delivered is the kind of evidence that gets a judgment quickly, rather than a slow trial over whose word to believe.
                 </p>
             </MarketingSection>
 
@@ -247,13 +260,13 @@ export default function Faq() {
 
             <MarketingSection title="Who owns Figaro?" sectionId="ownership">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one owns the protocol, though a few things around it are held. The code is released under the MIT license &mdash; anyone can copy all of it, run it, and change it, including running a different rewards program or none at all. Nothing about the protocol depends on this site continuing to exist.
+                    The protocol is permissionless and decentralized, though a few things around it are held. The code is released under the MIT license &mdash; anyone can copy all of it, run it, and change it, including running a different rewards program or none at all. Nothing about the protocol depends on this site continuing to exist.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     This site&apos;s app is one interface, not the protocol. The seam between the protocol and its presentation is deliberate: the registries live on-chain, and any developer can build their own interface against the same ones. Because the kernel takes no cut anywhere, an interface captures no value from the trades that flow through it &mdash; the value lives in the use of the shared registries. And because participants hold their own data, the usual platform business model &mdash; monetizing the people who use it &mdash; is structurally unavailable here; there is no user data to sell.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins. What a florin is worth is a market question, answered by whoever trades one; this project makes no claim about it. Which allocation is held, on what terms, and what the rest of the billion is for is itemized on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>. Neither holding is a lever over anyone&apos;s trade: no holding controls resolution, and nothing about either can reach into a lockbox.
+                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins. What a florin is worth is a market question, answered by whoever trades one; this project makes no claim about it. Which allocation is held, on what terms, and what the rest of the billion is for is itemized on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>. Neither holding is a lever over anyone&apos;s trade: no holding controls resolution, and nothing about either can reach into a smart contract.
                 </p>
             </MarketingSection>
 
@@ -329,7 +342,7 @@ export default function Faq() {
                     All three registries &mdash; <code>ClauseRegistry</code>, <code>AssemblyRegistry</code>, and <code>MembersRegistry</code> &mdash; are anchored by the same anti-spam mechanism: a reclaimable stake &mdash; not the trade bond described above &mdash; staked intent, priced to deter spam, not a party&apos;s deterrent against its own defection. No admin can seize it; withdrawing de-surfaces the registration and reclaims the stake &mdash; each family&apos;s own way, below (readers hide what carries no live stake), so polluting a registry costs deposit &times; the time it stayed surfaced. The amount is set per deployment &mdash; read it with <code>registrationDeposit()</code> on the registry you are registering against, never from a remembered constant.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What a withdrawal leaves behind differs by family. A clause&apos;s or an assembly&apos;s binding is permanent &mdash; agreements already committed against it must keep resolving forever &mdash; so only the stake and the surfacing move, in a single call with no waiting &mdash; though the protocol surface refuses the call while processes composed from the work are still in flight; the contract cannot count that, so the SDK and this site are what enforce it. A participant registration is keyed to a wallet instead, and leaving clears it: a clause or an assembly is a permanent publication; a participant is a live identity.
+                    What a withdrawal leaves behind differs by family. A clause&apos;s or an assembly&apos;s binding is permanent &mdash; agreements already committed against it must keep resolving forever &mdash; so only the stake and the surfacing move, in a single call with no waiting &mdash; though the protocol surface refuses the call while processes composed from the work are still in flight; the smart contract cannot count that, so the SDK and this site are what enforce it. A participant registration is keyed to a wallet instead, and leaving clears it: a clause or an assembly is a permanent publication; a participant is a live identity.
                 </p>
                 <RegistryLifecycleFigure className="my-8" />
                 <p className="text-base text-ink-body leading-relaxed mb-5">
