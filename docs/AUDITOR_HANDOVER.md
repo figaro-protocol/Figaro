@@ -165,6 +165,38 @@ Current runtime posture decisions, not release blockers:
 
 1. geolocation remains allowed for same-origin runtime surfaces instead of being narrowed to a brittle route allowlist, because handoff and delivery-attestation modules are runtime-composable across multiple live pages
 
+## External evaluation frameworks — where the surface stands
+
+The two published checklists an auditor or a reviewer applies to a protocol of this
+shape, answered from the tree. Each answer names its evidence.
+
+### The Rekt Test (Trail of Bits)
+
+| # | Question | Answer | Evidence |
+|---|---|---|---|
+| 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
+| 2 | External services, contracts, and oracles documented | Partly | Uniswap `SwapRouter02`, Permit2, the SP1 verifier, IPFS, XMTP, and the arbitration forum are named in `CONTRACTS.md` and the `/spec` page. There is no oracle. No single dependency list exists. |
+| 3 | Written and tested incident-response plan | No | `SECURITY.md` carries the disclosure contact. Nothing can be paused or upgraded, so the plan is disclosure and redeployment under a new identifier. |
+| 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the `/pitfalls` page, § "Behaviors to surface" above. |
+| 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
+| 6 | A team member with security in their role | Yes | The maintainer. |
+| 7 | Hardware security keys for production systems | Not in the tree | Operational, outside the repo. |
+| 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
+| 9 | Key invariants defined and tested on every commit | Yes | Foundry runs in pre-commit; Halmos, Certora, TLA+, Echidna, and the Lean 4 equilibrium proof run in the battery. `VERIFICATION_MAP.md` maps each invariant to its test. |
+| 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`). |
+| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open | No external audit has been performed; this document is the handover for the first. Disclosure contact in `SECURITY.md`. No bounty programme. |
+| 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
+
+### The L2BEAT risk categories, applied to the batch path
+
+| Risk | Posture | Evidence |
+|---|---|---|
+| State validation | Validity proof | `FigaroBatchVerifier.settleBatch` verifies an SP1 proof and checks every witness-spec binding against the live `ClauseRegistry`. |
+| Data availability | Off-chain by design | The chain holds hashes; the parties hold the preimages. `DATA_LAYER.md` owns the seam. |
+| Exit window | Immutable | No owner, no upgrade path, no pause, in every contract. A changed program is a new verifier under a new address. |
+| Proposer failure | Direct path always open | The kernel needs no sequencer; every process can resolve through `FigaroCore` directly. |
+| Sequencer failure | Same | A batch-resolved process never acquires kernel status (`FigaroBatchVerifier.sol` NatSpec on designer rewards); the two resolution paths are disjoint, and `UsageCounter` bridges only the accrual. |
+
 ## Validation Commands — the verification gate
 
 Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.

@@ -22,7 +22,7 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | `(participants)` | `/members`, `/agents` | `/members` is the pitch; its wizard lives beneath it in `(app)`. |
 | `(rewards)` | `/rpgf`, `/tokenomics`, `/dao` | Three concepts, three pages, in reading order: the PROGRAM (how use becomes a reward), the TOKEN (supply, who holds what), the BOOTSTRAP (what the treasury is for). None re-derives another's subject. |
 | `(spec)` | `/spec`, `/pitfalls`, `/security` | `/security` is testing + audit results only. |
-| `(research)` | `/why`, `/working-groups`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. |
+| `(research)` | `/why`, `/working-groups`, `/working-groups/for/[tag]`, `/working-groups/on/[tag]`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. The two `[tag]` routes are the reader's index into that surface, derived from each paper's `industries` (`for`) and `keywords` (`on`) in `frontend/app/(marketing)/_lib/paperGroups.ts`; every entry lists its papers with title, summary, and keywords. |
 
 **No audience-carve hub.** An audience's payloads belong on the object pages themselves. Sections are named for what
 a reader does, never for who they are.
