@@ -456,7 +456,7 @@ export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
  *  layer lives under, and `/data` is the explainer this tool belongs to. */
 export function dataExplorerBreadcrumb(state: DataExplorerQuery): BreadcrumbItem[] {
     return [
-        { label: "Build", href: "/spec" },
+        { label: "Build", href: "/build" },
         { label: "Data", href: "/data" },
         { label: graphLayer(state.view).label },
     ];

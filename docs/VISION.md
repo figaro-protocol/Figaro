@@ -58,8 +58,7 @@ cook, a kitchen, a sourcer, a courier; a haulier, a broker, a warehouse — each
 bonding and paid in its own order, assembled for that process and dissolved at
 its resolution. There is no restaurant and no shipping line, only the wallets
 that did the work, paid directly for the value each added. The paper on
-transaction-scoped institutions develops this; `/consequences` on the site
-follows it outward.
+transaction-scoped institutions develops this.
 
 ## Where the value goes
 

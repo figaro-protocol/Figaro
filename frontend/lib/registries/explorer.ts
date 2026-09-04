@@ -158,7 +158,7 @@ export function facetValues(rows: readonly ExplorerRow[], family: RegistryFamily
 export function explorerBreadcrumb(state: ExplorerQuery): BreadcrumbItem[] {
     const familyLabel = { clauses: "Clauses", assemblies: "Assemblies", members: "Members" }[state.family];
     const trail: BreadcrumbItem[] = [
-        { label: "Build", href: "/spec" },
+        { label: "Build", href: "/build" },
         { label: "Registries", href: "/registries" },
     ];
     const facetLeaf = state.article || state.clause || state.registeredBy;

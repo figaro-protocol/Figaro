@@ -93,7 +93,7 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        const deal = sectionButton("The Deal");
+        const deal = sectionButton("Core");
         expect(deal).toHaveAttribute("aria-expanded", "true");
         expect(deal).toHaveAttribute("aria-current", "true");
         expect(screen.getByRole("link", { name: "Invariants" })).toHaveAttribute("aria-current", "page");

@@ -140,21 +140,9 @@ export const READING_PATH_STEPS: ReadingPathStep[] = [
     },
     {
         rung: "What it changes",
-        href: "/why",
-        label: "Why this exists",
-        description: "the argument from first principles.",
-    },
-    {
-        rung: "What it changes",
         href: "/working-groups",
         label: "Working Groups",
         description: "the eight disciplines behind the claims.",
-    },
-    {
-        rung: "What it changes",
-        href: "/consequences",
-        label: "Consequences",
-        description: "what the world looks like if it works.",
     },
 ];
 

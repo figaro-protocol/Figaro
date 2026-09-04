@@ -144,9 +144,9 @@ export default function Invariants() {
                         The core is a small law that holds. Everything that gives it meaning is built on top, which is why building on it isn&apos;t optional. It&apos;s the point.
                     </p>
                     <p>
-                        That is the structural reading. The historical one &mdash; why a rule like this arrives now, after force and after belief &mdash; is on{" "}
-                        <Link href="/why" className="text-ink-heading font-medium hover:underline">
-                            Why
+                        That is the structural reading. The historical one &mdash; why a rule like this arrives now, after force and after belief &mdash; is in the papers, through{" "}
+                        <Link href="/research" className="text-ink-heading font-medium hover:underline">
+                            Research
                         </Link>
                         .
                     </p>

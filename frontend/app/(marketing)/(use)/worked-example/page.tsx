@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
-// A PROCESS STORY, not a capital table (maintainer ruling, 2026-08-24). Every
+// A PROCESS STORY, not a capital table. Every
 // figure here is stated PER PARTY in the deterrent register — "twice the value
 // the chain carries at its link, returned at settlement". Never introduce an
 // aggregate total-locked figure, a bond-to-fee multiple, or the word "capital":

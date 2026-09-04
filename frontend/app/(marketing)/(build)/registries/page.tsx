@@ -6,11 +6,11 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
 
 // The registry explorer — the ONE reads-only search surface over the three
-// protocol registries (maintainer ruling 2026-08-17). The concept pages
+// protocol registries. The concept pages
 // (/clauses, /assemblies, /members) keep the pitch plus a live count and a
 // link here; this page carries the inventories, searchable and faceted.
 // The nav label derives from this title ("Registries"); the h1 is the
-// ruled page name ("Registry explorer").
+// page name ("Registry explorer").
 export const metadata: Metadata = withOg({
     title: "Registries — Figaro Protocol",
     description:

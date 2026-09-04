@@ -2,23 +2,27 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol — My word is my bond",
     description:
-        "Every trade is a contract, and between strangers one part of it fails. Figaro makes a stranger's promise hold on its own — each side backs its word with a bond, and the game theory makes honoring the agreement the best strategy. Above that floor the whole contract rebuilds, self-sovereign: your terms, your data, your market's own token.",
+        "Figaro is permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade. The bond is twice the payment. Walking away costs more than finishing. The only cost is gas.",
 });
 
-// HOME IS THE WHOLE, TOLD ONCE, IN HOME-PAGE FORM — the repo's one arc as
-// blocks, never prose: the problem and the mechanism get one full-width
-// stroke each (a line or two, one button); the rebuild, sovereignty, the
-// commons, and liveness tile a grid (one line, one text link each); the
-// three audience doors close. Scan the headings alone and the story reads.
-// POSITIVE form throughout. ONE DOOR PER DESTINATION across the page. A
-// comprehension gap found by any probe is closed on the OWNER page its
-// block points to, never by adding prose here.
+// HOME IS A ROUTER, NEVER A DOCUMENT: the summary line, one sentence of the
+// mechanism, and the six doors — one per landing page, one door per
+// destination. Each door's line is in its reader's words; the landing page it
+// opens carries the pillar. A comprehension gap found by any probe is closed
+// on the landing page or its owner page, never by adding prose here.
+const DOORS: { href: string; name: string; line: string }[] = [
+    { href: "/use", name: "Use it", line: "Sell or buy anything and be paid in full when the buyer resolves, in the token you choose." },
+    { href: "/build", name: "Build on it", line: "Publish the terms of trade, compose them into assemblies, and be paid in florins when they are used." },
+    { href: "/core", name: "Check the core", line: "Two functions and no owner: the kernel, the attestations, and the batch verifier, with the proofs behind them." },
+    { href: "/research", name: "Read the research", line: "The papers: the equilibrium, the firm, the market, the ledger, the law, and the industries that coordinate at scale." },
+    { href: "/data", name: "Read the data", line: "What every trade leaves: the public map, your books, and your evidence, on your terms." },
+    { href: "/agents", name: "Run an agent", line: "Software trades, publishes, and resolves on the same terms as a person: the same bond, the same registries." },
+];
+
 export default function Home() {
     return (
         <>
@@ -26,72 +30,31 @@ export default function Home() {
                 title="My word is my bond"
                 lead={
                     <>
-                        One thin, ownerless layer that makes any trade between strangers safe &mdash; and everything above it buildable by anyone.
+                        Figaro is permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade. The bond is twice the payment. Walking away costs more than finishing. The only cost is gas.
                     </>
                 }
             />
 
-            <MarketingSection title="Every trade is a contract">
-                <p className="text-base text-ink-body leading-relaxed mb-6 max-w-2xl">
-                    Between strangers one part fails: a promise is easy, and delivering it is what needs to be made credible. History&apos;s fix &mdash; a firm, a platform, a court in the middle &mdash; became the cost.
-                </p>
-                <CtaLink href="/why">Why this exists</CtaLink>
-            </MarketingSection>
-
-            <MarketingSection title="Figaro makes the promise hold on its own">
-                <p className="text-base text-ink-body leading-relaxed mb-6 max-w-2xl">
-                    Each side backs its word with a bond worth more than the trade, held by a decentralized smart contract. The buyer closes when satisfied &mdash; everyone is paid and every bond refunded, at once. The game theory makes honoring the agreement the best strategy.
-                </p>
-                <CtaLink href="/kernel">See the mechanism</CtaLink>
-            </MarketingSection>
-
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
-                    <div>
-                        <h2 className="text-heading-h3 text-ink-heading mb-2">The whole contract rebuilds above it</h2>
-                        <p className="text-base text-ink-body leading-relaxed">
-                            Terms are clauses anyone writes. Markets are assemblies anyone composes and reuses. A wallet is all it takes &mdash;{" "}
-                            <Link href="/assemblies" className="text-ink-heading hover:underline">compose a market</Link>.
-                        </p>
-                    </div>
-                    <div>
-                        <h2 className="text-heading-h3 text-ink-heading mb-2">Its users are self-sovereign</h2>
-                        <p className="text-base text-ink-body leading-relaxed">
-                            Your keys, censorship-resistant tokens, and your data: the aggregate map public, the detail yours to seal, show, or sell &mdash;{" "}
-                            <Link href="/data" className="text-ink-heading hover:underline">your data, your terms</Link>.
-                        </p>
-                    </div>
-                    <div>
-                        <h2 className="text-heading-h3 text-ink-heading mb-2">The commons pays its builders</h2>
-                        <p className="text-base text-ink-body leading-relaxed">
-                            One billion tokens, fixed. Six hundred million reserved for whoever writes what the world uses, paid by real use &mdash;{" "}
-                            <Link href="/rpgf" className="text-ink-heading hover:underline">the rewards</Link>.
-                        </p>
-                    </div>
+                    {DOORS.map((d) => (
+                        <div key={d.href}>
+                            <h2 className="text-heading-h3 text-ink-heading mb-2">
+                                <Link href={d.href} className="hover:underline">
+                                    {d.name}
+                                </Link>
+                            </h2>
+                            <p className="text-base text-ink-body leading-relaxed">{d.line}</p>
+                        </div>
+                    ))}
                 </div>
-            </section>
-
-            <section className="container mx-auto px-6 pb-24 max-w-3xl">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-default pt-10">
-                    <Link href="/local-commerce" className="group block">
-                        <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Use it</h2>
-                        <p className="text-sm text-ink-muted mt-2 leading-relaxed">
-                            One trade, lived end to end &mdash; from first offer to the moment everyone is paid.
-                        </p>
+                <p className="text-sm text-ink-muted leading-relaxed mt-12 max-w-2xl">
+                    Not yet audited by an outside firm. The code is checked six independent ways on every commit:{" "}
+                    <Link href="/security" className="text-ink-heading font-medium hover:underline">
+                        Security
                     </Link>
-                    <Link href="/spec" className="group block">
-                        <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Build on it</h2>
-                        <p className="text-sm text-ink-muted mt-2 leading-relaxed">
-                            Write the terms of a market, publish them, and be paid whenever the world uses what you wrote.
-                        </p>
-                    </Link>
-                    <Link href="/papers/asymmetric-bonding" className="group block">
-                        <h2 className="text-heading-h3 text-ink-heading group-hover:underline">Check it</h2>
-                        <p className="text-sm text-ink-muted mt-2 leading-relaxed">
-                            The claims are theorems. Start with the asymmetric-bonding paper and read the proofs.
-                        </p>
-                    </Link>
-                </div>
+                    .
+                </p>
             </section>
         </>
     );

@@ -80,12 +80,12 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeVisible();
 
         // The (app) drawer lists the five publication doorways by their ruled
-        // section labels — /spec is the 'Build' doorway there (the
+        // section labels — /build is the 'Build' doorway there (the
         // 'Specifications' page label exists only in the marketing drawer's map).
         const publication = await expandSection(drawer, 'Publication');
         await publication.getByRole('link', { name: 'Build', exact: true }).click();
 
-        await expect(page).toHaveURL(/\/spec\/?$/);
+        await expect(page).toHaveURL(/\/build\/?$/);
         // useEffect on pathname change closes the drawer
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
@@ -134,10 +134,10 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // Working Groups — the corpus is unbounded, so the working-groups page
         // IS the index (maintainer-ruled 2026-08-12; no /papers index exists).
         for (const [section, label, href] of [
-            ['The Deal', 'Invariants', '/invariants'],
+            ['Core', 'Invariants', '/invariants'],
             ['Research', 'Working Groups', '/working-groups'],
             ['Build', 'Clauses', '/clauses'],
-            ['Participants', 'Agents', '/agents'],
+            ['Agents', 'How agents work', '/agents/how'],
         ] as const) {
             const panel = await expandSection(drawer, section);
             await expect(
@@ -147,7 +147,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         }
 
         // And it navigates, closing behind itself.
-        const deal = await expandSection(drawer, 'The Deal');
+        const deal = await expandSection(drawer, 'Core');
         await deal.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
@@ -161,7 +161,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
-        const deal = drawer.getByRole('button', { name: 'The Deal', exact: true });
+        const deal = drawer.getByRole('button', { name: 'Core', exact: true });
         await expect(deal).toHaveAttribute('aria-expanded', 'true');
         await expect(deal).toHaveAttribute('aria-current', 'true');
         await expect(drawer.getByRole('link', { name: 'Invariants' })).toHaveAttribute('aria-current', 'page');

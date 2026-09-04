@@ -24,13 +24,13 @@ describe("nextReadingPathStep", () => {
 
     it("returns null on the last step — a reading order ends", () => {
         const last = READING_PATH_STEPS[READING_PATH_STEPS.length - 1];
-        expect(last.href).toBe("/consequences");
+        expect(last.href).toBe("/working-groups");
         expect(nextReadingPathStep(last.href)).toBeNull();
     });
 
     it("tolerates the exported trailing slash", () => {
         expect(nextReadingPathStep("/kernel/")).toBe(nextReadingPathStep("/kernel"));
-        expect(nextReadingPathStep("/consequences/")).toBeNull();
+        expect(nextReadingPathStep("/working-groups/")).toBeNull();
     });
 
     it("returns null off the path — home, lookup pages, papers", () => {
@@ -80,7 +80,7 @@ describe("ReadingPathNext", () => {
     });
 
     it("renders nothing on the last step", () => {
-        pathnameMock.mockReturnValue("/consequences");
+        pathnameMock.mockReturnValue("/working-groups");
         const { container } = render(<ReadingPathNext />);
         expect(container).toBeEmptyDOMElement();
     });

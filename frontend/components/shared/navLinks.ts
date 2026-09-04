@@ -3,10 +3,9 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The five entries are the ruled protocol-object sections (maintainer
-//   2026-08-07, enforced by scripts/lint-nav-structure.sh): Build,
-//   The Deal, Market, Participants, Research — full tree in the
-//   MARKETING_MAP docstring below. The logo links home; no "Home" item here.
+//   The six entries are the six doors, one per landing page (Use, Build, Core,
+//   Research, Data, Agents), each the doorway of its route group; enforced by
+//   scripts/lint-nav-structure.sh. The logo links home; no "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` feeds ONLY the mobile drawer's App section
 //   (no desktop row exists); entries whose routes the marketing map
@@ -28,11 +27,12 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-    { href: "/spec", label: "Build" },
-    { href: "/kernel", label: "The Deal" },
-    { href: "/discover", label: "Market" },
-    { href: "/members", label: "Participants" },
-    { href: "/why", label: "Research" },
+    { href: "/use", label: "Use" },
+    { href: "/build", label: "Build" },
+    { href: "/core", label: "Core" },
+    { href: "/research", label: "Research" },
+    { href: "/data", label: "Data" },
+    { href: "/agents", label: "Agents" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The
@@ -78,101 +78,84 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — the site tree, five nav entries: Build (`(compose)` +
- * `(rewards)` + `(spec)`, one flat list of pages), The Deal `(deal)`, Market
- * (the all-bridge group carrying the app tier's e-commerce tools),
- * Participants `(participants)`, Research `(research)`. Each group's first
- * PAGE entry is its doorway; entry ORDER within a group is the reading
- * order, not alphabetical.
- *
- * SECTION ORDER is the maintainer's word, not machine-enforced —
- * `lint-nav-structure.sh` checks doorway-first, set equality, and
- * label==metadata.title, never the order of the sections themselves. Build
- * leads and The Deal follows it: the first doorway a visitor meets resolves
- * to a build object, and the warrant section answers a question they have
- * just acquired a reason to ask. The section is named "Build" — a verb, not
- * an audience noun; do not rename it to an audience carve like "Builders",
- * and do not re-grow a standalone `/builders` hub.
+ * The marketing map — the site tree, six nav entries, one per landing page:
+ * Use `(use)`, Build `(build)`, Core `(core)`, Research `(research)`, Data
+ * `(data)`, Agents `(agents)`. Each group's first entry is its doorway, the
+ * landing page whose words are the pillar the beta panel reads; the entries
+ * after it are the pages that door owns, in reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
- * `(reference)` (Glossary) is footer chrome, never nav; papers are reached
- * through Working Groups — the corpus has ONE surface, /working-groups; do
- * not add a separate /papers index. Build leads with Specifications.
- * /local-commerce and /faq are nav-visible under The Deal on the standing
- * condition that the rest of the site stays demoted — the meal is one worked
- * example among many, never THE model. The two AUTHORING tools (Register a
- * clause, Designer) are nav leaves under Build, each beside its object page:
- * a build-first site keeps its composing surfaces visible in nav AND as a
- * CTA on each object page, never behind an inline sentence alone. The data
- * explorer (`/data/explore`, the (app)-tier graph-query surface) is the
- * third such leaf, beside its own object page — same shape: the concept
- * page explains the data layer, the tool queries it.
- * Claim and Join remain buttons on their object's page, never nav slots.
- * `scripts/lint-nav-structure.sh` enforces the mechanical half of this
- * (doorway-first, set equality against the route tree, label==metadata.title,
- * and breadcrumb doorways) — section order and section names are the
- * maintainer's word, checked by review.
+ * The app tier's pages a door opens onto (Discover and Orders under Use, Audit
+ * and the data explorer under Data) and the two authoring tools under Build
+ * are admitted beside their object pages. `(reference)` is footer chrome,
+ * never nav; papers are reached through Working Groups — the corpus has ONE
+ * surface. Claim and Join remain buttons on their object's page.
+ * `scripts/lint-nav-structure.sh` enforces the mechanical half (doorway-first,
+ * set equality against the route tree, label==metadata.title, breadcrumb
+ * doorways); section order and names are the maintainer's word.
  * ONE source, two renderings: `NavTreeRow` (desktop disclosure submenus) and
  * `NAV_LINKS_MARKETING_DRAWER` (mobile, flattened with section headers).
  */
 export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
+        section: "Use",
+        links: [
+            { href: "/use", label: "Use" },
+            { href: "/members", label: "Members" },
+            { href: "/faq", label: "FAQ" },
+            { href: "/local-commerce", label: "Local Commerce" },
+            { href: "/worked-example", label: "Worked example" },
+            { href: "/discover", label: "Discover members" },
+            { href: "/orders", label: "Your orders" },
+        ],
+    },
+    {
         section: "Build",
         links: [
-            { href: "/spec", label: "Specifications" },
+            { href: "/build", label: "Build" },
             { href: "/clauses", label: "Clauses" },
             { href: "/clauses/register", label: "Register a clause" },
             { href: "/assemblies", label: "Assemblies" },
             { href: "/assemblies/designer", label: "Designer" },
-            { href: "/attestations", label: "Attestations" },
-            { href: "/worked-example", label: "Worked example" },
             { href: "/registries", label: "Registries" },
             { href: "/composition", label: "Composition" },
-            { href: "/data", label: "Data" },
-            { href: "/data/explore", label: "Data explorer" },
             { href: "/pitfalls", label: "Sharp edges" },
-            { href: "/security", label: "Security" },
             { href: "/rpgf", label: "Rewards for designers" },
-            // The (rewards) group is THREE pages, one per concept, in reading
-            // order: the reward is the reason a reader asks what it is paid in,
-            // and the supply is where they meet the treasury holding three
-            // tenths of it. Rewards owns the PROGRAM (how use becomes a
-            // reward), Tokenomics owns the TOKEN (supply, who holds what), The
-            // DAO owns the BOOTSTRAP (what the treasury is for, how it earns,
-            // how it ends). None re-derives another's subject.
             { href: "/tokenomics", label: "Tokenomics" },
             { href: "/dao", label: "The DAO" },
         ],
     },
     {
-        section: "The Deal",
+        section: "Core",
         links: [
+            { href: "/core", label: "Core" },
             { href: "/kernel", label: "Kernel" },
-            { href: "/local-commerce", label: "Local Commerce" },
             { href: "/invariants", label: "Invariants" },
-            { href: "/faq", label: "FAQ" },
-        ],
-    },
-    {
-        section: "Market",
-        links: [
-            { href: "/discover", label: "Discover members" },
-            { href: "/orders", label: "Your orders" },
-            { href: "/audit", label: "Audit" },
-        ],
-    },
-    {
-        section: "Participants",
-        links: [
-            { href: "/members", label: "Members" },
-            { href: "/agents", label: "Agents" },
+            { href: "/spec", label: "Specifications" },
+            { href: "/security", label: "Security" },
         ],
     },
     {
         section: "Research",
         links: [
-            { href: "/why", label: "Why this exists" },
+            { href: "/research", label: "Research" },
             { href: "/working-groups", label: "Working Groups" },
-            { href: "/consequences", label: "Consequences" },
+        ],
+    },
+    {
+        section: "Data",
+        links: [
+            { href: "/data", label: "Data" },
+            { href: "/data/yours", label: "Your data" },
+            { href: "/attestations", label: "Attestations" },
+            { href: "/data/explore", label: "Data explorer" },
+            { href: "/audit", label: "Audit" },
+        ],
+    },
+    {
+        section: "Agents",
+        links: [
+            { href: "/agents", label: "Agents" },
+            { href: "/agents/how", label: "How agents work" },
         ],
     },
 ];

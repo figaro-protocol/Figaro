@@ -7,7 +7,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Data — Figaro Protocol",
+    title: "Your data — Figaro Protocol",
     description:
         "The protocol never holds your private trade data — only a fingerprint. The public half of every trade is a shared map anyone can read. And opening your own books to a buyer is an ordinary bonded sale, on your terms, arriving provable.",
 });

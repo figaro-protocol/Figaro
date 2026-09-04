@@ -39,16 +39,20 @@ type Entry = {
 //     `public/_headers`. Nothing in-app links it by design.
 const PUBLIC_ROUTES: Entry[] = [
     { path: "/", changeFrequency: "weekly", priority: 1.0 },
+    { path: "/use", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/build", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/core", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/research", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/agents", changeFrequency: "weekly", priority: 0.9 },
     { path: "/kernel", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/why", changeFrequency: "weekly", priority: 0.9 },
     { path: "/invariants", changeFrequency: "weekly", priority: 0.9 },
     { path: "/working-groups", changeFrequency: "weekly", priority: 0.9 },
     { path: "/spec", changeFrequency: "weekly", priority: 0.9 },
     { path: "/security", changeFrequency: "weekly", priority: 0.9 },
     { path: "/pitfalls", changeFrequency: "weekly", priority: 0.8 },
-    { path: "/consequences", changeFrequency: "monthly", priority: 0.7 },
     { path: "/members", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/data", changeFrequency: "monthly", priority: 0.8 },
+    { path: "/data", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/data/yours", changeFrequency: "monthly", priority: 0.8 },
     // The data explorer: an (app)-tier surface, but a nav-listed, crawlable
     // landing that reads walletlessly — the same case as /registries.
     { path: "/data/explore", changeFrequency: "daily", priority: 0.7 },
@@ -56,7 +60,7 @@ const PUBLIC_ROUTES: Entry[] = [
     { path: "/composition", changeFrequency: "monthly", priority: 0.7 },
     { path: "/assemblies/designer", changeFrequency: "weekly", priority: 0.7 },
     { path: "/clauses/register", changeFrequency: "weekly", priority: 0.7 },
-    { path: "/agents", changeFrequency: "weekly", priority: 0.8 },
+    { path: "/agents/how", changeFrequency: "weekly", priority: 0.8 },
     { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
     { path: "/rpgf", changeFrequency: "monthly", priority: 0.7 },
     { path: "/tokenomics", changeFrequency: "monthly", priority: 0.7 },

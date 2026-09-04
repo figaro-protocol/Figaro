@@ -17,12 +17,12 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 
 | Group | Routes | Notes |
 |---|---|---|
-| `(deal)` | `/kernel`, `/local-commerce`, `/invariants`, `/faq` | `/local-commerce` is ONE example among unbounded kinds, never the default telling — nav-visible only while sitewide copy stays demoted. `/faq` is the public's decision document. |
-| `(compose)` | `/clauses`, `/assemblies`, `/attestations`, `/registries`, `/composition`, `/data`, `/worked-example` | `/registries` is the ONE read-only search surface over all three registries (h1 "Registry explorer", nav label "Registries"). `/composition` is the single composition page. `/attestations` is the runtime-evidence companion to `/clauses` — no registry, no hash table, no CTA: an attestation is filed inside a running process, never registered or designed. |
-| `(participants)` | `/members`, `/agents` | `/members` is the pitch; its wizard lives beneath it in `(app)`. |
-| `(rewards)` | `/rpgf`, `/tokenomics`, `/dao` | Three concepts, three pages, in reading order: the PROGRAM (how use becomes a reward), the TOKEN (supply, who holds what), the BOOTSTRAP (what the treasury is for). None re-derives another's subject. |
-| `(spec)` | `/spec`, `/pitfalls`, `/security` | `/security` is testing + audit results only. |
-| `(research)` | `/why`, `/working-groups`, `/working-groups/for/[tag]`, `/working-groups/on/[tag]`, `/consequences` | `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. The two `[tag]` routes are the reader's index into that surface, derived from each paper's `industries` (`for`) and `keywords` (`on`) in `frontend/app/(marketing)/_lib/paperGroups.ts`; every entry lists its papers with title, summary, and keywords. |
+| `(use)` | `/use`, `/members`, `/faq`, `/local-commerce`, `/worked-example` | The Use door. `/local-commerce` is ONE example among unbounded kinds, never THE model. Discover and Orders, in `(app)`, are admitted under it in the nav. |
+| `(build)` | `/build`, `/clauses`, `/assemblies`, `/registries`, `/composition`, `/pitfalls`, `/rpgf`, `/tokenomics`, `/dao` | The Build door. The two authoring tools in `(tools)` are admitted under it. Rewards, Tokenomics, and The DAO are three concepts, three pages, in reading order. The docs-site is its second step. |
+| `(core)` | `/core`, `/kernel`, `/invariants`, `/spec`, `/security` | The Core door. `/security` is testing + audit results only. |
+| `(research)` | `/research`, `/working-groups`, `/working-groups/for/[tag]`, `/working-groups/on/[tag]` | The Research door leads to Working Groups. `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. The two `[tag]` routes are the reader's index into that surface, derived from each paper's `industries` (`for`) and `keywords` (`on`) in `frontend/app/(marketing)/_lib/paperGroups.ts`. |
+| `(data)` | `/data`, `/data/yours`, `/attestations` | The Data door: the data a trade leaves. Audit and the data explorer, in `(app)`, are admitted under it. |
+| `(agents)` | `/agents`, `/agents/how` | The Agents door: agents are participants, not a feature; the door leads to the agents' own surface (`ecosystem-agents/`, the signer, the machine-readable index). |
 
 **No audience-carve hub.** An audience's payloads belong on the object pages themselves. Sections are named for what
 a reader does, never for who they are.
