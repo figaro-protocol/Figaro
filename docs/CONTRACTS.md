@@ -332,8 +332,13 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 - **Merging the two paths — sum the scores, never the components:**
   `scoreOf(clauseOrAssembly, period) = accrualOf.score + batchAccrualOf.score`,
   and `totalScoreIn` counts both. Summing components would over-count breadth
-  for a seller active on both paths; the score is concave and homogeneous of
-  degree 1, so summing scores can never over-count. `RpgfMinter` reads
+  for a seller active on both paths; summing scores over-counts it too, by a
+  bounded factor — a seller on both paths enters each path's `d`, and a key
+  whose sellers are the same on both scores up to 2^(2/3) ≈ 1.59× the pooled
+  figure at an equal split (the score is concave and homogeneous of degree 1;
+  for disjoint seller sets the sum is at most the pooled figure). Pooling `d`
+  would need per-key seller sets from the batch, which the accrual call does
+  not carry. `RpgfMinter` reads
   `scoreOf`; a reader that reaches for `accrualOf` alone under-reports. The
   batch leg emits `BatchUsageRecorded` (cumulative, replaces), the direct leg
   `UsageRecorded` (adds); indexers fold them differently.

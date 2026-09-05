@@ -66,9 +66,12 @@ earn but the two live stakes any manufactured trade must carry.
 `UsageCounter` counts a clause's or an assembly's usage at resolution,
 permissionlessly, from facts the chain already holds: the order is resolved,
 and the clause or assembly was merkle-committed in the signed `agreementHash`.
-Anyone may call it; the proof is what is trusted, never the caller. Nothing is
-posted, bonded, challenged, or adjudicated, and there is no recurring cost to
-anyone.
+Anyone may call it; the proof is what is trusted, never the caller. Trade
+resolved in a proved batch is counted by the batch's own proof and written by
+the verifier alone, with the counter checking the open period, each seller's
+live stake, and the excluded set itself (`CONTRACTS.md` § "Usage accounting"
+owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
+and there is no recurring cost to anyone.
 
 The timing is forced, not chosen. **The chain cannot look backwards** — the
 kernel is frozen, never calls the registries, and no contract can read an
@@ -89,7 +92,11 @@ own currency, at the moment it counts:
 
 - **Seller side** — usage counts only for a seller of record whose members
   registry stake is live. `UsageCounter` gates every count on it, on both
-  paths.
+  paths; on the batched path one unstaked seller drops that batch's whole
+  accrual until the next batch overwrites it (`DESIGN_DECISIONS.md` owns the
+  drop). A seller on both paths enters each path's breadth: the two paths'
+  scores are summed, and the same sellers on both count up to 2^(2/3) times
+  their pooled score — a bounded bias, at the same live stake per seller.
 - **Designer side** — a claim pays only for entries whose registry stake is
   live and registered by the claimant. `RpgfMinter` verifies each entry against
   its own registry; a withdrawn stake earns nothing further.
