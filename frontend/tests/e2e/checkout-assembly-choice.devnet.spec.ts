@@ -75,15 +75,9 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     await page.getByRole('button', { name: /\+ MOCK$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
-
-    // Step 3 — Catalogue: one product
-    await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
-    await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
-    await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/assemblies/);
 
-    // Step 4 — Assemblies: clear hydrated bindings, then bind BOTH target
+    // Step 2 — Assemblies: clear hydrated bindings, then bind BOTH target
     // assemblies. The multi-order chain binds WITHOUT counterparty
     // designation — undesignated sub-orders become buyer-assigned picks at
     // checkout, and this spec's buyer picks the single-order assembly anyway.
@@ -98,6 +92,12 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
         await row.waitFor({ state: 'visible', timeout: 30_000 });
         await row.locator('input[type="checkbox"]').first().check();
     }
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/catalogue/);
+
+    // Step 3 — Catalogue: one product (after the bindings, which decide its clause fields)
+    await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
+    await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
 

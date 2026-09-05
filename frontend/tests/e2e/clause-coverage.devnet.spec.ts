@@ -596,12 +596,6 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.getByRole('button', { name: /\+ MOCK$/ }).click();
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
-
-            await page.locator('[id^="item-"][id$="-name"]').first().fill('Coverage item');
-            await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
-            if (rung.catalogue) await rung.catalogue(page);
-            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/assemblies/);
 
             // Unbind everything a prior rung left checked, then bind MY assembly.
@@ -610,6 +604,12 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const myRow = page.getByTestId(`seller-assembly-row-${slug}`);
             await myRow.waitFor({ state: 'visible', timeout: 30000 });
             await myRow.locator('input[type="checkbox"]').first().check();
+            await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/catalogue/);
+
+            await page.locator('[id^="item-"][id$="-name"]').first().fill('Coverage item');
+            await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
+            if (rung.catalogue) await rung.catalogue(page);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();

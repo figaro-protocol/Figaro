@@ -107,6 +107,19 @@ async function onboardSeller(page: Page, opts: {
     await page.getByRole('button', { name: /\+ MOCK$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/assemblies/);
+
+    const row = page.getByTestId(`seller-assembly-row-${opts.assemblySlug}`);
+    await row.waitFor({ state: 'visible', timeout: 30000 });
+    await row.locator('input[type="checkbox"]').first().check();
+    if (opts.designate) {
+        const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.assemblySlug}`);
+        await counterparties.waitFor({ state: 'visible', timeout: 30000 });
+        await counterparties
+            .getByTestId(`counterparty-${opts.designate.clauseId}-input-0`)
+            .fill(opts.designate.counterparty);
+    }
+    await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalogue/);
 
     await page.locator('[id^="item-"][id$="-name"]').first().fill(opts.product.name);
@@ -120,19 +133,6 @@ async function onboardSeller(page: Page, opts: {
             .fill(opts.product.rate.unit);
         await page.locator('[data-testid^="item-"][data-testid$="-rate-source"]').first()
             .selectOption(opts.product.rate.source);
-    }
-    await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/assemblies/);
-
-    const row = page.getByTestId(`seller-assembly-row-${opts.assemblySlug}`);
-    await row.waitFor({ state: 'visible', timeout: 30000 });
-    await row.locator('input[type="checkbox"]').first().check();
-    if (opts.designate) {
-        const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.assemblySlug}`);
-        await counterparties.waitFor({ state: 'visible', timeout: 30000 });
-        await counterparties
-            .getByTestId(`counterparty-${opts.designate.clauseId}-input-0`)
-            .fill(opts.designate.counterparty);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);

@@ -181,11 +181,6 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await page.getByRole('button', { name: /\+ MOCK$/ }).click();
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
-
-            await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
-            await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
-            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/assemblies/);
 
             // Bind BOTH: the single-order assembly (so checkout offers a CHOICE —
@@ -206,6 +201,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await counterparties.getByTestId(`counterparty-${COURIER_CLAUSE}-input-0`).fill(COURIER);
             await counterparties.getByTestId(`counterparty-${SUPPLIER_CLAUSE}-input-0`).fill(SUPPLIER);
 
+            await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/catalogue/);
+
+            await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
+            await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();

@@ -238,8 +238,8 @@ export interface OnboardingStep {
 // derives.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },
-    { id: "catalogue", number: 2, label: "Catalogue", path: "catalogue", optional: false },
-    { id: "assemblies", number: 3, label: "Assemblies", path: "assemblies", optional: false },
+    { id: "assemblies", number: 2, label: "Assemblies", path: "assemblies", optional: false },
+    { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
     // The buyer page sits BEFORE agents so the agents step delegates
     // control of the member's whole profile — seller and buyer alike.
     { id: "buyer", number: 4, label: "Buyer", path: "buyer", optional: true },

@@ -119,13 +119,13 @@ async function onboardViaWizard(
     await page.getByRole("button", { name: /\+ MOCKP$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/assemblies/);
 
     // The draft is the seller's work: a reload must not cost them it. Reload
     // here, walk Back, and read the identity fields off the restored form.
     await draftCarries(page, SELLER.specialty);
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/assemblies/);
     await page.getByRole("link", { name: /^← Back/ }).click();
     await expect(page).toHaveURL(/\/members\/identity/);
     await expect(page.locator("#profile-name")).toHaveValue(SELLER.name, { timeout: 30_000 });
@@ -134,59 +134,10 @@ async function onboardViaWizard(
     // grain on persist (lib/shared/geohash), so the restored value is the
     // clamped one, never the door-grade string that was typed.
     await expect(page.locator("#profile-geohash")).toHaveValue(clampPublicGeohash(SELLER.geohash));
-    await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
-
-    // Catalogue: one product. The clause sections on an item derive from the
-    // assemblies bound on the NEXT step, so a seller who binds none sees none.
-    await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
-    await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
-
-    // The items survive a reload too. The restored values also mean the step
-    // has hydrated, so the clause sections below are read after the assembly
-    // templates have had their chance to resolve.
-    await draftCarries(page, SELLER.product.name);
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.locator('[id^="item-"][id$="-name"]').first())
-        .toHaveValue(SELLER.product.name, { timeout: 30_000 });
-    await expect(page.locator('[id^="item-"][id$="-price"]').first())
-        .toHaveValue(SELLER.product.price);
-
-    // Every clause section on the item belongs to a clause the BOUND assembly
-    // composes — computed from the anchored template, never a name list. A
-    // seller of one item bound to a counter-sale assembly is asked for no
-    // freight class, no hazmat number, no cold-chain range.
-    const composed = new Set(assembly.agreements.flatMap((a) => Object.keys(a.clauses ?? {})));
-    // The clause GROUPS are the direct children of the item's clause section;
-    // the field controls nest below them.
-    const renderedClauseIds = await page
-        .locator('[data-testid^="item-"][data-testid$="-clauses"] > [data-testid]')
-        .evaluateAll((nodes) =>
-            nodes
-                .map((n) => (n.getAttribute("data-testid") ?? "").split("-clause-")[1])
-                .filter((id): id is string => !!id),
-        );
-    for (const clauseId of renderedClauseIds) {
-        expect(
-            composed.has(clauseId),
-            `the catalogue asks for "${clauseId}", which the bound assembly does not compose`,
-        ).toBe(true);
-    }
-
-    // And the filter BITES: a catalogue-authored clause composed by some OTHER
-    // anchored assembly, but not by this one, has no section here.
-    const unboundClause = (await discoverAnchoredAssemblies())
-        .filter((a) => a.slug !== assemblySlug)
-        .flatMap((a) => a.agreements.flatMap((ag) => Object.keys(ag.clauses ?? {})))
-        .find((clauseId) => !composed.has(clauseId));
-    if (unboundClause) {
-        await expect(page.locator(`[data-testid$="-clause-${unboundClause}"]`)).toHaveCount(0);
-    }
-
-    await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/assemblies/);
-    // Assemblies: MANDATORY (user rule 2026-06-12 — a profile
-    // without bindings cannot be ordered from). An update-mode run hydrates
+    // Assemblies come BEFORE the catalogue: the bindings decide which clauses
+    // the seller's trades carry, and those clauses decide which item fields
+    // the catalogue step asks for. MANDATORY: a profile without bindings
+    // cannot be ordered from. An update-mode run hydrates
     // the wallet's prior bindings — clear them first: this scenario's premise
     // is EXACTLY ONE single-order binding (the bilateral flow orders-accept
     // consumes), and the cleared state also makes the refusal assertable.
@@ -239,6 +190,55 @@ async function onboardViaWizard(
     await expect(
         page.getByTestId(`seller-assembly-row-${assemblySlug}`).locator('input[type="checkbox"]').first(),
     ).toBeChecked({ timeout: 30_000 });
+
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/catalogue/);
+
+    // Catalogue: one product. The clause sections on an item derive from the
+    // assemblies bound on the step BEFORE, so a seller who binds none sees none.
+    await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
+    await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
+
+    // The items survive a reload too. The restored values also mean the step
+    // has hydrated, so the clause sections below are read after the assembly
+    // templates have had their chance to resolve.
+    await draftCarries(page, SELLER.product.name);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator('[id^="item-"][id$="-name"]').first())
+        .toHaveValue(SELLER.product.name, { timeout: 30_000 });
+    await expect(page.locator('[id^="item-"][id$="-price"]').first())
+        .toHaveValue(SELLER.product.price);
+
+    // Every clause section on the item belongs to a clause the BOUND assembly
+    // composes — computed from the anchored template, never a name list. A
+    // seller of one item bound to a counter-sale assembly is asked for no
+    // freight class, no hazmat number, no cold-chain range.
+    const composed = new Set(assembly.agreements.flatMap((a) => Object.keys(a.clauses ?? {})));
+    // The clause GROUPS are the direct children of the item's clause section;
+    // the field controls nest below them.
+    const renderedClauseIds = await page
+        .locator('[data-testid^="item-"][data-testid$="-clauses"] > [data-testid]')
+        .evaluateAll((nodes) =>
+            nodes
+                .map((n) => (n.getAttribute("data-testid") ?? "").split("-clause-")[1])
+                .filter((id): id is string => !!id),
+        );
+    for (const clauseId of renderedClauseIds) {
+        expect(
+            composed.has(clauseId),
+            `the catalogue asks for "${clauseId}", which the bound assembly does not compose`,
+        ).toBe(true);
+    }
+
+    // And the filter BITES: a catalogue-authored clause composed by some OTHER
+    // anchored assembly, but not by this one, has no section here.
+    const unboundClause = (await discoverAnchoredAssemblies())
+        .filter((a) => a.slug !== assemblySlug)
+        .flatMap((a) => a.agreements.flatMap((ag) => Object.keys(ag.clauses ?? {})))
+        .find((clauseId) => !composed.has(clauseId));
+    if (unboundClause) {
+        await expect(page.locator(`[data-testid$="-clause-${unboundClause}"]`)).toHaveCount(0);
+    }
 
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);

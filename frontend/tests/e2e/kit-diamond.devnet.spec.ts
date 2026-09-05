@@ -252,10 +252,6 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.getByRole('button', { name: /\+ MOCK$/ }).click();
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
-            await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
-            await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
-            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/assemblies/);
 
             const row = page.getByTestId(`seller-assembly-row-${kitSlug}`);
@@ -275,6 +271,10 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.merchant}-add`).click();
             await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.merchant}-input-1`).fill(SUPPLIER_C);
             await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.courier}-input-0`).fill(SUPPLIER_D);
+            await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/catalogue/);
+            await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
+            await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();

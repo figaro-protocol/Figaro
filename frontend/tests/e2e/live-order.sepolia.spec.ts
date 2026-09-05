@@ -164,10 +164,6 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             }
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
-            await page.locator('[id^="item-"][id$="-name"]').first().fill('Smoke espresso');
-            await page.locator('[id^="item-"][id$="-price"]').first().fill(ITEM_PRICE);
-            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/assemblies/);
             const rows = page.locator('[data-testid^="seller-assembly-row-"]');
             await rows.first().waitFor({ state: 'visible', timeout: 120_000 });
@@ -179,6 +175,10 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             const offer = page.locator(`[data-testid^="disclosure-${posSlug}-"][data-testid$="-seller-offer"]`).first();
             await offer.waitFor({ state: 'visible', timeout: 60_000 });
             if (!(await offer.isChecked())) await offer.check();
+            await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/catalogue/);
+            await page.locator('[id^="item-"][id$="-name"]').first().fill('Smoke espresso');
+            await page.locator('[id^="item-"][id$="-price"]').first().fill(ITEM_PRICE);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();

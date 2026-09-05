@@ -6,15 +6,16 @@ import {
     onboardingStepHref,
 } from "@/lib/member/onboardingState";
 
-// The wizard's order: the buyer page sits between the seller
-// assemblies step and the agents step, so the agents step delegates
+// The wizard's order: the assemblies a seller binds decide which clauses
+// their trades carry, so Assemblies precedes Catalogue; the buyer page sits
+// between the seller's steps and the agents step, so the agents step delegates
 // control of the member's WHOLE profile — seller and buyer alike.
 describe("ONBOARDING_STEPS — member wizard order", () => {
-    it("runs identity → catalogue → assemblies → buyer → agents → endpoints → review (no welcome — /join owns the pitch)", () => {
+    it("runs identity → assemblies → catalogue → buyer → agents → endpoints → review (no welcome — /join owns the pitch; the bindings decide the catalogue's clause fields)", () => {
         expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual([
             "profile",
-            "catalogue",
             "assemblies",
+            "catalogue",
             "buyer",
             "agents",
             "endpoints",
@@ -48,8 +49,8 @@ describe("wizard navigation derives from the step order", () => {
         const walk: string[] = [];
         for (const step of ONBOARDING_STEPS) walk.push(onboardingNextHref(step.id));
         expect(walk).toEqual([
-            "/members/catalogue",
             "/members/assemblies",
+            "/members/catalogue",
             "/members/buyer",
             "/members/agents",
             "/members/endpoints",
@@ -60,9 +61,9 @@ describe("wizard navigation derives from the step order", () => {
     });
 
     it("walks back in ONBOARDING_STEPS order and stops at the first step", () => {
-        expect(onboardingPrevHref("catalogue")).toBe("/members/identity");
-        expect(onboardingPrevHref("assemblies")).toBe("/members/catalogue");
-        expect(onboardingPrevHref("buyer")).toBe("/members/assemblies");
+        expect(onboardingPrevHref("assemblies")).toBe("/members/identity");
+        expect(onboardingPrevHref("catalogue")).toBe("/members/assemblies");
+        expect(onboardingPrevHref("buyer")).toBe("/members/catalogue");
         expect(onboardingPrevHref("profile")).toBe("/members/identity");
     });
 

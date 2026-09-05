@@ -168,6 +168,12 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.getByRole('button', { name: /\+ MOCK$/ }).click();
         await page.locator('input[name="defaultTokenAddress"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/members\/assemblies/);
+
+        const myRow = page.getByTestId(`seller-assembly-row-${slug}`);
+        await myRow.waitFor({ state: 'visible', timeout: 30000 });
+        await myRow.locator('input[type="checkbox"]').first().check();
+        await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/catalogue/);
 
         // The item + its physical facts. The dim/mass/volume inputs are the P1 floor
@@ -179,12 +185,6 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.locator('[id^="item-"][id$="-length"]').first().fill(String(LENGTH_MM));
         await page.locator('[id^="item-"][id$="-width"]').first().fill(String(WIDTH_MM));
         await page.locator('[id^="item-"][id$="-height"]').first().fill(String(HEIGHT_MM));
-        await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/members\/assemblies/);
-
-        const myRow = page.getByTestId(`seller-assembly-row-${slug}`);
-        await myRow.waitFor({ state: 'visible', timeout: 30000 });
-        await myRow.locator('input[type="checkbox"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/buyer/);
         await page.getByRole('button', { name: /^Next/ }).click();
