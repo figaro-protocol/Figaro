@@ -1588,7 +1588,15 @@ const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl
 
 A reference policy for the live public deployment ships at
 `deployments/signer-policy.11155111.json`, generated from the deployment record and the SDK ABIs — addresses and selectors are derived, never
-hand-typed. The host-shaped half (the sandbox wrapper carrying the policy's
+hand-typed. A local run derives its own from that run's deployment record — the
+same selectors paired by record key, that run's addresses, token, chain id, RPC,
+and egress (`sdk/scripts/signer-policy-from-record.mjs`):
+
+```bash
+node sdk/scripts/signer-policy-from-record.mjs .deployments/local.json > .deployments/signer-policy.31337.json
+```
+
+The host-shaped half (the sandbox wrapper carrying the policy's
 `egress` allowlist) lives beside the agent prompts, not in this package.
 
 ## Projection: from Composed Clauses to the Hashed Agreement
