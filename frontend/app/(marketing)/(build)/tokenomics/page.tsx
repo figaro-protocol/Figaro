@@ -65,7 +65,7 @@ export default function Tokenomics() {
                                 <td className="py-2 pr-4">Founders</td>
                                 <td className="py-2 pr-4">7%</td>
                                 <td className="py-2 pr-4">70,000,000</td>
-                                <td className="py-2">Genesis mint: retroactive financing for the design work already done. No ownership interest, no vote, no influence over any trade or registry. No vesting, no lockup.</td>
+                                <td className="py-2">Genesis mint: retroactive financing for the design work already done. No rights of any kind &mdash; no ownership interest, no influence, no vote, no claim on what others produce. No vesting, no lockup.</td>
                             </tr>
                             <tr className="border-b border-default">
                                 <td className="py-2 pr-4">Supporters</td>
@@ -89,7 +89,7 @@ export default function Tokenomics() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The founders&apos; and supporters&apos; florins are retroactive financing, the same mechanism as the 600 million reserve at an earlier date: paid for work already done, and worth something only if the network is used and designers keep adding clauses and assemblies. They carry no ownership interest in the protocol and no influence over it &mdash; no vote reaches a trade, a registry, or the kernel, and nothing on this page is a stake in anyone&apos;s enterprise.
+                    A florin is a Schelling point: a unit strangers converge on because others do, and nothing else. It carries no rights of any kind &mdash; no ownership interest in the protocol, no influence over it, no vote, and no claim on the value produced by the work of others. That is as true of the founders&apos; and supporters&apos; florins as of any other: they recognise design work done before the token existed, nobody bought them, and they are worth something only if the network is used and designers keep adding clauses and assemblies. What a florin is, and why it is not a security, is argued once, in <Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">The Florin: A Schelling-Point Token</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Nothing here was sold. There was no sale, no round, and no offer of any kind &mdash; the genesis holdings simply sit in their wallets, which is also why there is no vesting to describe. A vesting cliff exists to protect investors from founders walking away, and there are no investors; adding one would be theater, and it would recruit holders whose reason for holding is a schedule rather than agreement with what is being built.

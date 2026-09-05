@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Core — Figaro Protocol",
     description:
-        "Three smart contracts, no owner. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. The only cost is gas.",
+        "Three smart contracts, no owner. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. The only charge is gas; the bonds are refunded when the buyer resolves.",
 });
 
 // THE CORE DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function CoreDoor() {
                 title="Figaro Core: a self-enforcing trade kernel"
                 lead={
                     <>
-                        Three smart contracts, no owner. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. The only cost is gas.
+                        Three smart contracts, no owner. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. The only charge is gas; the bonds are refunded when the buyer resolves.
                     </>
                 }
             />

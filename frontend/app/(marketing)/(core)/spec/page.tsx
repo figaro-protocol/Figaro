@@ -706,7 +706,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 70M founders + 30M supporters (genesis; retroactive financing for work already done &mdash; no ownership interest, no governance right), 300M DAO (genesis), 600M designer rewards to the designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 70M founders + 30M supporters (genesis; retroactive financing for work already done &mdash; a florin carries no rights of any kind: no ownership interest, no influence, no vote, no claim on what others produce), 300M DAO (genesis), 600M designer rewards to the designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 

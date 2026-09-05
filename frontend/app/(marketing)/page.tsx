@@ -19,7 +19,7 @@ export const metadata: Metadata = withOg({
 // THE PROPOSITION is the maintainer's, sentence for sentence, in the lexicon's
 // nouns; the hero carries its first half, the blocks the rest.
 const PROPOSITION: string[] = [
-    "No bank, platform, court, lawyer, or company is needed to enforce the trade. The only cost is gas.",
+    "No bank, platform, court, lawyer, boss, or company is needed to enforce the trade. The only charge is gas; the bonds are refunded when the buyer resolves.",
     "The seller receives the whole payment. Nobody takes a cut.",
     "The buyer and the seller keep their own data, the trail of every trade they made, and their own agreements.",
     "Anyone with a wallet can trade.",

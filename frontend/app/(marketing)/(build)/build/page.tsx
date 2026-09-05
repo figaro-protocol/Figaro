@@ -58,7 +58,7 @@ export default function BuildDoor() {
             </MarketingSection>
             <MarketingSection title="Get paid.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    The florin is the protocol&apos;s own ERC-20 token: a unit strangers with no token in common can meet in, with no yield, no vote over trades, and no fee. Every resolved trade is counted once against each clause and assembly it carried, and 600 million florins of a fixed 1 billion pay designers pro rata over nine annual periods. No tag, no weighting, no cap. A DAO holds 300 million more for work the counter cannot see, and 100 million went at genesis to the founders and supporters as retroactive financing for the work already done &mdash; no ownership interest, no influence. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
+                    The florin is the protocol&apos;s own ERC-20 token: a unit strangers with no token in common can meet in, with no yield, no vote over trades, and no fee. Every resolved trade is counted once against each clause and assembly it carried, and 600 million florins of a fixed 1 billion pay designers pro rata over nine annual periods. No tag, no weighting, no cap. A DAO holds 300 million more for work the counter cannot see, and 100 million went at genesis to the founders and supporters as retroactive financing for the work already done &mdash; a florin is a Schelling point and carries no rights of any kind. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
                 </p>
             </MarketingSection>
             <MarketingSection bottomPad="wide">
