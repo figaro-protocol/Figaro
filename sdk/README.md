@@ -203,11 +203,12 @@ mechanism's uniformity across actors is exactly this call.
 
 **Two things bite here. Both are silent.**
 
-*The two `processId`s.* `resolveProcess(bytes32 processId, Commitment[]
-commitments)` takes **two different ids that share a name**, and they are not
-interchangeable: the ARGUMENT is the kernel's DERIVED process id (the storage
-key it looks the process up by), while every struct INSIDE `commitments` must be
-the one the parties SIGNED — and a root order signed `processId = 0`. The kernel
+*The two `processId`s — the DERIVED id and the SIGNED id.* `resolveProcess(bytes32
+processId, Commitment[] commitments)` takes **two different ids that share a
+name**, and they are not interchangeable: the ARGUMENT is the DERIVED id — the
+kernel's storage key, the one `OrderCommitted` carries — while every struct
+INSIDE `commitments` must carry the SIGNED id, the one the parties put under
+their signatures — and a root order signed `processId = 0`. The kernel
 recomputes `keccak256(processId ‖ hashStruct(c))` from both
 (`src/kernel/FigaroCore.sol:280-285`), so putting the derived id inside the root
 struct — the natural move, since that is what `OrderCommitted` carries and what

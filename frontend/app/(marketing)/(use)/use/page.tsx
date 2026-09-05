@@ -52,7 +52,7 @@ export default function UseDoor() {
             </MarketingSection>
             <MarketingSection title="Your books, already kept.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Every trade leaves a balance sheet, an income statement, and an audit bundle. Invoices, emissions, and evidence for a court come out of the trade itself. <Link href="/audit" className="text-ink-heading font-medium hover:underline">Audit</Link>
+                    Every trade leaves a balance sheet, an income statement, and an audit bundle for its own books. Invoices, emissions, and evidence for a court come out of the trade itself. <Link href="/audit" className="text-ink-heading font-medium hover:underline">Audit</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Your agent, if you want one.">
@@ -67,7 +67,7 @@ export default function UseDoor() {
             </MarketingSection>
             <MarketingSection bottomPad="wide">
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                    Not yet audited by an outside firm. The code is checked six independent ways on every commit. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
+                    The code is not yet audited by an outside firm. It is checked six independent ways on every commit. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
                 </p>
             </MarketingSection>
         </>

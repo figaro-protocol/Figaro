@@ -38,7 +38,7 @@ export default function DesignerRewards() {
                     <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the smart contract itself.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed mt-6">
-                    The two conditions in the lead are one guard, read from both ends: three distinct sellers is the smallest signal a single person cannot stage alone, and a live stake required of designer and seller alike means padding a tally costs real stake for as long as the padding stands.
+                    The two conditions in the lead are one guard, read from both ends: three distinct sellers is the smallest signal a single person cannot stage alone, and a live stake required of designer and seller alike means farming the count &mdash; padding a tally with wallets you control &mdash; costs real stake for as long as the padding stands. That stake is what stops reward farming; no cap, weight, or reviewer is needed.
                 </p>
                 <RpgfValueLoopFigure />
                 <p className="text-base text-ink-body leading-relaxed mt-6">
@@ -48,7 +48,7 @@ export default function DesignerRewards() {
 
             <MarketingSection title="Where the other 400 million sits." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
-                    The florin&apos;s supply is fixed at a billion, and this reserve is 600 million of it. 300 million sit in the <Link href="/dao" className="text-ink-heading font-medium hover:underline">DAO&apos;s treasury</Link>, spent by human judgment &mdash; a one-time grant to the human layer, a different object from the use-paid reserve above. 100 million went to the founders and early supporters &mdash; 70 and 30 respectively. The whole split is readable on the chain.
+                    The florin&apos;s supply is fixed at a billion, and this reserve is 600 million of it. 300 million sit in the <Link href="/dao" className="text-ink-heading font-medium hover:underline">DAO&apos;s treasury</Link>, spent by human judgment &mdash; a one-time grant to the human layer, a different object from the use-paid reserve above. 100 million went at genesis to the founders and early supporters &mdash; 70 and 30 respectively &mdash; as retroactive financing for the work already done: the same mechanism as this reserve at an earlier date, carrying no ownership interest and no influence over any trade or registry. The whole split is readable on the chain.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-5">
                     The token these rewards are paid in &mdash; the supply and the latch that closes it, and each holding&apos;s terms &mdash; is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>.

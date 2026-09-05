@@ -28,6 +28,12 @@ export function Footer() {
                         MIT license
                     </a>
                     <Link
+                        href="/about"
+                        className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
+                    >
+                        Who is behind this
+                    </Link>
+                    <Link
                         href="/security"
                         className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                     >

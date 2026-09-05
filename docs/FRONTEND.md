@@ -23,6 +23,7 @@ protocol object. Marketing-tier reads reach on-chain state through the standalon
 | `(research)` | `/research`, `/working-groups`, `/working-groups/for/[tag]`, `/working-groups/on/[tag]` | The Research door leads to Working Groups. `/papers/<slug>` is reached through Working Groups — the corpus has ONE surface, and no papers index. The two `[tag]` routes are the reader's index into that surface, derived from each paper's `industries` (`for`) and `keywords` (`on`) in `frontend/app/(marketing)/_lib/paperGroups.ts`. |
 | `(data)` | `/data`, `/data/yours`, `/attestations` | The Data door: the data a trade leaves. Audit and the data explorer, in `(app)`, are admitted under it. |
 | `(agents)` | `/agents`, `/agents/how` | The Agents door: agents are participants, not a feature; the door leads to the agents' own surface (`ecosystem-agents/`, the signer, the machine-readable index). |
+| `(reference)` | `/about` | Footer chrome, never nav: who is behind Figaro, answered without a name (pseudonymous by design). |
 
 **No audience-carve hub.** An audience's payloads belong on the object pages themselves. Sections are named for what
 a reader does, never for who they are.

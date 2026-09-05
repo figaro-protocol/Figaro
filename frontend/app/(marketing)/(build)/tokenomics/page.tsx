@@ -65,13 +65,13 @@ export default function Tokenomics() {
                                 <td className="py-2 pr-4">Founders</td>
                                 <td className="py-2 pr-4">7%</td>
                                 <td className="py-2 pr-4">70,000,000</td>
-                                <td className="py-2">Genesis mint. No vesting, no lockup.</td>
+                                <td className="py-2">Genesis mint: retroactive financing for the design work already done. No ownership interest, no vote, no influence over any trade or registry. No vesting, no lockup.</td>
                             </tr>
                             <tr className="border-b border-default">
                                 <td className="py-2 pr-4">Supporters</td>
                                 <td className="py-2 pr-4">3%</td>
                                 <td className="py-2 pr-4">30,000,000</td>
-                                <td className="py-2">Friends, family, early supporters &mdash; carved out of the founders&apos; share, not the DAO&apos;s. Genesis mint. No vesting, no lockup.</td>
+                                <td className="py-2">Friends, family, early supporters &mdash; carved out of the founders&apos; share, not the DAO&apos;s. Genesis mint, on the same terms: retroactive financing, no ownership interest, no influence. No vesting, no lockup.</td>
                             </tr>
                             <tr className="border-b border-default">
                                 <td className="py-2 pr-4">DAO</td>
@@ -88,6 +88,9 @@ export default function Tokenomics() {
                         </tbody>
                     </table>
                 </div>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The founders&apos; and supporters&apos; florins are retroactive financing, the same mechanism as the 600 million reserve at an earlier date: paid for work already done, and worth something only if the network is used and designers keep adding clauses and assemblies. They carry no ownership interest in the protocol and no influence over it &mdash; no vote reaches a trade, a registry, or the kernel, and nothing on this page is a stake in anyone&apos;s enterprise.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Nothing here was sold. There was no sale, no round, and no offer of any kind &mdash; the genesis holdings simply sit in their wallets, which is also why there is no vesting to describe. A vesting cliff exists to protect investors from founders walking away, and there are no investors; adding one would be theater, and it would recruit holders whose reason for holding is a schedule rather than agreement with what is being built.
                 </p>

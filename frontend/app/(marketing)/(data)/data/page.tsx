@@ -31,7 +31,7 @@ export default function DataDoor() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
                     <p className="text-sm text-ink-body leading-relaxed">The map: every resolved trade, readable by anyone, no wallet, no account.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">Your books: each trade closes its own period; the balance sheet and the audit bundle come out of the trade itself.</p>
+                    <p className="text-sm text-ink-body leading-relaxed">Your books: each trade closes its own period; its balance sheet and its own audit bundle come out of the trade itself.</p>
                     <p className="text-sm text-ink-body leading-relaxed">Your evidence: signed attestations any forum or court reads, with the fingerprint that ties them to the trade.</p>
                 </div>
             </section>
@@ -47,7 +47,7 @@ export default function DataDoor() {
             </MarketingSection>
             <MarketingSection title="For your books and your taxes.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A trade is its own accounting entity: nothing is accrued, nothing is estimated, and the buyer&apos;s resolution is the closing entry. The fields an e-invoice needs, parties, date, lines, net amount, read off the data; the protocol files nothing and emits no invoice for you. <Link href="/audit" className="text-ink-heading font-medium hover:underline">Audit</Link>
+                    A trade is its own accounting entity: nothing is accrued, nothing is estimated, and the buyer&apos;s resolution is the closing entry. The fields an e-invoice needs, parties, date, lines, net amount, read off the data; the protocol files nothing and emits no invoice for you. <Link href="/audit" className="text-ink-heading font-medium hover:underline">Audit a trade</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="For a market.">

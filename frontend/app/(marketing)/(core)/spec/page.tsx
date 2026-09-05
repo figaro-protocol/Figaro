@@ -706,7 +706,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M designer rewards to the designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 70M founders + 30M supporters (genesis; retroactive financing for work already done &mdash; no ownership interest, no governance right), 300M DAO (genesis), 600M designer rewards to the designers of record (RpgfMinter &mdash; registered at genesis; nine annual accrual periods, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). Schedule and formula: <Link href="/rpgf" className="underline">RPGF</Link>. See also <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 
@@ -803,6 +803,9 @@ function attestViaResolver(
                         </tbody>
                     </table>
                 </div>
+                <p className="text-xs text-ink-muted mt-3">
+                    The addresses below are the committed public record&apos;s, for the chain id in its row. A local run of the chain (31337) reads its own record from its environment; the addresses that run hands you are that run&apos;s and never appear here.
+                </p>
                 {deployRecord && (
                     <div className="overflow-x-auto -mx-6 px-6 mt-4">
                         <p className="text-xs text-ink-muted mb-2">
