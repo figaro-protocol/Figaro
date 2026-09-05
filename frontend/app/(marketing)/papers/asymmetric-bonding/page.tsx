@@ -59,7 +59,7 @@ export default function AsymmetricBondingPaper() {
                 <>
                     <li>Asgaonkar, A. &amp; Krishnamachari, B. Solving the Buyer and Seller&rsquo;s Dilemma: A Dual-Deposit Escrow Smart Contract for Provably Cheat-Proof Delivery and Payment for a Digital Good without a Trusted Mediator. In <em>Proc. IEEE International Conference on Blockchain and Cryptocurrency (ICBC)</em>, 2019.</li>
                     <li>Carlsson, H. &amp; van Damme, E. Global Games and Equilibrium Selection. <em>Econometrica</em>, 61(5):989&ndash;1018, 1993.</li>
-                    <li>Cuende, L. &amp; Izquierdo, J. <em>Aragon Network: A Decentralized Infrastructure for Value Exchange</em>. Aragon White Paper, 2017.</li>
+                    <li>Cuende, L. &amp; Izquierdo, J. <em>Aragon Network: A Decentralized Infrastructure for Value Exchange</em>. Aragon White Paper, 2017. https://github.com/aragon/whitepaper (accessed 5 September 2026).</li>
                     <li>Ghatak, M. Group Lending, Local Information and Peer Selection. <em>Journal of Development Economics</em>, 60(1):27&ndash;50, 1999.</li>
                     <li>Harsanyi, J. C. &amp; Selten, R. <em>A General Theory of Equilibrium Selection in Games</em>. MIT Press, Cambridge, MA, 1988.</li>
                     <li>Hirshleifer, J. From Weakest-Link to Best-Shot: The Voluntary Provision of Public Goods. <em>Public Choice</em>, 41(3):371&ndash;386, 1983.</li>
@@ -67,18 +67,18 @@ export default function AsymmetricBondingPaper() {
                     <li>McKelvey, R. D. &amp; Palfrey, T. R. Quantal Response Equilibria for Normal Form Games. <em>Games and Economic Behavior</em>, 10(1):6&ndash;38, 1995.</li>
                     <li>Myerson, R. B. Incentive Compatibility and the Bargaining Problem. <em>Econometrica</em>, 47(1):61&ndash;73, 1979.</li>
                     <li>Nakamoto, S., aceat64, &amp; ribuck. Escrow. <em>Bitcointalk</em> forum topic 750, August 7&ndash;11, 2010; messages 8140 (Nakamoto, August 7), 8213 (aceat64, August 8), 8734 and 8742 (ribuck, August 11). https://bitcointalk.org/index.php?topic=750.0</li>
-                    <li>NashX. Peer-to-peer trading platform: About and FAQ pages. nashx.com, 2013; Internet Archive snapshot, December 21, 2014.</li>
-                    <li>Optimism Foundation. <em>Optimistic Rollups</em>. Optimism Technical Documentation, 2021.</li>
-                    <li>Particl Project. Two-Party Escrow. In <em>Particl Academy</em> documentation, 2018&ndash;2026.</li>
+                    <li>NashX. Peer-to-peer trading platform: About and FAQ pages. nashx.com, 2013, archived by the Internet Archive: About, December 31, 2014, https://web.archive.org/web/20141231001536/http://nashx.com/About (the passage quoted); FAQ, December 21, 2014, https://web.archive.org/web/20141221035456/http://nashx.com/FAQ.</li>
+                    <li>Optimism Foundation. <em>Optimistic Rollups</em>. Optimism Technical Documentation, 2021. https://docs.optimism.io/ (a living document; accessed 5 September 2026).</li>
+                    <li>Particl Project. Two-Party Escrow. In <em>Particl Academy</em> documentation, 2018&ndash;2026. https://academy.particl.io/en/latest/particl-marketplace/marketplace_escrow.html (a living document; accessed 5 September 2026).</li>
                     <li>Poon, J. &amp; Dryja, T. <em>The Bitcoin Lightning Network: Scalable Off-Chain Instant Payments</em>. Technical report, 2016.</li>
-                    <li>Raiden Network. <em>Raiden Network: Fast, Cheap, Scalable Token Transfers for Ethereum</em>. Raiden Network Token Whitepaper, 2017.</li>
-                    <li>Solidity Team. Safe Remote Purchase. In <em>Solidity Documentation &mdash; Solidity by Example</em>, 2015.</li>
+                    <li>Raiden Network. <em>Raiden Network: Fast, Cheap, Scalable Token Transfers for Ethereum</em>. Raiden Network Token Whitepaper, 2017, cited from the 2017 token distribution.</li>
+                    <li>Solidity Team. Safe Remote Purchase. In <em>Solidity Documentation &mdash; Solidity by Example</em>, 2015. Version 0.8.26: https://docs.soliditylang.org/en/v0.8.26/solidity-by-example.html#safe-remote-purchase (accessed 5 September 2026).</li>
                     <li>Stiglitz, J. E. Peer Monitoring and Credit Markets. <em>World Bank Economic Review</em>, 4(3):351&ndash;366, 1990.</li>
-                    <li>UMA Project. <em>The Optimistic Oracle</em>. UMA Technical Documentation, 2020.</li>
+                    <li>UMA Project. <em>The Optimistic Oracle</em>. UMA Technical Documentation, 2020. https://docs.umaproject.org/ (a living document; accessed 5 September 2026).</li>
                     <li>Van Huyck, J. B., Battalio, R. C., &amp; Beil, R. O. Tacit Coordination Games, Strategic Uncertainty, and Coordination Failure. <em>American Economic Review</em>, 80(1):234&ndash;248, 1990.</li>
                     <li>Williamson, O. E. Credible Commitments: Using Hostages to Support Exchange. <em>American Economic Review</em>, 73(4):519&ndash;540, 1983.</li>
                     <li>Yunus, M. <em>Banker to the Poor: Micro-Lending and the Battle Against World Poverty</em>. PublicAffairs, New York, 1999.</li>
-                    <li>Zimbeck, D. <em>Two-Party Double-Deposit Trustless Escrow in Cryptographic Networks and Bitcoin</em>. BitHalo White Paper, 2014.</li>
+                    <li>Zimbeck, D. <em>Two-Party Double-Deposit Trustless Escrow in Cryptographic Networks and Bitcoin</em>. BitHalo White Paper, 2014. https://bithalo.org/whitepaper_twosided.pdf (accessed 5 September 2026).</li>
                 </>
             }
         >
