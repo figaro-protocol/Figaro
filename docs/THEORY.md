@@ -1,11 +1,16 @@
 # Theory — the equilibrium, bound to the kernel
 
-This is the derivation the formal layers check: the payoff table below is the
-kernel's own transfers, and the Lean proof, the TLA+ models, and the Certora
-rules named in `VERIFICATION_MAP.md` reason over exactly these amounts. The
-asymmetric-bonding paper on the site carries the same result in the
-literature's terms; this file carries it in the code's. `VISION.md` says why
-the mechanism matters; `CONTRACTS.md` describes the contract surface.
+The theorem and its proof are the asymmetric-bonding paper's
+(`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`, served at
+`/papers/asymmetric-bonding`); it is stated once, there. This file carries what
+binds that theorem to the code: which transfers the kernel makes, which figures
+the comparisons are made over, and which of the kernel's rules each step of the
+argument rests on. The figures themselves live once, in
+`sdk/src/equilibrium.json`; the Lean proof, the TLA+ models, and the Certora
+rules named in `VERIFICATION_MAP.md` reason over exactly those amounts, and
+`scripts/lint-equilibrium-owner.sh` fails a commit on which any of these
+surfaces disagrees with the module. `VISION.md` says why the mechanism matters;
+`CONTRACTS.md` describes the contract surface.
 
 ## The two mechanisms
 
@@ -80,121 +85,45 @@ the cargo but cannot retain a delivery it never made. The right-hand column
 holds no resolutions: those are open positions the kernel has no operation to
 convert into anything.
 
-### The equilibrium, in two composing steps
+### The theorem, and what the kernel supplies to it
 
-- **(a) Resolve.** At any buyer node *after performance*, the buyer strictly
-  prefers to resolve. It holds the delivery either way, so the branches differ
-  only in the kernel's transfers: resolving refunds the bond less the payment,
-  `−2P + P + P = 0`; never resolving leaves the bond deposited, `−2P + P = −P`.
-  The withheld payment is not kept by the buyer — it sits inside the buyer's
-  own bond, out of reach of both parties — which is why withholding buys the
-  buyer nothing at all. **This comparison needs no assumption whatever about
-  the seller**: the seller's conduct is already fixed at that node.
-- **(b) Perform.** Given (a), at any seller node performance is the seller's
-  strict best response: `+P` for performing and being resolved, against at
-  best `−2G + G = −G` for holding out — twice the value through its order
-  deposited, the value itself credited back to it. The margin is `P + G > 0`,
-  and it widens with every payment accumulated ahead of the seller.
-- **(c) Withhold before performance.** Given (b), at a buyer node where
-  performance has not occurred the buyer strictly prefers to keep the process
-  open — its continuation is `0` — over resolving at once, which is terminal at
-  `−P`: paying for a product it does not have and foreclosing the only
-  continuation on which the product could still arrive.
+The paper's Theorem 1 has three comparisons and one structure. **(a)** After
+performance the buyer strictly prefers resolving, `0`, to never resolving,
+`−P`, and needs no assumption about the seller: the two branches differ only
+in the kernel's transfers, and the withheld payment sits inside the buyer's
+own bond, out of reach of both parties. **(b)** Given (a) and the buyer's
+plan — resolve once performance has occurred and not before — the seller
+strictly prefers performing, `+P`, to never performing, at most `−G`; the
+margin is the gap `Δ = P + G ≥ 2P`. **(c)** Given (b), before performance the
+buyer keeps the process open rather than resolving at once, which is terminal
+at `−P`. (b) and (c) are the two parties' best-response checks against one
+profile, verified jointly — a fixed point, which is what an equilibrium is; (a)
+is the one unconditional anchor. On a process that will not close, a seller's
+holding out beats performing strictly only when it retains something (`r > 0`)
+and equals it at `r = 0`. The paper proves each part, states what the result is
+not (not a dominance result; conditional on the seller's side throughout),
+and treats the second equilibrium, robustness, and the co-seller game.
 
-The profile — the seller performs; the buyer resolves once performance has
-occurred and not before — therefore has each party choosing a strictly better
-continuation at every one of its nodes, and its outcome `(0, +P)` is the
-buyer's unique maximum over all four outcomes. Every deviation that changes
-the outcome is strictly worse for the party making it.
+What the kernel supplies to each step is the binding this file owns:
 
-### What the result is not
-
-It is **not a dominance result** and must not be restated as one. *Resolve
-regardless* is a plan the kernel admits, and against a seller that will never
-perform it is better for the buyer than holding the position open; what is
-unconditional is the narrower claim (a) — *after performance*, resolving beats
-never resolving, whatever the seller is like. The seller's side is
-conditional throughout: no bond schedule can make handing goods to a party
-that will not pay attractive. What carries the equilibrium is therefore not
-that each party separately finds cooperation dominant, but that **the two
-calls compose in a definite order** — resolve's design gives the buyer an
-unconditional reason to close after performance, and only because that is
-fixed is performance strictly best for the seller. A buyer that resolves
-without regard to performance has not been failed by the mechanism; it has
-declined to use it, and what it loses is bounded by exactly what it agreed to
-pay.
-
-### Deterrence with content
-
-The deterrent holding all of this in place is mutual assured destruction, and
-the doubled schedule is what gives it content. The content is *not* that the
-two parties lose equal amounts — they do not, and an accounting that says so
-is counting only what the kernel holds. It is that defection leaves
-**whichever party holds the value** out of pocket, at every order, *after*
-crediting that party with what it keeps. A seller that walks off with the
-product is credited the product, worth at most `G`, and still stands at best
-at `−G` against the `+P` it declined. A buyer that keeps the delivery and
-never resolves is credited the delivery, worth `P`, and still stands at `−P`
-against the `0` it declined. Neither can reach the frozen payment; neither is
-repaid by what it took.
-
-### Why the standoff ends in performance
-
-Nothing in the kernel ever executes the destruction: no operation consumes a
-bond, and an unresolved position is simply held — a standing position, not a
-loss taken. That is why the threat resolves into performance rather than into
-loss, and the asymmetry of the schedule is what decides which way. While the
-standoff runs the buyer has `2P` deposited and the seller `2G` with `G ≥ P`,
-so the seller stands in at least as much and strictly more at every position
-past the root; and of the two, only the seller holds the move that ends the
-standoff on terms it prefers — perform, after which the buyer's own comparison
-(a) closes the process, trading a position of at best `−G` for `+P`.
-
-Where the seller *cannot* perform, the move that ends its exposure is the
-**remedy, agreed before resolution**. Concretely: the failing seller sends the
-buyer the payment it stands to receive and makes good whatever of the buyer's
-its failure left in its hands. The buyer, whole, resolves. At resolution the
-seller is refunded its bond and paid the payment, having already paid that
-payment away — it ends at zero, its failure earning it exactly nothing, and
-zero is better than `−G` by the whole value through its order. Where the
-remedy is refused, an outside forum may rule on the open process (below) —
-still before any resolution, and with no power to resolve in the buyer's
-place. Where a party neither performs nor remedies nor answers a ruling, the
-position simply stands: both bonds deposited, the seller at best at `−G`, the
-data marking an undertaking never closed. That is the irrational residue
-every system carries — the deterrent working, not a case the buyer solves by
-paying the party that failed.
-
-### Robustness to weaker rationality
-
-Each comparison above (`+P` against at best `−G` for the seller; `0` against
-`−P` for the buyer) is preserved under any strictly monotone utility
-transformation, so the results hold for any preference order that prefers
-more to less — including arbitrary risk-averse and loss-averse
-specifications. The seller's gap `P + G` is bounded away from zero, so a
-trembling-hand perturbation does not overturn the cooperative profile, and in
-a process the gap widens with every payment accumulated ahead of the seller.
-What remains outside the analysis is behaviour under non-pecuniary preferences
-(spite, fairness norms, an intrinsic taste for defection) and any valuation of
-the captured product other than the one both parties signed.
-
-### The proof form is itself a design property
-
-The form of the argument above was chosen, not merely found, and the choice is
-part of the design. A statement of this equilibrium could lean on iterated
-elimination of weakly dominated strategies: cooperation is never worse and
-sometimes better, so eliminate defection for both players and one profile
-survives. That form is mathematically respectable and behaviourally
-implausible — the level-k literature finds most participants reasoning at one
-or two steps, so a guarantee that needs the full iteration is a guarantee real
-participants cannot check. The form used here asks for something far smaller:
-at each node one party compares two certain amounts, and the two comparisons
-compose in a stated order. A buyer who can see that `0` beats `−P`, and a
-seller who can see that `+P` beats `−G`, have between them verified the whole
-result. A protocol whose central claim is that anyone can check what a
-platform merely asks them to believe should not rest that claim on a proof
-only a game theorist can follow — the equilibrium's legibility is the same
-property the rest of the design is built for.
+- **(a)** rests on `resolveProcess` refunding the buyer's bond less exactly the
+  payment (`buyerPayout = c.payment` below) and on there being no operation that
+  consumes a bond — an unresolved position is held, never taken.
+- **(b)** rests on the seller's bond being pulled at `2G`, exactly
+  (`_pullExact`), against a retention the kernel can neither see nor recover,
+  and on resolution paying the seller `2G + P` and nothing else.
+- **(c)** rests on resolution being terminal and atomic: a resolved process
+  cannot be extended (`ProcessAlreadyResolved`), and no partial resolution
+  exists.
+- The **standoff** rests on the absence of a clock: no timeout, no
+  cancellation, no third call, so a failed profile is never banked and every
+  comparison is between doing and never doing.
+- The **remedy before resolution** rests on the same two primitives: a failing
+  seller sends the buyer the payment it stands to receive and makes good what
+  it holds; at resolution it is refunded its bond and paid the payment it has
+  already paid away, ending at zero — better than `−G` by the whole value
+  through its order. A compensating transfer on other terms is itself a
+  commitment, bonded under the same schedule.
 
 ## Cumulative Bonding
 
@@ -246,46 +175,19 @@ resolved until the shipper resolves. The haulier's exposure to the broker's
 holding out is `P + 2G = 10 + 20 = 30`, readable from the chain — which is why
 the haulier has a bonded interest in the broker curing.
 
-### What the Doubling Does
+### What the doubling does
 
-The doubled schedule is constitutive, in the same way that buyer dominance and
-atomic resolution are: it is an invariant of the mechanism, not a parameter it
-exposes. There is one schedule, applied to every order at every position —
-twice the payment from the buyer, twice the cumulative value through its own
-order from the seller. The kernel carries no other, exposes no setting, and
-admits no order bonded on different terms. What follows is therefore an
-account of what the schedule *achieves*, not a derivation of it from something
-prior, there being nothing prior to derive it from.
-
-What it achieves is answering **retention**. A defector does not walk away
-empty: it walks away holding the value through its order, off-chain, where
-the kernel can neither see it nor recover it. A bond equal to that value would
-be exactly offset by what the defector keeps, leaving the taking free. The
-second half of each bond *is* the retained value, and it is what makes the
-taking cost — differently on the two sides, which is why they are stated
-apart:
-
-- **Seller side.** Holding out leaves the seller credited at most `G` against
-  a deposited `2G`: at best `−G`, against the `+P` it declined. Retention can
-  halve the seller's exposure; it can never cancel it. That surviving exposure
-  is what gives the buyer's withholding its force and makes the co-seller
-  interest below a real one.
-- **Buyer side.** Withholding after delivery leaves the buyer credited `P`
-  against a deposited `2P`: `−P`, against the `0` that closing would give it.
-  Here the second half supplies the *whole* of the comparison — a bond equal
-  to the payment would be cancelled outright by the goods the buyer holds,
-  leaving it indifferent between resolving and not.
-
-On the buyer's side the doubling **creates** the comparison; on the seller's
-side it **preserves** an exposure that would otherwise vanish. Both are aimed
-at value the kernel can neither see nor reach, which is the only reason a
-contract that holds nothing but tokens can discipline the passage of goods at
-all.
-
-Splitting an order into smaller ones changes nothing: the schedule is keyed to
-the accumulator, not to the order's own payment, so the later part is bonded
-against the same accumulated total and the exposure through that position is
-unchanged.
+The doubled schedule is an invariant of the mechanism, not a parameter it
+exposes: one schedule, applied to every order at every position, no setting,
+no order bonded on other terms. The paper derives what it achieves — the
+second half of each bond is the retained value, which makes the taking cost on
+both sides — and the two sides are stated apart there (§ "The second half of
+the bond"). What the kernel supplies is the exactness: `commit` admits one
+cumulative value per commitment and refuses every other declaration
+(`CumulativeValueMismatch`), so the bond base is fixed by arithmetic before
+anything is deposited. Splitting an order into smaller ones changes nothing:
+the schedule keys to the accumulator, so the later part is bonded against the
+same accumulated total.
 
 ## What resolution moves
 
@@ -317,109 +219,33 @@ Every token that entered as a bond leaves to one of the two parties — nothing
 is retained, and there is no third recipient. The kernel never holds a
 withdrawable balance.
 
-## At N parties: scaling is the schedule's own work
+## At N parties
 
 Scaling to N parties is asymmetric bonding's work — each seller bonding the
-cumulative value through its own order — and buyer dominance then coordinates
-the process the schedule has already secured. The credit for reaching N
-parties belongs to the bond schedule, not to the resolution rule. Atomic
-resolution's contribution is a different one, taken up below — it closes the
-process from one signature and induces a weakest-link game among sellers,
-neither of which is a scaling result.
-
-**Why a per-order bond fails at depth.** Bond each seller on its own payment
-alone and the broker in the example deposits 4 while holding cargo worth 12;
-credit the retention and holding out pays `−4 + 12 = +8`. The deterrent
-survives at the root and evaporates at depth. Keyed to the accumulator, the
-broker deposits 24 against the same 12, and holding out stands at −12.
-
-### The comparison at position i
-
-```
-Seller bonds:  Bᵢ = 2×Gᵢ
-Seller earns:  Eᵢ = Pᵢ
-
-Performing, then resolution:   +Pᵢ             payment earned, bond refunded
-Holding out, no resolution:    −2×Gᵢ + rᵢ      rᵢ ≤ Gᵢ is what it can
-                                               actually retain off-chain
-                             ≤ −Gᵢ             at maximal retention
-
-Given that the buyer resolves after performance — unconditional, assuming
-nothing about the seller — performing is the seller's strict best response at
-every position. The gap is
-
-  Δᵢ = Pᵢ + Gᵢ ≥ 2×Pᵢ
-
-equal to 2×Pᵢ only at the root, wider with every payment accumulated ahead of
-the seller, and wider again wherever the seller cannot retain the whole
-accumulated value.
-```
-
-**Not dominance-solvable on the seller side.** The conclusion is conditional
-and must stay so. Where some *other* seller has held out and the process is
-not going to close, `Sᵢ`'s own holding out is strictly better for it than
-performing: performing costs it bond and product together, `−2Gᵢ`, against
-`−2Gᵢ + rᵢ` for keeping what it holds. No bond schedule can make handing goods
-to a party that will not pay attractive. What recommends the cooperative
-profile to each seller is that it is strictly better **provided the others
-perform** — the weakest-link structure below — and what makes that proviso
-credible is that a failed profile is never banked: no clock runs from the
-bonded state, so the process does not fail, it stays open until it closes, and
-every party in it, the holdout included, strictly prefers the closing to the
-position it holds.
-
-This is not a second game but the same equilibrium at every position, produced
-by the same schedule. Nothing new is assumed, no second mechanism is invoked,
-and the bilateral result is not patched — the bond base keys to the
-accumulator instead of to the local payment, and every comparison above
-carries through. Treating a process as "several two-party games" misses what
-holds it: each position stands in a different amount, and that asymmetry, not
-any coordination rule, preserves the deterrent at depth.
+cumulative value through its own order — and buyer dominance coordinates the
+process the schedule has already secured; the credit for reaching N belongs to
+the schedule, not to the resolution rule. The paper's Lemma 1 and Theorem 3
+carry the bilateral comparisons to every position, with the same conditioning
+as Theorem 1, and its Proposition 1 shows why a per-order bond fails at depth
+(the broker in the example above would deposit 4 against cargo worth 12).
+What the kernel supplies is the accumulator itself: exact, monotone, inclusive,
+and checked at every commit, so the bond base at position `i` is `G_i` by
+arithmetic and never by report. The Lean file instantiates the two-party
+inequalities at every position of a chain over that accumulator.
 
 ## The co-seller game
 
-Atomic resolution induces a one-shot weakest-link game among the sellers of a
-process. Nobody is paid until the buyer resolves, so when one seller's work is
-faulty every co-seller's cheapest move is to help put it right, because that
-is the only path back to resolution. The exposure a co-seller that has already
-performed carries on the fault is `Pᵢ + 2Gᵢ`; one that has not yet performed
-still holds what is in its hands, so its exposure has the floor `Pᵢ + Gᵢ` and
-no exact figure. Both are computed from the accumulator alone. The failing
-seller's own best move is to perform, or where it cannot, to make the buyer
-whole and end at zero — either beats standing at `−G` indefinitely with every
-co-seller's position open beside its own.
-
-The parallel is the joint-liability lending literature, and the claim is
-scoped. Figaro reproduces the *coordination-pressure component* of that
-equilibrium — the interest each participant holds in the others' performance
-— requiring none of four assumptions that literature carries:
-
-1. **repeated interaction** — the equilibrium is established within a single
-   process, with no continuation value across processes and no trigger
-   strategies;
-2. **local information among sellers** — the exposure is computed from the
-   accumulator alone. Narrowly: what is reduced is the *existence* of the
-   pressure and the knowledge of its magnitude, not every use the parties may
-   put it to. Acting on a *particular* failure still needs local information —
-   which seller did not perform is knowledge the parties hold and the
-   accumulator does not, performance being off the chain entirely;
-3. **a punishment technology exogenous to the contract** — what a co-seller
-   stands to lose is its own deposited position, held through non-resolution,
-   not imposed by anyone;
-4. **joint-liability contracting** — each bond is deposited individually
-   against that seller's own snapshot, never against a group's aggregate
-   obligation; the coupling comes from atomic resolution, not from the bond
-   structure.
-
-The peer-selection and peer-monitoring results of that literature are **not**
-reproduced: they need structure above the kernel, and nothing here supplies
-it.
-
-Periphery, not mechanism: resolution history is public and permanent, so any
-future counterparty can read how a process resolved — but the protocol keeps
-no score, no reviews, and no blacklist, and the pressure above needs none of
-them. Any feature that resolves orders one at a time would remove this game;
-that is why partial resolution is excluded.
+Atomic resolution induces a one-shot weakest-link game among a process's
+sellers: nobody is paid until the buyer resolves, so when one seller's work is
+faulty every co-seller's cheapest move is to help put it right. The exposure a
+co-seller that has performed carries on the fault is `Pᵢ + 2Gᵢ`, readable from
+the accumulator alone; one that has not yet performed has the floor `Pᵢ + Gᵢ`.
+The paper's Theorem 4 and Proposition 3 state the game and scope the parallel
+to joint-liability lending — the coordination-pressure component reproduced,
+peer selection and monitoring not. What the kernel supplies: resolution is
+atomic (`IncompleteOrderList`), so no order is paid alone — which is why
+partial resolution is excluded — and resolution history is public and
+permanent while the protocol keeps no score, no reviews, and no blacklist.
 
 ## Forums, and terminal acceptance
 
@@ -446,44 +272,18 @@ refunded.
 
 ## Liveness
 
-**Theorem**: a process closes whenever the buyer is satisfied, and no other
-party's conduct can withhold closure from a satisfied buyer.
-
-**Proof**:
-```
-After performance, the buyer's own comparison is 0 (resolve) against −P
-(withhold), and it holds whatever the seller is like. So a satisfied buyer
-resolves because resolving is its better move, not because anything compels
-it.
-
-Before performance, the buyer withholds — resolving is terminal at −P, and it
-forecloses the continuation on which the goods could still arrive.
-Withholding never worsens with time: no clock runs from the bonded state, and
-an unresolved position is a position held, not a loss taken.
-
-Therefore: the standoff ends in performance or in a remedy agreed before
-resolution — the failing seller sends the buyer the payment it stands to
-receive and makes good what it holds, netting bond-only at resolution.
-```
-
-**The one interference, and its bound**: `resolveProcess` requires the
-complete active-order list, so an order committed between the moment the buyer
-builds its calldata and the moment the transaction lands makes the call
-revert (`IncompleteOrderList`) and the buyer rebuilds and resends. This is a
-retry, not a denial, and it is bounded by the buyer itself: every order in a
-process carries the buyer's own signature and expires at its deadline, so the
-only party that can force the retry is one the buyer has already signed for,
-and only for as long as that signature remains valid.
-
-**The residue**: a party that neither performs, nor remedies, nor answers a
-forum's ruling. Its position simply stands — bonds deposited, the seller at
-best at `−G`, the data marking an undertaking never closed. That is the
-irrational residue every system carries; the deterrent prices a grudge, it
-does not prevent an irrational party from paying that price. A buyer that
-withholds after delivery to keep the sellers' bonds deposited keeps its own
-`2P` deposited for as long as it does, stands at `−P` against the `0` that
-closing would give it, and leaves an undertaking never closed on the public
-chain for every future counterparty to read.
+A process closes whenever the buyer is satisfied, and no other party's conduct
+can withhold closure from a satisfied buyer: after performance the buyer's own
+comparison closes it (Theorem 1(a)); before performance withholding never
+worsens with time, because no clock runs from the bonded state. The one
+interference is bounded by the buyer itself: `resolveProcess` requires the
+complete active-order list, so an order committed between the buyer building
+its calldata and the transaction landing reverts the call
+(`IncompleteOrderList`) and the buyer rebuilds and resends — a retry, not a
+denial, and only a party the buyer has already signed for can force it, only
+while that signature is valid. The residue — a party that neither performs,
+nor remedies, nor answers a ruling — simply stands: bonds deposited, the seller
+at best at `−G`, the data marking an undertaking never closed.
 
 ## Exit paths, permanently excluded
 

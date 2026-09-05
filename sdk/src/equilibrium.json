@@ -1,0 +1,60 @@
+{
+    "mechanism": "figaro-kernel-equilibrium",
+    "version": 1,
+    "description": "The kernel's equilibrium, stated in ONE place: the bonds commit pulls, the payoffs the two parties compare, the outcome table, the deterrent gap, and the hypotheses every comparison carries. The asymmetric-bonding paper (/papers/asymmetric-bonding) OWNS the theorem and its proof; docs/THEORY.md binds these figures to the kernel's transfers; formal/lean/FigaroEquilibrium.lean proves the inequalities over the same table; every page that shows a number or a formula from this table renders it from here. scripts/lint-equilibrium-owner.sh fails the commit when any of those surfaces disagrees with this file.",
+    "symbols": {
+        "P": "the payment of one order",
+        "G": "the cumulative value through the order: every payment the process has accumulated so far, this order's own included (G_i = sum of P_j for j <= i)",
+        "r": "what the seller can actually retain off-chain by holding out; at most G"
+    },
+    "hypotheses": {
+        "payment_floor": "P >= 1",
+        "cumulative_inclusive": "P <= G",
+        "retention_bound": "r <= G",
+        "dead_process_strictness": "r > 0 — on a process that will not close, holding out is strictly better than performing only when the seller retains something; at r = 0 the two are equal"
+    },
+    "bonds": {
+        "buyer": { "formula": "2P", "latex": "C_b = 2P", "chain": "C_{b,i} = 2P_i" },
+        "seller": { "formula": "2G", "latex": "C_s = 2G", "chain": "C_{s,i} = 2G_i" }
+    },
+    "resolution": {
+        "seller_payout": "2G + P",
+        "buyer_payout": "P",
+        "conservation": "(2G + P) + P = 2G + 2P"
+    },
+    "payoffs": {
+        "basis": "the seller's pair is net of what it retains; the buyer's pair is stated on two bases that differ by the constant +P (the delivery the buyer holds), so the inequality is the same on either",
+        "seller_perform": { "value": "+P", "lean": "performPayoff = payment" },
+        "seller_holdout": { "value": "-2G + r", "at_most": "-G", "lean": "holdoutPayoff r = -(2 * cumulative) + r" },
+        "buyer_resolve_token": { "value": "-P", "lean": "resolvePayoff = -payment" },
+        "buyer_withhold_token": { "value": "-2P", "lean": "withholdPayoff = -(2 * payment)" },
+        "buyer_resolve_net": { "value": "0", "latex": "u_b = \\pi_b - C_b + P = 0" },
+        "buyer_withhold_net": { "value": "-P" }
+    },
+    "outcomes": {
+        "rows": ["performance occurs", "no performance"],
+        "columns": ["resolution occurs", "no resolution"],
+        "table": [["(0, +P)", "(-P, -2G)"], ["(-P, <= P + G)", "(-2P, <= -G)"]],
+        "latex": [["(0, +P)", "(-P, -2G)"], ["(-P, \\leq P + G)", "(-2P, \\leq -G)"]]
+    },
+    "gap": { "formula": "Delta_i = P_i + G_i >= 2 P_i", "latex": "\\Delta_i = P_i + G_i" },
+    "theorem": {
+        "a": { "party": "buyer", "node": "after performance", "prefers": "resolve, 0", "over": "never resolve, -P", "conditioning": "none — the seller's conduct is fixed at that node" },
+        "b": { "party": "seller", "node": "any seller node", "prefers": "perform, +P", "over": "never perform, at most -G", "conditioning": "(a), and the buyer's plan: resolve once performance has occurred and not before" },
+        "c": { "party": "buyer", "node": "before performance", "prefers": "keep the process open, continuation 0", "over": "resolve at once, terminal -P", "conditioning": "(b)" },
+        "structure": "(b) and (c) are the two parties' best-response checks against one profile, jointly a fixed point; (a) is the one unconditional anchor",
+        "e": { "profile": "the seller never performs and the buyer resolves regardless", "outcome": "(-P, <= P + G)", "status": "a second equilibrium, sustained only by a buyer that has given up the instrument the mechanism reserves to it" }
+    },
+    "example": {
+        "payment": 10,
+        "buyer_locks": 20,
+        "seller_locks": 20,
+        "held": 40,
+        "outcomes_plain": {
+            "honor": "your bond back, and the seller is paid",
+            "walk_away": "your whole bond locked for good, and nobody else gets it",
+            "buyer_out_of_pocket_after_delivery": "exactly the payment",
+            "seller_forfeits_on_holdout": "twice the value at its link, against whatever it kept"
+        }
+    }
+}

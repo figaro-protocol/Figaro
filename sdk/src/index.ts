@@ -327,6 +327,14 @@ export type {
     MemberCatalogueMetadata,
 } from "./memberCatalogue.js";
 
+// THE KERNEL'S EQUILIBRIUM, stated once — sdk/src/equilibrium.json: the bonds,
+// the payoffs, the outcome table, the deterrent gap, and the hypotheses every
+// comparison carries. The paper owns the theorem; THEORY.md binds these
+// figures to the kernel's transfers; the Lean file proves the inequalities
+// over the same table; pages render numbers from here, never retype them.
+import equilibrium from "./equilibrium.json" with { type: "json" };
+export const KERNEL_EQUILIBRIUM = equilibrium;
+
 // RPGF mirror — the off-chain reference implementation of
 // sdk/src/rpgf/formula.json. UsageCounter counts verified clause-or-assembly usage on
 // chain as it happens and RpgfMinter pays from those already-final numbers;
