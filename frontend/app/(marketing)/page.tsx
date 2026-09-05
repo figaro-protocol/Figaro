@@ -23,7 +23,7 @@ const PROPOSITION: string[] = [
     "The seller receives the whole payment. Nobody takes a cut.",
     "The buyer and the seller keep their own data, the trail of every trade they made, and their own agreements.",
     "Anyone with a wallet can trade.",
-    "Anyone can publish the terms of an agreement, and the protocol pays them in florins each time those terms are used.",
+    "Anyone can publish the terms of an agreement and be rewarded based on its use. Trades are in any ERC-20 token. The reward is in florins, the protocol's native token.",
 ];
 
 // THE SIX CHECKS, each with the count the tree derives — the security-counts
