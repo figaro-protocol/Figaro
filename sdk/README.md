@@ -305,6 +305,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
 | `buildUsageClaims` | root | Turn a batch-resolved order plus its agreement into the usage claims a sequencer proves. |
 | `calculateBonds` | root | `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment`. |
+| `KERNEL_EQUILIBRIUM` | root | The kernel's equilibrium stated once (`sdk/src/equilibrium.json`): bonds, payoffs on both bases, the outcome table, the deterrent gap, the hypotheses, the worked example — render numbers from it, never retype them; the paper owns the theorem. |
 | `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
 | `calculateSettlement` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
 | `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
