@@ -212,10 +212,18 @@ contract UsageCounter {
     ///         active on BOTH paths: the chain holds counts, not the seller
     ///         sets, so it cannot union them — and an attacker who split one
     ///         seller's trade across the two universes would be paid
-    ///         twice for the same breadth. Summing scores can never over-count,
-    ///         and because the score is homogeneous of degree 1 the shortfall
-    ///         is EXACTLY ZERO when the split is proportional, small otherwise.
-    ///         Safety first; the two are disjoint by construction anyway (a
+    ///         twice for the same breadth. For DISJOINT seller sets summing
+    ///         scores never over-counts: the score is homogeneous of degree 1
+    ///         and concave, so the sum is at most the pooled figure, with
+    ///         equality when the split is proportional. For a seller active on
+    ///         BOTH paths it does over-count — that seller enters each path's
+    ///         `d`, and a key whose sellers are the same on both paths scores
+    ///         up to 2^(2/3) ≈ 1.59× the pooled figure at an equal split: a
+    ///         bounded bias toward keys carried on both paths, at the same
+    ///         live stake per seller (the RPGF paper §4 and §7.3 state it).
+    ///         Pooling `d` would need per-key seller sets from the batch,
+    ///         which this call does not carry. The PROCESSES are disjoint by
+    ///         construction (a
     ///         batch-settled process never acquires kernel status, and a
     ///         kernel-settled one is never in a batch), so no PROCESS is ever
     ///         counted on both sides.
