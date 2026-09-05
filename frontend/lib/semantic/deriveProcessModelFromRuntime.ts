@@ -351,6 +351,19 @@ function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], ad
                 referenceId: `${order.processId}:${order.orderHash.toString()}:locked-bond`,
             },
         },
+        // What resolution refunds to THIS party: the seller's bond whole; the
+        // buyer's bond less the payment it carried — the payment transfers to
+        // the seller in the same call. A receipt that printed the locked
+        // amount as the refund read 6 for a 3 MOCK order (beta panel r4).
+        settledAvailable: {
+            label: isBuyer ? "Buyer bond refunded" : "Seller bond refunded",
+            amount: isBuyer ? order.buyerBond - order.payment : order.sellerBond,
+            source: {
+                truthClass: "protocol-derived",
+                sourceLabel: isBuyer ? "buyer bond less the payment it carried" : "seller bond, refunded whole",
+                referenceId: `${order.processId}:${order.orderHash.toString()}:refunded-bond`,
+            },
+        },
         typedOutputs,
         downstreamReferencedAmount: parentOrderHashes.length > 0
             ? {

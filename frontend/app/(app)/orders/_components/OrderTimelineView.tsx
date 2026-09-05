@@ -154,13 +154,13 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Settlement — once resolved, what moved: payment + bond, returned.
                 Rendered only when the derived breakdown is present — absence is
                 absence, never a locally re-implemented 2x fallback. */}
-            {isResolved && (isBuyer || isSeller) && myOrder?.settlementBreakdown?.lockedBond && (
+            {isResolved && (isBuyer || isSeller) && myOrder?.settlementBreakdown?.settledAvailable && (
                 <SettlementProceedsPanel
                     sourceOrderId={myOrder.orderId}
                     currency={(myOrder.currency ?? ZERO_ADDRESS) as `0x${string}`}
                     isSeller={isSeller}
                     payment={myOrder.payment}
-                    bondReturned={myOrder.settlementBreakdown.lockedBond.amount}
+                    bondReturned={myOrder.settlementBreakdown.settledAvailable.amount}
                 />
             )}
 
