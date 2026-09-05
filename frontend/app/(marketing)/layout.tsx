@@ -1,5 +1,4 @@
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
-import { ReadingPathNext } from "@/components/marketing/ReadingPathNext";
 import { Footer } from "@/components/shared/Footer";
 
 // Statically exported (`output: 'export'`). These pages prerender to real
@@ -27,10 +26,6 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <MarketingHeader />
             <main id="main-content" className="flex-1">
                 {children}
-                {/* The reading path's continuation, derived per route — renders
-                    nothing off the path and nothing on the last step. Mounted
-                    here so no page carries its own "read this next" line. */}
-                <ReadingPathNext />
             </main>
             <Footer />
         </div>
