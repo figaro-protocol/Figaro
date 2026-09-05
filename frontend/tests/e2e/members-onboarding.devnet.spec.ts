@@ -134,6 +134,9 @@ async function onboardViaWizard(
     // grain on persist (lib/shared/geohash), so the restored value is the
     // clamped one, never the door-grade string that was typed.
     await expect(page.locator("#profile-geohash")).toHaveValue(clampPublicGeohash(SELLER.geohash));
+    await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/assemblies/);
+
     // Assemblies come BEFORE the catalogue: the bindings decide which clauses
     // the seller's trades carry, and those clauses decide which item fields
     // the catalogue step asks for. MANDATORY: a profile without bindings
