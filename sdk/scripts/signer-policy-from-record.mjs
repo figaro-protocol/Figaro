@@ -9,7 +9,8 @@
 //
 // The record's `tokenAddress` becomes the policy's token (the approve target);
 // a local run's egress is its own RPC and Kubo API. Ceilings are copied from
-// the reference policy: raise them in the output if your devnet trades larger.
+// the reference policy unless CEILING_PER_ACTION / CEILING_PER_PERIOD (token
+// base units) say otherwise — the reference token has 6 decimals, a devnet's 18.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,7 +47,13 @@ const policy = {
     verifyingContracts,
     contracts,
     token,
-    ceilings: reference.ceilings,
+    // Ceilings default to the reference policy's, whose token has 6 decimals; a
+    // run whose token has 18 decimals sets its own through the environment.
+    ceilings: {
+        ...reference.ceilings,
+        ...(process.env.CEILING_PER_ACTION ? { perAction: process.env.CEILING_PER_ACTION } : {}),
+        ...(process.env.CEILING_PER_PERIOD ? { perPeriod: process.env.CEILING_PER_PERIOD } : {}),
+    },
     egress: [rpcUrl, process.env.IPFS_API_URL ?? "http://127.0.0.1:5001"],
     rpcUrl,
 };
