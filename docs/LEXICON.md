@@ -105,3 +105,17 @@ Nouns and their definitions. One name per thing.
 **utility token** — A designer's own token, pinned as the denomination of an assembly so every process that instantiates it is paid and bonded in that token. Its value is discovered through use of the assembly; it is the designer's share in what they built.
 
 **wallet** — A signing key and the balance it controls. The only identity the protocol knows.
+
+## Voice
+
+The register every public page is measured against. The lexicon above gives the nouns; this gives the sentence.
+
+- Third person, or the reader's "you". Never "we" or "I": the protocol has no speaker, and nobody signs the site.
+- Declarative. One claim per sentence, in the lexicon's nouns and the industry's exact words — permissionless, decentralized, on-chain, smart contract, wallet, token, gas — never a paraphrase of them, and never the register of banking or of platforms.
+- No exhortation, no combative absolute, no slogan beyond the tagline. A claim is stated, then shown: the theorem, the kernel, or the chain fact it traces to sits beside it or one link away.
+- The stranger's question is answered before the mechanism is explained: what it is, what it costs, what happens if it goes wrong.
+- The honest caveat lives in the same paragraph as the claim it qualifies, never on another page.
+- No sentence a regulator, a court, or a rival could quote against the project out of context. If a sentence needs the page around it to be true, it is rewritten until it is true alone.
+- A ruling given in conversation is the meaning, not the wording. It is rendered in this voice before it reaches a page.
+
+The beta panel is the measure: a page passes when a stranger of its audience states its claim back in their own words with the mechanism attached.
