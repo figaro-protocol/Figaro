@@ -187,7 +187,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         registerMember: (metadataURI) => registerMember.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
         updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
         withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
-        confirmResolve: () => window.confirm("This will settle the entire process and release all bonds. Continue?"),
+        confirmResolve: () => window.confirm("This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone. Continue?"),
         confirmWithdraw: () => window.confirm("Leave the registry for this address? You are de-listed from discovery straight away and can register again at once — but the deposit is released only after the cooldown, so coming back costs a fresh one."),
     });
 
@@ -208,6 +208,12 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             setExecutingCapabilityId(options?.capabilityId ?? null);
             setActiveActionLabel(options?.label ?? null);
             await executeTransactionCapabilityAction(action, executorCallbacks, input);
+            // The executor returns once its transaction is confirmed — or at
+            // once, with no transaction and no error, when the person declined
+            // the confirm dialog. The landed case is also cleared by the
+            // success effect below; the declined case is cleared by nothing
+            // else, and left the button reading "Processing..." for good.
+            setExecutingCapabilityId(null);
         } catch (error) {
             setActionError(extractErrorMessage(error, "Action failed."));
             setExecutingCapabilityId(null);

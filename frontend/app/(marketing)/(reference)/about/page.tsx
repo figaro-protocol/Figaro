@@ -28,7 +28,7 @@ export default function About() {
 
             <MarketingSection title="What the name signs.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Every paper is signed Figaro. The code is published under the MIT license, on <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">GitHub</a>, for anyone to read, run, and fork. Figaro&reg; is a registered trademark, so that the name means this protocol and no other. The contracts have no owner, no admin, and no pause: nobody, named or not, can reach into a trade.
+                    Every paper carries the same byline, Figaro, with the model that drafted it named beside it, Claude (Anthropic); no person signs. The code is published under the MIT license, on <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">GitHub</a>, for anyone to read, run, and fork. Figaro&reg; is a registered trademark, so that the name means this protocol and no other. The contracts have no owner, no admin, and no pause: nobody, named or not, can reach into a trade.
                 </p>
             </MarketingSection>
 
