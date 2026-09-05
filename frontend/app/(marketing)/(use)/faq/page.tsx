@@ -165,7 +165,7 @@ export default function Faq() {
                     Your move comes before that signature. Put right any shortfall. Attest what you delivered, under a clause the agreement carries, so it is evidence, not a later claim. Take it to the forum the agreement names: it rules on the data you both hold, and its ruling is enforced against what the buyer holds outside the process. Your co-sellers&apos; bonds ride on that same resolution; they want it closed too.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The residual: a buyer willing to accept losing twice the payment to deny you yours can, and nothing on chain reaches in. That is the price of no escape hatch, and why a remedy comes before resolution, not after. The arithmetic is on the kernel page; the full treatment is in <Link href="/papers/external-events" className="text-ink-heading font-medium hover:underline">External events</Link>.
+                    The residual: a buyer willing to leave its whole bond, twice the payment, locked for good to deny you yours can &mdash; keeping what you delivered, it is out of pocket by exactly the payment &mdash; and nothing on chain reaches in. That is the price of no escape hatch, and why a remedy comes before resolution, not after. The arithmetic is on the kernel page; the full treatment is in <Link href="/papers/external-events" className="text-ink-heading font-medium hover:underline">External events</Link>.
                 </p>
             </MarketingSection>
 

@@ -1,5 +1,10 @@
 /-
-FigaroEquilibrium — the kernel's Nash argument, machine-checked.
+FigaroEquilibrium — the best-response inequalities of the kernel's
+equilibrium argument, machine-checked: the two-party comparisons and their
+pointwise instantiation along a chain. Subgame perfection, the second
+equilibrium (a buyer that resolves regardless), and which equilibrium the
+co-sellers select are argued in `/papers/asymmetric-bonding` and are NOT
+claimed here.
 
 The analytic proof lives in `docs/THEORY.md` § "Nash Equilibrium Analysis"
 and `/papers/asymmetric-bonding`; the TLA⁺ payoff-table invariants
@@ -18,6 +23,10 @@ THEORY.md § "The comparison at position i" states them:
                                                     it can actually retain)
   buyer after performance, resolve:     −Pᵢ        (pays, bond back)
   buyer after performance, withhold:    −2Pᵢ       (bond stays locked)
+
+Basis: the seller's pair is net of what it retains; the buyer's pair is
+token-only. The paper's net buyer figures add the delivery credit +Pᵢ, a
+constant common to both branches, so the inequality proved is the same one.
 
 Hypotheses carried by every order, from the mechanism itself:
   1 ≤ payment          — the `figaro-commerce` clause floor (payment ≥ 1);
@@ -65,9 +74,11 @@ theorem buyer_resolves (o : Order) : o.resolvePayoff > o.withholdPayoff := by
   simp only [resolvePayoff, withholdPayoff]
   omega
 
-/-- **Performance is the seller's strict best response**, given the buyer
-resolves after performance: earning the payment strictly beats forfeiting
-the bond, at every feasible retention `r ≤ Gᵢ`. -/
+/-- **Performance is the seller's strict best response**, given the buyer's
+plan — resolve after performance and withhold before it (the paper's σ*_B;
+`holdoutPayoff` is defined against that plan, so the conditioning lives in
+the definition, not in a hypothesis): earning the payment strictly beats
+forfeiting the bond, at every feasible retention `r ≤ Gᵢ`. -/
 theorem seller_performs (o : Order) (r : Int) (hr : r ≤ o.cumulative) :
     o.performPayoff > o.holdoutPayoff r := by
   have h1 := o.payment_floor
@@ -167,9 +178,9 @@ theorem no_seller_deviation (c : Chain) (i : Nat) (hi : i < c.payments.length)
   Order.seller_performs _ r hr
 
 /-- **The buyer does not deviate**: after every seller performed, resolving
-(net −Gₙ across the whole process: each payment moves once, every bond
-returns) strictly beats withholding (every buyer bond stays locked) —
-position by position, hence in sum. -/
+strictly beats withholding at every position (each payment moves once, the
+bond returns, against the bond staying locked). The process-wide sum is the
+same inequality added up and is not stated here. -/
 theorem no_buyer_deviation (c : Chain) (i : Nat) (hi : i < c.payments.length) :
     (c.order i hi).resolvePayoff > (c.order i hi).withholdPayoff :=
   Order.buyer_resolves _
