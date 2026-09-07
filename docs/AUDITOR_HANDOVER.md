@@ -269,6 +269,21 @@ re-deriving they are intentional:
   comment at `FigaroCore.sol:238-240` recommends social recovery or multisig for the
   buyer role — upstream of the kernel, consistent with the same pattern.
 
+### Known stale comments in the frozen scope
+
+Comments whose referent is not in the tree, left in place under the freeze so
+the diff stays empty. None describes behaviour wrongly except the first, which
+`DESIGN_DECISIONS.md` #10 corrects.
+
+| Location | Says | Reality |
+|---|---|---|
+| `FigaroCore.sol:124-129` | rebasing tokens are rejected by the balance check | the check sees only the delta inside its own transfer call (`DESIGN_DECISIONS.md` #10) |
+| `FigaroCore.sol:238-240` | use social recovery or a multisig for the buyer role | the kernel recovers ECDSA signers; a multisig transacts through an EOA it controls (§ "Behaviors to surface" above) |
+| `FigaroCore.sol:287`, `FigaroBatchVerifier.sol:302,514`, `Deploy.s.sol:406`, `DeployMainnet.s.sol:306` | "audit L-4", "audit Fix 1a", "audit finding L-6", "audit Fix 5b" | labels from the pre-freeze AI-assisted review; that report is not in the tree and the numbering carries no weight — the external auditor forms independent findings |
+| `WitnessSwapAndCommitCoordinator.sol:10` | `ARCHITECTURE.md § "Composing the kernel"` | no such file; the owner is `CONTRACTS.md` § Coordinators |
+| `UsageCounter.sol:125` | `DESIGN_DECISIONS.md § "A proof-gated writer is not an admin"` | the heading is #16 |
+| `Deploy.s.sol:82-83` | mainnet uses the Uniswap Universal Router | mainnet uses SwapRouter02 (`DeployMainnet.s.sol`, `DeploySwapCoordinator.s.sol`) |
+
 ## Accepted risks
 
 Current design realities accepted by the protocol surface, not accidental defects:
@@ -304,6 +319,25 @@ shape, answered from the tree. Each answer names its evidence.
 | 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither and Semgrep (§ "Static analysis" above). |
 | 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open | No external audit has been performed; this document is the handover for the first. Disclosure contact in `SECURITY.md`. No bounty programme. |
 | 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
+
+### Trail of Bits' code-maturity categories
+
+Rated 2026-09-07 with Trail of Bits' published assessor (Building Secure
+Contracts, code-maturity evaluation v0.1.0) on its four-step scale, from the
+tree alone; the categories that rate a process rather than code are rated on
+what the tree shows. Overall 2.9 of 4.
+
+| Category | Rating | What holds it there |
+|---|---|---|
+| Arithmetic | Satisfactory | Checked math throughout; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:666-669`) carries no inline bound argument. |
+| Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). No monitoring plan, no written incident-response procedure: the Rekt Test's item 3. |
+| Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
+| Complexity management | Moderate | `commit` and `applyBatchAccrual` are the two complex functions, each explained in NatSpec; no measured complexity figures and no written naming convention. |
+| Decentralization | Strong | No owner, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
+| Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Behaviors to surface". |
+| Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
+| Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests and Rust cross-language vectors; no differential fuzz of the packers. |
+| Testing and verification | Satisfactory | Coverage above; seven reachable revert branches without a test (`SwapCallFailed`, `TransferFailed` in the three registries, `ClauseOrAssemblyExcluded` on the direct path, the unregistered-assembly revert, `claimable`'s `UnknownPeriod`); no mutation-testing run. |
 
 ### The L2BEAT risk categories, applied to the batch path
 
