@@ -1,0 +1,42 @@
+name: Notify the maintainer
+
+# The cloud routines (incident review, CI health, estate digest, Dependabot
+# triage) write their issues through the maintainer's own GitHub account, and
+# GitHub never e-mails an actor about their own actions. This workflow closes
+# that gap: when an issue receives one of the routine labels, the Actions bot
+# posts one comment mentioning the maintainer, and a mention from the bot is
+# e-mailed whoever opened the issue. One comment per issue, ever — the marker
+# below is the guard.
+
+on:
+    issues:
+        types: [opened, labeled]
+
+permissions:
+    issues: write
+
+jobs:
+    mention:
+        name: Mention the maintainer once
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Comment once
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  NUMBER: ${{ github.event.issue.number }}
+                  TITLE: ${{ github.event.issue.title }}
+                  URL: ${{ github.event.issue.html_url }}
+                  MAINTAINER: adaliana
+              run: |
+                  marker="<!-- notify-maintainer -->"
+                  # exact label names only — "dependencies" must not match "ci"
+                  if ! gh issue view "$NUMBER" -R "$REPO" --json labels --jq '.labels[].name' | grep -qxE 'monitor|ci|digest|triage'; then
+                      echo "no routine label"; exit 0
+                  fi
+                  if gh issue view "$NUMBER" -R "$REPO" --json comments --jq '.comments[].body' | grep -qF "$marker"; then
+                      echo "already notified"; exit 0
+                  fi
+                  labels=$(gh issue view "$NUMBER" -R "$REPO" --json labels --jq '[.labels[].name] | join(", ")')
+                  gh issue comment "$NUMBER" -R "$REPO" --body "$(printf '%s\n@%s — %s\n\nLabels: %s\n%s' "$marker" "$MAINTAINER" "$TITLE" "$labels" "$URL")"
