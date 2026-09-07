@@ -208,23 +208,33 @@ rule currencyImmutable(bytes32 processId, method f) {
 // the Foundry test and these two rules are the answer.)
 // ═══════════════════════════════════════════════════════════════════
 
-rule committedOrderHasAProcess(bytes32 orderHash, method f) {
+rule commitBindsTheOrderToItsProcess() {
     env e;
-    calldataarg args;
-    f(e, args);
+    CommitmentTypes.Commitment c;
+    bytes buyerSig;
+    bytes sellerSig;
 
-    assert orderStatus(orderHash) == 0 || orderProcessId(orderHash) != to_bytes32(0),
-        "An order with a status must be bound to a process";
+    bytes32 processId;
+    bytes32 orderHash;
+    processId, orderHash = commit(e, c, buyerSig, sellerSig);
+
+    assert orderProcessId(orderHash) == processId,
+        "commit must bind the new order to the process it returns";
+    assert orderStatus(orderHash) == 1,
+        "commit must leave the new order committed";
 }
 
-rule orderProcessIdImmutableOnceSet(bytes32 orderHash, method f) {
+rule orderProcessIdImmutableOnceCommitted(bytes32 orderHash, method f) {
+    // A committed order: it has a status. From any such state, no method
+    // moves its process — commit on the same hash reverts, resolve only
+    // advances the status.
+    require orderStatus(orderHash) != 0;
     bytes32 processBefore = orderProcessId(orderHash);
-    require processBefore != to_bytes32(0);
 
     env e;
     calldataarg args;
     f(e, args);
 
     assert orderProcessId(orderHash) == processBefore,
-        "A bound order's process must never change";
+        "A committed order's process must never change";
 }

@@ -104,6 +104,14 @@ project. Which invariant each layer carries is `VERIFICATION_MAP.md`.
 - **2026-08-27** (the 08-18/19 amendment wave) — Halmos 32/32 proved, exit 0; Certora 6/6 specs with `--wait_for_results all`, exit 0 (every
   `Violated` line in the stream was the `rule_not_vacuous` healthy polarity).
 
+- **2026-09-07** — `FigaroCore.spec` re-run after the two A-10 rules were added
+  (`commitBindsTheOrderToItsProcess`, `orderProcessIdImmutableOnceCommitted`):
+  10/10 rules, no violation, prover reports no errors —
+  https://prover.certora.com/output/9512759/8564abc8ff0a4020a9058feb4e9c3496 .
+  The rules are stated over a committed order (one with a status): stated over
+  arbitrary storage they report counterexamples from states the kernel cannot
+  reach, which is what a first draft did.
+
 Certora report URLs, all from the 2026-08-27 re-run:
 
 | Spec | Report URL |
@@ -153,8 +161,9 @@ guard at `commit`, which is the documented unreachable backstop (every replay is
 preempted by an earlier revert, and `FigaroCoreRevertBranchTest` pins each
 preempting error); one forces the `CumulativeValueOverflow` guard in
 `resolveProcess`, the unreachable window under § "Behaviors to surface"; one
-removed the `orderProcessId` write, which no test read, and
-`test_orderProcessId_bindsEveryOrderToItsProcess` now does. Every High-severity
+removed the `orderProcessId` write, which no test read: invariant A-10 in
+`VERIFICATION_MAP.md` states it, `test_orderProcessId_bindsEveryOrderToItsProcess`
+reads it, and two Certora rules prove it (§ Formal run evidence). Every High-severity
 mutant was caught. The rest of the frozen scope is mutated one contract per
 sitting; the results are recorded here as they land.
 
