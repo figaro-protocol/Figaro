@@ -11,6 +11,9 @@ drift against this file.
 
 ```bash
 # --- Contracts (Foundry) — --via-ir required; default profile fails on stack depth ---
+git clone --recurse-submodules <repo> && cd Figaro   # or: forge install (four lib/ submodules, pinned in foundry.lock)
+foundryup --version v1.5.1                           # the version CI pins (.github/workflows/foundry-ci.yml)
+forge build --via-ir
 forge test --via-ir
 
 # --- Symbolic / formal / fuzz ---

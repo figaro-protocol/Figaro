@@ -104,6 +104,28 @@ Certora report URLs, all from the 2026-08-27 re-run:
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/d364d98732d04db2ae5a9c7e2a578d74 |
 | RpgfMinter | https://prover.certora.com/output/9512759/7a68e4562d8e461ab93256dbac6740c4 |
 
+### Test coverage
+
+Measured 2026-09-07 over the eleven frozen contracts with
+`forge coverage --ir-minimum --no-match-test "test_Gas_"` (the gas-anchor tests
+are excluded because minimum optimisation inflates their measurements; the
+`MAINNET_RPC_URL`-gated fork suite was skipped on that run):
+
+| | Lines | Statements | Branches | Functions |
+|---|---|---|---|---|
+| Frozen scope | 94.33% (499/529) | 94.64% (671/709) | 90.30% (121/134) | 98.51% (66/67) |
+| Lowest file: `FigaroBatchVerifier.sol` | 80.88% | 84.43% | 100% | 100% |
+
+What the uncovered lines are: in `FigaroBatchVerifier` all 26 are the bodies of
+the inline-assembly hashing helpers (`_hashPositions`, `_hashAttestations`,
+`_hashSpecBindings`, `_hashUsage`), which the instrumentation cannot attribute
+and which every `settleBatch` test executes — the functions themselves report
+100%; in `FigaroCore` the one line is the `CumulativeValueOverflow` revert, the
+unreachable window listed under § "Behaviors to surface"; in `RpgfMinter` the
+two lines are the `periodCount()` view. The `--ir-minimum` mapping warning
+Foundry prints applies: the per-line figures are approximate, the per-function
+figures are not.
+
 ### Post-Audit Policy
 
 Any Solidity edit after the freeze commit must be:
@@ -117,6 +139,95 @@ Any Solidity edit after the freeze commit must be:
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require re-audit unless they
 expose a new on-chain attack surface.
+
+## Review goals
+
+What the maintainer wants from the review, so hours go where the doubt is.
+
+**Worst case.** Locked bonds lost or moved through a defect rather than through
+the documented by-design cases: a resolution by anyone but the buyer, a bond
+that leaves the kernel other than at resolution, or a batch resolution the
+direct path would have refused.
+
+**Areas of concern, in order.**
+
+1. Any path by which the payoff table the equilibrium rests on can be altered:
+   signature or domain-separator replay, accumulator manipulation, reentrancy
+   through the token, an order that resolves a process it does not belong to.
+   The kernel is ~200 SLOC and carries five verification layers; the doubt is in
+   what composes with it, not in it.
+2. The batch path (`FigaroBatchVerifier.settleBatch`, the largest function in
+   scope): a forged or mis-bound proof accepted by the verifier, a clause-hash
+   binding that diverges from the registry, and the one privileged writer (the
+   verifier into `UsageCounter`) doing more than accrue.
+3. The reward and stake economics: reward inflation or Sybil accrual through
+   `UsageCounter` and `RpgfMinter`; stake accounting in the registries' withdrawal
+   paths.
+4. Token-boundary behaviour: the Permit2 witness digest and SwapRouter02 call in
+   `WitnessSwapAndCommitCoordinator`, and non-standard ERC-20s beyond the
+   fee-on-transfer rejection.
+
+**Questions for the auditor.**
+
+1. Is there any sequence of `commit` calls, on one process or across processes,
+   that makes `resolveProcess` pay a seller more than `2·G_i + P_i` or refund the
+   buyer other than `P_i` per order?
+2. Can a valid SP1 proof over a stale or foreign state be replayed against the
+   verifier, given the `prevRoot`, `chainId`, and `verifyingContract` checks?
+3. Can the try/catch around `applyBatchAccrual` be made to swallow anything other
+   than an accrual-gate revert?
+4. Is the `icbrt(c·d²)` score manipulable at a cost below the registration stake
+   plus the member stake it requires?
+5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would
+   want bound, so a relayer cannot substitute a route?
+
+## Static analysis
+
+Slither 0.11.3 (100 detectors, `--exclude-dependencies`, mocks, echidna, tests,
+and scripts filtered) and Semgrep with the `p/smart-contracts` ruleset, run
+over the frozen scope. Semgrep returns only INFO gas-style rules — zero from its
+security rules. Slither's 40 results, triaged:
+
+| Severity | Detector | Where | Verdict |
+|---|---|---|---|
+| High | arbitrary-send-erc20 | `_pullExact` in `FigaroCore` and `FigaroBatchVerifier` | Designed. The `from` is a recovered EIP-712 signer (kernel) or a net position hashed into the proof's public values (verifier), never a caller-supplied address. |
+| Medium | incorrect-equality | `MembersRegistry.withdraw` (`unlockAt == 0`) | Sentinel for "nothing pending"; `DESIGN_DECISIONS.md` #15. |
+| Medium | reentrancy-no-eth | `settleBatch` writes `stateRoot` after calling `UsageCounter` | `nonReentrant`; the callee is an immutable address that accepts only this caller and calls nothing back; the call sits in a try/catch so its revert cannot unwind the token legs. |
+| Medium | unused-return | tuple destructuring of `assemblies.bindings` | Reads the fields it needs. |
+| Medium | missing zero-check | `WitnessSwapAndCommitCoordinator` constructor `router_` | A zero router yields a coordinator whose swap leg always reverts and holds nothing; the deploy scripts probe the router before construction. Left as is under the freeze. |
+| Low | calls-loop | accrual, spec-binding, position, and entitlement loops | Designed; loops are over caller-sized calldata and gas-bounded (accepted risk 2). No loop body reverts on a third party's action. |
+| Low | timestamp | `deadline` in `commit`; registry cooldowns; reward periods | `deadline` is the expiry of the unconsummated signature window (`DESIGN_DECISIONS.md` #13); the rest are day-scale comparisons. |
+| Info | assembly, cyclomatic-complexity, low-level-calls, missing-inheritance, naming | verifier hashing helpers; `commit`; the swap call and the three ETH refunds; local interfaces; `DOMAIN_SEPARATOR` | Calldata hashing mirrored by the prover's parity tests; the kernel's one entry point; checks-effects-interactions on every refund; style. |
+
+## Actors, privileges, and external dependencies
+
+Every actor and what it alone can do. The kernel has no privileged role: `commit`
+never reads `msg.sender`, and `resolveProcess` is gated by presence
+(`msg.sender == rootBuyer`), not by a role.
+
+| Actor | Can | Cannot |
+|---|---|---|
+| Buyer | sign an order; call `resolveProcess` on its own process; attest on its own orders | resolve a process it did not open; resolve one order of a process |
+| Seller of record | sign an order; attest on its own orders, or delegate that to an `IRoleResolver` contract at the seller address | move any bond; resolve |
+| Designer / registrant | register a clause or assembly under a stake; withdraw that stake (the binding stays); claim designer rewards on the keys it registered while its member stake is live | edit or remove a registration; earn on an unstaked key |
+| Member | register, update, request withdrawal, withdraw after the cooldown | act for another wallet |
+| Batch submitter (sequencer or anyone) | call `settleBatch` with a valid proof over the current root | fabricate an operation, move a token the proof does not commit to, replay a proof (`SCALING_STRATEGY.md` § Trust analysis) |
+| `FigaroBatchVerifier` | write accrual into `UsageCounter` (sole caller, immutable) | mint, edit a score, block a resolution (`DESIGN_DECISIONS.md` #16, #20) |
+| `RpgfMinter` | mint florins up to its 600M cap, pro rata to score | exceed the cap; mint outside a closed period |
+| Florin deployer | register minters until `renounceDeployerMint`; the mainnet script renounces in the same broadcast | anything after the renounce |
+| DAO treasury multisig | spend the 300M it holds | any protocol write; it is upstream of every contract |
+
+| External dependency | Bound where | Trusted for |
+|---|---|---|
+| OpenZeppelin Contracts 5.5.0 (`lib/`, pinned submodule) | inheritance and SafeERC20 | library correctness |
+| Permit2 (canonical, `0x000000000022D473030F116dDEE9F6B43aC78BA3`) | `WitnessSwapAndCommitCoordinator` constructor, probed for code at deploy | witness-transfer semantics on the swap leg only |
+| Uniswap SwapRouter02 (per chain; `deployments/<chainId>.json`) | same constructor, probed for `factory()` and `WETH9()` at deploy | executing the swap the signer's witness commits to |
+| SP1 verifier gateway + program vkey (`SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable | proof soundness on the batch path; a changed program is a new verifier at a new address |
+| IPFS | content behind every on-chain hash | availability, never integrity (`DATA_LAYER.md`) |
+| XMTP | the runtime's coordination channel | nothing on-chain |
+| Arbitration forums | composed at the edge (`CONTRACTS.md` § coordinators) | nothing on-chain; a forum rules on open data and cannot call resolve |
+
+No oracle, no bridge, no upgrade proxy, no pause anywhere.
 
 ## Reading list
 
@@ -142,9 +253,16 @@ re-deriving they are intentional:
 - The kernel has an unreachable `expectedCumulativeValue ∈ (max/3, max/2]` window (bond
   math would overflow above it; it cannot be reached because a prior order's bond would
   have reverted first).
-- A blacklisted seller (a token that reverts transfers to that address) bricks
-  `resolveProcess` for the whole process — `FigaroCore.sol:294`; accepted (the buyer
-  chose the token and the seller), a token-choice concern, not a kernel escape hatch.
+- Token authority is a class, not one case. A token that reverts transfers to a
+  party's address bricks `resolveProcess` for the whole process — the seller at
+  `FigaroCore.sol:294`, the buyer at `:295`; a token that blocklists or freezes
+  the kernel's own address, pauses, or is upgraded to do any of these has the same
+  effect. Accepted (the buyer chose the token and the seller), a token-choice
+  concern, not a kernel escape hatch. On the batch path the same class reverts one
+  batch, not the protocol: a payout recipient the token refuses reverts
+  `settleBatch` at `FigaroBatchVerifier.sol:531`, the mitigation is the
+  sequencer-side check the NatSpec above `_executePositions` prescribes for
+  approval revocation, and every process in the batch keeps its direct path.
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
   smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
   through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
@@ -157,7 +275,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
-3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel
+3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence and corrects the kernel's NatSpec, which is frozen)
 
 ## Accepted runtime posture
 
@@ -175,7 +293,7 @@ shape, answered from the tree. Each answer names its evidence.
 | # | Question | Answer | Evidence |
 |---|---|---|---|
 | 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
-| 2 | External services, contracts, and oracles documented | Partly | Uniswap `SwapRouter02`, Permit2, the SP1 verifier, IPFS, XMTP, and the arbitration forum are named in `CONTRACTS.md` and the `/spec` page. There is no oracle. No single dependency list exists. |
+| 2 | External services, contracts, and oracles documented | Yes | § "Actors, privileges, and external dependencies" above: one table, with where each is bound and what it is trusted for. There is no oracle. |
 | 3 | Written and tested incident-response plan | No | `SECURITY.md` carries the disclosure contact. Nothing can be paused or upgraded, so the plan is disclosure and redeployment under a new identifier. |
 | 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the `/pitfalls` page, § "Behaviors to surface" above. |
 | 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
@@ -183,7 +301,7 @@ shape, answered from the tree. Each answer names its evidence.
 | 7 | Hardware security keys for production systems | Not in the tree | Operational, outside the repo. |
 | 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
 | 9 | Key invariants defined and tested on every commit | Yes | Foundry runs in pre-commit; Halmos, Certora, TLA+, Echidna, and the Lean 4 equilibrium proof run in the battery. `VERIFICATION_MAP.md` maps each invariant to its test. |
-| 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`). |
+| 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither and Semgrep (§ "Static analysis" above). |
 | 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open | No external audit has been performed; this document is the handover for the first. Disclosure contact in `SECURITY.md`. No bounty programme. |
 | 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
 

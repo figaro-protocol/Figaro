@@ -255,16 +255,24 @@ concern (e.g. rate × geohash distance).
 
 ---
 
-## 10. `_pullExact` rejects fee-on-transfer and rebasing tokens — permanently
+## 10. `_pullExact` rejects fee-on-transfer tokens — permanently; rebasing tokens are unsupported
 
-**Pattern**: `_pullExact` uses a before/after balance check with strict equality.
-Any token that transfers less than requested (fee-on-transfer) or changes
-balance mid-call (rebasing) is permanently incompatible.
+**Pattern**: `_pullExact` uses a before/after balance check with strict equality
+around the one `transferFrom` call. Any token that delivers less than requested
+(fee-on-transfer) reverts at commit. A rebasing token passes the check — the
+balance moves at the token's rebase events, not inside the transfer — so the
+kernel does not detect it: a downward rebase between commit and resolve leaves
+the contract short and `resolveProcess` reverts on the transfer out; an upward
+rebase strands the surplus in the contract, since nothing sweeps it.
 
 **Why it looks correct and IS correct**: The MAD bonding model requires that
 the exact committed amount is locked. If the received amount differs from the
-committed amount, the bond math is broken. Rejection is the correct behavior.
-Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be used.
+committed amount, the bond math is broken. Rejecting fee-on-transfer is the
+correct behavior, and detecting a rebase would need state the kernel does not
+keep. Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be
+used; the kernel's NatSpec above `_pullExact` states the rebasing case more
+strongly than the check enforces, and this entry is the correction (the kernel
+is frozen). `RELEASE_READINESS.md` carries the deployment precondition.
 
 ---
 
