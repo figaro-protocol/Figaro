@@ -107,6 +107,7 @@ does not log.
 | A-7 | Fee-on-transfer token rejection | `_pullExact`: `uint256 received = after - before; if (received != amount) revert FeeOnTransferDetected()` | `FigaroCoreRevertBranchTest`: fee-on-transfer token test (`MockERC20FeeOnTransfer`) | Not modeled (TLA+ abstracts ERC-20 mechanics) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 | A-8 | Held deposits = 2×payment (buyer) + 2×cumulativeValue (seller) per committed order | `commit`: `_pullExact` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller | `FigaroCoreTest`: `test_sellerBond_scalesWithCumulativeValue` | `DeterrentEscrowMagnitudes` — verified | — | `/invariants`, `/kernel` |
 | A-9 | Resolution moves exactly `payment` buyer → seller; both bonds return whole | `resolveProcess`: seller receives `2*cumulativeValue + payment`, buyer receives `payment` | `FigaroCoreTest`: `test_resolution_payouts_progressiveCollateral`, `test_solvency_contractBalanceZeroAfterResolve` | `SettledNetPositions` — verified | — | `/invariants`, `/kernel` |
+| A-10 | Every committed order is bound to its process: `orderProcessId[orderHash] == processId`, written once at commit, never changed | `commit`: `orderProcessId[orderHash] = processId` beside the status write | `FigaroCoreTest`: `test_orderProcessId_bindsEveryOrderToItsProcess` (root, sub, and an unknown order) | Not modeled (the TLA+ state carries the binding as the order's identity, not a separate map) | — | `/kernel` |
 
 ---
 

@@ -197,3 +197,34 @@ rule currencyImmutable(bytes32 processId, method f) {
     assert currencyAfter == currencyBefore,
         "Currency of an existing process must never change";
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 10: A Committed Order Is Bound To Its Process (A-10)
+//
+// orderProcessId is the kernel's own record of which process an order
+// belongs to. It is written once at commit and never moves: an order
+// that has a status has a process, and a bound process never changes.
+// (The mutation campaign of 2026-09 found no test reading this mapping;
+// the Foundry test and these two rules are the answer.)
+// ═══════════════════════════════════════════════════════════════════
+
+rule committedOrderHasAProcess(bytes32 orderHash, method f) {
+    env e;
+    calldataarg args;
+    f(e, args);
+
+    assert orderStatus(orderHash) == 0 || orderProcessId(orderHash) != to_bytes32(0),
+        "An order with a status must be bound to a process";
+}
+
+rule orderProcessIdImmutableOnceSet(bytes32 orderHash, method f) {
+    bytes32 processBefore = orderProcessId(orderHash);
+    require processBefore != to_bytes32(0);
+
+    env e;
+    calldataarg args;
+    f(e, args);
+
+    assert orderProcessId(orderHash) == processBefore,
+        "A bound order's process must never change";
+}
