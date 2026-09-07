@@ -481,6 +481,14 @@ Per workflow, what it runs and when:
   fine-grained PAT and the site-traffic leg the punch-listed
   `ESTATE_CF_ANALYTICS_TOKEN` zone-scoped Cloudflare token — without them
   they warn and the npm leg still lands.
+- **`monitor`** — hourly (minute 17) + dispatch: the public deployment's
+  watcher (`scripts/monitor-sepolia.mjs`, SECURITY.md § "Monitoring") reads
+  the contracts' events through a public node — a minter registered after
+  genesis, a florin minted outside the reward path, a dropped batch accrual,
+  a withdrawal burst, and the kernel's held bonds against invariant A-8 —
+  and raises each condition as an issue labelled `monitor`, assigned to the
+  maintainer; a run that cannot read the node fails, which is the heartbeat.
+  `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node.
 - **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Two
   independent jobs: the xmtpd stack proof (hermetic broker bring-up) and the
   Linux sandbox variant (the signer runtime's container deny cases).

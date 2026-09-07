@@ -1,0 +1,80 @@
+name: Sepolia Monitor
+
+# The public deployment's watcher (SECURITY.md § "Monitoring"): every hour,
+# scripts/monitor-sepolia.mjs reads the contracts' events through a public
+# node and writes the conditions it finds to monitor-alerts.json; each alert
+# becomes an issue labelled `monitor`, assigned to the maintainer, so GitHub's
+# notification is the alert channel. One issue per condition key: a condition
+# already open gets a comment, not a second issue. A run that cannot read the
+# node fails, and that failure notification is the heartbeat.
+#
+# RPC_URL may be set as a repository secret to use a keyed node; unset, the
+# script's public default is used.
+
+on:
+    schedule:
+        - cron: "17 * * * *"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    issues: write
+
+concurrency:
+    group: sepolia-monitor
+    cancel-in-progress: false
+
+jobs:
+    watch:
+        name: Watch the Sepolia deployment
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: "npm"
+                  cache-dependency-path: package-lock.json
+
+            - name: Install dependencies
+              run: npm ci --workspace sdk
+
+            - name: Read the deployment
+              env:
+                  RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+              run: node scripts/monitor-sepolia.mjs
+
+            - name: Raise alerts as issues
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  ASSIGNEE: adaliana
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              run: |
+                  python3 - <<'PY'
+                  import json, os, subprocess
+                  alerts = json.load(open("monitor-alerts.json"))
+                  if not alerts:
+                      print("no alert"); raise SystemExit(0)
+                  repo, assignee, run_url = os.environ["REPO"], os.environ["ASSIGNEE"], os.environ["RUN_URL"]
+                  subprocess.run(["gh", "label", "create", "monitor", "-R", repo, "--color", "B60205",
+                                  "--description", "raised by the Sepolia watcher (SECURITY.md § Monitoring)", "--force"],
+                                 check=False, capture_output=True)
+                  open_issues = json.loads(subprocess.run(
+                      ["gh", "issue", "list", "-R", repo, "--label", "monitor", "--state", "open", "--limit", "200", "--json", "number,title"],
+                      check=True, capture_output=True, text=True).stdout)
+                  by_title = {i["title"]: i["number"] for i in open_issues}
+                  for a in alerts:
+                      body = f"**{a['severity']}** · key `{a['key']}`\n\n{a['body']}\n\nRun: {run_url}"
+                      if a["title"] in by_title:
+                          subprocess.run(["gh", "issue", "comment", str(by_title[a["title"]]), "-R", repo, "--body", "Seen again.\n\n" + body], check=True)
+                          print(f"commented #{by_title[a['title']]}: {a['title']}")
+                      else:
+                          out = subprocess.run(["gh", "issue", "create", "-R", repo, "--title", a["title"], "--body", body,
+                                                "--label", "monitor", "--assignee", assignee], check=True, capture_output=True, text=True).stdout
+                          print(f"opened {out.strip()}: {a['title']}")
+                  PY

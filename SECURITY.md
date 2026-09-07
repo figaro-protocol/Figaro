@@ -84,10 +84,13 @@ scope as defined above, first reporter paid. A report of a pattern listed in
 
 The contracts emit an event for every state change (the ABI bundle in `abi/`
 carries each contract's events). Monitoring is a watcher that reads those events from a
-node as blocks arrive, keeps them in a log off the chain, and raises an alert
-on the conditions below; the log is reviewed on a schedule by an agent that
-reports only what departs from the expected. The watcher runs on OpenZeppelin
-Monitor, self-hosted, against the addresses in `deployments/<chainId>.json`.
+node on a schedule, keeps its findings off the chain, and raises an alert on
+the conditions below. The watcher is `scripts/monitor-sepolia.mjs`, run every
+hour by the `monitor` workflow in `.github/workflows/` against the addresses in
+`deployments/<chainId>.json`; each alert becomes an issue labelled `monitor`,
+assigned to the maintainer, and a run that cannot read the node fails the
+workflow, which is the heartbeat. The open issues are the log; an agent reviews
+them daily and reports only what departs from the expected.
 
 | Watch | Expected | Alert when |
 |---|---|---|
