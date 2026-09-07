@@ -373,13 +373,14 @@ Contracts, code-maturity evaluation v0.1.0) on its four-step scale, from the
 tree alone; the categories that rate a process rather than code are rated on
 what the tree shows. Overall 3.0 of 4. The rubric is threshold-based: a
 category holds a tier only when every criterion of that tier is met, so Auditing
-stays Moderate until events are watched and alerts are defined, and Testing
-stays Satisfactory until a mutation-testing run exists.
+stays Moderate until the monitoring log is reviewed on its schedule and the
+incident plan has been rehearsed, and Testing stays Satisfactory until the
+mutation-testing campaign has run over the scope.
 
 | Category | Rating | What holds it there |
 |---|---|---|
 | Arithmetic | Satisfactory | Checked math throughout; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:667-670`) carries no inline bound argument. |
-| Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). No monitoring plan, no written incident-response procedure: the Rekt Test's item 3. |
+| Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs hourly in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); the daily review by an agent and a rehearsal of the redeploy leg are what Satisfactory still needs. |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and below (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented byte-parity mirrors. |
 | Decentralization | Strong | No owner, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
