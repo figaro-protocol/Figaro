@@ -84,10 +84,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: [],
             },
             {
-                title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Settlement Layer",
+                title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Kernel",
                 href: "/papers/markets-without-a-venue",
                 summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes, and mutual exclusion, discovery, stake, and the trail all follow from the order of signatures.",
-                keywords: ["market design", "auction theory", "matching theory", "procurement", "posted prices", "offer formation", "sealed-bid", "reserve price", "bonded settlement"],
+                keywords: ["market design", "auction theory", "matching theory", "procurement", "posted prices", "offer formation", "sealed-bid", "reserve price", "bonded commitment"],
                 industries: ["Procurement", "Marketplaces"],
             },
             {
@@ -112,7 +112,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Tokens and treasuries"],
             },
             {
-                title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through Bonded Settlement",
+                title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through the Kernel",
                 href: "/papers/self-authenticating-data-sales",
                 summary: "Arrow's paradox for data, dissolved economically: each entry sold carries a proof it came from a real resolved trade, the licence carries a proof of the sale, and the doubled bond leaves a misdescribing seller out of pocket.",
                 keywords: ["information paradox", "mechanism design", "merkle proofs", "data markets", "asymmetric bonding", "disclosure", "repeated games"],
@@ -153,10 +153,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "Two complementary lenses on the protocol's CS surface: what stands above the kernel as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. This group reads the substrate as engineers, cryptographers and verification people read it; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
         papers: [
             {
-                title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Scope of the Claim",
+                title: "A Verified Resolution Kernel: Formal Verification, Threat Model, and the Scope of the Claim",
                 href: "/papers/verified-settlement-kernel",
-                summary: "What it means to verify a settlement primitive of two calls, no owner and no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
-                keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "settlement layer", "verification scope"],
+                summary: "What it means to verify a kernel of two calls, no owner and no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
+                keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "kernel", "verification scope"],
                 industries: ["Security and audit"],
             },
             {
@@ -174,7 +174,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
         intro: "The normative layer: any choice of coordination objective is a subjective choice, so whose values a system encodes, the accountability of its designers, and the ethics of decision algorithms in social systems come before the engineering.",
-        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Settlement happens on-chain by nature; adjudication happens off-chain by nature; and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
+        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
         papers: [
             {
                 title: "On-Chain Evidence, Off-Chain Adjudication",
@@ -250,10 +250,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["DAOs and governance"],
             },
             {
-                title: "Corridors Without a Hegemon: Bonded Settlement as Common Infrastructure Beneath Rival Trade Corridors",
+                title: "Corridors Without a Hegemon: The Kernel as Common Infrastructure Beneath Rival Trade Corridors",
                 href: "/papers/corridors-without-a-hegemon",
                 summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not, and an ownerless one cannot be weaponized by either bloc.",
-                keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "ownerless settlement"],
+                keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "ownerless kernel"],
                 industries: ["Cross-border trade"],
             },
         ],
@@ -315,10 +315,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: [],
             },
             {
-                title: "External Events and the Settlement Frame: One Rule for Everything the World Does Between the Two Calls",
+                title: "External Events and the Resolution Frame: One Rule for Everything the World Does Between the Two Calls",
                 href: "/papers/external-events",
                 summary: "Between commit and resolve the world goes on. Any occurrence that changes what the parties want the resolution to be is squared before the terminal call, with at most one transfer per order, and the buyer's comparison is unchanged.",
-                keywords: ["external events", "settlement frame", "discretionary and deterministic decision", "incomplete contracts", "unforeseen contingencies", "renegotiation", "private ordering", "netting completeness", "bonded commitment", "decision science"],
+                keywords: ["external events", "resolution frame", "discretionary and deterministic decision", "incomplete contracts", "unforeseen contingencies", "renegotiation", "private ordering", "netting completeness", "bonded commitment", "decision science"],
                 industries: [],
             },
         ],
