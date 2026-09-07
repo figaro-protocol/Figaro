@@ -147,3 +147,7 @@ coverage/
 *.blg
 *.synctex.gz
 formal/lean/.lake/
+
+# mutation-testing workspace (Trail of Bits mewt): maintainer-local
+mewt.toml
+mewt.sqlite

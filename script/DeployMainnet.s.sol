@@ -303,7 +303,7 @@ contract DeployMainnet is Script {
         // The per-period budgets must sum to the registered minter cap
         // (RPGF_ALLOC). The FlorinToken cap is the outer backstop, but an over-
         // committed schedule would turn late-period claims into a first-come
-        // race; assert the two agree at deploy (audit Fix 5b).
+        // race; assert the two agree at deploy.
         uint256 amountsSum;
         for (uint256 i = 0; i < amounts.length; ++i) {
             amountsSum += amounts[i];

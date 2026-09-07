@@ -80,6 +80,27 @@ Severity is set by the maintainer on the report's demonstrated impact, in
 scope as defined above, first reporter paid. A report of a pattern listed in
 `docs/DESIGN_DECISIONS.md` is a design disagreement and earns nothing.
 
+## Monitoring
+
+The contracts emit an event for every state change (the ABI bundle in `abi/`
+carries each contract's events). Monitoring is a watcher that reads those events from a
+node as blocks arrive, keeps them in a log off the chain, and raises an alert
+on the conditions below; the log is reviewed on a schedule by an agent that
+reports only what departs from the expected. The watcher runs on OpenZeppelin
+Monitor, self-hosted, against the addresses in `deployments/<chainId>.json`.
+
+| Watch | Expected | Alert when |
+|---|---|---|
+| `FlorinToken`: `MinterRegistered`, and any `Transfer` from the zero address | none after genesis; mints only from `RpgfMinter.claim` | a minter is registered after the renounce, or a mint arrives from any other address |
+| `FigaroCore`: `OrderCommitted`, `OrderResolved`, `ProcessResolved`, and the contract's token balance | the balance equals the bonds of every open order (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance and the sum computed from events diverge by any amount |
+| `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped` | one root chains to the next; accrual applies | `BatchAccrualSkipped` (read the reason), or no batch for longer than the sequencer's stated cadence while its queue holds work |
+| `UsageCounter`: `UsageRecorded`, `BatchUsageRecorded`; `RpgfMinter`: `Claimed` | accrual within an open period; claims after it closes | a claim in an open period, or a period's claims exceeding its tranche |
+| Registries: `ClauseRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |
+| `AttestationCoordinator`, `FigaroBatchVerifier`: `Attestation` | attestations on open orders | none; kept in the log |
+
+Alerts go to the maintainer's channel and to the incident agent. The review
+cadence is daily; an alert is read the hour it arrives.
+
 ## Incident response
 
 Nothing in the protocol can be paused, upgraded, or drained by an

@@ -7,8 +7,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
 
 /// @notice Minimal FigaroCore surface the coordinator calls. Local-minimal
-///         binding, per the coordinator exemplar (ARCHITECTURE.md § "Composing
-///         the kernel"); the kernel is untouched.
+///         binding, per the coordinator exemplar (`docs/CONTRACTS.md`
+///         § "Coordinators"); the kernel is untouched.
 interface IFigaroCore {
     function commit(CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig)
         external

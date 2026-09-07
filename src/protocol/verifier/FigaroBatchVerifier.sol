@@ -299,7 +299,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         //    claims passes empty arrays and the call is a no-op — which is
         //    what keeps trade settling after accrual closes.
         //
-        //    DECOUPLED FROM SETTLEMENT (audit Fix 1a): the call is wrapped so
+        //    DECOUPLED FROM SETTLEMENT: the call is wrapped so
         //    an accrual-gate revert — a seller who unstaked between prove and
         //    submit (`SellerNotStaked`), a period boundary crossed in flight
         //    (`PeriodMismatch`), a provenance mismatch — can NEVER unwind the
@@ -511,7 +511,6 @@ contract FigaroBatchVerifier is ReentrancyGuard {
      * If any user in a batch revokes approval before settleBatch executes, the entire batch reverts.
      * Mitigation: Sequencer MUST verify approvals immediately before proof submission.
      * Users SHOULD maintain approvals until batch settlement is confirmed.
-     * See audit finding L-6.
      */
 
     /// @dev Reconcile net positions. For each (token, user):

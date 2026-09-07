@@ -11,7 +11,7 @@ export const metadata: Metadata = withOg({
 
 // HOME IS A ROUTER, NEVER A DOCUMENT: the summary line, one sentence of the
 // mechanism, the proposition in blocks, the six doors — one per landing page,
-// one door per destination — and the six checks the code passes on every
+// one door per destination — and the seven checks the code passes on every
 // commit. Each door's line is in its reader's words; the landing page it
 // opens carries the pillar. A comprehension gap found by any probe is closed
 // on the landing page or its owner page, never by adding prose here.
@@ -26,9 +26,10 @@ const PROPOSITION: string[] = [
     "Anyone can publish the terms of an agreement and be rewarded based on its use. Trades are in any ERC-20 token. The reward is in florins, the protocol's native token.",
 ];
 
-// THE SIX CHECKS, each with the count the tree derives — the security-counts
+// THE SEVEN CHECKS, each with the count the tree derives — the security-counts
 // guard recomputes the four counted benches and fails the commit when a
-// number here drifts; TLA+ names models and Lean 4 names the result proved.
+// number here drifts; TLA+ names models, Lean 4 names the result proved, and
+// static analysis names the tools the workflow pins.
 const CHECKS: { name: string; count: string }[] = [
     { name: "Foundry", count: "311 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
@@ -36,6 +37,7 @@ const CHECKS: { name: string; count: string }[] = [
     { name: "TLA+", count: "four protocol state machines, model-checked" },
     { name: "Echidna", count: "15 property-based fuzzing targets" },
     { name: "Lean 4", count: "the bonded chain\u2019s equilibrium, proved" },
+    { name: "Static analysis", count: "100 Slither detectors and Semgrep\u2019s smart-contract rules" },
 ];
 const DOORS: { href: string; name: string; line: string }[] = [
     { href: "/use", name: "Use it", line: "Sell or buy anything and be paid in full when the buyer resolves, in the token you choose." },
@@ -81,7 +83,7 @@ export default function Home() {
                 </div>
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-4">
-                        The code is not yet audited by an outside firm. It is checked six independent ways on every commit:
+                        The code is not yet audited by an outside firm. It is checked seven independent ways on every commit:
                     </p>
                     <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 text-sm">
                         {CHECKS.map((c) => (

@@ -107,7 +107,7 @@ export default function Faq() {
                     Thirteen things worth having answered before a first commitment, each answered in one line. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavourable answers are on it too, in the same list as the rest.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Has the code been audited?</strong> Not yet by an external auditor; what exists instead is six independent verification benches and a frozen surface waiting for one (<Link href="#verification" className="text-ink-heading font-medium hover:underline">the full answer</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Has the code been audited?</strong> Not yet by an external auditor; what exists instead is seven independent verification benches and a frozen surface waiting for one (<Link href="#verification" className="text-ink-heading font-medium hover:underline">the full answer</Link>).</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Is anyone selling near me?</strong> Whatever the <Link href="/discover" className="text-ink-heading font-medium hover:underline">member directory</Link> shows where you are looking is the whole answer, including nothing &mdash; it reads the chain live and is never a curated list.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Who holds the payment while the trade runs?</strong> No one &mdash; the payment and both bonds sit in a contract with no owner and no path out but the resolution the buyer signs (<Link href="#custody" className="text-ink-heading font-medium hover:underline">who holds the tokens</Link>).</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">What do I have to put up?</strong> As a buyer, twice the payment leaves your wallet at commit &mdash; one bond with the payment carried inside it, refunded less that payment when you sign the resolution &mdash; plus ETH for the gas each step costs, cents to a few dollars at typical network prices (<Link href="#compatibility" className="text-ink-heading font-medium hover:underline">gas, tokens, and tax</Link>).</li>
@@ -290,7 +290,7 @@ export default function Faq() {
 
             <MarketingSection title="Has the code been audited?" sectionId="verification">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (six independent benches), the external-audit posture, and how to verify any trade yourself are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. Results will be published there when they exist.
+                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (seven independent benches), the external-audit posture, and how to verify any trade yourself are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. Results will be published there when they exist.
                 </p>
             </MarketingSection>
 

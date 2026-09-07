@@ -444,10 +444,13 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 — derived, never a stored count; the same rule the spec census above follows).
 Per workflow, what it runs and when:
 
-- **`foundry-ci`** — push/PR, path-filtered. Three jobs: `forge
-  build`/`test`/`fmt`, Forge Coverage (lcov artifact), and Halmos symbolic
+- **`foundry-ci`** — push/PR, path-filtered. Four jobs: `forge
+  build`/`test`/`fmt`, Forge Coverage (lcov artifact), Halmos symbolic
   proofs (Certora is excluded by design — it needs the maintainer-held
-  CERTORAKEY, never stored).
+  CERTORAKEY, never stored), and Static Analysis — Slither 0.11.3 over the
+  frozen scope, gated to exactly the High and Medium results
+  `AUDITOR_HANDOVER.md` § "Static analysis" triages, and Semgrep's
+  `p/smart-contracts` rules, failing on any WARNING or ERROR.
 - **`prover-ci`** — push/PR, path-filtered: `cargo test` on the two host-only
   prover crates (`figaro-clause`, `figaro-kernel`); the SP1-dependent crates
   build only at release time (see `sequencer-release`).

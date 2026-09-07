@@ -76,6 +76,17 @@ a Post-Audit Policy violation.
    in a mint-block comment corrected 20 → 38 (the value the maintainers'
    pre-commit guard battery enforces). No bytecode change; recorded
    per the amendment-1 precedent, no re-run required.
+5. **2026-09-07** — comment-only, six referents in five files:
+   `WitnessSwapAndCommitCoordinator.sol` (a citation of a file that does not
+   exist, now `CONTRACTS.md` § "Coordinators"), `FigaroBatchVerifier.sol` and
+   both deploy scripts (labels indexing a pre-freeze review report that is not
+   in the tree, removed; the constraints they annotated stay), `UsageCounter.sol`
+   (the `DESIGN_DECISIONS.md` heading cited verbatim), `Deploy.s.sol` (the
+   mainnet router named correctly, SwapRouter02). Runtime bytecode compared
+   before and after with `forge inspect <C> deployedBytecode` for the three
+   contracts: every byte before the trailing CBOR metadata identical; only the
+   metadata hash, which digests the source including comments, differs. Recorded
+   per the amendment-4 precedent, no re-run required.
 
 ### Formal run evidence
 
@@ -186,7 +197,11 @@ direct path would have refused.
 Slither 0.11.3 (100 detectors, `--exclude-dependencies`, mocks, echidna, tests,
 and scripts filtered) and Semgrep with the `p/smart-contracts` ruleset, run
 over the frozen scope. Semgrep returns only INFO gas-style rules — zero from its
-security rules. Slither's 40 results, triaged:
+security rules. Both run in CI on every push (`foundry-ci.yml`, job
+`static-analysis`): Semgrep fails on any WARNING or ERROR, and a gate holds
+Slither's High and Medium results to exactly the six triaged below, by
+detector, so a new one fails the push and so does one vanishing. Slither's 40
+results, triaged:
 
 | Severity | Detector | Where | Verdict |
 |---|---|---|---|
@@ -263,7 +278,7 @@ re-deriving they are intentional:
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a kernel escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout recipient the token refuses reverts
-  `settleBatch` at `FigaroBatchVerifier.sol:531`, the mitigation is the
+  `settleBatch` at `FigaroBatchVerifier.sol:530`, the mitigation is the
   sequencer-side check the NatSpec above `_executePositions` prescribes for
   approval revocation, and every process in the batch keeps its direct path.
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
@@ -295,7 +310,7 @@ the attestation itself. `forge fmt` is the formatter and runs in CI.
 
 Every other function in scope is at 4 or below.
 
-**The one `unchecked` block** (`UsageCounter.sol:666-669`) increments two
+**The one `unchecked` block** (`UsageCounter.sol:667-670`) increments two
 `uint64` counters by one: `c`, the distinct processes counted for a key, and
 `d`, the distinct sellers. Each process is counted once ever
 (`processCounted`), so `c` cannot exceed the number of resolved processes on
@@ -305,18 +320,15 @@ check.
 
 ### Known stale comments in the frozen scope
 
-Comments whose referent is not in the tree, left in place under the freeze so
-the diff stays empty. None describes behaviour wrongly except the first, which
-`DESIGN_DECISIONS.md` #10 corrects.
+The three in the kernel, which the freeze keeps as they are; the six outside
+the kernel were corrected by amendment 5. None describes behaviour wrongly
+except the first, which `DESIGN_DECISIONS.md` #10 corrects.
 
 | Location | Says | Reality |
 |---|---|---|
 | `FigaroCore.sol:124-129` | rebasing tokens are rejected by the balance check | the check sees only the delta inside its own transfer call (`DESIGN_DECISIONS.md` #10) |
 | `FigaroCore.sol:238-240` | use social recovery or a multisig for the buyer role | the kernel recovers ECDSA signers; a multisig transacts through an EOA it controls (§ "Behaviors to surface" above) |
-| `FigaroCore.sol:287`, `FigaroBatchVerifier.sol:302,514`, `Deploy.s.sol:406`, `DeployMainnet.s.sol:306` | "audit L-4", "audit Fix 1a", "audit finding L-6", "audit Fix 5b" | labels from the pre-freeze AI-assisted review; that report is not in the tree and the numbering carries no weight — the external auditor forms independent findings |
-| `WitnessSwapAndCommitCoordinator.sol:10` | `ARCHITECTURE.md § "Composing the kernel"` | no such file; the owner is `CONTRACTS.md` § Coordinators |
-| `UsageCounter.sol:125` | `DESIGN_DECISIONS.md § "A proof-gated writer is not an admin"` | the heading is #16 |
-| `Deploy.s.sol:82-83` | mainnet uses the Uniswap Universal Router | mainnet uses SwapRouter02 (`DeployMainnet.s.sol`, `DeploySwapCoordinator.s.sol`) |
+| `FigaroCore.sol:287` | "see audit L-4" | a label from the pre-freeze AI-assisted review; that report is not in the tree and the numbering carries no weight — the external auditor forms independent findings |
 
 ## Accepted risks
 
@@ -350,7 +362,7 @@ shape, answered from the tree. Each answer names its evidence.
 | 7 | Hardware security keys for production systems | Not in the tree | Operational, outside the repo. |
 | 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
 | 9 | Key invariants defined and tested on every commit | Yes | Foundry runs in pre-commit; Halmos, Certora, TLA+, Echidna, and the Lean 4 equilibrium proof run in the battery. `VERIFICATION_MAP.md` maps each invariant to its test. |
-| 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither and Semgrep (§ "Static analysis" above). |
+| 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither and Semgrep on every push in CI (§ "Static analysis" above). |
 | 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open on the audit | No external audit has been performed; this document is the handover for the first. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
 | 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
 
@@ -366,7 +378,7 @@ stays Satisfactory until a mutation-testing run exists.
 
 | Category | Rating | What holds it there |
 |---|---|---|
-| Arithmetic | Satisfactory | Checked math throughout; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:666-669`) carries no inline bound argument. |
+| Arithmetic | Satisfactory | Checked math throughout; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:667-670`) carries no inline bound argument. |
 | Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). No monitoring plan, no written incident-response procedure: the Rekt Test's item 3. |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and below (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented byte-parity mirrors. |

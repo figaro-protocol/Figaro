@@ -80,7 +80,7 @@ contract Deploy is Script {
         // mock Permit2 (witness-signature-verifying — digest parity with the
         // canonical deployment is proven by the mainnet-fork suite) and a
         // mock swap venue; mainnet uses the canonical Permit2 and the real
-        // Uniswap Universal Router. The router is pre-funded with bond-token
+        // Uniswap SwapRouter02. The router is pre-funded with bond-token
         // liquidity so buyer legs can swap the permit token into the bond
         // currency at the mock's settable rate (1:1 default).
         _permit2 = new MockWitnessPermit2();
@@ -403,7 +403,7 @@ contract Deploy is Script {
         // FlorinToken cap is the outer backstop (a claim over it reverts
         // MinterCapExceeded), but an over-committed schedule would turn late-
         // period claims into a first-come race; assert the two agree at deploy
-        // (audit Fix 5b — the ONLY place the minter is deployed).
+        // (the ONLY place the minter is deployed).
         uint256[] memory rpgfAmounts = _rpgfAmounts();
         uint256 rpgfSum;
         for (uint256 i = 0; i < rpgfAmounts.length; ++i) {

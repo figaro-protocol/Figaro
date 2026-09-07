@@ -107,3 +107,75 @@ jobs:
 
             - name: Run halmos proofs
               run: ./scripts/test-halmos.sh
+
+    # Static analysis over the frozen scope: Slither (pinned to the version the
+    # audit handover triaged) and Semgrep's smart-contract ruleset. The contracts
+    # are built on the host with the same Foundry pin as every other job and the
+    # Slither container reads out/build-info (ignore-compile), so the numbers
+    # here are the handover's numbers.
+    #
+    # fail-on is `none` with an explicit gate, not a level: every --fail-<level>
+    # flag fails on that level OR GREATER, and the tree carries two designed
+    # High results (arbitrary-send-erc20 in `_pullExact`, kernel and verifier —
+    # docs/AUDITOR_HANDOVER.md § "Static analysis"), so no level passes today.
+    # The gate holds the effective level at Medium: the High and Medium results
+    # must be exactly the six the handover triages, by detector — a new one at
+    # either level fails, and so does one vanishing, since the triage table
+    # would then be stale. Low and Informational are printed, not gated.
+    static-analysis:
+        name: Static Analysis
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
+
+            # The build crytic-compile would run itself, done on the pinned
+            # toolchain instead (build_info is off in foundry.toml; the flag
+            # turns it on for this build only).
+            - name: Build with build-info for Slither
+              run: forge build --build-info --skip '*/test/**' '*/script/**' --force
+
+            - name: Run Slither
+              uses: crytic/slither-action@b52cc1cbfee9ca3e8722dd5224299d16c9a6b80f # v0.4.2
+              with:
+                  slither-version: 0.11.3
+                  ignore-compile: true
+                  fail-on: none
+                  slither-args: --filter-paths "src/mocks|src/echidna|test/|lib/|script/" --exclude-dependencies --json slither.json
+
+            - name: Gate Slither on the triaged High and Medium results
+              run: |
+                  python3 - <<'PY'
+                  import collections, json, sys
+                  results = json.load(open("slither.json"))["results"].get("detectors", [])
+                  found = collections.Counter(
+                      (r["impact"], r["check"]) for r in results if r["impact"] in ("High", "Medium")
+                  )
+                  triaged = collections.Counter({
+                      ("High", "arbitrary-send-erc20"): 2,
+                      ("Medium", "incorrect-equality"): 1,
+                      ("Medium", "reentrancy-no-eth"): 1,
+                      ("Medium", "unused-return"): 2,
+                  })
+                  if found != triaged:
+                      print("Slither High/Medium results differ from docs/AUDITOR_HANDOVER.md § Static analysis:")
+                      for key in sorted(set(found) | set(triaged)):
+                          print(f"  {key[0]:7} {key[1]:24} triaged={triaged[key]} found={found[key]}")
+                      sys.exit(1)
+                  print(f"Slither: {len(results)} results; the {sum(triaged.values())} High/Medium results are the triaged set")
+                  PY
+
+            # p/smart-contracts returns only INFO gas-style rules on this tree;
+            # any WARNING or ERROR fails the job (--error).
+            - name: Install Semgrep
+              run: pipx install semgrep==1.176.1
+
+            - name: Run Semgrep
+              run: semgrep --config p/smart-contracts --error --severity ERROR --severity WARNING src/kernel src/protocol src/rpgf src/florin

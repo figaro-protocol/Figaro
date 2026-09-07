@@ -67,7 +67,7 @@ export default function AgentsDoor() {
             </MarketingSection>
             <MarketingSection bottomPad="wide">
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                    The code is not yet audited by an outside firm. It is checked six independent ways on every commit. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
+                    The code is not yet audited by an outside firm. It is checked seven independent ways on every commit. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
                 </p>
             </MarketingSection>
         </>
