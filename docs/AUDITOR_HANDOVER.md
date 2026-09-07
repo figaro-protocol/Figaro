@@ -137,6 +137,27 @@ two lines are the `periodCount()` view. The `--ir-minimum` mapping warning
 Foundry prints applies: the per-line figures are approximate, the per-function
 figures are not.
 
+### Mutation testing
+
+Run 2026-09-07 with Trail of Bits' `mewt` 4.0.0 over the kernel, high and
+medium severity mutations (statement removal, error replacement, condition
+forcing, negation removal, return-default), the kernel's own test files as the
+oracle and the gas-anchor tests excluded so a catch means behaviour:
+
+| Target | Mutants | Caught | Survived |
+|---|---|---|---|
+| `FigaroCore.sol` | 99 | 95 | 4 |
+
+The four survivors, each read: two remove or force the `DuplicateCommitment`
+guard at `commit`, which is the documented unreachable backstop (every replay is
+preempted by an earlier revert, and `FigaroCoreRevertBranchTest` pins each
+preempting error); one forces the `CumulativeValueOverflow` guard in
+`resolveProcess`, the unreachable window under § "Behaviors to surface"; one
+removed the `orderProcessId` write, which no test read, and
+`test_orderProcessId_bindsEveryOrderToItsProcess` now does. Every High-severity
+mutant was caught. The rest of the frozen scope is mutated one contract per
+sitting; the results are recorded here as they land.
+
 ### Post-Audit Policy
 
 Any Solidity edit after the freeze commit must be:
@@ -375,7 +396,7 @@ what the tree shows. Overall 3.0 of 4. The rubric is threshold-based: a
 category holds a tier only when every criterion of that tier is met, so Auditing
 stays Moderate until the monitoring log is reviewed on its schedule and the
 incident plan has been rehearsed, and Testing stays Satisfactory until the
-mutation-testing campaign has run over the scope.
+mutation-testing campaign has covered the whole scope.
 
 | Category | Rating | What holds it there |
 |---|---|---|
@@ -387,7 +408,7 @@ mutation-testing campaign has run over the scope.
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Behaviors to surface". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
 | Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
-| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; no mutation-testing run. |
+| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; mutation testing run on the kernel (§ "Mutation testing"), the rest of the scope to follow. |
 
 ### The L2BEAT risk categories, applied to the batch path
 

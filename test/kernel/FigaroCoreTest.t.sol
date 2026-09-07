@@ -424,6 +424,15 @@ contract FigaroCoreTest is Test {
         assertEq(core.orderStatus(orderHash), 2, "after resolve: resolved");
     }
 
+    function test_orderProcessId_bindsEveryOrderToItsProcess() public {
+        (bytes32 processId, bytes32 rootHash,) = _commitRoot(50 ether, 1);
+        (bytes32 subHash,) = _commitSub(processId, seller2, 20 ether, 70 ether, SELLER2_KEY, 2);
+
+        assertEq(core.orderProcessId(rootHash), processId, "root order binds to its process");
+        assertEq(core.orderProcessId(subHash), processId, "sub order binds to the same process");
+        assertEq(core.orderProcessId(keccak256("unknown")), bytes32(0), "unknown order binds to nothing");
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // 15: Full process — root + two subs → resolve
     // ═══════════════════════════════════════════════════════════════
