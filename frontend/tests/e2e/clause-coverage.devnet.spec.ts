@@ -592,7 +592,6 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.locator('#profile-name').fill('Coverage Seller');
             await page.locator('#profile-specialty').fill('per-clause coverage');
             await page.locator('#profile-geohash').fill('9q8yyk8yu');
-            if (rung.profile) await rung.profile(page);
             await page.getByRole('button', { name: /\+ MOCK$/ }).click();
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
@@ -604,6 +603,10 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const myRow = page.getByTestId(`seller-assembly-row-${slug}`);
             await myRow.waitFor({ state: 'visible', timeout: 30000 });
             await myRow.locator('input[type="checkbox"]').first().check();
+            // Profile-sourced clause values render on THIS step, scoped to the
+            // clauses the checked assemblies compose (never on Identity, where
+            // nothing is bound yet).
+            if (rung.profile) await rung.profile(page);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/catalogue/);
 

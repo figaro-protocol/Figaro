@@ -23,6 +23,7 @@ import {
 } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
+import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
@@ -290,6 +291,28 @@ export function OnboardingAssembliesForm({
                     );
                 })}
             </div>
+
+            {/* Profile-sourced clause values (a dim-weight divisor, a declared
+                credential id) — seller master data the bound assemblies read at
+                checkout. Scoped to the clauses the assemblies selected above
+                compose, exactly as the catalogue step scopes its item
+                properties; authored here, where a binding exists, never on
+                Identity, where nothing is bound yet. Stored on the profile
+                draft, which is the document they belong to. */}
+            <ProfileClauseValues
+                clauseIds={[...new Set(
+                    choices.filter((c) => selected.has(c.slug)).flatMap((c) => c.clauses ?? []),
+                )]}
+                values={state.profile?.profileClauseValues ?? {}}
+                onChange={(next) =>
+                    update({
+                        profile: {
+                            ...(state.profile ?? {}),
+                            profileClauseValues: Object.keys(next).length > 0 ? next : undefined,
+                        },
+                    })
+                }
+            />
 
             {/* SELLER-side data-disclosure — classes derive from the
                 bindings selected above; nothing here is required. The

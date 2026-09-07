@@ -18,7 +18,7 @@ import {
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
-import { ProfileClauseValues, type ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
+import type { ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, useOnboardingState } from "@/lib/member/onboardingState";
@@ -467,13 +467,10 @@ export function OnboardingProfileForm({
                         Free-form. What you specialise in, in your own words.
                     </p>
                 </FormField>
-                {/* Profile-sourced clause values — seller master data (dimweight's
-                    divisor, a declared credential id), one spec-driven group per
-                    clause declaring block.checkout.profileFills, from the live registry. */}
-                <ProfileClauseValues
-                    values={form.profileClauseValues}
-                    onChange={(next) => setField("profileClauseValues", next)}
-                />
+                {/* Profile-sourced clause values (dimweight's divisor, a declared
+                    credential id) are authored on the Assemblies step, scoped to the
+                    clauses the bound assemblies compose; this form only carries the
+                    draft's values through. */}
             </section>
 
             {/* ── Location ──────────────────────────────────────────── */}

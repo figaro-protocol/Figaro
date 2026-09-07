@@ -9,7 +9,10 @@
  * registry, never hardcoded — restricted to each spec's DECLARED
  * profile-authored field subset (`clauseProfileFills`; the rest belong to
  * designer fills or checkout derivation). Optional throughout: a seller
- * authors what applies and leaves the rest blank.
+ * authors what applies and leaves the rest blank, so a field's checkout
+ * `required` never marks it here. Scoped by `clauseIds` to the clauses the
+ * seller's bound assemblies compose — the same derivation the catalogue
+ * step makes — so a seller is asked only what its own assemblies read.
  *
  * Testids: `profile-clause-<clauseId>-<field>[-<option>]`.
  */
@@ -27,21 +30,26 @@ export type ProfileClauseValuesMap = Record<string, Record<string, unknown>>;
 export function ProfileClauseValues({
     values,
     onChange,
+    clauseIds,
 }: {
     values: ProfileClauseValuesMap;
     onChange: (next: ProfileClauseValuesMap) => void;
+    /** The clauses the seller's bound assemblies compose; only their
+     *  profile-authored fields render. Absent = every registered clause. */
+    clauseIds?: readonly string[];
 }) {
     // Warm the chain→IPFS spec cache at this surface's boundary; `version`
     // bumps as specs land and re-renders the section (same pattern as the
     // catalogue clause-values editor).
     useClauseSpecs();
-    const profileClauses = listProfileSourcedClauses();
+    const scope = clauseIds ? new Set(clauseIds) : null;
+    const profileClauses = listProfileSourcedClauses().filter((c) => !scope || scope.has(c.clauseId));
     if (profileClauses.length === 0) return null;
     return (
         <div className="space-y-4 border-t border-default pt-3" data-testid="profile-clauses">
             <p className="text-xs text-ink-muted">
-                Standing declarations (optional — master data any order composing the
-                matching clause fills from your profile)
+                Standing declarations (optional — master data the assemblies you bound
+                read from your profile at checkout)
             </p>
             {profileClauses.map(({ clauseId }) => {
                 const spec = getClauseSpec(clauseId);
@@ -65,7 +73,7 @@ export function ProfileClauseValues({
                         {fields.map((field) => (
                             <FieldControl
                                 key={field.name}
-                                field={field}
+                                field={{ ...field, required: false }}
                                 value={data[field.name]}
                                 mode="runtime"
                                 testId={`profile-clause-${clauseId}-${field.name}`}
