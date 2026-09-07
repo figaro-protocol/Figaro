@@ -87,9 +87,9 @@ function makeServices(): RuntimeServices {
 }
 
 function wrapper(services: RuntimeServices) {
-    return ({ children }: { children: ReactNode }) => (
-        <RuntimeServicesProvider services={services}>{children}</RuntimeServicesProvider>
-    );
+    return function Wrapper({ children }: { children: ReactNode }) {
+        return <RuntimeServicesProvider services={services}>{children}</RuntimeServicesProvider>;
+    };
 }
 
 describe("isCommitmentParty gate (finding 2)", () => {
