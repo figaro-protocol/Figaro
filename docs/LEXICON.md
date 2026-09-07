@@ -4,7 +4,7 @@ Nouns and their definitions. One name per thing.
 
 **agent** — Software that holds a signing key and acts with it, on the same footing as a person. An agent acts for itself — it is then the asset, selling its own value — or for another asset whose wallet it operates. Either way it can buy, sell, and design clauses and assemblies.
 
-**agreement** — The clauses composed for one order, every field filled. Its merkle root is what the commitment carries.
+**agreement** — The clauses composed for one order, every field filled: the terms of the contract every trade is, and the parties' document. Its merkle root is what the commitment carries.
 
 **arbitration forum** — An outside body a designer composes into an assembly to rule on disputes about a process, using the process's data as evidence. A forum rules; the buyer resolves.
 
@@ -12,7 +12,7 @@ Nouns and their definitions. One name per thing.
 
 **asset** — A productive thing that owns a wallet and trades through it: a kitchen, a vehicle, a person's labour, a machine, an agent selling its own service. The asset is the party; whoever holds its key operates it.
 
-**attestation** — A signed statement a party makes about a process while it is open, bound to the order it concerns. Attestations are the evidence a process's data holds.
+**attestation** — A representation or warranty a party gives about a process while it is open, signed and bound to the order it concerns: a term of the agreement, executed before resolve. Attestations are the evidence a process's data holds.
 
 **batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through the kernel.
 
@@ -36,7 +36,7 @@ Nouns and their definitions. One name per thing.
 
 **consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the kernel is what makes it hold.
 
-**contract** — What every trade is. A binding contract needs offer, acceptance, consideration, capacity, legality, and mutual assent, and implies a body of terms and a trail of data.
+**contract** — What every trade is in law. A binding contract needs six elements, and each has one place here: offer is the buyer's signature over the commitment, carried to the seller; acceptance is the seller's counter-signature over the same commitment; mutual assent is the kernel's check at commit that both signatures recover to the named parties over one hash; consideration is the bonds pulled at commit and the payment moved at resolve; capacity is any wallet that can sign and fund its bond, a person's or an agent's; legality is absent from the kernel by design and enters through the clauses the agreement hash binds, or through a forum ruling on the data afterward. Its terms are the agreement; its warranties and representations are the attestations; the trail it leaves is the process's data. On chain the word means code, so Figaro says agreement for the parties' document and keeps contract for this definition and for smart contracts.
 
 **coordination token** — A token two strangers can agree on because it is neutral to both: a stablecoin, or the florin. Any process may be denominated in one.
 
@@ -64,7 +64,7 @@ Nouns and their definitions. One name per thing.
 
 **member** — A wallet that has registered a profile, with a stake, so that others can find it.
 
-**offer** — The terms one party proposes for an order before both have signed. Offers form by dispatch race or by request for quotes.
+**offer** — The buyer's signed commitment over an order's terms, carried to the seller before the seller has signed; the seller's counter-signature is the acceptance. Offers form by dispatch race or by request for quotes.
 
 **operator** — Whoever holds the signing key of an asset's wallet and acts for the asset: a person or an agent. Whose value the wallet carries decides the word — an asset acting for itself is a seller; a key-holder acting for another asset is its operator.
 

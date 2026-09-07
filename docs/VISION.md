@@ -32,13 +32,15 @@ buyer resolves, so every seller has a live interest in putting right any one
 seller's fault before that signature. Two frozen contracts — the kernel — do
 this and nothing else.
 
-Everything people touch is built above the kernel. Terms are clauses, written
-once and registered for anyone to compose. Offer and acceptance are assemblies
-— agreements composed into a reusable design of a process — and checkout, where
-a buyer fills one with real parties and amounts. Capacity is any wallet, a
-person's or an agent's, registered under a stake. Mutual assent is the two
-signatures. Legality composes in: name an arbitration forum in the terms, or let
-an outside forum rule afterward on the same data. The data a process leaves is
+Everything people touch is built above the kernel. Terms are the agreement:
+clauses, written once and registered for anyone to compose, composed into an
+assembly and filled at checkout with real parties and amounts. Offer is the
+buyer's signature over the commitment, carried to the seller; acceptance is the
+seller's counter-signature; mutual assent is the kernel's check of both at
+commit. Warranties and representations are the attestations, given while the
+process is open. Capacity is any wallet that can sign and fund its bond, a
+person's or an agent's. Legality composes in: name an arbitration forum in the
+terms, or let an outside forum rule afterward on the same data. The data a process leaves is
 public in aggregate and the parties' own in detail. Designers are paid from the
 commons in proportion to real use of what they published. And a process
 composes with any other contract on the chain — a swap, a payment splitter, a
