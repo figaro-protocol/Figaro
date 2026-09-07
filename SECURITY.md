@@ -112,4 +112,13 @@ redeployment under a new identifier. The steps, in order:
    amendment and re-run the full formal battery on the fixed tree before the
    broadcast, not after.
 
+**The site and the sequencer are the other two legs, and they differ.** The
+contracts are immutable, so their incident is the redeployment above. The site
+(`frontend/`, a static build published by direct upload) is mutable: a defect
+there is fixed and republished within the hour, nothing on the chain changes,
+and it becomes an advisory only if the page misrepresented what a participant
+signed. The batch sequencer (`prover/sequencer`, off-chain) is trusted for
+liveness alone: if it stops or misbehaves, every process keeps its direct path
+to `FigaroCore`, and the incident is to stop the sequencer and say so.
+
 There is no fixed response time. Every report is read the day it arrives.
