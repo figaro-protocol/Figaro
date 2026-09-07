@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useAuditProcessOrders — the process's orders from BOTH settlement universes.
+ * useAuditProcessOrders — the process's orders from BOTH resolution paths.
  *
  * `useProcessOrders` builds its list exclusively from `OrderCommitted` logs on
  * `FigaroCore`. A batch-settled order never emits one — its buyer, seller,

@@ -80,7 +80,7 @@ export function getUsageCounter(): `0x${string}` | null {
     return getKernelUsageCounter();
 }
 
-/** The FigaroBatchVerifier — the SECOND settlement universe. It shares no state
+/** The FigaroBatchVerifier — the batch path, the second of the two resolution paths. It shares no state
  *  with FigaroCore and never calls it, so it is not a kernel contract and does
  *  not belong in `lib/kernel/contracts.ts`: a batch-settled process never
  *  acquires kernel status (docs/SCALING_STRATEGY.md § "The two paths share no

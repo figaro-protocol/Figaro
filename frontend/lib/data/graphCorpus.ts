@@ -10,7 +10,7 @@
  * re-derived here — the projections are `@figaro-protocol/sdk/derive`'s and
  * the events come from the frontend's EXISTING caches (`lib/kernel/indexer.ts`
  * for the kernel's own log, `lib/composition/indexer.ts` for attestations
- * across both settlement universes), so this module adds a fold, never a
+ * across both resolution paths), so this module adds a fold, never a
  * second indexer.
  *
  * Three boundaries this reader states rather than papers over:

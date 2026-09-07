@@ -35,7 +35,7 @@ export interface SettlementPathsFigureProps extends BaseFigureProps {
 }
 
 /**
- * The two disjoint settlement universes, side by side, with the single surface
+ * The two disjoint resolution paths, side by side, with the single surface
  * that bridges them.
  *
  * The default prop set is /spec's, verbatim — /spec § "The two paths share no state"
@@ -94,7 +94,7 @@ const SPEC_CAPTION = (
     <>
         Batch-settled orders never acquire kernel status &mdash; FigaroBatchVerifier
         never writes FigaroCore.orderStatus. UsageCounter is the only bridge
-        between the two settlement universes.
+        between the two resolution paths.
     </>
 );
 

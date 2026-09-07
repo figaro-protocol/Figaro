@@ -412,7 +412,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', fromBlock: 0n }),
             publicClient.getContractEvents({ address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation', fromBlock: 0n }),
             // The batch verifier re-emits the SAME topic hash; the page's fold
-            // is ADDRESS-DISCRIMINATED across both settlement universes, so
+            // is ADDRESS-DISCRIMINATED across both resolution paths, so
             // this out-of-band mirror must be too (the batch-universe leg
             // leaves real batch entries on the persisted devnet).
             publicClient.getContractEvents({ address: batchVerifier, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation', fromBlock: 0n }),
@@ -739,7 +739,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             expect(status.orderCommitted, 'commit count equals the event fold').toBe(allCommitted.length);
             expect(status.orderResolved).toBe(allResolved.length);
             expect(status.processResolved).toBe(allProcessResolved.length);
-            expect(status.attestations, 'attestations span BOTH settlement universes').toBe(directAtt.length + batchAtt.length);
+            expect(status.attestations, 'attestations span BOTH resolution paths').toBe(directAtt.length + batchAtt.length);
             expect(status.attestationsByUniverse?.direct, 'the direct universe is the coordinator\'s address').toBe(directAtt.length);
             expect(status.attestationsByUniverse?.batch, 'the batch universe is the verifier\'s address').toBe(batchAtt.length);
             expect(status.substanceRecovered, 'recovered substance equals the gateway fold').toBe(recoveredFold);
@@ -938,7 +938,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
 
         // A BATCH-ONLY process identity, fresh each run: batch-settled trade
         // acquires no kernel status and emits no kernel event — the two
-        // settlement universes stay disjoint by construction.
+        // the two resolution paths stay disjoint by construction.
         const salt = toHex(generateSalt(), { size: 32 });
         const processId = keccak256(encodePacked(['string', 'bytes32'], ['data-explore.devnet.spec.ts:batch-process', salt]));
         const orderHash = keccak256(encodePacked(['string', 'bytes32'], ['data-explore.devnet.spec.ts:batch-order', salt]));
@@ -1055,7 +1055,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await page.getByTestId('graph-view-overlays').click();
         const geoRow = page.getByTestId(`overlay-row-${geoKey}`);
         await expect(geoRow, 'the geo family draws ONE row under its computed key').toBeVisible({ timeout: 60_000 });
-        await expect(geoRow, 'both settlement universes fold into the row, discriminated by emitting address')
+        await expect(geoRow, 'both resolution paths fold into the row, discriminated by emitting address')
             .toContainText('direct + batch settlements');
         await expect(geoRow, 'the entry count spans both universes').toContainText(plural(geoEntries, 'attestation', 'attestations'));
         await expect(geoRow, 'the decoded count includes the batch payload').toContainText(

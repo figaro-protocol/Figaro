@@ -89,7 +89,7 @@ export async function getAttestationsByOrder(client: PublicClient, chainId: numb
     return all.filter((log) => hexEqual(getStringArg(log, "orderHash"), orderHash));
 }
 
-// ── FigaroBatchVerifier — the SECOND settlement universe ─────────────────────
+// ── FigaroBatchVerifier — the batch path, the second of the two resolution paths ─────────────────────
 //
 // These reads are deliberately NOT merged into `getAllAttestations` above. The
 // `Attestation` topic hash is shared by the coordinator and the verifier
@@ -136,7 +136,7 @@ export async function getAllBatchSettled(client: PublicClient, chainId: number):
 }
 
 /**
- * Every `Attestation` record on this chain, from BOTH settlement universes,
+ * Every `Attestation` record on this chain, from BOTH resolution paths,
  * each row TAGGED with the universe that emitted it — the frontend's read of
  * the SDK's `fetchAttestationRecords` shape (`UniverseAttestationEvent`),
  * served from the event cache instead of a fresh chunked scan.
@@ -237,7 +237,7 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
 /**
  * Reconstruct a seller's full public-graph track record from the OrderCommitted
  * / OrderResolved process graph and the disclosure graph — all keyed to one
- * address. Attestation tallies fold BOTH settlement universes (coordinator +
+ * address. Attestation tallies fold BOTH resolution paths (coordinator +
  * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
  * § "A reader must fold BOTH"). The process/value figures are direct-path by
  * construction: the batch universe emits no per-order events (no status, no

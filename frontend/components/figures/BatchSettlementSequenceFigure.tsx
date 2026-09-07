@@ -7,7 +7,7 @@ export type BatchSettlementSequenceFigureProps = BaseFigureProps;
 /**
  * The batch path in order of who acts, and where the acceptance gate sits.
  *
- * `SettlementPathsFigure` renders the two settlement universes side by side —
+ * `SettlementPathsFigure` renders the two resolution paths side by side —
  * what each path's inputs, events, and state ARE, and that they share none of
  * it. This figure renders the batch path's SEQUENCE instead: the order in which
  * the wallets, the sequencer, the off-chain execution, the verifier, and the
