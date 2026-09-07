@@ -27,9 +27,10 @@ import { mnemonicToAccount } from 'viem/accounts';
 // identity (compositionHash + slug). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
-    ASSEMBLIES_DIR, CLAUSES_DIR, LOCAL_ANVIL, anchorAssembly, pinFile, pinJSON,
+    ASSEMBLIES_DIR, CLAUSES_DIR, LOCAL_ANVIL, anchorAssembly, fillDeployTimeCurrency, pinFile, pinJSON,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
+import { templateCompositionHash, deriveAssemblySlug } from '@figaro-protocol/sdk';
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
@@ -37,16 +38,34 @@ const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
 
 // The test sellers. addressIndex ∈ [5,19] (disjoint from buyers anvil[0..4]).
 // Addresses derive from the anvil mnemonic below — nothing hardcoded.
+//
+// Each seller BINDS the reference assembly its specialty names (`binds` is the
+// file in assemblies/), so the world a visitor meets on /discover keeps the
+// promise the directory makes: a seller surfaces only with an anchored
+// binding, and populate anchors the references first. DEVNET ONLY — on a
+// public chain a seller binds through the real flow. A courier designation
+// (`courierIndex`) names anvil[8] as the delivery counterparty on the
+// local-commerce composition; undesignated sellers leave the courier to the
+// buyer's checkout choice or dispatch race.
+const COURIER_CLAUSE = 'figaro-courier-process';
 const SELLERS = [
-    { addressIndex: 5, name: 'Kiosk Corner', specialty: 'kiosk', geohash: '9q8yyk8yu', products: [{ name: 'Newspaper', price: '1' }] },
-    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', products: [{ name: 'Espresso', price: '1' }] },
-    { addressIndex: 7, name: "Rosa's Kitchen", specialty: 'prepared food, own delivery', geohash: '9q8yyk8yv', products: [{ name: 'Margherita pizza', price: '1' }] },
-    { addressIndex: 8, name: 'Cardinal Couriers', specialty: 'last-mile delivery', geohash: '9q8yyk8yw', products: [{ name: 'Standard delivery', price: '1', category: 'delivery' }] },
-    { addressIndex: 9, name: 'Saffron Table', specialty: 'prepared food, buyer-arranged delivery', geohash: '9q8yyk8yx', products: [{ name: 'Margherita pizza', price: '1' }] },
-    { addressIndex: 10, name: 'Pomodoro Kitchen', specialty: 'prepared food, auction-arranged delivery', geohash: '9q8yyk8yy', products: [{ name: 'Margherita pizza', price: '1' }] },
-    { addressIndex: 11, name: 'Harbor Provisions', specialty: 'grocery, emissions-disclosed delivery', geohash: '9q8yyk8yz', products: [{ name: 'Grocery box', price: '1' }] },
-    { addressIndex: 12, name: 'Sterling Goods', specialty: 'general goods, delivery with named recourse', geohash: '9q8yyk8z0', products: [{ name: 'Hardware kit', price: '1' }] },
+    { addressIndex: 5, name: 'Kiosk Corner', specialty: 'kiosk', geohash: '9q8yyk8yu', binds: 'pos.json', products: [{ name: 'Newspaper', price: '1' }] },
+    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', binds: 'pos.json', products: [{ name: 'Espresso', price: '1' }] },
+    { addressIndex: 7, name: "Rosa's Kitchen", specialty: 'prepared food, own delivery', geohash: '9q8yyk8yv', binds: 'local-commerce.json', courierIndex: 8, products: [{ name: 'Margherita pizza', price: '1' }] },
+    { addressIndex: 8, name: 'Cardinal Couriers', specialty: 'last-mile delivery', geohash: '9q8yyk8yw', binds: 'local-commerce.json', products: [{ name: 'Standard delivery', price: '1', category: 'delivery' }] },
+    { addressIndex: 9, name: 'Saffron Table', specialty: 'prepared food, buyer-arranged delivery', geohash: '9q8yyk8yx', binds: 'local-commerce.json', products: [{ name: 'Margherita pizza', price: '1' }] },
+    { addressIndex: 10, name: 'Pomodoro Kitchen', specialty: 'prepared food, auction-arranged delivery', geohash: '9q8yyk8yy', binds: 'local-commerce.json', products: [{ name: 'Margherita pizza', price: '1' }] },
+    { addressIndex: 11, name: 'Harbor Provisions', specialty: 'grocery, emissions-disclosed delivery', geohash: '9q8yyk8yz', binds: 'local-commerce.json', courierIndex: 8, products: [{ name: 'Grocery box', price: '1' }] },
+    { addressIndex: 12, name: 'Sterling Goods', specialty: 'general goods, delivery with named recourse', geohash: '9q8yyk8z0', binds: 'pos.json', products: [{ name: 'Hardware kit', price: '1' }] },
 ];
+
+/** The slug a reference assembly is anchored under: the composition hash of the
+ *  template AFTER the deploy-time currency fill — the same hash
+ *  populateReferenceAssemblies anchored, never the raw file's. */
+function referenceSlug(file, tokenAddress) {
+    const raw = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
+    return deriveAssemblySlug(templateCompositionHash(fillDeployTimeCurrency(raw, tokenAddress)));
+}
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Error ? err.message : String(err));
@@ -255,9 +274,14 @@ async function main() {
             location: { geohash: s.geohash },
             acceptedTokens: [{ address: mockErc20, symbol: tokenSymbol, name: tokenName }, ...permitTokenEntry],
             defaultTokenAddress: mockErc20,
-            // No bindings seeded: a seller binds a PUBLISHED assembly (asm-<hash>)
-            // through the real flow — author + publish in the designer, then bind.
-            assemblyBindings: [],
+            assemblyBindings: [{
+                bindingId: `seed-${s.addressIndex}`,
+                subjectAddress: account.address,
+                assemblySlug: referenceSlug(s.binds, mockErc20),
+                counterpartyBindings: s.courierIndex == null
+                    ? []
+                    : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],
+            }],
         };
         const metadataURI = await pinJSON(ipfsApiUrl, JSON.stringify(profile));
 
