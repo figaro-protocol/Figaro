@@ -138,7 +138,7 @@ export function OrderTimelineView({ processId }: Props) {
                         <span className={resolveCapacity.remaining <= Math.max(1, Math.floor(resolveCapacity.cap / 20))
                             ? "font-medium text-warning-fg"
                             : "font-medium text-ink-primary"}>
-                            {resolveCapacity.activeOrderCount} / {resolveCapacity.cap} resolvable in one settlement
+                            {resolveCapacity.activeOrderCount} / {resolveCapacity.cap} resolvable in one call
                         </span>
                     </p>
                 )}

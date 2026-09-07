@@ -167,7 +167,7 @@ function CorpusLine({ corpus }: { corpus: GraphCorpus }) {
     return (
         <p className="text-xs text-ink-muted leading-relaxed" data-testid="corpus-line">
             {corpus.process.processes.size} process{corpus.process.processes.size === 1 ? "" : "es"} ·{" "}
-            {corpus.settlement.chains.size} settlement chain{corpus.settlement.chains.size === 1 ? "" : "s"} ·{" "}
+            {corpus.settlement.chains.size} order chain{corpus.settlement.chains.size === 1 ? "" : "s"} ·{" "}
             {attestations} attestation{attestations === 1 ? "" : "s"} across {corpus.overlays.length}{" "}
             clause famil{corpus.overlays.length === 1 ? "y" : "ies"} · substance recovered for{" "}
             {corpus.substance.recovered} of the {corpus.substance.attempted} most recent

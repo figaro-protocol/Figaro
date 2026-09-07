@@ -997,9 +997,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                         ))}
 
                         <p className="text-xs text-ink-muted" data-testid="checkout-security-link">
-                            Can this website lie about what you&apos;re signing?{" "}
+                            What you sign is the hash of the agreement above, and you can check it yourself.{" "}
                             <Link href="/faq#signing" className="underline text-ink-primary hover:text-ink-body">
-                                How to check &rarr;
+                                How &rarr;
                             </Link>
                         </p>
 

@@ -60,7 +60,7 @@ export function SettlementProceedsPanel({
             data-testid="settlement-proceeds"
         >
             <p className="text-xs font-semibold text-ink-muted">
-                Settlement Complete
+                Resolved
             </p>
             <dl className="text-sm text-ink-body space-y-1">
                 <div className="flex justify-between gap-4">
