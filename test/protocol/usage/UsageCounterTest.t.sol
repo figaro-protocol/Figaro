@@ -41,6 +41,8 @@ contract UsageCounterTest is Test {
     bytes32 constant GEO_KEY = keccak256(abi.encode("figaro-geolocation", uint64(1)));
     bytes32 constant CARGO_KEY = keccak256(abi.encode("figaro-cargo", uint64(1)));
 
+    bytes32 constant ASM_KEY = keccak256("an-assembly");
+
     bytes32 constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     bytes constant SECTION = hex"c0ffee";
 
@@ -183,6 +185,35 @@ contract UsageCounterTest is Test {
         counter.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
     }
 
+    /// @dev A settled one-order process whose agreement carries the PROVENANCE
+    ///      section for `compositionHash` — the only leaf an assembly is ever
+    ///      provable through, since agreement leaves are keyed by clause and a
+    ///      compositionHash is never a leaf key. The section commits as the
+    ///      canonical-JSON bytes the counter reproduces from the claimed hash.
+    function _settledUnderAssembly(bytes32 compositionHash, uint256 salt)
+        internal
+        returns (CommitmentTypes.Commitment memory c)
+    {
+        bytes memory sectionData = abi.encodePacked('{"compositionHash":"', vm.toString(compositionHash), '"}');
+        c = CommitmentTypes.Commitment({
+            processId: bytes32(0),
+            buyer: buyer,
+            seller: seller1,
+            currency: address(token),
+            payment: 100 ether,
+            expectedCumulativeValue: 100 ether,
+            agreementHash: AgreementTestHelper.singleSectionRoot(PROV_KEY, sectionData),
+            salt: salt,
+            deadline: block.timestamp + 1 hours
+        });
+        (bytes32 processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER1_KEY));
+
+        CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](1);
+        all[0] = c;
+        vm.prank(buyer);
+        core.resolveProcess(processId, all);
+    }
+
     // ── What a record proves ────────────────────────────────────────
 
     function test_recordsSettledUsage() public {
@@ -286,6 +317,55 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, CARGO_KEY));
         _record(c, CARGO_KEY);
+    }
+
+    function test_revertsWhenAssemblyNotRegistered() public {
+        // The assembly form of the clause-or-assembly-side stake gate: a
+        // composition earns only while its AssemblyRegistry binding is live.
+        // The provenance leaf opens (the process DID run under this assembly);
+        // what fails is the stake behind the composition being credited.
+        stake.kill(ASM_KEY);
+        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, ASM_KEY));
+        counter.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
+    }
+
+    function test_revertsWhenClauseIsExcluded() public {
+        // The direct path's twin of the batch path's silent skip: an excluded
+        // clause — at genesis, the provenance clause — is attribution plumbing,
+        // and counting it would double-pay the adoption it exists to attribute.
+        // A standalone record has nothing else to unwind, so it reverts. The
+        // clause is live and its leaf opens; exclusion alone stops the count.
+        CommitmentTypes.Commitment memory c = _settledOrder(PROV_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, PROV_KEY));
+        _record(c, PROV_KEY);
+    }
+
+    function test_revertsWhenAssemblyIsExcluded() public {
+        // Same gate, assembly form: the exclusion set is deploy-frozen and may
+        // name a composition as well as a clause. This counter excludes
+        // ASM_KEY alongside the provenance clause.
+        bytes32[] memory excluded = new bytes32[](2);
+        excluded[0] = PROV_KEY;
+        excluded[1] = ASM_KEY;
+        uint64[] memory periods = new uint64[](2);
+        periods[0] = P0_END;
+        periods[1] = P1_END;
+        UsageCounter excluding = new UsageCounter(
+            address(core),
+            address(members),
+            address(stake),
+            address(stake),
+            batchVerifier,
+            PROV_KEY,
+            excluded,
+            1,
+            periods
+        );
+
+        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, ASM_KEY));
+        excluding.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
     }
 
     // ── Counting properties ─────────────────────────────────────────

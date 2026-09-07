@@ -164,6 +164,28 @@ contract ClauseRegistryTest is Test {
         registry.withdrawDeposit(MODALITIES_HASH);
     }
 
+    function test_withdrawDeposit_revertsWhenRefundRejected() public {
+        // A registrant that cannot receive ETH: its code reverts on every call
+        // (PUSH1 0 PUSH1 0 REVERT), so the refund's plain call returns false
+        // and the withdrawal reverts as a whole — the stake stays held and
+        // un-withdrawn rather than being flagged against a refund that never
+        // landed.
+        address rejecter = address(0x4E7EC7);
+        vm.etch(rejecter, hex"60006000fd");
+        vm.deal(rejecter, DEPOSIT);
+
+        vm.prank(rejecter);
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
+
+        vm.prank(rejecter);
+        vm.expectRevert(ClauseRegistry.TransferFailed.selector);
+        registry.withdrawDeposit(MODALITIES_HASH);
+
+        (, bool withdrawn) = registry.depositOf(MODALITIES_HASH);
+        assertFalse(withdrawn);
+        assertEq(address(registry).balance, DEPOSIT);
+    }
+
     function test_versionMigration_moveStakeToNewVersion() public {
         // Version migration = withdraw the old version's stake + register
         // the new version with it. The old binding stays permanent (its

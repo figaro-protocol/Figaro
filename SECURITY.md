@@ -62,7 +62,54 @@ external audit.
 
 ## Bug bounty
 
-There is no paid bug-bounty program. Figaro is deployed only to testnet (no
-real value at stake) and runs no treasury — there is nothing to fund a bounty
-from. This may change when the protocol is deployed to mainnet. Disclosure is asked for on the
-merits.
+Bounties are denominated in florins, the protocol's ERC-20, and paid from the
+DAO treasury by its discretionary decision (`docs/DAO.md`). A florin is a
+Schelling point and carries no rights of any kind — no ownership interest, no
+vote, no claim on anyone's work — and has no guaranteed market; a bounty is a
+transfer of tokens, nothing more. The schedule applies to the mainnet
+deployment; testnet florins are worth nothing and no testnet finding is paid.
+
+| Severity | What it is | Florins |
+|---|---|---|
+| Critical | loss or theft of locked bonds; a resolution by anyone but the buyer; a batch resolution the direct path would refuse | 1,000,000 |
+| High | reward inflation or Sybil accrual; loss of a registry stake; a batch the proof did not commit to | 250,000 |
+| Medium | liveness of one process or one batch without loss | 50,000 |
+| Low | informational, with a concrete misuse | 10,000 |
+
+Severity is set by the maintainer on the report's demonstrated impact, in
+scope as defined above, first reporter paid. A report of a pattern listed in
+`docs/DESIGN_DECISIONS.md` is a design disagreement and earns nothing.
+
+## Incident response
+
+Nothing in the protocol can be paused, upgraded, or drained by an
+administrator, so an incident has exactly one shape: disclosure, then
+redeployment under a new identifier. The steps, in order:
+
+1. **Acknowledge** the report through the channel it arrived on and reproduce
+   it against the deployed addresses in `deployments/<chainId>.json`.
+2. **Bound the exposure.** A kernel defect that lets anyone but the buyer move
+   bonds is Critical and public the moment it is exploited; one that blocks
+   resolution locks the affected processes with no recovery, and the advisory
+   says so plainly. Every process on an unaffected path keeps resolving: the
+   buyer can always call `resolveProcess`, and a batch-path defect never
+   touches the direct path.
+3. **Publish the advisory** through GitHub's security-advisory channel, with a
+   CVE where warranted, naming the affected contract, the addresses, what a
+   participant should do (resolve open processes; commit nothing new on the
+   affected contract), and the fix's commit.
+4. **Redeploy the fixed contract at a new address** with the deploy scripts in
+   `scripts/` (`deploy-mainnet.sh`, or `deploy-swap-coordinator.sh` for the
+   coordinator alone). The registries are first-write-wins, so a replaced
+   registry starts empty and every registrant re-registers under its own
+   stake; the old contracts stay on the chain, unowned, and are simply no
+   longer the ones the site and the SDK point at.
+5. **Propagate the deployment record**: the new `deployments/<chainId>.json` is committed;
+   the site is rebuilt against it and published; the SDK release that reads
+   it is tagged. Anyone else reading the deployment record picks up the new addresses
+   from the same file.
+6. **Enter the finding** in `docs/AUDITOR_HANDOVER.md` as a post-audit
+   amendment and re-run the full formal battery on the fixed tree before the
+   broadcast, not after.
+
+There is no fixed response time. Every report is read the day it arrives.

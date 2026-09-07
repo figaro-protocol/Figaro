@@ -275,6 +275,38 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         coord.swapAndCommit(c, bSig, sSig, leg, disabled);
     }
 
+    function test_RevertWhen_SwapCallFailed() public {
+        _fundInput(buyer, buyerInput, 2 * P);
+        _selfFundBond(seller, 2 * P);
+
+        CommitmentTypes.Commitment memory c = _rootCommitment(9);
+        bytes memory bSig = _sign(c, BUYER_KEY);
+        bytes memory sSig = _sign(c, SELLER_KEY);
+
+        // A route the venue cannot execute: the selector matches no function
+        // on the router and it has no fallback, so the forwarded call returns
+        // false. The buyer's witness is signed over THIS route, so Permit2
+        // accepts the leg and the coordinator reaches the router call itself.
+        bytes memory swapData = abi.encodeWithSignature("noSuchRoute()");
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 digest = _permitDigest(address(buyerInput), 2 * P, 0, deadline, swapData);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, digest);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = WitnessSwapAndCommitCoordinator.SwapFunding({
+            enabled: true,
+            inputToken: address(buyerInput),
+            maxInput: 2 * P,
+            permitNonce: 0,
+            permitDeadline: deadline,
+            permitSignature: abi.encodePacked(r, s, v),
+            swapData: swapData
+        });
+        WitnessSwapAndCommitCoordinator.SwapFunding memory disabled = _disabled();
+
+        vm.prank(relayer);
+        vm.expectRevert(WitnessSwapAndCommitCoordinator.SwapCallFailed.selector);
+        coord.swapAndCommit(c, bSig, sSig, leg, disabled);
+    }
+
     function test_RevertWhen_NothingToFund() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(7);
         bytes memory bSig = _sign(c, BUYER_KEY);

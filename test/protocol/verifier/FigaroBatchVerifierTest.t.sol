@@ -842,4 +842,155 @@ contract FigaroBatchVerifierTest is Test {
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
         assertEq(verifier.stateRoot(), newRoot, "settlement is not hostage to the reward schedule");
     }
+
+    // ── Differential fuzz: the assembly packers against the mirrors ──
+
+    /// @dev A full-width pseudo-random word from the fuzzer's seed, so every
+    ///      packed field — including the high bits a misplaced `mstore` offset
+    ///      would clip or overlap — is exercised at arbitrary array lengths.
+    function _word(bytes32 seed, string memory tag, uint256 i) internal pure returns (bytes32) {
+        return keccak256(abi.encode(seed, tag, i));
+    }
+
+    function _fuzzPositions(bytes32 seed, FigaroBatchVerifier.NetPosition memory p0, uint256 n)
+        internal
+        pure
+        returns (FigaroBatchVerifier.NetPosition[] memory ps)
+    {
+        ps = new FigaroBatchVerifier.NetPosition[](n);
+        for (uint256 i = 0; i < n; i++) {
+            ps[i] = i == 0
+                ? p0
+                : FigaroBatchVerifier.NetPosition(
+                    address(uint160(uint256(_word(seed, "token", i)))),
+                    address(uint160(uint256(_word(seed, "user", i)))),
+                    uint256(_word(seed, "deposit", i)),
+                    uint256(_word(seed, "payout", i))
+                );
+        }
+    }
+
+    function _fuzzAttestations(bytes32 seed, FigaroBatchVerifier.AttestationData memory a0, uint256 n)
+        internal
+        pure
+        returns (FigaroBatchVerifier.AttestationData[] memory atts)
+    {
+        atts = new FigaroBatchVerifier.AttestationData[](n);
+        for (uint256 i = 0; i < n; i++) {
+            atts[i] = i == 0
+                ? a0
+                : FigaroBatchVerifier.AttestationData(
+                    _word(seed, "orderHash", i),
+                    _word(seed, "processId", i),
+                    address(uint160(uint256(_word(seed, "attester", i)))),
+                    _word(seed, "clauseId", i),
+                    uint8(uint256(_word(seed, "stage", i))),
+                    _word(seed, "contentRef", i)
+                );
+        }
+    }
+
+    function _fuzzBindings(bytes32 seed, FigaroBatchVerifier.SpecBinding memory b0, uint256 n)
+        internal
+        pure
+        returns (FigaroBatchVerifier.SpecBinding[] memory bs)
+    {
+        bs = new FigaroBatchVerifier.SpecBinding[](n);
+        for (uint256 i = 0; i < n; i++) {
+            bs[i] =
+                i == 0 ? b0 : FigaroBatchVerifier.SpecBinding(_word(seed, "bindClause", i), _word(seed, "specHash", i));
+        }
+    }
+
+    function _fuzzUsage(
+        bytes32 seed,
+        IUsageCounter.BatchAccrual memory acc0,
+        address s0,
+        uint8 period,
+        uint256 nAcc,
+        uint256 nSell
+    ) internal pure returns (FigaroBatchVerifier.BatchUsageData memory u) {
+        u.period = period;
+        u.provenanceClause = _word(seed, "provenance", 0);
+        u.accruals = new IUsageCounter.BatchAccrual[](nAcc);
+        for (uint256 i = 0; i < nAcc; i++) {
+            u.accruals[i] = i == 0
+                ? acc0
+                : IUsageCounter.BatchAccrual(
+                    _word(seed, "accrual", i),
+                    uint64(uint256(_word(seed, "c", i))),
+                    uint64(uint256(_word(seed, "d", i)))
+                );
+        }
+        u.sellers = new address[](nSell);
+        for (uint256 i = 0; i < nSell; i++) {
+            u.sellers[i] = i == 0 ? s0 : address(uint160(uint256(_word(seed, "seller", i))));
+        }
+    }
+
+    /// THE DIFFERENTIAL LOCK ON THE FOUR PACKERS. The contract's `_hashPositions`,
+    /// `_hashAttestations`, `_hashSpecBindings` and `_hashUsage` are internal and
+    /// hand-rolled in assembly; the mirrors above are `abi.encodePacked`. The one
+    /// public route to the four is `settleBatch`, which compares each to its
+    /// public value IN ORDER, reverting with that hash's own error on the first
+    /// disagreement — and only after all four agree does it anchor the spec
+    /// bindings. So: hand it random inputs with the MIRROR hashes as the public
+    /// values, make the first binding one the registry does not anchor, and
+    /// require exactly that LATER revert. Reaching `SpecBindingMismatch` proves
+    /// every assembly hash equalled its mirror on this input; a packing slip in
+    /// any of the four surfaces instead as the corresponding `*HashMismatch`.
+    ///
+    /// Slot 0 of every array carries the fuzzer's own values (its edge cases —
+    /// zero, all-ones — land there); derived full-width words fill the rest, at
+    /// lengths 0..3 (bindings 1..4: the sentinel needs one).
+    /// @dev One struct so the fuzzer's eight inputs cost one stack slot on the
+    ///      default (non-IR) profile the pre-commit build uses.
+    struct PackerFuzz {
+        bytes32 seed;
+        FigaroBatchVerifier.NetPosition p0;
+        FigaroBatchVerifier.AttestationData a0;
+        FigaroBatchVerifier.SpecBinding b0;
+        IUsageCounter.BatchAccrual acc0;
+        address s0;
+        uint8 period;
+        uint8 lengths;
+    }
+
+    function _packerPv(
+        FigaroBatchVerifier.NetPosition[] memory positions,
+        FigaroBatchVerifier.BatchEventData memory events,
+        FigaroBatchVerifier.BatchUsageData memory usage
+    ) internal view returns (bytes memory) {
+        return abi.encode(
+            GENESIS,
+            keccak256("next-root"),
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            _hashAttestations(events.attestations),
+            _hashBindings(events.specBindings),
+            _hashUsage(usage)
+        );
+    }
+
+    function testFuzz_assemblyPackersMatchTheMirrors(PackerFuzz memory f) public {
+        // The sentinel: an unanchored key reads back a zero content hash, so
+        // the binding mismatches whenever its spec hash is non-zero.
+        vm.assume(f.b0.clauseId != clauseKey && f.b0.specHash != bytes32(0));
+
+        FigaroBatchVerifier.NetPosition[] memory positions = _fuzzPositions(f.seed, f.p0, f.lengths & 3);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            _fuzzAttestations(f.seed, f.a0, (f.lengths >> 2) & 3),
+            _fuzzBindings(f.seed, f.b0, 1 + ((f.lengths >> 4) & 3))
+        );
+        FigaroBatchVerifier.BatchUsageData memory usage =
+            _fuzzUsage(f.seed, f.acc0, f.s0, f.period, (f.lengths >> 6) & 3, uint256(f.seed) & 3);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FigaroBatchVerifier.SpecBindingMismatch.selector, f.b0.clauseId, bytes32(0), f.b0.specHash
+            )
+        );
+        verifier.settleBatch(hex"", _packerPv(positions, events, usage), positions, events, usage);
+    }
 }

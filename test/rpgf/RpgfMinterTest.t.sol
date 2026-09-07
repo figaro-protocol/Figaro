@@ -340,6 +340,14 @@ contract RpgfMinterTest is Test {
         assertEq(minter.claimable(0, alice, _one(A_KEY)), 0);
     }
 
+    /// `claimable` refuses a period the schedule does not hold, as `claim`
+    /// does — a view that answered zero for a period that does not exist
+    /// would read as "already claimed".
+    function test_claimableRevertsOnUnknownPeriod() public {
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownPeriod.selector, uint8(3)));
+        minter.claimable(3, alice, _one(A_KEY));
+    }
+
     // ── Budget backstop ─────────────────────────────────────────────
 
     function test_mintedTracksThePeriodSpend() public {

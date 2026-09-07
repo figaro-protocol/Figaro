@@ -237,6 +237,9 @@ No oracle, no bridge, no upgrade proxy, no pause anywhere.
 | `docs/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/RELEASE_READINESS.md` | The open release tasks (testnet + mainnet) |
 | `docs/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for |
+| `/spec` (site) | The origination sequence, the two resolution paths, and the system-layers figures, drawn from the deployed addresses |
+| `/kernel` (site) | The locked-bonds state figure: an order's three states and the two calls that move it |
+| `/papers/verified-settlement-kernel` (site) | The batch resolution sequence figure and the verification method, per technique |
 
 The AI-audit history is provided for context only. The external auditor should form
 their own independent findings.
@@ -268,6 +271,37 @@ re-deriving they are intentional:
   through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
   comment at `FigaroCore.sol:238-240` recommends social recovery or multisig for the
   buyer role — upstream of the kernel, consistent with the same pattern.
+
+### Conventions and measured complexity
+
+**Naming, as practised across the frozen scope.** Contracts and structs
+PascalCase; external and public functions camelCase; every internal and private
+function carries a leading underscore (22 of them, none without); immutables
+camelCase, constants UPPER_SNAKE (`COMMITMENT_TYPEHASH`, `MAX_SUPPLY`,
+`CUBE_MAX`); custom errors are PascalCase statements of the condition
+(`OrderNotCommitted`, `SellerNotStaked`); events are PascalCase past-tense facts
+(`OrderResolved`, `MemberWithdrawalRequested`) except `Attestation`, which names
+the attestation itself. `forge fmt` is the formatter and runs in CI.
+
+**Cyclomatic complexity** (Slither `function-summary`):
+
+| Function | CC | Why |
+|---|---|---|
+| `FigaroCore.commit` | 15 | the kernel's one entry point does the whole commit: deadline, payment, hashing, two signature recoveries, the root-or-extension branch, bond math, two pulls |
+| `FigaroBatchVerifier.settleBatch` | 10 | proof, five public-value checks, four calldata hashes, registry anchor, token legs, events, the accrual try/catch |
+| `UsageCounter.applyBatchAccrual` | 10 | period, provenance, per-accrual registration and stake gates, monotone-update checks |
+| `FigaroCore.resolveProcess` | 8 | presence, count, per-order status and overflow guards |
+| `RpgfMinter.claim` | 7 | period closed, not claimed, per-key designer of record and stake |
+
+Every other function in scope is at 4 or below.
+
+**The one `unchecked` block** (`UsageCounter.sol:666-669`) increments two
+`uint64` counters by one: `c`, the distinct processes counted for a key, and
+`d`, the distinct sellers. Each process is counted once ever
+(`processCounted`), so `c` cannot exceed the number of resolved processes on
+the chain, and `d` cannot exceed `c`. Reaching 2^64 would take more resolutions
+than the chain can hold; the block is safe by that bound, not by an inline
+check.
 
 ### Known stale comments in the frozen scope
 
@@ -309,7 +343,7 @@ shape, answered from the tree. Each answer names its evidence.
 |---|---|---|---|
 | 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
 | 2 | External services, contracts, and oracles documented | Yes | § "Actors, privileges, and external dependencies" above: one table, with where each is bound and what it is trusted for. There is no oracle. |
-| 3 | Written and tested incident-response plan | No | `SECURITY.md` carries the disclosure contact. Nothing can be paused or upgraded, so the plan is disclosure and redeployment under a new identifier. |
+| 3 | Written and tested incident-response plan | Written, not yet rehearsed | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment record. A Sepolia rehearsal of the redeploy leg is owed. |
 | 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the `/pitfalls` page, § "Behaviors to surface" above. |
 | 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
 | 6 | A team member with security in their role | Yes | The maintainer. |
@@ -317,7 +351,7 @@ shape, answered from the tree. Each answer names its evidence.
 | 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
 | 9 | Key invariants defined and tested on every commit | Yes | Foundry runs in pre-commit; Halmos, Certora, TLA+, Echidna, and the Lean 4 equilibrium proof run in the battery. `VERIFICATION_MAP.md` maps each invariant to its test. |
 | 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither and Semgrep (§ "Static analysis" above). |
-| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open | No external audit has been performed; this document is the handover for the first. Disclosure contact in `SECURITY.md`. No bounty programme. |
+| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open on the audit | No external audit has been performed; this document is the handover for the first. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
 | 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
 
 ### Trail of Bits' code-maturity categories
@@ -336,8 +370,8 @@ what the tree shows. Overall 2.9 of 4.
 | Decentralization | Strong | No owner, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Behaviors to surface". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
-| Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests and Rust cross-language vectors; no differential fuzz of the packers. |
-| Testing and verification | Satisfactory | Coverage above; seven reachable revert branches without a test (`SwapCallFailed`, `TransferFailed` in the three registries, `ClauseOrAssemblyExcluded` on the direct path, the unregistered-assembly revert, `claimable`'s `UnknownPeriod`); no mutation-testing run. |
+| Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
+| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; no mutation-testing run. |
 
 ### The L2BEAT risk categories, applied to the batch path
 

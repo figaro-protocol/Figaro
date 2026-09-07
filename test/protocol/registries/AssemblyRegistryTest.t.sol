@@ -179,6 +179,28 @@ contract AssemblyRegistryTest is Test {
         registry.withdrawDeposit(keccak256("never-existed"));
     }
 
+    function test_withdrawDeposit_revertsWhenRefundRejected() public {
+        // A registrant that cannot receive ETH: its code reverts on every call
+        // (PUSH1 0 PUSH1 0 REVERT), so the refund's plain call returns false
+        // and the withdrawal reverts as a whole — the stake stays held and
+        // un-withdrawn rather than being flagged against a refund that never
+        // landed.
+        address rejecter = address(0x4E7EC7);
+        vm.etch(rejecter, hex"60006000fd");
+        vm.deal(rejecter, DEPOSIT);
+
+        vm.prank(rejecter);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+
+        vm.prank(rejecter);
+        vm.expectRevert(AssemblyRegistry.TransferFailed.selector);
+        registry.withdrawDeposit(COMPOSITION_HASH);
+
+        (,, bool withdrawn,) = registry.bindings(COMPOSITION_HASH);
+        assertFalse(withdrawn);
+        assertEq(address(registry).balance, DEPOSIT);
+    }
+
     function test_withdrawDeposit_doesNotAllowReRegistration() public {
         // Permanence guarantee: once a composition is bound, withdrawing the
         // deposit does NOT release the binding for re-registration.

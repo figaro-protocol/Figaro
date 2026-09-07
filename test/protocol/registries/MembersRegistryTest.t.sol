@@ -210,6 +210,30 @@ contract MembersRegistryTest is Test {
         reg.withdraw();
     }
 
+    function test_withdraw_reverts_when_refund_rejected() public {
+        // A member that cannot receive ETH: its code reverts on every call
+        // (PUSH1 0 PUSH1 0 REVERT), so the release's plain call returns false
+        // and the claim reverts as a whole — the pending balance stays
+        // recorded rather than being deleted against a refund that never
+        // landed.
+        address rejecter = address(0x4E7EC7);
+        vm.etch(rejecter, hex"60006000fd");
+        vm.deal(rejecter, REG_DEPOSIT);
+
+        vm.prank(rejecter);
+        reg.register{value: REG_DEPOSIT}("ipfs://rejecter");
+        vm.prank(rejecter);
+        reg.requestWithdrawal();
+        vm.warp(reg.releaseAt(rejecter));
+
+        vm.prank(rejecter);
+        vm.expectRevert(MembersRegistry.TransferFailed.selector);
+        reg.withdraw();
+
+        assertEq(reg.pendingDeposit(rejecter), REG_DEPOSIT);
+        assertEq(address(reg).balance, REG_DEPOSIT);
+    }
+
     function test_withdrawableIsTheChainsOwnAnswer() public {
         // The claim affordance must read this, never compare `releaseAt`
         // against a wall clock — the two drift, and a UI that compares them

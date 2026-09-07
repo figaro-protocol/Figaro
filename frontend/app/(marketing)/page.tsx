@@ -30,7 +30,7 @@ const PROPOSITION: string[] = [
 // guard recomputes the four counted benches and fails the commit when a
 // number here drifts; TLA+ names models and Lean 4 names the result proved.
 const CHECKS: { name: string; count: string }[] = [
-    { name: "Foundry", count: "302 test functions" },
+    { name: "Foundry", count: "311 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
     { name: "Certora", count: "37 formal rules across six CVL specs" },
     { name: "TLA+", count: "four protocol state machines, model-checked" },
