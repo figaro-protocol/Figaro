@@ -149,10 +149,11 @@ third party who can do this instead — and resolution is terminal. A buyer agen
 that resolves without recording credits no designer — the reward
 mechanism's uniformity across actors is exactly this call.</p>
 <p><strong>Two things bite here. Both are silent.</strong></p>
-<p><em>The two <code>processId</code>s.</em> <code>resolveProcess(bytes32 processId, Commitment[] commitments)</code> takes <strong>two different ids that share a name</strong>, and they are not
-interchangeable: the ARGUMENT is the kernel's DERIVED process id (the storage
-key it looks the process up by), while every struct INSIDE <code>commitments</code> must be
-the one the parties SIGNED — and a root order signed <code>processId = 0</code>. The kernel
+<p><em>The two <code>processId</code>s — the DERIVED id and the SIGNED id.</em> <code>resolveProcess(bytes32 processId, Commitment[] commitments)</code> takes <strong>two different ids that share a
+name</strong>, and they are not interchangeable: the ARGUMENT is the DERIVED id — the
+kernel's storage key, the one <code>OrderCommitted</code> carries — while every struct
+INSIDE <code>commitments</code> must carry the SIGNED id, the one the parties put under
+their signatures — and a root order signed <code>processId = 0</code>. The kernel
 recomputes <code>keccak256(processId ‖ hashStruct(c))</code> from both
 (<code>src/kernel/FigaroCore.sol:280-285</code>), so putting the derived id inside the root
 struct — the natural move, since that is what <code>OrderCommitted</code> carries and what
@@ -346,6 +347,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>calculateBonds</code></td>
 <td>root</td>
 <td><code>sellerBond = 2 × cumulativeValue</code>, <code>buyerBond = 2 × payment</code>.</td>
+</tr>
+<tr>
+<td><code>KERNEL_EQUILIBRIUM</code></td>
+<td>root</td>
+<td>The kernel's equilibrium stated once (<code>sdk/src/equilibrium.json</code>): bonds, payoffs on both bases, the outcome table, the deterrent gap, the hypotheses, the worked example — render numbers from it, never retype them; the paper owns the theorem.</td>
 </tr>
 <tr>
 <td><code>calculateRootApproval</code></td>
@@ -1429,7 +1435,13 @@ already takes; the agent's code path is unchanged and the key is unreachable:</p
 
 <p>A reference policy for the live public deployment ships at
 <code>deployments/signer-policy.11155111.json</code>, generated from the deployment record and the SDK ABIs — addresses and selectors are derived, never
-hand-typed. The host-shaped half (the sandbox wrapper carrying the policy's
+hand-typed. A local run derives its own from that run's deployment record — the
+same selectors paired by record key, that run's addresses, token, chain id, RPC,
+and egress (<code>sdk/scripts/signer-policy-from-record.mjs</code>):</p>
+<pre><code class="bash"><span class="hl-0">node</span><span class="hl-1"> </span><span class="hl-2">sdk/scripts/signer-policy-from-record.mjs</span><span class="hl-1"> </span><span class="hl-2">.deployments/local.json</span><span class="hl-1"> &gt; </span><span class="hl-2">.deployments/signer-policy.31337.json</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The host-shaped half (the sandbox wrapper carrying the policy's
 <code>egress</code> allowlist) lives beside the agent prompts, not in this package.</p>
 <h2 id="projection-from-composed-clauses-to-the-hashed-agreement" class="tsd-anchor-link">Projection: from Composed Clauses to the Hashed Agreement<a href="#projection-from-composed-clauses-to-the-hashed-agreement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>An adopted assembly template ships its clause maps mostly empty — an empty <code>{}</code>
