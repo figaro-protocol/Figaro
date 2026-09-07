@@ -15,6 +15,11 @@ on:
     schedule:
         - cron: "17 * * * *"
     workflow_dispatch:
+        inputs:
+            rehearsal:
+                description: "Raise one synthetic alert instead of reading the chain, to prove the issue and e-mail path"
+                type: boolean
+                default: false
 
 permissions:
     contents: read
@@ -44,9 +49,18 @@ jobs:
               run: npm ci --workspace sdk
 
             - name: Read the deployment
+              if: ${{ !inputs.rehearsal }}
               env:
                   RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
               run: node scripts/monitor-sepolia.mjs
+
+            - name: Write a rehearsal alert
+              if: ${{ inputs.rehearsal }}
+              run: |
+                  cat > monitor-alerts.json <<'JSON'
+                  [{"severity": "notice", "key": "rehearsal", "title": "Monitor: rehearsal alert (close me)",
+                    "body": "A synthetic alert raised by the workflow on request, to prove the path from the watcher to the maintainer's inbox. Nothing on the chain was read and nothing is wrong. Close this issue; real alerts arrive the same way, one per condition."}]
+                  JSON
 
             - name: Raise alerts as issues
               env:

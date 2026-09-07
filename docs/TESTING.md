@@ -488,7 +488,9 @@ Per workflow, what it runs and when:
   a withdrawal burst, and the kernel's held bonds against invariant A-8 —
   and raises each condition as an issue labelled `monitor`, assigned to the
   maintainer; a run that cannot read the node fails, which is the heartbeat.
-  `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node.
+  `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node; the
+  dispatch input `rehearsal` raises one synthetic alert without reading the
+  chain, to prove the issue and e-mail path.
 - **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Two
   independent jobs: the xmtpd stack proof (hermetic broker bring-up) and the
   Linux sandbox variant (the signer runtime's container deny cases).
