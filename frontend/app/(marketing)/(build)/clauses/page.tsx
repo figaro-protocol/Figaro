@@ -54,7 +54,7 @@ export default function Clauses() {
             <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every deal carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and settlement. One &mdash; <code>figaro-topology</code> &mdash; carries the deal&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. A long chain can attest topology as evidence that one seller performed after another; today&apos;s published assemblies simply have not.
-                </p>
+                 Every registered clause has its own URL: <code>/registries#clause-&lt;clauseId&gt;</code> lands on its row and opens the document as stored, with the anchored hash beside it.</p>
                 <RegistryCountLink family="clauses" />
             </MarketingSection>
 
@@ -132,6 +132,11 @@ export default function Clauses() {
 parseProjectionHints(spec);
 // → { article, scope, designFills, catalogueFills, profileFills }
 //   — the five. Everything else in \`block\` is not returned.
+
+const contentHash = canonicalContentHash(spec);
+// → the digest ClauseRegistry anchors: keccak256 over the canonical JSON
+//   (sorted keys, no whitespace) of the spec — recompute it after any fetch
+//   and compare with the registry's contentHashOf(clauseId, version).
 
 const specs = { get: () => spec, list: () => [spec] };
 buildOrderAgreement(buyer, seller, { "figaro-probe": {} }, specs);

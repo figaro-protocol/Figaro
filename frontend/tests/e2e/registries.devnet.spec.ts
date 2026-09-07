@@ -37,8 +37,8 @@ test.describe('Registry explorer (devnet)', () => {
         expect(onChain.size, 'the deploy registered clauses on-chain').toBeGreaterThan(0);
 
         await page.goto('/registries?family=clauses');
-        // Rows are `<li id="clause-<clauseId>">` — the same anchor `/clauses#clause-<id>`
-        // deep links resolve to. Waiting for the first row proves the event read
+        // Rows are `<li id="clause-<clauseId>">` — the anchor a clause's permalink,
+        // `/registries#clause-<id>`, lands on. Waiting for the first row proves the event read
         // resolved (not stuck on "Reading the registry…") and rows surfaced.
         const rows = page.locator('li[id^="clause-"]');
         await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
@@ -121,6 +121,12 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(page.getByTestId(`stored-hash-clause-${found.clauseId}`)).toHaveText(anchored);
         await expect(page.getByTestId(`stored-verdict-clause-${found.clauseId}`)).toContainText('reproduces the anchor');
         await expect(page.getByTestId(`stored-panel-clause-${found.clauseId}`)).toContainText('keccak256');
+
+        // THE PERMALINK: the row's own URL lands on it and opens the document
+        // without a click — what a reader who typed /clauses/<id> was after.
+        await expect(row.getByTestId(`permalink-clause-${found.clauseId}`)).toHaveAttribute('href', `#clause-${found.clauseId}`);
+        await page.goto(`/registries?family=clauses#clause-${found.clauseId}`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId(`stored-json-clause-${found.clauseId}`), 'the permalink opens the stored document').toBeVisible({ timeout: 30_000 });
     });
 
     test('assemblies: an anchored assembly discovered from chain renders its row', async ({ page }) => {

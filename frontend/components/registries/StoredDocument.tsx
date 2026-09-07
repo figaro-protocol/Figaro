@@ -20,7 +20,10 @@
  * read model — pure, and unit-tested there.
  *
  * The fetch fires only when the panel is OPENED: 100+ registered rows must not
- * each open a gateway round-trip on page load.
+ * each open a gateway round-trip on page load. A row's permalink is the
+ * page's own anchor, `/registries#<row key>`; when the URL hash names this
+ * row the panel opens itself after mount (never at first render — the export
+ * is static, and a client-only initial state would mismatch the server's).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -89,6 +92,16 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
     }, [expanded, contentURI, anchoredHash, anchor]);
 
     const onToggle = useCallback(() => setExpanded((v) => !v), []);
+
+    // The permalink lands on the row and opens the document under it.
+    useEffect(() => {
+        const openIfTargeted = () => {
+            if (typeof window !== "undefined" && window.location.hash === `#${id}`) setExpanded(true);
+        };
+        openIfTargeted();
+        window.addEventListener("hashchange", openIfTargeted);
+        return () => window.removeEventListener("hashchange", openIfTargeted);
+    }, [id]);
 
     return (
         <div className="mt-2">

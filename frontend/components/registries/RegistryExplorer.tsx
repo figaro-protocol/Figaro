@@ -230,8 +230,9 @@ export function RegistryExplorer() {
 // ── Family renderers ────────────────────────────────────────────────────────
 
 /** Clauses grouped by article when sorted by article (the reading order the
- *  `/clauses` inventory had), otherwise one flat list. Row ids stay
- *  `clause-<clauseId>` so `/clauses#clause-<id>` deep links keep resolving. */
+ *  `/clauses` inventory had), otherwise one flat list. Row ids are
+ *  `clause-<clauseId>`, so `/registries#clause-<id>` is a clause's permalink:
+ *  it lands on the row and opens the document as stored (StoredDocument). */
 function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowText>; state: ExplorerQuery; onFacet: (p: Partial<ExplorerQuery>) => void }) {
     if (rows.length === 0) return <Empty family="clauses" />;
     const groups: Array<{ label: string; items: Array<ExplorerRow & RowText> }> = [];
@@ -268,6 +269,9 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                                         </button>
                                         {r.stakeWithdrawn ? <span className="ml-2">(stake withdrawn)</span> : null}
                                         <ContentStateNote content={r.content} />
+                                        <a href={`#${r.key}`} className="underline ml-2" data-testid={`permalink-${r.key}`} title="This clause's own URL">
+                                            permalink
+                                        </a>
                                     </span>
                                     <StoredRow row={r} />
                                 </span>
