@@ -90,18 +90,21 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
 /** The withdrawal delay as prose, from the live `withdrawalCooldown`
  *  immutable. The deposit is quoted from the chain, so the delay it is
  *  locked for must be too — a participant prices the pair, never one alone.
- *  Zero is a real deployed value (a local development record wires no
- *  delay); undefined means the read has not landed yet. */
-function cooldownPhrase(seconds: bigint | undefined): string {
-    if (seconds === undefined) return "after a cooldown";
-    if (seconds === 0n) return "with no cooldown";
+ *  The phrase always says the delay is THIS deployment's, fixed when it was
+ *  deployed: a reader who has met "a delay fixed at deployment" on /faq and
+ *  /members must find the same fact here, not a contradiction. Zero is a
+ *  real deployed value (a local development record wires no delay);
+ *  undefined means the read has not landed yet. */
+export function cooldownPhrase(seconds: bigint | undefined): string {
+    if (seconds === undefined) return "after this deployment's withdrawal delay";
+    if (seconds === 0n) return "at once — this deployment fixed its withdrawal delay at zero";
     const days = Number(seconds) / 86_400;
     if (days >= 1) {
         const n = Math.round(days * 10) / 10;
-        return `after ${n} ${n === 1 ? "day" : "days"}`;
+        return `after ${n} ${n === 1 ? "day" : "days"}, the withdrawal delay this deployment fixed`;
     }
     const hours = Math.round((Number(seconds) / 3_600) * 10) / 10;
-    return `after ${hours} ${hours === 1 ? "hour" : "hours"}`;
+    return `after ${hours} ${hours === 1 ? "hour" : "hours"}, the withdrawal delay this deployment fixed`;
 }
 
 export function OnboardingReview() {
