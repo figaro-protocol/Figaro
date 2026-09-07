@@ -155,7 +155,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "A Verified Settlement Kernel: Formal Verification, Threat Model, and the Scope of the Claim",
                 href: "/papers/verified-settlement-kernel",
-                summary: "The reference implementation and what has been machine-checked about it: model checking, fuzzing, symbolic execution, and specification checking by the project itself, with no external audit yet, and the precise scope of each.",
+                summary: "What it means to verify a settlement primitive of two calls, no owner and no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
                 keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "settlement layer", "verification scope"],
                 industries: ["Security and audit"],
             },

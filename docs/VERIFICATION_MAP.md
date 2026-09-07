@@ -277,7 +277,7 @@ under-pay only.
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),
-Halmos proves properties hold for ALL possible inputs by constructing and
+Halmos proves each property for every input its bounded call trace admits, by constructing and
 solving symbolic constraints.
 
 This closes the verification gap between TLA+ (which verifies the abstract model)

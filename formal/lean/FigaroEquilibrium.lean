@@ -11,7 +11,7 @@ and `/papers/asymmetric-bonding`; the TLA⁺ payoff-table invariants
 (`formal/FigaroCore.tla` § "The equilibrium proof's payoff table") tie the
 numbers below to the machine that ships: while an order is committed the
 buyer has 2·payment locked and the seller 2·cumulativeValue, and resolution
-moves exactly `payment` buyer → seller with both bonds returned whole. This
+moves exactly `payment` buyer → seller with both bonds refunded whole. This
 file closes the one step no model checker can express — a rational agent
 CHOOSING — as best-response inequalities over that pinned table.
 

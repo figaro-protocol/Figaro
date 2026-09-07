@@ -368,7 +368,7 @@ ResolutionAlwaysPossible ==
 \* `docs/THEORY.md` § "Nash Equilibrium Analysis" reasons over two
 \* numbers: while a process is unresolved each side stands to lose its
 \* whole bond (buyer 2×payment, seller 2×cumulativeValue), and resolving
-\* moves exactly `payment` from buyer to seller with both bonds returned
+\* moves exactly `payment` from buyer to seller with both bonds refunded
 \* whole. Conservation and solvency pin NEITHER — a kernel that paid the
 \* seller 3× would satisfy every other invariant in this file while
 \* invalidating every step of the proof. These two tie the table the
