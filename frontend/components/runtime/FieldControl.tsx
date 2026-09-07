@@ -217,8 +217,7 @@ export function FieldControl({
     // fields recursively — one parser, one renderer, no per-clause shape.
     // Fill-vs-defer follows the scalar rule: a REQUIRED object-array is a
     // design-time term (fixed content is what makes the composition
-    // content-addressed — ruled 2026-07-10, partially settling the
-    // design-fill fork, since closed in full); an optional one stays unset. Runtime
+    // content-addressed); an optional one stays unset. Runtime
     // mode always fills. Companion routing is per ITEM: a format input that
     // derives a sibling value (the content-anchor input pinning an artifact
     // and emitting its locator) patches the first sibling field in the SAME

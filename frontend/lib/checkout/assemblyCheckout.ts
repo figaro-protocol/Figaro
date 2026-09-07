@@ -58,7 +58,7 @@ import type { MemberCatalogue } from "@/lib/member/types";
 export interface AssemblyCheckoutDeps {
     chainId: number;
     /** Read the chain's per-process resolve ceiling (`maxOrdersResolvablePerProcess`).
-     *  Checkout refuses a template that couldn't settle in one atomic
+     *  Checkout refuses a template that couldn't resolve in one atomic
      *  `resolveProcess` — the same ceiling the designer canvas and
      *  `publishAssembly` enforce. This copy covers foreign hand-anchored
      *  templates the permissionless registry admits. */
@@ -173,7 +173,7 @@ export async function executeAssemblyCheckout(
     const template = assembly.assemblyTemplate;
 
     // UTILITY-TOKEN PIN VERIFICATION (ruled 2026-07-28): when the assembly pins
-    // its settlement token (an assembly-scoped term, part of the
+    // its denomination (an assembly-scoped term, part of the
     // compositionHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
@@ -190,7 +190,7 @@ export async function executeAssemblyCheckout(
     const core = CONTRACTS.core as `0x${string}`;
 
     // Resolve-ceiling refusal BEFORE any signature: a process grown past the
-    // chain's atomic-resolve cap can never settle, so the buyer must not bond
+    // chain's atomic-resolve cap can never resolve, so the buyer must not bond
     // into one. Publish-side already refuses over-cap templates authored here;
     // this catches templates anchored by other clients (the registry is
     // permissionless).
@@ -198,8 +198,8 @@ export async function executeAssemblyCheckout(
     const resolveCap = await deps.readResolveCap();
     if (orderCount > resolveCap) {
         throw new Error(
-            `This assembly composes ${orderCount} orders; this chain settles at most ` +
-                `${resolveCap} in one atomic resolveProcess. It can never settle as one ` +
+            `This assembly composes ${orderCount} orders; this chain resolves at most ` +
+                `${resolveCap} in one atomic resolveProcess. It can never resolve as one ` +
                 `process — the designer must compose multiple processes instead.`,
         );
     }
@@ -308,7 +308,7 @@ function checkoutNodes(
             // The root's clause map: the derived LOGISTICS sections (cargo /
             // class leaves / dimweight) filled from the cart — wherever
             // composed, by declared field, never by clause name — then the
-            // settlement terms. `currency` is the ONE process currency (the
+            // denomination terms. `currency` is the ONE process currency (the
             // kernel enforces single-denomination, FigaroCore
             // CurrencyMismatch), never a per-order input.
             const filled = fillProvenanceSection(

@@ -88,7 +88,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                     clause, per order. The rows below are the data those
                     assemblies’ deals produce. Checking a row offers that data
                     for sale or disclosure; a whitelist narrows who may buy or see
-                    it, and an embargo delays it until N days after settlement.
+                    it, and an embargo delays it until N days after resolution.
                 </p>
                 <p>
                     You hold both postures — records you co-produce as a seller
@@ -142,7 +142,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
 }
 
 /** One data × posture row: the offer toggle, and (when offered)
- *  the whitelist + settlement-embargo refinements. */
+ *  the whitelist + resolution-embargo refinements. */
 function PolicyLeafRow({
     slug,
     clauseId,
@@ -239,7 +239,7 @@ function PolicyLeafRow({
                             data-testid={`${rowId}-embargo`}
                         />
                         <span className="text-[11px] text-ink-faint">
-                            days after settlement before disclosure opens (empty = immediately).
+                            days after resolution before disclosure opens (empty = immediately).
                         </span>
                     </div>
                 </div>

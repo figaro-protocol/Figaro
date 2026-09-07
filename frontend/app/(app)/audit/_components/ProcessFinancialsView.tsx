@@ -74,7 +74,7 @@ export function ProcessFinancialsView({ processId }: Props) {
                     {batch?.status === "found"
                         ? ", and the batch relay published none that verified."
                         : batch?.status === "no-relay"
-                            ? " — and batch-settled trade cannot be read here, because no relay is configured. See the batch section below."
+                            ? " — and batch-resolved trade cannot be read here, because no relay is configured. See the batch section below."
                             : batch?.status === "not-in-archive"
                                 ? ", and the configured relay does not hold it either. See the batch section below."
                                 : "."}

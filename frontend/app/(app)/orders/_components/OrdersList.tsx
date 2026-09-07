@@ -103,7 +103,7 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
                 <p>
                     <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
                     {formatToken(sellerBond, decimals)}
-                    <span className="text-ink-faint ml-1">(returned at settlement)</span>
+                    <span className="text-ink-faint ml-1">(returned at resolution)</span>
                 </p>
             </div>
             <div className="flex gap-2">
@@ -168,7 +168,7 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
                 <p>
                     <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
                     {formatToken(sellerBond, decimals)}
-                    <span className="text-ink-faint ml-1">(locked at submit, returned at settlement)</span>
+                    <span className="text-ink-faint ml-1">(locked at submit, returned at resolution)</span>
                 </p>
             </div>
             <div className="flex gap-2">

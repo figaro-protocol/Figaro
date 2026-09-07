@@ -26,7 +26,7 @@
  * specs) — never from the screen that claims to have written it:
  *
  *   - market shape: the seeded assembly's row shows exactly the process /
- *     order / pair counts and the committed + settled volume the chain
+ *     order / pair counts and the committed + resolved volume the chain
  *     reports for the processes whose PUBLISHED provenance decodes to its
  *     compositionHash;
  *   - overlays: the expected row keys are computed with `computeClauseKey`
@@ -34,8 +34,8 @@
  *     the geo family shows its out-of-band decoded count, the data-terms
  *     family shows fingerprint-only (its refs verified UNSERVED at the
  *     gateway);
- *   - value flow: the settlement denomination node carries the token
- *     contract's own symbol and the event-folded process/settled-order
+ *   - value flow: the denomination node carries the token
+ *     contract's own symbol and the event-folded process/resolved-order
  *     counts; the composed-venue posture states ABSENCE OF A READER (the
  *     deployment records a venue; no corridor parser is configured) rather
  *     than an empty table;
@@ -67,7 +67,7 @@
  *     emitters share one topic hash, so the EMITTING ADDRESS is the only
  *     thing that says which universe a row came from — the explorer's fold
  *     must discriminate by address, and the geo family's row must read
- *     "direct + batch settlements". The seed is honest about what it shows:
+ *     "direct + batch resolutions". The seed is honest about what it shows:
  *     the reader's address-discriminated fold, not proof integrity (the mock
  *     accepts everything; the state root it advances to is arbitrary).
  *
@@ -179,7 +179,7 @@ const fetchWitnessBytes = async (contentRef: string): Promise<Hex | null> => {
 test.describe('DATA EXPLORER — every layer of /data/explore against out-of-band chain facts (devnet)', () => {
     test.setTimeout(300_000);
 
-    test('seed a settled geo-attested process with published + withheld substance, then hold every rendered layer to the record', async ({ page }) => {
+    test('seed a resolved geo-attested process with published + withheld substance, then hold every rendered layer to the record', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
@@ -497,7 +497,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
 
         // Market shape — boundary named, then the seeded assembly's row held
         // to the fold. The search narrowing by composition hash is the UI
-        // action; the settled row is the reaction.
+        // action; the resolved row is the reaction.
         await expect(page.getByTestId('layer-boundary')).toContainText('protocol-derived');
         await page.getByTestId('market-search').fill(marketKey);
         await expect(page.getByTestId('market-count')).toContainText('1 market attributed', { timeout: 60_000 });
@@ -506,8 +506,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await expect(marketRow).toContainText(
             `${plural(marketProcessIds.size, 'process', 'processes')} · ${plural(marketOrders.length, 'order', 'orders')} · ${plural(marketPairs.size, 'distinct buyer→seller pair', 'distinct buyer→seller pairs')}`,
         );
-        await expect(marketRow, 'the settled volume equals the chain fold, in the token contract\'s own denomination').toContainText(
-            `${formatUnits(marketSettled, Number(decimals))} ${symbol} settled of ${formatUnits(marketCommitted, Number(decimals))} ${symbol} committed`,
+        await expect(marketRow, 'the resolved volume equals the chain fold, in the token contract\'s own denomination').toContainText(
+            `${formatUnits(marketSettled, Number(decimals))} ${symbol} resolved of ${formatUnits(marketCommitted, Number(decimals))} ${symbol} committed`,
         );
         // The overlays THIS market draws — from what its processes attested.
         const marketOverlays = page.getByTestId(`market-overlays-${marketKey}`);
@@ -517,7 +517,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // ── CARRYING A PROCESS INTO THE AUDIT VIEW, from the DEFAULT layer ──
         // A reader arrives on `view=market` holding nothing: no wallet, no
         // processId. Before this the page could tell them 28 processes had
-        // settled and give them no way to open one — the ids are derived from
+        // resolved and give them no way to open one — the ids are derived from
         // the same events every figure above is derived from, so withholding
         // them was the surface's choice.
         //
@@ -588,16 +588,16 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             expect(onChainClauseKeys.has(key.toLowerCase()), `rendered overlay ${key} is an on-chain attestation family`).toBe(true);
         }
 
-        // Value flow — the settlement denomination node with the token's own
+        // Value flow — the denomination node with the token's own
         // metadata and event-folded counts; the venue posture states the
         // reader's absence, never an empty corridor table.
         await page.getByTestId('graph-view-value-flow').click();
         await expect(page.getByTestId('layer-boundary')).toContainText('composition-derived');
         const denomination = page.getByTestId(`denomination-${token.toLowerCase()}`);
-        await expect(denomination, 'the settlement denomination node renders').toBeVisible({ timeout: 30_000 });
+        await expect(denomination, 'the denomination node renders').toBeVisible({ timeout: 30_000 });
         await expect(denomination, 'the node carries the token contract\'s own symbol').toContainText(String(symbol));
         await expect(denomination).toContainText(
-            `${plural(tokenProcessCount, 'process', 'processes')} · ${plural(tokenSettledOrders, 'settled order', 'settled orders')}`,
+            `${plural(tokenProcessCount, 'process', 'processes')} · ${plural(tokenSettledOrders, 'resolved order', 'resolved orders')}`,
         );
         const venuePosture = page.getByTestId('venue-posture');
         if (config.swapRouter) {
@@ -616,7 +616,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const summary = page.getByTestId('wallet-summary');
         await expect(summary).toBeVisible({ timeout: 30_000 });
         await expect(summary).toContainText(
-            `${plural(clientProcesses.size, 'process', 'processes')} resolved as root buyer (${clientSettledProcesses} settled) · `
+            `${plural(clientProcesses.size, 'process', 'processes')} resolved as root buyer (${clientSettledProcesses} resolved) · `
             + `${plural(clientBuyerOrders.length, 'order', 'orders')} as buyer · `
             + `${plural(clientSellerOrders.length, 'order', 'orders')} as seller · `
             + `${plural(clientDenominations, 'denomination', 'denominations')}`,
@@ -902,7 +902,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const publicClient = localPublicClient();
         const receipt = (hash: Hex) => publicClient.waitForTransactionReceipt({ hash });
 
-        // Any funded wallet may submit — settlement is permissionless. The
+        // Any funded wallet may submit — resolution is permissionless. The
         // spec's surveyor submits and attests; self-funded as in the seed.
         const surveyor = privateKeyToAccount(SURVEYOR_KEY);
         const surveyorWallet = createWalletClient({ account: surveyor, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -936,7 +936,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         });
         expect(specHash, 'the registry anchors a content hash for the geo clause').not.toBe(zeroHash);
 
-        // A BATCH-ONLY process identity, fresh each run: batch-settled trade
+        // A BATCH-ONLY process identity, fresh each run: batch-resolved trade
         // acquires no kernel status and emits no kernel event — the two
         // the two resolution paths stay disjoint by construction.
         const salt = toHex(generateSalt(), { size: 32 });
@@ -957,7 +957,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(await fetchWitnessBytes(contentRef), 'the batch substance resolves from its own fingerprint').toBe(content);
 
         // Public values: 8 static ABI words. prevRoot must be the LIVE root
-        // (it advances every settle — never hardcode genesis); newRoot is
+        // (it advances every resolve — never hardcode genesis); newRoot is
         // whatever the values say, because the mock accepts any proof — the
         // devnet posture this leg is explicit about.
         const prevRoot = await publicClient.readContract({
@@ -966,7 +966,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const newRoot = keccak256(encodePacked(['bytes32', 'bytes32'], [prevRoot, salt]));
         const attestation = { orderHash, processId, attester: surveyor.address, clauseId: geoKey, stage, contentRef };
         // The packed layouts the contract re-derives and compares — the
-        // settle transaction itself is the byte-equality gate (a wrong
+        // resolve transaction itself is the byte-equality gate (a wrong
         // packing reverts with a *HashMismatch).
         const attestationsHash = keccak256(encodePacked(
             ['bytes32', 'bytes32', 'address', 'bytes32', 'uint8', 'bytes32'],
@@ -991,9 +991,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 { period: 0, provenanceClause: zeroHash, accruals: [], sellers: [] },
             ],
         }));
-        expect(settleReceipt.status, 'the batch settled — every packed hash matched byte-for-byte').toBe('success');
+        expect(settleReceipt.status, 'the batch resolved — every packed hash matched byte-for-byte').toBe('success');
 
-        // ── OUT-OF-BAND: the settle landed, in the batch universe ONLY. ──
+        // ── OUT-OF-BAND: the resolve landed, in the batch universe ONLY. ──
         expect(await publicClient.readContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot',
         }), 'the state root advanced to the submitted newRoot').toBe(newRoot);
@@ -1021,7 +1021,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n,
         });
         expect(kernelOrders.some((e) => (e.args.processId as string).toLowerCase() === processId.toLowerCase()),
-            'a batch-settled process acquires no kernel record — the universes are disjoint').toBe(false);
+            'a batch-resolved process acquires no kernel record — the universes are disjoint').toBe(false);
 
         // ── The geo family's fold across BOTH universes, by address — the
         //    page's own discrimination, mirrored out-of-band. ──
@@ -1056,7 +1056,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const geoRow = page.getByTestId(`overlay-row-${geoKey}`);
         await expect(geoRow, 'the geo family draws ONE row under its computed key').toBeVisible({ timeout: 60_000 });
         await expect(geoRow, 'both resolution paths fold into the row, discriminated by emitting address')
-            .toContainText('direct + batch settlements');
+            .toContainText('direct + batch resolutions');
         await expect(geoRow, 'the entry count spans both universes').toContainText(plural(geoEntries, 'attestation', 'attestations'));
         await expect(geoRow, 'the decoded count includes the batch payload').toContainText(
             `${geoDecoded} of ${plural(geoEntries, 'payload', 'payloads')} recovered and decoded`,

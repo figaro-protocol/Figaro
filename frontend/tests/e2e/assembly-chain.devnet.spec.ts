@@ -33,9 +33,9 @@
  *   attest   → every seller advances its own process ladder through the ONE
  *              generic capability rail — each transfer attested, each event
  *              on the timeline (the evidentiary record)
- *   resolve  → the buyer resolves ONCE; the atomic settlement pays every
+ *   resolve  → the buyer resolves ONCE; the atomic resolution pays every
  *              party — each seller net +payment, buyer net −total, escrow
- *              back to baseline. One signature, a complete P&L settled.
+ *              back to baseline. One signature, a complete P&L resolved.
  *   audit    → the audit package renders the full process: financials, a
  *              per-order line item for ALL THREE orders, the cash-flow log,
  *              and the clause-evidence documents
@@ -119,7 +119,7 @@ async function waitForConnected(page: Page) {
 test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve pays every party (devnet)', () => {
     test.setTimeout(420_000);
 
-    test('bind → picker checkout → walk-order accepts (exact bonds) → atomic resolve (exact settlement) → full audit', async ({ page }) => {
+    test('bind → picker checkout → walk-order accepts (exact bonds) → atomic resolve (exact resolution) → full audit', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -399,7 +399,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await page.getByTestId(`funding-token-option-${permitToken.toLowerCase()}`).click();
             // Permit2 authorization is conditional on the persisted chain
             // (prior runs' approvals survive) AND its button can re-render as
-            // the quote settles — `needsApproval` reads true until the
+            // the quote resolves — `needsApproval` reads true until the
             // allowance resolves, so the button can flash and vanish. The click
             // may race that detach; it is BOUNDED (an unbounded click would wait
             // for a locator that never returns and burn the whole test budget)
@@ -492,7 +492,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // supplier's attestation makes it two.
         await attestAs(SUPPLIER, 'Preparation started', 2, 'supplier');
 
-        // ── RESOLVE: buyer dominance — ONE signature settles the whole chain
+        // ── RESOLVE: buyer dominance — ONE signature resolves the whole chain
         //    atomically. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
@@ -507,16 +507,16 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── SETTLEMENT (the whole point): the atomic resolve pays EVERY party —
+        // ── RESOLUTION (the whole point): the atomic resolve pays EVERY party —
         //    each seller net +its payment, the buyer net −the chain total, the
-        //    escrow back to its baseline. A complete P&L, settled by one signature. ──
+        //    escrow back to its baseline. A complete P&L, resolved by one signature. ──
         const [buyerF, leadF, courierF, supplierF, coreF, courierPermitF] = await Promise.all([
             balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(COURIER), balanceOf(SUPPLIER), balanceOf(core),
             balanceOfPermit(COURIER),
         ]);
         expect(buyer0 - buyerF, 'buyer net paid exactly the chain total').toBe(parseEther('3'));
         expect(leadF - lead0, 'lead net earned exactly its payment').toBe(parseEther('1'));
-        // The courier funded its bond FROM MPMT, and the settlement returns
+        // The courier funded its bond FROM MPMT, and the resolution returns
         // bond + payment IN the denomination: the two token legs must close to
         // a net of exactly the courier's payment (the 1:1 venue makes the
         // wealth identity exact).

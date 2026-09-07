@@ -22,7 +22,7 @@
  * The producing flow is the minimal seed-assembly trade (buyer anvil[0] ↔
  * the wizard seller, registered by the devnet-authoring gate); the rungs
  * consume ONLY what that flow put on-chain. Value-legs rule: the bond lock
- * is asserted at commit (rung precedent — no resolve; full-cycle settlement
+ * is asserted at commit (rung precedent — no resolve; full-cycle resolution
  * is permissionless-clause's assertion).
  *
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.

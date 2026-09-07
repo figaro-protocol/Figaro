@@ -43,7 +43,7 @@ export default function AuditPage() {
                     That record opens at <code>/audit/view?process=&lt;processId&gt;</code> &mdash; the
                     id is the whole handle, so the URL is shareable as it stands; a{" "}
                     process{" "}
-                    is one buyer&apos;s whole chain of orders, settling together or not at all.
+                    is one buyer&apos;s whole chain of orders, resolving together or not at all.
                 </p>
             </header>
 

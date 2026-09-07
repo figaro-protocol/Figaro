@@ -52,7 +52,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
 
     return {
         allowance,
-        /** True once the allowance read has settled (a value, or a confirmed
+        /** True once the allowance read has completed (a value, or a confirmed
          *  zero) — the display gate for any authorize affordance. */
         allowanceKnown,
         needsApproval,

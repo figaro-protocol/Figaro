@@ -65,10 +65,10 @@ describe("useAssemblyChoices — the designer's words reach the reader", () => {
     it("falls back to the template's description when the designer wrote only that", async () => {
         const choice = await choiceFor({
             name: "Equipment hire",
-            description: "A single bonded rental, settled in the studio's own token.",
+            description: "A single bonded rental, resolved in the studio's own token.",
             agreements: [],
         });
-        expect(choice.summary).toBe("A single bonded rental, settled in the studio's own token.");
+        expect(choice.summary).toBe("A single bonded rental, resolved in the studio's own token.");
     });
 
     it("has no summary when the template carries no prose — nothing is invented", async () => {

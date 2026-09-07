@@ -25,8 +25,8 @@ export interface UserEndpointOverrides {
      *  between); OpenStreetMap's public instance by default, the user's
      *  own instance if set. */
     geocodeUrl?: string;
-    /** A batch-settlement RELAY to read batched trade through. Multiple relays
-     *  are legal by construction — settlement is permissionless, so anyone can
+    /** A batch-resolution RELAY to read batched trade through. Multiple relays
+     *  are legal by construction — resolution is permissionless, so anyone can
      *  run one — and nothing published by a relay is trusted: `/audit`
      *  re-derives every struct, signature and payout and anchors the batch on
      *  chain before showing it. So pointing this at any relay, or at your own,

@@ -54,7 +54,7 @@ export function useClauseSpecs(): ClauseSpecsState {
     const { data: events, failed: readFailed } = useAllRegisteredClauses();
     const [version, setVersion] = useState(0);
     const [errors, setErrors] = useState<string[]>([]);
-    /** True once the load pass for the current `events` set has settled — every
+    /** True once the load pass for the current `events` set has completed — every
      *  spec fetch resolved or rejected. This is the terminal-state signal that
      *  makes a failed clause a SKIP, not a permanent block. */
     const [settled, setSettled] = useState(false);
@@ -65,7 +65,7 @@ export function useClauseSpecs(): ClauseSpecsState {
         let timer: ReturnType<typeof setTimeout> | undefined;
         setSettled(false);
         const pending = events.filter((e) => e.contentURI && e.clauseId);
-        /** One read pass over `batch`; the first pass settles `loaded`, later
+        /** One read pass over `batch`; the first pass fixes `loaded`, later
          *  passes re-read what is still unresolved and stop when nothing is. */
         const pass = (batch: typeof pending, attempt: number) => {
             Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseId, e.version, e.contentURI, e.contentHash))).then((results) => {
@@ -92,9 +92,9 @@ export function useClauseSpecs(): ClauseSpecsState {
         const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseId) !== undefined).length;
         // loaded = the registry read resolved AND the load pass finished (each
         // spec terminal). A FAILED registry read is never loaded. Resolved-empty
-        // (a genuinely empty registry) settles immediately and counts as loaded:
+        // (a genuinely empty registry) completes immediately and counts as loaded:
         // absence is a real state. Partial spec failure DEGRADES — the pass still
-        // settles, `loadedCount` reflects what cached, consumers skip the rest.
+        // completes, `loadedCount` reflects what cached, consumers skip the rest.
         const loaded = !readFailed && total !== null && settled;
         return {
             loaded,

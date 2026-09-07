@@ -2,17 +2,17 @@
 /**
  * drive-live-batch.mjs — drive ONE full batch lifecycle against a PUBLIC
  * chain's deployed stack, through a running sequencer (RELEASE_READINESS
- * § Pre-Mainnet: one real Groth16 batch settling is the genesis-root +
+ * § Pre-Mainnet: one real Groth16 batch resolving is the genesis-root +
  * SP1-routing proof).
  *
  * The batch sibling of the direct-path Sepolia smoke: where
  * `sdk/tests/batch-e2e.test.ts` deploys its own mock stack on a devnet anvil,
  * this script deploys NOTHING — every address comes from the committed
- * deployment record, the settlement token is the chain's real one, and the
+ * deployment record, the denomination is the chain's real one, and the
  * signers are explicitly-passed funded keys. The same invocation runs against
  * a fork of the public chain (layer 2 — the rehearsal; the fork inherits the
  * live balances, so nothing is dealt or mocked) and against the public chain
- * itself (layer 3 — the live settle).
+ * itself (layer 3 — the live resolve).
  *
  * Flow (all submissions are signed messages POSTed to the sequencer; the only
  * transactions this script sends are the two token approvals, skipped when the
@@ -26,7 +26,7 @@
  *   3. Sign + submit Commit and the RuntimeWitness seller attestation
  *      (EIP-712 over the VERIFIER's domain — the batch universe's domain,
  *      never FigaroCore's).
- *   4. Wait for batch N+1 to settle (a real Groth16 proof: minutes), then
+ *   4. Wait for batch N+1 to resolve (a real Groth16 proof: minutes), then
  *      verify the CHAIN facts — bonds pulled, Attestation re-emitted.
  *   5. Sign + submit Resolve + the RPGF usage claim; wait for batch N+2.
  *   6. Verify the chain facts: payout deltas, state root advanced, batch
@@ -40,12 +40,12 @@
  *                           member so the usage claim credits) — required
  *   DEPLOYMENT_RECORD     — path to the deployment record JSON
  *                           (default ../../deployments/11155111.json)
- *   SETTLEMENT_TOKEN      — ERC-20 the order settles in (defaults to Circle's
+ *   SETTLEMENT_TOKEN      — ERC-20 the order resolves in (defaults to Circle's
  *                           Sepolia USDC when the record says 11155111)
  *   PAYMENT               — payment in the token's base units (default 1000000)
  *   WITNESS_CLAUSE        — clause id for the witness attestation
  *                           (default figaro-modalities)
- *   BATCH_WAIT_TIMEOUT_MS — per-batch settle timeout (default 7200000 — a
+ *   BATCH_WAIT_TIMEOUT_MS — per-batch resolve timeout (default 7200000 — a
  *                           local CPU Groth16 proof takes minutes to tens of
  *                           minutes)
  *   RECORDS_DIR           — where the signed records persist (default
@@ -96,7 +96,7 @@ const PAYMENT = BigInt(process.env.PAYMENT ?? '1000000');
 const WITNESS_CLAUSE = process.env.WITNESS_CLAUSE ?? 'figaro-modalities';
 const BATCH_WAIT_TIMEOUT_MS = Number(process.env.BATCH_WAIT_TIMEOUT_MS ?? 7_200_000);
 
-// Circle's canonical Sepolia USDC — the reference-assembly settlement fill.
+// Circle's canonical Sepolia USDC — the reference-assembly denomination fill.
 const SEPOLIA_USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 
 const record = JSON.parse(fs.readFileSync(RECORD_PATH, 'utf-8'));
@@ -242,14 +242,14 @@ const fmt = (v) => `${v} (${Number(v) / 10 ** Number(tokenDecimals)} ${tokenSymb
 console.log(`record:            ${RECORD_PATH}`);
 console.log(`verifier:          ${verifier}`);
 console.log(`state root:        ${stateRoot}  (batchCount ${batchCount})`);
-console.log(`sequencer:         ${SEQUENCER_URL}  (mirror ${status.state_root}, settled ${status.batches_settled}, pending ${status.pending_ops})`);
+console.log(`sequencer:         ${SEQUENCER_URL}  (mirror ${status.state_root}, resolved ${status.batches_settled}, pending ${status.pending_ops})`);
 console.log(`witness clause:    ${spec.clauseId} v${spec.version}  key ${clauseKey}`);
 console.log(`buyer:             ${buyerAccount.address}  ${fmt(buyerToken)}`);
 console.log(`seller:            ${sellerAccount.address}  ${fmt(sellerToken)}  member=${sellerRegistered}`);
 console.log(`payment:           ${fmt(PAYMENT)}  bonds: buyer ${fmt(bonds.buyerBond)}, seller ${fmt(bonds.sellerBond)}`);
 console.log(`counter period:    ${currentPeriod}  (minSellers floor ${minSellers})`);
 if (batchCount === 0n) {
-    console.log('NOTE: batchCount is 0 — no batch has ever settled here; this run is the genesis-root proof.');
+    console.log('NOTE: batchCount is 0 — no batch has ever resolved here; this run is the genesis-root proof.');
 }
 
 if (gaps.length > 0) {
@@ -353,7 +353,7 @@ const attestResult = await sequencer.submitAttestAsSeller({
 });
 console.log(`submitted AttestAsSeller (op ${attestResult.id})  contentRef ${contentRef}`);
 
-// ── Wait for a batch to settle (real proof: minutes) ────────────────────────
+// ── Wait for a batch to resolve (real proof: minutes) ────────────────────────
 
 async function waitForSettled(minSettled) {
     const deadline = Date.now() + BATCH_WAIT_TIMEOUT_MS;
@@ -362,7 +362,7 @@ async function waitForSettled(minSettled) {
     while (Date.now() < deadline) {
         try {
             const s = await sequencer.status();
-            const line = `settled ${s.batches_settled}, pending ${s.pending_ops}, dead ${s.dead_lettered_ops ?? 0}, root ${s.state_root}`;
+            const line = `resolved ${s.batches_settled}, pending ${s.pending_ops}, dead ${s.dead_lettered_ops ?? 0}, root ${s.state_root}`;
             if (line !== last) { console.log(`  [${new Date().toISOString()}] ${line}`); last = line; }
             if (s.batches_settled >= minSettled) return s;
             // A death is final — the sequencer dead-letters only failures it
@@ -377,7 +377,7 @@ async function waitForSettled(minSettled) {
         }
         await new Promise((r) => setTimeout(r, 5000));
     }
-    throw new Error(`sequencer did not reach ${minSettled} settled batches within ${BATCH_WAIT_TIMEOUT_MS}ms`);
+    throw new Error(`sequencer did not reach ${minSettled} resolved batches within ${BATCH_WAIT_TIMEOUT_MS}ms`);
 }
 
 const settledBase = status.batches_settled;
@@ -470,14 +470,14 @@ saveRecord({
     })),
 });
 console.log(`signed records: ${recordFile}`);
-console.log(`\n── Settled batches ──`);
+console.log(`\n── Resolved batches ──`);
 for (const b of recent) {
     console.log(`batch ${b.batch}: ${b.prev_state_root} → ${b.new_state_root}`);
-    console.log(`  settlement tx: ${b.settlement_tx ?? '(dry run)'}`);
+    console.log(`  resolve tx: ${b.settlement_tx ?? '(dry run)'}`);
 }
 
 if (failed > 0) {
     console.error(`\n${failed} chain-fact check(s) FAILED`);
     process.exit(1);
 }
-console.log('\nAll chain facts verified — the batch universe settled live.');
+console.log('\nAll chain facts verified — the batch universe resolved live.');

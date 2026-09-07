@@ -3,7 +3,7 @@
 /**
  * RewardsView — the RPGF minter's runtime surface at `/rewards`. Not an admin
  * panel and not an application form: usage is COUNTED ON CHAIN as it happens
- * (a settled process, the clause or assembly proven present in the agreement both parties
+ * (a resolved process, the clause or assembly proven present in the agreement both parties
  * signed), a period's counts stop moving the moment it ends, and the wallet
  * then claims its clauses' and assemblies' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
@@ -78,7 +78,7 @@ export function RewardsView() {
             <h1 className="text-heading-h1 text-ink-heading mb-3">Claim RPGF rewards</h1>
             <p className="text-base text-ink-body leading-relaxed mb-8">
                 The 600M florins reserved for clause authors and assembly designers of record.
-                Usage is counted on chain as it happens — a settled process, the clause or assembly proven
+                Usage is counted on chain as it happens — a resolved process, the clause or assembly proven
                 present in the agreement both parties signed — and buckets into fixed periods.
                 Once a period ends its counts are final, and each author claims their clauses&apos; and assemblies&apos;
                 share of that period&apos;s budget: their score over the period&apos;s total, uniform
@@ -156,7 +156,7 @@ export function RewardsView() {
                                         <ul className="text-sm text-ink-muted space-y-1">
                                             {t.accruals.map((a) => (
                                                 <li key={a.clauseOrAssembly} className="font-mono break-all">
-                                                    {a.label} — {(a.c + a.batchC).toString()} settled process
+                                                    {a.label} — {(a.c + a.batchC).toString()} resolved process
                                                     {a.c + a.batchC === 1n ? "" : "es"},{" "}
                                                     {(a.d + a.batchD).toString()} distinct staked seller
                                                     {a.d + a.batchD === 1n ? "" : "s"}, score{" "}

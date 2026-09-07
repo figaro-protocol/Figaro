@@ -186,7 +186,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const chainId = useChainId();
     const publicClient = usePublicClient();
     // Chain-aware cap on assembly node count. The hard cap is the RESOLVE
-    // ceiling — every order must settle in one atomic resolveProcess within a
+    // ceiling — every order must resolve in one atomic resolveProcess within a
     // block (~1,240 on a 30M-gas chain), the same ceiling the publish-time guard
     // enforces. The COMMIT ceiling is NOT a size limit but a landing rate:
     // committing N orders takes ~ceil(N / commits-per-block) blocks (multi-tx
@@ -351,7 +351,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         (parentOrderId: string) => {
             if (atOrderCapacity) {
                 setMergeNotice(
-                    `This chain settles at most ${maxOrders} orders in one atomic resolveProcess — remove a node to add another, or compose multiple processes.`,
+                    `This chain resolves at most ${maxOrders} orders in one atomic resolveProcess — remove a node to add another, or compose multiple processes.`,
                 );
                 setTimeout(() => setMergeNotice(null), 5000);
                 return;
@@ -751,7 +751,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             <p
                                 data-testid="designer-node-capacity"
                                 className={`text-[11px] tabular-nums ${atOrderCapacity ? "text-error-fg font-semibold" : "text-ink-muted"}`}
-                                title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess settles in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
+                                title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess resolves in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
                             >
                                 {orders.length} / {maxOrders} orders{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
                             </p>

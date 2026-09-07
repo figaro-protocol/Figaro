@@ -48,7 +48,7 @@ describe("ContractEntry", () => {
             <ContractEntry
                 title="FigaroCore.sol"
                 meta="2 fns · 3 mappings · no owner"
-                desc="Protocol kernel. commit and resolveProcess handle bonding and settlement."
+                desc="Protocol kernel. commit and resolveProcess handle bonding and resolution."
             />
         );
         expect(screen.getByText("FigaroCore.sol")).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe("ContractEntry", () => {
         const details = document.querySelector("details");
         expect(details).not.toBeNull();
         expect(details).not.toHaveAttribute("open");
-        expect(screen.getByText("commit and resolveProcess handle bonding and settlement.")).toBeInTheDocument();
+        expect(screen.getByText("commit and resolveProcess handle bonding and resolution.")).toBeInTheDocument();
     });
 
     it("well-formed input with a single-sentence desc renders no disclosure at all", () => {
@@ -82,7 +82,7 @@ describe("ContractEntry", () => {
             <ContractEntry
                 title="FigaroCore.sol"
                 href="https://github.com/figaro-protocol/Figaro/blob/main/src/FigaroCore.sol"
-                desc="Protocol kernel. Handles bonding and settlement."
+                desc="Protocol kernel. Handles bonding and resolution."
             />
         );
         const link = screen.getByRole("link");

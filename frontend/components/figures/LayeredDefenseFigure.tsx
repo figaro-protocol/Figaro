@@ -32,7 +32,7 @@ export interface LayeredDefenseFigureProps extends BaseFigureProps {
 const FAQ_LAYERS: NonNullable<LayeredDefenseFigureProps["layers"]> = [
     { label: "1 · The chain", note: "Ethereum's consensus — the record nothing can rewrite" },
     { label: "2 · The lockbox (FigaroCore)", note: "holds both doubled stakes; only the buyer's resolveProcess moves them" },
-    { label: "3 · The other sellers", note: "all-or-nothing settlement gives every co-seller a stake-backed reason to help remedy" },
+    { label: "3 · The other sellers", note: "all-or-nothing resolution gives every co-seller a stake-backed reason to help remedy" },
     { label: "4 · Arbitration (e.g. Kleros)", note: "weighs the on-chain record from outside the deal" },
     { label: "5 · Ordinary courts", note: "always available; enforces against the losing party's other assets — the lockbox stays sealed" },
 ];
@@ -45,7 +45,7 @@ const FAQ_DESC =
     "ledger. Layer two, the lockbox, is FigaroCore holding both sides' doubled " +
     "stakes — nothing leaves it until the buyer signs the close. Layer three is " +
     "the other bonded sellers, whose stake-backed interest in remedy comes from " +
-    "the same lockbox's all-or-nothing settlement, not a separate custody. A " +
+    "the same lockbox's all-or-nothing resolution, not a separate custody. A " +
     "reach boundary separates those three from layer four, arbitration such as " +
     "Kleros, and layer five, ordinary courts — both weigh the on-chain record " +
     "from outside the deal and enforce against the losing party's other assets, " +

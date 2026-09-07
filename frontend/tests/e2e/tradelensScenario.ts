@@ -1,7 +1,7 @@
 /**
  * tradelensScenario.ts — the Tradelens genesis scenario's shared vocabulary,
  * used by BOTH legs of the e2e pair (scenario-tradelens author/publish/sign;
- * tradelens-runtime accept/witness/resolve). The settled composition lives in
+ * tradelens-runtime accept/witness/resolve). The decided composition lives in
  * the project_tradelens_assembly memory; /papers/after-tradelens is
  * narrative, never spec.
  *

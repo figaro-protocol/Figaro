@@ -15,7 +15,7 @@ import { E2E_CHAIN } from './devnet-helpers';
 
 const PROFILES_DIR = path.resolve(__dirname, '../../.smoke-profiles');
 const DEVNET_KEYS_PATH = path.join(PROFILES_DIR, 'live-order-devnet-keys.json');
-/** One whole unit of the settlement token — the smoke's catalogue price. */
+/** One whole unit of the denomination — the smoke's catalogue price. */
 export const ITEM_PRICE = '1';
 
 export function smokeKeys(): { seller: Hex; buyer: Hex } {

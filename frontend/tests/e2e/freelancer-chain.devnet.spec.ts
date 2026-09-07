@@ -4,7 +4,7 @@
  * FREELANCE VALUE CHAIN — the reference assembly's named test
  * (assemblies/freelancer-value-chain.json; family 8b — a lead freelancer and
  * two contributors, each a co-equal bonded order in one process, every
- * deliverable travelling the encrypted content hand-off, one settlement).
+ * deliverable travelling the encrypted content hand-off, one resolution).
  *
  * The spec CONSUMES the anchored reference (registry → IPFS, discovered by
  * shape: three orders, every one composing the content hand-off — no other
@@ -20,7 +20,7 @@
  *             ecdh-content interaction; each freelancer delivers its
  *             artifact — encrypt → channel → stage-1 attestation in one
  *             gesture; every attestation verified on the coordinator.
- *   resolve   one signature pays the whole chain; net settlement per wallet.
+ *   resolve   one signature pays the whole chain; net positions per wallet.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { ATTESTATION_COORDINATOR_ABI, calculateBonds } from '@figaro-protocol/sdk';
@@ -71,7 +71,7 @@ async function findChainAssembly(): Promise<string> {
     return t!.slug;
 }
 
-test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encrypted hand-off, one settlement (devnet)', () => {
+test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encrypted hand-off, one resolution (devnet)', () => {
     test.setTimeout(600_000);
 
     test('client signs, freelancers bond and deliver, one resolve pays the chain', async ({ page }) => {
@@ -270,7 +270,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── SETTLEMENT: client −3, each freelancer +its price, escrow home. ──
+        // ── RESOLUTION: client −3, each freelancer +its price, escrow home. ──
         for (const s of sellers) {
             expect((await balanceOf(s.address)) - base.get(s.address.toLowerCase())!,
                 `${s.label} net earned exactly its price`).toBe(parseUnits(s.price, 18));

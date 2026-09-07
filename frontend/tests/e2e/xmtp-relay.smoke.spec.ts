@@ -228,7 +228,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         await gotoAsWallet(sellerPage, SELLER, '/orders');
         await waitForConnected(sellerPage);
         const yourTurnCards = sellerPage.getByTestId('order-your-turn-card');
-        // Baseline AFTER the back-fill settles: `syncAll()` replays prior
+        // Baseline AFTER the back-fill resolves: `syncAll()` replays prior
         // smoke runs' relayed commitments from the network asynchronously
         // (localStorage was cleared), so a count taken at first paint could
         // inflate mid-test and read as a false delivery. Stable = unchanged

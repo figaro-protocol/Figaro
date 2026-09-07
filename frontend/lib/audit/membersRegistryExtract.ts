@@ -7,7 +7,7 @@
  * Note on kernel design: `src/kernel/FigaroCore.sol` does NOT enforce that
  * sellers be registered in the MembersRegistry — the kernel "does not
  * gate any operation on seller state" (CLAUDE.md). Registration is an
- * off-chain discovery convention, not a settlement precondition.
+ * off-chain discovery convention, not a resolution precondition.
  *
  * For audit purposes, however, every legitimate seller is expected to be
  * registered — this is a runtime-tier protocol convention. An unregistered

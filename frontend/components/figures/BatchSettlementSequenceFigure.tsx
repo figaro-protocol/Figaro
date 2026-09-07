@@ -31,7 +31,7 @@ export type BatchSettlementSequenceFigureProps = BaseFigureProps;
  *    usage accrual (:324-329) → state root (:331), in that order.
  *  - The accrual is wrapped in try/catch: a reward-tier gate refusal is dropped
  *    wholesale and surfaced as `BatchAccrualSkipped`, never unwinding the token
- *    settlement and never blocking it.
+ *    resolution and never blocking it.
  * The "fall back to direct = a NEW process, never a migration" rule is
  * `docs/SCALING_STRATEGY.md`.
  */
@@ -76,7 +76,7 @@ const STEPS: readonly Step[] = [
         onChain: false,
     },
     {
-        actor: "→ The settlement call",
+        actor: "→ The resolve call",
         lines: [
             "The verifier checks the proof, checks the submitted data against",
             "those commitments, anchors each specification; reverts otherwise.",
@@ -128,7 +128,7 @@ export function BatchSettlementSequenceFigure({
             className={className}
             svgProps={svgProps}
             viewBox={`0 0 400 ${viewHeight}`}
-            title="The batch settlement path, step by step"
+            title="The batch resolution path, step by step"
             desc={
                 <>
                     Seven steps in order. Off chain: both parties sign one typed-data
@@ -147,11 +147,11 @@ export function BatchSettlementSequenceFigure({
                     gave the verifier rather than the kernel, and the attestations are
                     re-emitted; then the usage accrual reaches the counter, and if a
                     reward-tier gate refuses it the accrual is dropped whole rather than
-                    unwinding or blocking the settlement already executed; the state root
+                    unwinding or blocking the resolution already executed; the state root
                     advances last. The verifier is the sole acceptance gate — sequencer and
                     prover can each produce a candidate batch and neither can admit one. If
                     the sequencer stalls or censors, the parties sign again for the
-                    kernel&apos;s own domain and settle directly; that is a new process, not
+                    kernel&apos;s own domain and resolve directly; that is a new process, not
                     a migration of a batched one.
                 </>
             }
@@ -269,10 +269,10 @@ export function BatchSettlementSequenceFigure({
                     If the sequencer stalls or censors: the direct path
                 </text>
                 <text x="26" y={fallbackY + 33} fontSize="8.5" className="fill-ink-body">
-                    The parties sign again for the kernel&rsquo;s own domain and settle
+                    The parties sign again for the kernel&rsquo;s own domain and resolve
                 </text>
                 <text x="26" y={fallbackY + 44} fontSize="8.5" className="fill-ink-body">
-                    directly. Batch settlement is itself permissionless, so anyone
+                    directly. Batch resolution is itself permissionless, so anyone
                 </text>
                 <text x="26" y={fallbackY + 55} fontSize="8.5" className="fill-ink-body">
                     may prove and submit what a stalled sequencer will not.

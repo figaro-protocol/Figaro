@@ -2,12 +2,12 @@
  * assembly-withdraw.devnet.spec.ts — the commits==resolves withdraw gate,
  * end to end: an assembly's registering wallet must not reclaim the registration stake
  * while a deal composed from the assembly is in flight; once every composed
- * deal settles, the reclaim goes through and the registry refunds exactly
+ * deal resolves, the reclaim goes through and the registry refunds exactly
  * the deposit.
  *
  * ONE spec, registeredBy-driven (not a scenario/runtime pair): the subject is the
  * REGISTERED_BY's registration lifecycle — publish (staked intent) → verified
- * in-flight deal blocks → atomic settle unblocks → reclaim + exact refund.
+ * in-flight deal blocks → atomic resolve unblocks → reclaim + exact refund.
  * `AssemblyRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
  * nothing survives for a runtime spec to consume (the assembly ends
  * de-surfaced), and the buyer/seller commit+resolve legs are supporting
@@ -74,7 +74,7 @@ const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address a
 test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)', () => {
     test.setTimeout(360_000);
 
-    test('registeredBy reclaims the stake only after every composed deal settles; registry refunds exactly the deposit', async ({ page }) => {
+    test('registeredBy reclaims the stake only after every composed deal resolves; registry refunds exactly the deposit', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -216,7 +216,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         // Still disabled after the gate resolved (not just the loading state).
         await expect(withdrawBtn).toBeDisabled();
 
-        // ── RESOLVE (buyer dominance, atomic): the buyer settles the process
+        // ── RESOLVE (buyer dominance, atomic): the buyer resolves the process
         //    through the UI; the deal leaves the in-flight set. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
@@ -232,7 +232,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // Value leg (full cycle): net settlement, escrow back to baseline.
+        // Value leg (full cycle): net positions, escrow back to baseline.
         const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
@@ -252,7 +252,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await reclaimBtn.waitFor({ state: 'visible', timeout: 30000 });
         await expect(
             reclaimBtn,
-            'every composed deal settled → the reclaim is enabled',
+            'every composed deal resolved → the reclaim is enabled',
         ).toBeEnabled({ timeout: 60000 });
 
         // Foreign in-flight orders (committed, process unresolved) — the

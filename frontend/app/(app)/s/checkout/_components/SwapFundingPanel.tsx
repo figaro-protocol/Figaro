@@ -87,12 +87,12 @@ export function SwapFundingPanel({
             data-testid="swap-funding-panel"
         >
             <p className="text-xs font-semibold text-ink-muted">
-                Not enough {currencySymbol || "the settlement token"} — fund your bond from another accepted token
+                Not enough {currencySymbol || "the denomination"} — fund your bond from another accepted token
             </p>
             <p className="text-[11px] text-ink-muted leading-relaxed">
-                The chosen token is swapped into {currencySymbol || "the settlement token"} when the
+                The chosen token is swapped into {currencySymbol || "the denomination"} when the
                 order commits; the swap route is bound into your signature, so no relayer can change
-                it. The order itself stays priced and bonded in {currencySymbol || "the settlement token"}.
+                it. The order itself stays priced and bonded in {currencySymbol || "the denomination"}.
             </p>
             <div className="space-y-1.5">
                 {candidates.map((t) => (

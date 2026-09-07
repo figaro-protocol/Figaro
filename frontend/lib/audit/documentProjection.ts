@@ -34,7 +34,7 @@ export type ValueRef =
     | { orderHash: true }
     | { party: PartyRole }
     | { payment: true }                                   // smallest-unit amount (exact + verifiable)
-    | { resolvedDate: true }                              // ISO date of settlement, or "—"
+    | { resolvedDate: true }                              // ISO date of resolution, or "—"
     | { leafField: { byField: string; field: string } }  // leaf declaring `byField` → its `field`
     | { lineItemNames: true }                             // commerce lineItems → names joined
     | { sumPayments: true };                              // Σ payment over the unit's orders
@@ -197,7 +197,7 @@ export function projectDocuments(
 // per-order "invoice-style" line-item projection for financials — that would
 // duplicate the invoice document. Per-currency throughout (multi-currency
 // arithmetic is unsafe). The kernel math is never re-implemented:
-// bonds are READ from the order, settlement from the SDK's calculateSettlement.
+// bonds are READ from the order, resolution from the SDK's calculateSettlement.
 
 interface CurrencyAgg {
     buyerCustody: bigint; sellerCustody: bigint;

@@ -81,7 +81,7 @@ const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address a
 test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory reaction, commits==resolves reclaim (devnet)', () => {
     test.setTimeout(360_000);
 
-    test('author registers a clause through the UI, a composed deal blocks the reclaim, settlement frees it, the registry refunds the deposit', async ({ page }) => {
+    test('author registers a clause through the UI, a composed deal blocks the reclaim, resolution frees it, the registry refunds the deposit', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -333,7 +333,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight deal still composes this clause or assembly/, { timeout: 60000 });
         await expect(reclaimBtn).toBeDisabled();
 
-        // ── RESOLVE (buyer dominance, atomic): the author-as-buyer settles the
+        // ── RESOLVE (buyer dominance, atomic): the author-as-buyer resolves the
         //    process through the UI. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: AUTHOR }, fromBlock: 0n,
@@ -349,7 +349,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: AUTHOR }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // Value leg (full cycle): net settlement, escrow back to baseline.
+        // Value leg (full cycle): net positions, escrow back to baseline.
         const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
             balanceOf(AUTHOR), balanceOf(SELLER), balanceOf(core),
         ]);
@@ -357,7 +357,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
 
-        // ── GATE, OPEN: every composed deal settled → the reclaim enables.
+        // ── GATE, OPEN: every composed deal resolved → the reclaim enables.
         //    Foreign in-flight orders (other specs' unresolved processes on the
         //    persisted devnet) are party-private → the caveat renders iff such
         //    orders exist — informational, never blocking. Determined out of
@@ -370,7 +370,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const reclaimBtnAfter = rowAfter.getByTestId('clause-withdraw-button');
         await expect(
             reclaimBtnAfter,
-            'every composed deal settled → the reclaim is enabled',
+            'every composed deal resolved → the reclaim is enabled',
         ).toBeEnabled({ timeout: 60000 });
 
         const [allCommitted, allResolved] = await Promise.all([

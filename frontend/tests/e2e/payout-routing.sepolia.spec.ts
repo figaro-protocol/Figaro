@@ -1,5 +1,5 @@
 /**
- * PAYOUT ROUTING, LIVE — the third public-rehearsal spec: a settled seller
+ * PAYOUT ROUTING, LIVE — the third public-rehearsal spec: a resolved seller
  * splits WHAT IT WAS PAID onward to its OWN EARMARKED accounts — the fiscal
  * remittance, the savings, the operating float — through the composed public
  * multisender (Disperse, `0xD152…2150` — the same canonical, ownerless
@@ -13,11 +13,11 @@
  *
  * Runs AFTER `live-order.sepolia.spec.ts` on the same chain: that spec leaves
  * the seller with a RESOLVED process (the smoke's buyer resolves), which is
- * where the routing panel renders (settled seller, on the order timeline).
+ * where the routing panel renders (resolved seller, on the order timeline).
  * Chain-aware like the smoke: `E2E_CHAIN=sepolia` is the public rehearsal;
  * unset, the same spec rehearses on the devnet.
  *
- * Through the real UI: /orders/view for the settled process → the payout
+ * Through the real UI: /orders/view for the resolved process → the payout
  * routing panel → two earmarked legs → execute (approve + ONE atomic
  * disperseToken). Chain facts asserted out-of-band: each recipient received
  * its leg exactly; the seller paid exactly the batch total; the multisender
@@ -42,7 +42,7 @@ function earmark(sellerKey: Hex, purpose: string): Hex {
 
 const CANONICAL_DISPERSE = '0xD152f549545093347A162Dce210e7293f1452150' as Hex;
 
-test.describe('PAYOUT ROUTING — a settled seller routes receipts through the composed public multisender', () => {
+test.describe('PAYOUT ROUTING — a resolved seller routes receipts through the composed public multisender', () => {
     test.setTimeout(E2E_CHAIN === 'sepolia' ? 900_000 : 300_000);
 
     test('two earmarked legs, one atomic disperse — each leg lands exactly, the seller pays exactly the total', async ({}, testInfo) => {
@@ -65,7 +65,7 @@ test.describe('PAYOUT ROUTING — a settled seller routes receipts through the c
         expect(code && code.length > 2, `a multisender is deployed at ${multisender}`).toBe(true);
         expect(code!.toLowerCase().includes('c73a2d60'), 'the multisender implements disperseToken(address,address[],uint256[])').toBe(true);
 
-        // ── The settled process the smoke left behind ──
+        // ── The resolved process the smoke left behind ──
         const resolved = await scanContractEvents(publicClient, { address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: buyer.address } });
         expect(resolved.length, `the smoke buyer ${buyer.address} must have resolved a process — run live-order.sepolia.spec.ts first on this chain`).toBeGreaterThan(0);
         const processId = (resolved[resolved.length - 1].args as { processId?: bigint }).processId!;
@@ -100,7 +100,7 @@ test.describe('PAYOUT ROUTING — a settled seller routes receipts through the c
             await waitForConnected(page);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 120_000 });
             const routing = page.getByTestId('payout-routing');
-            await expect(routing, 'the routing surface derives for the settled seller').toBeVisible({ timeout: 120_000 });
+            await expect(routing, 'the routing surface derives for the resolved seller').toBeVisible({ timeout: 120_000 });
             await page.getByTestId('payout-routing-recipient-0').fill(recipients[0]);
             await page.getByTestId('payout-routing-amount-0').fill('0.3');
             await page.getByTestId('payout-routing-add-leg').click();

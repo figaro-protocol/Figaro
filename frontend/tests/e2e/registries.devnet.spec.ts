@@ -176,7 +176,7 @@ test.describe('Registry explorer (devnet)', () => {
         // The URL carries the facet INTO the assemblies family (the click's promise).
         await expect(page).toHaveURL(new RegExp(`family=assemblies.*clause=${clauseId}|clause=${clauseId}.*family=assemblies`));
         await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(`composing ${clauseId}`);
-        // Templates resolve from the local node; the row set settles to exactly the composing slugs.
+        // Templates resolve from the local node; the row set resolves to exactly the composing slugs.
         await expect.poll(async () => {
             const ids = await page.locator('li[id^="assembly-"]').evaluateAll((els) => els.map((e) => e.id.replace(/^assembly-/, '')));
             return ids.sort();

@@ -101,7 +101,7 @@ export async function getAttestationsByOrder(client: PublicClient, chainId: numb
 // that must attribute evidence use these.
 
 /** `Attestation` logs re-emitted BY THE BATCH VERIFIER (never the coordinator's).
- *  Empty when no verifier address is configured — absence, not "not settled". */
+ *  Empty when no verifier address is configured — absence, not "not resolved". */
 async function getAllBatchAttestations(client: PublicClient, chainId: number): Promise<IndexedLog[]> {
     const verifier = getBatchVerifier();
     if (!verifier) return [];
@@ -212,7 +212,7 @@ interface TrackRecordAttestations {
 /**
  * A seller's public-graph track record — every indicator reconstructed from
  * on-chain events, recomputable by anyone. NOT a stored or soulbound score;
- * it is the raw settlement/coordination history the public graph exposes
+ * it is the raw resolution/coordination history the public graph exposes
  * (DATA_LAYER.md §"Reputation derivation").
  */
 export interface MemberTrackRecord {
@@ -241,7 +241,7 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
  * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
  * § "A reader must fold BOTH"). The process/value figures are direct-path by
  * construction: the batch universe emits no per-order events (no status, no
- * process crosses the crease), so batch-settled trade surfaces here only
+ * process crosses the crease), so batch-resolved trade surfaces here only
  * through its attestations.
  */
 export async function getSellerTrackRecord(

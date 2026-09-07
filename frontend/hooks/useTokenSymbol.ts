@@ -2,7 +2,7 @@
 
 /**
  * useTokenSymbol — the ONE ERC-20 `symbol()` read hook. Any surface naming
- * a token (checkout totals, settlement proceeds, the wizard's token input,
+ * a token (checkout totals, resolution proceeds, the wizard's token input,
  * seller detail) reads through here; an invalid address disables the query
  * rather than firing a doomed call.
  */

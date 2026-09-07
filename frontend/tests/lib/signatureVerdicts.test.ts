@@ -243,7 +243,7 @@ describe("verifyOrderCommitSignatures", () => {
 });
 
 /**
- * The batch universe. A batch-settled order emits no `OrderCommitted` and
+ * The batch universe. A batch-resolved order emits no `OrderCommitted` and
  * `settleBatch` carries no signature bytes, so the direct walk finds nothing —
  * but the guest verified both signatures inside the proof, and the verifier's
  * re-emitted `Attestation` is the one public per-order trace that says so.
@@ -268,7 +268,7 @@ describe("verifyOrderCommitSignatures — batch path", () => {
         getBatchVerifierMock.mockReturnValue(BATCH_VERIFIER);
     });
 
-    it("reports PROVED, naming the batch, for a batch-settled order", async () => {
+    it("reports PROVED, naming the batch, for a batch-resolved order", async () => {
         getBatchAttestationsByOrderMock.mockResolvedValue([
             { args: { orderHash }, transactionHash: SETTLE_TX },
         ]);
@@ -288,7 +288,7 @@ describe("verifyOrderCommitSignatures — batch path", () => {
         getBatchAttestationsByOrderMock.mockResolvedValue([
             { args: { orderHash }, transactionHash: SETTLE_TX },
         ]);
-        // A settlement from a DIFFERENT transaction must never be borrowed.
+        // A resolution from a DIFFERENT transaction must never be borrowed.
         getAllBatchSettledMock.mockResolvedValue([
             { args: { batchId: 99n }, transactionHash: `0x${"33".repeat(32)}` },
         ]);

@@ -17,7 +17,7 @@
  *     nets the seller +payment in MPMT.
  *  2. BUYER ON-RAMP — buyer picks MPMT but holds NONE (drained); the funding
  *     panel on-ramps from the default (MOCK) through the coordinator; the
- *     order still denominates, escrows, and settles in MPMT.
+ *     order still denominates, escrows, and resolves in MPMT.
  *  3. SELLER ON-RAMP — the buyer pays in MPMT; the seller counter-signs on
  *     /sign funding their 2× bond from MOCK; the accept routes through the
  *     coordinator; the seller's MPMT is untouched at commit.

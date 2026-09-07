@@ -31,7 +31,7 @@ export interface MemberCatalogue {
     /** Free-form public street address (optional). */
     addressText?: string;
     items: CatalogueItemMetadata[];
-    /** Tokens the seller accepts at settlement. */
+    /** Tokens the seller accepts at resolution. */
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalogue prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;

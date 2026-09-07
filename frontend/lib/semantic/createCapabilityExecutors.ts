@@ -72,7 +72,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         if (activeOrders.length === 0) throw new Error("No active orders are available to resolve.");
 
         // Reconstruct each order's Commitment from its indexer event record —
-        // resolveProcess needs the full Commitment[] to settle the process
+        // resolveProcess needs the full Commitment[] to resolve the process
         // atomically. expectedCumulativeValue is the order's committed cumulativeValue.
         // resolveProcess recomputes each order's hash from hashStruct(commitment),
         // so the SIGNED commitment is required — restore the root's processId 0
@@ -99,7 +99,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // Spec-routed and name-free: every section records; a section whose
         // spec declares a `compositionHash` field additionally records
         // ASSEMBLY usage (once per process). Best-effort by design: the
-        // resolve has already settled, recording is permissionless
+        // process has already resolved, recording is permissionless
         // bookkeeping anyone can redo, so a failed call logs and moves on.
         if (!deps.isE2EMock) {
             await waitForTransactionConfirmation(resolveTx as Hex | undefined);

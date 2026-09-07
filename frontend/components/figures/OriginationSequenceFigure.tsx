@@ -203,7 +203,7 @@ const COLUMN_SUB: Record<Column, string> = {
     seller: "any wallet",
     // Not "FigaroCore": of the five interactions reaching this column, only the
     // commit and the resolve are the kernel — the read is the registries, the
-    // approvals are the settlement token, the attestation is the coordinator.
+    // approvals are the denomination, the attestation is the coordinator.
     chain: "on chain",
 };
 const COLUMNS: readonly Column[] = ["buyer", "channel", "seller", "chain"];

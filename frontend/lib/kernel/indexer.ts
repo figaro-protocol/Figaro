@@ -91,7 +91,7 @@ export async function getAllOrderResolved(client: PublicClient, chainId: number)
     });
 }
 
-/** `ProcessResolved` — the process-level settlement event. The per-order
+/** `ProcessResolved` — the process-level resolution event. The per-order
  *  readers above answer "what happened to this order"; this one is the third
  *  leg of the SDK's `CoreEvents` triple, which the graph projections
  *  (`@figaro-protocol/sdk/derive`) fold to know a process closed. */

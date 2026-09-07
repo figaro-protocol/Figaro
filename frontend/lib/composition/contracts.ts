@@ -82,10 +82,10 @@ export function getUsageCounter(): `0x${string}` | null {
 
 /** The FigaroBatchVerifier — the batch path, the second of the two resolution paths. It shares no state
  *  with FigaroCore and never calls it, so it is not a kernel contract and does
- *  not belong in `lib/kernel/contracts.ts`: a batch-settled process never
+ *  not belong in `lib/kernel/contracts.ts`: a batch-resolved process never
  *  acquires kernel status (docs/SCALING_STRATEGY.md § "The two paths share no
  *  state"). Readers that fold both paths resolve the address here. Resolved-empty: null = the batch path is unreadable on this
- *  network, which is absence, never "not settled". */
+ *  network, which is absence, never "not resolved". */
 export function getBatchVerifier(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.batchVerifier);
 }
@@ -93,7 +93,7 @@ export function getBatchVerifier(): `0x${string}` | null {
 /** The public multisender the payout-routing surface composes with —
  *  provider-agnostic (mainnet: the canonical ownerless Disperse deployment;
  *  devnet: MockDisperse, which mirrors its verified interface). Fifth-noun
- *  composition over a wallet's OWN settled receipts, never a Figaro-owned
+ *  composition over a wallet's OWN resolved receipts, never a Figaro-owned
  *  silo. Resolved-empty: null = the routing surface simply doesn't render. */
 export function getMultisender(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.multisender);

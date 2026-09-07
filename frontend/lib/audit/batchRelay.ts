@@ -1,13 +1,13 @@
 /**
- * lib/audit/batchRelay.ts — reading BATCH-SETTLED trade, and re-deriving every
+ * lib/audit/batchRelay.ts — reading BATCH-RESOLVED trade, and re-deriving every
  * word of it before `/audit` shows any of it.
  *
  * ── Why this file exists ────────────────────────────────────────────────────
  *
- * `FigaroCore` does two things for an order: it SETTLES it and it PUBLISHES it
+ * `FigaroCore` does two things for an order: it RESOLVES it and it PUBLISHES it
  * (`OrderCommitted`/`OrderSeller`/`OrderCurrency` carry the whole struct, and
  * the two signatures sit in the commit transaction's calldata). The batch path
- * settles the same trade and publishes none of it: `FigaroBatchVerifier`'s
+ * resolves the same trade and publishes none of it: `FigaroBatchVerifier`'s
  * public values carry no order hashes, its storage is `stateRoot` +
  * `batchCount`, and `BatchSettled` names no order. So a batched order's buyer,
  * seller, payment and `agreementHash` exist only under the proven state root,
@@ -99,7 +99,7 @@ import { orderFromSdk, type Order } from "@/lib/kernel/store";
 
 /**
  * The relay this deployment points at by default. There is deliberately NO
- * fallback value: a relay is one publisher among any number (settlement is
+ * fallback value: a relay is one publisher among any number (resolution is
  * permissionless, so anyone can run one), and defaulting readers onto an
  * endpoint of ours would make a convenience look like an authority and seize
  * every visitor onto our node. Unset means the batch universe is unreadable
@@ -444,7 +444,7 @@ function toOrder(
  * transition is the chain-anchored identity.
  *
  * A dry run (`settlement_tx == null`) is reported as UNANCHORED rather than
- * accepted: the batch proved, but nothing settled, so the trade did not happen
+ * accepted: the batch proved, but nothing resolved, so the trade did not happen
  * on chain.
  */
 export function createStateRootAnchorCheck(
@@ -455,7 +455,7 @@ export function createStateRootAnchorCheck(
         if (!batch.settlement_tx) {
             return fail(
                 "state-root-anchor",
-                `relay published this as a DRY RUN (no settlement transaction) — the batch proved but never settled on chain`,
+                `relay published this as a DRY RUN (no resolution transaction) — the batch proved but never resolved on chain`,
             );
         }
         let settled;
@@ -471,18 +471,18 @@ export function createStateRootAnchorCheck(
         if (!match) {
             return fail(
                 "state-root-anchor",
-                `no BatchSettled on this verifier carries state root ${batch.new_state_root} — the relay's claimed settlement is not on chain`,
+                `no BatchSettled on this verifier carries state root ${batch.new_state_root} — the relay's claimed resolution is not on chain`,
             );
         }
         if (!hexEqual(match.transactionHash ?? null, batch.settlement_tx)) {
             return fail(
                 "state-root-anchor",
-                `state root ${batch.new_state_root} was settled in ${match.transactionHash}, not in the ${batch.settlement_tx} the relay named`,
+                `state root ${batch.new_state_root} was resolved in ${match.transactionHash}, not in the ${batch.settlement_tx} the relay named`,
             );
         }
         return pass(
             "state-root-anchor",
-            `state root ${batch.new_state_root} settled on chain in ${match.transactionHash}`,
+            `state root ${batch.new_state_root} resolved on chain in ${match.transactionHash}`,
         );
     };
 }
@@ -534,8 +534,8 @@ const EMPTY = {
  * Read one process from the configured relay and verify everything it says.
  *
  * The 404 distinction is preserved end to end: "not-in-archive" means this
- * relay does not hold the process — it may have been settled by another relay,
- * settled directly against `FigaroCore`, or aged out of retention. It never
+ * relay does not hold the process — it may have been resolved by another relay,
+ * resolved directly against `FigaroCore`, or aged out of retention. It never
  * means the trade did not happen.
  */
 export async function readVerifiedBatchProcess(

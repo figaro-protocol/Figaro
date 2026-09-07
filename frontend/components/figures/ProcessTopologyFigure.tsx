@@ -200,8 +200,8 @@ export function ProcessTopologyFigure({
                 </text>
                 <text x="22" y={hubBottom + 98} fontSize="9" className="fill-ink-muted">
                     {nodes.length === 1
-                        ? "Resolution settles the order, and it is the buyer's alone to call."
-                        : `Resolution settles all ${nodes.length} orders at once, or none of them.`}
+                        ? "Resolution closes the order, and it is the buyer's alone to call."
+                        : `Resolution closes all ${nodes.length} orders at once, or none of them.`}
                 </text>
         </FigureFrame>
     );

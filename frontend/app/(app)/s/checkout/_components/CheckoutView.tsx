@@ -541,9 +541,9 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         try {
             setCheckoutError(null);
-            // No declared settlement currency ⇒ no order (resolved-empty = absence).
+            // No declared denomination ⇒ no order (resolved-empty = absence).
             // orderReady already gates the button; this guards the path + narrows the type.
-            if (!currency) { setCheckoutError("This seller hasn't set a settlement currency."); return; }
+            if (!currency) { setCheckoutError("This seller hasn't set a denomination."); return; }
             // The whole commit algorithm — root prepare/validate, the bilateral
             // single-order relay, or the multi-order walk (sub-orders signed +
             // relayed to their bound sellers, root through the buyer-share-panel
@@ -1022,7 +1022,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     : placingOrder
                                         ? "Placing order…"
                                         : !currency
-                                            ? "Seller hasn't set a settlement currency"
+                                            ? "Seller hasn't set a denomination"
                                             : !orderReady
                                                 ? "Select an option to order"
                                                 : !clauseSpecsLoaded

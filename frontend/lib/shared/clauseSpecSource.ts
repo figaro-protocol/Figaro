@@ -281,7 +281,7 @@ export function clauseIsAssemblyScoped(clauseId: string, version?: number): bool
 /** The content fields (by name) the DESIGNER authors into the assembly
  *  template, read from the clause's own `block.design.fills` — the tailoring
  *  that adapts a generic clause to a specific application (a pinned consent
- *  document, a pinned settlement token). The drawer exposes field editors
+ *  document, a pinned denomination). The drawer exposes field editors
  *  exactly for these; their values survive into the published template.
  *  Empty for clauses the designer only selects (whose fields are transaction
  *  particulars, authored by the buyer at checkout) — and while the spec is

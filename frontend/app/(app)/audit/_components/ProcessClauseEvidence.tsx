@@ -113,7 +113,7 @@ function OrderSignatureRows({
 }
 
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
-    // BOTH settlement universes: a batch-settled order emits no OrderCommitted,
+    // BOTH resolution universes: a batch-resolved order emits no OrderCommitted,
     // so reading only the kernel would render no evidence and make the "proved"
     // signature verdict below unreachable.
     const { orders } = useAuditProcessOrders(processId);

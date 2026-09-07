@@ -50,7 +50,7 @@ export interface UseMemberProfileEditorOptions {
      * profile so the shared form hydrates pre-populated. Runs exactly
      * once, after the profile is fetched, `useOnboardingState` reports
      * `loaded` (the form's hydration gate is honored), and any
-     * `extraFetch` has settled.
+     * `extraFetch` has completed.
      */
     seed: (
         profile: MemberProfileMetadata,
@@ -116,7 +116,7 @@ export function useMemberProfileEditor(
     const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
     const saveInFlight = updater.isPending || updater.isConfirming || extraSaveInFlight;
 
-    // Redirect unregistered wallets to onboarding — but only on SETTLED
+    // Redirect unregistered wallets to onboarding — but only on COMPLETED
     // state: `!registryLoading && !registryData` is a completed scan that
     // found nothing (isLoading starts true in useMemberProfile), never a
     // still-hydrating window. And never navigate away mid-save — the

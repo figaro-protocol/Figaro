@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 import { FigureFrame } from "@/components/figures/FigureFrame";
 
-/** A settlement transaction actually measured on a public chain. */
+/** A resolution transaction actually measured on a public chain. */
 interface GasReceipt {
     /** Gas used by the whole transaction. */
     gasUsed: number;
@@ -52,10 +52,10 @@ export interface GasCrossoverFigureProps extends BaseFigureProps {
  *  - `batchMarginal` 26,500 = ~2k/position hash verification + ~24k/position
  *    for the net token transfer (/spec § "What the proof costs to verify on
  *    chain", from `docs/SCALING_STRATEGY.md` § Gas Economics).
- *  - `batchFixed` 332,902 = the measured 385,902-gas settlement minus its two
+ *  - `batchFixed` 332,902 = the measured 385,902-gas resolution minus its two
  *    positions' marginal — i.e. what /spec means by "~333k of that transaction
  *    was fixed proof verification".
- *  - The two receipts are the Sepolia settlements /spec tabulates:
+ *  - The two receipts are the Sepolia resolutions /spec tabulates:
  *    385,902 gas (commit + witness attestation) and 377,885 gas (resolve +
  *    RPGF usage claim), 2 net positions each.
  *
@@ -75,15 +75,15 @@ const SPEC_RECEIPTS: readonly GasReceipt[] = [
     { gasUsed: 377_885, positions: 2, note: "resolve + RPGF usage claim" },
 ];
 const SPEC_TITLE =
-    "Gas per unit settled against batch size — per order on the direct path, per net position on the batch path";
+    "Gas per unit resolved against batch size — per order on the direct path, per net position on the batch path";
 const SPEC_DESC =
-    "A line chart of gas per unit settled — per order on the direct path, per " +
+    "A line chart of gas per unit resolved — per order on the direct path, per " +
     "net position on the batch path — against the number of net positions in a " +
     "batch. The direct path is a flat line at about 167,000 gas per order — a " +
     "commit plus its share of a resolve — because it never amortizes. The " +
     "batch path is a falling curve: about 333,000 gas of fixed proof " +
     "verification divided by the number of positions, plus about 26,500 per " +
-    "position. The two measured settlements on the public record's chain sit at " +
+    "position. The two measured resolutions on the public record's chain sit at " +
     "two positions each, around 190,000 gas per position — above the direct " +
     "path. The curves cross at about 2.4 net positions, so the third net " +
     "position is the first one at which the batch path is cheaper.";
@@ -191,7 +191,7 @@ export function GasCrossoverFigure({
             caption={caption}
         >
                 <text x="18" y="22" fontSize="11" fontWeight="600" className="fill-ink-heading">
-                    Gas per unit settled, by batch size
+                    Gas per unit resolved, by batch size
                 </text>
                 <text x="18" y="35" fontSize="8" className="fill-ink-muted">
                     Per order on the direct path; per net position on the batch path.
@@ -251,7 +251,7 @@ export function GasCrossoverFigure({
                     batch path &mdash; {fmt(batchFixed)} fixed &divide; positions, + {fmt(batchMarginal)} each
                 </text>
 
-                {/* ── The two measured settlements ────────────────────── */}
+                {/* ── The two measured resolutions ────────────────────── */}
                 {receipts.map((receipt) => (
                     <circle
                         key={receipt.gasUsed}

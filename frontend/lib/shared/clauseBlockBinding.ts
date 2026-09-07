@@ -65,7 +65,7 @@ interface ClauseBlockDesign {
     nestsUnder: string | null;
     /** The content fields (by name) the DESIGNER authors into the assembly
      *  template — the tailoring that adapts a generic clause to a specific
-     *  application (a pinned consent document, a pinned settlement token).
+     *  application (a pinned consent document, a pinned denomination).
      *  The drawer exposes field editors exactly for these; their values
      *  survive into the published template (identity-bearing — part of the
      *  compositionHash). Empty when the designer only selects the clause. */

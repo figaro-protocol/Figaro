@@ -603,7 +603,7 @@ export function OnboardingProfileForm({
                     payment choice. Each token you list says which value system
                     you coordinate with: a stablecoin signals legal-system
                     alignment, a DAO governance token signals community
-                    membership in that DAO, ETH signals settlement-layer
+                    membership in that DAO, ETH signals chain-native
                     alignment, a commodity-backed token signals value
                     anchoring. The accepted-token list is your brand — buyers
                     searching for aligned counterparties read it before they

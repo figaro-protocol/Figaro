@@ -148,7 +148,7 @@ export function StackedBondChainFigure({
                 })}
 
                 <text x="200" y={viewHeight - 24} fontSize="11" textAnchor="middle" className="fill-ink-body">
-                    Resolution is atomic — {nodes.length === 2 ? "both orders settle together, or neither does" : `all ${nodes.length} orders settle together, or none do`}.
+                    Resolution is atomic — {nodes.length === 2 ? "both orders resolve together, or neither does" : `all ${nodes.length} orders resolve together, or none do`}.
                 </text>
                 <text x="200" y={viewHeight - 10} fontSize="10" textAnchor="middle" className="fill-ink-muted">
                     Total payment {fmt(totalPayment)} · buyer bonds 2× each payment as that order commits ({fmt(2 * totalPayment)} in all)

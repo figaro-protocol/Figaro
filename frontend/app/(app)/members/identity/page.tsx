@@ -5,7 +5,7 @@ import { OnboardingProfileForm } from "@/components/members/OnboardingProfileFor
 
 export const metadata: Metadata = withOg({
     title: "Identity — Member onboarding",
-    description: "Your stable identity: name, description, location, branding, and the set of tokens you accept for settlement. Pinned to IPFS when you publish.",
+    description: "Your stable identity: name, description, location, branding, and the set of tokens you accept for resolution. Pinned to IPFS when you publish.",
 });
 
 export default function OnboardingProfilePage() {
@@ -15,7 +15,7 @@ export default function OnboardingProfilePage() {
             title="Your identity"
             description={
                 <p>
-                    Your stable identity: name, description, location, branding, and the set of tokens you accept for settlement. Pinned to IPFS when you publish.
+                    Your stable identity: name, description, location, branding, and the set of tokens you accept for resolution. Pinned to IPFS when you publish.
                 </p>
             }
         >

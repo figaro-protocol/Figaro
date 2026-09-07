@@ -4,7 +4,7 @@
  * useAuditProcessOrders — the process's orders from BOTH resolution paths.
  *
  * `useProcessOrders` builds its list exclusively from `OrderCommitted` logs on
- * `FigaroCore`. A batch-settled order never emits one — its buyer, seller,
+ * `FigaroCore`. A batch-resolved order never emits one — its buyer, seller,
  * payment and `agreementHash` exist only under `FigaroBatchVerifier`'s proven
  * state root — so every `/audit` surface built on that hook renders NOTHING for
  * batched trade. This hook adds the second universe: the batch relay's
@@ -73,7 +73,7 @@ export function useAuditProcessOrders(processId: string | null): AuditProcessOrd
             .map((o) => o.order)
             .filter((o): o is Order => o !== null);
         if (verified.length === 0) return direct;
-        // A given order settles on exactly ONE path, but de-duplicate anyway so
+        // A given order resolves on exactly ONE path, but de-duplicate anyway so
         // a relay cannot inject a second row for an order the kernel published.
         const seen = new Set(direct.map((o) => o.orderHash.toLowerCase()));
         return [...direct, ...verified.filter((o) => !seen.has(o.orderHash.toLowerCase()))];

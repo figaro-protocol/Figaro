@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * usePayoutRoutingActions — broadcast a settled wallet's payout batch
+ * usePayoutRoutingActions — broadcast a resolved wallet's payout batch
  * through the composed public multisender (`payoutRouting.ts` owns the ABI
  * and leg vocabulary; `getMultisender` resolves the deployment).
  *

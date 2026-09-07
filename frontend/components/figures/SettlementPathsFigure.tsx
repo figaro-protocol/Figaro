@@ -51,7 +51,7 @@ export interface SettlementPathsFigureProps extends BaseFigureProps {
  * overlap.
  *
  * The structural facts the figure asserts are the same under any register: the
- * two paths share no settlement state, the batch path never writes the kernel's
+ * two paths share no resolution state, the batch path never writes the kernel's
  * per-order status, and the usage accrual is the one quantity that crosses.
  */
 
@@ -83,16 +83,16 @@ const SPEC_BRIDGE_LABEL = "UsageCounter";
 const SPEC_BRIDGE_SUBLABEL = "usage-accrual ledger";
 const SPEC_CROSSING_LABEL = "usage accrual";
 const SPEC_CROSSING_SUBLABEL = "(same settleBatch tx)";
-const SPEC_TITLE = "Two disjoint settlement paths";
+const SPEC_TITLE = "Two disjoint resolution paths";
 const SPEC_DESC =
     "FigaroCore's direct path (commit, resolveProcess) and FigaroBatchVerifier's " +
     "proof-based batch path (signed commitments through a sequencer and an SP1 " +
-    "proof to settleBatch) settle independently. The batch path never writes " +
+    "proof to settleBatch) resolve independently. The batch path never writes " +
     "FigaroCore's orderStatus. The one connection between the two paths is usage " +
     "accrual, carried from settleBatch into UsageCounter in the same transaction.";
 const SPEC_CAPTION = (
     <>
-        Batch-settled orders never acquire kernel status &mdash; FigaroBatchVerifier
+        Batch-resolved orders never acquire kernel status &mdash; FigaroBatchVerifier
         never writes FigaroCore.orderStatus. UsageCounter is the only bridge
         between the two resolution paths.
     </>

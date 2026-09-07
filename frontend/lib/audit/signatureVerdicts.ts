@@ -24,9 +24,9 @@
  *
  * ── The batch universe ──────────────────────────────────────────────────────
  *
- * All of the above describes the DIRECT path only. There are two settlement
+ * All of the above describes the DIRECT path only. There are two resolution
  * paths and two DISJOINT state universes (docs/SCALING_STRATEGY.md): a
- * batch-settled order emits no `OrderCommitted`, and `settleBatch` carries no
+ * batch-resolved order emits no `OrderCommitted`, and `settleBatch` carries no
  * signature bytes in its calldata. So for batched trade the walk above finds
  * nothing, and reporting "unavailable" would understate what is actually known.
  *
@@ -66,7 +66,7 @@ import { hexEqual } from "@/lib/shared/evm";
 /** One party's verdict.
  *  - "valid"/"invalid" — the reader RE-VERIFIED the signature from the commit
  *    transaction's calldata (direct path).
- *  - "proved" — the signature was verified inside the SP1 proof that settled a
+ *  - "proved" — the signature was verified inside the SP1 proof that resolved a
  *    batch carrying this order. The reader did NOT recompute it; it is trusting
  *    a proof it can independently check. Never conflate with "valid".
  *  - "unavailable" — nothing on either path answered for this order; absence,
@@ -79,11 +79,11 @@ type SignatureVerdict = "valid" | "invalid" | "unavailable" | "proved";
  *  reading batch provenance needs it even though nothing imports it by name
  *  today. */
 export interface BatchProvenance {
-    /** The batch whose settlement re-emitted this order's attestation. null when
+    /** The batch whose resolution re-emitted this order's attestation. null when
      *  the order could not be bound to a specific batch — the weaker but still
      *  true statement (proved by SOME batch this verifier accepted). */
     batchId: bigint | null;
-    /** The `settleBatch` transaction that batch was settled in; null when unbound. */
+    /** The `settleBatch` transaction that batch was resolved in; null when unbound. */
     transactionHash: Hex | null;
     /** The verifier that checked the proof — the address a reader queries. */
     verifier: `0x${string}`;
@@ -217,7 +217,7 @@ async function resolveBatchProvenance(
  * signatures against the struct the calldata actually carried.
  *
  * When the direct path has no commit log for the order, fall through to the
- * batch universe before reporting absence — an order settled there is not
+ * batch universe before reporting absence — an order resolved there is not
  * unanswerable, it is answered by a proof rather than by calldata.
  */
 export async function verifyOrderCommitSignatures(

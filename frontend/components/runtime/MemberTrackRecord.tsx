@@ -2,7 +2,7 @@
 
 /**
  * MemberTrackRecord — renders a seller's public-graph track record:
- * the settlement + coordination history reconstructed from on-chain events
+ * the resolution + coordination history reconstructed from on-chain events
  * (DATA_LAYER.md §"Reputation derivation"). Pure render — the
  * caller supplies the record via useMemberTrackRecord.
  *
@@ -82,7 +82,7 @@ export function MemberTrackRecord({ record, isLoading }: Props) {
                     )}
 
                     <p className="text-[11px] text-ink-faint leading-snug">
-                        Every figure is recomputed from public on-chain events — settlement and
+                        Every figure is recomputed from public on-chain events — resolution and
                         coordination history, not a platform score. Token amounts shown at 18 decimals.
                     </p>
                 </>

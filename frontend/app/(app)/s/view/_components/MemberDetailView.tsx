@@ -11,7 +11,7 @@
  *
  * Data sources:
  *  - `useRegisteredCatalogues` — IPFS catalogue discovery.
- *  - `useMemberTrackRecord` — on-chain settlement/coordination history.
+ *  - `useMemberTrackRecord` — on-chain resolution/coordination history.
  *  - `useCartStore` — global cart state (selection only; commit is checkout's).
  */
 
@@ -51,7 +51,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
     );
 
     const { address: buyer } = useCommerce();
-    // The seller's declared settlement currency, or undefined — never a coined
+    // The seller's declared denomination, or undefined — never a coined
     // default (resolved-empty = absence).
     const currency = memberCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
@@ -240,8 +240,8 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                             </span>
                                             <span className="text-ink-muted">
                                                 · {embargo
-                                                    ? `opens ${embargo} day${embargo === 1 ? "" : "s"} after settlement`
-                                                    : "available on settlement"}
+                                                    ? `opens ${embargo} day${embargo === 1 ? "" : "s"} after resolution`
+                                                    : "available at resolution"}
                                             </span>
                                             <code className="text-[11px] text-ink-faint font-mono">
                                                 {truncateHex(entry.compositionHash, { head: 10, tail: 0 })}
@@ -257,7 +257,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                     );
                 })()}
 
-                {/* Seller track record — public-graph-derived settlement
+                {/* Seller track record — public-graph-derived resolution
                     + coordination history, recomputed from on-chain events. */}
                 <MemberTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
 

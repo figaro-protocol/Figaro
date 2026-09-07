@@ -26,7 +26,7 @@
  *   evidence → the committed agreement (network SSoT, IPFS-pinned) carries
  *              the commerce leaf and the figaro-utility-token leaf with the
  *              SAME currency — the provenance pair
- *   resolve  → buyer dominance settles the process; every value leg — bond
+ *   resolve  → buyer dominance resolves the process; every value leg — bond
  *              lock at commit, net payment at resolve — moves in the pinned
  *              token, read from chain
  *
@@ -131,7 +131,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
 test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by design (devnet)', () => {
     test.setTimeout(180_000);
 
-    test('no picker renders; the pin drives commerce, the commitment, and settlement', async ({ page }) => {
+    test('no picker renders; the pin drives commerce, the commitment, and resolution', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
@@ -276,7 +276,7 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── (d) FULL-CYCLE SETTLEMENT: buyer NET −payment, seller NET
+        // ── (d) FULL-CYCLE RESOLUTION: buyer NET −payment, seller NET
         //    +payment, escrow returns to baseline — ALL in the pinned token. ──
         const payment = event.args.payment!;
         const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
@@ -286,7 +286,7 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
         expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment, in the pinned token').toBe(payment);
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
         // The seller's permit-token balance never moved — the pin, not the
-        // seller's default, governed settlement end to end.
+        // seller's default, governed resolution end to end.
         expect(await balanceOf(permitToken, SELLER_ADDR), 'the seller\'s OTHER accepted token is untouched')
             .toBe(0n);
 

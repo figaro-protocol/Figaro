@@ -3,7 +3,7 @@
  *
  * The RPGF distribution's runtime surface at /rewards, against the
  * count-it-when-it-happens design: `UsageCounter` records verified usage of a
- * clause or assembly at the moment a process settles, accrual buckets into
+ * clause or assembly at the moment a process resolves, accrual buckets into
  * fixed periods, and `RpgfMinter.claim` pays a closed period's budget UNIFORM
  * pro rata (no cap), to live-staked authors. There is no root to post, no bond,
  * no challenge and no forum, so this spec drives none of that.
@@ -19,7 +19,7 @@
  *
  * THE MINIMUM-SUPPORT FLOOR IS DRIVEN, NOT DODGED (ruled 2026-07-31). Devnet
  * deploys `minSellers = 3`, the mainnet value: a clause or assembly scores ZERO until
- * three distinct live-staked sellers carried it. The scenario settles the
+ * three distinct live-staked sellers carried it. The scenario resolves the
  * clause through THREE sellers and asserts both halves — nothing scores below
  * the floor, and the full score springs when the third seller lands.
  *
@@ -90,7 +90,7 @@ const USED_CLAUSE_VERSION = 1;
 test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => {
     test.setTimeout(300_000);
 
-    test('a settled process records usage, and /rewards shows the author their accrual', async ({ page }) => {
+    test('a resolved process records usage, and /rewards shows the author their accrual', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const minter = config.rpgfMinter as Hex;
         const counter = config.usageCounter as Hex;
@@ -119,7 +119,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         const receipt = (hash: Hex) => publicClient.waitForTransactionReceipt({ hash });
         const payment = parseEther('1');
 
-        // ── One settle-and-record cycle for one seller (real protocol
+        // ── One resolve-and-record cycle for one seller (real protocol
         //    history, never mocks): live stake → signed agreement composing
         //    the clause → both bonds → commit → resolve → permissionless
         //    record. Factored because the minimum-support floor needs THREE
@@ -231,7 +231,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
                 }));
             }
 
-            // 5. Resolve — usage is what a SETTLED process leaves behind.
+            // 5. Resolve — usage is what a RESOLVED process leaves behind.
             await receipt(await buyerWallet.writeContract({
                 address: core, abi: CORE_ABI, functionName: 'resolveProcess', args: [processId, [commitment]],
             }));
@@ -265,7 +265,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         await settleAndRecord(SELLER_KEYS[0], true);
         if (dBefore === 0n) {
             const [c1, d1, s1] = await accrual();
-            expect(c1, 'the settled process was counted below the floor').toBeGreaterThan(0n);
+            expect(c1, 'the resolved process was counted below the floor').toBeGreaterThan(0n);
             expect(d1, 'its seller was counted below the floor').toBe(1n);
             expect(s1, 'but nothing scores until the floor is met').toBe(0n);
         }
@@ -273,7 +273,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         await settleAndRecord(SELLER_KEYS[2], false);
 
         const [c, d, score] = await accrual();
-        expect(c, 'every settled process was counted').toBeGreaterThanOrEqual(3n);
+        expect(c, 'every resolved process was counted').toBeGreaterThanOrEqual(3n);
         expect(d, 'three distinct staked sellers carried the clause').toBeGreaterThanOrEqual(minSellers);
         expect(score, 'the third seller springs the score').toBeGreaterThan(0n);
 

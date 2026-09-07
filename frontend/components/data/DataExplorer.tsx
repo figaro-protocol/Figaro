@@ -172,8 +172,8 @@ function CorpusLine({ corpus }: { corpus: GraphCorpus }) {
             clause famil{corpus.overlays.length === 1 ? "y" : "ies"} · substance recovered for{" "}
             {corpus.substance.recovered} of the {corpus.substance.attempted} most recent
             {corpus.substance.total > corpus.substance.attempted ? ` (of ${corpus.substance.total})` : ""}.
-            {" "}Order events are the DIRECT path only: a batch settles token positions and
-            re-emits none, so batch-settled trade reaches these graphs through its
+            {" "}Order events are the DIRECT path only: a batch resolves token positions and
+            re-emits none, so batch-resolved trade reaches these graphs through its
             attestations alone.
         </p>
     );
@@ -211,12 +211,12 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                     provenance the parties composed &mdash; that attestation is public, and its
                     payload resolves from its own fingerprint. Where no such attestation is
                     recoverable here, the process is counted and left unattributed: the
-                    settlement skeleton is public, the body that says <em>which</em> composition
+                    resolution skeleton is public, the body that says <em>which</em> composition
                     produced it stays party-private until someone discloses or sells it.
                 </p>
             ) : null}
             {/* Unattributed is a POSTURE, not a hiding place: those processes
-                settled on the same public record, so their ids open the same
+                resolved on the same public record, so their ids open the same
                 way an attributed one's does. */}
             {corpus.market.unattributedProcessCount > 0 ? (
                 <ProcessList
@@ -229,7 +229,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                 <p className="text-sm text-ink-muted" data-testid="market-empty">
                     No attributed market on the network this site reads. Absence of an
                     attribution is not absence of trade &mdash; the process graph above counts what
-                    settled.
+                    resolved.
                 </p>
             ) : (
                 <ul className="space-y-5">
@@ -255,7 +255,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                                 {r.volumes.map((v, i) => (
                                     <span key={v.token}>
                                         {i > 0 ? " · " : ""}
-                                        <Amount value={v.settled} token={v.token} corpus={corpus} /> settled of{" "}
+                                        <Amount value={v.settled} token={v.token} corpus={corpus} /> resolved of{" "}
                                         <Amount value={v.committed} token={v.token} corpus={corpus} /> committed
                                     </span>
                                 ))}
@@ -363,7 +363,7 @@ function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; co
                         {" · "}
                         <Amount value={r.cumulativeValue} token={r.currency} corpus={corpus} /> cumulative
                         {" · "}
-                        {r.resolved ? "settled" : "active"}
+                        {r.resolved ? "resolved" : "active"}
                         {r.firstBlock !== null ? ` · from block ${r.firstBlock}` : ""}
                     </li>
                 ))}
@@ -417,7 +417,7 @@ function OverlaysView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: 
                                 {r.entryCount} attestation{r.entryCount === 1 ? "" : "s"} ·{" "}
                                 {r.processCount} process{r.processCount === 1 ? "" : "es"} ·{" "}
                                 {r.attesterCount} attester{r.attesterCount === 1 ? "" : "s"} ·{" "}
-                                {r.universes.join(" + ")} settlement
+                                {r.universes.join(" + ")} resolution
                                 {r.universes.length === 1 ? "" : "s"}
                                 {r.firstBlock !== null ? ` · blocks ${r.firstBlock}–${r.lastBlock}` : ""}
                             </p>
@@ -462,7 +462,7 @@ function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
                 <h3 className="text-sm font-semibold text-ink-heading">Denominations</h3>
                 {rows.length === 0 ? (
                     <p className="text-sm text-ink-muted" data-testid="denomination-empty">
-                        Nothing has settled on the network this site reads, so it names no
+                        Nothing has resolved on the network this site reads, so it names no
                         denomination yet.
                     </p>
                 ) : (
@@ -475,7 +475,7 @@ function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
                                     <code className="font-mono text-xs text-ink-muted">{r.token}</code>
                                     <span className="block text-xs text-ink-muted">
                                         {r.processCount} process{r.processCount === 1 ? "" : "es"} ·{" "}
-                                        {r.settledOrderCount} settled order{r.settledOrderCount === 1 ? "" : "s"} ·{" "}
+                                        {r.settledOrderCount} resolved order{r.settledOrderCount === 1 ? "" : "s"} ·{" "}
                                         <Amount value={r.settledVolume} token={r.token} corpus={corpus} /> transferred at
                                         resolution
                                         {r.pinned ? " · pinned by a designer as an assembly's denomination" : ""}
@@ -547,7 +547,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                     <p className="text-sm text-ink-body" data-testid="wallet-summary">
                         {summary.processesAsRootBuyer} process
                         {summary.processesAsRootBuyer === 1 ? "" : "es"} resolved as root buyer
-                        {summary.processesAsRootBuyer > 0 ? ` (${summary.resolvedProcesses} settled)` : ""} ·{" "}
+                        {summary.processesAsRootBuyer > 0 ? ` (${summary.resolvedProcesses} resolved)` : ""} ·{" "}
                         {summary.ordersAsBuyer} order{summary.ordersAsBuyer === 1 ? "" : "s"} as buyer ·{" "}
                         {summary.ordersAsSeller} order{summary.ordersAsSeller === 1 ? "" : "s"} as seller ·{" "}
                         {summary.denominations.length} denomination
@@ -558,7 +558,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                             <li key={`${r.orderHash}-${r.side}`} className="text-sm text-ink-body">
                                 <span className="text-ink-heading">{r.side}</span> ·{" "}
                                 <Amount value={r.payment} token={r.currency} corpus={corpus} /> ·{" "}
-                                {r.resolved ? "settled" : "active"}
+                                {r.resolved ? "resolved" : "active"}
                                 <span className="block text-xs text-ink-muted">
                                     with <code className="font-mono">{truncateHex(r.counterparty)}</code> · block{" "}
                                     {r.blockNumber} ·{" "}

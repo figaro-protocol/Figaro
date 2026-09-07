@@ -39,7 +39,7 @@ export interface RecourseClause {
  * whose clause declares the dispute-resolution article. A designer may author
  * more than one (e.g. a decentralized-ADR clause + an applicable-law clause),
  * so every distinct one is returned in first-seen order. Named `derive`, not
- * `resolve`, to stay clear of the kernel's `resolveProcess` settlement call.
+ * `resolve`, to stay clear of the kernel's `resolveProcess` resolve call.
  */
 export function deriveProcessRecourse(
     orders: readonly Order[],

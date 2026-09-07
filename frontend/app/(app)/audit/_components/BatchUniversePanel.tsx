@@ -49,10 +49,10 @@ function StatusNotice({ batch }: { batch: VerifiedBatchProcess }) {
     if (batch.status === "no-relay") {
         return (
             <p className="text-sm text-ink-body" data-testid="batch-status-no-relay">
-                No batch relay is configured, so batch-settled trade cannot be read
+                No batch relay is configured, so batch-resolved trade cannot be read
                 here. This is not a statement that none exists &mdash; the kernel
                 publishes direct-path trade as events, but the batch path publishes
-                no per-order data on chain, so reading it needs a relay. Settling a
+                no per-order data on chain, so reading it needs a relay. Resolving a
                 batch is permissionless, so you can point at any relay, or run your
                 own, in <span className="font-mono">/members/edit/endpoints</span>.
             </p>
@@ -80,8 +80,8 @@ function StatusNotice({ batch }: { batch: VerifiedBatchProcess }) {
             <p className="text-sm text-ink-body" data-testid="batch-status-absent">
                 The relay at <span className="font-mono break-all">{batch.relayUrl}</span>{" "}
                 holds nothing under this process id. That means &ldquo;not in THIS
-                relay&rsquo;s archive&rdquo; &mdash; it may have been settled by another
-                relay, settled directly against FigaroCore, or aged out of this
+                relay&rsquo;s archive&rdquo; &mdash; it may have been resolved by another
+                relay, resolved directly against FigaroCore, or aged out of this
                 relay&rsquo;s retention window. It never means the trade did not happen.
                 {batch.window && (
                     <>
@@ -106,9 +106,9 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
     return (
         <section className="space-y-5" data-testid="batch-universe-panel">
             <div className="space-y-2">
-                <h2 className="text-heading-h3 text-ink-heading">Batch-settled trade</h2>
+                <h2 className="text-heading-h3 text-ink-heading">Batch-resolved trade</h2>
                 <p className="text-sm text-ink-body max-w-2xl">
-                    A batch-settled order emits no kernel event &mdash; its struct
+                    A batch-resolved order emits no kernel event &mdash; its struct
                     exists only under the verifier&rsquo;s proven state root &mdash; so
                     reading it means reading a relay. Nothing below is taken on the
                     relay&rsquo;s word: each record&rsquo;s struct must re-derive its own
@@ -194,8 +194,8 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                                         <p className="text-[11px] text-ink-muted break-all">
                                             state root {o.batch.new_state_root}
                                             {o.batch.settlement_tx
-                                                ? <> · settled in {o.batch.settlement_tx}</>
-                                                : <> · no settlement transaction (dry run)</>}
+                                                ? <> · resolved in {o.batch.settlement_tx}</>
+                                                : <> · no resolution transaction (dry run)</>}
                                         </p>
                                     )}
                                 </div>

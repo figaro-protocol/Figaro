@@ -42,7 +42,7 @@ export interface DesignGraphCollapseFigureProps extends BaseFigureProps {
  * value-adders that sit off the main line. The right panel is what
  * `ProcessState` actually holds: a linear series of dual-signed commits
  * extending one monotonic accumulator, every one of them to the same root
- * buyer, with no parent-child structure anywhere in settlement state. The
+ * buyer, with no parent-child structure anywhere in resolution state. The
  * ordering survives the collapse only because the parties committed it in
  * their agreement — the topology clause is agreement-only, enforced off-chain
  * by whoever reconstructs the graph from the record (`docs/CLAUSES.md`).
@@ -249,7 +249,7 @@ export function DesignGraphCollapseFigure({
                     </text>
                 ))}
                 <text x={L_X} y={seamY} fontSize="8.5" className="fill-ink-muted">
-                    Settlement state records no parent, no child, and no branch &mdash; {designNodes.length} nodes
+                    Resolution state records no parent, no child, and no branch &mdash; {designNodes.length} nodes
                 </text>
                 <text x={L_X} y={seamY + 11} fontSize="8.5" className="fill-ink-muted">
                     on the left, {commitOrder.length} commits and one accumulator on the right.

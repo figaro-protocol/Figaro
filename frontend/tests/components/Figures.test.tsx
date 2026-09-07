@@ -68,7 +68,7 @@ describe("ProcessTopologyFigure", () => {
         const svg = container.querySelector("svg");
         const height = Number((svg?.getAttribute("viewBox") ?? "0 0 400 0").split(" ")[3]);
         expect(height).toBeGreaterThan(100);
-        expect(container.textContent).toContain("Resolution settles the order, and it is the buyer's alone to call.");
+        expect(container.textContent).toContain("Resolution closes the order, and it is the buyer's alone to call.");
     });
 
     it("exposes an accessible title and description bound by aria-labelledby", () => {
@@ -194,9 +194,9 @@ const PAPER_SETTLEMENT_PATHS = {
         inputs: [
             "signed commitments, gathered and ordered",
             "a validity proof of a mirror's execution",
-            "carried to the settlement call",
+            "carried to the resolve call",
         ],
-        events: ["batch settled"],
+        events: ["batch resolved"],
         state: ["its own state root, verifier-local"],
     },
     sectionLabels: { inputs: "Inputs", events: "Records emitted", state: "State" },
@@ -205,13 +205,13 @@ const PAPER_SETTLEMENT_PATHS = {
     bridgeSublabel: "clause and assembly usage",
     crossingLabel: "a usage accrual",
     crossingSublabel: "the one quantity common to both",
-    figureTitle: "The two settlement paths, and the one surface common to both",
+    figureTitle: "The two resolution paths, and the one surface common to both",
     figureDesc:
         "Two panels. The direct path is the kernel's own two calls. The batch path " +
         "is proof-verified off-chain execution, and a kernel order status is never " +
         "acquired on it. One arrow crosses between them, carrying a usage accrual " +
         "into the counter of clause and assembly usage.",
-    caption: "An order settled through the batch verifier never acquires a kernel order status at all.",
+    caption: "An order resolved through the batch verifier never acquires a kernel order status at all.",
 };
 
 /** The paper corpus names no contract, function, event, or proving system. */
@@ -258,7 +258,7 @@ describe("SettlementPathsFigure", () => {
             "usage-accrual ledger",
             "usage accrual",
             "(same settleBatch tx)",
-            "Two disjoint settlement paths",
+            "Two disjoint resolution paths",
         ]) {
             expect(text).toContain(specString);
         }
@@ -329,7 +329,7 @@ describe("BatchSettlementSequenceFigure", () => {
         expect(text).toContain("Buyer + seller wallets");
         expect(text).toContain("→ Sequencer");
         expect(text).toContain("→ Validity proof");
-        expect(text).toContain("→ The settlement call");
+        expect(text).toContain("→ The resolve call");
         expect(text).toContain("→ Usage accrual, then the state root");
         // The spine carries exactly one numbered dot per step.
         expect(container.querySelectorAll("circle")).toHaveLength(7);
@@ -390,10 +390,10 @@ describe("MarketFormationSwimlaneFigure", () => {
         expect(container.querySelectorAll("circle")).toHaveLength(5);
     });
 
-    it("puts the settlement layer beneath both lanes and marks the on-chain boundary", () => {
+    it("puts the kernel beneath both lanes and marks the on-chain boundary", () => {
         const { container } = render(<MarketFormationSwimlaneFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("Settlement layer — market-blind");
+        expect(text).toContain("Kernel — market-blind");
         expect(text).toContain("nothing above this line is on chain");
         // The market-blindness claim, stated where it can be read off the shape.
         expect(text).toContain("Nothing in the artifact says how the seller was found");
@@ -518,7 +518,7 @@ describe("OriginationSequenceFigure", () => {
         }
         expect(text).toContain("transport");
         // The chain column is not the kernel: the read is the registries, the
-        // approvals the settlement token, the attestation the coordinator.
+        // approvals the denomination, the attestation the coordinator.
         const labels = Array.from(container.querySelectorAll("text")).map((n) => n.textContent);
         expect(labels).toContain("on chain");
         expect(labels).not.toContain("FigaroCore");
@@ -615,15 +615,15 @@ describe("GasCrossoverFigure", () => {
     it("states the two units it plots, because they are not the same unit", () => {
         const { container } = render(<GasCrossoverFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("Gas per unit settled, by batch size");
+        expect(text).toContain("Gas per unit resolved, by batch size");
         expect(text).toContain("Per order on the direct path; per net position on the batch path.");
-        expect(text).not.toContain("Gas per settled order, by batch size");
+        expect(text).not.toContain("Gas per resolved order, by batch size");
     });
 
     it("names no network in its accessible description (alt text is not a second register)", () => {
         const { container } = render(<GasCrossoverFigure idPrefix="gd" />);
         const desc = container.querySelector("#gd-desc")?.textContent ?? "";
-        expect(desc).toContain("The two measured settlements on the public record's chain");
+        expect(desc).toContain("The two measured resolutions on the public record's chain");
         for (const network of ["Sepolia", "mainnet", "Ethereum", "testnet"]) {
             expect(desc).not.toContain(network);
         }

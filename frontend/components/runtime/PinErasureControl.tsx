@@ -16,7 +16,7 @@ export interface PinErasureControlProps {
     /** Base id for the three testids: `{prefix}`, `{prefix}-button`, `{prefix}-done`. */
     testidPrefix: string;
     /** Called once per hash; failures are not surfaced individually — the
-     *  control moves to "done" once every call has settled. */
+     *  control moves to "done" once every call has completed. */
     unpinOne: (hash: string) => Promise<unknown>;
     buttonLabel: string;
     erasingLabel: string;

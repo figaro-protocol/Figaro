@@ -4,7 +4,7 @@
  *
  * One trade, end to end, exactly as a stranger would do it on the live site:
  *   1. the seller registers through the onboarding WIZARD (identity, one
- *      catalogue item priced in the settlement token, binds the `pos`
+ *      catalogue item priced in the denomination, binds the `pos`
  *      reference assembly, publishes — the app pins profile + catalogue,
  *      MembersRegistry.register lands with the stake);
  *   2. `/discover` lists the seller (the buyer's surface);
@@ -22,7 +22,7 @@
  *     public chain), self-funded with anvil cheatcodes + the mock token.
  *   - sepolia: the public rehearsal — SMOKE_SELLER_KEY / SMOKE_BUYER_KEY
  *     must be FUNDED beforehand (ETH for gas + the registration stake, the
- *     settlement token for payment and bonds); the preflight names exactly
+ *     denomination for payment and bonds); the preflight names exactly
  *     what is missing and fails there, spending nothing.
  *
  * MAINTAINER-MANUAL (Playwright project `sepolia`): costs real testnet funds
@@ -153,7 +153,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await page.locator('#profile-name').fill(sellerName);
             await page.locator('#profile-specialty').fill('point-of-sale smoke');
             await page.locator('#profile-geohash').fill('9q8yyk');
-            // Accepted token: the settlement token — via the picker where the
+            // Accepted token: the denomination — via the picker where the
             // chain offers one (devnet mock), else the manual address row.
             const picker = page.getByRole('button', { name: new RegExp(`\\+ ${symbol}$`) });
             if (await picker.isVisible().catch(() => false)) {
@@ -223,7 +223,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await switchTo(buyer.address, `/s/view?seller=${seller.address}&e2e=devnet`);
             await page.getByTestId('member-detail-view').waitFor({ timeout: 120_000 });
             const addBtn = page.locator('[data-testid^="btn-add-"]').first();
-            // The catalogue may still be settling on the gateway for the
+            // The catalogue may still be propagating on the gateway for the
             // browser's own read — reload until the item renders.
             await expect.poll(async () => {
                 if (await addBtn.isVisible().catch(() => false)) return true;
@@ -288,7 +288,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await page.getByTestId('audit-page').waitFor({ timeout: 120_000 });
             await expect(page.getByTestId('financials-view'), 'the audit package renders').toBeVisible({ timeout: 120_000 });
             await expect(page.locator('[data-testid="document-lines-financial-statements-process"] tbody tr').first(), 'the on-chain events surface in the cash-flow log').toBeVisible({ timeout: 120_000 });
-            testInfo.annotations.push({ type: 'settled', description: `process ${processId} resolved; buyer −${formatUnits(event.args.payment!, decimals)} ${symbol}, seller +${formatUnits(event.args.payment!, decimals)} ${symbol}` });
+            testInfo.annotations.push({ type: 'resolved', description: `process ${processId} resolved; buyer −${formatUnits(event.args.payment!, decimals)} ${symbol}, seller +${formatUnits(event.args.payment!, decimals)} ${symbol}` });
         } finally {
             await ctx.close();
         }

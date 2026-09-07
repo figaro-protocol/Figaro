@@ -70,7 +70,7 @@ export function AssetWalletOperatorFigure({ className }: AssetWalletOperatorFigu
             </ol>
             <figcaption className="mt-3 text-center text-sm text-ink-muted">
                 The kernel&apos;s resolution ends at the wallet: whether the operator is a person
-                or software is invisible to settlement, and the asset never leaves its
+                or software is invisible to resolution, and the asset never leaves its
                 owner&apos;s books.
             </figcaption>
         </figure>

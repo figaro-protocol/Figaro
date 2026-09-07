@@ -15,9 +15,9 @@
  *
  * Three boundaries this reader states rather than papers over:
  *
- *   core events are DIRECT-PATH by construction. A batch settles token
- *   positions and re-emits no order events, so a batch-settled process is
- *   absent from the process and settlement graphs by design. Only
+ *   core events are DIRECT-PATH by construction. A batch resolves token
+ *   positions and re-emits no order events, so a batch-resolved process is
+ *   absent from the process and resolution graphs by design. Only
  *   ATTESTATIONS cross the crease, which is why they are read from both
  *   emitters and tagged.
  *
@@ -251,7 +251,7 @@ async function readGraphCorpus(deps?: {
     }
     // Swap legs are a COMPOSED venue's own events, parsed against that venue's
     // ABI and handed in. This pass composes none, so the value-flow graph
-    // carries settlement edges only and the UI states that as absence rather
+    // carries resolution edges only and the UI states that as absence rather
     // than as "no corridors exist".
     const valueFlow = projectValueFlow(settlement, [], pins);
 

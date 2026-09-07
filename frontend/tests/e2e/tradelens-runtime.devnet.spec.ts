@@ -23,8 +23,8 @@
  *             hand-off (proximity band). Every witness is verified
  *             out-of-band: the AttestationCoordinator's Attestation event
  *             count for the process advances.
- *   resolve   buyer dominance — ONE signature settles all six orders; net
- *             settlement asserted per wallet (buyer −8.45, each seller +its
+ *   resolve   buyer dominance — ONE signature resolves all six orders; net
+ *             positions asserted per wallet (buyer −8.45, each seller +its
  *             price, the core escrow back to baseline).
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
@@ -283,7 +283,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await witnessInput(C.proximity, 'band-zone-wifi').check();
         await executeWitness(C.proximity, "the inland carrier's hand-off witness");
 
-        // ── RESOLVE: buyer dominance — one signature settles six orders. ──
+        // ── RESOLVE: buyer dominance — one signature resolves six orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
@@ -325,7 +325,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             "the assembly's compositionHash is a recorded assembly (designer credit)",
         ).toContain(adopted!.compositionHash!.toLowerCase());
 
-        // ── SETTLEMENT: the chain total left the buyer; each value-adder
+        // ── RESOLUTION: the chain total left the buyer; each value-adder
         //    earned exactly its price; the escrow returned to baseline. ──
         for (const { who, label } of COMMIT_ORDER) {
             const s = await balanceOf(who.address);

@@ -31,7 +31,7 @@
  * — the same read every consumer does) over the artifact's keccak256.
  *
  * No resolve — the rung precedent: the bond LOCK is the commit's on-chain
- * effect; full-cycle settlement is permissionless-clause's assertion.
+ * effect; full-cycle resolution is permissionless-clause's assertion.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */

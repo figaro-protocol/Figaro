@@ -9,7 +9,7 @@
  * `/derive` projections this page reads in the browser — and serves its own
  * small descriptive wire. Six routes: five deterministic folds over the
  * projected graphs, and a sixth model loop that exists only when its host
- * configured a model. It shares nothing with the settlement sequencer but a
+ * configured a model. It shares nothing with the resolution sequencer but a
  * chain.
  *
  * ── The posture: configuration, never doctrine ──────────────────────────────

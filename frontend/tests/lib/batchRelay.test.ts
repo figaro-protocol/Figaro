@@ -268,7 +268,7 @@ describe("verifyBatchOrder — what each check rejects", () => {
 
     it("seller-signature: rejects a signature made over FigaroCore's domain instead of the verifier's", async () => {
         // THE domain trap: a signature valid on the direct path is NOT valid
-        // for batched settlement. Verifying against the wrong verifyingContract
+        // for batch resolution. Verifying against the wrong verifyingContract
         // would silently accept it.
         const view = honestView();
         view.commit!.seller_signature = toSequencerSig(
@@ -367,7 +367,7 @@ describe("createStateRootAnchorCheck", () => {
         expect(check.detail).toContain("not on chain");
     });
 
-    it("fails when the root settled in a DIFFERENT transaction than the relay named", async () => {
+    it("fails when the root resolved in a DIFFERENT transaction than the relay named", async () => {
         getAllBatchSettledMock.mockResolvedValue([
             { args: { newStateRoot: NEW_ROOT }, transactionHash: `0x${"ee".repeat(32)}` },
         ]);
@@ -376,7 +376,7 @@ describe("createStateRootAnchorCheck", () => {
         expect(check.detail).toContain("not in the");
     });
 
-    it("fails a DRY RUN, which proved but never settled", async () => {
+    it("fails a DRY RUN, which proved but never resolved", async () => {
         const check = await createStateRootAnchorCheck(client, CHAIN_ID)({
             ...batchRef,
             settlement_tx: null,

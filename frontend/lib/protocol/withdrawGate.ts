@@ -142,7 +142,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
 export function withdrawBlockedReason(gate: WithdrawGate | null): string | null {
     if (gate === null) return "Checking for in-flight deals composed from this clause or assembly…";
     if (gate.canWithdraw) return null;
-    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight deal${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this clause or assembly. The stake frees once every composed deal has settled.`;
+    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight deal${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this clause or assembly. The stake frees once every composed deal has resolved.`;
 }
 
 /** Informational caveat when unverifiable in-flight deals exist, or null.

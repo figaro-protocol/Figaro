@@ -14,7 +14,7 @@
  * records-offered section + the data-product badge) → cart → checkout (NO
  * data-license fields rendered; the folded scope is visible in the pre-sign
  * preview) → sign + relay → the data seller accepts on /orders → commit
- * (bond deltas asserted from chain) → the buyer resolves → net settlement
+ * (bond deltas asserted from chain) → the buyer resolves → net positions
  * asserted from chain. Depends on populate-test-data (clauses + reference
  * assemblies anchored).
  */
@@ -138,7 +138,7 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
 test.describe('Buyer-side data sale through the UI (devnet)', () => {
     test.setTimeout(420_000);
 
-    test('both market sides sell: buyer-posture and seller-posture data are discovered, ordered, committed, and settled', async ({ page }) => {
+    test('both market sides sell: buyer-posture and seller-posture data are discovered, ordered, committed, and resolved', async ({ page }) => {
         // Resolve raises a native window.confirm — auto-accept it.
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         const config = readLocalDeploymentConfig();
@@ -249,7 +249,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         expect(sellerBefore - sellerMid, 'data seller locked the seller bond').toBe(sellerBond);
         expect(coreMid - coreBefore, 'escrow holds both bonds').toBe(buyerBond + sellerBond);
 
-        // ── THE BUYER RESOLVES; net settlement is the data sale ──
+        // ── THE BUYER RESOLVES; net positions are the data sale ──
         const processId = event.args.processId!;
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: DATA_BUYER }, fromBlock: 0n,

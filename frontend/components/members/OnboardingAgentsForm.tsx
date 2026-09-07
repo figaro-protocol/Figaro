@@ -156,7 +156,7 @@ export function OnboardingAgentsForm({
                 <p>
                     These are ERC-8004-compatible service endpoints —{" "}
                     Figaro does not depend on ERC-8004 (the bonding mechanism
-                    provides trust and settlement history provides reputation),
+                    provides trust and resolution history provides reputation),
                     but a wallet that wants cross-protocol discoverability can
                     declare endpoints here. Endpoints declare reachability, not
                     what runs the wallet: skip them and the wallet is simply

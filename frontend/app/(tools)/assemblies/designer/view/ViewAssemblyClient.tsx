@@ -655,7 +655,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 {/* LEFT — the composition's whole-assembly face: the identity a
                     designer compared on the canvas, and the assembly-scoped
                     terms (a dispute forum, an applicable law, a pinned
-                    settlement token) that fold into EVERY agreement at
+                    denomination) that fold into EVERY agreement at
                     checkout. Read-only here; without it a review would omit
                     terms the designer composed. */}
                 {(inReviewMode || Object.keys(composedAssemblyClauses).length > 0) && (

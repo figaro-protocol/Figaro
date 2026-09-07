@@ -11,7 +11,7 @@
  *
  * Query params:
  *   - processId:            The Figaro process ID (bytes32-hex)   [required]
- *   - coreAddress:          FigaroCore contract address (the core the process settled on)
+ *   - coreAddress:          FigaroCore contract address (the core the process resolved on)
  *   - chainID:              Chain ID (e.g. 31337, 1, 100)
  *   - arbitrableJsonRpcUrl: (optional) RPC URL to read events from
  *   - disputeID:            (optional) a forum-side dispute reference, shown for context

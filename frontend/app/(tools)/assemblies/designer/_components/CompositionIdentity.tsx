@@ -11,7 +11,7 @@
  *
  * Why it is on the canvas rather than only on the review page: a design fill's
  * VALUE is part of the composition, so flipping one — a disclosure regime from
- * `each-own` to `open`, a pinned settlement token, a credential register — is a
+ * `each-own` to `open`, a pinned denomination, a credential register — is a
  * DIFFERENT assembly, not a setting on the same one. The registry mechanics do
  * that for free (identical compositions collapse to one binding; a changed one
  * anchors beside its sibling), but without a live readout the designer sees a

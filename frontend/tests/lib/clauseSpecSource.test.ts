@@ -87,14 +87,14 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
             description: "Designer-fills spec for the hint-passthrough regression.",
             fields: [{ name: "x", type: "string", required: true }],
             block: {
-                design: { article: "settlement", nestsUnder: null, fills: ["x"], composes: null },
+                design: { article: "resolution", nestsUnder: null, fills: ["x"], composes: null },
                 checkout: { catalogueFills: ["x"], profileFills: [] },
                 runtime: { interaction: null, fields: [] },
             },
         }));
         await loadClauseSpec("test-designer-fills", 1, "ipfs://fake-fills");
         const view = specSource().get("test-designer-fills");
-        expect(view?.hints?.article).toBe("settlement");
+        expect(view?.hints?.article).toBe("resolution");
         expect(view?.hints?.designFills).toEqual(["x"]);
         expect(view?.hints?.catalogueFills).toEqual(["x"]);
     });

@@ -12,7 +12,7 @@
  *   2. Member B (seller) LICENSES their stream to member A (buyer) under
  *      the ADOPTED data-stream-subscription assembly — the data-license
  *      terms filled at checkout, `sourceProcesses` anchored to process 1's
- *      settled processId (the clause's provenance field); the access
+ *      resolved processId (the clause's provenance field); the access
  *      credential delivers via figaro-content-handoff (encrypted-transfer:
  *      the stage-1 attestation anchors keccak256 of the credential bytes,
  *      the content-delivery ceremony's chain shape); commit → resolve.
@@ -397,7 +397,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
 
         // ── PROCESS 2 — the stream: B (seller) licenses to A (buyer) under
         //    the adopted data-stream-subscription assembly; sourceProcesses
-        //    anchors the license to process 1's SETTLED processId — exactly
+        //    anchors the license to process 1's RESOLVED processId — exactly
         //    what the clause's provenance field exists for. ──
         const stream = await commitProcess({
             adopted: dataStream!,
@@ -463,11 +463,11 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         ).toBe(true);
 
         // The license leaf is self-authenticating, and its committed data
-        // carries the provenance anchor to process 1's settled processId.
+        // carries the provenance anchor to process 1's resolved processId.
         const licenseSection = await assertSelfAuthenticatingLeaf(stream, DATA_LICENSE, 'stream');
         expect(
             (((licenseSection.data ?? {}) as { sourceProcesses?: string[] }).sourceProcesses ?? [])[0],
-            "the committed license anchors process 1's settled processId — chain-verifiable provenance",
+            "the committed license anchors process 1's resolved processId — chain-verifiable provenance",
         ).toBe(flightProcessId);
         await resolveProcess(stream, walletA, memberA, memberB, 'stream');
 

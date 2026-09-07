@@ -16,7 +16,7 @@
  *     (`executeCapability`). Add a clause → its capability surfaces here with
  *     no edit to this page. (Enforced by `lint-no-hardcoded-clauses-in-runtime`.)
  *
- * The settlement panel (kernel proceeds — names no clause) renders once the
+ * The resolution panel (kernel proceeds — names no clause) renders once the
  * process is resolved. This page does NOT replace `/audit/view?process=<processId>`.
  */
 
@@ -151,7 +151,7 @@ export function OrderTimelineView({ processId }: Props) {
                 </p>
             </header>
 
-            {/* Settlement — once resolved, what moved: payment + bond, returned.
+            {/* Resolution — once resolved, what moved: payment + bond, returned.
                 Rendered only when the derived breakdown is present — absence is
                 absence, never a locally re-implemented 2x fallback. */}
             {isResolved && (isBuyer || isSeller) && myOrder?.settlementBreakdown?.settledAvailable && (
@@ -164,7 +164,7 @@ export function OrderTimelineView({ processId }: Props) {
                 />
             )}
 
-            {/* Post-settlement payout routing — the settled seller splits its
+            {/* Post-resolution payout routing — the resolved seller splits its
                 own receipts onward through the composed public multisender.
                 Kernel-core sibling of the proceeds panel (no clause to key
                 on); renders only when a multisender is configured. */}

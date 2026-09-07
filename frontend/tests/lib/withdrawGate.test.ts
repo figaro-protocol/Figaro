@@ -28,7 +28,7 @@ describe("withdrawBlockedReason", () => {
         const gate: WithdrawGate = { canWithdraw: false, inFlightCount: 2, unverifiedCount: 0 };
         const reason = withdrawBlockedReason(gate);
         expect(reason).toMatch(/2 in-flight deals/);
-        expect(reason).toMatch(/settled/);
+        expect(reason).toMatch(/resolved/);
     });
 
     it("unverified-only → withdraw allowed (no reason), caveat present", () => {

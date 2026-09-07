@@ -35,7 +35,7 @@ const validSpec = (clauseId: string) => ({
     block: { design: { article: "logistics" } },
 });
 
-/** Flush the microtasks a settled `Promise.allSettled` needs before its `.then`. */
+/** Flush the microtasks a completed `Promise.allSettled` needs before its `.then`. */
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
 
 describe("useClauseSpecs — a spec the gateway has not served yet is re-read, not abandoned", () => {
@@ -61,7 +61,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         const { result } = renderHook(() => useClauseSpecs());
         await flush();
 
-        // First pass settled: `loaded` is true (the pass finished), the served
+        // First pass completed: `loaded` is true (the pass finished), the served
         // spec cached, the miss skipped — and its error reported.
         expect(result.current.loaded).toBe(true);
         expect(getClauseSpec("figaro-old")).toBeDefined();

@@ -15,7 +15,7 @@ interface Props {
     currency: `0x${string}`;
     /** Whether the connected wallet is the seller of this order. */
     isSeller: boolean;
-    /** Payment that settled (moved buyer→seller) at resolution. */
+    /** Payment that resolved (moved buyer→seller) at resolution. */
     payment: bigint;
     /** The connected wallet's bond, returned in full at resolution. */
     bondReturned: bigint;
@@ -26,11 +26,11 @@ interface Props {
  *
  * The live kernel has no internal ledger — resolveProcess transfers tokens directly.
  * No fee, no router/cascade certification. This panel shows the human what
- * settlement moved: the payment (sent or received) and their bond, returned in
+ * resolution moved: the payment (sent or received) and their bond, returned in
  * full. The amounts are read from the protocol-derived process model — the same
  * 2×payment / 2×cumulative-value bond the kernel locked and returned.
  *
- * Kernel-core, NOT a clause surface. Settlement is the kernel's own proceeds —
+ * Kernel-core, NOT a clause surface. Resolution is the kernel's own proceeds —
  * clause-less by construction — so this mounts by symbol on the process-detail
  * page, a peer of CapabilityRail and the timeline. It is deliberately NOT a
  * candidate for the declared-semantic component registries (fieldFormatInputs /

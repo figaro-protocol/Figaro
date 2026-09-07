@@ -3,7 +3,7 @@
  *
  * TRADELENS GENESIS ASSEMBLY — the design-canvas scenario leg (families
  * 6 freight + 7 cold-chain/regulated + 10 cross-border + recourse; the
- * settled composition lives in the project_tradelens_assembly memory;
+ * decided composition lives in the project_tradelens_assembly memory;
  * /papers/after-tradelens is NARRATIVE, never spec; shared vocabulary in
  * tradelensScenario.ts — the runtime leg consumes the same assembly).
  *
@@ -152,7 +152,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
 
             await page.getByTestId('designer-name-input').fill('Containerised import chain');
             await page.getByTestId('designer-summary-input').fill('Six bonded value-adders move a reefer container from shipper to consignee.');
-            await page.getByTestId('designer-description-input').fill('The TradeLens perimeter as a permissionless bonded composition: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination inland carrier — each independently bonded, settled atomically by the importer-of-record.');
+            await page.getByTestId('designer-description-input').fill('The TradeLens perimeter as a permissionless bonded composition: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination inland carrier — each independently bonded, resolved atomically by the importer-of-record.');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

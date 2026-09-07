@@ -334,7 +334,7 @@ describe("wallet record", () => {
         expect(summary.denominations).toEqual([TOKEN_A.toLowerCase(), TOKEN_B.toLowerCase()]);
     });
 
-    it("rows carry the side, the counterparty and settlement state, newest first", () => {
+    it("rows carry the side, the counterparty and resolution state, newest first", () => {
         const rows = walletOrderRows(
             record({
                 ordersAsBuyer: [order({ blockNumber: 3 })],
@@ -394,7 +394,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
             processes: new Map(entries),
         }) as unknown as ProcessGraph;
 
-    it("carries the id, the shape and settlement state, most recent first", () => {
+    it("carries the id, the shape and resolution state, most recent first", () => {
         const g = graph([
             [PROCESS_A, process(PROCESS_A, { orders: new Map([["o1", order({ processId: PROCESS_A, blockNumber: 4 })]]) })],
             [

@@ -54,7 +54,7 @@
  *
  * REFERENCE ASSEMBLIES ride the same invocation when both are set:
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — the AssemblyRegistry address
- *   ASSEMBLY_TOKEN_ADDRESS        — settlement token substituted for the
+ *   ASSEMBLY_TOKEN_ADDRESS        — the denomination substituted for the
  *                                   checked-in ZERO_ADDRESS sentinel (Sepolia:
  *                                   USDC, ruled 2026-08-14)
  *
@@ -549,7 +549,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
 }
 
 /** Pin the affixed documents, then anchor every reference assembly
- *  (`assemblies/*.json`) with the live settlement token substituted for the
+ *  (`assemblies/*.json`) with the live denomination substituted for the
  *  checked-in sentinel. The ONE reference-assembly population path —
  *  devnet (EOA, mock token) and testnet/mainnet (vault, ruled token)
  *  differ only in the arguments. */
@@ -652,7 +652,7 @@ async function main() {
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
 
     // Reference assemblies ride the same invocation when the registry and the
-    // settlement-token fill are both provided (testnet/mainnet: Sepolia USDC
+    // denomination fill are both provided (testnet/mainnet: Sepolia USDC
     // ruled 2026-08-14; devnet's populate-test-data passes its mock instead).
     const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;

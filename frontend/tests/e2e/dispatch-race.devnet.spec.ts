@@ -23,7 +23,7 @@
  *   accept   → merchant accepts the root (creates the process); the WINNER
  *              submits the commit-ready order from /orders' "Ready to
  *              submit" lane. Exact bond deltas after each commit.
- *   resolve  → one signature settles both; each seller nets +payment, the
+ *   resolve  → one signature resolves both; each seller nets +payment, the
  *              LOSING courier nets exactly ZERO — a losing countersignature
  *              costs nothing and never touches the chain.
  *
@@ -330,7 +330,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
             );
         }
 
-        // ── RESOLVE: one signature settles both orders. ──
+        // ── RESOLVE: one signature resolves both orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
@@ -344,7 +344,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── SETTLEMENT: winner +payment, merchant +payment, buyer −total,
+        // ── RESOLUTION: winner +payment, merchant +payment, buyer −total,
         //    escrow at baseline — and the LOSER nets exactly ZERO: a losing
         //    countersignature costs nothing. ──
         const [buyerF, merchantF, cheapF, dearF, coreF] = await Promise.all([

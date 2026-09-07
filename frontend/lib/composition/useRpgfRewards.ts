@@ -6,7 +6,7 @@
  * composes with, never core.
  *
  * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` records
- * verified usage as it happens — a settled order plus merkle inclusion of the
+ * verified usage as it happens — a resolved order plus merkle inclusion of the
  * clause or assembly in the agreement both parties signed — so a period's payout is arithmetic
  * over numbers that are already final. A period's counts stop moving the
  * moment it ends; the minter pays a wallet its clauses' and assemblies' score over the
@@ -29,7 +29,7 @@ import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** One clause or assembly the connected wallet is author of record for, with
- *  the accrual it carried in a given period. `c` = distinct settled processes,
+ *  the accrual it carried in a given period. `c` = distinct resolved processes,
  *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
@@ -38,11 +38,11 @@ export interface RpgfClauseOrAssemblyAccrual {
     /** Human label: the clause id, or the truncated hash for an assembly. */
     label: string;
     family: "clause" | "assembly";
-    /** Distinct settled processes, DIRECT path (`accrualOf`). */
+    /** Distinct resolved processes, DIRECT path (`accrualOf`). */
     c: bigint;
     /** Distinct staked sellers in this period, DIRECT path. */
     d: bigint;
-    /** Distinct settled processes, BATCH path (`batchAccrualOf`). */
+    /** Distinct resolved processes, BATCH path (`batchAccrualOf`). */
     batchC: bigint;
     /** Distinct staked sellers in this period, BATCH path. */
     batchD: bigint;
@@ -188,7 +188,7 @@ export function useRpgfRewards() {
                                 : Promise.resolve(0n),
                             Promise.all(
                                 mine.map(async (m) => {
-                                    // BOTH settlement paths. `scoreOf` is the
+                                    // BOTH resolution paths. `scoreOf` is the
                                     // merged figure the minter pays on; the
                                     // components stay separate because they
                                     // measure different universes and must

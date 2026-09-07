@@ -47,7 +47,7 @@
  * type), not network data: sellers, catalogues, specs, and agreements are all
  * read from chain + IPFS through the real UI.
  *
- * Rungs settle no funds (no resolve): full-cycle settlement is
+ * Rungs resolve no funds (no resolve): full-cycle resolution is
  * permissionless-clause's assertion; the bond LOCK is the commit's on-chain
  * effect and is asserted per rung. Each rung leaves its committed process
  * on-chain — devnet is a mainnet rehearsal, no snapshot/revert.
@@ -684,7 +684,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // ── Funds actually moved: buyer↓ buyerBond, seller↓ sellerBond,
             //    FigaroCore escrow↑ both — the asymmetric-bonding mechanism,
             //    read from the token contract, not the UI. (Rungs don't
-            //    resolve — full-cycle settlement is permissionless-clause's
+            //    resolve — full-cycle resolution is permissionless-clause's
             //    assertion; the lock IS the commit's on-chain effect.) ──
             const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
             const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([

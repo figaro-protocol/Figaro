@@ -280,7 +280,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── Full-cycle settlement (the real proof): buyer NET −payment, seller NET
+        // ── Full-cycle resolution (the real proof): buyer NET −payment, seller NET
         //    +payment, escrow returns to its baseline. The bonds were the mechanism;
         //    the net is the trade. ──
         const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([

@@ -6,12 +6,12 @@ export type MarketFormationSwimlaneFigureProps = BaseFigureProps;
 
 /**
  * Who acts, in what order, when a buyer forms an offer by racing the market —
- * and where the settlement layer enters, which is once, at the end.
+ * and where the kernel enters, which is once, at the end.
  *
  * TWO LANES ABOVE, ONE BAND BELOW is the whole point of the shape: formation
  * is entirely a two-party exchange of an UNSIGNED, then SINGLY-SIGNED, then
  * DUAL-SIGNED commitment artifact, and only the third state crosses into
- * settlement. Drawing the settlement layer as a third lane would imply it
+ * the kernel. Drawing the kernel as a third lane would imply it
  * observes the earlier steps; it does not.
  *
  * STEP SEMANTICS verified against `sdk/src/agent/dispatchRace.ts`:
@@ -155,13 +155,13 @@ export function MarketFormationSwimlaneFigure({
             title={
                 <>
                     Offer formation by dispatch race and by request for quotes, and where
-                    settlement enters
+                    the kernel enters
                 </>
             }
             desc={
                 <>
                     Two lanes above a band. The left lane is the buyer, the right lane the
-                    candidate sellers, and the band beneath both is the settlement layer.
+                    candidate sellers, and the band beneath both is the kernel.
                     Step one, in the buyer&apos;s lane: the buyer builds one unsigned
                     commitment struct per candidate, each naming that candidate and stating
                     the value the chain has accumulated through its link, so a candidate
@@ -178,13 +178,13 @@ export function MarketFormationSwimlaneFigure({
                     still the buyer&apos;s: the cheapest verified answer wins by default and
                     any answer may be taken at the buyer&apos;s discretion, and the single
                     signature the buyer then produces is at once the selection and the
-                    commitment. Only after that does anything reach the settlement band,
+                    commitment. Only after that does anything reach the kernel band,
                     where two signatures over one struct admit the commitment and the bonds
-                    are pulled from both sides. The settlement layer observes none of the
+                    are pulled from both sides. The kernel observes none of the
                     earlier steps; it receives one artifact and cannot tell whether the
                     seller was raced for, quoted against, or chosen by hand. Answers not
                     taken need no cancellation: the buyer fixes one deadline inside every
-                    draft, and the settlement layer refuses a commitment past it, so losing
+                    draft, and the kernel refuses a commitment past it, so losing
                     answers expire inert at no cost and leave no record.
                 </>
             }
@@ -366,7 +366,7 @@ export function MarketFormationSwimlaneFigure({
                     strokeWidth="0.75"
                 />
                 <text x={LANE_A_X + 12} y={bandY + 18} fontSize="10" fontWeight="600" className="fill-ink-heading">
-                    Settlement layer &mdash; market-blind
+                    Kernel &mdash; market-blind
                 </text>
                 <text x={LANE_A_X + 12} y={bandY + 32} fontSize="8" className="fill-ink-body">
                     Two signatures over one struct admit the commitment; the bonds pull from both

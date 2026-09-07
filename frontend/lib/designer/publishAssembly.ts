@@ -78,7 +78,7 @@ export function usePublishAssembly() {
         if (!address) {
             throw new Error("Connect a wallet before publishing.");
         }
-        // Hard cap = the resolve ceiling: every order must settle in one atomic
+        // Hard cap = the resolve ceiling: every order must resolve in one atomic
         // resolveProcess within a block. Same ceiling the designer canvas gates
         // node addition on, so an assembly authored there never trips this — the
         // guard catches forked / hand-crafted templates. (Commit landing rate is
@@ -86,7 +86,7 @@ export function usePublishAssembly() {
         const perProcessCap = await maxOrdersResolvablePerProcess(client);
         if (snapshot.orders.length > perProcessCap) {
             throw new Error(
-                `Assembly has ${snapshot.orders.length} orders; this chain settles at most ${perProcessCap} in one atomic resolveProcess. Compose multiple processes instead.`,
+                `Assembly has ${snapshot.orders.length} orders; this chain resolves at most ${perProcessCap} in one atomic resolveProcess. Compose multiple processes instead.`,
             );
         }
         const deposit = await client.readContract({

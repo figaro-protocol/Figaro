@@ -106,7 +106,7 @@ export const GRAPH_LAYERS: readonly GraphLayer[] = [
         label: "Value flow",
         boundary: "composition-derived",
         statement:
-            "Denominations the record settles in, plus the corridors between them. Settlement flow per denomination is protocol-enforced; a corridor between two denominations is read from a composed venue's OWN events and is true per that contract's rules, outside the kernel's guarantees.",
+            "Denominations the record resolves in, plus the corridors between them. Resolution flow per denomination is protocol-enforced; a corridor between two denominations is read from a composed venue's OWN events and is true per that contract's rules, outside the kernel's guarantees.",
     },
     {
         view: "wallet",

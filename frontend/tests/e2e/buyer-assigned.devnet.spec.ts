@@ -27,7 +27,7 @@
  *              the committed courier order's seller IS the buyer's pick;
  *              exact bond deltas asserted after each commit, all amounts
  *              read from chain events (never assumed from seed data).
- *   resolve  → one signature settles both orders: merchant + courier each
+ *   resolve  → one signature resolves both orders: merchant + courier each
  *              net +payment, buyer net −total, escrow back to baseline.
  *   audit    → the financials render one statement per seller + the
  *              consolidation (the ladder/witness runtime is local-commerce's
@@ -238,7 +238,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         }
         expect((await queryCommitted()).length, 'exactly two orders committed').toBe(committedBefore + 2);
 
-        // ── RESOLVE: one signature settles both orders. ──
+        // ── RESOLVE: one signature resolves both orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
@@ -252,7 +252,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── SETTLEMENT: each seller net +payment, buyer net −total, escrow at
+        // ── RESOLUTION: each seller net +payment, buyer net −total, escrow at
         //    baseline — every figure from the chain events above. ──
         const [buyerF, merchantF, courierF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER), balanceOf(core),

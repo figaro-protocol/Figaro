@@ -259,7 +259,7 @@ describe("runtime service hook injection", () => {
         });
 
         // ONE watcher: OrderResolved only — resolveProcess emits it per order,
-        // so a single per-order watcher covers every settle.
+        // so a single per-order watcher covers every resolve.
         await waitFor(() => {
             expect(watchContractEventMock).toHaveBeenCalledTimes(1);
         });

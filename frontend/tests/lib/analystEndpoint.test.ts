@@ -73,16 +73,16 @@ describe("the wire", () => {
 
     it("returns the answer with the tool trace that produced it", async () => {
         fetchMock.mockResolvedValueOnce(
-            jsonResponse(200, { answer: "Two markets settled.", trace: [{ tool: "market_shape", input: {} }], turns: 2, truncated: false }),
+            jsonResponse(200, { answer: "Two markets resolved.", trace: [{ tool: "market_shape", input: {} }], turns: 2, truncated: false }),
         );
-        const outcome = await askAnalyst("what settled?");
+        const outcome = await askAnalyst("what resolved?");
         expect(outcome).toEqual({
             state: "answered",
-            answer: { answer: "Two markets settled.", trace: [{ tool: "market_shape", input: {} }], turns: 2, truncated: false },
+            answer: { answer: "Two markets resolved.", trace: [{ tool: "market_shape", input: {} }], turns: 2, truncated: false },
         });
         const [url, init] = fetchMock.mock.calls[0];
         expect(url).toBe("https://analyst.example.com/prompt");
-        expect(JSON.parse((init as RequestInit).body as string)).toEqual({ question: "what settled?" });
+        expect(JSON.parse((init as RequestInit).body as string)).toEqual({ question: "what resolved?" });
     });
 
     it("a 404 means this analyst runs no model — reported in its own words", async () => {

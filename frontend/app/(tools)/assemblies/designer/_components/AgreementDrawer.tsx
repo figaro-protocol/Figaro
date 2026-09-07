@@ -508,7 +508,7 @@ function ClauseControl({
                             // Design time is STRUCTURAL (ruled 2026-07-14): the
                             // designer edits ONLY the fields a clause names in
                             // `block.design.fills` — the tailoring (a pinned
-                            // consent document, a pinned settlement token).
+                            // consent document, a pinned denomination).
                             // Every other field shows no inputs here: it is a
                             // transaction particular (the buyer's, at checkout)
                             // or a seller fill (catalogue/profile, folded at

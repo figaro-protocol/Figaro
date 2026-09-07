@@ -103,7 +103,7 @@ type DeploymentConfig = {
 
 export function readLocalDeploymentConfig(): DeploymentConfig {
     // Sepolia: the committed public record is the source (never .env.local,
-    // which is the devnet's); the ruled settlement token rides SEPOLIA_USDC.
+    // which is the devnet's); the ruled denomination rides SEPOLIA_USDC.
     if (E2E_CHAIN === 'sepolia') {
         const recordPath = path.resolve(__dirname, '../../../deployments/11155111.json');
         const record = JSON.parse(fs.readFileSync(recordPath, 'utf8')) as DeploymentConfig;

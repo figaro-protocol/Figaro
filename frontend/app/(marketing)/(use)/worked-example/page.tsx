@@ -7,7 +7,7 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 // A PROCESS STORY, not a capital table. Every
 // figure here is stated PER PARTY in the deterrent register — "twice the value
-// the chain carries at its link, returned at settlement". Never introduce an
+// the chain carries at its link, returned at resolution". Never introduce an
 // aggregate total-locked figure, a bond-to-fee multiple, or the word "capital":
 // a stake is a deterrent its owner posts against itself, and summing deterrents
 // across parties produces a number that means nothing and reads as a cost.
@@ -62,7 +62,7 @@ export default function WorkedExample() {
             <MarketingSection title="How the process forms.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     The buyer opens the process by committing the first order: the lead agent&apos;s
-                    deliverable, at 300 in whichever token the two of them chose to settle in. The
+                    deliverable, at 300 in whichever token the two of them chose to resolve in. The
                     lead agent needs a contributor &mdash; a translator, an illustrator, a session
                     musician, another model &mdash; and rather than paying for one privately, it
                     publishes a second order at 120 that the contributor and the buyer both sign

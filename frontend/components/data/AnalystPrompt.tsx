@@ -95,7 +95,7 @@ export function AnalystPrompt() {
                         value={question}
                         onChange={(e) => setQuestion(e.target.value)}
                         rows={3}
-                        placeholder="What has this market settled, and in which denominations?"
+                        placeholder="What has this market resolved, and in which denominations?"
                         aria-label="Question for the analyst"
                         data-testid="analyst-question"
                     />

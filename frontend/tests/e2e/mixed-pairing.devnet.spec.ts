@@ -333,7 +333,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                 );
             }
 
-            // ── RESOLVE + settlement: the agent nets its price; the human
+            // ── RESOLVE + resolution: the agent nets its price; the human
             //    who counter-signed and lost nets exactly zero. ──
             const resolvedBefore = (await publicClient.getContractEvents({
                 address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,

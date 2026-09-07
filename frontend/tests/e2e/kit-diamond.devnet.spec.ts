@@ -42,7 +42,7 @@
  *              the kernel).
  *   diamond  → the leaf's PINNED agreement commits BOTH parents' real order
  *              hashes in its topology section — the join, merkle-bound.
- *   resolve  → ONE signature settles all four orders atomically.
+ *   resolve  → ONE signature resolves all four orders atomically.
  *   audit    → financials render one statement per seller (all four) + the
  *              consolidation; the cash-flow log carries every kernel transfer
  *              (2 rows per commit + 2 per order at resolve = 16 exactly).
@@ -436,7 +436,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             "the leaf's parents are B and C's real order hashes — the diamond join, merkle-bound",
         ).toEqual([bEvent.args.orderHash!.toLowerCase(), cEvent.args.orderHash!.toLowerCase()].sort());
 
-        // ── RESOLVE: ONE signature settles the whole diamond atomically. ──
+        // ── RESOLVE: ONE signature resolves the whole diamond atomically. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
@@ -448,7 +448,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── SETTLEMENT: every party paid by the one signature. ──
+        // ── RESOLUTION: every party paid by the one signature. ──
         const [buyerF, leadF, bF, cF, dF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(SUPPLIER_B),
             balanceOf(SUPPLIER_C), balanceOf(SUPPLIER_D), balanceOf(core),

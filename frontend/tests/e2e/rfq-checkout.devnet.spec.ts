@@ -266,7 +266,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
             expect(c - core0).toBe(rootBonds.buyerBond + rootBonds.sellerBond + courierBonds.buyerBond + courierBonds.sellerBond);
         }
 
-        // ── RESOLVE + settlement: winner earns the quote; the losing quoter
+        // ── RESOLVE + resolution: winner earns the quote; the losing quoter
         //    is bit-identically untouched. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,

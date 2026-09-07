@@ -64,7 +64,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
     const chainId = useChainId();
     const [data, setData] = useState<MemberProfileData | undefined>(undefined);
     // "Not scanned yet" must not read as "scanned and absent": isLoading
-    // starts TRUE and settles false only when a scan completes. The prior
+    // starts TRUE and becomes false only when a scan completes. The prior
     // false start left commit windows (wagmi client/address still hydrating
     // → the effect's early return) where consumers saw
     // {data: undefined, isLoading: false} and treated an unscanned wallet

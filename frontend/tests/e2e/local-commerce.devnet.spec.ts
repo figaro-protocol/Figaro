@@ -172,7 +172,7 @@ async function waitForConnected(page: Page) {
 test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → attest → one resolve pays both (devnet)', () => {
     test.setTimeout(480_000);
 
-    test('the delivery scenario is authored on the canvas, pinned by its sellers, and run to a fully-attested settlement', async ({ page, browser }) => {
+    test('the delivery scenario is authored on the canvas, pinned by its sellers, and run to a fully-attested resolution', async ({ page, browser }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -682,7 +682,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             timeout: 60000, message: 'the buyer-attested witness event lands at the declared stage',
         }).toBe(1);
 
-        // ── RESOLVE: buyer dominance — one signature settles both orders. ──
+        // ── RESOLVE: buyer dominance — one signature resolves both orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
@@ -696,7 +696,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── SETTLEMENT: the whole point — one signature pays the meal AND the
+        // ── RESOLUTION: the whole point — one signature pays the meal AND the
         //    delivery; the bonds were the mechanism, the net is the trade. ──
         const [buyerF, merchantF, courierF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER), balanceOf(core),
@@ -707,7 +707,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
         // ── THE EVIDENCE WINDOW CLOSES AT RESOLVE (DESIGN_DECISIONS §7): the
-        //    settled institution accepts no further attestations — the rail
+        //    resolved institution accepts no further attestations — the rail
         //    derives nothing for any party, witness capabilities included
         //    (on-chain, AttestationCoordinator reverts OrderResolved). ──
         await gotoAsWallet(page, COURIER, `/orders/view?process=${processId}&e2e=devnet`);
@@ -905,10 +905,10 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         ).toHaveCount(8, { timeout: 30000 });
         await spectator.close();
 
-        // ── PAYOUT ROUTING: the settled merchant splits its receipts onward —
+        // ── PAYOUT ROUTING: the resolved merchant splits its receipts onward —
         //    two earmarked legs through the composed public multisender
         //    (devnet: MockDisperse, mirroring canonical Disperse), one atomic
-        //    batch. Wallet-side, post-settlement: the kernel already paid;
+        //    batch. Wallet-side, post-resolution: the kernel already paid;
         //    this is the merchant spending its own balance. VALUE LEGS from
         //    chain: both recipients' deltas and the merchant's own, asserted
         //    out-of-band via balanceOf, never from the screen. ──
@@ -921,7 +921,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const routing = page.getByTestId('payout-routing');
-        await expect(routing, 'the routing surface derives for the settled seller').toBeVisible({ timeout: 30000 });
+        await expect(routing, 'the routing surface derives for the resolved seller').toBeVisible({ timeout: 30000 });
         await page.getByTestId('payout-routing-recipient-0').fill(KITCHEN_SUPPLIER);
         await page.getByTestId('payout-routing-amount-0').fill('0.3');
         await page.getByTestId('payout-routing-add-leg').click();

@@ -15,7 +15,7 @@ export type RpgfValueLoopFigureProps = BaseFigureProps;
 // below that strength. Public derivation: /papers/substrate-broadening-rpgf.
 const STEPS = [
     { title: "Stake ETH to register", detail: "your clauses and assemblies go live" },
-    { title: "Real trade uses them", detail: "settled deals carry your work" },
+    { title: "Real trade uses them", detail: "resolved deals carry your work" },
     { title: "Every deal pays gas in ETH", detail: "demand for the currency you staked" },
     { title: "Your stake rides that demand", detail: "exposure to the growth you created" },
 ] as const;

@@ -16,18 +16,18 @@ interface LegDraft {
 }
 
 interface Props {
-    /** The settled order's ERC-20 currency — what the receipts arrived in and
+    /** The resolved order's ERC-20 currency — what the receipts arrived in and
      *  what routes onward. */
     currency: `0x${string}`;
 }
 
 /**
- * PayoutRoutingPanel — the settled seller splits its own receipts onward:
+ * PayoutRoutingPanel — the resolved seller splits its own receipts onward:
  * earmarked (recipient, amount) legs through the composed public multisender,
  * one atomic transaction (`lib/composition/payoutRouting`).
  *
- * Wallet-side, post-settlement: the kernel has already paid; this is the
- * wallet spending its own balance, so the panel mounts beside the settlement
+ * Wallet-side, post-resolution: the kernel has already paid; this is the
+ * wallet spending its own balance, so the panel mounts beside the resolution
  * proceeds (kernel-core surface, no clause to key on — the same reasoning as
  * SettlementProceedsPanel) and renders only when a multisender is configured.
  * Amounts are typed in token units; the wallet and the token contract stay
