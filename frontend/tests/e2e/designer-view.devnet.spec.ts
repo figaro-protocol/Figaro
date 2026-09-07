@@ -65,6 +65,12 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // Published assemblies offer Fork; drafts offer Edit.
         await expect(page.getByTestId('view-fork-button')).toBeVisible();
         await expect(page.getByTestId('view-edit-button')).toHaveCount(0);
+
+        // Fork DOES something: no prompt, a local draft under `<slug>-fork`,
+        // and the editor open on it (beta r4: the founder's dead button).
+        await page.getByTestId('view-fork-button').click();
+        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${slug}-fork(-\\d+)?$`), { timeout: 15000 });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });
 
     test('a slug that is neither a draft nor on-chain shows the not-found error', async ({ page }) => {

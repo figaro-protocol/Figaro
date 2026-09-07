@@ -57,14 +57,13 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
-        // forkPublishedAssembly() prompts for the new slug via window.prompt —
-        // Playwright auto-dismisses dialogs unless handled, which would cancel the
-        // fork. Accept with an explicit slug so the fork proceeds deterministically.
-        const forkSlug = `${slug}-fork-a8`;
-        page.once('dialog', (dialog) => { void dialog.accept(forkSlug); });
+        // No dialog: the fork lands under `${slug}-fork` (made unique) and goes
+        // straight to the editor — a native prompt was a dead button to any
+        // automated browser (beta r4).
+        const forkSlug = `${slug}-fork`;
         await page.getByTestId(`published-fork-${slug}`).click();
 
-        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${forkSlug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${forkSlug}(-\\d+)?$`), { timeout: 15000 });
         // The forked draft hydrated into an editable canvas — not just a URL change.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });

@@ -46,7 +46,6 @@ export function PublishedList() {
             setForking(choice.slug);
             try {
                 const outcome = forkPublishedAssembly(choice.slug, choice.assemblyTemplate);
-                if (!outcome) return;
                 router.push(`/assemblies/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {
                 const message = extractErrorMessage(err, "Loading the published assemblies failed.");

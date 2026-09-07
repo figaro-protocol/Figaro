@@ -367,7 +367,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setForking(true);
         try {
             const outcome = forkPublishedAssembly(slug, resolved.assemblyTemplate);
-            if (!outcome) return;
             router.push(`/assemblies/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
             window.alert(`Fork failed: ${extractErrorMessage(err, "unknown error")}`);

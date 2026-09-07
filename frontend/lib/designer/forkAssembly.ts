@@ -5,8 +5,11 @@
  * inspect page).
  *
  * What the helper owns:
- *   - The slug prompt (default = `${sourceSlug}-fork`).
- *   - Uniqueness handling (collisions get `-2`, `-3`, …).
+ *   - The fork's slug: `${sourceSlug}-fork`, made unique (collisions get
+ *     `-2`, `-3`, …). No prompt: a native dialog is auto-dismissed by any
+ *     automated browser and reads as a dead button to whoever drives one
+ *     (beta r4, the founder), and a local draft's slug is a working name,
+ *     not its identity — the composition hash is.
  *   - Template → draft hydration via `assemblyTemplateToDraft`.
  *   - Persisting the new draft to localStorage.
  *
@@ -18,9 +21,8 @@
  *   - Router navigation (router lives in component scope).
  *   - Error handling around the assemblyTemplate fetch.
  *
- * Returns the final slug on success (caller navigates to
- * `/assemblies/designer/edit?slug=${finalSlug}`), or `null` if the user
- * cancelled the prompt.
+ * Returns the final slug (caller navigates to
+ * `/assemblies/designer/edit?slug=${finalSlug}`).
  */
 
 import {
@@ -33,19 +35,8 @@ import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 export function forkPublishedAssembly(
     sourceSlug: string,
     template: AssemblyTemplate,
-): { finalSlug: string } | null {
-    const defaultSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
-    const proposed =
-        typeof window === "undefined"
-            ? defaultSlug
-            : window.prompt(
-                `Fork "${sourceSlug}" as a new local draft. Slug:`,
-                defaultSlug,
-            );
-    if (!proposed) return null;
-    const trimmed = proposed.trim();
-    if (!trimmed) return null;
-    const finalSlug = uniqueDraftSlug(trimmed);
+): { finalSlug: string } {
+    const finalSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
     const draft = assemblyTemplateToDraft(template, { slug: finalSlug });
     saveNamedDraft(draft);
     return { finalSlug };
