@@ -476,7 +476,9 @@ Per workflow, what it runs and when:
 - **`estate-snapshot`** — weekly (Mondays 05:23 UTC) + dispatch: captures the
   perishable estate signals (GitHub traffic, which the API retains only ~14
   days; the Cloudflare daily site-traffic series for figaroprotocol.com; the
-  npm downloads trend) as a workflow artifact with 90-day retention. The
+  npm downloads trend) as a workflow artifact with 90-day retention, and
+  commits the same files to the `estate-snapshots` branch as `<date>/`, which
+  is what the weekly digest routine reads. The
   GitHub-traffic legs need the punch-listed `ESTATE_TRAFFIC_TOKEN`
   fine-grained PAT and the site-traffic leg the punch-listed
   `ESTATE_CF_ANALYTICS_TOKEN` zone-scoped Cloudflare token — without them

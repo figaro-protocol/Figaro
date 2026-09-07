@@ -36,7 +36,7 @@ on:
     workflow_dispatch:
 
 permissions:
-    contents: read
+    contents: write # the estate-snapshots branch below; nothing on main is written
 
 jobs:
     snapshot:
@@ -115,3 +115,27 @@ jobs:
                   path: snapshot/
                   retention-days: 90
                   if-no-files-found: error
+
+            # The same capture, committed to the `estate-snapshots` branch as
+            # <date>/<file>.json: the artifact is the durable copy, the branch
+            # is the readable one — a checkout can `git show` it, which is how
+            # the weekly digest routine reads it (artifact downloads leave
+            # GitHub's own hosts, and a sandboxed reader may not follow).
+            - name: Commit the snapshot to the estate-snapshots branch
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+                  if git clone --quiet --depth 1 --branch estate-snapshots "$remote" snapshots 2>/dev/null; then
+                      cd snapshots
+                  else
+                      mkdir snapshots && cd snapshots
+                      git init --quiet && git checkout --quiet --orphan estate-snapshots
+                      git remote add origin "$remote"
+                  fi
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  mkdir -p "$SNAP_DATE" && cp ../snapshot/*.json "$SNAP_DATE/"
+                  git add "$SNAP_DATE"
+                  git diff --cached --quiet || git commit --quiet -m "estate snapshot $SNAP_DATE"
+                  git push --quiet origin HEAD:estate-snapshots
