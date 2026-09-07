@@ -1,12 +1,12 @@
 /// Publication archive — the batch universe's mirror of what the kernel
 /// PUBLISHES.
 ///
-/// `FigaroCore` does two things for an order: it settles it, and it
+/// `FigaroCore` does two things for an order: it resolves it, and it
 /// publishes it. `OrderCommitted` / `OrderSeller` / `OrderCurrency` carry
 /// the whole commitment struct; `OrderResolved` / `ProcessResolved` carry
 /// the resolution facts; and the two signatures that admitted the order sit
 /// in the commit transaction's calldata, readable by anyone. A batch
-/// settles the same trade but publishes none of it: `FigaroBatchVerifier`'s
+/// resolves the same trade but publishes none of it: `FigaroBatchVerifier`'s
 /// public values carry no order hashes, its storage is `stateRoot` +
 /// `batchCount`, and `BatchSettled` names no order. Batched trade is
 /// therefore publicly invisible per-order unless a relay mirrors the
@@ -33,13 +33,13 @@ use figaro_kernel::eip712::domain_separator;
 use figaro_kernel::kernel::{derive_commitment_ids, resolution_payouts};
 use figaro_kernel::types::{Commitment, KernelOp, Signature};
 
-/// Default cap on retained settled batches. The archive is a PUBLIC,
+/// Default cap on retained resolved batches. The archive is a PUBLIC,
 /// unauthenticated surface on a long-running process — it must be bounded.
 pub const DEFAULT_MAX_BATCHES: usize = 10_000;
 /// Default page size for the range read.
 pub const DEFAULT_PAGE_LIMIT: usize = 10;
 /// Hard ceiling on page size. A batch record carries every commitment
-/// struct and signature it settled, so a page is bounded in records, and
+/// struct and signature it resolved, so a page is bounded in records, and
 /// each record is bounded by `MAX_BATCH_OPS`.
 pub const MAX_PAGE_LIMIT: usize = 50;
 
@@ -80,7 +80,7 @@ pub struct ProcessResolution {
     pub orders: Vec<OrderResolution>,
 }
 
-/// One settled batch, as published. `batch` is this RELAY's own settled
+/// One resolved batch, as published. `batch` is this RELAY's own resolved
 /// sequence number (a cursor, not a protocol identity — a different relay
 /// numbers its batches differently). The chain-anchored identity is
 /// `new_state_root` + `settlement_tx`.
@@ -92,7 +92,7 @@ pub struct BatchRecord {
     pub prev_state_root: B256,
     pub new_state_root: B256,
     /// `None` for a dry run (no verifier configured) — the batch proved
-    /// but was never settled, and the reader must be told so.
+    /// but was never resolved, and the reader must be told so.
     pub settlement_tx: Option<B256>,
     pub block_timestamp: u64,
     pub commits: Vec<OrderRecord>,
@@ -183,7 +183,7 @@ pub struct RetentionWindow {
 pub struct BatchPage {
     pub batches: Vec<BatchRecord>,
     /// Pass as `from` to continue; `None` means the page reached the end
-    /// of what this relay has settled.
+    /// of what this relay has resolved.
     pub next_cursor: Option<u64>,
     pub retained: RetentionWindow,
 }
@@ -309,10 +309,10 @@ impl Archive {
         archive
     }
 
-    /// Publish one settled batch. Never fails the caller: a journal write
-    /// error is logged, and the in-memory archive still answers. Settlement
+    /// Publish one resolved batch. Never fails the caller: a journal write
+    /// error is logged, and the in-memory archive still answers. Resolution
     /// already happened on chain — a publication problem must not look like
-    /// a settlement problem.
+    /// a resolution problem.
     pub async fn record(&self, record: BatchRecord) {
         let line = match serde_json::to_string(&record) {
             Ok(l) => Some(l),
@@ -443,7 +443,7 @@ impl Archive {
         })
     }
 
-    /// A bounded page of settled batches, for an indexer replaying the
+    /// A bounded page of resolved batches, for an indexer replaying the
     /// batch universe the way it replays kernel logs.
     pub async fn range(&self, from: Option<u64>, limit: Option<usize>) -> BatchPage {
         let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT).clamp(1, MAX_PAGE_LIMIT);
@@ -474,7 +474,7 @@ impl Archive {
     }
 
     /// The highest batch number this relay has published — the seed for
-    /// its settled-batch counter across a restart.
+    /// its resolved-batch counter across a restart.
     pub async fn last_batch(&self) -> Option<u64> {
         self.inner.lock().await.batches.keys().next_back().copied()
     }
@@ -615,9 +615,9 @@ async fn append_line(path: &PathBuf, line: &str) -> std::io::Result<()> {
     file.flush().await
 }
 
-// ── Building a record from the ops a batch settled ────────────────
+// ── Building a record from the ops a batch resolved ────────────────
 
-/// Project the ops a batch settled into the two publication families the
+/// Project the ops a batch resolved into the two publication families the
 /// kernel emits: per-order commitments (with their signatures) and
 /// per-process resolutions (with their per-order payout legs).
 ///
@@ -664,7 +664,7 @@ pub fn publication_from_ops(
                     .iter()
                     .filter_map(|c| {
                         let (order_hash, _) = derive_commitment_ids(&domain, c);
-                        // An overflowing payout cannot settle, so it cannot
+                        // An overflowing payout cannot resolve, so it cannot
                         // reach publication; skip rather than invent one.
                         let (seller_payout, buyer_payout) = resolution_payouts(c).ok()?;
                         Some(OrderResolution {

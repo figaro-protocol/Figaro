@@ -55,7 +55,7 @@ block.
 
 `figaro-analyst.mjs` (the service) and `analyst.mjs` (the same four steps as a
 library) are the executable form of `ecosystem-agents/figaro-analyst.md`: fetch
-the event record from both settlement universes, recover the substance behind
+the events from both resolution universes, recover the substance behind
 the fingerprints through the framed channel, project the graphs of
 `docs/DATA_LAYER.md`, and answer canonical queries over them. It rides
 the INDEXER tooling and shares nothing with the sequencer but a chain; its wire

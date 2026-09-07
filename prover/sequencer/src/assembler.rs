@@ -5,15 +5,15 @@ use figaro_kernel::types::{BatchInput, KernelOp, KernelStateSnapshot, UsageClaim
 
 use crate::mempool::PendingOp;
 
-/// The RPGF context a batch settles under — the claims to credit, the
+/// The RPGF context a batch resolves under — the claims to credit, the
 /// period they land in, and the provenance clause key assembly claims
 /// prove against.
 ///
 /// PERIOD AND PROVENANCE ARE CHAIN FACTS, read from `UsageCounter`
 /// (`currentPeriod()`, `provenanceClause()`), never guessed from a local
-/// clock: the counter re-checks both at settlement and rejects the batch
+/// clock: the counter re-checks both at resolution and rejects the batch
 /// on a mismatch. A batch assembled just before a period boundary and
-/// settled just after it must be re-proven for the new period.
+/// resolved just after it must be re-proven for the new period.
 #[derive(Clone, Debug, Default)]
 pub struct UsageContext {
     pub claims: Vec<UsageClaim>,
@@ -147,14 +147,14 @@ pub fn filter_applicable_ops(
 /// whole batch (`main`'s prove-failure arm) and discards every co-batched
 /// legitimate trade with it. A usage claim is publicly submittable, so without
 /// this filter one crafted claim (real resolved order + garbage inclusion proof,
-/// or a replay of an already-counted claim) is a gas-free batch-settlement DoS.
+/// or a replay of an already-counted claim) is a gas-free batch-resolution DoS.
 ///
 /// So each claim is trial-applied one at a time against the running post-op
 /// state — threaded, so a duplicate claim WITHIN the batch is caught as
 /// already-counted exactly as the guest would — and poison is returned
 /// separately for the caller to drop. This is the usage-claim twin of
 /// `filter_applicable_ops`; unlike ops, claims have no inter-claim ordering to
-/// resolve (each proves against the settled post-op state), so a single pass
+/// resolve (each proves against the resolved post-op state), so a single pass
 /// suffices. The registry/stake gates the guest CANNOT see are pre-filtered
 /// upstream (`submitter::filter_usage_claims`); this covers the disjoint set of
 /// classes only the guest decides.

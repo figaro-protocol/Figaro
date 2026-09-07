@@ -7,7 +7,7 @@
  *
  * The loop is four steps and this file is all four:
  *   1. FETCH   — `fetchCoreEvents` (direct path) + `fetchAttestationRecords`
- *                (BOTH settlement universes, address-filtered and tagged).
+ *                (BOTH resolution universes, address-filtered and tagged).
  *   2. RECOVER — substance at the edge: each attestation's fingerprint is its
  *                own content address (`witnessContent.mjs`); agreement bodies
  *                are party-private and arrive only from the operator's own
@@ -186,7 +186,7 @@ export async function corroborateEndpoints({
 
 /**
  * One full pass: fetch, recover, project. Returns the corpus every query folds
- * over. `recoverSubstance: false` skips step 2 entirely — the settlement
+ * over. `recoverSubstance: false` skips step 2 entirely — the resolution
  * skeleton alone, which is what a reader with no gateway can honestly answer
  * from. `crosscheckRpcUrls` (extra endpoints beside `rpcUrl`) turns on
  * cross-endpoint corroboration; absent, the corroboration is absent — one
@@ -210,7 +210,7 @@ export async function syncCorpus({
     const syncedToBlock = await client.getBlockNumber();
 
     // 1. FETCH — both universes for attestations; core events are direct-path
-    //    by construction (a batch settles token positions and re-emits no
+    //    by construction (a batch resolves token positions and re-emits no
     //    order events), which is a boundary, not an omission.
     const core = await fetchCoreEvents(client, addresses, start, syncedToBlock);
     const attestations = await fetchAttestationRecords(client, addresses, start, syncedToBlock);
@@ -281,7 +281,7 @@ export async function syncCorpus({
     }
     // Swap legs are a COMPOSED venue's own events, parsed by the caller against
     // that venue's ABI and handed in; this pass composes none, so the value-flow
-    // graph carries settlement edges only. A venue is discovered from clause
+    // graph carries resolution edges only. A venue is discovered from clause
     // fields and the deployment record, never from a list here.
     const valueFlow = projectValueFlow(settlement, [], pins);
 
@@ -313,7 +313,7 @@ export async function syncCorpus({
  * provenance section's `compositionHash`, found by DECLARED FIELD. A process
  * with no held agreement is `undefined` — counted as unattributed, never
  * binned under a fabricated key. That is the honest public picture: the
- * settlement skeleton is public, the body that says WHICH assembly produced it
+ * resolution skeleton is public, the body that says WHICH assembly produced it
  * is party-private until someone discloses or sells it.
  */
 function assemblyAttribution(corpus) {
@@ -420,7 +420,7 @@ function orderRow(o) {
 }
 
 /**
- * Deal-story: one process narrated from the record — the settlement chain plus
+ * Deal-story: one process narrated from the data — the resolution chain plus
  * every overlay entry anchored to it, in block order. Composed from the
  * projections, never a third walk of the same events (on-site the same answer
  * is `/audit/view?process=`).
@@ -434,12 +434,12 @@ export function dealStory(corpus, processId) {
         .find((c) => c.processId.toLowerCase() === id);
     if (!chain) {
         // Absence, stated with its two live possibilities — never "it did not
-        // happen". A batch-settled process acquires no kernel status and emits
+        // happen". A batch-resolved process acquires no kernel status and emits
         // no kernel event, so it is absent from this projection by design.
         return {
             processId,
             found: false,
-            note: "not in this chain's direct-path record — it may be batch-settled (ask a relay) or outside the synced range",
+            note: "not in this chain's direct-path record — it may be batch-resolved (ask a relay) or outside the synced range",
             syncedFromBlock: corpus.fromBlock.toString(),
             syncedToBlock: corpus.syncedToBlock.toString(),
         };

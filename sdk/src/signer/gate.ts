@@ -6,7 +6,7 @@
  * window, which is what makes every refusal unit-testable.
  *
  * Risk accounting is deliberately closed-world over how value can LEAVE the
- * wallet: the settlement token moves only through allowances (no `transfer`
+ * wallet: the denomination moves only through allowances (no `transfer`
  * selector is ever allowlisted), so counting every `approve` at its amount
  * bounds all token outflow; native ETH moves only as a payable call's
  * `value`, counted against its own ceiling (absent = zero = refused). A
@@ -154,7 +154,7 @@ export const APPROVE_SELECTOR: Hex = "0x095ea7b3";
 
 /**
  * Decide a `signTransaction` request: target + selector must be allowlisted;
- * an `approve` on the settlement token counts its amount (and its spender
+ * an `approve` on the denomination counts its amount (and its spender
  * must itself be an allowlisted contract); a payable `value` counts against
  * the native ceiling. Contract creation (`to` absent) is refused.
  */
@@ -200,7 +200,7 @@ export interface SimulationOutcome {
     /** The `eth_call` outcome — a revert refuses the signature. */
     reverted: boolean;
     revertReason?: string;
-    /** Signed settlement-token delta for the wallet when the RPC could trace
+    /** Signed denomination delta for the wallet when the RPC could trace
      *  it (negative = outflow); undefined when tracing is unsupported. */
     tokenDelta?: bigint;
 }

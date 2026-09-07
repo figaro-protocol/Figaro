@@ -20,7 +20,7 @@ export type TruthBoundary =
  *  for every consumer that explains a projection's guarantee. */
 export const TRUTH_BOUNDARY_GLOSS: Record<TruthBoundary, string> = {
     "protocol-enforced":
-        "every row is economically backed by the kernel — bonds locked at commit, payouts at resolve — tamper-proof by design (the Process and Settlement graphs).",
+        "every row is economically backed by the kernel — bonds locked at commit, payouts at resolve — tamper-proof by design (the Process and Resolution graphs).",
     "institution-declared":
         "the runtime encodes it, the protocol never validates it; bonding pressure incentivizes accuracy (declared agreement-body data — e.g. a geohash field's substance).",
     "protocol-derived":

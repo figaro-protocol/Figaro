@@ -184,7 +184,7 @@ test("the graph inventory is a CENSUS of what the corpus holds, each with its bo
     assert.equal(inv.composition[0].venueLegsFolded, 0, "no venue events folded ⇒ no venue edges invented");
 });
 
-test("the settlement chain reports the kernel's own arithmetic, per order", () => {
+test("the resolution chain reports the kernel's own arithmetic, per order", () => {
     const story = dealStory(fixtureCorpus(), PROCESS);
     assert.equal(story.found, true);
     assert.equal(story.settlement.truthBoundary, "protocol-enforced");
@@ -215,7 +215,7 @@ test("deal-story carries recovered substance FRAMED, and says so when it has non
 test("an absent process is ABSENCE with its two live possibilities, never 'it did not happen'", () => {
     const story = dealStory(fixtureCorpus(), `0x${"99".repeat(32)}`);
     assert.equal(story.found, false);
-    assert.match(story.note, /batch-settled/);
+    assert.match(story.note, /batch-resolved/);
     assert.match(story.note, /outside the synced range/);
 });
 

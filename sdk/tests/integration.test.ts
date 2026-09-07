@@ -3,7 +3,7 @@
  * chain-touching Vitest file (skipIf-gated). It proves SDK ARTIFACTS survive
  * a real chain: a built+signed commitment is accepted by `commit`, events
  * fetch and reconstruct, and the reconstructed commitment resolves. It
- * asserts NO kernel math — bond/settlement amounts are Foundry/Certora-owned
+ * asserts NO kernel math — bond/resolution amounts are Foundry/Certora-owned
  * (K-1/2/3/6; SDK-mirror parity lives in the Foundry parity vectors), and
  * `calculateSettlement` is unit-tested in bonds.test.ts.
  *
@@ -367,7 +367,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
             expect(c - core0, "escrow holds both bonds in the quote's denomination").toBe(bonds.buyerBond + bonds.sellerBond);
         }
 
-        // ── 5. Resolve; settlement at the QUOTE — and the loser is
+        // ── 5. Resolve; resolution at the QUOTE — and the loser is
         //       bit-identically untouched. ──
         const events = await fetchCoreEvents(publicClient, addresses, 0n);
         const topology = new Topology();

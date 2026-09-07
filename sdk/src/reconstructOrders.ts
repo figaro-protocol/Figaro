@@ -361,7 +361,7 @@ function fillWalkField(
     return { ...clauses, [clauseId]: { ...clauses[clauseId], [field]: value } };
 }
 
-/** Write the process's settlement currency into the commerce section BEFORE
+/** Write the process's denomination into the commerce section BEFORE
  *  hashing, so the leaf every party signs never diverges from the commitment
  *  struct's `currency` field (docs/CLAUSES.md § "Every clause is a merkle
  *  leaf"). The commerce section is found the same way

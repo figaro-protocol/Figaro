@@ -184,7 +184,7 @@ export interface OfferPolicy {
  * With `specs` supplied, ALSO runs the merkle-leaf seam
  * (`assertAgreementSignable` — docs/CLAUSES.md § "Every clause is a merkle
  * leaf"): every section conforms to its clause spec, and the offer's
- * settlement-currency TERM (the commerce clause leaf, and any composed
+ * denomination TERM (the commerce clause leaf, and any composed
  * denomination pin) equals the currency the seller is about to bond against —
  * the commitment struct's `currency` field. This is off-chain validation run on the
  * SELLER's side of the handshake (the buyer-side builders —

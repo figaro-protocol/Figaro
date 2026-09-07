@@ -31,7 +31,7 @@ a permissionlessly-registered PRIVATE one, and positive-knowledge withholding
 is cold at pin time. That cold window is real on the RECEIVER re-pin leg: a
 seller re-pins an agreement it never composed (so never loaded the clause's
 spec through a disposition-aware input), and an offline-delivered payload fires
-the re-pin at app boot when the background spec loader has not settled. So the
+the re-pin at app boot when the background spec loader has not completed. So the
 CALLER must WARM the specs for the agreement's clauses before projecting (see
 <code>warmAgreementSpecs</code> in <code>agreementFetch.publishAgreement</code>); with the cache warm
 this fail-closed form is EXACT — private sections withheld, public sections

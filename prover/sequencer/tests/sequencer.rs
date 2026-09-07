@@ -383,7 +383,7 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
     ops.reverse(); // [Resolve, AttestAsBuyer, AttestAsSeller, Commit]
     let (valid, poison) =
         assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(ops));
-    assert_eq!(valid.len(), 2, "commit + resolve settle");
+    assert_eq!(valid.len(), 2, "commit + resolve are both valid");
     assert_eq!(poison.len(), 2, "both attests are dead-lettered");
     assert!(
         poison
@@ -634,7 +634,7 @@ async fn mempool_rejects_a_claim_with_no_clause_or_assembly() {
 }
 
 /// A batch carrying ONLY usage claims is a real state transition — the usage
-/// state rides the state root, so crediting an already-settled process moves
+/// state rides the state root, so crediting an already-resolved process moves
 /// the root without any kernel operation. The sequencer must be able to form
 /// such a batch, or a claim submitted after the last trade of a period would
 /// sit in the mempool forever waiting for an op that never comes.
@@ -642,7 +642,7 @@ async fn mempool_rejects_a_claim_with_no_clause_or_assembly() {
 async fn a_claims_only_batch_is_a_valid_state_transition() {
     let input = build_canonical_batch_input();
 
-    // Settle the process first, WITHOUT crediting it.
+    // Resolve the process first, WITHOUT crediting it.
     let ops_only = assembler::assemble_batch(
         CHAIN_ID,
         CORE,
@@ -736,7 +736,7 @@ async fn mempool_at_cap_evicts_the_newcomer() {
 
 #[tokio::test]
 async fn mempool_requeue_is_cap_exempt_and_restores_dedup() {
-    // Acknowledged ops re-queued after a transient settlement failure must
+    // Acknowledged ops re-queued after a transient resolution failure must
     // come back even at cap — and stay deduplicated against resubmission.
     let mp = Mempool::with_caps(CHAIN_ID, CORE, 1, 1);
     let ops = canonical_ops();
@@ -926,10 +926,10 @@ async fn e2e_http_submission_flows_into_formed_batch() {
 
 // ── Publication archive: retention ────────────────────────────────
 //
-// The kernel PUBLISHES what it settles; the batch verifier does not (its
+// The kernel PUBLISHES what it resolves; the batch verifier does not (its
 // public values carry no order hashes, its storage is a root and a count).
 // These tests hold the relay to the kernel's publication role: what a
-// batch settled must still be readable after the mempool that carried it
+// batch resolved must still be readable after the mempool that carried it
 // has been cleared, must be bounded, and must survive a restart.
 
 fn domain() -> B256 {
@@ -945,8 +945,8 @@ fn canonical_ids() -> (B256, B256) {
     derive_commitment_ids(&domain(), commitment)
 }
 
-/// Settle a batch the way the batch loop does — assemble, apply — and
-/// build the publication record for what it settled.
+/// Resolve a batch the way the batch loop does — assemble, apply — and
+/// build the publication record for what it resolved.
 fn settle_and_publish(number: u64, ops: Vec<KernelOp>, tx: Option<B256>) -> BatchRecord {
     let batch = assembler::assemble_batch(
         CHAIN_ID,
@@ -972,7 +972,7 @@ fn settle_and_publish(number: u64, ops: Vec<KernelOp>, tx: Option<B256>) -> Batc
     }
 }
 
-/// A settled batch that carried no trade — used to push the window along.
+/// A resolved batch that carried no trade — used to push the window along.
 fn filler_record(number: u64) -> BatchRecord {
     BatchRecord {
         batch: number,
@@ -998,7 +998,7 @@ fn temp_journal(tag: &str) -> std::path::PathBuf {
 #[tokio::test]
 async fn archive_retains_what_batch_assembly_clears() {
     // `Mempool::drain` clears the queue AND its dedup index at assembly —
-    // nothing about a settled order survives there. The archive is what
+    // nothing about a resolved order survives there. The archive is what
     // makes the batch universe readable afterwards.
     let mp = mempool();
     for op in canonical_ops() {
@@ -1092,7 +1092,7 @@ async fn archive_journal_survives_a_restart() {
     assert_eq!(
         view.commit.expect("commit leg").batch.settlement_tx,
         Some(tx),
-        "including which transaction settled it"
+        "including which transaction resolved it"
     );
     assert_eq!(
         reopened.last_batch().await,

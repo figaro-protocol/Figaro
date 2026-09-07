@@ -182,7 +182,7 @@ pub enum UsageClaimKind {
     Assembly,
 }
 
-/// A claim that one SETTLED order used one clause or assembly. The guest
+/// A claim that one RESOLVED order used one clause or assembly. The guest
 /// proves it against the batch's own post-state and the order's signed
 /// `agreement_hash`; nothing here is taken on the sequencer's word.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -206,7 +206,7 @@ pub struct UsageClaim {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UsageAccrual {
     pub clause_or_assembly: B256,
-    /// Distinct settled processes that used this clause or assembly (batch
+    /// Distinct resolved processes that used this clause or assembly (batch
     /// path).
     pub c: u64,
     /// Distinct staked sellers in this period (batch path).
@@ -227,9 +227,9 @@ pub struct UsageAccrual {
 /// — the same guarantee `UsageCounter.processCounted` gives the direct
 /// path, at zero on-chain storage.
 ///
-/// Guest-owned idempotence is SAFE because the two settlement universes
-/// are DISJOINT: a batch-settled process never acquires kernel status,
-/// and a kernel-settled one is never in a batch, so no process can be
+/// Guest-owned idempotence is SAFE because the two resolution universes
+/// are DISJOINT: a batch-resolved process never acquires kernel status,
+/// and a kernel-resolved one is never in a batch, so no process can be
 /// counted on both paths. Pairs MAY overlap across the two, which is
 /// exactly why the counter sums the two SCORES and never their
 /// components.
@@ -259,16 +259,16 @@ pub struct BatchInput {
     pub block_timestamp: u64,
     pub operations: Vec<KernelOp>,
     pub prev_state: KernelStateSnapshot,
-    /// Usage to credit for orders SETTLED IN THE BATCH PATH — including
+    /// Usage to credit for orders RESOLVED IN THE BATCH PATH — including
     /// orders resolved by this very batch, since the claims are proved
     /// against the post-state.
     pub usage_claims: Vec<UsageClaim>,
     /// The accrual period every claim in this batch lands in. The guest
     /// takes it on trust and COMMITS it; the on-chain verifier requires
-    /// it to equal `UsageCounter.currentPeriod()` at settlement, so the
+    /// it to equal `UsageCounter.currentPeriod()` at resolution, so the
     /// chain — never the sequencer's clock — decides which period a
     /// batch pays into. A batch proven just before a boundary and
-    /// settled just after is rejected and must be re-proven: loud, and
+    /// resolved just after is rejected and must be re-proven: loud, and
     /// far better than silently paying the wrong tranche.
     pub usage_period: u8,
     /// `figaro-assembly-provenance`'s clause key, the leaf key an
@@ -461,7 +461,7 @@ pub enum KernelError {
     /// Gate C: the derived content bytes do not hash to `content_ref`.
     ContentHashMismatch,
     // Usage accrual (the RPGF bridge)
-    /// Usage was claimed for an order the batch path has not settled.
+    /// Usage was claimed for an order the batch path has not resolved.
     /// Usage is what a FINISHED process leaves behind — the inverse of
     /// the attestation gate, exactly as on the direct path.
     UsageOrderNotResolved(B256),

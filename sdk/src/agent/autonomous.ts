@@ -66,7 +66,7 @@ export async function commit(
 }
 
 /**
- * Resolve a process (buyer-only). Settles all active orders atomically.
+ * Resolve a process (buyer-only). Resolves all active orders atomically.
  * Takes the original Commitment structs so the kernel can verify hashes.
  */
 export async function resolveProcess(
@@ -99,7 +99,7 @@ export async function resolveProcess(
     return { hash };
 }
 
-// ── Usage recording at settlement ───────────────────────────────────────────
+// ── Usage recording at resolution ───────────────────────────────────────────
 
 /** One resolved order's inputs for usage recording: the ORIGINAL commitment
  *  struct (the counter re-verifies it against the kernel) and its hydrated
@@ -124,8 +124,8 @@ export interface UsageRecordingReport {
 
 /**
  * Record direct-path usage for a just-resolved process — the headless twin of
- * the frontend's at-settlement recording, and the step the RPGF path depends
- * on: usage is recorded AT SETTLEMENT or the credit is deniable later
+ * the frontend's at-resolution recording, and the step the RPGF path depends
+ * on: usage is recorded AT RESOLUTION or the credit is deniable later
  * (docs/DESIGN_DECISIONS.md §21 — a seller can unstake, a period can close;
  * a deferred record is permanently refusable). A buyer agent that resolves
  * without calling this credits no clause author and no assembly designer.

@@ -8,7 +8,7 @@
  * Two ceilings the runtime (and any agent) asks about:
  *
  *   maxOrdersResolvablePerProcess(client)
- *     The cap on orders per process such that `resolveProcess` settles
+ *     The cap on orders per process such that `resolveProcess` resolves
  *     atomically under a single block's gas budget. A process grown past
  *     this cap can NEVER resolve — every bond in it is locked forever —
  *     so every client-side commit path must check it (the kernel cannot:
@@ -55,7 +55,7 @@ export interface ResolveCapReader extends BlockGasReader {
 // ── Empirical per-order constants (mirror test/kernel/GasCeilingTest.t.sol) ─
 
 /**
- * Per-order cost of settling one order during `resolveProcess`, measured on
+ * Per-order cost of resolving one order during `resolveProcess`, measured on
  * REAL Anvil transaction receipts (not estimated): resolveProcess over N orders
  * costs `38,000 + 23,000·N` gas. A resolve is its own transaction, so each
  * order's distinct `orderStatus`/balance slots pay COLD access — the all-in
@@ -208,7 +208,7 @@ export async function assertOrderFitsResolveCap(
     const { activeOrderCount, cap } = await readProcessResolveCapacity(client, core, processId);
     if (activeOrderCount + 1 > cap) {
         throw new Error(
-            `Process has ${activeOrderCount} active orders; this chain settles at most ${cap} ` +
+            `Process has ${activeOrderCount} active orders; this chain resolves at most ${cap} ` +
                 `in one atomic resolveProcess. Committing another order would make the process ` +
                 `permanently unresolvable — compose a new process instead.`,
         );

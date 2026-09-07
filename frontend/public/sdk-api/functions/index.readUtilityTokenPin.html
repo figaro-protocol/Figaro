@@ -21,7 +21,7 @@ clauses — the composed clause declaring <code>currency</code> as a DESIGNER FI
 (<code>block.design.fills</code>), with a well-formed value. The design-fill
 declaration is the whole routing rule, and it is what disambiguates the two
 clauses that legitimately carry a <code>currency</code> field: the commerce clause
-declares it as plain CONTENT (one order's settlement term, written at
+declares it as plain CONTENT (one order's resolution term, written at
 checkout) and is never a pin, while ANY clause — including one this code
 has never seen — declaring a <code>currency</code> design fill IS one. The pin
 survives the value-free template build and is part of the compositionHash:

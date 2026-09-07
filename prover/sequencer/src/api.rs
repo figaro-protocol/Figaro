@@ -4,7 +4,7 @@
 /// This is a PUBLIC, unauthenticated surface. It holds no keys and grants
 /// no privilege: it only relays signed submissions into the mempool, where
 /// admission runs the same EIP-712 recovery and witness gates the proof
-/// enforces, and republishes what it settled. Every failure is a structured
+/// enforces, and republishes what it resolved. Every failure is a structured
 /// `{ "error": … }` JSON body — never a panic, never a plaintext rejection.
 use axum::{
     extract::{
@@ -30,9 +30,9 @@ use figaro_kernel::types::{KernelOp, UsageClaim};
 pub struct AppState {
     pub mempool: Mempool,
     pub state_mirror: StateMirror,
-    /// What this relay has settled, kept so it can be read back.
+    /// What this relay has resolved, kept so it can be read back.
     pub archive: Archive,
-    /// Cumulative number of batches settled by this sequencer.
+    /// Cumulative number of batches resolved by this sequencer.
     pub batch_count: std::sync::Arc<tokio::sync::RwLock<u64>>,
     /// Cumulative failure facts — see `FailureLog`.
     pub failures: FailureLog,
@@ -41,8 +41,8 @@ pub struct AppState {
 /// Cumulative failure facts, surfaced on `/status` so a polling driver SEES a
 /// death instead of waiting out a batch that will never come (the 2026-08-20
 /// gap: ops were dead-lettered and every observer kept polling a surface that
-/// could not say so). Counts OPS dead-lettered — dropped without settling —
-/// whatever the path (deterministic settle revert, prove failure); the last
+/// could not say so). Counts OPS dead-lettered — dropped without resolving —
+/// whatever the path (deterministic resolve revert, prove failure); the last
 /// error is kept verbatim for the reader.
 #[derive(Clone, Default)]
 pub struct FailureLog {
@@ -113,7 +113,7 @@ pub struct StatusResponse {
     pub pending_ops: usize,
     pub pending_usage_claims: usize,
     pub batches_settled: u64,
-    /// Cumulative ops dropped without settling — a growing figure DURING a
+    /// Cumulative ops dropped without resolving — a growing figure DURING a
     /// wait means the wait is over, whatever `batches_settled` says.
     pub dead_lettered_ops: u64,
     /// The most recent dead-letter reason, verbatim; null while clean.
@@ -213,7 +213,7 @@ async fn submit_op(
     }
 }
 
-/// Submit an RPGF usage claim for an order the batch path has settled.
+/// Submit an RPGF usage claim for an order the batch path has resolved.
 /// Separate from `/submit` because a claim is not a kernel operation — it
 /// changes no kernel state and is applied against the batch's post-state.
 async fn submit_usage(
@@ -238,7 +238,7 @@ async fn submit_usage(
 }
 
 /// Liveness + bounded queue counts. Deliberately the ONLY info surface
-/// besides `/status`: settled state is read from the chain, not from a
+/// besides `/status`: resolved state is read from the chain, not from a
 /// relay.
 async fn health(State(state): State<AppState>) -> impl IntoResponse {
     Json(HealthResponse {
@@ -270,7 +270,7 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
 
 // ── Publication reads ────────────────────────────────────────────
 //
-// The batch path settles trade that `FigaroCore` would have PUBLISHED —
+// The batch path resolves trade that `FigaroCore` would have PUBLISHED —
 // the commitment struct, the seller and currency, the per-order and
 // per-process resolution facts, and the signatures that admitted it. The
 // verifier publishes none of that (its public values carry no order
@@ -303,7 +303,7 @@ fn parse_hash(route: &'static str, raw: &str) -> Result<B256, Response> {
 /// The absence message is deliberately explicit: this relay is one among
 /// any number, so "not here" never means "did not happen".
 const ABSENT: &str =
-    "not in this relay's archive — it may have been settled by another relay, settled directly \
+    "not in this relay's archive — it may have been resolved by another relay, resolved directly \
      against FigaroCore, or aged out of this relay's retention window (see /status)";
 
 async fn get_order(State(state): State<AppState>, Path(raw): Path<String>) -> Response {
@@ -328,7 +328,7 @@ async fn get_process(State(state): State<AppState>, Path(raw): Path<String>) -> 
     }
 }
 
-/// Bounded, cursor-paged replay of everything this relay has settled — the
+/// Bounded, cursor-paged replay of everything this relay has resolved — the
 /// batch universe's equivalent of walking the kernel's logs from a block.
 async fn get_batches(
     State(state): State<AppState>,

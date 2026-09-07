@@ -176,7 +176,7 @@ function startSequencer(
             // The registry addresses the usage-claim PRE-FILTER eth-calls
             // (excluded / live-deposit / live-stake gates). Left unset they
             // default to address(0), every read fails, and each claim is
-            // dropped "conservatively" — the batch settles with EMPTY accruals
+            // dropped "conservatively" — the batch resolves with EMPTY accruals
             // and the counter credits nothing, silently (056365a6).
             CLAUSE_REGISTRY_ADDRESS: registries.clauses,
             ASSEMBLY_REGISTRY_ADDRESS: registries.assemblies,
@@ -188,7 +188,7 @@ function startSequencer(
             // A fresh archive per run: the default path persists in the sdk/
             // cwd across runs, and a replayed journal re-admits operations
             // against the PREVIOUS run's (dead) contract addresses — the
-            // batch poisons and nothing settles.
+            // batch poisons and nothing resolves.
             ARCHIVE_PATH: `sequencer-archive-e2e-${process.pid}.jsonl`,
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT}`,
             BATCH_INTERVAL_SECS: "2",
@@ -428,7 +428,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             await publicClient.waitForTransactionReceipt({ hash: membersHash })
         ).contractAddress!;
 
-        // The counter counts a settled process only while its seller-of-record
+        // The counter counts a resolved process only while its seller-of-record
         // holds a LIVE MembersRegistry stake. Zero deposit here — the gate
         // under test is the stake's EXISTENCE, not its size.
         const registerHash = await sellerWallet.writeContract({
@@ -611,7 +611,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(hasBinary).toBe(true);
     });
 
-    it("full batch lifecycle: commit + witness attest settle, then resolve pays out", async () => {
+    it("full batch lifecycle: commit + witness attest resolve in a batch, then resolve pays out", async () => {
         if (!alive || !hasBinary) return;
 
         // ── 1. Build commitment ─────────────────────────────────
@@ -728,7 +728,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         );
         expect(typeof resolveResult.id).toBe("number");
 
-        // ── 5b. Claim the RPGF usage for the process this batch settles ──
+        // ── 5b. Claim the RPGF usage for the process this batch resolves ──
         // Claims apply against the batch's POST-state, so a claim for an order
         // resolved by this very batch is credited by it. The clause-or-assembly set and
         // the exclusion list are asked of the CHAIN, never assumed.
@@ -766,7 +766,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         // ── 5c. THE CHAIN FACT: the accrual landed on the COUNTER ──
         // Read from the counter's own storage — not from the sequencer's
         // report, and not from the verifier that claims to have written it.
-        // A batch can settle perfectly while crediting nothing, and that is
+        // A batch can resolve perfectly while crediting nothing, and that is
         // exactly the failure this bridge exists to prevent.
         const batchAccrual = (await publicClient.readContract({
             address: usageCounterAddress,
@@ -775,11 +775,11 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             args: [clauseKey, 0],
         })) as readonly [bigint, bigint, bigint];
 
-        expect(batchAccrual[0], "one distinct settled process").toBe(1n);
+        expect(batchAccrual[0], "one distinct resolved process").toBe(1n);
         expect(batchAccrual[1], "one distinct (buyer, seller) pair").toBe(1n);
         expect(batchAccrual[2], "and it is scored").toBeGreaterThan(0n);
 
-        // The reward reads the MERGED score; nothing settled on the direct
+        // The reward reads the MERGED score; nothing resolved on the direct
         // path, so here it equals the batch score alone.
         const merged = (await publicClient.readContract({
             address: usageCounterAddress,
@@ -812,7 +812,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(sellerFinal).toBe(3n * PAYMENT);
         expect(verifierFinal).toBe(0n);
 
-        // ── 7. State root advanced; both batches settled ────────
+        // ── 7. State root advanced; both batches resolved ────────
 
         const finalRoot = (await publicClient.readContract({
             address: batchVerifierAddress,

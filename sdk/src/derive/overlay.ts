@@ -24,7 +24,7 @@
  * telemetry, one registered yesterday — reads the same way from its own spec.
  *
  * Pure fold, no I/O: the caller fetches attestations (`fetchAttestationRecords`
- * folds BOTH settlement universes), recovers the content bytes OFF-CHAIN, and
+ * folds BOTH resolution universes), recovers the content bytes OFF-CHAIN, and
  * warms the SpecSource from ClauseRegistry → IPFS. The preimage is never in
  * calldata — `AttestationCoordinator` records only `contentRef =
  * keccak256(content)` — so recovery means resolving that fingerprint's own
@@ -59,7 +59,7 @@ export interface OverlayEntry {
     attester: Address;
     /** Opaque per-clause stage index — its meaning lives in the clause spec. */
     stage: number;
-    /** Which settlement universe emitted the anchor (direct = re-verifiable
+    /** Which resolution universe emitted the anchor (direct = re-verifiable
      *  from calldata, batch = proved once inside a batch). */
     universe: SettlementUniverse;
     blockNumber: number;

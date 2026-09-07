@@ -100,7 +100,7 @@ export interface UsageRecord {
     score: bigint;
 }
 
-/** One SETTLEMENT PATH's accrual for a clause or assembly in one period —
+/** One RESOLUTION PATH's accrual for a clause or assembly in one period —
  *  `UsageCounter.accrualOf` or `batchAccrualOf`. */
 export interface UsageAccrual {
     c: bigint;
@@ -122,10 +122,10 @@ export interface BatchUsageRecord {
     score: bigint;
 }
 
-/** A clause or assembly's accrual across BOTH settlement paths.
+/** A clause or assembly's accrual across BOTH resolution paths.
  *
- *  The two are kept apart on purpose. A batch-settled process never acquires
- *  kernel status and a kernel-settled one is never in a batch, so no PROCESS
+ *  The two are kept apart on purpose. A batch-resolved process never acquires
+ *  kernel status and a kernel-resolved one is never in a batch, so no PROCESS
  *  is ever counted twice — but the same SELLER may trade on both sides, and
  *  neither the chain nor this mirror holds the seller SETS needed to union
  *  them. Adding `d` to `d` would therefore pay for breadth nobody had.
@@ -360,7 +360,7 @@ export interface UsageClaimContext {
 }
 
 /**
- * Build every usage claim a settled batch order supports.
+ * Build every usage claim a resolved batch order supports.
  *
  * PURE — takes the chain facts as input so it can be tested and reasoned about
  * without a client. `fetchUsageClaimContext` gets them.
@@ -370,7 +370,7 @@ export interface UsageClaimContext {
  *  - the CLAUSE leg emits one claim per agreement section, minus the excluded
  *    ones. Dropping them is mandatory, not an optimisation: an excluded
  *    clause or assembly reverts `applyBatchAccrual` and takes the ENTIRE BATCH with it,
- *    including every other party's settlement.
+ *    including every other party's resolution.
  *  - the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the
  *    clause leg dropping things. `figaro-assembly-provenance` is itself
  *    excluded — it rides every assembly-composed process, so scoring it would
@@ -419,7 +419,7 @@ export function buildUsageClaims(
         // compositionHash cannot be recovered and the designer cannot be
         // credited from this agreement alone. Silently skipped rather than
         // thrown: the clause claims are still valid and the batch should still
-        // settle. (Provenance is public by construction today, so this is a
+        // resolve. (Provenance is public by construction today, so this is a
         // guard against a future disposition change, not a live case.)
     }
 

@@ -58,7 +58,7 @@ export interface ProjectionHints {
     scope?: string;
     /** The spec's `block.design.fills` — the content fields (by name) the
      *  DESIGNER authors into the template (the tailoring: a pinned consent
-     *  document, a pinned settlement token); their values survive into the
+     *  document, a pinned denomination); their values survive into the
      *  published template. Absent/empty = the designer only selects the
      *  clause. */
     designFills?: readonly string[];
@@ -132,7 +132,7 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
 /** Whether a spec declares `fieldName` as PLAIN CONTENT — declared, and NOT a
  *  designer fill (`block.design.fills`). The disambiguating half of
  *  `specDeclaresField` for a field name two clauses legitimately share: an
- *  order's settlement `currency` is plain content on the commerce clause
+ *  order's denomination `currency` is plain content on the commerce clause
  *  (written at checkout, one term of one order), and a DESIGNER FILL on a
  *  denomination-pin clause (authored into the template, a term of the
  *  composition). Same field name, two different terms — so surfaces that mean
@@ -176,7 +176,7 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
  *  is cold at pin time. That cold window is real on the RECEIVER re-pin leg: a
  *  seller re-pins an agreement it never composed (so never loaded the clause's
  *  spec through a disposition-aware input), and an offline-delivered payload fires
- *  the re-pin at app boot when the background spec loader has not settled. So the
+ *  the re-pin at app boot when the background spec loader has not completed. So the
  *  CALLER must WARM the specs for the agreement's clauses before projecting (see
  *  `warmAgreementSpecs` in `agreementFetch.publishAgreement`); with the cache warm
  *  this fail-closed form is EXACT — private sections withheld, public sections
@@ -207,7 +207,7 @@ export function specIsMandatory(spec: ProjectionSpecView): boolean {
 
 /** The DESIGNER-authored field names of a clause (`block.design.fills`) —
  *  the tailoring that adapts a generic clause to a specific application
- *  (a pinned consent document, a pinned settlement token). The template
+ *  (a pinned consent document, a pinned denomination). The template
  *  keeps the designer's values for a clause declaring fills; every other
  *  clause's fields are transaction particulars, filled at checkout — the
  *  template carries `{}` for it. Empty for clauses the designer only
@@ -387,7 +387,7 @@ function bigintLeaf(section: AgreementSection | undefined, field: string): bigin
     return typeof value === "string" && /^\d+$/.test(value) ? BigInt(value) : undefined;
 }
 
-/** The section carrying the ORDER's settlement currency: the composed clause
+/** The section carrying the ORDER's denomination: the composed clause
  *  declaring `payment` and declaring `currency` as plain content. Spec-routed,
  *  naming no clause — a second commerce clause anyone registers participates
  *  identically, and a denomination pin (whose `currency` is a designer fill)
@@ -419,7 +419,7 @@ function currencyPinSection(
  * (buyer before initiating, seller before counter-signing) so neither party
  * signs an invalid agreement. Three checks: every present section conforms to
  * its clause spec (validateContent; process-log clauses are presence-markers,
- * skipped); the settlement currency AND payment the parties are about to sign
+ * skipped); the denomination AND payment the parties are about to sign
  * as TERMS equal the ones they are about to sign as EXECUTION data
  * (leaf == struct for both mirrored fields, and where a denomination pin is
  * composed, pin == leaf); and the `agreementHash` about to be signed equals
@@ -462,7 +462,7 @@ export function validateCommitmentAgreement(
         }
     }
 
-    // The settlement-currency chain: pin (when composed) == commerce leaf ==
+    // The denomination chain: pin (when composed) == commerce leaf ==
     // commitment struct. A missing or malformed leaf on a composed commerce
     // clause is already reported above (the field is required by its spec), so
     // there is nothing extra to say here — this compares the values that ARE
@@ -473,7 +473,7 @@ export function validateCommitmentAgreement(
         issues.push({
             clause: leafSection.clause,
             path: "currency",
-            message: `the signed term names ${leaf} as the settlement currency; the commitment currency ${struct.currency} contradicts it`,
+            message: `the signed term names ${leaf} as the denomination; the commitment currency ${struct.currency} contradicts it`,
         });
     }
     // The payment mirror, from the SAME section: the commerce clause's
@@ -532,7 +532,7 @@ export function validateCommitmentAgreement(
  * The ONE off-chain validation thrower every signature routes through — buyer sign, seller
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
  * path signs an agreement whose sections violate their clause specs, whose
- * settlement currency or payment differs between the signed term and the
+ * denomination or payment differs between the signed term and the
  * signed struct, or whose hash doesn't match its recomputed merkle root.
  *
  * `struct` is the mirrored pair of the commitment being signed (a full

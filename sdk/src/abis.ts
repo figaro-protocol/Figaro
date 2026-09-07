@@ -60,7 +60,7 @@ export const CORE_ABI = parseAbi([
     "error InvalidRootCumulativeValue()",
     "error ProcessAlreadyResolved()",
 
-    // ── Settlement-token errors (ERC-6093, OpenZeppelin ERC-20) ──────
+    // ── Denomination-token errors (ERC-6093, OpenZeppelin ERC-20) ──────
     // Not kernel errors: the kernel pulls bonds with safeTransferFrom, so a
     // shortfall reverts inside the token contract and its selector bubbles
     // up through the kernel call. Carried here so viem decodes e.g.
@@ -339,7 +339,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // fully determined by `compositionHash`, so the contract derives it. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
-// BATCH-SETTLED trade never touches the kernel, so it can never travel that
+// BATCH-RESOLVED trade never touches the kernel, so it can never travel that
 // path. It arrives instead through `applyBatchAccrual`, which only
 // FigaroBatchVerifier may call and only with numbers an SP1 proof committed.
 // Its accrual is kept in a SEPARATE slot (`batchAccrualOf`) and merged by
@@ -436,16 +436,16 @@ export const RPGF_MINTER_ABI = parseAbi([
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
-// The batch-settlement verifier (proof-based scaling). settleBatch carries the
+// The batch-resolution verifier (proof-based scaling). settleBatch carries the
 // proof, the 8-word public values, net positions, the event data — the
 // attestations to re-emit plus the (clause key → witness-spec hash) bindings
-// the contract checks against ClauseRegistry.contentHashOf before settling —
+// the contract checks against ClauseRegistry.contentHashOf before resolving —
 // and the RPGF usage accrual, which it forwards to UsageCounter. A batch that
 // credits no usage passes empty arrays; that call is a no-op, which is what
-// lets trade keep settling after the reward's last period closes.
+// lets trade keep resolving after the reward's last period closes.
 
 export const BATCH_VERIFIER_ABI = parseAbi([
-    // ── Batch settlement ────────────────────────────────────────────
+    // ── Batch resolution ────────────────────────────────────────────
     "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceClause, (bytes32 clauseOrAssembly, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
 
     // ── Views ────────────────────────────────────────────────────────
@@ -461,7 +461,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 
-    // ── Errors (settlement-reachable; constructor guards omitted) ────
+    // ── Errors (resolution-reachable; constructor guards omitted) ────
     "error StateRootMismatch(bytes32 expected, bytes32 actual)",
     "error ChainIdMismatch(uint64 expected, uint64 actual)",
     "error VerifyingContractMismatch(address expected, address actual)",

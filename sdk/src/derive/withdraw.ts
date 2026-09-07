@@ -68,7 +68,7 @@ export interface InFlightOrderRef {
  * Every in-flight order (committed, its process not yet resolved) from a batch
  * of reconstructed core events. Reuses `Topology`, the one reconstruction path —
  * a process leaves the active set on `ProcessResolved`, and the kernel's atomic
- * resolution settles all of a process's orders together, so an active process's
+ * resolution resolves all of a process's orders together, so an active process's
  * orders are exactly the live commitments.
  */
 export function deriveInFlightOrders(events: CoreEvents): InFlightOrderRef[] {
@@ -122,7 +122,7 @@ function gate(inFlightCount: number, unverifiedCount: number): WithdrawGate {
  * order is a distinct live commitment bound to the clause. Version-agnostic by
  * design: withdrawing a registration de-surfaces the clause for NEW
  * compositions regardless of which live version an in-flight deal pinned, and a
- * stake is reclaimable only once every deal naming that clause id has settled.
+ * stake is reclaimable only once every deal naming that clause id has resolved.
  */
 export function deriveClauseWithdrawGate(
     clauseId: string,

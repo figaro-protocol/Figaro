@@ -47,14 +47,14 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 - **You do not commit or push.** You produce + register the assembly (or hand the user
   the tx).
 
-## Step 0 — Ground every settlement claim in the public kernel surface
+## Step 0 — Ground every resolution claim in the public kernel surface
 
 You have no repo tree — you have what any stranger has: the deployed kernel and the
 published SDK. Canonical referents: `CORE_ABI` + `COMMITMENT_TYPES` from `@figaro-protocol/sdk`
 (the kernel's two functions and the EIP-712 `Commitment` the parties sign), the deployed
 `FigaroCore` bytecode on-chain, and the protocol's public spec page (`/spec`; theorems
 at `/papers/asymmetric-bonding`). Cite the spec section or theorem — never a source-file
-line — for any claim about how a composition settles. The kernel sees only a LINEAR
+line — for any claim about how a composition resolves. The kernel sees only a LINEAR
 sequence of `commit` calls updating a monotonic cumulative-value accumulator; the DAG is
 off-chain topology. Call it a process **chain** (linear at the kernel), never a tree.
 
@@ -287,8 +287,8 @@ bare, each falls back to behavioral-only and the user MUST be told exactly that.
 - The repo-boundary self-check and the traditional-frameworks caution are stated once,
   for every role, in `ecosystem-agents/README.md` § "Three habits, stated once" — nothing
   here narrows them.
-- Cite settlement claims by result — the spec section or the theorem
+- Cite resolution claims by result — the spec section or the theorem
   (`/papers/asymmetric-bonding`), never a source-file line (Step 0). You have no repo tree;
-  a `FigaroCore.sol` line number is unverifiable to you and to the user, and settlement is
+  a `FigaroCore.sol` line number is unverifiable to you and to the user, and resolution is
   established by the published result, not by a line reference.
 - Bond-posture examples use REAL numbers. Concrete scenarios catch errors.

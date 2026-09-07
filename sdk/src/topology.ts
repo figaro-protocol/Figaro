@@ -11,7 +11,7 @@
  * Topological order of `ids` — every node after all its in-set parents.
  * Parents outside `ids` and self-parents are ignored. Stable: ready nodes emit
  * in input order. `onCycle`: "throw" rejects a cyclic topology (commit-path
- * guard); "break" emits unsettled nodes in input order (display degrades).
+ * guard); "break" emits unplaced nodes in input order (display degrades).
  */
 export function topologicalOrder(
     ids: string[],
@@ -46,7 +46,7 @@ export function topologicalOrder(
  * shipped UI's (the frontend draft-depth derivation). Parents outside `ids`
  * and self-parents are ignored. A cyclic topology degrades via
  * `topologicalOrder`'s "break" mode: nodes on a cycle take depth from
- * whichever parents settled before them.
+ * whichever parents were placed before them.
  */
 export function depthsOverParents(
     ids: string[],

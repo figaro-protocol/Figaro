@@ -370,13 +370,13 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
     it("without specs the contradiction is invisible; with specs validateDraft refuses it", async () => {
         const draft = await mismatchedDraft(COURIER_A.address);
         expect(validateDraft(draft, COURIER_A.address).ok).toBe(true);
-        expect(validateDraft(draft, COURIER_A.address, undefined, SPECS).reason).toMatch(/settlement currency/i);
+        expect(validateDraft(draft, COURIER_A.address, undefined, SPECS).reason).toMatch(/denomination/i);
     });
 
     it("counterSignDraft THROWS on the contradiction when specs are supplied — the candidate never countersigns it", async () => {
         const draft = await mismatchedDraft(COURIER_A.address);
         await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS))
-            .rejects.toThrow(/settlement currency/i);
+            .rejects.toThrow(/denomination/i);
     });
 
     it("a clean draft still countersigns with the gate on (specs via the mountable handler too)", async () => {
@@ -402,6 +402,6 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
             overrides: fullCommerce(BAD_CURRENCY, "0"),
         });
         await expect(quoteDraft(courierAW, tampered, CTX, () => 700n, quotePolicy, SPECS))
-            .rejects.toThrow(/settlement currency/i);
+            .rejects.toThrow(/denomination/i);
     });
 });

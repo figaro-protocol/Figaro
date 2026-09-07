@@ -11,7 +11,7 @@
  *
  * Token acceptance is an identity declaration: each token signals which
  * value system the member coordinates with — legal-system alignment
- * (stablecoins), community membership (DAO tokens), settlement-layer
+ * (stablecoins), community membership (DAO tokens), resolution-layer
  * alignment (ETH), or value anchoring (commodity-backed). It is not a
  * financial-market position.
  *
@@ -43,7 +43,7 @@ import { isBytes32Hex } from "./types.js";
 // ── Dependent identity types ──────────────────────────────────────────────────
 
 /**
- * The tokens a member accepts for settlement. Token acceptance IS identity —
+ * The tokens a member accepts for resolution. Token acceptance IS identity —
  * the set of tokens a member bonds in defines their coordination surface and
  * value system. Distinct from the catalogue (the items they offer).
  */
@@ -135,11 +135,11 @@ export interface BuyerAssemblySubscription {
 /**
  * WHEN a disclosure-policy entry's data may be bought/seen.
  * All fields optional; an absent calendar means "immediately, once
- * offered". The canonical use is the settlement embargo: the data
- * opens N days after the process it belongs to settles.
+ * offered". The canonical use is the resolution embargo: the data
+ * opens N days after the process it belongs to resolves.
  */
 export interface DisclosureCalendar {
-    /** Days after the record's process settles before disclosure opens. */
+    /** Days after the record's process resolves before disclosure opens. */
     embargoDaysAfterSettlement?: number;
     /** ISO-8601 instant before which the class is not disclosable. */
     notBefore?: string;
@@ -217,11 +217,11 @@ export interface MemberProfileMetadata {
     /** External asset references (CSS, image base URI). Pinned on the profile. */
     assets?: MemberAssetReferences;
     /**
-     * The set of ERC-20s the member accepts for settlement. Token
+     * The set of ERC-20s the member accepts for resolution. Token
      * acceptance is an identity declaration: each token signals which
      * value system the member coordinates with — stablecoins for
      * legal-system alignment, DAO governance tokens for community
-     * membership in that DAO, ETH for settlement-layer alignment,
+     * membership in that DAO, ETH for resolution-layer alignment,
      * commodity-backed tokens for value anchoring. It is not a
      * financial-market position.
      */

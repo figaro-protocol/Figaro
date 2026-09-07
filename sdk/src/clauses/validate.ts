@@ -4,7 +4,7 @@
  * Call sites: frontend form gates, SDK agent-action preflight. This is the
  * off-chain reference implementation: the Rust prover mirror (`prover/clause`,
  * conformance-locked byte-for-byte) re-runs the same validation inside the SP1
- * proof on the batched settlement path. The DIRECT path validates no content
+ * proof on the batched resolution path. The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
  * agreement and content-hash-binds the evidence; well-formedness there is this
  * layer's job + a read-time concern. There are no per-clause validator

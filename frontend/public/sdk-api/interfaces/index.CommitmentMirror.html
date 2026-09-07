@@ -16,7 +16,7 @@
 (buyer before initiating, seller before counter-signing) so neither party
 signs an invalid agreement. Three checks: every present section conforms to
 its clause spec (validateContent; process-log clauses are presence-markers,
-skipped); the settlement currency AND payment the parties are about to sign
+skipped); the denomination AND payment the parties are about to sign
 as TERMS equal the ones they are about to sign as EXECUTION data
 (leaf == struct for both mirrored fields, and where a denomination pin is
 composed, pin == leaf); and the <code>agreementHash</code> about to be signed equals

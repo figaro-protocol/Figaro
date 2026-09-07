@@ -15,7 +15,7 @@ import { isAddressHex } from "../types.js";
 /** Value ceilings, all amounts as decimal strings in base units.
  *
  *  Token risk (approvals at their amount, bonds at the wallet's side of the
- *  2× math) counts against `perAction`/`perPeriod` in the settlement token's
+ *  2× math) counts against `perAction`/`perPeriod` in the denomination's
  *  base units. Native risk (a payable call's `value` — registry stakes)
  *  counts against `perActionNative`/`perPeriodNative` in wei; ABSENT means
  *  ZERO — a transaction carrying ETH is refused unless the policy grants a
@@ -42,7 +42,7 @@ export interface SignerPolicy {
     verifyingContracts: Address[];
     /** Transaction targets: address → allowed 4-byte selectors (lowercased). */
     contracts: Record<Address, Hex[]>;
-    /** The settlement token whose `approve` amounts are counted as risk. */
+    /** The denomination whose `approve` amounts are counted as risk. */
     token: Address;
     ceilings: SignerCeilings;
     /** Egress allowlist, consumed by the sandbox wrapper (validated here so

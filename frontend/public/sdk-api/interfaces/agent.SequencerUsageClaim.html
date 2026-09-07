@@ -12,10 +12,10 @@
 <li><a href="" aria-current="page">SequencerUsageClaim</a></li></ul>
 <h1>Interface SequencerUsageClaim</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>A claim that one SETTLED BATCH order used one clause or assembly — the wire form of the
+<div class="tsd-comment tsd-typography"><p>A claim that one RESOLVED BATCH order used one clause or assembly — the wire form of the
 Rust guest's <code>UsageClaim</code>. Build these with <code>buildUsageClaims</code> (rpgf), which
 knows which clauses or assemblies the counter excludes; never hand-roll one.</p>
-<p>Nothing here is trusted. The guest re-proves that the order settled and that
+<p>Nothing here is trusted. The guest re-proves that the order resolved and that
 the clause or assembly was in the signed agreement; the counter then applies the
 reward's own gates on chain. A claim is a REQUEST to be counted, never an
 assertion that counts.</p>

@@ -25,7 +25,7 @@ export interface TemplateAgreement {
      *  mandatory topology clause's `{ parentOrderHashes }` (root = [] — the
      *  DAG, the design itself) and clauses declaring `block.design.fills`
      *  (the designer's tailoring — a pinned consent document, a pinned
-     *  settlement token) whose values are the designer's fills.
+     *  denomination) whose values are the designer's fills.
      *  `buildAssemblyTemplate` (exported from the root `@figaro-protocol/sdk`; defined
      *  in `projection.ts`, not here) enforces this by construction. */
     clauses: Record<string, Record<string, unknown>>;

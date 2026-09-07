@@ -16,12 +16,12 @@
  *   composed from a clause or assembly, derived from chain + IPFS
  * - Truth boundaries: the trust labels of docs/DATA_LAYER.md — every
  *   graph projection names the guarantee behind its rows
- * - Base graphs: Process + Settlement projections (protocol-enforced), pure
+ * - Base graphs: Process + Resolution projections (protocol-enforced), pure
  *   folds over already-fetched core events
  * - Overlays: per-clause-family attestation streams (the open graph class),
  *   spec-decoded via the caller's SpecSource, fingerprint-only on absence
  * - Composition: venue-parameterized fifth-noun projections — the value-flow
- *   graph over settlement denominations + caller-parsed swap legs
+ *   graph over resolution denominations + caller-parsed swap legs
  * - Queries: market-shape and wallet-record, thin folds over the graphs
  */
 
@@ -67,7 +67,7 @@ export {
 export { TRUTH_BOUNDARY_GLOSS } from "./truth.js";
 export type { TruthBoundary } from "./truth.js";
 
-// ── Base-graph projections (Process + Settlement) ───────────────────────────
+// ── Base-graph projections (Process + Resolution) ───────────────────────────
 
 export { projectProcessGraph, projectSettlementGraph } from "./graphs.js";
 export type {

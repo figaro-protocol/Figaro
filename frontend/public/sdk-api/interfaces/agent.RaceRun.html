@@ -15,7 +15,7 @@
 <div class="tsd-comment tsd-typography"><p>A live race. <code>finish</code> closes it NOW (explicit pick by candidate address,
 or cheapest verified — idempotent; late replies are ignored); <code>done</code>
 resolves at finish, which happens automatically once every candidate has
-settled (replied, declined, or errored).</p>
+completed (replied, declined, or errored).</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">RaceRun</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#done">done</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="agent.RaceOutcome.html" class="tsd-signature-type tsd-kind-interface">RaceOutcome</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#finish-1">finish</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pick</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="agent.RaceOutcome.html" class="tsd-signature-type tsd-kind-interface">RaceOutcome</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>

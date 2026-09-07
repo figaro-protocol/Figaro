@@ -23,7 +23,7 @@ export function calculateBonds(cumulativeValue: bigint, payment: bigint): BondBr
 }
 
 /**
- * Calculate settlement payouts after resolveProcess.
+ * Calculate resolution payouts after resolveProcess.
  *
  * At resolution:
  *   sellerPayout = payment + sellerBond
@@ -80,7 +80,7 @@ export function calculateRootApproval(payment: bigint): {
  *                                   previous order's bond)
  *
  * Approving less than these amounts makes `commit` revert inside the
- * settlement token with `ERC20InsufficientAllowance` (carried in
+ * denomination with `ERC20InsufficientAllowance` (carried in
  * `CORE_ABI` so the revert decodes by name).
  */
 export function calculateSubOrderApproval(
@@ -108,7 +108,7 @@ export function calculateSubOrderApproval(
  * for the order actually being committed (`calculateRootApproval` or
  * `calculateSubOrderApproval`). Throws before the transaction is sent
  * rather than letting an under-approval surface later as an opaque
- * `ERC20InsufficientAllowance` revert from inside the settlement token.
+ * `ERC20InsufficientAllowance` revert from inside the denomination.
  */
 export function assertApprovalCoversBond(
     approval: { buyerApproval: bigint; sellerApproval: bigint },

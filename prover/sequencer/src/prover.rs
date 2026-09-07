@@ -34,7 +34,7 @@ pub struct ProveResult {
 /// prover; `network` submits the same program + inputs to the Succinct Prover
 /// Network (`NETWORK_PRIVATE_KEY` = the requester key that pays, in PROVE) and
 /// receives the proof — a LIVENESS dependency only: the proof still verifies
-/// against the program vkey, so no prover can forge a settling proof. Whoever
+/// against the program vkey, so no prover can forge a resolving proof. Whoever
 /// requests a proof pays for it (the relay operator) — never the protocol,
 /// never its users. The proof FORM is `SP1_PROOF_MODE`:
 /// `groth16` (default) or `plonk` — it must match the SP1 verifier gateway

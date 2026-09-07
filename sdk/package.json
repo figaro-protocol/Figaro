@@ -84,7 +84,7 @@
         "sdk",
         "eip-712",
         "bonding",
-        "settlement",
+        "resolution",
         "agent"
     ],
     "engines": {

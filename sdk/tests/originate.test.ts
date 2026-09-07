@@ -215,7 +215,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         expect(validateOffer(offer, SELLER.address, undefined, SPECS).ok).toBe(false);
         await expect(
             counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS),
-        ).rejects.toThrow(/settlement currency/i);
+        ).rejects.toThrow(/denomination/i);
     });
 
     it("buildBuyerOffer with specs refuses to sign the same contradiction BUYER-side", async () => {
@@ -231,7 +231,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
                 },
             },
         };
-        await expect(buildBuyerOffer(buyerW, mismatched)).rejects.toThrow(/settlement currency/i);
+        await expect(buildBuyerOffer(buyerW, mismatched)).rejects.toThrow(/denomination/i);
         // A clean offer still signs with the gate on.
         const offer = await buildBuyerOffer(buyerW, { ...offerParams(), specs: SPECS });
         expect(offer.buyerSig).toBeDefined();

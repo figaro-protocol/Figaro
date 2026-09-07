@@ -67,7 +67,7 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(parseClauseSpec(commerceSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-commerce accepts an order with its settlement currency and line items", () => {
+    it("figaro-commerce accepts an order with its denomination and line items", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const ok = validateContent({
@@ -78,7 +78,7 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(ok.ok).toBe(true);
     });
 
-    it("figaro-commerce requires the currency — the settlement token is a TERM, a merkle leaf like every other term", () => {
+    it("figaro-commerce requires the currency — the denomination is a TERM, a merkle leaf like every other term", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // The kernel commitment's currency field MIRRORS this leaf; a term

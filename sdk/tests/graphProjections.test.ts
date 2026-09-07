@@ -101,7 +101,7 @@ describe("projectSettlementGraph", () => {
         expect(entry.state).toBe(OrderState.Active);
         expect(entry.sellerPayout).toBeNull();
         expect(entry.buyerPayout).toBeNull();
-        // The invariant-derived settlement is still stated.
+        // The invariant-derived resolution is still stated.
         expect(entry.atResolution.netTransfer).toBe(100n);
     });
 });
@@ -109,7 +109,7 @@ describe("projectSettlementGraph", () => {
 // ── Value flow (composition) ────────────────────────────────────────────────
 
 describe("projectValueFlow", () => {
-    it("builds token nodes from settled denominations and edges from caller-supplied venue logs", () => {
+    it("builds token nodes from resolved denominations and edges from caller-supplied venue logs", () => {
         const settlement = projectSettlementGraph(
             mkEvents({
                 orderCommitted: [
@@ -147,10 +147,10 @@ describe("projectValueFlow", () => {
         expect(nodeA.pinned).toBe(false);
 
         const nodeB = graph.nodes.find((n) => n.token === TOKEN2)!;
-        expect(nodeB.settledVolume).toBe(0n); // committed, not settled
+        expect(nodeB.settledVolume).toBe(0n); // committed, not resolved
         expect(nodeB.pinned).toBe(true);
 
-        // One protocol-enforced settlement edge (only the settled denomination)...
+        // One protocol-enforced resolution edge (only the resolved denomination)...
         const settlementEdges = graph.edges.filter((e) => e.basis === "protocol-enforced");
         expect(settlementEdges).toEqual([
             { basis: "protocol-enforced", token: TOKEN, settledOrderCount: 1, settledVolume: 100n },

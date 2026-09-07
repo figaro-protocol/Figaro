@@ -2,14 +2,14 @@
 
 The batch universe's public entry point: an HTTP relay that collects signed
 protocol operations, assembles them into batches, proves each batch with SP1,
-settles it against `FigaroBatchVerifier` — and **publishes what it settled**.
+resolves it against `FigaroBatchVerifier` — and **publishes what it resolved**.
 
 ## Trust model — relay, not authority
 
 `FigaroBatchVerifier.settleBatch` is **permissionless**: anyone can prove and
-settle a batch, so this sequencer is one relay among any number — run your
+resolve a batch, so this sequencer is one relay among any number — run your
 own. Its honest powers are censor-or-delay, never forge: the SP1 proof binds
-settlement to the EIP-712 structs both parties signed, and every admission
+resolution to the EIP-712 structs both parties signed, and every admission
 pre-check here (signature recovery, the kernel's witness gates) is the same
 code the proof enforces — the mempool can only reject earlier, never accept
 more. The endpoint holds no keys and grants no privilege; participants can
@@ -17,11 +17,11 @@ always fall back to direct `FigaroCore` submission.
 
 ### Publication inherits the same posture
 
-`FigaroCore` does two things for an order: it settles it, and it **publishes**
+`FigaroCore` does two things for an order: it resolves it, and it **publishes**
 it. `OrderCommitted` / `OrderSeller` / `OrderCurrency` carry the whole
 commitment struct; `OrderResolved` / `ProcessResolved` carry the resolution
 facts; and the two signatures that admitted the order sit in the commit
-transaction's calldata, readable by anyone. The batch path settles the same
+transaction's calldata, readable by anyone. The batch path resolves the same
 trade but publishes none of it — `FigaroBatchVerifier`'s public values carry
 no order hashes, its storage is `stateRoot` + `batchCount`, and `BatchSettled`
 names no order — so a batched order's buyer, seller, payment and
@@ -106,7 +106,7 @@ count, proof generation time, and proof size for your machine. Without
 (or `cuda`) is what this sequencer runs itself, entirely locally — no
 external proving service is wired into this codebase today. Because
 `FigaroBatchVerifier.settleBatch` is permissionless, a proof produced any
-other way — bigger hardware, or a third-party SP1 proving network — settles
+other way — bigger hardware, or a third-party SP1 proving network — resolves
 identically; this crate's local flow is one way to produce a proof, not the
 only one.
 
@@ -176,7 +176,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; all three zero disables the filter |
 | `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves |
 | `SP1_PROOF_MODE` | `groth16` | `groth16` or `plonk` — the on-chain proof form; must match the deployed gateway |
-| `SEQUENCER_PRIVATE_KEY` | anvil account 0 | Settlement tx signer (pays gas; no protocol privilege) |
+| `SEQUENCER_PRIVATE_KEY` | anvil account 0 | Resolution tx signer (pays gas; no protocol privilege) |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
 | `MAX_BATCH_OPS` | `100` | Max ops per assembled batch |
@@ -184,7 +184,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
 | `ARCHIVE_PATH` | `sequencer-archive.jsonl` | Publication journal; empty = in-memory only |
-| `ARCHIVE_MAX_BATCHES` | `10000` | Retained settled batches (see Publication bounds) |
+| `ARCHIVE_MAX_BATCHES` | `10000` | Retained resolved batches (see Publication bounds) |
 
 ## HTTP API
 
@@ -218,9 +218,9 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   `{ "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
   "dead_lettered_ops", "last_settle_error",
   "archive": { "first_batch", "last_batch", "retained_batches", "max_batches" } }`.
-  `dead_lettered_ops` counts ops dropped without settling — a GROWING figure
+  `dead_lettered_ops` counts ops dropped without resolving — a GROWING figure
   during a wait means the wait is over, whatever `batches_settled` says; poll
-  it beside the settle count. `last_settle_error` carries the most recent
+  it beside the resolve count. `last_settle_error` carries the most recent
   reason verbatim (null while clean).
   Read `archive` BEFORE replaying: a cursor older than `first_batch` means this
   relay has already dropped the gap.
@@ -259,7 +259,7 @@ serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
   order's own `resolution` is its `OrderResolved` equivalent. `400` / `404`
   as above.
 - `GET /batches?from=<n>&limit=<n>` — bounded replay of everything this relay
-  has settled, for an indexer walking the batch universe the way it walks
+  has resolved, for an indexer walking the batch universe the way it walks
   kernel logs:
   `{ "batches": [ { "batch", "chain_id", "verifying_contract",
   "prev_state_root", "new_state_root", "settlement_tx", "block_timestamp",
@@ -269,7 +269,7 @@ serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
   **clamped to 50** whatever the caller asks. Follow `next_cursor` until it is
   `null`. `400` on a non-numeric parameter.
 
-`batch` numbers are **this relay's own settled sequence** — a cursor, not a
+`batch` numbers are **this relay's own resolved sequence** — a cursor, not a
 protocol identity. Another relay numbers its batches differently; the
 chain-anchored identity is `new_state_root` + `settlement_tx`. The number
 resumes from the archive across a restart, so it never collides with what was
@@ -280,22 +280,22 @@ already published.
 Admission is bounded (`MEMPOOL_MAX_OPS` / `MEMPOOL_MAX_USAGE_CLAIMS`).
 Eviction policy is deterministic: **at capacity the arriving submission is
 the one refused** (`503`). An acknowledged submission is never SILENTLY
-dropped: it stays queued until a batch drains it, and a settle failure is
+dropped: it stays queued until a batch drains it, and a resolve failure is
 CLASSIFIED — transport trouble re-queues the ops (cap-exempt) for the next
 tick, while a **deterministic revert** (the chain evaluated the transaction
 and refused — an `execution reverted` on send, or a mined-but-reverted
 receipt) **dead-letters them immediately** rather than re-proving the
 identical batch for the same refusal, and the drop surfaces on `/status`
 (`dead_lettered_ops`, `last_settle_error`). Idempotency spans the pending
-window; after a batch settles, a re-submission is dropped by the stateful
+window; after a batch resolves, a re-submission is dropped by the stateful
 assembler filter instead.
 
 ## Publication bounds
 
 `Mempool::drain` clears the queue and its dedup index at assembly — nothing
-about a settled order survives there — so retention is its own thing.
+about a resolved order survives there — so retention is its own thing.
 
-- **In memory**: at most `ARCHIVE_MAX_BATCHES` settled batches, oldest evicted
+- **In memory**: at most `ARCHIVE_MAX_BATCHES` resolved batches, oldest evicted
   first, indices dropped with them. A public relay must not grow without
   limit; `/status` publishes the window so eviction is visible rather than
   silent.
@@ -309,5 +309,5 @@ about a settled order survives there — so retention is its own thing.
   window rather than per batch.
 - Set `ARCHIVE_PATH=` (empty) for an in-memory-only relay — it then answers for
   the process's lifetime and forgets on restart.
-- Publication **follows** settlement and never gates it: a journal write error
-  is logged and the batch stays settled and readable in memory.
+- Publication **follows** resolution and never gates it: a journal write error
+  is logged and the batch stays resolved and readable in memory.

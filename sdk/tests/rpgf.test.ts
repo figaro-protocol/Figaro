@@ -267,7 +267,7 @@ describe("computeUsageAccruals", () => {
         };
     }
 
-    it("folds batch-settled usage into the same period", () => {
+    it("folds batch-resolved usage into the same period", () => {
         const period = computeUsageAccruals([], [batchRecord(CLAUSE_A, 4n, 2n)], 1n).get(0)!;
         const entry = period.byClauseOrAssembly.get(CLAUSE_A)!;
         expect(entry.batch).toEqual({ c: 4n, d: 2n, score: usageScore(4n, 2n, 1n) });
@@ -276,7 +276,7 @@ describe("computeUsageAccruals", () => {
         expect(period.totalScore).toBe(usageScore(4n, 2n, 1n));
     });
 
-    // A reader folding only the direct stream misses every batch-settled
+    // A reader folding only the direct stream misses every batch-resolved
     // trade, which is precisely the gap the bridge closes. The mirror must
     // report the SAME total the chain's `totalScoreIn` holds.
     it("sums the two paths as scores, never as components", () => {
@@ -338,7 +338,7 @@ describe("computeUsageAccruals", () => {
         expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n));
     });
 
-    it("floors per settlement path — the universes never sum toward the floor", () => {
+    it("floors per resolution path — the universes never sum toward the floor", () => {
         // Two direct sellers + two batch sellers is four in total, but the
         // chain cannot union the sets, so neither path scores below 3 on its
         // own. Conservative by design, like the score merge itself.
@@ -507,7 +507,7 @@ describe("buildUsageClaims", () => {
     });
 
     // Not an optimisation. `applyBatchAccrual` reverts `ClauseOrAssemblyExcluded` and
-    // takes the ENTIRE batch with it — every other party's settlement included.
+    // takes the ENTIRE batch with it — every other party's resolution included.
     it("drops excluded clauses or assemblies, because one would revert the whole batch", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities, commerce]), {
             provenanceClause: PROVENANCE,
@@ -553,7 +553,7 @@ describe("buildUsageClaims", () => {
 
     // A content-withheld provenance section carries only `dataHash`, so the
     // compositionHash cannot be recovered. Skip the designer credit; do NOT
-    // throw — the clause claims are still valid and the batch must still settle.
+    // throw — the clause claims are still valid and the batch must still resolve.
     it("skips the assembly leg when provenance content is withheld, without failing the rest", () => {
         const withheld = {
             clause: "figaro-assembly-provenance",

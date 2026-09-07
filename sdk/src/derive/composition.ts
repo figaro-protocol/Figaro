@@ -11,10 +11,10 @@
  * transfers, ARE the trail.)
  *
  * The worked instance is the value-flow graph: nodes are tokens (the
- * denominations the settlement graph observed, plus caller-supplied utility-
+ * denominations the resolution graph observed, plus caller-supplied utility-
  * token pins read via `readUtilityTokenPin`, plus any tokens the venue legs
- * touch), edges are per-denomination settlements and per-venue swap legs.
- * Each edge names its own truth boundary: a settlement edge is
+ * touch), edges are per-denomination resolutions and per-venue swap legs.
+ * Each edge names its own truth boundary: a resolution edge is
  * protocol-enforced, a venue edge is composition-derived — true per the
  * composed contract's rules, outside the kernel's guarantees. The same
  * `VenueEvent` parameterization serves the multisender (fiscal-routing) and
@@ -56,7 +56,7 @@ export interface ValueFlowNode {
     /** Processes denominated in this token (every commitment signs its
      *  `currency`; a process is monotoken). */
     processCount: number;
-    /** Resolved orders settled in this denomination. */
+    /** Resolved orders resolved in this denomination. */
     settledOrderCount: number;
     /** Total value transferred at resolution in this denomination — the sum
      *  of resolved orders' payments (net transfer == payment). */
@@ -66,13 +66,13 @@ export interface ValueFlowNode {
     pinned: boolean;
 }
 
-/** A value-flow edge, discriminated by its truth boundary: settlement edges
+/** A value-flow edge, discriminated by its truth boundary: resolution edges
  *  aggregate the kernel's own per-denomination flow; venue edges aggregate a
  *  composed swap venue's legs between two denominations. */
 export type ValueFlowEdge =
     | {
           basis: "protocol-enforced";
-          /** The denomination this settlement flow moves in. */
+          /** The denomination this resolution flow moves in. */
           token: Address;
           settledOrderCount: number;
           settledVolume: bigint;
@@ -99,9 +99,9 @@ function addressKey(address: Address): string {
 }
 
 /**
- * Project the value-flow graph: fold the settlement graph's per-denomination
+ * Project the value-flow graph: fold the resolution graph's per-denomination
  * flows with caller-supplied swap-venue legs and utility-token pins. Nodes
- * cover every token any input names; a token with no settlements and no legs
+ * cover every token any input names; a token with no resolutions and no legs
  * but a pin still appears (the pin is a registered fact), with zero flow.
  */
 export function projectValueFlow(
@@ -120,7 +120,7 @@ export function projectValueFlow(
         return n;
     };
 
-    // Settlement flows per denomination (protocol-enforced).
+    // Resolution flows per denomination (protocol-enforced).
     const settlementEdges = new Map<string, ValueFlowEdge & { basis: "protocol-enforced" }>();
     for (const chain of settlement.chains.values()) {
         const n = node(chain.currency);

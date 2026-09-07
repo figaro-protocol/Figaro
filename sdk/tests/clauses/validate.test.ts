@@ -94,7 +94,7 @@ describe("validateContent — happy paths", () => {
         // A ReDoS-shaped pattern (nested quantifiers) is skipped → satisfied,
         // for both a would-match and a would-not-match input. The Rust prover
         // mirror (prover/clause conformance test) accepts the same cases, so
-        // the batch-settlement path stays conformant.
+        // the batch-resolution path stays conformant.
         const evil = specOf([{ name: "s", type: "string", required: true, pattern: "(a+)+$" }]);
         expect(validateContent({ s: "aaaa" }, evil).ok).toBe(true);
         expect(validateContent({ s: "a".repeat(40) }, evil).ok).toBe(true);

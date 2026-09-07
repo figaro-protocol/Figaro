@@ -439,7 +439,7 @@ export interface RaceOutcome {
 /** A live race. `finish` closes it NOW (explicit pick by candidate address,
  *  or cheapest verified — idempotent; late replies are ignored); `done`
  *  resolves at finish, which happens automatically once every candidate has
- *  settled (replied, declined, or errored). */
+ *  completed (replied, declined, or errored). */
 export interface RaceRun {
     finish(pick?: Address): RaceOutcome;
     done: Promise<RaceOutcome>;
@@ -459,9 +459,9 @@ export interface StartRaceOptions {
  * reply (exact match on the race leg, reconstruction on the quote leg), and
  * accumulate verified replies in arrival order — the selection tie-break.
  * One verified reply per candidate: a well-formed but unverifiable reply
- * settles (and thereby burns) that candidate's slot — a countersignature that
+ * completes (and thereby burns) that candidate's slot — a countersignature that
  * fails recovery is not a counterparty worth re-awaiting. Unreachable or
- * declining candidates settle silently; when every candidate has settled the
+ * declining candidates complete silently; when every candidate has completed the
  * race closes itself.
  */
 export function startRace(
@@ -508,7 +508,7 @@ export function startRace(
                 replies.push(entry);
                 opts.onReply?.(entry);
             } catch {
-                // Unreachable/refusing candidate — settles without a reply.
+                // Unreachable/refusing candidate — completes without a reply.
             } finally {
                 settle();
             }

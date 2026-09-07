@@ -38,7 +38,7 @@ export interface ChainShape {
     processCount: number;
 }
 
-/** Committed and settled value totals in one denomination. Volumes are kept
+/** Committed and resolved value totals in one denomination. Volumes are kept
  *  PER TOKEN — amounts in different denominations never sum. */
 export interface DenominationVolume {
     committed: bigint;
@@ -177,7 +177,7 @@ export function marketShape(
 // ── Wallet-record ───────────────────────────────────────────────────────────
 
 /** One wallet's public history, straight off the process graph. Reuses the
- *  graph's own `Process`/`Order` shapes — settlement outcomes ride along. */
+ *  graph's own `Process`/`Order` shapes — resolution outcomes ride along. */
 export interface WalletRecord {
     boundary: "protocol-enforced";
     wallet: Address;

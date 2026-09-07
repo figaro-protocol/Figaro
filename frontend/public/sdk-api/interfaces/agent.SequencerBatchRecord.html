@@ -12,7 +12,7 @@
 <li><a href="" aria-current="page">SequencerBatchRecord</a></li></ul>
 <h1>Interface SequencerBatchRecord</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>Where a published fact was settled, so the reader can anchor it on chain.
+<div class="tsd-comment tsd-typography"><p>Where a published fact was resolved, so the reader can anchor it on chain.
 <code>batch</code> is THIS relay's own sequence number — a cursor, not a protocol
 identity; another relay numbers differently. The chain-anchored identity is
 <code>new_state_root</code> + <code>settlement_tx</code>.</p>
@@ -89,7 +89,7 @@ identity; another relay numbers differently. The chain-anchored identity is
 <section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="settlement_tx"><span>settlement_<wbr/>tx</span><a href="#settlement_tx" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">settlement_tx</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></div>
-<div class="tsd-comment tsd-typography"><p>null on a dry run: the batch proved but was never settled on chain.</p>
+<div class="tsd-comment tsd-typography"><p>null on a dry run: the batch proved but was never resolved on chain.</p>
 </div><aside class="tsd-sources">
 <p>Inherited from <a href="agent.SequencerBatchRef.html">SequencerBatchRef</a>.<a href="agent.SequencerBatchRef.html#settlement_tx">settlement_tx</a></p>
 <ul>

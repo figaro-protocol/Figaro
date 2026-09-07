@@ -2,7 +2,7 @@
  * @figaro-protocol/sdk/agent — Sequencer Client
  *
  * Submits signed kernel operations to the off-chain batch sequencer
- * for proof-based settlement via FigaroBatchVerifier.
+ * for proof-based resolution via FigaroBatchVerifier.
  *
  * The sequencer is a coordination convenience, not a trust assumption.
  * All operations require valid EIP-712 signatures — the sequencer
@@ -15,9 +15,9 @@
  *
  * Every batched attestation carries the full witness payload: the
  * clause's canonical spec bytes (bound on-chain to
- * `ClauseRegistry.contentHashOf` at settlement), the content, the
+ * `ClauseRegistry.contentHashOf` at resolution), the content, the
  * committed sectionData, and the agreement inclusion proof. The batched
- * path validates everything in-proof or the batch cannot settle.
+ * path validates everything in-proof or the batch cannot resolve.
  */
 
 import type { Hex, Address, Commitment } from "../types.js";
@@ -99,11 +99,11 @@ export interface SequencerCommitment {
 }
 
 /**
- * A claim that one SETTLED BATCH order used one clause or assembly — the wire form of the
+ * A claim that one RESOLVED BATCH order used one clause or assembly — the wire form of the
  * Rust guest's `UsageClaim`. Build these with `buildUsageClaims` (rpgf), which
  * knows which clauses or assemblies the counter excludes; never hand-roll one.
  *
- * Nothing here is trusted. The guest re-proves that the order settled and that
+ * Nothing here is trusted. The guest re-proves that the order resolved and that
  * the clause or assembly was in the signed agreement; the counter then applies the
  * reward's own gates on chain. A claim is a REQUEST to be counted, never an
  * assertion that counts.
@@ -141,8 +141,8 @@ export interface SequencerStatus {
     /** Usage claims waiting to ride the next batch. */
     pending_usage_claims: number;
     batches_settled: number;
-    /** Cumulative ops the relay dropped without settling (deterministic
-     *  settle revert, prove failure). A GROWING figure during a wait means
+    /** Cumulative ops the relay dropped without resolving (deterministic
+     *  resolve revert, prove failure). A GROWING figure during a wait means
      *  the wait is over, whatever `batches_settled` says — poll this beside
      *  it. Absent on a relay predating the failure surface. */
     dead_lettered_ops?: number;
@@ -154,9 +154,9 @@ export interface SequencerStatus {
 
 // ── Publication reads — the kernel's events, for the batch universe ─────────
 //
-// `FigaroCore` both SETTLES an order and PUBLISHES it (OrderCommitted /
+// `FigaroCore` both RESOLVES an order and PUBLISHES it (OrderCommitted /
 // OrderSeller / OrderCurrency carry the struct; the signatures sit in the
-// commit calldata). The batch path settles the same trade and publishes none
+// commit calldata). The batch path resolves the same trade and publishes none
 // of it — `FigaroBatchVerifier`'s public values carry no order hashes and
 // `BatchSettled` names no order — so a batched order's buyer, seller, payment
 // and agreementHash exist only under the proven state root. These read types
@@ -169,7 +169,7 @@ export interface SequencerStatus {
 // batch is anchored on chain by its state-root transition). Consumers MUST
 // verify before displaying — see `frontend/lib/audit/batchRelay.ts`.
 
-/** Where a published fact was settled, so the reader can anchor it on chain.
+/** Where a published fact was resolved, so the reader can anchor it on chain.
  *  `batch` is THIS relay's own sequence number — a cursor, not a protocol
  *  identity; another relay numbers differently. The chain-anchored identity is
  *  `new_state_root` + `settlement_tx`. */
@@ -181,7 +181,7 @@ export interface SequencerBatchRef {
     verifying_contract: Address;
     prev_state_root: Hex;
     new_state_root: Hex;
-    /** null on a dry run: the batch proved but was never settled on chain. */
+    /** null on a dry run: the batch proved but was never resolved on chain. */
     settlement_tx: Hex | null;
     block_timestamp: number;
 }
@@ -254,7 +254,7 @@ export interface SequencerBatchRecord extends SequencerBatchRef {
 export interface SequencerBatchPage {
     batches: SequencerBatchRecord[];
     /** Pass as `from` to continue; null means the end of what this relay has
-     *  settled. */
+     *  resolved. */
     next_cursor: number | null;
     retained: SequencerRetentionWindow;
 }
@@ -483,9 +483,9 @@ export class SequencerClient {
         });
     }
 
-    /** Query sequencer status: state root, pending ops, batches settled. */
+    /** Query sequencer status: state root, pending ops, batches resolved. */
     /**
-     * Submit an RPGF usage claim for an order the BATCH path has settled.
+     * Submit an RPGF usage claim for an order the BATCH path has resolved.
      *
      * Its own endpoint, not `/submit`, because a claim is not a kernel
      * operation: it changes no kernel state and the guest applies it against
@@ -494,7 +494,7 @@ export class SequencerClient {
      *
      * Build claims with `buildUsageClaims` — never hand-roll one, and never
      * include a clause or assembly the counter excludes: `applyBatchAccrual` reverts on
-     * it and takes the whole batch, every other party's settlement included.
+     * it and takes the whole batch, every other party's resolution included.
      */
     async submitUsageClaim(claim: SequencerUsageClaim): Promise<{ pending: number }> {
         const res = await this._fetch(`${this.url}/submit-usage`, {
@@ -532,7 +532,7 @@ export class SequencerClient {
      * GET a publication route, returning null on `404`.
      *
      * The null is load-bearing and MUST NOT be widened: `404` from a relay
-     * means "not in THIS relay's archive" — settled by another relay, settled
+     * means "not in THIS relay's archive" — resolved by another relay, resolved
      * directly against FigaroCore, or aged out of retention (check
      * `status().archive`). It NEVER means the trade did not happen. Every other
      * failure throws, because an unreachable or broken relay is a different
@@ -583,7 +583,7 @@ export class SequencerClient {
     }
 
     /**
-     * A bounded page of settled batches, for replaying the batch universe the
+     * A bounded page of resolved batches, for replaying the batch universe the
      * way an indexer replays kernel logs. `limit` is clamped to 50 by the relay
      * whatever is asked; follow `next_cursor` until it is null, and check
      * `retained` against your cursor first — a cursor older than `first_batch`

@@ -66,7 +66,7 @@ const OTHER_TOKEN = "0x000000000000000000000000000000000000000b" as const;
 const COMMERCE_AND_PIN = specSourceFromFixtures(["figaro-commerce", "figaro-utility-token"]);
 const PIN_ONLY = specSourceFromFixtures(["figaro-utility-token"]);
 
-describe("fillCommerceSection — the order's settlement terms, written by declared field", () => {
+describe("fillCommerceSection — the order's resolution terms, written by declared field", () => {
     it("writes the resolved currency beside the payment — both are TERMS, both are leaves", () => {
         const out = fillCommerceSection({ "figaro-commerce": {} }, 1000n, TOKEN, COMMERCE);
         expect(out["figaro-commerce"]).toMatchObject({ currency: TOKEN, payment: "1000" });
@@ -95,7 +95,7 @@ describe("readUtilityTokenPin — routed on the DESIGN FILL, never on first matc
     it("never mistakes the commerce leaf for a pin, whichever clause is composed first", () => {
         // The disambiguation the restored commerce `currency` demands: BOTH
         // clauses declare a currency field, so a first-match lookup would
-        // return the order's own settlement term as if the designer had
+        // return the order's own resolution term as if the designer had
         // pinned it. Asserted in both key orders — a first-match bug passes
         // one and fails the other.
         expect(readUtilityTokenPin({

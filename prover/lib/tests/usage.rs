@@ -1,9 +1,9 @@
 /// The RPGF usage bridge, guest side.
 ///
 /// The counter's direct path requires `FigaroCore.orderStatus == RESOLVED`,
-/// which a batch-settled process never acquires — the two settlement
+/// which a batch-resolved process never acquires — the two resolution
 /// universes are disjoint. These tests cover what the guest must prove so
-/// batched trade can be credited anyway: that the order really settled, that
+/// batched trade can be credited anyway: that the order really resolved, that
 /// the clause or assembly really was in the signed agreement, and that no
 /// trade is counted twice ACROSS batches, not merely within one.
 ///
@@ -161,7 +161,7 @@ fn clause_claim(order: &Commitment, clause_or_assembly: B256, section_hash: B256
 /// batch: claims are applied against the post-state, so scaling does not cost
 /// the clause or assembly a period of delay.
 #[test]
-fn credits_a_process_the_same_batch_settled() {
+fn credits_a_process_the_same_batch_resolved() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
@@ -178,7 +178,7 @@ fn credits_a_process_the_same_batch_settled() {
 
     assert_eq!(events.usage_accruals.len(), 1);
     assert_eq!(events.usage_accruals[0].clause_or_assembly, clause_or_assembly);
-    assert_eq!(events.usage_accruals[0].c, 1, "one distinct settled process");
+    assert_eq!(events.usage_accruals[0].c, 1, "one distinct resolved process");
     assert_eq!(events.usage_accruals[0].d, 1, "one distinct staked seller");
     assert_eq!(events.usage_sellers, vec![SELLER1], "the seller to stake-check");
     assert_eq!(events.usage_period, PERIOD);
@@ -277,7 +277,7 @@ fn a_claim_cannot_be_replayed_in_a_later_batch() {
 }
 
 /// The counted set is keyed by (clause-or-assembly, process) — so a SECOND
-/// clause or assembly from the same settled process is still creditable.
+/// clause or assembly from the same resolved process is still creditable.
 /// Counting once ever is per clause or assembly, not per process.
 #[test]
 fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
@@ -344,7 +344,7 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
     assert_eq!(events.usage_accruals.len(), 1);
-    assert_eq!(events.usage_accruals[0].c, 3, "three distinct settled processes");
+    assert_eq!(events.usage_accruals[0].c, 3, "three distinct resolved processes");
     assert_eq!(events.usage_accruals[0].d, 1, "one seller is one unit of breadth");
     assert_eq!(events.usage_sellers.len(), 1, "one seller to stake-check");
 }
@@ -372,7 +372,7 @@ fn distinct_sellers_raise_breadth() {
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
     assert_eq!(events.usage_accruals.len(), 1);
-    assert_eq!(events.usage_accruals[0].c, 2, "two distinct settled processes");
+    assert_eq!(events.usage_accruals[0].c, 2, "two distinct resolved processes");
     assert_eq!(events.usage_accruals[0].d, 2, "two staked sellers are two units of breadth");
     assert_eq!(events.usage_sellers.len(), 2, "both sellers to stake-check");
 }
@@ -457,7 +457,7 @@ fn the_usage_hash_pins_the_split_between_the_two_arrays() {
 }
 
 /// The period and the provenance key are COMMITTED, not incidental: the
-/// counter re-checks both, and a batch proven for one period must not settle
+/// counter re-checks both, and a batch proven for one period must not resolve
 /// into another.
 #[test]
 fn the_usage_hash_covers_the_period_and_the_provenance_key() {

@@ -1,7 +1,7 @@
-# `prover/` — the SP1 batch-settlement proof apparatus
+# `prover/` — the SP1 batch-resolution proof apparatus
 
 A Rust Cargo workspace of five crates that together let anyone prove and
-settle a batch of Figaro commitments against `FigaroBatchVerifier`, without
+resolve a batch of Figaro commitments against `FigaroBatchVerifier`, without
 touching `FigaroCore` per-order. Architecture, trust model, and what the
 sequencer is/isn't trusted for → `docs/SCALING_STRATEGY.md`. This file is
 just: what the crates are, how to build the toolchain, and how to run the
@@ -62,6 +62,6 @@ recipe that ships with every tagged release.
 ## Architecture
 
 `docs/SCALING_STRATEGY.md` owns the proof-based batch-scaling design: what
-the sequencer is trusted for (transport, never authority — settlement is
+the sequencer is trusted for (transport, never authority — resolution is
 permissionless), the mempool → assemble → prove → submit pipeline, and how
 this composes with the direct `FigaroCore` path.

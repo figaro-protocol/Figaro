@@ -242,7 +242,7 @@ fn validate_string(
         // sdk/src/clauses/safeRegex.ts): screen the catastrophic-backtracking
         // shape and bound the input, treating an unsafe/over-long/invalid
         // pattern as satisfied. Both engines must skip identically or the
-        // batch-settlement conformance diverges.
+        // batch-resolution conformance diverges.
         if !safe_regex_test(pat, s) {
             errors.push(ValidationError {
                 path: path.to_string(),

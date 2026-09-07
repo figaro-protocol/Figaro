@@ -215,7 +215,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
             usage_seller_seen: vec![],
             usage_accrual: vec![],
         },
-        // RPGF: credit the clause for the process this batch just settled.
+        // RPGF: credit the clause for the process this batch just resolved.
         // The claim is proved against the POST-state, which is why an order
         // committed and resolved inside one batch can still be counted by it.
         // Single-section agreement, so the section leaf IS the agreement hash

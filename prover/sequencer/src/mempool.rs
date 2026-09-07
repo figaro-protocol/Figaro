@@ -54,7 +54,7 @@ impl std::fmt::Display for SubmitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SubmitError::Invalid(e) => write!(f, "{e}"),
-            SubmitError::Full => write!(f, "mempool full — retry after the next batch settles"),
+            SubmitError::Full => write!(f, "mempool full — retry after the next batch resolves"),
         }
     }
 }
@@ -73,7 +73,7 @@ struct MempoolInner {
     pending: VecDeque<PendingOp>,
     /// Dedup index over the pending op queue: semantic key → assigned id.
     /// Cleared on drain — idempotency covers the pending window; once a
-    /// batch settles, a re-submission is dropped by the stateful assembler
+    /// batch resolves, a re-submission is dropped by the stateful assembler
     /// filter instead (the kernel state already carries the effect).
     index: HashMap<B256, u64>,
     /// Usage claims awaiting the next batch. Kept in their OWN queue, not
@@ -103,7 +103,7 @@ impl Mempool {
     /// evicted** — at capacity, new submissions are refused with
     /// [`SubmitError::Full`]. An acknowledged submission is NEVER silently
     /// dropped: once an id is returned, the op stays queued until a batch
-    /// drains it (and is re-queued, cap-exempt, if settlement fails
+    /// drains it (and is re-queued, cap-exempt, if resolution fails
     /// transiently). Any evict-the-oldest policy would make the
     /// acknowledgment a lie on a public endpoint.
     pub fn with_caps(
@@ -203,7 +203,7 @@ impl Mempool {
         keccak256(&buf)
     }
 
-    /// Submit an RPGF usage claim for an order the batch path has settled.
+    /// Submit an RPGF usage claim for an order the batch path has resolved.
     ///
     /// Claims are SUBMITTED, never derived here — exactly as attestation
     /// witnesses are. The sequencer holds no agreements: it sees commitment
@@ -212,7 +212,7 @@ impl Mempool {
     /// since this is how their work gets counted) supplies the section
     /// fingerprint and the
     /// inclusion proof. Nothing is trusted either way — the guest re-proves
-    /// settlement and inclusion, and the counter enforces the reward's own
+    /// resolution and inclusion, and the counter enforces the reward's own
     /// gates on chain.
     ///
     /// Only the two cheap stateless checks run here; everything else is

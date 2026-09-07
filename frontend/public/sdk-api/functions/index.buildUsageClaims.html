@@ -16,7 +16,7 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="buildusageclaims"><span class="tsd-kind-call-signature">buildUsageClaims</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Commitment.html" class="tsd-signature-type tsd-kind-interface">Commitment</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">agreement</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">context</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.UsageClaimContext.html" class="tsd-signature-type tsd-kind-interface">UsageClaimContext</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/agent.SequencerUsageClaim.html" class="tsd-signature-type tsd-kind-interface">SequencerUsageClaim</a><span class="tsd-signature-symbol">[]</span><a href="#buildusageclaims" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Build every usage claim a settled batch order supports.</p>
+<div class="tsd-comment tsd-typography"><p>Build every usage claim a resolved batch order supports.</p>
 <p>PURE — takes the chain facts as input so it can be tested and reasoned about
 without a client. <code>fetchUsageClaimContext</code> gets them.</p>
 <p>TWO INDEPENDENT LEGS, and the independence is the whole point:</p>
@@ -24,7 +24,7 @@ without a client. <code>fetchUsageClaimContext</code> gets them.</p>
 <li>the CLAUSE leg emits one claim per agreement section, minus the excluded
 ones. Dropping them is mandatory, not an optimisation: an excluded
 clause or assembly reverts <code>applyBatchAccrual</code> and takes the ENTIRE BATCH with it,
-including every other party's settlement.</li>
+including every other party's resolution.</li>
 <li>the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the
 clause leg dropping things. <code>figaro-assembly-provenance</code> is itself
 excluded — it rides every assembly-composed process, so scoring it would

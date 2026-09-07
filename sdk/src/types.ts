@@ -257,7 +257,7 @@ export interface FigaroAddresses {
     clauseRegistry?: Address;
     membersRegistry?: Address;
     assemblyRegistry?: Address;
-    /** FigaroBatchVerifier — batch-settled clause content verification (batch path only). */
+    /** FigaroBatchVerifier — batch-resolved clause content verification (batch path only). */
     batchVerifier?: Address;
     /** UsageCounter — records verified clause/assembly usage per accrual period. */
     usageCounter?: Address;
@@ -274,7 +274,7 @@ export interface FigaroAddresses {
     swapRouter?: Address;
     /** WitnessSwapAndCommitCoordinator — off-protocol multi-token bond funding via Permit2 witness + swap + commit. */
     witnessSwapAndCommitCoordinator?: Address;
-    /** Disperse (or devnet mock) — composed post-settlement batch dispersal. */
+    /** Disperse (or devnet mock) — composed post-resolution batch dispersal. */
     multisender?: Address;
     /** DAO treasury multisig — holds the 300M-florin DAO genesis allocation. */
     daoTreasury?: Address;

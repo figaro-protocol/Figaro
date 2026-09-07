@@ -91,12 +91,12 @@ export function parseProcessResolvedLogs(logs: Log[]): ProcessResolvedEvent[] {
     return results;
 }
 
-/** The two settlement universes an attestation anchor can come from:
+/** The two resolution universes an attestation anchor can come from:
  *  "direct" = the coordinator's own emission, re-verifiable from calldata;
  *  "batch" = the batch verifier's re-emission, proved once inside a batch. */
 export type SettlementUniverse = "direct" | "batch";
 
-/** An attestation record with its SETTLEMENT UNIVERSE named. The two emitters
+/** An attestation record with its RESOLUTION UNIVERSE named. The two emitters
  *  share one topic hash (`FigaroBatchVerifier.Attestation` deliberately
  *  mirrors the coordinator's), so the EMITTING ADDRESS is the only thing that
  *  says which universe a row came from — direct = re-verifiable from
@@ -118,14 +118,14 @@ export function tagAttestationUniverses(directLogs: Log[], batchLogs: Log[]): Un
 }
 
 /**
- * Fetch attestations from BOTH settlement universes — the coordinator (direct
+ * Fetch attestations from BOTH resolution universes — the coordinator (direct
  * path) and, when a batch verifier is configured, its re-emissions — each
  * stream fetched ADDRESS-FILTERED and tagged, never merged blind
  * (docs/SCALING_STRATEGY.md § "A reader must fold BOTH": a reader that
  * watches only the coordinator under-reports everything that scaled).
  * Returned in (blockNumber) order across both streams. Note the boundary:
  * only ATTESTATIONS cross into log-space from the batch universe — core order
- * events have no batch counterpart (a batch settles token positions; no
+ * events have no batch counterpart (a batch resolves token positions; no
  * status, no process record re-emits), so `fetchCoreEvents` is direct-path by
  * construction, not by omission.
  */

@@ -103,7 +103,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
     });
 });
 
-describe("the sign gate's settlement-currency chain — pin == leaf == struct", () => {
+describe("the sign gate's denomination chain — pin == leaf == struct", () => {
     // Every term is a merkle leaf; the kernel struct is the EXECUTION mirror
     // of the currency term, so the gate asserts the copy across the two layers
     // (docs/CLAUSES.md § "Every clause is a merkle leaf", ruled 2026-08-11).
@@ -358,8 +358,8 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     });
 
     it("warns nothing for a non-process-log clause that declares design.fills — the normal pattern", () => {
-        // figaro-utility-token: article "settlement", design.fills: ["currency"].
-        const spec = specView("figaro-utility-token", { article: "settlement", designFills: ["currency"] });
+        // figaro-utility-token: article "denomination", design.fills: ["currency"].
+        const spec = specView("figaro-utility-token", { article: "denomination", designFills: ["currency"] });
         expect(warnProcessLogFillsTrap(spec)).toEqual([]);
     });
 

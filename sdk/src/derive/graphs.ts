@@ -10,7 +10,7 @@
  *
  * - Process graph: who committed to what, under what terms, and whether the
  *   commitment resolved — `reconstruct()`'s topology, carried whole.
- * - Settlement graph: the per-order record of kernel settlement — bonds
+ * - Resolution graph: the per-order record of kernel resolution — bonds
  *   locked at commit, payouts at resolve. LINEAR per process (the kernel's
  *   own view: a chain of commits against a monotonic cumulative-value
  *   accumulator); it carries no DAG topology — how orders relate is the
@@ -46,9 +46,9 @@ export function projectProcessGraph(events: CoreEvents): ProcessGraph {
     return { boundary: "protocol-enforced", processes: topology.processes, topology };
 }
 
-// ── Settlement graph ────────────────────────────────────────────────────────
+// ── Resolution graph ────────────────────────────────────────────────────────
 
-/** One order's settlement record: what the kernel locked at commit and what
+/** One order's resolution record: what the kernel locked at commit and what
  *  it pays at resolve. */
 export interface SettlementEntry {
     orderHash: Hex;
@@ -73,7 +73,7 @@ export interface SettlementEntry {
     blockNumber: number;
 }
 
-/** One process's settlement chain — linear, in accumulator order. */
+/** One process's resolution chain — linear, in accumulator order. */
 export interface SettlementChain {
     processId: Hex;
     /** The process's one denomination (`currency` is a signed field of every
@@ -85,7 +85,7 @@ export interface SettlementChain {
     orders: SettlementEntry[];
 }
 
-/** The settlement graph with its truth boundary named: every bond and payout
+/** The resolution graph with its truth boundary named: every bond and payout
  *  on-chain, verified by contract invariants. */
 export interface SettlementGraph {
     boundary: "protocol-enforced";
@@ -93,9 +93,9 @@ export interface SettlementGraph {
 }
 
 /**
- * Project the settlement graph from core events: a fold over
+ * Project the resolution graph from core events: a fold over
  * OrderCommitted/OrderResolved/ProcessResolved through the one
- * reconstruction path (`Topology`), emitting per-order settlement entries
+ * reconstruction path (`Topology`), emitting per-order resolution entries
  * grouped into per-process linear chains.
  */
 export function projectSettlementGraph(events: CoreEvents): SettlementGraph {

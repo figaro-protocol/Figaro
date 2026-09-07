@@ -7,7 +7,7 @@
  * Each ProposedAction includes:
  *   - Type and human-readable description
  *   - Pre-validated parameters
- *   - Settlement math (the payouts a resolve produces)
+ *   - Resolution math (the payouts a resolve produces)
  *
  * The agent (human or autonomous) decides which to execute.
  */
@@ -55,7 +55,7 @@ export interface ResolveProcessAction extends BaseAction {
      * Must be supplied for resolveProcess (kernel re-derives hashes).
      */
     commitments: Commitment[];
-    /** Per-order settlement breakdown. */
+    /** Per-order resolution breakdown. */
     settlements: Array<{
         orderHash: Hex;
         seller: Address;

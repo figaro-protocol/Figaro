@@ -287,7 +287,7 @@ fn apply_resolve(
 ///
 /// Public so a relay can PUBLISH the same per-order facts the kernel emits
 /// without re-deriving the arithmetic: `apply_resolve` is the only other
-/// caller, so the published figure and the settled figure cannot drift.
+/// caller, so the published figure and the resolved figure cannot drift.
 pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
     let seller_payout = c
         .expected_cumulative_value
@@ -653,7 +653,7 @@ fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
     out
 }
 
-/// Credit RPGF usage for orders the BATCH path has settled.
+/// Credit RPGF usage for orders the BATCH path has resolved.
 ///
 /// Every claim is proved, never trusted — the same two facts
 /// `UsageCounter.recordClauseUsage` proves on the direct path:
@@ -682,7 +682,7 @@ fn apply_usage_claims(
     for claim in claims {
         let (order_hash, process_id) = derive_commitment_ids(domain, &claim.order);
 
-        // 1. SETTLED, not merely known. Usage is what a finished process
+        // 1. RESOLVED, not merely known. Usage is what a finished process
         //    leaves behind; an open process has not yet added value.
         if state.order_status.get(&order_hash).copied().unwrap_or(0) != 2 {
             return Err(KernelError::UsageOrderNotResolved(order_hash));

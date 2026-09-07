@@ -75,7 +75,7 @@ async fn guest_output_matches_host_apply_batch_exactly() {
     // deduplicated spec binding.
     assert_eq!(host_events.spec_bindings.len(), 1);
 
-    // And it credited the clause for the process it settled — asserted here
+    // And it credited the clause for the process it resolved — asserted here
     // because "field for field" above is only as strong as the batch it runs
     // on: an empty accrual would make `usage_accrual_hash` agree trivially.
     assert_eq!(host_events.usage_accruals.len(), 1, "the canonical batch credits one clause");

@@ -172,7 +172,7 @@ const [resolve] = proposeActions(ctx.getProcess(processId)!, buyer)
   .filter((a) => a.type === "resolve-process");
 await executeAction(walletClient, publicClient, addresses, resolve);
 
-// AND RECORD THE USAGE — at settlement, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
+// AND RECORD THE USAGE — at resolution, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
 // process resolves; a deferred record is permanently deniable (a seller can
 // unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
 // headless twin of what the frontend does at the same moment. The mandatory
@@ -470,10 +470,10 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // Only a missing `figaroCore` throws. Keys that carry no SDK field at all —
 // `florinToken`, `swapQuoter`, `chainId`, `deploymentBlock` — you read off the
 // record yourself; `deploymentBlock` is the `fromBlock` every scan below wants.
-// WHICH TOKEN CAN YOU SPEND? On a devnet record the settlement balances sit in the
+// WHICH TOKEN CAN YOU SPEND? On a devnet record the denomination balances sit in the
 // MOCK tokens — `tokenAddress` (MOCK) and `permitTokenAddress` (MPMT), 100,000 of
-// each pre-funded to the standard Anvil test keys. `florinToken` is not a settlement
-// currency on such a record: its deployer mint is renounced and those wallets hold
+// each pre-funded to the standard Anvil test keys. `florinToken` is not the
+// denomination on such a record: its deployer mint is renounced and those wallets hold
 // zero, so an order denominated in it reverts `ERC20InsufficientBalance` the moment
 // the kernel pulls a bond. Read balances off the record's tokens, never assume one.
 
@@ -533,7 +533,7 @@ const settlement = calculateSettlement(payment, bonds.sellerBond, bonds.buyerBon
 // At payment = cumulativeValue = 100: bonds 200/200, payouts 300/100, net 100.
 
 // Per-process resolve ceiling on the active chain (a process grown past
-// this can NEVER settle — check before every commit; the kernel cannot)
+// this can NEVER resolve — check before every commit; the kernel cannot)
 const cap = await maxOrdersResolvablePerProcess(client);
 
 // Build EIP-712 typed data for signing.
@@ -751,7 +751,7 @@ const DISPERSE_ABI = parseAbi([
   "function disperseEther(address[] recipients, uint256[] values) payable",
 ]);
 
-const legs = [                                   // shares of the settled receipt,
+const legs = [                                   // shares of the resolved receipt,
   { recipient: taxAddress,     amount: parseEther("21") },   // in the order's OWN
   { recipient: savingsAddress, amount: parseEther("30") },   // currency units
   { recipient: partnerAddress, amount: parseEther("49") },
@@ -1086,7 +1086,7 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 // settleBatch` is PERMISSIONLESS (no caller gate, no owner, no fee), but it
 // takes an SP1 proof over a whole batch, so the ordinary route is to hand the
 // signed operation to a sequencer: an HTTP relay that pools operations, proves
-// the batch, and settles it. This client emits EXACTLY the wire format the
+// the batch, and resolves it. This client emits EXACTLY the wire format the
 // endpoint accepts — never hand-roll the JSON.
 //
 // A RELAY, NOT AN AUTHORITY: it holds no key of yours, its admission checks
@@ -1110,8 +1110,8 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // id and enqueues nothing. `{ id }` is a queue receipt, NOT resolution:
 // confirm from chain (BatchSettled, the ERC-20 transfers, scoreOf).
 // FigaroCore.orderStatus(orderHash) stays 0 for this order FOREVER — 0 means
-// "not on this path", never "not settled". Gating any read on orderStatus is
-// blind to everything that settles here; see docs/SCALING_STRATEGY.md §
+// "not on this path", never "not resolved". Gating any read on orderStatus is
+// blind to everything that resolves here; see docs/SCALING_STRATEGY.md §
 // "The two paths share no state".
 await seq.submitResolve(processId, commitments, buyerSig);
 await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sellerSig, proof });
@@ -1125,8 +1125,8 @@ await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches
 const view = await seq.process(processId);   // the orders + the resolution facts
 const one  = await seq.order(orderHash);     // one published order
 const page = await seq.batches({ from: 0 }); // ≤50 a page; follow next_cursor
-// `null` means "not in THIS relay's archive" — settled by another relay,
-// settled directly against FigaroCore, or aged out of retention. It NEVER
+// `null` means "not in THIS relay's archive" — resolved by another relay,
+// resolved directly against FigaroCore, or aged out of retention. It NEVER
 // means the trade did not happen. Check status().archive against your cursor
 // BEFORE replaying, or a dropped range is skipped silently. Every other
 // failure THROWS, so an unreachable relay never reads as an absent record.
@@ -1322,7 +1322,7 @@ const process    = projectProcessGraph(core);      // boundary: "protocol-enforc
 const settlement = projectSettlementGraph(core);   // boundary: "protocol-enforced"
 
 // Overlays: ONE per attestable clause family the corpus actually contains.
-// fetchAttestationRecords folds BOTH settlement paths and tags each row;
+// fetchAttestationRecords folds BOTH resolution paths and tags each row;
 // you supply the content bytes (an attestation's contentRef is keccak256 of
 // off-chain content — the chain never holds the preimage) and a SpecSource.
 // null content, or an unresolvable spec, degrades that entry to
@@ -1343,7 +1343,7 @@ const rec   = walletRecord(process, "0x…");        // empty arrays = no histor
 ```
 
 The five graphs named in `DATA_LAYER.md` are the canonical presentation
-grouping; **the class is open**. Process and Settlement fall out of the
+grouping; **the class is open**. Process and Resolution fall out of the
 must-have clauses by construction, overlays are spec-derived one per attestable
 clause family in use, and composition graphs come from whatever on-network
 venues a deployment record touches — so `extractOverlays` groups by the attestation's
@@ -1372,7 +1372,7 @@ code.
 > the content against the clause's spec supplied as a witness input, and
 > `FigaroBatchVerifier` resolves the batch only if the witness's hash matches
 > `ClauseRegistry.contentHashOf` — so never-seen clauses stay attestable AND
-> batch-settleable with zero per-clause code. There are no per-clause validator
+> batch-resolvable with zero per-clause code. There are no per-clause validator
 > contracts, permanently. The contract catalogue that states this is published
 > at `/spec`; the clause-authoring path is at `/clauses`.
 

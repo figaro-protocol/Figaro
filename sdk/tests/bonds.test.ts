@@ -33,7 +33,7 @@ describe("calculateBonds", () => {
 });
 
 describe("calculateSettlement", () => {
-    it("settles correctly: seller gets payment + bond, buyer gets bond - payment", () => {
+    it("resolves correctly: seller gets payment + bond, buyer gets bond - payment", () => {
         const payment = 500n;
         const sellerBond = 2000n;
         const buyerBond = 1000n;

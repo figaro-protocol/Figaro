@@ -177,7 +177,7 @@ export {
 } from "./bonds.js";
 
 // Chain gas ceilings — per-process resolve cap + per-block commit landing rate.
-// A process grown past the resolve cap can never settle; every commit path
+// A process grown past the resolve cap can never resolve; every commit path
 // checks this client-side because the kernel cannot (the composed agreements are off-chain).
 export {
     maxOrdersResolvableForGasLimit,

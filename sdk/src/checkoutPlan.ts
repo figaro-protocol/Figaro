@@ -109,14 +109,14 @@ export function derivePricedFields(
 }
 
 /**
- * Write the order's settlement terms into the commerce section, found by its
+ * Write the order's resolution terms into the commerce section, found by its
  * declared `lineItems` field (never by clause id; gracefully skipped when the
  * assembly composes no commerce clause). `payment` is stored as the clause
  * spec wants it (decimal string); `lineItems` is supplied only for the root
  * (the buyer's cart) and stripped to the commerce section's closed shape —
  * the cart's physical attributes belong to the cargo collapse, not here.
  *
- * `currency` — the RESOLVED settlement token (the assembly's utility-token
+ * `currency` — the RESOLVED denomination (the assembly's utility-token
  * pin when composed, else the buyer's pick from the seller's accepted tokens,
  * else the seller's default) — is written exactly as `payment` is: it is a
  * TERM of the agreement, a merkle leaf under `agreementHash`, which the
@@ -156,7 +156,7 @@ export function fillCommerceSection(
  * (`block.design.fills`), with a well-formed value. The design-fill
  * declaration is the whole routing rule, and it is what disambiguates the two
  * clauses that legitimately carry a `currency` field: the commerce clause
- * declares it as plain CONTENT (one order's settlement term, written at
+ * declares it as plain CONTENT (one order's resolution term, written at
  * checkout) and is never a pin, while ANY clause — including one this code
  * has never seen — declaring a `currency` design fill IS one. The pin
  * survives the value-free template build and is part of the compositionHash:

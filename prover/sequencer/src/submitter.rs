@@ -1,5 +1,5 @@
 use alloy::network::EthereumWallet;
-/// On-chain submitter — sends settleBatch transactions to the
+/// On-chain submitter — sends `settleBatch` transactions to the
 /// FigaroBatchVerifier contract via alloy.
 use alloy::primitives::{Address, Bytes};
 use alloy::providers::ProviderBuilder;
@@ -11,7 +11,7 @@ use figaro_kernel::types::{UsageClaim, UsageClaimKind};
 
 use crate::prover::ProveResult;
 
-/// A settle failure, classified. DETERMINISTIC means the chain evaluated the
+/// A resolve failure, classified. DETERMINISTIC means the chain evaluated the
 /// transaction and rejected it — a revert reproduces on every retry, so
 /// re-proving the identical batch burns minutes per attempt for the same
 /// refusal (the 2026-08-20 ProofInvalid loop: three ~7-minute proofs before
@@ -95,8 +95,8 @@ sol! {
 }
 
 // The two UsageCounter facts a batch's accrual must agree with. Both are
-// re-checked by the counter at settlement, so reading them here is an
-// optimisation (don't prove a batch that cannot settle), never a source of
+// re-checked by the counter at resolution, so reading them here is an
+// optimisation (don't prove a batch that cannot resolve), never a source of
 // authority.
 sol! {
     #[sol(rpc)]
@@ -108,7 +108,7 @@ sol! {
 }
 
 // The clause-or-assembly-side and seller-side stake gates the counter applies
-// at settlement (skip for clauses and assemblies, whole-batch revert for an
+// at resolution (skip for clauses and assemblies, whole-batch revert for an
 // unstaked seller).
 // Reading them HERE is a pre-filter: drop a claim the counter would reject
 // before it enters a proof, so one poison claim cannot cost the whole batch's
@@ -143,7 +143,7 @@ pub struct SubmitterConfig {
     pub rpc_url: String,
     pub verifier_address: Address,
     /// The RPGF counter. `Address::ZERO` disables usage accrual — the
-    /// sequencer then settles trade without crediting it, which is exactly
+    /// sequencer then resolves trade without crediting it, which is exactly
     /// what a deployment with no counter should do.
     pub usage_counter_address: Address,
     /// The three registries the usage-claim pre-filter reads. Any left
@@ -161,7 +161,7 @@ pub struct SubmitterConfig {
 /// Returns `None` when there is no counter configured, or when accrual has
 /// CLOSED (`currentPeriod()` reverts `AccrualClosed` after the last period).
 /// A closed reward is not an error: trade goes on, it simply stops being
-/// credited, and the batch settles with an empty accrual.
+/// credited, and the batch resolves with an empty accrual.
 pub async fn read_usage_context(
     rpc_url: &str,
     usage_counter: Address,
@@ -176,7 +176,7 @@ pub async fn read_usage_context(
     Some((period, provenance))
 }
 
-/// Drop usage claims the `UsageCounter` would reject at settlement, BEFORE they
+/// Drop usage claims the `UsageCounter` would reject at resolution, BEFORE they
 /// enter a proof.
 ///
 /// The counter now SKIPS excluded/unregistered clauses and assemblies (they
@@ -352,8 +352,8 @@ pub async fn submit_batch(
     };
 
     // The RPGF accrual the proof committed. Empty arrays are normal and
-    // settle fine — the counter treats an empty accrual as a no-op, which
-    // is what lets trade keep settling after the reward's last period ends.
+    // resolve fine — the counter treats an empty accrual as a no-op, which
+    // is what lets trade keep resolving after the reward's last period ends.
     let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
         period: result.events.usage_period,
         provenanceClause: result.provenance_clause,
@@ -406,7 +406,7 @@ pub async fn submit_batch(
     };
 
     let tx_hash = receipt.transaction_hash;
-    // A mined-but-reverted settle is DETERMINISTIC failure, not success:
+    // A mined-but-reverted resolve is DETERMINISTIC failure, not success:
     // advancing the mirror here would fork it from the chain permanently
     // (the chain's root did not move) and fail every later batch's
     // prev-root check.

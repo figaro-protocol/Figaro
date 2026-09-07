@@ -76,7 +76,7 @@ describe("deriveInFlightOrders", () => {
         expect(refs[0]).toMatchObject({ orderHash: ORDER_1, processId: PROC_A, agreementHash: AGREEMENT_HASH });
     });
 
-    it("drops orders whose process resolved (atomic settlement)", () => {
+    it("drops orders whose process resolved (atomic resolution)", () => {
         const events = coreEvents({
             orderCommitted: [committed()],
             orderResolved: [{ orderHash: ORDER_1, processId: PROC_A, sellerPayout: 0n, buyerPayout: 0n, blockNumber: 2 } as OrderResolvedEvent],

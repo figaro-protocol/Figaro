@@ -1,7 +1,7 @@
 /// Figaro Batch Sequencer — devnet single-seller sequencer.
 ///
 /// Collects signed protocol operations via HTTP, assembles batches on a
-/// timer, runs the SP1 mock prover, and submits settlement transactions
+/// timer, runs the SP1 mock prover, and submits resolution transactions
 /// to FigaroBatchVerifier on Anvil.
 ///
 /// This is Phase 1 (devnet). For testnet and mainnet, swap MockSP1Verifier
@@ -50,7 +50,7 @@ async fn main() {
     .parse()
     .expect("invalid BATCH_VERIFIER_ADDRESS");
     // The RPGF counter the batch accrual is written to. Unset (zero) means
-    // this sequencer credits no usage — trade still settles.
+    // this sequencer credits no usage — trade still resolves.
     let usage_counter_addr: Address = env_or(
         "USAGE_COUNTER_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -282,7 +282,7 @@ async fn batch_loop(
             continue;
         }
         // Falling through with `valid` empty and claims present is deliberate:
-        // the claims prove against state that already settled, so they are
+        // the claims prove against state that already resolved, so they are
         // independent of whatever poisoned the ops.
 
         let op_count = valid.len();
@@ -295,7 +295,7 @@ async fn batch_loop(
 
         // The period and provenance clause are CHAIN facts — asked of the
         // counter, never derived from the sequencer's clock. If there is no
-        // counter, or accrual has closed, the batch settles crediting nothing.
+        // counter, or accrual has closed, the batch resolves crediting nothing.
         let mut usage = match submitter::read_usage_context(
             &submitter_config.rpc_url,
             submitter_config.usage_counter_address,
@@ -345,7 +345,7 @@ async fn batch_loop(
             usage.claims = kept;
         }
 
-        // After BOTH filters an all-poison tick can leave nothing to settle
+        // After BOTH filters an all-poison tick can leave nothing to resolve
         // (every op held, every claim dropped). Never assemble an empty batch.
         if ops.is_empty() && usage.claims.is_empty() {
             continue;
@@ -383,7 +383,7 @@ async fn batch_loop(
                         ?tx_hash,
                         new_root = ?result.public_values.new_state_root,
                         ops = op_count,
-                        "Batch settled on-chain, state mirror advanced"
+                        "Batch resolved on-chain, state mirror advanced"
                     );
                     let number = {
                         let mut count = batch_count.write().await;
@@ -393,12 +393,12 @@ async fn batch_loop(
                     publish(&archive, number, &batch, &result, Some(tx_hash)).await;
                 }
                 Err(e) if e.deterministic => {
-                    // The chain EVALUATED the settle and refused — retrying
+                    // The chain EVALUATED the resolve and refused — retrying
                     // re-proves the identical batch (~minutes each) for the
                     // same refusal. Dead-letter now, loudly; the counter and
                     // the reason surface on /status so a polling driver sees
                     // the death instead of waiting it out.
-                    error!(error = %e, ops = op_count, "Deterministic settle revert — dead-lettered, NOT re-proving");
+                    error!(error = %e, ops = op_count, "Deterministic resolve revert — dead-lettered, NOT re-proving");
                     failures.record(op_count as u64, e.message).await;
                 }
                 Err(e) => {
@@ -425,14 +425,14 @@ async fn batch_loop(
     }
 }
 
-/// Publish what the batch settled — the per-order commitments and their
+/// Publish what the batch resolved — the per-order commitments and their
 /// signatures, and the per-process resolution facts. This is the batch
 /// universe's mirror of the events `FigaroCore` emits on the direct path;
-/// without it, a batch-settled order exists only under a proven state root
+/// without it, a batch-resolved order exists only under a proven state root
 /// and no reader can see it at all.
 ///
-/// Publication follows settlement and never gates it: a failure here is
-/// logged inside the archive and the batch stays settled.
+/// Publication follows resolution and never gates it: a failure here is
+/// logged inside the archive and the batch stays resolved.
 async fn publish(
     archive: &Archive,
     number: u64,

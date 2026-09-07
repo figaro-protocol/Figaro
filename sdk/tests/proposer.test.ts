@@ -57,7 +57,7 @@ describe("proposeActions", () => {
         expect(actions[1].type).toBe("attest-as-buyer");
     });
 
-    it("resolve action includes correct settlement math", () => {
+    it("resolve action includes correct resolution math", () => {
         const process = mkProcess();
         const actions = proposeActions(process, BUYER);
         const resolve = actions[0];
