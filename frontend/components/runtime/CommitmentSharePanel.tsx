@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import {
     shareSignedOrder,
 } from "@/lib/checkout/orderSignedAndShared";
+import { forgetSignedUnsent } from "@/lib/checkout/signedUnsentOrders";
 import {
     serializeCommitmentPayload,
     type CommitmentPayload,
@@ -155,7 +156,7 @@ export function CommitmentSharePanel({
         setTransportStatus("sending");
         setTransportError(null);
         try {
-            await shareSignedOrder({
+            const orderId = await shareSignedOrder({
                 payload,
                 recipientAddress,
                 senderAddress: address,
@@ -164,6 +165,8 @@ export function CommitmentSharePanel({
                 handoffMessaging,
                 evidenceTransport,
             });
+            // Relayed: the channel is the source from here; the tab's copy goes.
+            forgetSignedUnsent({ address, chainId, orderId });
             setTransportRecipient(recipientAddress);
             setTransportStatus("sent");
         } catch (error) {

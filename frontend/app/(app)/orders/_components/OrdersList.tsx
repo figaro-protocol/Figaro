@@ -12,10 +12,12 @@
  *                            counter-signature (accept / dismiss). The only
  *                            off-chain action-required state; derived from the
  *                            coordination channel, never stored.
- *   2. Awaiting acceptance — commitments this wallet signed and relayed,
+ *   2. Signed, not yet sent — commitments this wallet signed but has not
+ *                            relayed (kept for the tab; Send / Discard).
+ *   3. Awaiting acceptance — commitments this wallet signed and relayed,
  *                            waiting on the counterparty (read-only).
- *   3. In progress         — active on-chain processes (buyer OR seller).
- *   4. Completed           — resolved processes (buyer OR seller).
+ *   4. In progress         — active on-chain processes (buyer OR seller).
+ *   5. Completed           — resolved processes (buyer OR seller).
  *
  * "Needs my action" is a DERIVED view, not a notification system. The header
  * `YourTurnBadge` (a count) and an agent's event subscription read the same
@@ -24,7 +26,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { formatToken } from "@/lib/shared/utils";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -33,6 +35,9 @@ import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
+import { forgetSignedUnsent, useSignedUnsentOrders, type SignedUnsentOrder } from "@/lib/checkout/signedUnsentOrders";
+import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { computeOrderHash } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -184,6 +189,55 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
     );
 }
 
+// ── Signed, not yet sent: I signed, the relay has not happened — Send / Discard ──
+function SignedUnsentRow({
+    entry, listings, onSend, onDiscard, sending, error,
+}: {
+    entry: SignedUnsentOrder;
+    listings: ReadonlyArray<Listing>;
+    onSend: () => void;
+    onDiscard: () => void;
+    sending: boolean;
+    error: string | null;
+}) {
+    const { commitment } = entry.payload;
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const counterpartyName = displayNameForAddress(listings, commitment.seller);
+    return (
+        <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-unsent-row">
+            <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-3">
+                        <h2 className="text-sm font-semibold text-ink-primary truncate">{counterpartyName}</h2>
+                        <span
+                            className="inline-flex items-center rounded-full border border-default px-2.5 py-0.5 text-xs font-semibold text-ink-muted"
+                            data-testid="order-unsent-status"
+                        >
+                            Signed, not yet sent
+                        </span>
+                    </div>
+                    <p className="mt-1 text-xs text-ink-muted">
+                        You signed this order; {counterpartyName} has not received it. It stays here for this tab.
+                    </p>
+                    {error && <p className="mt-1 text-xs text-error-fg" data-testid="order-unsent-error">{error}</p>}
+                </div>
+                <div className="text-right shrink-0 space-y-2">
+                    <p className="text-xs text-ink-muted">Order value</p>
+                    <p className="text-sm font-semibold text-ink-primary">{formatToken(commitment.payment, decimals)}</p>
+                    <div className="flex gap-2 justify-end">
+                        <Button variant="secondary" size="sm" onClick={onDiscard} disabled={sending} data-testid="btn-discard-unsent">
+                            Discard
+                        </Button>
+                        <Button size="sm" onClick={onSend} disabled={sending} data-testid="btn-send-unsent">
+                            {sending ? "Sending…" : "Send"}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
 function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing> }) {
     const { commitment } = payload;
@@ -323,6 +377,34 @@ export function OrdersList() {
     // AWAITING ACCEPTANCE — commitments I relayed, waiting on the counterparty.
     const { pending: outbound } = usePendingSellerSignature(awaitsCounterpartySignature);
 
+    // SIGNED, NOT YET SENT — the tab's copy of what I signed but never relayed.
+    const unsent = useSignedUnsentOrders(address, chainId);
+    const { data: walletClient } = useWalletClient();
+    const { handoffMessaging, evidenceTransport } = useRuntimeServices();
+    const [sendingUnsent, setSendingUnsent] = useState<string | null>(null);
+    const [unsentError, setUnsentError] = useState<Record<string, string>>({});
+    const sendUnsent = useCallback(async (entry: SignedUnsentOrder) => {
+        if (!address || !chainId) return;
+        setSendingUnsent(entry.orderId);
+        setUnsentError((prev) => { const { [entry.orderId]: _e, ...rest } = prev; return rest; });
+        try {
+            const orderId = await shareSignedOrder({
+                payload: entry.payload,
+                recipientAddress: entry.payload.commitment.seller,
+                senderAddress: address,
+                walletClient,
+                chainId,
+                handoffMessaging,
+                evidenceTransport,
+            });
+            forgetSignedUnsent({ address, chainId, orderId });
+        } catch (error) {
+            setUnsentError((prev) => ({ ...prev, [entry.orderId]: extractErrorMessage(error, "Failed to send the order.") }));
+        } finally {
+            setSendingUnsent(null);
+        }
+    }, [address, chainId, walletClient, handoffMessaging, evidenceTransport]);
+
     // A relayed payload still reads single-sig after commit; hide any pending
     // (either direction) whose order is already on-chain in `rows`.
     const core = CONTRACTS.core as `0x${string}` | undefined;
@@ -339,13 +421,19 @@ export function OrdersList() {
         .map((payload, index) => ({ payload, index }))
         .filter(({ payload }) => notCommitted(payload));
     const visibleOutbound = address && core ? outbound.filter(notCommitted) : outbound;
+    const relayedIds = new Set(
+        chainId && core
+            ? outbound.map((p) => { try { return computeOrderHash(p.commitment, chainId, core).toLowerCase(); } catch { return ""; } })
+            : [],
+    );
+    const visibleUnsent = unsent.filter((e) => notCommitted(e.payload) && !relayedIds.has(e.orderId.toLowerCase()));
     const visibleReady = readyToSubmit
         .map((payload, index) => ({ payload, index }))
         .filter(({ payload }) => notCommitted(payload));
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-    const nothing = !isLoading && rows.length === 0 && visibleIncoming.length === 0 && visibleOutbound.length === 0 && visibleReady.length === 0;
+    const nothing = !isLoading && rows.length === 0 && visibleIncoming.length === 0 && visibleOutbound.length === 0 && visibleReady.length === 0 && visibleUnsent.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -408,6 +496,26 @@ export function OrdersList() {
                             {submitError && (
                                 <p className="text-sm text-error-fg" data-testid="orders-ready-error">{submitError}</p>
                             )}
+                        </section>
+                    )}
+
+                    {visibleUnsent.length > 0 && address && (
+                        <section className="space-y-3" data-testid="orders-unsent-section">
+                            <p className="text-xs font-semibold text-ink-muted">Signed, not yet sent</p>
+                            <ul className="space-y-3" data-testid="orders-unsent">
+                                {visibleUnsent.map((entry) => (
+                                    <li key={`unsent-${entry.orderId}`}>
+                                        <SignedUnsentRow
+                                            entry={entry}
+                                            listings={listings}
+                                            sending={sendingUnsent === entry.orderId}
+                                            error={unsentError[entry.orderId] ?? null}
+                                            onSend={() => void sendUnsent(entry)}
+                                            onDiscard={() => chainId && forgetSignedUnsent({ address, chainId, orderId: entry.orderId })}
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
                         </section>
                     )}
 

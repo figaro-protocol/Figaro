@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useReadContract } from "wagmi";
+import { useChainId, useReadContract } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
 import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
@@ -10,6 +10,7 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { rememberSignedUnsent } from "@/lib/checkout/signedUnsentOrders";
 import type { CheckoutHandle } from "./types";
 
 /**
@@ -26,6 +27,7 @@ export function useCheckout(
     spender: `0x${string}` = CONTRACTS.core,
 ): CheckoutHandle {
     const { address } = useCommerce();
+    const chainId = useChainId();
 
     // ── Token metadata ──────────────────────────────────────────
     // `decimalsReady` distinguishes the real on-chain value from the 18-default
@@ -71,14 +73,18 @@ export function useCheckout(
 
     // Sign the ROOT and surface its payload to the share panel — the buyer
     // relays it from there. No auto-relay (that is `signAndShare`, for subs).
+    // The signed payload is also kept for the tab (signedUnsentOrders), so a
+    // navigation before Send does not lose the order: /orders lists it as
+    // "Signed, not yet sent" until the relay forgets it.
     const signRoot = useCallback(async (
         preview: OrderPreview,
         funding?: BuyerFundingRequest,
     ): Promise<CommitmentPayload> => {
         const p = await signCommitment(preview, funding);
         setPayload(p);
+        if (address) rememberSignedUnsent({ address, chainId, payload: p });
         return p;
-    }, [signCommitment]);
+    }, [signCommitment, address, chainId]);
 
     const resetOrder = useCallback(() => {
         reset();
