@@ -1,7 +1,7 @@
 name: Sequencer Release
 
 # Publishes a prebuilt `figaro-sequencer` relay binary as a GitHub Release
-# artifact. "Run your own" is the batch path's entry story — settleBatch is
+# artifact. "Run your own" is the batch path's entry story — `settleBatch` is
 # permissionless — but today running one means cloning the repo and installing
 # a Rust toolchain AND the SP1 toolchain. That is an adoption tax unrelated to
 # decentralization; a release artifact removes it without implying anything
@@ -226,7 +226,7 @@ jobs:
 
             # Cross-platform agreement on the vkey is a real check, not
             # ceremony: the guest is cross-compiled to RISC-V, so a host that
-            # changed the ELF would mean the two binaries settle against
+            # changed the ELF would mean the two binaries resolve against
             # different verifiers. Diverging keys fail the release.
             - name: Verify vkey agreement across targets
               id: facts
@@ -276,7 +276,7 @@ jobs:
                   `FigaroBatchVerifier.settleBatch` is permissionless, so this is one relay
                   among any number. **The relay is transport, not authority.** It holds no
                   keys and grants no privilege; its honest powers are censor-or-delay, never
-                  forge. The SP1 proof binds settlement to the EIP-712 structs both parties
+                  forge. The SP1 proof binds resolution to the EIP-712 structs both parties
                   signed, and participants can always fall back to direct `FigaroCore`
                   submission.
 
@@ -316,7 +316,7 @@ jobs:
                   of the binary's identity rather than a separate download. It is the value
                   `DeployMainnet.s.sol` takes as `SP1_PROGRAM_VKEY` and `FigaroBatchVerifier`
                   stores as its `programVKey` immutable — a build whose key differs from the
-                  one a deployed verifier pins cannot settle against it. Every binary in this
+                  one a deployed verifier pins cannot resolve against it. Every binary in this
                   release was checked to carry the same key; the workflow refuses to publish
                   otherwise. Recompute it with:
 

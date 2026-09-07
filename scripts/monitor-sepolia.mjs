@@ -98,11 +98,11 @@ const verifierAbi = abiOf("FigaroBatchVerifier");
 const skipped = await eventsChunked({ address: record.batchVerifier, abi: verifierAbi, eventName: "BatchAccrualSkipped", fromBlock: windowFrom, toBlock: head });
 for (const s of skipped) {
     alert("high", `accrual-skipped-${s.transactionHash}`,
-        `Monitor: a batch settled and its reward accrual did not apply (batch ${s.args.batchId})`,
-        `\`BatchAccrualSkipped\` in tx ${s.transactionHash}, reason bytes \`${s.args.reason}\`. The trade settled; the designer-reward accrual for this batch did not. Read the reason against \`UsageCounter\`'s errors: a seller who unstaked between prove and submit, a period boundary crossed in flight, or a provenance mismatch.`);
+        `Monitor: a batch resolved and its reward accrual did not apply (batch ${s.args.batchId})`,
+        `\`BatchAccrualSkipped\` in tx ${s.transactionHash}, reason bytes \`${s.args.reason}\`. The trade resolved; the designer-reward accrual for this batch did not. Read the reason against \`UsageCounter\`'s errors: a seller who unstaked between prove and submit, a period boundary crossed in flight, or a provenance mismatch.`);
 }
 const settled = await eventsChunked({ address: record.batchVerifier, abi: verifierAbi, eventName: "BatchSettled", fromBlock: windowFrom, toBlock: head });
-notes.push(`${settled.length} batch(es) settled in window, ${skipped.length} accrual(s) skipped`);
+notes.push(`${settled.length} batch(es) resolved in window, ${skipped.length} accrual(s) skipped`);
 
 const withdrawals = [
     ...(await eventsChunked({ address: record.membersRegistry, abi: abiOf("MembersRegistry"), eventName: "MemberWithdrawalRequested", fromBlock: windowFrom, toBlock: head })),

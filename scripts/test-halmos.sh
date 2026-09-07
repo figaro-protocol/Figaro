@@ -117,11 +117,11 @@ echo ""
 echo "▶ Pass 4/6 — UsageCounter: the accrual ARITHMETIC on top of the (already proved) stake gate"
 echo ""
 
-# ── Pass 4: the two-settlement-universes accounting ────────────────────────
+# ── Pass 4: the two-resolution-universes accounting ────────────────────────
 #
 # Direct-path accrual never regresses; the batch write REPLACES cumulative
 # (c,d), never adds; scoreOf == accrualOf.score + batchAccrualOf.score (the
-# ONLY place the two settlement universes meet); every timestamp buckets into
+# ONLY place the two resolution universes meet); every timestamp buckets into
 # exactly its period window; clause A's record never touches clause B.
 # The stake GATE itself is Pass 3's job (E-5) — not re-proved here.
 

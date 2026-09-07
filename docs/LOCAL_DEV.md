@@ -75,7 +75,7 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 The rented-machine recipe for the batch universe's relay-operator role:
 provision → reproducible guest build (docker ELF + vkey) → sequencer build →
-fork rehearsal → live settle, with the laptop driving batches through
+fork rehearsal → live resolve, with the laptop driving batches through
 `npm run batch:drive` over an SSH tunnel. `scripts/prover-box/README.md` owns
 the order of operations and the lessons (swap floor, keyed fork upstream,
 `SP1_SKIP_PROGRAM_BUILD` discipline); `prover/sequencer/README.md` owns the
@@ -130,7 +130,7 @@ NEXT_PUBLIC_PERMIT2=0x...
 NEXT_PUBLIC_SWAP_ROUTER=0x...
 NEXT_PUBLIC_SWAP_QUOTER=
 
-# Multisender — batch dispersal for post-settlement fiscal routing. Devnet:
+# Multisender — batch dispersal for post-resolution fiscal routing. Devnet:
 # MockDisperse (mirrors Disperse.app's verified interface); mainnet: the
 # canonical Disperse deployment (0xD152f5…2150, same address across chains)
 NEXT_PUBLIC_MULTISENDER=0x...
@@ -147,14 +147,14 @@ NEXT_PUBLIC_DAO_TREASURY=0x...
 # The 300M DAO funds public goods by discretionary decision. The 600M RPGF pays
 # uniform pro rata on real usage.
 
-# Batch-settlement proof path (FigaroBatchVerifier; MockSP1Verifier accepts
+# Batch-resolution proof path (FigaroBatchVerifier; MockSP1Verifier accepts
 # any proof on devnet — a real deployment wires Succinct's SP1 verifier
 # gateway + the program vkey via DeployMainnet's SP1_VERIFIER_GATEWAY /
 # SP1_PROGRAM_VKEY env)
 NEXT_PUBLIC_BATCH_VERIFIER=0x...
 
-# Batch-settlement RELAY the frontend READS batched trade from (prover/sequencer,
-# or any other relay). Deliberately EMPTY: settling a batch is permissionless, so
+# Batch-resolution RELAY the frontend READS batched trade from (prover/sequencer,
+# or any other relay). Deliberately EMPTY: resolving a batch is permissionless, so
 # a relay is one publisher among any number and there is no default endpoint of
 # ours. Unset = batched trade is unreadable here, which /audit states plainly.
 # Readers can override it per-browser (the client-side endpoint override read

@@ -1,6 +1,6 @@
 # Security Policy
 
-Figaro is a settlement kernel: `FigaroCore.sol` holds bonded collateral and
+Figaro is a kernel: `FigaroCore.sol` holds every bond and
 discharges resolution. A flaw in the on-chain surface can mean direct loss of
 locked funds. Disclosure is taken seriously.
 

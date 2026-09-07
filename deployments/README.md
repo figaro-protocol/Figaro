@@ -41,7 +41,7 @@ this shape as part of a mainnet deploy.
 
 Sepolia is LIVE: `11155111.json` is the committed record — every address
 Etherscan-verified, the site and the e2e suites read from it, and both
-settlement universes have settled on the public chain (the direct-path specs
+resolution universes have resolved on the public chain (the direct-path specs
 and real Groth16 batches through `FigaroBatchVerifier`). The `/spec` page's
 "Canonical deployments" section renders its Sepolia rows from this record at
 build time. Ethereum mainnet remains "Pending external audit" — no mainnet

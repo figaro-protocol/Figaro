@@ -127,8 +127,8 @@ protocol plus two clauses present in essentially all of them: **topology** (the
 chain — who comes before whom) and **commerce** (who pays whom, in what
 token, how much). From these alone the network emits its economic skeleton by
 construction — who paid whom, in what denomination, for how much, who the parties
-in the value-added process are, and how value accumulates (the Process and Settlement
-graphs above). That skeleton is complete on its own.
+in the value-added process are, and how value accumulates. That skeleton is complete
+on its own.
 
 **What it cannot see is *where*.** The must-haves show *that* value was added and
 *by whom* — never the **physical or virtual flow** of the work: where a pickup

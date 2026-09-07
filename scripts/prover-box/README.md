@@ -1,14 +1,14 @@
 # The prover box — a rented Groth16 host for the batch universe
 
 The relay operator's machine: builds the reproducible guest, runs the
-sequencer with a real prover, and settles batches against `FigaroBatchVerifier`
+sequencer with a real prover, and resolves batches against `FigaroBatchVerifier`
 — the role the protocol's cost model assigns to whoever operates a relay,
 never to the protocol or its users. The laptop is not a proving host
 (Succinct's Groth16 wrap floor is ~14 GB through the `sp1-gnark` docker image;
 measured peak ~18 GB, ~6–7 min per wrap on 16 CPU cores).
 
 First run: 2026-08-20 — the layered rehearsal that caught the guest's
-public-values encoding bug on a fork before a live wei moved, then settled the
+public-values encoding bug on a fork before a live wei moved, then resolved the
 first two real batches on public Sepolia.
 
 ## Order of operations
@@ -66,7 +66,7 @@ cd frontend && RPC_URL=<chain rpc or http://127.0.0.1:18546> \
   build and the embedded vkey silently diverges from the docker one.
 - **`FIGARO_CORE_ADDRESS` is set to the BATCH VERIFIER** in `run-sequencer.sh`:
   the batch universe's EIP-712 domain is the verifier, never `FigaroCore`.
-- **`/status` carries the failure surface.** A deterministic settle revert is
+- **`/status` carries the failure surface.** A deterministic resolve revert is
   dead-lettered (never re-proved), and `/status` reports `dead_lettered_ops` +
   `last_settle_error` — a polling driver sees a dead batch without tailing the log.
 - **Deleting the box deletes the relay archive** — the batched orders' only

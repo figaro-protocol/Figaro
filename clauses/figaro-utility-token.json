@@ -15,7 +15,7 @@
     "stages": {},
     "block": {
         "design": {
-            "article": "settlement",
+            "article": "denomination",
             "scope": "assembly",
             "nestsUnder": null,
             "fills": [

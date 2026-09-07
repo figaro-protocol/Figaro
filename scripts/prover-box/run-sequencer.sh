@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start (or restart) the sequencer in real-Groth16 mode against RPC_TARGET —
 # the box-local fork (default) for layer 2, or live Sepolia for the real
-# settle. The batch pair arrives via BATCH_VERIFIER / USAGE_COUNTER (a
+# resolve. The batch pair arrives via BATCH_VERIFIER / USAGE_COUNTER (a
 # fork-deployed validation pair, or the committed record's); registry
 # addresses come from the record. SEQUENCER_PRIVATE_KEY arrives via the
 # invocation environment — never written to disk.

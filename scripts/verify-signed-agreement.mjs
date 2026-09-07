@@ -2,7 +2,7 @@
 // verify-signed-agreement.mjs — recompute WHAT YOU ARE SIGNING on your own
 // machine, independent of any frontend origin.
 //
-// Settlement security is UI-independent, but presentation at the signing
+// Resolution security is UI-independent, but presentation at the signing
 // moment is not: a compromised page can DISPLAY agreement D while the wallet
 // signs hash(D′). This script moves the trusted display off-origin — you feed
 // it the agreement JSON you were shown and the EIP-712 typed data your wallet
