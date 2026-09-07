@@ -582,7 +582,7 @@ contract FigaroCoreTest is Test {
     // ═══════════════════════════════════════════════════════════════
     // 22: Sub-order on a resolved process reverts (ProcessAlreadyResolved)
     //
-    // Process closure semantics: resolveProcess settles every order in the
+    // Process closure semantics: resolveProcess resolves every order in the
     // process atomically (activeOrderCount = 0). The processId is closed —
     // a new sub-order cannot extend it. Parties wanting a follow-on
     // bonded relationship sign a fresh root commitment, getting a new

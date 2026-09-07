@@ -16,7 +16,7 @@ import {FigaroCore} from "src/kernel/FigaroCore.sol";
 ///      the spec-binding anchor check against the live ClauseRegistry,
 ///      net-position reconciliation, and the RPGF usage bridge. Hash packing here mirrors the Rust
 ///      kernel's compute_*_hash functions; the byte-exact cross-language
-///      lock is the sequencer batch e2e (a real apply_batch output settled
+///      lock is the sequencer batch e2e (a real apply_batch output resolved
 ///      through this contract).
 contract FigaroBatchVerifierTest is Test {
     FigaroBatchVerifier verifier;
@@ -84,7 +84,7 @@ contract FigaroBatchVerifierTest is Test {
         registry.registerClause{value: DEPOSIT}(CLAUSE_ID, 1, SPEC_HASH, "ipfs://spec");
 
         token.mint(buyer, 1_000 ether);
-        token.mint(address(verifier), 1_000 ether); // settlement liquidity for payout legs
+        token.mint(address(verifier), 1_000 ether); // resolution liquidity for payout legs
         vm.prank(buyer);
         token.approve(address(verifier), type(uint256).max);
     }
@@ -295,7 +295,7 @@ contract FigaroBatchVerifierTest is Test {
 
     function test_permissionless_newClause_settlesWithZeroVerifierChanges() public {
         // Open-world by construction: anchor a never-seen clause on the
-        // registry and a batch validated against it settles — no verifier
+        // registry and a batch validated against it resolves — no verifier
         // redeploy, no code change anywhere.
         string memory novelId = "acme-cold-brew-terms";
         bytes32 novelSpecHash = keccak256("acme spec bytes");
@@ -597,8 +597,8 @@ contract FigaroBatchVerifierTest is Test {
         vm.expectRevert();
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
 
-        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed settle");
-        assertEq(verifier.batchCount(), 0, "counter must not bump on failed settle");
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed resolve");
+        assertEq(verifier.batchCount(), 0, "counter must not bump on failed resolve");
         assertEq(token.balanceOf(seller), sellerBefore, "no partial payout leg");
     }
 
@@ -626,8 +626,8 @@ contract FigaroBatchVerifierTest is Test {
 
         vm.expectRevert();
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
-        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed settle");
-        assertEq(verifier.batchCount(), 0, "counter must not bump on failed settle");
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed resolve");
+        assertEq(verifier.batchCount(), 0, "counter must not bump on failed resolve");
     }
 
     // ── Capacity guard: a wide batch fits the L1 block budget ───────
@@ -686,7 +686,7 @@ contract FigaroBatchVerifierTest is Test {
         );
     }
 
-    /// THE BRIDGE, end to end: settling a batch must leave the accrual on the
+    /// THE BRIDGE, end to end: resolving a batch must leave the accrual on the
     /// COUNTER. Read back from the counter's own storage, never from the
     /// verifier's return or its events — the whole failure class this exists
     /// for is a call that is never made, or made and reverted.
@@ -701,7 +701,7 @@ contract FigaroBatchVerifierTest is Test {
         verifier.settleBatch(hex"", pv, positions, events, usage);
 
         (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(clauseKey, 0);
-        assertEq(c, 3, "distinct settled processes");
+        assertEq(c, 3, "distinct resolved processes");
         assertEq(d, 2, "distinct pairs");
         assertGt(score, 0, "and it is scored");
         assertEq(counter.scoreOf(clauseKey, 0), score, "which is what the reward reads");
@@ -709,7 +709,7 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     /// The accrual is calldata; the hash is the proof's. Tampering with the
-    /// numbers after proving must not settle.
+    /// numbers after proving must not resolve.
     function test_settleBatch_rejectsATamperedAccrual() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
         (
@@ -773,8 +773,8 @@ contract FigaroBatchVerifierTest is Test {
 
         // And so does the contract's assembly: a batch committing `expected`
         // gets past the usage-hash check into the counter, which rejects period
-        // 3 as not open. Settlement is decoupled from that rejection (Fix 1a),
-        // so the batch SETTLES and the accrual is dropped — which is itself
+        // 3 as not open. Resolution is decoupled from that rejection (Fix 1a),
+        // so the batch RESOLVES and the accrual is dropped — which is itself
         // proof the hash matched (a mismatch would revert UsageAccrualHashMismatch
         // before the counter is ever reached).
         (
@@ -796,13 +796,13 @@ contract FigaroBatchVerifierTest is Test {
         vm.expectEmit(true, false, false, false, address(verifier));
         emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
         verifier.settleBatch(hex"", pv, positions, events, u);
-        assertEq(verifier.stateRoot(), newRoot, "settles despite the rejected accrual");
+        assertEq(verifier.stateRoot(), newRoot, "resolves despite the rejected accrual");
     }
 
-    /// The counter's gates are the COUNTER's, and settlement is DECOUPLED from
-    /// them (audit Fix 1a): a batch that trips a reward-tier gate still settles
+    /// The counter's gates are the COUNTER's, and resolution is DECOUPLED from
+    /// them (audit Fix 1a): a batch that trips a reward-tier gate still resolves
     /// its token positions and advances state — the accrual is dropped, never
-    /// the trade. A reward gate must not unwind another party's settlement.
+    /// the trade. A reward gate must not unwind another party's resolution.
     function test_settleBatch_settlesEvenWhenTheCounterRejectsTheAccrual() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1, 1);
         (
@@ -822,14 +822,14 @@ contract FigaroBatchVerifierTest is Test {
         emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
         verifier.settleBatch(hex"", pv, positions, events, usage);
 
-        assertEq(verifier.stateRoot(), newRoot, "settlement advances despite the dropped accrual");
+        assertEq(verifier.stateRoot(), newRoot, "resolution advances despite the dropped accrual");
         assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is still paid");
         (,, uint256 score) = counter.batchAccrualOf(clauseKey, usage.period);
         assertEq(score, 0, "the accrual was dropped, not applied");
     }
 
     /// Trade outlives the reward: once accrual closes, batches carrying no
-    /// claims must still settle. This is the liveness leg of the bridge.
+    /// claims must still resolve. This is the liveness leg of the bridge.
     function test_settleBatch_stillSettlesAfterAccrualCloses() public {
         vm.warp(PERIOD_END + 1);
         (
@@ -840,7 +840,7 @@ contract FigaroBatchVerifierTest is Test {
         ) = _canonicalBatch();
 
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
-        assertEq(verifier.stateRoot(), newRoot, "settlement is not hostage to the reward schedule");
+        assertEq(verifier.stateRoot(), newRoot, "resolution is not hostage to the reward schedule");
     }
 
     // ── Differential fuzz: the assembly packers against the mirrors ──

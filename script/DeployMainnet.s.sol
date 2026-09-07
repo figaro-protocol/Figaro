@@ -53,9 +53,9 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///      content (keccak256) but validates no shape — well-formedness is an
 ///      off-chain SDK / read-time concern. The BATCHED path proves content
 ///      against the registered spec in-proof (the prover's generic engine
-///      takes the spec as witness input) and `FigaroBatchVerifier` settles
+///      takes the spec as witness input) and `FigaroBatchVerifier` resolves
 ///      only if the spec hash matches `ClauseRegistry.contentHashOf`. Any
-///      registered clause is attestable — and batch-settleable — with no
+///      registered clause is attestable — and batch-resolvable — with no
 ///      per-clause on-chain code.
 ///
 /// @dev Deployer renounces minting rights at the end of this script. No new minters
@@ -201,7 +201,7 @@ contract DeployMainnet is Script {
         _members = address(members);
         console.log("MembersRegistry:       ", _members);
 
-        // ── FigaroBatchVerifier (proof-based batch settlement) ─────
+        // ── FigaroBatchVerifier (proof-based batch resolution) ─────
         // SP1_VERIFIER_GATEWAY: Succinct's canonical SP1 verifier gateway
         // on the target chain (their contract-addresses docs list the
         // deployments; a chain with none can host the verifier directly).
@@ -252,7 +252,7 @@ contract DeployMainnet is Script {
         }
 
         // The mandatory clauses EARN (ruled 2026-08-13): commerce and topology ride
-        // on every order, so scoring them levies every settled process for their
+        // on every order, so scoring them levies every resolved process for their
         // author-of-record — the DAO treasury under the genesis registration, the
         // commons taxing its own unavoidable usage into the commons pot. Only the
         // assembly-provenance clause stays excluded: it is attribution plumbing

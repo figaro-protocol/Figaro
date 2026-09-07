@@ -69,7 +69,7 @@ contract UsageCounterHarness is UsageCounter {
 ///         iff a live stake backs it. That says nothing about whether the
 ///         numbers the counter then computes are RIGHT — whether two calls
 ///         only ever add, whether a batch overwrite can accidentally become an
-///         accumulate, whether the two settlement universes (direct,
+///         accumulate, whether the two resolution universes (direct,
 ///         proof-gated batch) combine the way `scoreOf` claims, whether a
 ///         period boundary is respected exactly, and whether one clause or assembly's
 ///         bookkeeping can leak into another's. Five properties, symbolically,
@@ -285,7 +285,7 @@ contract HalmosUsageCounter is Test {
 
     /// `scoreOf(clause-or-assembly, period) == accrualOf.score + batchAccrualOf.score`
     /// for every combination of "has the direct path recorded here" and "has
-    /// the batch path recorded here" — the only place the two settlement
+    /// the batch path recorded here" — the only place the two resolution
     /// universes ever meet is this addition.
     function check_scoreOfIsExactlyDirectPlusBatch(
         bytes32 clauseOrAssembly,
@@ -376,7 +376,7 @@ contract HalmosUsageCounter is Test {
 
     // ── 5. Cross-clause-or-assembly isolation ───────────────────────────────────
 
-    /// Recording usage for clause or assembly A — via either settlement path — leaves
+    /// Recording usage for clause or assembly A — via either resolution path — leaves
     /// every field of a DIFFERENT clause or assembly B's bookkeeping byte-for-byte
     /// unchanged, and the shared `totalScoreIn` moves by EXACTLY A's own score
     /// delta (never more, which would mean it leaked from B's slot; never

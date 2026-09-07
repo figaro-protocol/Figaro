@@ -17,7 +17,7 @@
  *   Resolution possible     — contract always has sufficient funds to resolve
  *   Deterrent magnitudes    — held escrow is exactly 2×payment (buyer) +
  *                             2×cumulativeValue (seller) per committed order
- *   Settled net positions   — resolution moves exactly `payment` buyer →
+ *   Resolved net positions  — resolution moves exactly `payment` buyer →
  *                             seller; both bonds return whole
  *
  * WHAT IS ABSTRACTED:
@@ -385,7 +385,7 @@ LockedEscrow(p) ==
         THEN 2 * orderRecords[oid].cumulativeValue
         ELSE 0 )])
 
-\* Net value a participant has settled through RESOLVED orders.
+\* Net value a participant has resolved through RESOLVED orders.
 SettledNet(p) ==
   SetSum({ oid \in 1 .. MaxTotalOrders: orderStatus[oid] = "Resolved" },
     [oid \in 1 .. MaxTotalOrders |->
@@ -404,7 +404,7 @@ DeterrentEscrowMagnitudes ==
     SetSum(Participants, [p \in Participants |-> LockedEscrow(p)])
 
 \* Every wallet equals its starting balance, less what it currently has
-\* locked, plus what it has settled — so resolution moved exactly
+\* locked, plus what it has resolved — so resolution moved exactly
 \* `payment` buyer → seller and returned both bonds whole.
 SettledNetPositions ==
   \A p \in Participants:

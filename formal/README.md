@@ -26,7 +26,7 @@ resolution correctness) across all reachable states.
 | **ActiveCountCorrect** | Process activeCount = number of committed (not yet resolved) orders. |
 | **ResolutionAlwaysPossible** | Contract always holds sufficient funds to resolve any active process. |
 | **DeterrentEscrowMagnitudes** | Everything the contract holds is the two bonds of the committed orders, at 2× on both sides — the deterrent magnitude the equilibrium argument reasons over, not merely "enough to pay out". |
-| **SettledNetPositions** | Every wallet = its starting balance − what it currently has locked + what it has settled. Resolution moved exactly `payment` buyer → seller and returned both bonds whole. |
+| **SettledNetPositions** | Every wallet = its starting balance − what it currently has locked + what it has resolved. Resolution moved exactly `payment` buyer → seller and refunded both bonds whole. |
 | **TypeOK** | All variables stay within their expected domains. |
 
 ## What Is Abstracted

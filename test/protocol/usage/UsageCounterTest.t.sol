@@ -12,7 +12,7 @@ import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.
 
 /// @notice UsageCounter — the accrual that replaces reconstructing usage after
 ///         the fact. Every test here is a property of "count it when it
-///         happens": nothing is trusted but the proof, a settled process counts
+///         happens": nothing is trusted but the proof, a resolved process counts
 ///         exactly once, breadth counts distinct LIVE-STAKED SELLERS (so every
 ///         unit of it costs a stake), a clause or assembly scores nothing until the
 ///         minimum-support floor is met, and a period's numbers stop moving
@@ -73,7 +73,7 @@ contract UsageCounterTest is Test {
         // its own section with `kill()`.
         stake = new MockClauseOrAssemblyStake();
 
-        // The seller-side live-stake gate: only a registered seller's settled
+        // The seller-side live-stake gate: only a registered seller's resolved
         // trades count. Both sellers stake here (zero deposit in this suite).
         vm.prank(seller1);
         members.register("ipfs://seller1");
@@ -137,7 +137,7 @@ contract UsageCounterTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    /// @dev A settled one-order process whose agreement commits `clause or assembly`.
+    /// @dev A resolved one-order process whose agreement commits `clause or assembly`.
     ///      Returns the commitment so the counter can be handed the signed
     ///      struct exactly as the parties signed it.
     function _settledOrder(bytes32 clauseOrAssembly, address b, uint256 bKey, address s, uint256 sKey, uint256 salt)
@@ -185,7 +185,7 @@ contract UsageCounterTest is Test {
         counter.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
     }
 
-    /// @dev A settled one-order process whose agreement carries the PROVENANCE
+    /// @dev A resolved one-order process whose agreement carries the PROVENANCE
     ///      section for `compositionHash` — the only leaf an assembly is ever
     ///      provable through, since agreement leaves are keyed by clause and a
     ///      compositionHash is never a leaf key. The section commits as the
@@ -238,7 +238,7 @@ contract UsageCounterTest is Test {
     }
 
     function test_revertsWhenOrderStillOpen() public {
-        // Usage is what a SETTLED process leaves behind. An open process has not
+        // Usage is what a RESOLVED process leaves behind. An open process has not
         // yet added the value being counted — this is the inverse of the
         // attestation gate, which wants the process open.
         CommitmentTypes.Commitment memory c = _openOrder(CARGO_KEY, 7);
@@ -402,7 +402,7 @@ contract UsageCounterTest is Test {
         _record(b, CARGO_KEY);
 
         (uint64 cCount, uint64 d,) = counter.accrualOf(CARGO_KEY, 0);
-        assertEq(cCount, 2, "every settled process counts");
+        assertEq(cCount, 2, "every resolved process counts");
         assertEq(d, 1, "breadth costs a stake: n buyers through one seller are one unit");
     }
 
@@ -430,7 +430,7 @@ contract UsageCounterTest is Test {
             _record(c, CARGO_KEY);
         }
         (uint64 cCount, uint64 d, uint256 repeatScore) = counter.accrualOf(CARGO_KEY, 0);
-        assertEq(cCount, 8, "every settled process counts");
+        assertEq(cCount, 8, "every resolved process counts");
         assertEq(d, 1, "one seller is one unit of breadth, however often it trades");
 
         // Eight trades through ONE seller must score below eight DISTINCT
@@ -444,7 +444,7 @@ contract UsageCounterTest is Test {
 
     function test_mandatoryClausesEarnForTheirAuthor() public {
         // figaro-commerce and figaro-topology ride on EVERY order, so scoring
-        // them levies every settled process for their author-of-record — the
+        // them levies every resolved process for their author-of-record — the
         // DAO treasury under the ruled genesis registration (2026-08-13): the
         // commons taxing its own unavoidable usage into the commons pot.
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
@@ -524,7 +524,7 @@ contract UsageCounterTest is Test {
     }
 
     function test_sameProcessCannotCountInASecondPeriod() public {
-        // Idempotence is GLOBAL per (clause-or-assembly, process): one settled trade is
+        // Idempotence is GLOBAL per (clause-or-assembly, process): one resolved trade is
         // counted once ever. A resolved order stays resolved and its struct is
         // public, so a per-period key would let the same trade be re-presented
         // in every period — paying for recording gas instead of adoption, and
@@ -734,7 +734,7 @@ contract UsageCounterTest is Test {
         assertEq(floored.totalScoreIn(0), above);
     }
 
-    /// The floor is applied PER SETTLEMENT PATH, deliberately: the chain holds
+    /// The floor is applied PER RESOLUTION PATH, deliberately: the chain holds
     /// counts, not the seller sets, so it cannot know whether the paths' d
     /// values share sellers. Summing toward the floor would let ONE seller
     /// straddle the universes and count twice; flooring each side separately
@@ -834,7 +834,7 @@ contract UsageCounterTest is Test {
 
     // ── The batch bridge: proof-gated accrual ───────────────────────
     //
-    // A batch-settled process never acquires kernel status, so none of this
+    // A batch-resolved process never acquires kernel status, so none of this
     // can travel the direct path. What the counter still owns, and enforces
     // here, is the reward's own gates: who may write, which period is open,
     // which sellers are staked, which clauses and assemblies are excluded.
@@ -924,8 +924,8 @@ contract UsageCounterTest is Test {
 
     function test_batchAccrualSkipsAnExcludedClauseOrAssembly() public {
         // SKIP, never revert: this runs inside settleBatch, so a revert would
-        // take down the whole batch's token settlement. An excluded clause or assembly
-        // simply earns nothing — not written, total untouched, trade settles.
+        // take down the whole batch's token resolution. An excluded clause or assembly
+        // simply earns nothing — not written, total untouched, trade resolves.
         // PROV_KEY doubles as the excluded exemplar — the deploy shape (ruled
         // 2026-08-13) excludes only the attribution-plumbing provenance clause.
         uint256 totalBefore = counter.totalScoreIn(0);
@@ -986,7 +986,7 @@ contract UsageCounterTest is Test {
         assertEq(counter.totalScoreIn(0), _score(6, 4), "total holds the latest score, not the sum of writes");
     }
 
-    /// LIVENESS: trade must keep settling after the reward stops. An empty
+    /// LIVENESS: trade must keep resolving after the reward stops. An empty
     /// accrual returns before `currentPeriod()` is consulted — otherwise every
     /// batch would revert `AccrualClosed` forever once the last period ended,
     /// and the scaling path would be bricked by the reward path.

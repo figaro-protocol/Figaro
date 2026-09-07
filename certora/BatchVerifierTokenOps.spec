@@ -2,7 +2,7 @@
 // Certora CVL — token-operation surface verification for FigaroBatchVerifier.
 //
 // Goal: universal balance-flow proof for BatchVerifier's net-position
-// settlement path — the second of Figaro's two token-moving surfaces
+// resolution path — the second of Figaro's two token-moving surfaces
 // (alongside FigaroCore, covered by TokenOpsVerification.spec).
 //
 // Modeling approach: ghost-based balance tracking (same as
@@ -17,7 +17,7 @@
 //                   — uninterpreted bytes32 return
 //   _emitAttestations — no-op (events don't affect ghost balance)
 //   clauseRegistry.contentHashOf — NONDET external view (the spec-binding
-//                   anchor check gates settlement but moves no tokens)
+//                   anchor check gates resolution but moves no tokens)
 //
 // Additionally we pin both event arrays (attestations, specBindings) to
 // length 0 in rule preconditions so their loops bound to 0 iterations
@@ -58,13 +58,13 @@
 //   2. Read `FigaroBatchVerifier.settleBatch` — the only balance-touching
 //      calls in its position loop are those summarized transfers.
 //   3. Conclude: loop iteration is balance-neutral; multi-position
-//      settlement preserves token conservation.
+//      resolution preserves token conservation.
 //
 // The same holds for the event arrays (attestations, spec bindings):
 // they are summarized to NONDET and never touch the ghost, so their
 // length is irrelevant to balance-flow correctness. The spec-binding
 // anchor check (`_checkSpecBindings` → `clauseRegistry.contentHashOf`)
-// is a view path — it can only make settlement revert, never move a
+// is a view path — it can only make resolution revert, never move a
 // token, so summarizing it to NONDET is sound for balance rules.
 
 ghost mapping(address => mathint) balance;
@@ -99,7 +99,7 @@ methods {
     // three hash summaries above. `_hashUsage`'s assembly-packed hashing of a
     // nested-dynamic-array struct defeats the prover's pointer analysis (the
     // 2026-08-03 run burned the 2h global timeout inside it before reaching
-    // any rule); its result only gates settlement against the proof's public
+    // any rule); its result only gates resolution against the proof's public
     // values — revert-only power, no token movement — so NONDET is sound for
     // balance rules. The counter's accrual call is a reward-tier write behind
     // try/catch, no token movement either way.
@@ -147,7 +147,7 @@ function validSinglePositionBatch(
         batchEvents.specBindings.length == 0 &&
         // Same strategy for the usage bridge (2026-07-30 amendment): the
         // accrual loops are not token-flow paths — the counter call is
-        // try/catch decoupled from settlement — so collapse them too.
+        // try/catch decoupled from resolution — so collapse them too.
         usage.accruals.length == 0 &&
         usage.sellers.length == 0;
 }

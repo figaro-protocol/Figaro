@@ -13,7 +13,7 @@ import {FlorinToken} from "src/florin/FlorinToken.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
-/// @notice End to end with NO stubs: a real bonded process settles, its usage is
+/// @notice End to end with NO stubs: a real bonded process resolves, its usage is
 ///         recorded against the real counter, the period closes, and the real
 ///         minter pays real florins. RpgfMinterTest exercises payout maths
 ///         against a stub; this proves the two contracts actually compose — that
@@ -70,7 +70,7 @@ contract RpgfIntegrationTest is Test {
         vm.prank(designer);
         assemblies.registerAssembly(ASM, "ipfs://asm");
         // The seller-side live-stake gate: the seller-of-record must be staked
-        // for its settled trades to count toward the reward.
+        // for its resolved trades to count toward the reward.
         vm.prank(seller);
         members.register("ipfs://seller");
 
@@ -130,7 +130,7 @@ contract RpgfIntegrationTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    /// @dev One real bonded process, settled, committing `clause or assembly`.
+    /// @dev One real bonded process, resolved, committing `clause or assembly`.
     function _settle(bytes32 clauseOrAssembly, uint256 salt) internal returns (CommitmentTypes.Commitment memory c) {
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
@@ -150,7 +150,7 @@ contract RpgfIntegrationTest is Test {
         core.resolveProcess(processId, all);
     }
 
-    /// @dev A settled process whose agreement carries the PROVENANCE section —
+    /// @dev A resolved process whose agreement carries the PROVENANCE section —
     ///      the only way an assembly is ever provable, because agreement leaves
     ///      are keyed by clause and a compositionHash is never a leaf key.
     function _settleUnderAssembly(bytes32 compositionHash, uint256 salt)
@@ -186,7 +186,7 @@ contract RpgfIntegrationTest is Test {
     // ── The whole path ──────────────────────────────────────────────
 
     function test_settledTradeBecomesAFlorinPayout() public {
-        // Two settled processes use the clause; one uses the assembly.
+        // Two resolved processes use the clause; one uses the assembly.
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
         counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
         (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
@@ -220,7 +220,7 @@ contract RpgfIntegrationTest is Test {
     }
 
     function test_unrecordedUsageEarnsNothing() public {
-        // Recording is opt-in: a settled process nobody records simply does not
+        // Recording is opt-in: a resolved process nobody records simply does not
         // count. The florins stay unminted rather than accruing to anyone.
         _settle(GEO_KEY, 1);
         vm.warp(P0_END + 1);

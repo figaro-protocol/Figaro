@@ -152,7 +152,7 @@ contract Deploy is Script {
 
         // ── Multisender (composition target; mock on devnet) ────────
         // Batch dispersal — one payment, many recipients, one transaction;
-        // post-settlement fiscal routing (a wallet splits its own receipts
+        // post-resolution fiscal routing (a wallet splits its own receipts
         // to earmarked addresses) — is COMPOSED, not owned: mainnet uses
         // the canonical public Disperse deployment
         // (0xD152f549545093347A162Dce210e7293f1452150, same address across
@@ -165,7 +165,7 @@ contract Deploy is Script {
             console.log("MockDisperse deployed at:", address(multisender));
         }
 
-        // ── Batch-settlement proof path (mock verifier on devnet) ──
+        // ── Batch-resolution proof path (mock verifier on devnet) ──
         // MockSP1Verifier accepts any proof; the real deployment wires
         // Succinct's SP1 verifier gateway + the program vkey from
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`
@@ -174,7 +174,7 @@ contract Deploy is Script {
         // orderProcessId), matching the Rust KernelState::compute_root
         // on the empty state. ClauseRegistry is the witness-spec anchor:
         // settleBatch checks each proof's (clause key → spec hash)
-        // binding against contentHashOf before settling.
+        // binding against contentHashOf before resolving.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
         _deployUsageAndVerifier(address(_clauses), address(_assemblies), address(_core), address(_members), deployer);
 
@@ -267,7 +267,7 @@ contract Deploy is Script {
     ///      deploy as an ADJACENT PAIR with the prediction asserted: a wrong
     ///      guess fails the deploy instead of silently producing a counter no
     ///      verifier can write to, which would look healthy right up until the
-    ///      first batch settled.
+    ///      first batch resolved.
     function _deployUsageAndVerifier(
         address clauseRegistry,
         address assemblyRegistry,
@@ -374,7 +374,7 @@ contract Deploy is Script {
         }
 
         // The mandatory clauses EARN (ruled 2026-08-13; mirrors DeployMainnet):
-        // scoring commerce and topology levies every settled process for their
+        // scoring commerce and topology levies every resolved process for their
         // author-of-record. Only assembly-provenance stays excluded — attribution
         // plumbing; scoring it would double-pay every assembly trade. (Assembly
         // designers accrue via recordAssemblyUsage, which credits the compositionHash.)

@@ -1,7 +1,7 @@
 ---- MODULE SettlementUniverses ----
 
 (*
- * Formal model of Figaro's COMPOSED settlement system — the cross-contract
+ * Formal model of Figaro's COMPOSED resolution system — the cross-contract
  * temporal properties no per-contract harness (Foundry / Halmos / Certora,
  * all single-contract) can express.
  *
@@ -16,7 +16,7 @@
  *       settleBatch()     → verifies an SP1 proof, reconciles NET token
  *                           positions per (token, user), re-emits attestations,
  *                           advances stateRoot, and bridges the RPGF accrual.
- *                           It writes NO kernel state — a batch-settled order
+ *                           It writes NO kernel state — a batch-resolved order
  *                           never acquires kernel orderStatus, ever.
  *
  *   UsageCounter          (src/protocol/usage/UsageCounter.sol)
@@ -30,9 +30,9 @@
  *                          off-chain, under the verifier's state root.
  *
  * THE CREASE. FigaroCore and FigaroBatchVerifier share no state and never call
- * each other (docs/SCALING_STRATEGY.md § "Two settlement paths, two DISJOINT
+ * each other (docs/SCALING_STRATEGY.md § "Two resolution paths, two DISJOINT
  * state universes"). Exactly ONE thing crosses: the RPGF usage accrual, as
- * proved numbers. Money crosses as net token positions, which is settlement,
+ * proved numbers. Money crosses as net token positions, which is resolution,
  * not state. This model is the first instrument that can see both universes at
  * once and interleave them arbitrarily.
  *
@@ -64,11 +64,11 @@
  *
  *   AssumeAccrualGatesAligned
  *       "No accrual-period boundary is crossed between the guest proving a
- *        batch's usage claims and that batch settling on chain."
+ *        batch's usage claims and that batch resolving on chain."
  *       STATUS: NOT contract-enforced. UsageCounter.applyBatchAccrual reverts
  *       PeriodMismatch when the sequencer's period is not the open one
  *       (UsageCounter.sol:548-549), and FigaroBatchVerifier catches that
- *       revert and settles the tokens anyway (FigaroBatchVerifier.sol:322-327,
+ *       revert and resolves the tokens anyway (FigaroBatchVerifier.sol:322-327,
  *       DESIGN_DECISIONS.md §20). The GUEST state has already advanced — its
  *       usage_process_counted set rides the state root and is GLOBAL, once
  *       ever, whatever the period (kernel.rs:714) — so the dropped processes
@@ -183,7 +183,7 @@ VARIABLES
   verifBal,     \* tokens held by FigaroBatchVerifier
 
   \* ── the batch under assembly (net-position tracker + usage claims) ──
-  batchOpen,    \* TRUE once a guest op has been added and not yet settled
+  batchOpen,    \* TRUE once a guest op has been added and not yet resolved
   penNet,       \* [Participants -> Int] deposit - payout, the NET position
   penUse,       \* set of [art, ord] usage claims proved in this batch
   penPeriod,    \* the batch's usage_period (BatchUsageData.period)
@@ -242,7 +242,7 @@ GuestOutstanding ==
 \* identity at all (different EIP-712 domain ⇒ different processId ⇒ different
 \* orderHash). With the assumption removed, an IDENTICAL commitment struct
 \* yields the IDENTICAL identity in both — which is exactly the shape of a
-\* double settlement. A DIFFERENT struct still yields a different identity, so
+\* double resolution. A DIFFERENT struct still yields a different identity, so
 \* the coupling is admitted only when the records match.
 KMayTake(o, rec) ==
   IF AssumeDomainSeparation
@@ -430,7 +430,7 @@ GResolve(pid) ==
                      gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
 
 \* One in-proof usage claim (prover/lib/src/kernel.rs apply_usage_claim): the
-\* guest proves a SETTLED (in ITS universe) process used an artifact. The
+\* guest proves a RESOLVED (in ITS universe) process used an artifact. The
 \* whole batch carries ONE usage_period; a claim can only join a batch whose
 \* period is still the one now open.
 GClaimUsage(a, o) ==
@@ -511,7 +511,7 @@ SettleBatch ==
 \* UsageCounter — direct path
 \* ══════════════════════════════════════════════════════════════
 \* UsageCounter.recordClauseUsage: permissionless, but gated on
-\* core.orderStatus(orderHash) == 2. A batch-settled order can NEVER satisfy
+\* core.orderStatus(orderHash) == 2. A batch-resolved order can NEVER satisfy
 \* this — that is the crease, and it is why the bridge exists.
 RecordUsage(a, o) ==
   /\ period < ClosedPeriod
@@ -542,7 +542,7 @@ RecordUsage(a, o) ==
 \* ══════════════════════════════════════════════════════════════
 \* AssumeAccrualGatesAligned is exactly the constraint that no boundary is
 \* crossed while a batch is in flight (prover/sequencer/src/assembler.rs: "a
-\* batch assembled just before a period boundary and settled just after it
+\* batch assembled just before a period boundary and resolved just after it
 \* must be re-proven for the new period").
 AdvancePeriod ==
   /\ period < ClosedPeriod
@@ -594,7 +594,7 @@ TypeOK ==
 
 \* ── 1. No value is paid out twice across the two universes ───
 \* CARRIED BY: AssumeDomainSeparation.
-\* The economic form: an order identity is settled by at most one universe, so
+\* The economic form: an order identity is resolved by at most one universe, so
 \* the buyer's payment leg is released exactly once.
 NoDoublePayout ==
   \A o \in Orders: ~( kStatus[o] = "Resolved" /\ gStatus[o] = "Resolved" )
@@ -673,7 +673,7 @@ ExcludedNeverScores ==
 
 
 \* ── 4. Kernel blindness is faithful ──────────────────────────
-\* Batch settlement changes NO kernel orderStatus. kResolvedGhost is written
+\* Batch resolution changes NO kernel orderStatus. kResolvedGhost is written
 \* only by KResolve, so equality with the kernel's own RESOLVED set is exactly
 \* the claim "nothing but resolveProcess ever flipped a kernel status".
 KernelBlindToBatch ==
@@ -707,7 +707,7 @@ AccrualNeverOverPays == BatchWriteReplacesNeverAdds
 \*
 \* With the assumption removed the period can advance while a batch is in
 \* flight; applyBatchAccrual reverts PeriodMismatch, settleBatch catches it and
-\* settles the tokens anyway, and the guest's GLOBAL counted set has already
+\* resolves the tokens anyway, and the guest's GLOBAL counted set has already
 \* absorbed those processes (kernel.rs:714, once ever, whatever the period).
 \* So the accrual is not "recovered by the next batch" for those processes —
 \* it is permanently forgone.

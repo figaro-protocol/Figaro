@@ -8,7 +8,7 @@ interface IUsageCounter {
     function periodCount() external view returns (uint256);
     function periodClosed(uint8 period) external view returns (bool);
     function totalScoreIn(uint8 period) external view returns (uint256);
-    /// @dev BOTH settlement paths, summed as SCORES — never `accrualOf`,
+    /// @dev BOTH resolution paths, summed as SCORES — never `accrualOf`,
     ///      which sees the direct path only and would under-pay every clause
     ///      or assembly whose trade moved to batches.
     function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);

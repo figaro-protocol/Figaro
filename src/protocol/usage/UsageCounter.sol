@@ -59,7 +59,7 @@ interface IAssemblyStake {
 ///              (merkle inclusion against `agreementHash`).
 ///         Same check `AttestationCoordinator` performs, with the status gate
 ///         inverted: attestation is evidence DURING an open process, usage is
-///         counted only once the process has settled.
+///         counted only once the process has resolved.
 ///
 /// @dev    PERIODS, NOT CHECKPOINTS. Accrual buckets into fixed periods set at
 ///         deploy. A period's counts are final once it ends, so a consumer
@@ -81,7 +81,7 @@ contract UsageCounter {
 
     IFigaroCore public immutable core;
 
-    /// @notice MembersRegistry — the seller-side eligibility gate. A settled
+    /// @notice MembersRegistry — the seller-side eligibility gate. A resolved
     ///         process's usage counts toward the reward only while its
     ///         seller-of-record holds a LIVE ETH stake here (registered and
     ///         un-withdrawn), which prices the seller IDENTITY — and with it
@@ -121,7 +121,7 @@ contract UsageCounter {
     ///         the same trade (the guest's counted set rides the state root),
     ///         and cannot be repointed — no setter exists. What it CAN do is
     ///         exactly what the direct path lets anyone do permissionlessly:
-    ///         present proof that settled trade used a clause or assembly. See
+    ///         present proof that resolved trade used a clause or assembly. See
     ///         `DESIGN_DECISIONS.md` #16 "`UsageCounter.applyBatchAccrual` has
     ///         one privileged caller — a proof-gated writer, not an admin".
     ///
@@ -154,7 +154,7 @@ contract UsageCounter {
     ///         which an assembly's designer is credited — so scoring it would pay
     ///         one adoption twice (once to the designer via `recordAssemblyUsage`,
     ///         again to the leaf's author). The mandatory clauses ride every
-    ///         order, so scoring them levies every settled process for their
+    ///         order, so scoring them levies every resolved process for their
     ///         author-of-record — the commons treasury under the genesis
     ///         registration, a usage-indexed endowment of the commons.
     ///         This is deploy-frozen: WHICH clauses and assemblies the reward
@@ -174,7 +174,7 @@ contract UsageCounter {
     ///         actor can fabricate alone — self-farms, fragmentation shards,
     ///         squatted names, trivial riders. A floor of k makes the minimum
     ///         viable farm k live stakes plus k cooldowns, with no curation and
-    ///         no judgment. Applied per settlement path inside `_score` — the
+    ///         no judgment. Applied per resolution path inside `_score` — the
     ///         paths cannot union their seller sets, and flooring each side
     ///         separately can only ever UNDER-pay a boundary case, never let
     ///         one seller straddle the universes to double toward the floor.
@@ -191,7 +191,7 @@ contract UsageCounter {
     // ── Accrual ─────────────────────────────────────────────────────
 
     struct Accrual {
-        /// @dev Distinct settled processes that used this clause or assembly.
+        /// @dev Distinct resolved processes that used this clause or assembly.
         uint64 c;
         /// @dev Distinct live-staked sellers of record across those processes.
         uint64 d;
@@ -206,7 +206,7 @@ contract UsageCounter {
     ///         own anchor uses, never a new identifier.
     mapping(bytes32 => mapping(uint8 => Accrual)) public accrualOf;
 
-    /// @notice The same accrual for trade settled through `FigaroBatchVerifier`
+    /// @notice The same accrual for trade resolved through `FigaroBatchVerifier`
     ///         — kept in a SEPARATE slot, never merged into `accrualOf`.
     /// @dev    THE TWO ARE SUMMED AS SCORES, never as components (`scoreOf`).
     ///         Summing `c` and `d` would over-count breadth for any SELLER
@@ -225,18 +225,18 @@ contract UsageCounter {
     ///         Pooling `d` would need per-key seller sets from the batch,
     ///         which this call does not carry. The PROCESSES are disjoint by
     ///         construction (a
-    ///         batch-settled process never acquires kernel status, and a
-    ///         kernel-settled one is never in a batch), so no PROCESS is ever
+    ///         batch-resolved process never acquires kernel status, and a
+    ///         kernel-resolved one is never in a batch), so no PROCESS is ever
     ///         counted on both sides.
     mapping(bytes32 => mapping(uint8 => Accrual)) public batchAccrualOf;
 
     /// @notice period → summed score of every clause or assembly in it, across BOTH
-    ///         settlement paths. A consumer paying pro rata divides by this; it
+    ///         resolution paths. A consumer paying pro rata divides by this; it
     ///         is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
     /// @notice clause or assembly → processId → already counted. Idempotence is GLOBAL, not
-    ///         per period: a settled process counts ONCE EVER toward a clause or assembly,
+    ///         per period: a resolved process counts ONCE EVER toward a clause or assembly,
     ///         in whichever period it is first recorded.
     /// @dev    Why not per period (ruled 2026-07-30). A resolved order stays
     ///         resolved and its struct is public in the commit event, so anyone
@@ -277,7 +277,7 @@ contract UsageCounter {
 
     /// @param clauseOrAssembly  Clause idHash or assembly compositionHash.
     /// @param period    The accrual period the usage landed in.
-    /// @param processId The settled process that used it.
+    /// @param processId The resolved process that used it.
     /// @param seller    The recorded order's seller of record (live-staked).
     /// @param c         The clause or assembly's distinct-process count after this record.
     /// @param d         The clause or assembly's distinct-staked-seller count after this
@@ -293,7 +293,7 @@ contract UsageCounter {
         uint256 score
     );
 
-    /// @notice One clause or assembly's batch-path accrual after a settled batch.
+    /// @notice One clause or assembly's batch-path accrual after a resolved batch.
     /// @dev    Deliberately NOT `UsageRecorded`: there is no processId and no
     ///         per-record seller to report, because the batch path proves
     ///         per-process facts off-chain and writes only the totals. An
@@ -302,7 +302,7 @@ contract UsageCounter {
     ///         adds (the values are cumulative, not deltas).
     /// @param clauseOrAssembly Clause idHash or assembly compositionHash.
     /// @param period   The accrual period.
-    /// @param c        Cumulative distinct settled processes, batch path.
+    /// @param c        Cumulative distinct resolved processes, batch path.
     /// @param d        Cumulative distinct staked sellers in this period, batch
     ///                 path.
     /// @param score    The batch-path score after this write.
@@ -409,8 +409,8 @@ contract UsageCounter {
         return period < periodEnd.length && block.timestamp >= periodEnd[period];
     }
 
-    /// @notice A clause or assembly's TOTAL score for a period — direct-settled trade
-    ///         plus batch-settled trade, summed as SCORES. This is the number a
+    /// @notice A clause or assembly's TOTAL score for a period — direct-resolved trade
+    ///         plus batch-resolved trade, summed as SCORES. This is the number a
     ///         reward consumer divides by `totalScoreIn`; reading `accrualOf`
     ///         alone sees only the direct path and under-pays every clause or assembly
     ///         that scaled.
@@ -420,7 +420,7 @@ contract UsageCounter {
 
     // ── Recording (permissionless) ──────────────────────────────────
 
-    /// @notice Record one settled process's use of one clause or assembly. Anyone may
+    /// @notice Record one resolved process's use of one clause or assembly. Anyone may
     ///         call; the proof is what is trusted, never the caller. Recording
     ///         is opt-in and gas-paid by whoever benefits — usually the clause or assembly's
     ///         author, since this is how their work is counted.
@@ -444,7 +444,7 @@ contract UsageCounter {
     ) external {
         uint8 period = currentPeriod();
 
-        // 1. The order is real and SETTLED. Usage is what a finished process
+        // 1. The order is real and RESOLVED. Usage is what a finished process
         //    leaves behind; an open process has not yet added any value.
         (bytes32 orderHash, bytes32 processId) = _requireResolvedOrder(order);
 
@@ -465,7 +465,7 @@ contract UsageCounter {
         _accrue(clauseOrAssembly, period, processId, order.seller);
     }
 
-    /// @notice Record one settled process's use of an ASSEMBLY. Same guarantees
+    /// @notice Record one resolved process's use of an ASSEMBLY. Same guarantees
     ///         as `recordClauseUsage`, proved one step differently: an agreement's
     ///         leaves are keyed by CLAUSE, so a compositionHash is never a leaf
     ///         key. What IS a leaf is the provenance clause, whose committed
@@ -558,7 +558,7 @@ contract UsageCounter {
         if (msg.sender != batchVerifier) revert NotBatchVerifier();
 
         // An empty accrual is a no-op, and MUST be: batches carrying no usage
-        // claims have to keep settling after the last period ends, when
+        // claims have to keep resolving after the last period ends, when
         // `currentPeriod()` reverts `AccrualClosed`. Trade does not stop when
         // the reward does.
         if (accruals.length == 0) return;
@@ -580,13 +580,13 @@ contract UsageCounter {
         for (uint256 i = 0; i < accruals.length; ++i) {
             BatchAccrual calldata a = accruals[i];
             // SKIP, never revert — this call runs inside `settleBatch`, so a
-            // revert here would take down the whole batch's TOKEN settlement (a
-            // reward-tier gate blocking the settlement tier). An excluded or
+            // revert here would take down the whole batch's TOKEN resolution (a
+            // reward-tier gate blocking the resolution tier). An excluded or
             // un-live clause or assembly simply earns nothing: don't write it, don't touch
             // the total, move on. The guest counts without knowing exclusion or
             // registration (both are live chain state it cannot see), so the
             // reward's own gates are applied HERE, and applying them as skips is
-            // what keeps trade settling. (Direct path reverts instead — it is a
+            // what keeps trade resolving. (Direct path reverts instead — it is a
             // standalone tx with nothing else to unwind.)
             if (excludedClauseOrAssembly[a.clauseOrAssembly]) continue;
             if (!_clauseLive(a.clauseOrAssembly) && !_assemblyLive(a.clauseOrAssembly)) continue;
@@ -635,11 +635,11 @@ contract UsageCounter {
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
         // holds a LIVE MembersRegistry stake, read at RECORD time. This gate is
         // RETROACTIVE, not merely prospective: requesting withdrawal de-surfaces
-        // the seller AND makes every one of their settled-but-NOT-YET-RECORDED
+        // the seller AND makes every one of their resolved-but-NOT-YET-RECORDED
         // processes permanently unrecordable once the period ends — recording
         // reads live state, and a resolved order carries no timestamp the chain
         // can gate on. The mitigation is a HABIT, not on-chain state: usage is
-        // recorded AT SETTLEMENT (the buyer's app records every committed
+        // recorded AT RESOLUTION (the buyer's app records every committed
         // clause or assembly right after resolveProcess confirms — createCapabilityExecutors.ts),
         // when the seller is definitionally still staked. A seller who wants to
         // deny a specific author must therefore stay unstaked through the period
@@ -691,7 +691,7 @@ contract UsageCounter {
     ///         is the same per staked seller regardless of quanta. Weighting
     ///         by value would import a "TVL matters" metric that belongs to a
     ///         different kind of system. The floor sits HERE, not in `_accrue`,
-    ///         so both settlement paths inherit it identically and counting
+    ///         so both resolution paths inherit it identically and counting
     ///         below the floor is never refused — only unscored until support
     ///         arrives.
     function _score(uint64 c, uint64 d) internal view returns (uint256) {
@@ -750,7 +750,7 @@ contract UsageCounter {
     /// @dev Recompute the order hash from the signed struct and require the
     ///      kernel to report it RESOLVED (status 2). Mirrors
     ///      `AttestationCoordinator._requireKnownCommitment`, inverted: that gate
-    ///      wants an OPEN process (evidence during), this one wants a SETTLED
+    ///      wants an OPEN process (evidence during), this one wants a RESOLVED
     ///      process (value added).
     function _requireResolvedOrder(CommitmentTypes.Commitment calldata c)
         internal

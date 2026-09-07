@@ -13,13 +13,13 @@ import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
-/// @title ReentrancyAdversarialTest — a malicious settlement token tries to
+/// @title ReentrancyAdversarialTest — a malicious denomination token tries to
 ///        re-enter the kernel and the batch verifier during a token movement.
 /// @notice The kernel's and verifier's `nonReentrant` guards are load-bearing
 ///         but were adversarially untested: no test ever handed the protocol a
 ///         token that calls back mid-transfer. This does exactly that, and
 ///         asserts the guard fires (the nested call reverts) while the outer
-///         settlement still completes with correct balances.
+///         resolution still completes with correct balances.
 contract ReentrancyAdversarialTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -102,7 +102,7 @@ contract ReentrancyAdversarialTest is Test {
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested commit");
 
-        // The outer commit still settled correctly, exactly once: buyer bonds
+        // The outer commit still completed correctly, exactly once: buyer bonds
         // 2×payment, seller bonds 2×cumulativeValue — no double-pull.
         assertEq(buyerBefore - token.balanceOf(buyer), 100 ether, "buyer bonds 2x payment, once");
         assertEq(sellerBefore - token.balanceOf(seller), 100 ether, "seller bonds 2x cumulative, once");
@@ -206,10 +206,10 @@ contract ReentrancyAdversarialTest is Test {
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested settleBatch");
 
-        // The outer settlement paid the seller exactly once and advanced state.
+        // The outer resolution paid the seller exactly once and advanced state.
         assertEq(token.balanceOf(seller) - sellerBefore, 10 ether, "seller paid once");
         assertEq(verifier.stateRoot(), keccak256("next"), "state advanced once");
-        assertEq(verifier.batchCount(), 1, "one batch settled");
+        assertEq(verifier.batchCount(), 1, "one batch resolved");
     }
 
     /// @dev Mirror of FigaroBatchVerifier._hashPositions (104-byte packing).

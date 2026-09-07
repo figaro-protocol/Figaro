@@ -13,7 +13,7 @@ import {MockTreasuryMultisig} from "src/mocks/MockTreasuryMultisig.sol";
 ///         dedicated operator-EOA with EXACTLY the deal's needs (blast radius
 ///         = the current procurement, never the treasury); the EOA buys
 ///         through the kernel as an ordinary bonded buyer (the treasury
-///         itself can never sign — the kernel is ECDSA-only); settlement
+///         itself can never sign — the kernel is ECDSA-only); resolution
 ///         returns the bond and the residual sweeps back, so the treasury's
 ///         net spend is exactly the payment. Custody negatives: no owner
 ///         moves funds alone, no approval replays.

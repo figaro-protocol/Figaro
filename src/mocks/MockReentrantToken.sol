@@ -8,12 +8,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 ///         contract during `transfer`/`transferFrom`, the classic hook a
 ///         fee-on-transfer or ERC-777-style token gives an attacker. It exists
 ///         to prove the kernel's (and the batch verifier's) `nonReentrant`
-///         guard actually holds under an adversarial settlement token — the
+///         guard actually holds under an adversarial denomination token — the
 ///         guard is load-bearing and was otherwise untested against a live
 ///         re-entry attempt.
 ///
-///         Arm it with `armCommit` / `armResolve` / `armSettleBatch`, pointing
-///         at the target contract with the exact calldata to replay. On the
+///         Arm it with `arm(target, data)`: the target contract and the exact
+///         calldata to replay (a `commit`, a `resolveProcess`, or a `settleBatch`). On the
 ///         next token movement the token calls back into the target; a working
 ///         ReentrancyGuard makes that inner call revert, and this token
 ///         surfaces the revert so the test can assert the guard fired
@@ -48,7 +48,7 @@ contract MockReentrantToken is ERC20 {
     }
 
     /// @dev The re-entry hook. Fires once, on the first token movement after
-    ///      arming. Catches the inner revert so the OUTER settlement can still
+    ///      arming. Catches the inner revert so the OUTER call can still
     ///      complete — the test asserts on `reentryBlocked`, mirroring how a
     ///      real attacker's token would swallow the guard revert to avoid
     ///      bricking its own transfer.

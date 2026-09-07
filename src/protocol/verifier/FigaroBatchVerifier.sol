@@ -31,7 +31,7 @@ interface IUsageCounter {
     ) external;
 }
 
-/// @title FigaroBatchVerifier — Settles batched Figaro operations via SP1 proof
+/// @title FigaroBatchVerifier — Resolves batched Figaro operations via SP1 proof
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Accepts a zero-knowledge proof that a batch of protocol operations
@@ -53,10 +53,10 @@ interface IUsageCounter {
 ///         the batch only if each binding equals
 ///         `ClauseRegistry.contentHashOf(clauseKey)`. The program verification
 ///         key covers the ENGINE, the registry anchors the constraint set —
-///         a never-seen clause settles through the proven path with zero code
-///         changes, and a permissive-spec substitution cannot settle.
+///         a never-seen clause resolves through the proven path with zero code
+///         changes, and a permissive-spec substitution cannot resolve.
 ///
-///         RPGF: a batch-settled process never acquires kernel status,
+///         RPGF: a batch-resolved process never acquires kernel status,
 ///         so `UsageCounter`'s direct path — which requires
 ///         `FigaroCore.orderStatus == RESOLVED` — can never see batched
 ///         trade. Without a bridge the 600M would measure a shrinking
@@ -147,16 +147,16 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
     // ── Events (protocol-compatible re-emissions) ─────────────────
 
-    /// @notice Summary event emitted per settled batch.
+    /// @notice Summary event emitted per resolved batch.
     event BatchSettled(
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
     );
 
-    /// @notice The batch settled its TOKEN positions, but its RPGF accrual was
+    /// @notice The batch resolved its TOKEN positions, but its RPGF accrual was
     ///         dropped because `UsageCounter.applyBatchAccrual` reverted — a
     ///         seller unstaked between prove and submit (`SellerNotStaked`), the
     ///         open period advanced across a boundary (`PeriodMismatch`), or the
-    ///         proven provenance clause did not match. Settlement is decoupled
+    ///         proven provenance clause did not match. Resolution is decoupled
     ///         from the reward on purpose: a reward-tier gate must never unwind
     ///         another party's trade. The dropped accrual is recovered by the
     ///         next batch that touches the same clauses and assemblies (the
@@ -236,9 +236,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 usageAccrualHash;
     }
 
-    // ── Batch settlement ──────────────────────────────────────────
+    // ── Batch resolution ──────────────────────────────────────────
 
-    /// @notice Settle a batch of Figaro protocol operations.
+    /// @notice Resolve a batch of Figaro protocol operations.
     /// @param proof        The SP1 validity proof for the batch.
     /// @param publicValues ABI-encoded public values (8 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
@@ -292,18 +292,18 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         // ── 6. Re-emit protocol events ────────────────────────────
         _emitAttestations(events.attestations);
 
-        // ── 7. Carry the RPGF accrual across the settlement crease ─
+        // ── 7. Carry the RPGF accrual across the resolution crease ─
         //    The numbers are the proof's; the reward's own gates (open
         //    period, the seller of record's live member stake, registration, exclusions)
         //    are the counter's and are enforced there. A batch with no usage
         //    claims passes empty arrays and the call is a no-op — which is
-        //    what keeps trade settling after accrual closes.
+        //    what keeps trade resolving after accrual closes.
         //
-        //    DECOUPLED FROM SETTLEMENT: the call is wrapped so
+        //    DECOUPLED FROM RESOLUTION: the call is wrapped so
         //    an accrual-gate revert — a seller who unstaked between prove and
         //    submit (`SellerNotStaked`), a period boundary crossed in flight
         //    (`PeriodMismatch`), a provenance mismatch — can NEVER unwind the
-        //    token settlement executed in step 5. A reward-tier gate must not
+        //    token resolution executed in step 5. A reward-tier gate must not
         //    block another party's trade. The counter already skips excluded
         //    and unregistered keys internally (it does not revert on
         //    those); this catch covers the whole-batch reverts that remain.
@@ -507,10 +507,10 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     // ── Token execution ───────────────────────────────────────────
 
     /**
-     * @dev BATCH SETTLEMENT DOS RISK
+     * @dev BATCH RESOLUTION DOS RISK
      * If any user in a batch revokes approval before settleBatch executes, the entire batch reverts.
      * Mitigation: Sequencer MUST verify approvals immediately before proof submission.
-     * Users SHOULD maintain approvals until batch settlement is confirmed.
+     * Users SHOULD maintain approvals until batch resolution is confirmed.
      */
 
     /// @dev Reconcile net positions. For each (token, user):
@@ -526,7 +526,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
                 _pullExact(IERC20(p.token), p.user, p.deposit - p.payout);
             } else if (p.payout > p.deposit) {
                 uint256 net = p.payout - p.deposit;
-                // Only normal settlement — transfer from contract balance
+                // Only normal resolution — transfer from contract balance
                 IERC20(p.token).safeTransfer(p.user, net);
             }
             // deposit == payout → no transfer needed

@@ -8,7 +8,7 @@ import {ClauseRegistry} from "src/protocol/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/protocol/registries/AssemblyRegistry.sol";
 
 /// @notice Stand-in for UsageCounter so payout maths can be exercised directly,
-///         including shapes a real accrual would take many settled processes to
+///         including shapes a real accrual would take many resolved processes to
 ///         reach (a dominant wallet, an empty period). The counter's own
 ///         verification is proven in UsageCounterTest.
 contract StubCounter {
