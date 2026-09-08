@@ -54,7 +54,8 @@ const erc20Abi = [
 ];
 
 const chain = CHAIN_ID === sepolia.id ? sepolia : { ...sepolia, id: CHAIN_ID };
-const client = createPublicClient({ chain, transport: http(RPC_URL) });
+// A keyed node throttles a burst of reads (429); the transport backs off and retries.
+const client = createPublicClient({ chain, transport: http(RPC_URL, { retryCount: 6, retryDelay: 1000 }) });
 
 async function eventsChunked({ address, abi, eventName, fromBlock, toBlock }) {
     const out = [];
@@ -132,8 +133,10 @@ notes.push(`${withdrawals.length} withdrawal(s) in window`);
 
 const coreAbi = abiOf("FigaroCore");
 const committed = await eventsChunked({ address: record.figaroCore, abi: coreAbi, eventName: "OrderCommitted", fromBlock: deployBlock, toBlock: head });
-const statuses = await Promise.all(committed.map((o) =>
-    client.readContract({ address: record.figaroCore, abi: coreAbi, functionName: "orderStatus", args: [o.args.orderHash] })));
+const statuses = [];
+for (const o of committed) {
+    statuses.push(await client.readContract({ address: record.figaroCore, abi: coreAbi, functionName: "orderStatus", args: [o.args.orderHash] }));
+}
 const held = new Map(); // currency → bonds still locked
 let open = 0;
 let resolved = 0;
