@@ -69,7 +69,7 @@ const FAQ_CAPTION = (
  * behind a deal?", frontend/app/(marketing)/(deal)/faq/page.tsx) — chain,
  * lockbox+record, other sellers, arbitration, ordinary courts — cross-
  * checked against the canonical stack in
- * ~/.claude/projects/-Users-adaliana-Figaro/memory/reference_layered_security_stack.md
+ * the `reference_layered_security_stack` memory
  * (blockchain → FigaroCore+evidence → social/co-seller layer →
  * arbitration → law).
  *
