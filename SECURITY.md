@@ -95,7 +95,7 @@ them daily and reports only what departs from the expected.
 | Watch | Expected | Alert when |
 |---|---|---|
 | `FlorinToken`: `MinterRegistered`, and any `Transfer` from the zero address | none after genesis; mints only from `RpgfMinter.claim` | a minter is registered after the renounce, or a mint arrives from any other address |
-| `FigaroCore`: `OrderCommitted`, `OrderResolved`, `ProcessResolved`, and the contract's token balance | the balance equals the bonds of every open order (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance and the sum computed from events diverge by any amount |
+| `FigaroCore`: `OrderCommitted`, each order's `orderStatus`, and the contract's token balance | the balance equals the bonds of every order the kernel reports open (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance is below those bonds by any amount; a surplus is noted, not alerted |
 | `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped` | one root chains to the next; accrual applies | `BatchAccrualSkipped` (read the reason), or no batch for longer than the sequencer's stated cadence while its queue holds work |
 | `UsageCounter`: `UsageRecorded`, `BatchUsageRecorded`; `RpgfMinter`: `Claimed` | accrual within an open period; claims after it closes | a claim in an open period, or a period's claims exceeding its tranche |
 | Registries: `ClauseRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |

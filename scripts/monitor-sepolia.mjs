@@ -20,6 +20,12 @@
 // (VERIFICATION_MAP.md A-8). Less than that is the incident; more is a surplus
 // someone sent, reported but not an alert.
 //
+// The events DISCOVER; the kernel's own state DECIDES. A public node is a
+// load-balanced fleet whose backends can omit logs (never invent them), so
+// every log chunk is asked ASKS times and the fullest answer kept, and an
+// order counts as open only when `orderStatus` says so — a state read, which
+// the node answers consistently where its log index does not.
+//
 // The script never exits non-zero on an alert — alerts are the JSON file. It
 // throws on a node it cannot read, so the workflow fails and that failure is
 // itself the heartbeat.
@@ -33,6 +39,7 @@ const RPC_URL = process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.
 const WINDOW = BigInt(process.env.WINDOW_BLOCKS ?? "400");
 const ALERTS_OUT = process.env.ALERTS_OUT ?? "monitor-alerts.json";
 const CHUNK = 9_500n; // the SDK's DEFAULT_LOG_CHUNK_SIZE — under every public node's range cap
+const ASKS = 3; // times each log chunk is asked; the fullest answer wins
 const BURST = 3;
 
 const record = JSON.parse(readFileSync(`deployments/${CHAIN_ID}.json`, "utf8"));
@@ -53,7 +60,12 @@ async function eventsChunked({ address, abi, eventName, fromBlock, toBlock }) {
     const out = [];
     for (let from = fromBlock; from <= toBlock; from += CHUNK) {
         const to = from + CHUNK - 1n < toBlock ? from + CHUNK - 1n : toBlock;
-        out.push(...(await client.getContractEvents({ address, abi, eventName, fromBlock: from, toBlock: to })));
+        let fullest = [];
+        for (let ask = 0; ask < ASKS; ask++) {
+            const got = await client.getContractEvents({ address, abi, eventName, fromBlock: from, toBlock: to });
+            if (got.length > fullest.length) fullest = got;
+        }
+        out.push(...fullest);
     }
     return out;
 }
@@ -120,14 +132,18 @@ notes.push(`${withdrawals.length} withdrawal(s) in window`);
 
 const coreAbi = abiOf("FigaroCore");
 const committed = await eventsChunked({ address: record.figaroCore, abi: coreAbi, eventName: "OrderCommitted", fromBlock: deployBlock, toBlock: head });
-const resolved = await eventsChunked({ address: record.figaroCore, abi: coreAbi, eventName: "OrderResolved", fromBlock: deployBlock, toBlock: head });
-const resolvedHashes = new Set(resolved.map((r) => r.args.orderHash));
+const statuses = await Promise.all(committed.map((o) =>
+    client.readContract({ address: record.figaroCore, abi: coreAbi, functionName: "orderStatus", args: [o.args.orderHash] })));
 const held = new Map(); // currency → bonds still locked
-for (const o of committed) {
-    if (resolvedHashes.has(o.args.orderHash)) continue;
+let open = 0;
+let resolved = 0;
+committed.forEach((o, i) => {
+    if (statuses[i] === 2) { resolved++; return; }
+    if (statuses[i] !== 1) throw new Error(`order ${o.args.orderHash} committed in tx ${o.transactionHash} has kernel status ${statuses[i]}; the node is not on this deployment's chain`);
+    open++;
     const bonds = 2n * o.args.payment + 2n * o.args.cumulativeValue;
     held.set(o.args.currency, (held.get(o.args.currency) ?? 0n) + bonds);
-}
+});
 const currencies = new Set(committed.map((o) => o.args.currency));
 for (const currency of currencies) {
     const expected = held.get(currency) ?? 0n;
@@ -147,7 +163,7 @@ for (const currency of currencies) {
         notes.push(`${line} (exact)`);
     }
 }
-notes.push(`${committed.length} order(s) committed, ${resolved.length} resolved, ${committed.length - resolvedHashes.size} open, ${currencies.size} currenc${currencies.size === 1 ? "y" : "ies"}`);
+notes.push(`${committed.length} order(s) committed, ${resolved} resolved, ${open} open, ${currencies.size} currenc${currencies.size === 1 ? "y" : "ies"}`);
 
 // ── Report ────────────────────────────────────────────────────────────
 
