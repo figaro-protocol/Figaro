@@ -78,9 +78,9 @@ Summary of the current state of the protocol and its verification surface:
 
 ### SDK
 
-- `@figaro-protocol/sdk` at `0.1.1`, pre-1.0: six subpath exports — root (protocol
+- `@figaro-protocol/sdk` at `0.1.2`, pre-1.0: six subpath exports — root (protocol
   primitives + the RPGF distribution mirror), `/agent` (agent coordination),
-  `/derive` (event derivation), `/clauses` (the Layer-A clause spec
+  `/derive` (event derivation), `/clauses` (the clause spec
   source-of-truth), `/handoff` (the runtime handoff wire protocol), and
   `/signer` (the policy signer daemon + socket-backed account).
 
@@ -92,6 +92,29 @@ Summary of the current state of the protocol and its verification surface:
   `on-demand-docker` (dispatch-only container proofs),
   `sdk-release`, and `sequencer-release` (publishes the prebuilt
   `figaro-sequencer` relay binary on tag push).
+
+## [sdk-0.1.2] - 2026-09-08
+
+`@figaro-protocol/sdk@0.1.2` — the tree as it stands at this tag.
+
+### Added
+
+- `equilibrium` — the one module holding the asymmetric-bonding figures the
+  paper states and the theory doc binds to the kernel; listed in the README's
+  export table.
+- `/signer`: a local-run signer policy derived from that run's deployment
+  record, with its ceilings read from the environment.
+
+### Changed
+
+- The kernel's act is resolution: the prose, comments, and error text say
+  resolution where they said settlement; identifiers and cited systems' words
+  are unchanged.
+- Bond and stake mean what the lexicon says (a bond is locked at commit; a stake
+  is a registry deposit); the Layer-A name is retired — the clause validator
+  is the `/clauses` export's own.
+- The catalogue folds only its declared fields, and the explorer's projections
+  see withdrawn assemblies.
 
 ## [sdk-0.1.1] - 2026-08-25
 

@@ -2449,7 +2449,7 @@ trade moved to the batch path under-reports.
 
 ## Versioning & stability
 
-`@figaro-protocol/sdk` is pre-1.0 (currently `0.1.1`). Per semver's pre-1.0 convention,
+`@figaro-protocol/sdk` is pre-1.0 (currently `0.1.2`). Per semver's pre-1.0 convention,
 **minor version bumps may include breaking changes** — there is no stable
 public API yet. Pin an exact version or a narrow range if you need
 reproducible builds against this package.
