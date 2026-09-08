@@ -483,7 +483,7 @@ Per workflow, what it runs and when:
   fine-grained PAT and the site-traffic leg the punch-listed
   `ESTATE_CF_ANALYTICS_TOKEN` zone-scoped Cloudflare token — without them
   they warn and the npm leg still lands.
-- **`monitor`** — hourly (minute 17) + dispatch: the public deployment's
+- **`monitor`** — daily (10:17 UTC, before the incident-review routine) + dispatch: the public deployment's
   watcher (`scripts/monitor-sepolia.mjs`, SECURITY.md § "Monitoring") reads
   the contracts' events through a public node — a minter registered after
   genesis, a florin minted outside the reward path, a dropped batch accrual,

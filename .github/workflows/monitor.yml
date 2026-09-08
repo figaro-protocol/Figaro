@@ -1,6 +1,7 @@
 name: Sepolia Monitor
 
-# The public deployment's watcher (SECURITY.md § "Monitoring"): every hour,
+# The public deployment's watcher (SECURITY.md § "Monitoring"): daily at
+# 10:17 UTC, before the incident-review routine reads its log at 11:00,
 # scripts/monitor-sepolia.mjs reads the contracts' events through a public
 # node and writes the conditions it finds to monitor-alerts.json; each alert
 # becomes an issue labelled `monitor`, assigned to the maintainer, so GitHub's
@@ -13,7 +14,7 @@ name: Sepolia Monitor
 
 on:
     schedule:
-        - cron: "17 * * * *"
+        - cron: "17 10 * * *"
     workflow_dispatch:
         inputs:
             rehearsal:

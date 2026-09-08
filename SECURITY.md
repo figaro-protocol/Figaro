@@ -85,8 +85,8 @@ scope as defined above, first reporter paid. A report of a pattern listed in
 The contracts emit an event for every state change (the ABI bundle in `abi/`
 carries each contract's events). Monitoring is a watcher that reads those events from a
 node on a schedule, keeps its findings off the chain, and raises an alert on
-the conditions below. The watcher is `scripts/monitor-sepolia.mjs`, run every
-hour by the `monitor` workflow in `.github/workflows/` against the addresses in
+the conditions below. The watcher is `scripts/monitor-sepolia.mjs`, run daily
+by the `monitor` workflow in `.github/workflows/` against the addresses in
 `deployments/<chainId>.json`; each alert becomes an issue labelled `monitor`,
 assigned to the maintainer, and a run that cannot read the node fails the
 workflow, which is the heartbeat. The open issues are the log; an agent reviews
@@ -102,7 +102,8 @@ them daily and reports only what departs from the expected.
 | `AttestationCoordinator`, `FigaroBatchVerifier`: `Attestation` | attestations on open orders | none; kept in the log |
 
 Alerts go to the maintainer's channel and to the incident agent. The review
-cadence is daily; an alert is read the hour it arrives.
+cadence is daily; the watcher runs just before the review, so an alert is read
+the day it arrives.
 
 ## Incident response
 

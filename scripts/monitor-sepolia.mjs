@@ -6,9 +6,9 @@
 //
 //   RPC_URL          the node (default: a public Sepolia endpoint)
 //   CHAIN_ID         which deployments/<chainId>.json to watch (default 11155111)
-//   WINDOW_BLOCKS    how far back the event-window checks look (default 400,
-//                    about eighty minutes of Sepolia blocks — wider than the
-//                    hourly schedule so nothing falls between two runs)
+//   WINDOW_BLOCKS    how far back the event-window checks look (default 8000,
+//                    about twenty-seven hours of Sepolia blocks — wider than the
+//                    daily schedule so nothing falls between two runs)
 //   ALERTS_OUT       where the alerts land as JSON (default monitor-alerts.json)
 //
 // Two kinds of check. Window checks read only the last WINDOW_BLOCKS blocks:
@@ -36,7 +36,7 @@ import { sepolia } from "viem/chains";
 
 const CHAIN_ID = Number(process.env.CHAIN_ID ?? "11155111");
 const RPC_URL = process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
-const WINDOW = BigInt(process.env.WINDOW_BLOCKS ?? "400");
+const WINDOW = BigInt(process.env.WINDOW_BLOCKS ?? "8000");
 const ALERTS_OUT = process.env.ALERTS_OUT ?? "monitor-alerts.json";
 const CHUNK = 9_500n; // the SDK's DEFAULT_LOG_CHUNK_SIZE — under every public node's range cap
 const ASKS = 3; // times each log chunk is asked; the fullest answer wins
