@@ -177,6 +177,9 @@ The test before building anything beside the kernel: *can this be a parallel
 contract that reads kernel state and lets the kernel enforce?* If the answer
 seems to be no, the proposal is adding a mechanism to the kernel — stop.
 
+The five conditions a composed contract satisfies, what each preserves, and their
+provenance: `OPEN_WORLD.md` § "The five conditions a composed contract satisfies".
+
 **`src/protocol/coordinators/AttestationCoordinator.sol`** — Zero-storage
 attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8

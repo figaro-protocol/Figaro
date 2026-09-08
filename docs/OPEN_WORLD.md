@@ -175,6 +175,48 @@ NEVER a signature.**
   `UsageCounter` reads the same getter for a RESOLVED one). A consumer that inserts itself into
   the payment leg is placement-4 cosplay for contract-as-party.
 
+#### The five conditions a composed contract satisfies
+
+A contract stands in one of the four placements only if all five hold. Together they keep
+every invariant of the kernel true under composition and open no second route to the bonded
+tokens or to a payoff indexed on how they resolve; what they do NOT do is re-derive the
+equilibrium — that is `THEORY.md`'s, and a contract meeting the five inherits it.
+
+1. **It writes no kernel state on its own account.** It may read everything: the mappings,
+   the kernel's token balance, the events. `commit` admits a relay — the call may carry both
+   parties' signatures, which the kernel recovers itself before pulling each bond from the
+   party named — so the kernel stays the writer. `resolveProcess` admits no relay at all: it
+   authorizes on the calling address, so no contract can resolve for a buyer even holding a
+   buyer signature. And no contract can hold a party role (the seller problem below).
+2. **It offers no second way to resolve.** Nothing it does produces the value flows of
+   resolution while bypassing it or changing its preconditions, and it holds no discretion
+   over a live process.
+3. **It holds no kernel bonds and releases none.** Bonded tokens leave the kernel on the
+   kernel's terms only.
+4. **Content it accepts under a clauseId is content the parties signed for.** It admits such
+   content only against an order whose signed agreement included that clause, proved by
+   merkle inclusion against `agreementHash`; content for a clause absent from the agreement
+   is refused.
+5. **It promises no off-kernel payout indexed to how the kernel resolves.** A contract can
+   meet 1–4, hold a stake of its own beside the kernel, and pay a party out of it according
+   to the resolved outcome — which puts an unbonded actor back into the parties' arithmetic
+   so that the bond posture stops being the only signal. This condition comes from
+   inspection, not from the other four, which is why it is listed.
+
+The list is sufficient, not minimal: a pure view contract needs less, and the point of five
+checkable conditions is that an arbitrary candidate can be tested against them before it is
+deployed. In the verification literature this is the non-circular case of assume-guarantee
+composition — Jones's rely-guarantee (1983), Abadi and Lamport's composition rule (1993),
+de Alfaro and Henzinger's interface automata (2001): the five are the assumption a composer
+must meet, and the kernel's invariants are the guarantee that survives under it. What is
+unusual is what is being preserved — a payoff-relevant state invariant under adversarial
+callers, which is why condition 5 reaches past state and value flow to a promise.
+
+`AttestationCoordinator` and `WitnessSwapAndCommitCoordinator` (`CONTRACTS.md`
+§ Coordinators) are the two contracts in the tree that discharge all five; the first by
+touching no kernel operation, the second by relaying a bilaterally signed commitment with
+the conversion route bound under the funding party's separate witness signature.
+
 #### The seller problem is a boundary detector, not a composability defect
 
 Every composition that has failed here put a contract in a **party slot**. The kernel rejects that

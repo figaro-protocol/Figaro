@@ -156,6 +156,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 |---|---|---|---|
 | `FigaroCore.sol` | 99 | 95 | 4 |
 | `FigaroBatchVerifier.sol` | 146 | 146 | 0 |
+| `UsageCounter.sol` | 224 | 223 | 1 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
@@ -174,6 +175,10 @@ every proof and no test presented a bad one: `MockSP1Verifier.setRejectProofs` a
 root, counts no batch, and moves no value. Forcing the payout branch on an even position
 (`payout == deposit`) produced a zero-value transfer where the contract makes none:
 `test_settleBatch_netZeroPosition_movesNoTokens` now asserts that the token emits nothing.
+
+The usage counter's one survivor is equivalent: forcing the first-seller-this-period branch
+re-writes a `sellerSeen` flag that is already true when the seller was seen before, so no
+state differs and no test can tell the mutant from the original.
 The rest of the frozen scope is mutated one contract per sitting; the results are recorded
 here as they land.
 

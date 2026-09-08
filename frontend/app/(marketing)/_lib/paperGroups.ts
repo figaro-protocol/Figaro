@@ -159,13 +159,6 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "kernel", "verification scope"],
                 industries: ["Security and audit"],
             },
-            {
-                title: "Protocol Composition: A Decision Rule, Clause Design, and the Coordinator Pattern",
-                href: "/papers/protocol-composition",
-                summary: "What stands above the kernel as a discipline: when to write a composition, how a clause is specified and content-addressed, and how first-write-wins registries and the coordinator pattern preserve the kernel's equilibrium.",
-                keywords: ["protocol composition", "clause design", "coordinator pattern", "invariant-preserving composition", "content-addressed identity"],
-                industries: ["Builders"],
-            },
         ],
     },
     {
