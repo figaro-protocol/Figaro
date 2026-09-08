@@ -105,10 +105,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Regulation and licensing", "E-invoicing and tax", "Platforms"],
             },
             {
-                title: "The Florin: A Schelling-Point Token for the Figaro Coordination Ecosystem",
+                title: "The Florin: A Schelling-Point Token Issued at Zero",
                 href: "/papers/florin-schelling-point-token",
-                summary: "The florin as a Schelling point and nothing else: what it must not do, no yield, no governance, no fee path, no privileged denomination, so that it stays a credible focal point for strangers with no other unit in common.",
-                keywords: ["cryptoeconomics", "Schelling point", "focal-point coordination", "token design", "coordination token", "utility token", "community token", "denomination", "supply integrity", "fixed supply cap", "design exclusions"],
+                summary: "A token issued at zero after the work, with no central operator and nothing beneath it, taken through the securities tests in a regulator's order: Howey's four questions, the disclosure they exist to compel, sufficiently decentralized on day one, and what is left, a Schelling point.",
+                keywords: ["cryptoeconomics", "Schelling point", "focal-point coordination", "token design", "Howey test", "securities regulation", "MiCA", "sufficiently decentralized", "disclosure", "no central operator", "fixed supply cap"],
                 industries: ["Tokens and treasuries"],
             },
             {
@@ -293,7 +293,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Actor-Neutral Coordination over Bonded Commitments",
                 href: "/papers/actor-neutral-coordination",
-                summary: "The kernel reads signatures and bond posture, never the kind of entity behind a key, so people and software coordinate on the same footing, with the bond as the enforcement layer that market design and control theory both lacked.",
+                summary: "The kernel reads signatures and bond posture, never the kind of entity behind a key, so people and software coordinate on the same footing, with the bond as what lets a stranger trust a stranger: the enforcement layer that market design and control theory both lacked.",
                 keywords: ["multi-agent coordination", "bonded commitment", "control theory", "actor-neutrality", "autonomous agents", "AI agent design", "human-in-the-loop"],
                 industries: ["AI agents"],
             },
