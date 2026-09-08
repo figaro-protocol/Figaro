@@ -340,6 +340,21 @@ contract RpgfMinterTest is Test {
         assertEq(minter.claimable(0, alice, _one(A_KEY)), 0);
     }
 
+    /// The schedule's length is a view the site and the SDK read; it mirrors
+    /// the amounts the constructor took, not a constant of its own.
+    function test_periodCountMirrorsTheSchedule() public view {
+        assertEq(minter.periodCount(), _amounts().length);
+    }
+
+    /// An empty period quotes zero to anyone, before any author check: the
+    /// early return on a zero total is what keeps a quote of nothing from
+    /// reverting on the caller's standing — a mutant that removes it reverts
+    /// `NotAuthorOfRecord` here instead of answering zero.
+    function test_claimableOnAnEmptyPeriodQuotesZeroForAnyone() public {
+        counter.setClosed(0, true);
+        assertEq(minter.claimable(0, bob, _one(A_KEY)), 0);
+    }
+
     /// `claimable` refuses a period the schedule does not hold, as `claim`
     /// does — a view that answered zero for a period that does not exist
     /// would read as "already claimed".
