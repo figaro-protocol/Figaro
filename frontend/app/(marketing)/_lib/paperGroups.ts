@@ -270,7 +270,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 title: "Bookkeeping as Protocol Byproduct: Self-Closing Ledger Periods",
                 href: "/papers/self-closing-ledger-periods",
                 summary: "The process is an accounting entity: born at the first commitment, equity always zero, closed by the buyer's call. Its books are a byproduct of the trade, and e-invoicing under EN 16931 reads straight off them.",
-                keywords: ["bookkeeping", "accounting", "auditing", "double-entry", "triple-entry", "escrow accounting", "audit assertions", "Pacioli", "e-invoicing", "EN 16931"],
+                keywords: ["bookkeeping", "accounting", "auditing", "double-entry", "triple-entry", "trust accounting", "audit assertions", "Pacioli", "e-invoicing", "EN 16931"],
                 industries: ["Accounting and audit", "E-invoicing and tax"],
             },
             {
