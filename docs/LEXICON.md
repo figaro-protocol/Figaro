@@ -16,7 +16,7 @@ Nouns and their definitions. One name per thing.
 
 **batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through the kernel.
 
-**bond** — What a party locks in the kernel when it commits to an order: the buyer twice the payment — the payments travel inside it — and each seller twice the cumulative value through its order. A bond is the party's own deterrent against its own defection. At resolution each seller's bond is refunded whole; the buyer's is refunded less the payments it carried.
+**bond** — What a party locks in the kernel when it commits to an order: the buyer twice the payment — the payments travel inside it — and each seller twice the cumulative value through its order. A bond is what lets two strangers trust each other with no bank, platform, or court between them, the way a permissionless chain lets them transact with no bank: each bond is its party's own deterrent against its own defection, measured net of what a defector keeps. A seller that walks away forfeits twice what it promised and keeps only what it withheld, so it is out exactly what it promised; a buyer that never resolves forfeits twice the payment and keeps what arrived, so it is out exactly the payment. Defection never pays, on either side, and that is what frees a wallet to trade with anyone, anywhere, in any token, on any terms. At resolution each seller's bond is refunded whole; the buyer's is refunded less the payments it carried.
 
 **buyer** — The one party in a process who pays, and the only party who can resolve it.
 
