@@ -159,7 +159,7 @@ export default function Faq() {
 
             <MarketingSection title="What if the buyer never resolves?" sectionId="unresolved">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Nothing moves until the buyer resolves: no payment transfers, no bond is refunded &mdash; the buyer&apos;s included. The payments it withholds are not in its wallet: they sit inside its own bond, twice what it owes, beyond everyone&apos;s reach. Leaving the process open costs it more than closing it.
+                    Nothing moves until the buyer resolves: no payment transfers, no bond is refunded &mdash; the buyer&apos;s included. The payments it withholds are not in its wallet: they sit inside its own bond, twice what it owes, beyond everyone&apos;s reach. Once the work is delivered, leaving the process open costs it more than closing it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Your move comes before that signature. Put right any shortfall. Attest what you delivered, under a clause the agreement carries, so it is evidence, not a later claim. Take it to the forum the agreement names: it rules on the data you both hold, and its ruling is enforced against what the buyer holds outside the process. Your co-sellers&apos; bonds ride on that same resolution; they want it closed too.
