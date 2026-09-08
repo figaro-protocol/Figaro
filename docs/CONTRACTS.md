@@ -424,7 +424,7 @@ deploy script wires and under which environment variable.
 - `MockSwapVenue.sol` — a swap venue at a settable rate, pulling its input by
   ERC-20 allowance like the production router; its `swap(...)` shape is a test
   stand-in, not the production interface.
-- `MockSP1Verifier.sol` — accepts any proof, so the batch path runs end to end
+- `MockSP1Verifier.sol` — accepts any proof unless `setRejectProofs(true)`, so the batch path runs end to end and a rejected proof is testable
   on a devnet without proving hardware.
 - `MockReentrantToken.sol` — a malicious ERC-20 that re-enters on transfer;
   proves the `nonReentrant` guards on `commit`, `resolveProcess`, and

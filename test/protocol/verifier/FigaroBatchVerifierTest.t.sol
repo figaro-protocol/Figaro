@@ -473,9 +473,35 @@ contract FigaroBatchVerifierTest is Test {
 
         uint256 buyerBefore = token.balanceOf(buyer);
         uint256 contractBefore = token.balanceOf(address(verifier));
+        vm.recordLogs();
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
         assertEq(token.balanceOf(buyer), buyerBefore, "deposit == payout must move nothing");
         assertEq(token.balanceOf(address(verifier)), contractBefore, "contract balance untouched");
+        // Nothing at all crosses the token — not even a zero-value transfer (a mutant that
+        // takes the payout branch on an even position emits one).
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; i++) {
+            assertTrue(logs[i].emitter != address(token), "even position must not touch the token");
+        }
+    }
+
+    // ── The proof check is load-bearing: a rejected proof settles nothing ──
+
+    function test_settleBatch_revertsWhenProofRejected() public {
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
+        uint256 buyerBefore = token.balanceOf(buyer);
+
+        sp1.setRejectProofs(true);
+        vm.expectRevert(MockSP1Verifier.InvalidProof.selector);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on a rejected proof");
+        assertEq(verifier.batchCount(), 0, "no batch counted");
+        assertEq(token.balanceOf(buyer), buyerBefore, "no value leg on a rejected proof");
     }
 
     // ── Sequential batches: root chains, counter increments, and the

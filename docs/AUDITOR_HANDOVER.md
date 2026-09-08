@@ -155,6 +155,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 | Target | Mutants | Caught | Survived |
 |---|---|---|---|
 | `FigaroCore.sol` | 99 | 95 | 4 |
+| `FigaroBatchVerifier.sol` | 146 | 146 | 0 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
@@ -164,8 +165,17 @@ preempting error); one forces the `CumulativeValueOverflow` guard in
 removed the `orderProcessId` write, which no test read: invariant A-10 in
 `VERIFICATION_MAP.md` states it, `test_orderProcessId_bindsEveryOrderToItsProcess`
 reads it, and two Certora rules prove it (§ Formal run evidence). Every High-severity
-mutant was caught. The rest of the frozen scope is mutated one contract per
-sitting; the results are recorded here as they land.
+mutant was caught.
+
+The batch verifier's run left two survivors on first pass, both real, both now caught.
+Removing the `verifier.verifyProof` call went unnoticed because the mock verifier accepted
+every proof and no test presented a bad one: `MockSP1Verifier.setRejectProofs` and
+`test_settleBatch_revertsWhenProofRejected` now show that a rejected proof advances no
+root, counts no batch, and moves no value. Forcing the payout branch on an even position
+(`payout == deposit`) produced a zero-value transfer where the contract makes none:
+`test_settleBatch_netZeroPosition_movesNoTokens` now asserts that the token emits nothing.
+The rest of the frozen scope is mutated one contract per sitting; the results are recorded
+here as they land.
 
 ### Post-Audit Policy
 

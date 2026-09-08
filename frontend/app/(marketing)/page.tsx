@@ -31,7 +31,7 @@ const PROPOSITION: string[] = [
 // number here drifts; TLA+ names models, Lean 4 names the result proved, and
 // static analysis names the tools the workflow pins.
 const CHECKS: { name: string; count: string }[] = [
-    { name: "Foundry", count: "312 test functions" },
+    { name: "Foundry", count: "313 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
     { name: "Certora", count: "39 formal rules across six CVL specs" },
     { name: "TLA+", count: "four protocol state machines, model-checked" },
