@@ -217,7 +217,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Wallet Without a Polity",
                 href: "/papers/wallet-without-polity",
-                summary: "The precondition is a key, not civil subjecthood. What the bonded commitment means for refugees, the stateless, and populations outside stable banking and enforcement, and what capital they must hold to bond at all.",
+                summary: "Capacity is the contract element a polity confers; the kernel tests it by two acts that consult no polity, signing and funding a bond. What the bonded commitment means for refugees, the stateless, and populations outside stable banking and enforcement, and the boundary: a bond they can fund.",
                 keywords: ["statelessness", "refugee economies", "displaced populations", "the wallet as legal subject", "Arendt", "humanitarian economics", "commerce-without-recognition"],
                 industries: ["Humanitarian"],
             },
@@ -231,7 +231,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Visibility of Coordination",
                 href: "/papers/visibility-of-coordination",
-                summary: "“Strangers need a platform” has become common sense in Gramsci's sense. Separating the coordination function from the entities that perform it makes it visible and opens the organizational space, of which the firm is one pattern.",
+                summary: "“Strangers need a platform” has become common sense in Gramsci's sense, and beneath it an older proposition: that a promise is made good only after the fact, by an authority. Separating the coordination function from the entities that perform it makes it visible and opens the organizational space, of which the firm is one pattern. The diagnostic is turned on this arrangement too: compounding, holding, naming, disclosure.",
                 keywords: ["cultural hegemony", "Gramsci", "platform economy", "political economy of infrastructure", "coordination substrate", "paradigm shift"],
                 industries: ["Platforms"],
             },
