@@ -59,8 +59,12 @@ is a **transaction-scoped institution**: the parties a single process needs — 
 cook, a kitchen, a sourcer, a courier; a haulier, a broker, a warehouse — each
 bonding and paid in its own order, assembled for that process and dissolved at
 its resolution. There is no restaurant and no shipping line, only the wallets
-that did the work, paid directly for the value each added. The paper on
-transaction-scoped institutions develops this.
+that did the work, paid directly for the value each added. Because the assets
+themselves hold the wallets, nothing needs pooling and nothing needs a container;
+what remains of the firm is a legal wrapper around assets, whose last chores —
+a distribution among an asset's owners, a licence, a governing law — composition
+performs. This is the **Coasean collapse**; the paper on transaction-scoped
+institutions develops it.
 
 ## Where the value goes
 
