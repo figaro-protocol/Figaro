@@ -731,7 +731,7 @@ function attestViaResolver(
 
             <MarketingSection title="Funding, payout &amp; composition contracts" sectionId="funding-composition">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists (Uniswap&apos;s Permit2 and router, the immutable Disperse), a local development run rehearses the composition with an interface-matching mock, and the deployment record wires the real one wherever it&apos;s deployed.
+                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists (Uniswap&apos;s Permit2 and router, Disperse), a local development run rehearses the composition with an interface-matching mock, and the deployment record wires the real one wherever it&apos;s deployed.
                 </p>
                 <ul className="space-y-4">
                     <ContractEntry
@@ -777,7 +777,7 @@ function attestViaResolver(
                         id="multisender"
                         title="multisender (Disperse)"
                         meta="local mock · canonical where deployed"
-                        desc="Composed post-resolution batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-resolution composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical immutable Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across 16 chains, unowned from its 2018 deployment onward) exists, a wallet composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
+                        desc="Composed post-resolution batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Post-resolution composition is path-blind: it acts on tokens already received, and both FigaroCore and FigaroBatchVerifier deliver by ERC-20 transfer to the party's own address. Wherever the canonical Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across 16 chains, unowned from its 2018 deployment onward) exists, a wallet composes it directly; a local development record wires MockDisperse mirroring its verified interface (record key: multisender)."
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">

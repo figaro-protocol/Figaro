@@ -732,7 +732,7 @@ The kernel has already paid out, so this is a wallet spending its own balance:
 one resolved receipt, many earmarked recipients, one atomic transaction — fiscal
 remittance, a savings address, a co-worker's share, an obligation. The network
 already supplies the contract, so the protocol owns none of it: **Disperse**
-(`0xD152f549545093347A162Dce210e7293f1452150`), verified, immutable, live since
+(`0xD152f549545093347A162Dce210e7293f1452150`), verified, live since
 2018 at the same address across 16 chains. It reads no `FigaroCore` state, no
 bond and no registry; it is composition, not protocol. So the SDK carries the
 ADDRESS but not the interface: `addressesFromDeploymentRecord` maps a deployment record's `multisender` key onto `addresses.multisender`, and there is no `DISPERSE_ABI`

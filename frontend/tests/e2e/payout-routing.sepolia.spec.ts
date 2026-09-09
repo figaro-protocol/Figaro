@@ -2,7 +2,7 @@
  * PAYOUT ROUTING, LIVE — the third public-rehearsal spec: a resolved seller
  * splits WHAT IT WAS PAID onward to its OWN EARMARKED accounts — the fiscal
  * remittance, the savings, the operating float — through the composed public
- * multisender (Disperse, `0xD152…2150` — the same canonical, immutable
+ * multisender (Disperse, `0xD152…2150` — the same canonical
  * contract on Sepolia and mainnet; the devnet composes `MockDisperse`, its
  * interface mirror). The recipients are the seller's, never a counterparty:
  * the earmarks are sub-accounts DERIVED from the seller's own key (tax,

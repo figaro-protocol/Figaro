@@ -4,7 +4,7 @@
  *
  * The resolved seller splits its OWN receipts onward through a public
  * multisender (fifth-noun composition — mainnet composes the canonical
- * immutable Disperse deployment; devnet rehearses against MockDisperse,
+ * Disperse deployment; devnet rehearses against MockDisperse,
  * which mirrors its verified interface). Wallet-side and post-resolution by
  * design: the kernel has already paid out, so this is a wallet spending its
  * own balance — no batch-path work, no process state, no new contract. The

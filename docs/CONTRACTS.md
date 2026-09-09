@@ -442,7 +442,7 @@ transaction — is a wallet splitting its own receipts after resolution to
 earmarked addresses, leaving a fiscal trail as a byproduct. It reads neither
 the kernel nor any registry, and the network already supplies it: the
 canonical public Disperse deployment
-(`0xD152f549545093347A162Dce210e7293f1452150`, immutable, the same address
+(`0xD152f549545093347A162Dce210e7293f1452150`, the same address
 across chains) is composed, never duplicated. `MockDisperse.sol` mirrors its
 interface so a devnet rehearses the composition.
 
