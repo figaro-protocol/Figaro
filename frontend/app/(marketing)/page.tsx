@@ -36,7 +36,7 @@ const BUILT_WITH: { name: string; href: string; src: string }[] = [
 ];
 
 const CHECKS: { name: string; count: string }[] = [
-    { name: "Foundry", count: "315 test functions" },
+    { name: "Foundry", count: "316 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
     { name: "Certora", count: "39 formal rules across six CVL specs" },
     { name: "TLA+", count: "four protocol state machines, model-checked" },
