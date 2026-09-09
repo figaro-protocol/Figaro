@@ -155,7 +155,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "A Verified Resolution Kernel: Formal Verification, Threat Model, and the Scope of the Claim",
                 href: "/papers/verified-settlement-kernel",
-                summary: "What it means to verify a kernel of two calls, no owner and no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
+                summary: "What it means to verify a kernel of two calls, decentralized and permissionless, with no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
                 keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "kernel", "verification scope"],
                 industries: ["Security and audit"],
             },
@@ -245,8 +245,8 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Corridors Without a Hegemon: The Kernel as Common Infrastructure Beneath Rival Trade Corridors",
                 href: "/papers/corridors-without-a-hegemon",
-                summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not, and an ownerless one cannot be weaponized by either bloc.",
-                keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "ownerless kernel"],
+                summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not, and a decentralized, permissionless one cannot be weaponized by either bloc.",
+                keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless kernel"],
                 industries: ["Cross-border trade"],
             },
         ],

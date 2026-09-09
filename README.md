@@ -26,7 +26,7 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
 ## What this repository contains
 
 - **Kernel** — `src/kernel/`: `FigaroCore.sol` (two entry points, three
-  mappings, no owner) and `CommitmentTypes.sol` (the commitment and its
+  mappings, decentralized and permissionless) and `CommitmentTypes.sol` (the commitment and its
   EIP-712 hashing). Frozen.
 - **Protocol contracts** — `src/protocol/`: the three registries (clauses,
   members, assemblies — permissionless, first-write-wins, under a stake), the

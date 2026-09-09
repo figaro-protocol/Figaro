@@ -63,7 +63,7 @@ when its buyer signs.
   the complete active-order list (`IncompleteOrderList`), then pays every order
   at once: seller `2 × expectedCumulativeValue + payment`, buyer `payment`.
   Every deposited token leaves; the kernel never holds a withdrawable balance.
-- No owner, no admin, no pause, no upgrade, no timeout, no third entry point.
+- Decentralized and permissionless: no admin, no pause, no upgrade, no timeout, no third entry point.
   `ReentrancyGuard` on both functions.
 
 **`src/kernel/CommitmentTypes.sol`** — The `Commitment` struct and its EIP-712
@@ -133,7 +133,7 @@ anchoring under a stake.
   permanent: buyers and sellers that reference the assembly rely on its content
   staying stable.
 - State: `bindings: compositionHash → AssemblyBinding{registeredBy,
-  registeredAt, depositWithdrawn, contentURI}`. No owner, no transfer, no
+  registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
   removal. The contract validates no content.
 
 The two hash-keyed registries carry no cooldown — their withdrawal is one-shot
@@ -229,7 +229,7 @@ the party's own address, then calls `FigaroCore.commit`.
   swapData)` recomputes it for off-chain signers); substituting any of them
   fails Permit2's own signature check before a token moves, so no relayer can
   reroute the swap and capture the residual.
-- Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no owner,
+- Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no admin,
   no admin, no pause. Alternative coordinators with other routers are valid
   compositions.
 - Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
@@ -350,7 +350,7 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   usage new to it.
 - `icbrt` binary-searches the floor cube root with its ceiling at
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
-- No owner, no admin, no pause. The measured gas anchor for
+- Decentralized and permissionless: no admin, no pause. The measured gas anchor for
   `recordClauseUsage` and its regression ceiling live in
   `test/protocol/usage/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
   analysis quotes that one home.
@@ -361,7 +361,7 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 one billion, enforced on every mint. A minter registry with
 `totalRegisteredCap` (the sum of registered caps may not exceed
 `MAX_SUPPLY`); the deployer registers capped minters, then
-`renounceDeployerMint` closes the registry. Reentrancy-guarded. No owner after
+`renounceDeployerMint` closes the registry. Reentrancy-guarded. No deployer authority after
 renounce, no upgrade, no parameter.
 
 **`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
@@ -398,7 +398,7 @@ a wallet passes every clause and assembly it designed in that one call.
   against `UsageCounter.periodCount()` at deploy (`AmountsPeriodsMismatch`), so
   the two schedules cannot drift; the budget is enforced twice — `minted` per
   period here and the token's 600M minter cap.
-- No owner, no pause, no sweep, no claim expiry; a closed period's arithmetic
+- Decentralized and permissionless: no pause, no sweep, no claim expiry; a closed period's arithmetic
   is stable forever. The minter must exist at florin genesis because
   `registerMinter` precedes `renounceDeployerMint`.
 
@@ -420,7 +420,7 @@ deploy script wires and under which environment variable.
   with real witness-signature verification (same digest as canonical Permit2;
   deadline and amount enforced).
 - `MockTreasuryMultisig.sol` — stand-in for the DAO treasury's Safe
-  (propose → threshold approvals → anyone executes; no owner acts alone).
+  (propose → threshold approvals → anyone executes; no one acts alone).
 - `MockDisperse.sol` — mirrors the canonical public multisender's verified
   interface (`disperseEther`, `disperseToken`, `disperseTokenSimple`, every
   batch atomic).
@@ -442,7 +442,7 @@ transaction — is a wallet splitting its own receipts after resolution to
 earmarked addresses, leaving a fiscal trail as a byproduct. It reads neither
 the kernel nor any registry, and the network already supplies it: the
 canonical public Disperse deployment
-(`0xD152f549545093347A162Dce210e7293f1452150`, ownerless, the same address
+(`0xD152f549545093347A162Dce210e7293f1452150`, immutable, the same address
 across chains) is composed, never duplicated. `MockDisperse.sol` mirrors its
 interface so a devnet rehearses the composition.
 

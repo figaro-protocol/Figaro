@@ -28,7 +28,7 @@ usage claims and no one decides who receives it.
 
 ## DAO governance is NOT kernel governance
 
-The kernel has no governance and never will — no admin, no owner, and no vote
+The kernel has no governance and never will — no admin and no vote
 decides a resolution. Nothing moves a bonded commitment but its buyer.
 
 The DAO governs **its own treasury**: what the 300M is spent on, which public

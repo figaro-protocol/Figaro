@@ -732,7 +732,7 @@ The kernel has already paid out, so this is a wallet spending its own balance:
 one resolved receipt, many earmarked recipients, one atomic transaction — fiscal
 remittance, a savings address, a co-worker's share, an obligation. The network
 already supplies the contract, so the protocol owns none of it: **Disperse**
-(`0xD152f549545093347A162Dce210e7293f1452150`), verified, ownerless, live since
+(`0xD152f549545093347A162Dce210e7293f1452150`), verified, immutable, live since
 2018 at the same address across 16 chains. It reads no `FigaroCore` state, no
 bond and no registry; it is composition, not protocol. So the SDK carries the
 ADDRESS but not the interface: `addressesFromDeploymentRecord` maps a deployment record's `multisender` key onto `addresses.multisender`, and there is no `DISPERSE_ABI`
@@ -744,7 +744,7 @@ checking `getCode` is non-empty on the chain you are actually on.
 import { ERC20_ABI } from "@figaro-protocol/sdk";
 import { parseAbi } from "viem";
 
-// The canonical Disperse surface — three functions, no owner, no fee.
+// The canonical Disperse surface — three functions, no admin, no fee.
 const DISPERSE_ABI = parseAbi([
   "function disperseToken(address token, address[] recipients, uint256[] values)",
   "function disperseTokenSimple(address token, address[] recipients, uint256[] values)",
@@ -1083,7 +1083,7 @@ import { strippingReviver } from "@figaro-protocol/sdk";
 import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 
 // Submitting to the BATCH path — SequencerClient. `FigaroBatchVerifier.
-// settleBatch` is PERMISSIONLESS (no caller gate, no owner, no fee), but it
+// settleBatch` is PERMISSIONLESS (no caller gate, no admin, no fee), but it
 // takes an SP1 proof over a whole batch, so the ordinary route is to hand the
 // signed operation to a sequencer: an HTTP relay that pools operations, proves
 // the batch, and resolves it. This client emits EXACTLY the wire format the
@@ -2420,7 +2420,7 @@ facts wearing one answer (already claimed · nothing scored by you · nothing
 scored at all · a list that would have reverted on a live period), and a
 non-zero on an open period is an estimate, not an entitlement. Read
 `periodClosed` beside it, always. Once a period is closed there is no claim
-expiry, no owner and no sweep — its arithmetic is stable forever, so a late
+expiry, no admin and no sweep — its arithmetic is stable forever, so a late
 claim is exactly the same share as a prompt one.
 
 The amount is `periodAmount · yourScore / totalScoreInPeriod`, uniform: no tag,

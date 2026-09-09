@@ -19,7 +19,7 @@ export type LockedFundsStateFigureProps = BaseFigureProps;
  * payouts happen in one loop, FigaroCore.sol:276-299).
  *
  * The two absent transitions are load-bearing, not missing features —
- * `docs/DESIGN_DECISIONS.md` §4 ("No owner, no admin, no escape hatch —
+ * `docs/DESIGN_DECISIONS.md` §4 ("No admin, no escape hatch —
  * by design") and §5 ("Buyer key loss permanently locks bonds — by
  * design"): "There is no timeout, no recovery path, no admin override."
  * If the buyer never calls resolveProcess, Committed simply persists —

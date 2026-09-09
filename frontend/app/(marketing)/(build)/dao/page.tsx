@@ -47,7 +47,7 @@ export default function Dao() {
 
             <MarketingSection title="It governs its treasury, and nothing else.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A vote here decides what the treasury pays for. It decides nothing about anyone&apos;s trade. The kernel has no governance and never will &mdash; no admin, no owner, no pause, and no ballot that reaches a bonded commitment. Nothing moves one but its buyer.
+                    A vote here decides what the treasury pays for. It decides nothing about anyone&apos;s trade. The kernel has no governance and never will &mdash; no admin, no pause, and no ballot that reaches a bonded commitment. Nothing moves one but its buyer.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The two are worth keeping apart because they are so often the same thing elsewhere. A body that governs a protocol can change the terms under you; a body that governs a wallet can only decide what that wallet buys. This one is the second kind, and no amount of agreement inside it converts into the first.

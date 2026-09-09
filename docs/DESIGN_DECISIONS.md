@@ -90,10 +90,10 @@ is a choice, not an exploit.
 
 ---
 
-## 4. No owner, no admin, no escape hatch — by design
+## 4. No admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
-MembersRegistry, and AssemblyRegistry have no owner, no
+MembersRegistry, and AssemblyRegistry have no admin, no
 pause function, no upgrade path, and no admin recovery. FlorinToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 — a bounded privileged actor, documented separately in `CONTRACTS.md`.
@@ -509,7 +509,7 @@ address fixed at construction. A reviewer scanning for authority patterns
 finds a single hard-coded writer on a contract that governs a 600M-token
 distribution.
 
-**Why it looks wrong**: "no owner, no admin" is stated everywhere in this
+**Why it looks wrong**: "no admin" is stated everywhere in this
 codebase, and a lone privileged caller on the reward path is exactly the shape
 an admin backdoor takes. The natural next question — can that address mint,
 re-weight, or seize? — is the right question to ask.
@@ -691,7 +691,7 @@ be carried as a signature, in its minimal sufficient form.
 | 1 | Resolved processId is permanently closed | kernel-critical | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
 | 2 | Cross-order seller attestation | evidence-layer | Wrong role for target order | Attester recorded truthfully; semantics off-chain |
 | 3 | buyer == seller allowed | kernel-critical | Self-dealing vector | Bond math balances; bilateral signature required |
-| 4 | No owner/admin/pause | kernel-critical | No incident response | Admin = trusted third party = breaks mechanism |
+| 4 | No admin/pause | kernel-critical | No incident response | Admin = trusted third party = breaks mechanism |
 | 5 | Buyer key loss is terminal | kernel-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
 | 6 | No prevrandao salt | kernel-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |

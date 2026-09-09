@@ -47,12 +47,12 @@ describe("ContractEntry", () => {
         render(
             <ContractEntry
                 title="FigaroCore.sol"
-                meta="2 fns · 3 mappings · no owner"
+                meta="2 fns · 3 mappings · decentralized, permissionless"
                 desc="Protocol kernel. commit and resolveProcess handle bonding and resolution."
             />
         );
         expect(screen.getByText("FigaroCore.sol")).toBeInTheDocument();
-        expect(screen.getByText("2 fns · 3 mappings · no owner")).toBeInTheDocument();
+        expect(screen.getByText("2 fns · 3 mappings · decentralized, permissionless")).toBeInTheDocument();
         expect(screen.getByText("Protocol kernel.")).toBeInTheDocument();
 
         // The remainder is present in the DOM (static-export-safe — no

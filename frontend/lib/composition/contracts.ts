@@ -91,7 +91,7 @@ export function getBatchVerifier(): `0x${string}` | null {
 }
 
 /** The public multisender the payout-routing surface composes with —
- *  provider-agnostic (mainnet: the canonical ownerless Disperse deployment;
+ *  provider-agnostic (mainnet: the canonical immutable Disperse deployment;
  *  devnet: MockDisperse, which mirrors its verified interface). Fifth-noun
  *  composition over a wallet's OWN resolved receipts, never a Figaro-owned
  *  silo. Resolved-empty: null = the routing surface simply doesn't render. */

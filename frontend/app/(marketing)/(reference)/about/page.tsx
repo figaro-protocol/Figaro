@@ -28,7 +28,7 @@ export default function About() {
 
             <MarketingSection title="What the name signs.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Every paper carries the same byline, Figaro, with the model that drafted it named beside it, Claude (Anthropic); no person signs. The code is published under the MIT license, on <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">GitHub</a>, for anyone to read, run, and fork. Figaro&reg; is a registered trademark, so that the name means this protocol and no other. The contracts have no owner, no admin, and no pause: nobody, named or not, can reach into a trade.
+                    Every paper carries the same byline, Figaro, with the model that drafted it named beside it, Claude (Anthropic); no person signs. The code is published under the MIT license, on <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">GitHub</a>, for anyone to read, run, and fork. Figaro&reg; is a registered trademark, so that the name means this protocol and no other. The contracts are decentralized and permissionless, with no admin and no pause: nobody, named or not, can reach into a trade.
                 </p>
             </MarketingSection>
 
@@ -44,7 +44,7 @@ export default function About() {
             <MarketingSection title="What to check instead of a name." bottomPad="wide">
                 <ul className="space-y-3 text-base text-ink-body leading-relaxed max-w-2xl">
                     <li>&mdash; The code and the seven checks it passes on every commit, on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.</li>
-                    <li>&mdash; The kernel, two functions and no owner, on <Link href="/core" className="text-ink-heading font-medium hover:underline">Core</Link>.</li>
+                    <li>&mdash; The kernel, two functions, decentralized and permissionless, on <Link href="/core" className="text-ink-heading font-medium hover:underline">Core</Link>.</li>
                     <li>&mdash; The public registries every clause, assembly, and member is published to, on <Link href="/registries" className="text-ink-heading font-medium hover:underline">Registries</Link>.</li>
                     <li>&mdash; The florin&apos;s supply and who holds what, on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>.</li>
                 </ul>

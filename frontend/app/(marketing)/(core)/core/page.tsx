@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Core — Figaro Protocol",
     description:
-        "Three smart contracts, no owner. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. Figaro charges nothing; the network charges gas for the two transactions, and the bonds are refunded when the buyer resolves.",
+        "Three smart contracts, decentralized and permissionless. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. Figaro charges nothing; the network charges gas for the two transactions, and the bonds are refunded when the buyer resolves.",
 });
 
 // THE CORE DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function CoreDoor() {
                 title="Figaro Core: a self-enforcing trade kernel"
                 lead={
                     <>
-                        Three smart contracts, no owner. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. Figaro charges nothing; the network charges gas for the two transactions, and the bonds are refunded when the buyer resolves.
+                        Three smart contracts, decentralized and permissionless. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. Figaro charges nothing; the network charges gas for the two transactions, and the bonds are refunded when the buyer resolves.
                     </>
                 }
             />
@@ -32,7 +32,7 @@ export default function CoreDoor() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
                     <p className="text-sm text-ink-body leading-relaxed">commit: two signatures, two bonds, each twice the payment.</p>
                     <p className="text-sm text-ink-body leading-relaxed">resolveProcess: the buyer&apos;s one call pays every seller and refunds every bond.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">No owner, no cut, no upgrade, no pause, no oracle.</p>
+                    <p className="text-sm text-ink-body leading-relaxed">Decentralized and permissionless, no cut, no upgrade, no pause, no oracle.</p>
                 </div>
             </section>
             <MarketingSection title="One trade, end to end.">

@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Build — Figaro Protocol",
     description:
-        "The core is a proven, ownerless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. No permission, no platform, no revenue share to anyone.",
+        "The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. No permission, no platform, no revenue share to anyone.",
 });
 
 // THE BUILD DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function BuildDoor() {
                 title="Figaro: build the market, get paid when it is used"
                 lead={
                     <>
-                        The core is a proven, ownerless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. No permission, no platform, no revenue share to anyone.
+                        The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. No permission, no platform, no revenue share to anyone.
                     </>
                 }
             />
@@ -48,7 +48,7 @@ export default function BuildDoor() {
             </MarketingSection>
             <MarketingSection title="Registries.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Clauses, assemblies, and members each have their own on-chain registry: a hash, a URI, a stake, no owner. Everything else is derived from events by anyone. <Link href="/registries" className="text-ink-heading font-medium hover:underline">Registries</Link>
+                    Clauses, assemblies, and members each have their own on-chain registry: a hash, a URI, a stake, decentralized and permissionless. Everything else is derived from events by anyone. <Link href="/registries" className="text-ink-heading font-medium hover:underline">Registries</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="The SDK.">
@@ -63,7 +63,7 @@ export default function BuildDoor() {
             </MarketingSection>
             <MarketingSection bottomPad="wide">
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                    Built on Figaro Core: two functions, no owner, cooperation proven in Lean 4, not yet audited by an outside firm. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
+                    Built on Figaro Core: two functions, decentralized and permissionless, cooperation proven in Lean 4, not yet audited by an outside firm. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
                 </p>
             </MarketingSection>
         </>

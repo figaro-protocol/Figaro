@@ -441,7 +441,7 @@ mutation-testing campaign has covered the whole scope.
 | Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs hourly in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); the daily review by an agent and a rehearsal of the redeploy leg are what Satisfactory still needs. |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and below (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented byte-parity mirrors. |
-| Decentralization | Strong | No owner, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
+| Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Behaviors to surface". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
 | Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
@@ -453,7 +453,7 @@ mutation-testing campaign has covered the whole scope.
 |---|---|---|
 | State validation | Validity proof | `FigaroBatchVerifier.settleBatch` verifies an SP1 proof and checks every witness-spec binding against the live `ClauseRegistry`. |
 | Data availability | Off-chain by design | The chain holds hashes; the parties hold the preimages. `DATA_LAYER.md` owns the seam. |
-| Exit window | Immutable | No owner, no upgrade path, no pause, in every contract. A changed program is a new verifier under a new address. |
+| Exit window | Immutable | No admin, no upgrade path, no pause, in every contract. A changed program is a new verifier under a new address. |
 | Proposer failure | Direct path always open | The kernel needs no sequencer; every process can resolve through `FigaroCore` directly. |
 | Sequencer failure | Same | A batch-resolved process never acquires kernel status (`FigaroBatchVerifier.sol` NatSpec on designer rewards); the two resolution paths are disjoint, and `UsageCounter` bridges only the accrual. |
 

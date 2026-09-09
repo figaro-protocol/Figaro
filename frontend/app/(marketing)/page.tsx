@@ -55,7 +55,7 @@ const CHECKS: { name: string; count: string }[] = [
 const DOORS: { href: string; name: string; line: string }[] = [
     { href: "/use", name: "Use it", line: "Sell or buy anything and be paid in full when the buyer resolves, in the token you choose." },
     { href: "/build", name: "Build on it", line: "Publish the terms of trade, compose them into assemblies, and be paid in florins when they are used." },
-    { href: "/core", name: "Check the core", line: "Two functions and no owner: the kernel, the attestations, and the batch verifier, with the proofs behind them." },
+    { href: "/core", name: "Check the core", line: "Two functions, decentralized and permissionless: the kernel, the attestations, and the batch verifier, with the proofs behind them." },
     { href: "/research", name: "Read the research", line: "The papers: the equilibrium, the firm, the market, the ledger, the law, and the industries that coordinate at scale." },
     { href: "/data", name: "Read the data", line: "What every trade leaves: the public map, your books, and your evidence, on your terms." },
     { href: "/agents", name: "Run an agent", line: "Software trades, publishes, and resolves on the same terms as a person: the same bond, the same registries." },

@@ -437,7 +437,7 @@ share no state" — which also answers "Is it resolved?".
 ### Getting the wallet's trade ONTO the batch path — a relay you do not have to trust
 
 You cannot drive `settleBatch` the way you drive `commit`: it takes an SP1 validity proof
-over a whole batch. It is nonetheless **permissionless** — no caller gate, no owner,
+over a whole batch. It is nonetheless **permissionless** — no caller gate, no admin,
 nothing to pay the protocol — so the ordinary route is to hand your signed operations to a
 **sequencer**, an HTTP relay that pools operations, proves the batch, and puts it on chain.
 Know the operational fact before you build against this path: **there is no hosted public

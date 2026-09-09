@@ -78,7 +78,7 @@ Nouns and their definitions. One name per thing.
 
 **profile** — The document a wallet publishes about itself when it registers as a member.
 
-**protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The kernel and the registries enforce the rules on a chain; any interface may read them, and anyone may build another.
+**protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The kernel and the registries enforce the rules on a chain; any interface may read them, and anyone may build another. Decentralized and permissionless are the protocol's words, and they describe the protocol, never a wallet: the protocol is never called ownerless or said to have no owner, because an owner is the firm's question and the protocol has no seat for one to be missing from.
 
 **refund** — The return of a bond to the party that deposited it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers. The reversal of a payment, which commerce calls by the same name, has no path in the protocol — a shortfall is put right before the buyer resolves.
 
