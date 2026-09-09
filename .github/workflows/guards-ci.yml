@@ -33,10 +33,13 @@ jobs:
             # `next`/bundled-`postcss` tree, major-only fix, tracked as an
             # accepted non-blocking risk in docs/RELEASE_READINESS.md Task 7.2
             # (static export ships no Next server — build-host hygiene, not a
-            # runtime exposure). Raise frontend back to high+ when the Next
-            # major lands; do NOT silently soften root.
+            # runtime exposure). A CRITICAL advisory that cannot reach a static
+            # export is set aside by id, with its reason, in
+            # frontend/.audit-ignore.json (read by scripts/audit-frontend.mjs);
+            # anything else critical still fails. Raise frontend back to high+
+            # when the Next major lands; do NOT silently soften root.
             - name: npm audit — root (production deps, high+)
               run: npm audit --omit=dev --audit-level=high
 
-            - name: npm audit — frontend (production deps, critical only — see comment)
-              run: cd frontend && npm audit --omit=dev --audit-level=critical
+            - name: npm audit — frontend (production deps, critical only, static-export advisories set aside — see comment)
+              run: node scripts/audit-frontend.mjs

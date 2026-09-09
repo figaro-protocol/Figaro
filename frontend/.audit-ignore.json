@@ -1,0 +1,4 @@
+{
+    "GHSA-2xp9-vwfh-vxw4": "Next image optimizer server path (AVIF); this site is a static export and ships no Next server \u2014 docs/RELEASE_READINESS.md",
+    "GHSA-p293-qw3h-jr36": "Next server on a Windows host; this site is a static export and ships no Next server \u2014 docs/RELEASE_READINESS.md"
+}
