@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { MemberCard } from "./MemberCard";
 import { useDeviceLocation } from "./useDeviceLocation";
+import { useMounted } from "@/hooks/useMounted";
 import {
     listingMatchesGeohash,
     type Listing,
@@ -14,7 +15,13 @@ function listingAssemblies(listing: Listing): string[] {
 }
 
 export function MemberDiscovery() {
-    const { listings: allListings, isLoading } = useMemberListings();
+    const { listings: allListings, isLoading: listingsLoading } = useMemberListings();
+    // Until this page has mounted and read the registry, nothing has been
+    // resolved — so the static shell (what a crawler or a curl reader gets) and
+    // the first paint say "loading", never "0 members": resolved-empty is
+    // absence, unresolved is not.
+    const mounted = useMounted();
+    const isLoading = !mounted || listingsLoading;
 
     const [searchQuery, setSearchQuery] = useState("");
     const [assemblyFilter, setAssemblyFilter] = useState<string | null>(null);
