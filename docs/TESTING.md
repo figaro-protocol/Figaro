@@ -469,7 +469,10 @@ Per workflow, what it runs and when:
   layer, run in CI. Broader devnet specs stay
   maintainer-run.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: two npm-audit legs (root
-  production deps at high+; frontend production deps at critical-only). The
+  production deps at high+; frontend production deps at critical-only, through
+  `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in
+  `frontend/.audit-ignore.json` — each with the reason it cannot reach a static
+  export — and fails on every other critical one). The
   whole-tree guard battery and the Claude semantic open-world gate run
   maintainer-side, in pre-commit — they are private tooling and not part of
   the public CI tree.
@@ -492,7 +495,9 @@ Per workflow, what it runs and when:
   maintainer; a run that cannot read the node fails, which is the heartbeat.
   `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node; the
   dispatch input `rehearsal` raises one synthetic alert without reading the
-  chain, to prove the issue and e-mail path.
+  chain, to prove the issue and e-mail path. Every read waits its turn at one
+  gate, `PACE_MS` apart (default 1000), because a keyed node throttles a burst
+  of reads and the transport's own backoff does not save a whole run.
 - **`notify`** — on an issue opened or labelled `monitor`, `ci`, `digest`, or
   `triage`: the Actions bot posts one comment mentioning the maintainer, so
   the issues the cloud routines write under the maintainer's own account
