@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 // `next/constants` has no ESM export map entry in this Next version, so the
 // phase is matched by its documented literal value.
 const PHASE_PRODUCTION_BUILD = 'phase-production-build';
@@ -120,6 +121,13 @@ const nextConfig = {
             'pino-pretty': false,
         };
         config.externals.push("pino-pretty", "lokijs", "encoding");
+        // yoga-layout (via @react-pdf/renderer) reads import.meta.url, which
+        // webpack inlines as the builder's absolute file path; the served
+        // bundle must name no machine (scripts/webpack/strip-import-meta-url.cjs).
+        config.module.rules.push({
+            test: /yoga-layout[\\/]dist[\\/]binaries[\\/]yoga-wasm-base64-esm\.js$/,
+            loader: fileURLToPath(new URL("./scripts/webpack/strip-import-meta-url.cjs", import.meta.url)),
+        });
         return config;
     },
 };
