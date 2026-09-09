@@ -159,6 +159,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 | `UsageCounter.sol` | 224 | 223 | 1 |
 | `RpgfMinter.sol` | 102 | 100 | 2 |
 | `ClauseRegistry.sol` | 59 | 59 | 0 |
+| `AssemblyRegistry.sol` | 43 | 43 | 0 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
