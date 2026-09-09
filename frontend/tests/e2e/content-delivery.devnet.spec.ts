@@ -56,6 +56,9 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const TARGET_CLAUSE = 'figaro-content-handoff';
+/** The seller's declared locality (profile geohash) — the value the checkout offers
+ *  to every geohash-format field, and the origin the committed agreement must carry. */
+const SELLER_GEOHASH = '9q8yyk';
 
 const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — the fixture default buyer
 // This scenario's seller — anvil[19], SHARED with assembly-withdraw and
@@ -168,7 +171,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
         await page.locator('#profile-name').fill('Digital Deliverables Studio');
         await page.locator('#profile-specialty').fill('digital production work');
-        await page.locator('#profile-geohash').fill('9q8yyk');
+        await page.locator('#profile-geohash').fill(SELLER_GEOHASH);
         await page.getByRole('button', { name: /\+ MOCK$/ }).click();
         await page.locator('input[name="defaultTokenAddress"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
@@ -212,9 +215,14 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${TARGET_CLAUSE}-contentHandoff-encrypted-transfer"]`).first().check();
         // The freelancer reference's remaining particulars: a virtual
-        // deliverable; the geolocation endpoints carry jurisdiction, typed.
+        // deliverable; the geolocation endpoints carry jurisdiction. The
+        // origin is the seller's own place, taken from the offer the checkout
+        // makes to every geohash-format field (no device read, no code to
+        // know); the destination is typed.
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin-preset-0"]').first().click();
+        await expect(page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first())
+            .toHaveValue(SELLER_GEOHASH);
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('u15pk4');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
@@ -252,6 +260,22 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         expect(buyerBefore - buyerAfter, 'buyer balance decreased by the buyer bond').toBe(buyerBond);
         expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
         expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
+
+        // Out-of-band: the committed agreement (its locator keyed on the
+        // committed agreementHash) carries the seller's locality as the
+        // geolocation origin — the offer wrote the value that was signed.
+        const agreementHash = event.args.agreementHash as `0x${string}`;
+        const agreementUri = await page.evaluate(
+            (key) => window.localStorage.getItem(key),
+            `figaro:agreement-uri:${agreementHash}`,
+        );
+        expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
+        const agreementIpfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+        const agreement = JSON.parse(await (await fetch(
+            `${agreementIpfsApi}/api/v0/cat?arg=${agreementUri!.replace(/^ipfs:\/\//, '')}`, { method: 'POST' },
+        )).text()) as { sections: { clause: string; data: Record<string, unknown> }[] };
+        const geolocation = agreement.sections.find((sec) => sec.clause === 'figaro-geolocation');
+        expect(geolocation?.data.origin, "the committed origin is the seller's declared locality").toBe(SELLER_GEOHASH);
 
         // ── CEREMONY, buyer side: the declared interaction mounts on the
         //    process page; the buyer requests the deliverable. ──

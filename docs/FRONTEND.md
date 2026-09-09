@@ -253,7 +253,10 @@ Y", not as an open-ended build.)
   name; no entry ⇒ graceful degradation (plain input / nothing). Two seams:
   `components/runtime/fieldFormatInputs.tsx` (a string field's open `format` →
   input component; tenants: `geohash` → `GeohashFieldInput`, device-location
-  assisted; `bytes32-hex` → `ContentAnchorFieldInput`, the AFFIX — pick a
+  assisted, and any locality the surface already knows offered as a one-click
+  fill through `presets` — the checkout offers the seller's declared locality,
+  keyed by format, so a buyer collecting at the counter states origin and
+  destination without a device read; `bytes32-hex` → `ContentAnchorFieldInput`, the AFFIX — pick a
   file, pin it, keccak256 fills the field, and the pinned locator rides the
   companion channel to the first sibling declaring `format: "uri"`; pasting
   raw hex is used nowhere as a content fill;

@@ -43,6 +43,20 @@ export interface FieldFormatInputProps {
      *  and a companion with no declaring sibling is dropped. Absent outside
      *  an object context. */
     onCompanion?: (format: string, value: string | undefined) => void;
+    /** Values the SURROUNDING SURFACE already knows for this format, offered
+     *  as one-click fills beside typing (e.g. the checkout offers the seller's
+     *  declared locality to every geohash-format field, so a buyer collecting
+     *  at the counter states origin and destination without a device read or
+     *  a code they do not know). Keyed by format upstream, never by clause or
+     *  field name; the input decides how to show them. Absent ⇒ none. */
+    presets?: ReadonlyArray<FormatPreset>;
+}
+
+/** One value a surface can offer a format input, with the words the party
+ *  reads on the affordance. */
+export interface FormatPreset {
+    label: string;
+    value: string;
 }
 
 const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([

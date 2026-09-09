@@ -47,7 +47,7 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { isSiblingFormatSource, resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
+import { isSiblingFormatSource, resolveInputFormat, type FormatPreset } from "@/components/runtime/fieldFormatInputs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -129,6 +129,21 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
         : undefined;
     const sellerDefault = memberCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    // What this surface already knows, offered to the format inputs as
+    // one-click fills, keyed by FORMAT: the seller's declared locality to any
+    // geohash-format field (a buyer collecting at the counter states origin
+    // and destination as the seller's place, with no device read and no code
+    // to know). Never keyed by clause or field name — a never-seen clause
+    // declaring the format gets the offer.
+    const sellerGeohash = memberCatalogue?.geohash;
+    const sellerAddressText = memberCatalogue?.addressText;
+    const formatPresets = useMemo(() => {
+        const presets: Record<string, FormatPreset[]> = {};
+        if (sellerGeohash) {
+            presets.geohash = [{ label: `Use the seller's location${sellerAddressText ? ` (${sellerAddressText})` : ""}`, value: sellerGeohash }];
+        }
+        return presets;
+    }, [sellerGeohash, sellerAddressText]);
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
     const currency = utilityTokenPin ?? paymentPick ?? sellerDefault;
     // Price conversion, unit of account → the process denomination: catalogue
@@ -852,7 +867,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                 checks (`buyerAuthoredFields`), so no
                                                                 required term can be demanded without
                                                                 a control on screen. */}
-                                                            {buyerAuthoredFields(clauseId).map((field) => (
+                                                            {buyerAuthoredFields(clauseId).map((field) => {
+                                                                const inputFormat = resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseId]);
+                                                                return (
                                                                 <FieldControl
                                                                     key={field.name}
                                                                     field={field}
@@ -860,10 +877,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                     onChange={(v) => setClauseFill(group.key, clauseId, field.name, v)}
                                                                     testId={`checkout-field-${group.key}-${clauseId}-${field.name}`}
                                                                     hideLabel={field.name.toLowerCase() === (getClauseSpec(clauseId)?.title ?? "").toLowerCase()}
-                                                                    resolvedFormat={resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseId])}
+                                                                    resolvedFormat={inputFormat}
                                                                     siblingFormatSource={isSiblingFormatSource(field, specFields)}
+                                                                    presets={inputFormat ? formatPresets[inputFormat] : undefined}
                                                                 />
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     )}
                                                 </li>

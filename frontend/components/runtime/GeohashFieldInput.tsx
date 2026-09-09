@@ -9,7 +9,10 @@
  * `getDeviceLocation` + `encodeGeohash` pair the member-profile form uses)
  * and written into the field. Typing stays first-class — the device path is
  * assistance, not a requirement, and the page never sees coordinates, only
- * the geohash the party chose to commit.
+ * the geohash the party chose to commit. A surface that already knows a
+ * locality (the checkout knows the seller's) passes it as a preset, rendered
+ * as one more fill button — the party with no device and no code to type
+ * still states a value.
  *
  * Mounted by FieldControl via the fieldFormatInputs registry — this
  * component knows no clause and no field name.
@@ -21,7 +24,7 @@ import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { capGeohashGrain, geohashCapturePrecision, PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
-export function GeohashFieldInput({ value, onChange, testId, pattern, disposition }: FieldFormatInputProps) {
+export function GeohashFieldInput({ value, onChange, testId, pattern, disposition, presets }: FieldFormatInputProps) {
     const [locating, setLocating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // Grain cap by disposition: a PUBLIC geohash is coarsened to neighborhood
@@ -77,6 +80,20 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                 >
                     {locating ? "Locating…" : "Use device location"}
                 </button>
+                {(presets ?? []).map((preset, i) => (
+                    <button
+                        key={`${preset.value}-${i}`}
+                        type="button"
+                        // A preset lands under the same grain cap as a typed
+                        // value: where it lands decides, not where it came from.
+                        onClick={() => onChange(capGeohashGrain(disposition, preset.value))}
+                        data-testid={`${testId}-preset-${i}`}
+                        title={preset.value}
+                        className="shrink-0 text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
+                    >
+                        {preset.label}
+                    </button>
+                ))}
             </div>
             {error && (
                 <p className="text-[11px] text-error-fg" data-testid={`${testId}-device-error`}>

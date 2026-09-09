@@ -88,6 +88,24 @@ describe("FieldControl format dispatch", () => {
         expect(committed).toMatch(/^[0123456789bcdefghjkmnpqrstuvwxyz]+$/);
     });
 
+    it("a preset the surface passes is one more fill, under the same grain cap", async () => {
+        const onChange = vi.fn();
+        const fine = "9q8yyk8yu"; // door grade — beyond the public cap
+        render(
+            <FieldControl field={geohashField} value={undefined} onChange={onChange} testId="f-geo"
+                presets={[{ label: "Use the seller's location", value: fine }]} />,
+        );
+        const preset = screen.getByTestId("f-geo-preset-0");
+        expect(preset.textContent).toBe("Use the seller's location");
+        await userEvent.click(preset);
+        expect(onChange).toHaveBeenLastCalledWith(fine.slice(0, PUBLIC_GEOHASH_MAX_PRECISION));
+    });
+
+    it("no preset ⇒ no preset button (the plain and device paths are unchanged)", () => {
+        render(<FieldControl field={geohashField} value={undefined} onChange={() => {}} testId="f-geo" />);
+        expect(screen.queryByTestId("f-geo-preset-0")).toBeNull();
+    });
+
     it("typing stays first-class — manual input propagates unchanged", async () => {
         const onChange = vi.fn();
         render(

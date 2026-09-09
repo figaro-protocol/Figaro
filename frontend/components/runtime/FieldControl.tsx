@@ -50,7 +50,7 @@ import { useRef } from "react";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { labelEnumValue } from "@/lib/shared/clauseSpecSource";
-import { getFieldFormatInput } from "@/components/runtime/fieldFormatInputs";
+import { getFieldFormatInput, type FormatPreset } from "@/components/runtime/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
 
@@ -135,6 +135,7 @@ export function FieldControl({
     onCompanion,
     resolvedFormat,
     siblingFormatSource = false,
+    presets,
 }: {
     field: FieldSpec;
     value: unknown;
@@ -160,6 +161,9 @@ export function FieldControl({
      *  default — the party filling the sibling chooses the standard both are
      *  written in. */
     siblingFormatSource?: boolean;
+    /** Values the surrounding surface offers the format input as one-click
+     *  fills — see `FieldFormatInputProps.presets`. Ignored by the plain input. */
+    presets?: ReadonlyArray<FormatPreset>;
 }) {
     // The spec's own display label (the same `label ?? name` fallback
     // `describeClause` uses on the read side), so a field reads identically
@@ -393,6 +397,7 @@ export function FieldControl({
                             pattern={field.pattern}
                             disposition={field.disposition}
                             onCompanion={onCompanion}
+                            presets={presets}
                         />
                         {guidance}
                     </div>
