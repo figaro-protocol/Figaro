@@ -30,6 +30,19 @@ const PROPOSITION: string[] = [
 // guard recomputes the four counted benches and fails the commit when a
 // number here drifts; TLA+ names models, Lean 4 names the result proved, and
 // static analysis names the tools the workflow pins.
+// What the protocol runs on and composes with, each mark from the project's
+// own brand assets, unaltered, linking to the project. One strip below the
+// doors; never a door itself.
+const BUILT_WITH: { name: string; href: string; src: string }[] = [
+    { name: "Ethereum", href: "https://ethereum.org", src: "/built-with/ethereum.svg" },
+    { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg" },
+    { name: "Uniswap", href: "https://uniswap.org", src: "/built-with/uniswap.svg" },
+    { name: "XMTP", href: "https://xmtp.org", src: "/built-with/xmtp.svg" },
+    { name: "Disperse", href: "https://disperse.app", src: "/built-with/disperse.png" },
+    { name: "Kleros", href: "https://kleros.io", src: "/built-with/kleros.svg" },
+    { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg" },
+];
+
 const CHECKS: { name: string; count: string }[] = [
     { name: "Foundry", count: "315 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
@@ -80,6 +93,20 @@ export default function Home() {
                             <p className="text-base text-ink-body leading-relaxed">{d.line}</p>
                         </div>
                     ))}
+                </div>
+                <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
+                    <p className="text-sm text-ink-muted mb-4">Built with</p>
+                    <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
+                        {BUILT_WITH.map((b) => (
+                            <li key={b.name}>
+                                <a href={b.href} target="_blank" rel="noopener noreferrer" title={b.name} className="flex items-center gap-2 text-sm text-ink-body hover:text-ink-heading">
+                                    {/* eslint-disable-next-line @next/next/no-img-element -- a static export; the marks are local files */}
+                                    <img src={b.src} alt={b.name} width={24} height={24} className="h-6 w-6 object-contain" />
+                                    <span>{b.name}</span>
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-4">
