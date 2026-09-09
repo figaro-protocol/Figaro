@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Use — Figaro Protocol",
     description:
-        "Sell to anyone, anywhere, and be paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. No platform takes a cut, no processor can freeze you, and nobody needs your permission to join.",
+        "Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. No platform takes a cut, no processor can freeze you, and nobody needs your permission to join.",
 });
 
 // THE USE DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function UseDoor() {
                 title="Figaro: permissionless, decentralized trade on a blockchain"
                 lead={
                     <>
-                        Sell to anyone, anywhere, and be paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. No platform takes a cut, no processor can freeze you, and nobody needs your permission to join.
+                        Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. No platform takes a cut, no processor can freeze you, and nobody needs your permission to join.
                     </>
                 }
             />
@@ -37,7 +37,7 @@ export default function UseDoor() {
             </section>
             <MarketingSection title="What makes it safe.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Before a trade starts, both sides lock a bond of twice the payment in a smart contract nobody owns. Walking away costs more than finishing, on either side. When the buyer confirms, you are paid and both bonds are refunded. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link>
+                    Before a trade starts, both sides lock a bond of twice the payment in a decentralized, permissionless smart contract. Walking away costs more than finishing, on either side. When the buyer confirms, you are paid and both bonds are refunded. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="If something goes wrong.">
