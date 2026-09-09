@@ -10,6 +10,9 @@
 //                    about twenty-seven hours of Sepolia blocks — wider than the
 //                    daily schedule so nothing falls between two runs)
 //   ALERTS_OUT       where the alerts land as JSON (default monitor-alerts.json)
+//   PACE_MS          the least time between two requests to the node (default
+//                    1000 — a keyed node throttles a burst of reads; paced, the
+//                    reads never become one)
 //
 // Two kinds of check. Window checks read only the last WINDOW_BLOCKS blocks:
 // a minter registered after genesis, a florin minted outside the reward path,
@@ -38,6 +41,7 @@ const CHAIN_ID = Number(process.env.CHAIN_ID ?? "11155111");
 const RPC_URL = process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 const WINDOW = BigInt(process.env.WINDOW_BLOCKS ?? "8000");
 const ALERTS_OUT = process.env.ALERTS_OUT ?? "monitor-alerts.json";
+const PACE_MS = Number(process.env.PACE_MS ?? "1000");
 const CHUNK = 9_500n; // the SDK's DEFAULT_LOG_CHUNK_SIZE — under every public node's range cap
 const ASKS = 3; // times each log chunk is asked; the fullest answer wins
 const BURST = 3;
@@ -54,8 +58,17 @@ const erc20Abi = [
 ];
 
 const chain = CHAIN_ID === sepolia.id ? sepolia : { ...sepolia, id: CHAIN_ID };
-// A keyed node throttles a burst of reads (429); the transport backs off and retries.
-const client = createPublicClient({ chain, transport: http(RPC_URL, { retryCount: 6, retryDelay: 1000 }) });
+// A keyed node throttles a burst of reads (429). Every request waits its turn
+// at one gate, PACE_MS apart, so the reads never arrive as a burst; a throttle
+// that comes anyway is met by the transport's own backoff and retries.
+let nextSlot = 0;
+const pace = async () => {
+    const now = Date.now();
+    const at = Math.max(now, nextSlot);
+    nextSlot = at + PACE_MS;
+    if (at > now) await new Promise((resolve) => setTimeout(resolve, at - now));
+};
+const client = createPublicClient({ chain, transport: http(RPC_URL, { onFetchRequest: pace, retryCount: 6, retryDelay: 1000 }) });
 
 async function eventsChunked({ address, abi, eventName, fromBlock, toBlock }) {
     const out = [];
