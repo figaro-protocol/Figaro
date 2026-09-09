@@ -21,7 +21,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 export const metadata: Metadata = withOg({
     title: "Clauses — Figaro Protocol",
     description:
-        "A clause is what it is in a paper contract — one reusable term of a deal — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry count, and the RPGF reward for clauses that get used.",
+        "A clause is what it is in a paper contract — one reusable term of an agreement — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry count, and the RPGF reward for clauses that get used.",
 });
 
 export default function Clauses() {
@@ -38,7 +38,7 @@ export default function Clauses() {
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Somebody writes a term once and publishes it; anyone whose deal needs that term composes it in without writing it again, and nobody asks permission either way. A clause is data, not code &mdash; the terms of a deal, written down so that a person and a program read the same document. What follows below gets technical &mdash; the requirements for writing one, exactly which part of a spec reaches which hash, what registering costs and what it permanently commits you to.
+                    Somebody writes a term once and publishes it; anyone whose agreement needs that term composes it in without writing it again, and nobody asks permission either way. A clause is data, not code &mdash; the terms of an agreement, written down so that a person and a program read the same document. What follows below gets technical &mdash; the requirements for writing one, exactly which part of a spec reaches which hash, what registering costs and what it permanently commits you to.
                 </p>
             </MarketingSection>
 
@@ -53,14 +53,14 @@ export default function Clauses() {
 
             <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every deal carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and the denomination. One &mdash; <code>figaro-topology</code> &mdash; carries the deal&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. A long chain can attest topology as evidence that one seller performed after another; today&apos;s published assemblies simply have not.
+                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every agreement carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and the denomination. One &mdash; <code>figaro-topology</code> &mdash; carries the process&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. A long chain can attest topology as evidence that one seller performed after another; today&apos;s published assemblies simply have not.
                  Every registered clause has its own URL: <code>/registries#clause-&lt;clauseId&gt;</code> lands on its row and opens the document as stored, with the anchored hash beside it.</p>
                 <RegistryCountLink family="clauses" />
             </MarketingSection>
 
             <MarketingSection title="What the hash covers." sectionId="what-the-hash-covers">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: <code>block</code> is the half people read, <code>fields</code> the half programs parse, and <code>contentHash</code>, anchored on <code>ClauseRegistry</code> under the clauseId and version, is the integrity anchor. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s author is not a party to the deals that use it, and what makes those deals hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
+                    <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: <code>block</code> is the half people read, <code>fields</code> the half programs parse, and <code>contentHash</code>, anchored on <code>ClauseRegistry</code> under the clauseId and version, is the integrity anchor. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s author is not a party to the trades that use it, and what makes those trades hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause id</strong> is the registry key. The <strong><code>contentHash</code></strong> is the document&apos;s integrity anchor. The <strong><code>agreementHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is. Here is exactly which part of your spec reaches which:

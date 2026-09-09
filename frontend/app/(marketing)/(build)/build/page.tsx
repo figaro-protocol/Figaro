@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Build — Figaro Protocol",
     description:
-        "The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. No permission, no platform, no revenue share to anyone.",
+        "The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. Registration is permissionless, and the florins are minted for the purpose, so the designer keeps them whole.",
 });
 
 // THE BUILD DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function BuildDoor() {
                 title="Figaro: build the market, get paid when it is used"
                 lead={
                     <>
-                        The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. No permission, no platform, no revenue share to anyone.
+                        The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. Registration is permissionless, and the florins are minted for the purpose, so the designer keeps them whole.
                     </>
                 }
             />
@@ -58,7 +58,7 @@ export default function BuildDoor() {
             </MarketingSection>
             <MarketingSection title="Get paid.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    The florin is the protocol&apos;s own ERC-20 token: a unit strangers with no token in common can meet in, with no yield, no vote over trades, and no fee. Every resolved trade is counted once against each clause and assembly it carried, and 600 million florins of a fixed 1 billion pay designers pro rata over nine annual periods. No tag, no weighting, no cap. A DAO holds 300 million more for work the counter cannot see; the rest is stated on the Tokenomics page. A florin is a Schelling point and carries no rights of any kind. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
+                    The florin is the protocol&apos;s own ERC-20 token: a unit strangers with no token in common can meet in, with no yield, no vote over trades, and no fee. Every resolved trade is counted once against each clause and assembly it carried, and 600 million florins of a fixed 1 billion pay designers pro rata over nine annual periods. Every clause and assembly scores on one rule: the resolved trades that carried it, and the distinct sellers behind them. A DAO holds 300 million more for work the counter cannot see; the rest is stated on the Tokenomics page. A florin is a Schelling point and carries no rights of any kind. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
                 </p>
             </MarketingSection>
             <MarketingSection bottomPad="wide">

@@ -206,7 +206,7 @@ export interface SeedMemberProfile {
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
      *  makes the wallet an AGENT candidate: race/quote drafts POST there. */
     services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string };
-    /** The buyer's assembly SUBSCRIPTIONS — the deal-shapes this member buys
+    /** The buyer's assembly SUBSCRIPTIONS — the assemblies this member buys
      *  through and monetizes records from (independent of the bindings). */
     buyerAssemblies?: Array<{ compositionHash: `0x${string}` }>;
     /** The member's data-disclosure policy — the data offered

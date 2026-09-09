@@ -71,7 +71,7 @@ export default function Dao() {
 
             <MarketingSection title="It is allowed to run out." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The DAO&apos;s life is its treasury. When that runs dry, governance passes to whoever still wants the thing: donations sustain it if the community cares to sustain it, and otherwise it ends. There is no self-perpetuation right anywhere in the design &mdash; no switch to flip, no levy it can raise, no lever a vote can reach into the protocol, and no seat it can grant itself.
+                    The DAO&apos;s life is its treasury. When that runs dry, governance passes to whoever still wants the thing: donations sustain it if the community cares to sustain it, and otherwise it ends. The treasury spends what it holds and earns on the same meter as every other designer; when both run out, it ends.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     That is the honest shape of a bootstrap. The reserve that pays designers ends after nine years by the same logic, and neither ending is a failure: both exist to carry the commons through the years when it cannot yet carry itself. Anything that continues past them continues on its own legs &mdash; including a successor programme, which anyone may stand up and fund however they choose. The protocol is open, and nothing here holds a franchise on paying for the work built above it.

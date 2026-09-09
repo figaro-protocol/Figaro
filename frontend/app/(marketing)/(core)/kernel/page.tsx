@@ -30,7 +30,7 @@ export default function Kernel() {
                 How any two parties can transact directly, anywhere.
             </h1>
             <p className="text-body-lead text-ink-muted italic mb-8">
-                Two bonds, each bigger than the trade. One rule for who opens the box. That is the entire machine.
+                Two bonds, each bigger than the trade. One rule for who resolves. That is the entire machine.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 The short version is a smart contract. Both sides put in a bond worth more than the payment. The smart contract holds it &mdash; running in the open, permissionless and decentralized, following one fixed rule. Say the trade is worth {EX.payment} tokens, in the ERC-20 the participants chose. The buyer locks {EX.buyer_locks} &mdash; one bond of twice the payment, the {EX.payment} they owe carried inside it. The seller locks {EX.seller_locks} too, all of it bond. {EX.held} is held, and until the trade is done, neither side can reach any of it. Only the 2&times; ratio is ever fixed, never the number.
@@ -53,16 +53,16 @@ export default function Kernel() {
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-A forfeited bond is simply value that is never refunded, locked in the box, benefiting no one &mdash; nothing is seized, and nobody judges. The math is what turns walking away into the losing move: whoever walks stands worse off than finishing would have left them &mdash; counting everything they kept &mdash; so long as the rest of the chain performs. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked. In numbers: a buyer that never resolves after delivery keeps what was delivered and leaves its whole bond locked, so it is out of pocket by {EX.outcomes_plain.buyer_out_of_pocket_after_delivery}; a seller that holds out forfeits {EX.outcomes_plain.seller_forfeits_on_holdout}.
+A forfeited bond is simply value that is never refunded, locked in the smart contract, reaching no one &mdash; nothing is seized, and nobody judges. The math is what turns walking away into the losing move: whoever walks stands worse off than finishing would have left them &mdash; counting everything they kept &mdash; so long as the rest of the chain performs. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked. In numbers: a buyer that never resolves after delivery keeps what was delivered and leaves its whole bond locked, so it is out of pocket by {EX.outcomes_plain.buyer_out_of_pocket_after_delivery}; a seller that holds out forfeits {EX.outcomes_plain.seller_forfeits_on_holdout}.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Value you part with has always had two modes: spent, or invested. A bond is a third. It is not consumed and it is not earning &mdash; and the not-earning is the honest price: for the trade&apos;s duration the bonded tokens stand idle, a cost that weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it is refunded intact every honest time.
+                For the trade&apos;s duration the bonded tokens stand idle. That is the honest price, and it weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it is refunded intact every honest time.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
-                Who opens the box.
+                Who resolves.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                One rule decides who unlocks the smart contract: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same box, and nothing returns to anyone until the buyer closes. No arbitrator weighs the case; no timer releases what is locked. And because nothing resolves until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade closes.
+                One rule decides who unlocks the smart contract: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same smart contract, and nothing returns to anyone until the buyer closes. The buyer&apos;s signature is the only thing that releases what is locked. And because nothing resolves until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade closes.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Two mechanisms, not one.
@@ -116,7 +116,7 @@ A forfeited bond is simply value that is never refunded, locked in the box, bene
                 Resolved or left to sit, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                That is the whole of it: a bond large enough that cheating loses, and one clear rule for who opens the box. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the smart contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
+                That is the whole of it: a bond large enough that cheating loses, and one clear rule for who resolves. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the smart contract itself is catalogued on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Those two facts are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
             </p>
         </section>
     );

@@ -37,7 +37,7 @@ export default function WorkingGroups() {
 
             <MarketingSection title="The groups.">
                 <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-8">
-                    The eight disciplines are not ours. They are the taxonomy set out by Voshmgir &amp; Zargham<sup>1</sup>, which argues that cryptoeconomic systems are irreducibly multi-disciplinary objects and enumerates the disciplines a full account of one must pass through. The project adopts that list rather than inventing its own, so that a reader arriving from any one of the eight finds the substrate addressed in that discipline&rsquo;s own vocabulary, and so that the depth of coverage under each is measured against a list the project did not draw.
+                    The eight disciplines come from Voshmgir &amp; Zargham, not from this project. They are the taxonomy set out by Voshmgir &amp; Zargham<sup>1</sup>, which argues that cryptoeconomic systems are irreducibly multi-disciplinary objects and enumerates the disciplines a full account of one must pass through. The project adopts that list rather than inventing its own, so that a reader arriving from any one of the eight finds the substrate addressed in that discipline&rsquo;s own vocabulary, and so that the depth of coverage under each is measured against a list the project did not draw.
                 </p>
                 <DisciplineIntersectionFigure labels={PAPER_GROUPS.map((g) => g.name)} className="mb-10" />
                 <div id="index" className="scroll-mt-24 lg:grid lg:grid-cols-[1fr_15rem] lg:gap-10">

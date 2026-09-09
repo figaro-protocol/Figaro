@@ -3,10 +3,10 @@ import { OG_IMAGE } from "@/lib/shared/pageMetadata";
 
 export const metadata: Metadata = {
     title: "Local Commerce — Figaro Protocol",
-    description: "One trade on Figaro Protocol, lived end to end — a delivered meal among unbounded kinds of trade, with the same shape across retail and services. Both parties lock bonds before work begins, and breaking the agreement always costs more than keeping it. No company sits in the middle, because the deal secures itself.",
+    description: "One trade on Figaro Protocol, lived end to end — a delivered meal among unbounded kinds of trade, with the same shape across retail and services. Both parties lock bonds before work begins, and breaking the agreement always costs more than keeping it. No company sits in the middle, because the trade secures itself.",
     openGraph: {
         title: "Figaro Local Commerce",
-        description: "One deal on Figaro Protocol, lived end to end — a delivered meal among unbounded kinds of trade, with the same shape across retail and services.",
+        description: "One trade on Figaro Protocol, lived end to end — a delivered meal among unbounded kinds of trade, with the same shape across retail and services.",
         type: "website",
         siteName: "Figaro Protocol",
         images: [OG_IMAGE],

@@ -9,23 +9,15 @@ export const metadata: Metadata = withOg({
         "Figaro is permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade. The bond is twice the payment. Breaking the trade costs more than keeping it.",
 });
 
-// HOME IS A ROUTER, NEVER A DOCUMENT: the summary line, one sentence of the
-// mechanism, the proposition in blocks, the six doors — one per landing page,
-// one door per destination — and the seven checks the code passes on every
-// commit. Each door's line is in its reader's words; the landing page it
-// opens carries the pillar. A comprehension gap found by any probe is closed
-// on the landing page or its owner page, never by adding prose here.
+// HOME IS A ROUTER, NEVER A DOCUMENT: the proposition as one paragraph, the
+// six doors — one per landing page, one door per destination — and the seven
+// checks the code passes on every commit. Each door's line is in its reader's
+// words; the landing page it opens carries the pillar. A comprehension gap
+// found by any probe is closed on the landing page or its owner page, never by
+// adding prose here.
 //
 // THE PROPOSITION is the maintainer's, sentence for sentence, in the lexicon's
-// nouns; the hero carries its first half, the blocks the rest.
-const PROPOSITION: string[] = [
-    "No bank, platform, court, lawyer, boss, or company is needed to enforce the trade. Figaro charges nothing; the network charges gas for the two transactions, and the bonds are refunded when the buyer resolves.",
-    "The seller receives the whole payment. Nobody takes a cut.",
-    "The buyer and the seller keep their own data, the trail of every trade they made, and their own agreements.",
-    "Anyone with a wallet can trade.",
-    "Anyone can publish the terms of an agreement and be rewarded based on its use. Trades are in any ERC-20 token. The reward is in florins, the protocol's native token.",
-];
-
+// nouns: the one-line, the proposition, and the spine, as /about carries them.
 // THE SEVEN CHECKS, each with the count the tree derives — the security-counts
 // guard recomputes the four counted benches and fails the commit when a
 // number here drifts; TLA+ names models, Lean 4 names the result proved, and
@@ -68,18 +60,11 @@ export default function Home() {
                 title="My word is my bond"
                 lead={
                     <>
-                        Figaro is permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade. The bond is twice the payment. Breaking the trade costs more than keeping it.
+                        Permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade; the bond is twice the payment, and for each seller in a chain twice the value the trade has accumulated through its link, so breaking the trade costs more than keeping it, and no bank, platform, court, lawyer, boss, or company is needed to enforce it. A court, if it comes to that, rules afterwards on the same data; nothing reaches into the trade. The seller receives the whole payment. The buyer and the seller keep their own data and their own agreements. Anyone with a wallet can trade, in any ERC-20 token. Anyone can publish the terms of an agreement and be rewarded based on its use; the reward is in florins, the protocol&apos;s native token.
                     </>
                 }
             />
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 border-t border-default pt-8">
-                    {PROPOSITION.map((line) => (
-                        <p key={line} className="text-sm text-ink-body leading-relaxed">{line}</p>
-                    ))}
-                </div>
-            </section>
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">

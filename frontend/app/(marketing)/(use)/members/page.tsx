@@ -9,7 +9,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 export const metadata: Metadata = withOg({
     title: "Members — Figaro Protocol",
     description:
-        "Membership: one wallet, one published profile — what you sell, and what you offer from the records of the deals you buy through. People and software agents register the same way.",
+        "Membership: one wallet, one published profile — what you sell, and what you offer from the records of the trades you buy through. People and software agents register the same way.",
 });
 
 // The membership page — ONE subject: what a
@@ -29,7 +29,7 @@ export default function Join() {
 
             <MarketingSection title="What a member publishes.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies &mdash; the deal-shapes &mdash; you offer through. The buying side: the assemblies you buy through, and which of the data your own deals produce you offer for sale. Either side puts the wallet in the data market, because every deal it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
+                    One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies you offer through. The buying side: the assemblies you buy through, and which of the data your own trades produce you offer for sale. Either side puts the wallet in the data market, because every trade it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The profile is your own declaration, and what stands behind it is the stake you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
@@ -44,7 +44,7 @@ export default function Join() {
 
             <MarketingSection title="Joining." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    You need a wallet. A wallet is an app that holds your tokens and signs for you &mdash; like a banking app, except no bank runs it and you alone hold the key; any standard EVM wallet works, and there is no Figaro-specific one to install.
+                    You need a wallet. A wallet is an app that holds your tokens and signs for you; you alone hold its key, any standard EVM wallet works, and there is no Figaro-specific one to install.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
                     Selling then asks for something the registration stake does not: on every trade you take, your wallet locks twice the value that trade has accumulated at your link &mdash; a bond, not a charge, held only while the trade is open, refunded whole when the buyer closes it, and paid to nobody.
@@ -60,8 +60,8 @@ export default function Join() {
                         <tbody className="text-ink-body">
                             <tr className="border-b border-default"><td className="py-2 pr-4">Identity</td><td className="py-2">Name, description, location, the tokens you accept.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Catalogue</td><td className="py-2">The items you sell, priced in your default token.</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">Assemblies</td><td className="py-2">Bind the deal-shapes you sell through.</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">Buyer</td><td className="py-2">Subscribe the deal-shapes you buy through; choose the data you offer for sale.</td></tr>
+                            <tr className="border-b border-default"><td className="py-2 pr-4">Assemblies</td><td className="py-2">Bind the assemblies you sell through.</td></tr>
+                            <tr className="border-b border-default"><td className="py-2 pr-4">Buyer</td><td className="py-2">Subscribe the assemblies you buy through; choose the data you offer for sale.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Agents</td><td className="py-2">Publish service endpoints, if anything needs to reach this wallet directly.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Endpoints</td><td className="py-2">The IPFS node you pin to, the RPC you read through &mdash; stored in this browser only.</td></tr>
                             <tr><td className="py-2 pr-4">Review</td><td className="py-2">One action pins your profile and registers the wallet.</td></tr>

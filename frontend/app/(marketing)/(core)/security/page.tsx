@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Security — Figaro Protocol",
     description:
-        "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna, Lean 4 — the external-audit posture, and how to verify any deal yourself. Audit results are published here as they land.",
+        "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna, Lean 4 — the external-audit posture, and how to verify any trade yourself. Audit results are published here as they land.",
 });
 
 // Security in the crypto sense only: testing, code security, audit results.

@@ -17,10 +17,10 @@ export default function Assemblies() {
     return (
         <>
             <MarketingHero
-                title="The shape of a deal, drawn once, reused by anyone."
+                title="The shape of a trade, drawn once, reused by anyone."
                 lead={
                     <>
-                        Every kind of deal has a shape: the parties it takes and the terms
+                        Every kind of trade has a shape: the parties it takes and the terms
                         binding them &mdash; a delivered meal, a freight leg across an ocean,
                         a data sale, a certified repair. Somebody draws a shape once, and
                         anyone who fits it can trade through it without drawing it again.
@@ -46,7 +46,7 @@ export default function Assemblies() {
 
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    An assembly is a ready-made shape for a deal &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one.
+                    An assembly is a ready-made shape for a trade &mdash; who is involved and how the payment splits between them &mdash; that anyone can reuse without designing it from scratch. What follows below gets technical &mdash; how an assembly is identified on-chain, exactly what its hash covers, how to publish one.
                 </p>
             </MarketingSection>
 
@@ -225,7 +225,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 </p>
                 <RegistryCountLink family="assemblies" />
                 <p className="text-sm text-ink-body leading-relaxed mt-6">
-                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when resolved deals run through an assembly, its designer of record draws a share of the florins reserved for designers. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Rewards for designers</Link>.
+                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when resolved trades run through an assembly, its designer of record draws a share of the florins reserved for designers. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Rewards for designers</Link>.
                 </p>
             </MarketingSection>
 

@@ -15,7 +15,7 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 // The numbers are the arithmetic of FigaroCore.commit (src/kernel/FigaroCore.sol
 // :208-209): the buyer is pulled payment×2 at EVERY commit; each seller is
 // pulled expectedCumulativeValue×2. 300 + 120 gives seller stakes 600 and 840
-// and a buyer stake of 840. They are the values of THIS narrated deal, not a
+// and a buyer stake of 840. They are the values of THIS narrated trade, not a
 // published price — the shipped assembly stores no amounts (price is a
 // checkout input).
 //
@@ -83,7 +83,7 @@ export default function WorkedExample() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Every party bonds twice the value the chain carries at its own link. At resolution
                     each seller&apos;s bond comes back whole; the buyer&apos;s comes back less the
-                    payments it carried. Stated per party, for this deal:
+                    payments it carried. Stated per party, for this trade:
                 </p>
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">The lead agent bonds 600.</strong> Twice the 300 the chain carries when it commits.</li>

@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Use — Figaro Protocol",
     description:
-        "Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. No platform takes a cut, no processor can freeze you, and nobody needs your permission to join.",
+        "Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet is all it takes.",
 });
 
 // THE USE DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function UseDoor() {
                 title="Figaro: permissionless, decentralized trade on a blockchain"
                 lead={
                     <>
-                        Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. No platform takes a cut, no processor can freeze you, and nobody needs your permission to join.
+                        Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet is all it takes.
                     </>
                 }
             />
