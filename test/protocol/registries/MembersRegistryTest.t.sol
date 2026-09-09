@@ -344,6 +344,25 @@ contract MembersRegistryTest is Test {
         assertEq(freeReg.releaseAt(alice), 0);
     }
 
+    /// The `amount > 0` guard in `withdraw` is load-bearing, and only a member
+    /// that REJECTS ETH shows it: on a zero-deposit deployment there is nothing
+    /// to send, and sending zero anyway would revert against a contract member
+    /// whose receive reverts — stranding its de-listing behind a transfer it
+    /// never asked for. An EOA member cannot show this: a zero-value call to an
+    /// EOA succeeds, so the test above passes with or without the guard.
+    function test_zeroDeposit_contractThatRejectsEtherStillWithdraws() public {
+        MembersRegistry freeReg = new MembersRegistry(0, COOLDOWN);
+        EtherRejectingMember member = new EtherRejectingMember(freeReg);
+
+        member.register("ipfs://rejects-ether");
+        member.requestWithdrawal();
+        vm.warp(freeReg.releaseAt(address(member)));
+
+        member.withdraw();
+        assertEq(freeReg.releaseAt(address(member)), 0);
+        assertEq(freeReg.pendingDeposit(address(member)), 0);
+    }
+
     // ── No funds are strandable ─────────────────────────────────────────
 
     /// Sampled over the FULL constructor domain (both params are uint256);
@@ -370,5 +389,31 @@ contract MembersRegistryTest is Test {
 
         assertEq(alice.balance, balBefore + deposit);
         assertEq(address(r).balance, 0);
+    }
+}
+
+/// A member that is a contract and refuses ETH — the case that distinguishes
+/// `withdraw`'s zero-amount guard from an unconditional transfer.
+contract EtherRejectingMember {
+    MembersRegistry private immutable registry;
+
+    constructor(MembersRegistry _registry) {
+        registry = _registry;
+    }
+
+    function register(string calldata uri) external {
+        registry.register(uri);
+    }
+
+    function requestWithdrawal() external {
+        registry.requestWithdrawal();
+    }
+
+    function withdraw() external {
+        registry.withdraw();
+    }
+
+    receive() external payable {
+        revert("no ether");
     }
 }

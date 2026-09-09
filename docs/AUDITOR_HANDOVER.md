@@ -160,6 +160,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 | `RpgfMinter.sol` | 102 | 100 | 2 |
 | `ClauseRegistry.sol` | 59 | 59 | 0 |
 | `AssemblyRegistry.sol` | 43 | 43 | 0 |
+| `MembersRegistry.sol` | 63 | 63 | 0 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
@@ -170,6 +171,13 @@ removed the `orderProcessId` write, which no test read: invariant A-10 in
 `VERIFICATION_MAP.md` states it, `test_orderProcessId_bindsEveryOrderToItsProcess`
 reads it, and two Certora rules prove it (§ Formal run evidence). Every High-severity
 mutant was caught.
+
+The members registry's run left one survivor on first pass, real, now caught. Forcing
+the zero-amount guard in `withdraw` went unnoticed because the zero-deposit test uses an
+externally-owned account, which accepts a zero-value call as readily as no call at all:
+`test_zeroDeposit_contractThatRejectsEtherStillWithdraws` registers a contract member whose
+`receive` reverts, so an unconditional transfer strands its de-listing behind a transfer it
+never asked for.
 
 The batch verifier's run left two survivors on first pass, both real, both now caught.
 Removing the `verifier.verifyProof` call went unnoticed because the mock verifier accepted
