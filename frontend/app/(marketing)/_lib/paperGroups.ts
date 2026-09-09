@@ -184,7 +184,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Platform work", "Legal and dispute resolution"],
             },
             {
-                title: "Coercion as a Substrate Variable",
+                title: "The Coercion Variable",
                 href: "/papers/coercion-variable",
                 summary: "Law has always paired texts with a coercive apparatus. The bonded commitment enforces bilateral commerce with no third party applying force: a pre-commitment, self-binding at consent, that leaves a defector's bond locked.",
                 keywords: ["coercion", "sovereignty", "monopoly on violence", "pre-commitment", "bonded enforcement", "political philosophy", "Hobbes", "Weber", "Hart", "boundary of state authority"],
