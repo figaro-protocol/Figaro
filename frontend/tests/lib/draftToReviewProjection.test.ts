@@ -22,6 +22,7 @@ import {
     snapshotCompositionIdentity,
     snapshotToAssemblyTemplate,
     templateComposedByAgreement,
+    unfilledAssemblyTerms,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import {
     createSyntheticRootOrder,
@@ -214,5 +215,28 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
         for (const clauseId of ASSEMBLY_CLAUSES) {
             expect(review.assemblyClauses).not.toHaveProperty(clauseId);
         }
+    });
+});
+
+// A required assembly term left empty is named, and a filled one is not —
+// the review's Confirm reads this list (beta r5: a utility-token pin
+// published with no currency).
+describe("unfilledAssemblyTerms", () => {
+    it("names a selected term whose required design fill is empty", () => {
+        const missing = unfilledAssemblyTerms({ "figaro-utility-token": {} });
+        expect(missing).toEqual([
+            { clauseId: "figaro-utility-token", clauseTitle: expect.any(String), fieldLabel: expect.any(String) },
+        ]);
+        expect(missing[0]!.fieldLabel.toLowerCase()).toContain("currency");
+    });
+
+    it("is empty once the fill is present", () => {
+        expect(unfilledAssemblyTerms({
+            "figaro-utility-token": { currency: "0x000000000000000000000000000000000000dEaD" },
+        })).toEqual([]);
+    });
+
+    it("ignores a term with no required design fill, and an unknown clause", () => {
+        expect(unfilledAssemblyTerms({ "figaro-assembly-provenance": {}, "figaro-never-seen": {} })).toEqual([]);
     });
 });

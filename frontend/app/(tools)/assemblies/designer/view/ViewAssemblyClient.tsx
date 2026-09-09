@@ -62,6 +62,7 @@ import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import {
     projectSnapshotForReview,
     templateComposedByAgreement,
+    unfilledAssemblyTerms,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
@@ -289,6 +290,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         if (resolved.kind === "published") return resolved.assemblyTemplate.assemblyClauses ?? {};
         return review?.ok ? review.assemblyClauses : {};
     }, [resolved, review]);
+    // A required assembly term the template carries empty — the review says
+    // which, and Confirm stays closed until the editor fills it.
+    const missingTerms = useMemo(
+        () => (resolved.kind === "draft" && review?.ok
+            ? unfilledAssemblyTerms(review.assemblyClauses, review.template.assemblyClauseVersions)
+            : []),
+        [resolved.kind, review],
+    );
 
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;
@@ -301,6 +310,13 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             setPublishError(
                 review?.error
                     ?? "This composition could not be built, so there is nothing verified to publish.",
+            );
+            return;
+        }
+        if (missingTerms.length > 0) {
+            setPublishError(
+                `Still to fill: ${missingTerms.map((m) => `${m.clauseTitle} · ${m.fieldLabel}`).join("; ")}. `
+                + "A required assembly term is empty; go back to the editor and fill it.",
             );
             return;
         }
@@ -336,7 +352,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         } finally {
             setConfirming(false);
         }
-    }, [resolved, publish, review]);
+    }, [resolved, publish, review, missingTerms]);
 
     const handleContinueAfterPublish = useCallback(() => {
         // Don't clear receipt locally — that triggers a re-render of the
@@ -484,6 +500,11 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             >
                 ← Back to editor
             </Link>
+            {missingTerms.length > 0 && (
+                <p className="text-xs text-warning-fg" data-testid="review-missing-terms">
+                    Still to fill: {missingTerms.map((m) => `${m.clauseTitle} · ${m.fieldLabel}`).join("; ")}
+                </p>
+            )}
             <Button
                 type="button"
                 size="compact"
@@ -494,7 +515,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 // And gated on the composition BUILDING: an assembly whose
                 // template this screen could not derive is one whose terms it
                 // could not show, so it must not be anchorable from here.
-                disabled={confirming || !clauseSpecsLoaded || !review?.ok}
+                disabled={confirming || !clauseSpecsLoaded || !review?.ok || missingTerms.length > 0}
                 className="font-semibold"
                 data-testid="review-confirm-publish"
                 title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
@@ -503,6 +524,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     ? "Publishing…"
                     : !clauseSpecsLoaded
                         ? "Loading clause specs…"
+                        : review?.ok && missingTerms.length > 0
+                            ? "Fill the required assembly terms"
                         : review?.ok
                             ? "Confirm publish — irreversible"
                             : "Composition unavailable"}

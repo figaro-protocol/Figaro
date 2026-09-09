@@ -21,7 +21,8 @@
  */
 
 import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
-import { clauseIsMandatory, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, clauseIsMandatory, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import {
     deriveAssemblySlug,
     templateClauseVersion,
@@ -142,4 +143,36 @@ export function snapshotCompositionIdentity(
     return review.ok
         ? { compositionHash: review.compositionHash, slug: review.slug, error: null }
         : { compositionHash: null, slug: null, error: review.error };
+}
+
+/** A required assembly term the designer has not filled: the clause and the
+ *  field, named as the panel labels them. */
+export interface MissingAssemblyTerm {
+    clauseId: string;
+    clauseTitle: string;
+    fieldLabel: string;
+}
+
+/** The required design fills still empty among the assembly-scoped terms a
+ *  composition carries. A term the designer selected declares, in its spec,
+ *  which fields the designer fills (`block.design.fills`); a required one
+ *  left empty would anchor an assembly whose every agreement is missing a
+ *  term it promises (beta r5: a utility-token pin published with no
+ *  currency). The review refuses to publish while this is non-empty. */
+export function unfilledAssemblyTerms(
+    assemblyClauses: Readonly<Record<string, Record<string, unknown>>>,
+    versions?: Readonly<Record<string, number>>,
+): MissingAssemblyTerm[] {
+    const missing: MissingAssemblyTerm[] = [];
+    for (const [clauseId, values] of Object.entries(assemblyClauses)) {
+        const spec = getClauseSpec(clauseId, versions?.[clauseId]);
+        if (!spec) continue;
+        const fills = clauseDesignFills(clauseId, versions?.[clauseId]);
+        for (const field of spec.fields) {
+            if (!field.required || !fills.includes(field.name)) continue;
+            if (isFilledValue(values?.[field.name])) continue;
+            missing.push({ clauseId, clauseTitle: spec.title ?? clauseId, fieldLabel: field.label ?? field.name });
+        }
+    }
+    return missing;
 }
