@@ -257,7 +257,7 @@ kernel path. `SCALING_STRATEGY.md` owns the design; this is the surface.
   topic as the coordinator's — indexers filter by address), forwards the usage
   accrual to `UsageCounter.applyBatchAccrual`, and advances the state root.
 - Immutable `verifier` / `programVKey` / `clauseRegistry` / `usageCounter`; no
-  owner, no upgrade path — a program change is a fresh deploy. Not a florin
+  admin, no upgrade path — a program change is a fresh deploy. Not a florin
   minter.
 
 The two paths share no state: a batch-resolved process never acquires kernel
@@ -460,5 +460,5 @@ rewards is counted as it happens; there is no posted root, no reward bond, no
 challenge window, and no reward referee. Clause-tier arbitration
 (`figaro-arbitration-<provider>` clauses, `block.design.composes.forumUrl`) is a
 different object and is untouched. There is no factory, router, governance,
-compliance, vesting, airdrop, or proxy contract; no protocol-level owner or
+compliance, vesting, airdrop, or proxy contract; no protocol-level
 admin surface; the florin votes on nothing.

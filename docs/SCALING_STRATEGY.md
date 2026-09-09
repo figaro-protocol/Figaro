@@ -14,7 +14,7 @@ Which networks carry a deployment is stated by the deployment records in
 ## The Kernel's Shape
 
 FigaroCore has two external functions: `commit` and `resolveProcess`. No
-owner, no timeout, no cancel, no escape hatches.
+admin, no timeout, no cancel, no escape hatches.
 
 The kernel is small and correct. Scaling must preserve it exactly. Any
 execution environment must preserve these properties:

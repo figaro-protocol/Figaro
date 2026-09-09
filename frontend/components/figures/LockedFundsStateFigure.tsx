@@ -58,7 +58,7 @@ export function LockedFundsStateFigure({
                     order in the process, paying the seller twice the
                     cumulative value plus the payment and returning the
                     payment to the buyer. Two transitions out of Committed
-                    do not exist: no timeout and no admin override. If the
+                    do not exist: no timeout and no override from outside the parties. If the
                     buyer never calls resolveProcess, Committed persists
                     indefinitely with both bonds locked — by design, not
                     as a malfunction.
@@ -66,7 +66,7 @@ export function LockedFundsStateFigure({
             }
             caption={
                 <>
-                    No timeout and no admin override are not gaps — they are the
+                    No timeout and no override from outside the parties are not gaps — they are the
                     mechanism. Removing either would give one party an escape
                     hatch the other can be forced through.
                 </>
@@ -140,7 +140,7 @@ export function LockedFundsStateFigure({
                     <circle r="9" className="fill-paper stroke-ink-faint" strokeWidth="1.25" />
                     <line x1="-6.5" y1="6.5" x2="6.5" y2="-6.5" className="stroke-ink-faint" strokeWidth="1.25" />
                 </g>
-                <text x="260" y="252" fontSize="9.5" fontWeight="600" textAnchor="middle" className="fill-ink-body">no admin exists</text>
+                <text x="260" y="252" fontSize="9.5" fontWeight="600" textAnchor="middle" className="fill-ink-body">nobody can reach in</text>
                 <text x="260" y="264" fontSize="8" textAnchor="middle" className="fill-ink-muted">no address can force it</text>
 
                 {/* ── Where each party's stake sits, per state ───────── */}
