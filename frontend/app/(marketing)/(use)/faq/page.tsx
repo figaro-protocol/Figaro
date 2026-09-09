@@ -10,7 +10,7 @@ import { LabelledListRow } from "@/components/shared/LabelledListRow";
 export const metadata: Metadata = withOg({
     title: "FAQ — Figaro Protocol",
     description:
-        "Plain-language answers to the questions people ask before sending tokens through Figaro — who holds them, what stands behind a trade, non-delivery, disputes, lost keys, privacy, ownership — with the residual risk stated beside each answer.",
+        "Plain-language answers to the questions people ask before sending tokens through Figaro — who holds them, what stands behind a trade, non-delivery, disputes, lost keys, privacy — with the residual risk stated beside each answer.",
 });
 
 /** The page's seventeen questions, split into two labeled groups by what each
@@ -18,9 +18,8 @@ export const metadata: Metadata = withOg({
  *  the pre-trade checklist (a curated digest of thirteen answers; the index
  *  POINTS at it — the map stays the complete map, the digest stays a digest,
  *  never merged). The DOM sections below run in exactly this
- *  order — index and document order are one sequence, never two (they drifted
- *  apart once: `keys` rendered fifth while indexed under "Deeper", `ownership`
- *  the mirror image). Titles are copied verbatim from each `MarketingSection`;
+ *  order — index and document order are one sequence, never two. Titles are
+ *  copied verbatim from each `MarketingSection`;
  *  keep the three in lockstep if a heading changes. */
 const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
     { id: "before-you-send", title: "Before your first real trade." },
@@ -31,7 +30,6 @@ const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
     { id: "disputes", title: "What if you genuinely disagree?" },
     { id: "layers", title: "What stands behind a trade?" },
     { id: "privacy", title: "What does the network learn about you?" },
-    { id: "ownership", title: "Who owns Figaro?" },
 ];
 
 const DEEPER_QUESTIONS: { id: string; title: string }[] = [
@@ -255,18 +253,6 @@ export default function Faq() {
                 </div>
                 <p className="text-base text-ink-body leading-relaxed">
                     The honest limits. Wallet addresses and on-chain activity are public and linkable by anyone &mdash; this is pseudonymity, not anonymity, and the graph of which addresses transacted, and when, is visible to everyone. Unpinning stops your node from serving content and lets the network garbage-collect it, but anything another node copied before you unpinned it is beyond your recall &mdash; unpin is not a network-wide delete. And there is no privacy policy or terms of service here, by design rather than omission: those are the documents of a service with an operator in the middle, and this frontend is a reader of network state with no accounts and no operator-side services &mdash; there is no counterparty to contract with. Where a trade itself needs consent terms, that is an agreement concern: an assembly composes a consent clause and affixes its document to the trade.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Who owns Figaro?" sectionId="ownership">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The protocol is permissionless and decentralized, though a few things around it are held. The code is released under the MIT license &mdash; anyone can copy all of it, run it, and change it, including running a different rewards program or none at all. Nothing about the protocol depends on this site continuing to exist.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    This site&apos;s app is one interface, not the protocol. The seam between the protocol and its presentation is deliberate: the registries live on-chain, and any developer can build their own interface against the same ones. Because the kernel takes no cut anywhere, an interface captures no value from the trades that flow through it &mdash; the value lives in the use of the shared registries. And because participants hold their own data, the usual platform business model &mdash; monetizing the people who use it &mdash; is structurally unavailable here; there is no user data to sell.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins. What a florin is worth is a market question, answered by whoever trades one; this project makes no claim about it. Which allocation is held, on what terms, and what the rest of the billion is for is itemized on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>. Neither holding is a lever over anyone&apos;s trade: no holding controls resolution, and nothing about either can reach into a smart contract.
                 </p>
             </MarketingSection>
 
