@@ -162,6 +162,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 | `AssemblyRegistry.sol` | 43 | 43 | 0 |
 | `MembersRegistry.sol` | 63 | 63 | 0 |
 | `AttestationCoordinator.sol` | 60 | 60 | 0 |
+| `WitnessSwapAndCommitCoordinator.sol` | 56 | 56 | 0 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
@@ -185,6 +186,14 @@ Removing the merkle-inclusion check on the resolver path went unnoticed because 
 inclusion gate had revert tests on the seller and buyer paths only:
 `test_attestViaResolver_revertsOnClauseNotInAgreement` now shows an authorized resolver
 is bound to the signed agreement exactly as the parties are.
+
+The swap coordinator's run left two survivors on first pass, both real, both now caught.
+Removing the post-swap `forceApprove(router, 0)` went unnoticed because no test read the
+allowance back — `test_RouterAllowanceZeroedAfterSwap` now asserts it on the
+partial-consumption route, the one where a leftover approval would stand. Forcing the
+zero-residual refund unconditional went unnoticed because the mock token accepts
+zero-value transfers: `test_ZeroInputResidual_NoZeroTransfer` rejects the zero-value
+call and shows the fully-consumed route never attempts it.
 
 The batch verifier's run left two survivors on first pass, both real, both now caught.
 Removing the `verifier.verifyProof` call went unnoticed because the mock verifier accepted

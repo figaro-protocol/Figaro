@@ -256,6 +256,56 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         assertEq(buyerInput.balanceOf(address(coord)), 0, "coordinator holds no input residual");
     }
 
+    /// @dev The router's allowance is zeroed after the swap. Asserted on the
+    ///      partial-consumption route (maxInput 3P, swap takes 2P) — the one
+    ///      where a leftover approval would actually stand.
+    function test_RouterAllowanceZeroedAfterSwap() public {
+        _fundInput(buyer, buyerInput, 3 * P);
+        _selfFundBond(seller, 2 * P);
+
+        CommitmentTypes.Commitment memory c = _rootCommitment(11);
+        bytes memory bSig = _sign(c, BUYER_KEY);
+        bytes memory sSig = _sign(c, SELLER_KEY);
+
+        bytes memory swapData = _swapData(buyerInput, 2 * P, address(coord));
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 digest = _permitDigest(address(buyerInput), 3 * P, 0, deadline, swapData);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, digest);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = WitnessSwapAndCommitCoordinator.SwapFunding({
+            enabled: true,
+            inputToken: address(buyerInput),
+            maxInput: 3 * P,
+            permitNonce: 0,
+            permitDeadline: deadline,
+            permitSignature: abi.encodePacked(r, s, v),
+            swapData: swapData
+        });
+
+        vm.prank(relayer);
+        coord.swapAndCommit(c, bSig, sSig, leg, _disabled());
+
+        assertEq(buyerInput.allowance(address(coord), address(router)), 0, "router allowance zeroed after swap");
+    }
+
+    /// @dev A zero residual is never transferred: a token that rejects
+    ///      zero-value transfers must not brick the fully-consumed route.
+    function test_ZeroInputResidual_NoZeroTransfer() public {
+        _fundInput(buyer, buyerInput, 2 * P);
+        _selfFundBond(seller, 2 * P);
+
+        CommitmentTypes.Commitment memory c = _rootCommitment(12);
+        bytes memory bSig = _sign(c, BUYER_KEY);
+        bytes memory sSig = _sign(c, SELLER_KEY);
+
+        vm.mockCallRevert(
+            address(buyerInput), abi.encodeWithSelector(IERC20.transfer.selector, buyer, 0), "zero-value transfer"
+        );
+        vm.prank(relayer);
+        coord.swapAndCommit(c, bSig, sSig, _leg(buyerInput, 2 * P, BUYER_KEY), _disabled());
+
+        assertEq(bond.balanceOf(address(core)), 4 * P, "commit succeeded without a zero-value refund transfer");
+    }
+
     function test_RevertWhen_OutputBelowBond() public {
         router.setRate(1, 2); // 2P input -> 1P output, below the 2P bond
         _fundInput(buyer, buyerInput, 2 * P);
