@@ -50,13 +50,7 @@ test.describe('/discover as a visitor (devnet)', () => {
         }
     });
 
-    // The console gate is correct and FAILS: the export hydrates with React
-    // #418 ×7 + #423 on /discover under the devnet project's own server, for a
-    // DESKTOP visitor with NO injected provider — the same mismatch the mobile
-    // project's home gates see, so it is neither mobile-specific nor
-    // wallet-related. Marked fixme so the suite stays truthful; un-fixme when
-    // the cause is found (punch-list: the export hydration mismatch).
-    test.fixme('the visitor path logs no console or page error', async ({ page }) => {
+    test('the visitor path logs no console or page error', async ({ page }) => {
         const errors: string[] = [];
         page.on('pageerror', (e) => errors.push(e.message));
         page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

@@ -217,21 +217,15 @@ test.describe('The shell hydrates cleanly — no React error on load', () => {
     /** React's hydration failures, minified (#418/#423/#425) or not. */
     const REACT_HYDRATION = /Minified React error #(418|423|425)|Hydration failed|did not match|Text content does not match/i;
 
-    // KNOWN FAILING: on the project's OWN webServer the export logs
-    // React #418×7 + #423 on load; on an operator-started serve-export it does
-    // not, and under `next dev` it does not. The cause is not found yet — the
-    // punch-list carries every fact. fixme keeps the gate visible and the suite
-    // truthful; remove it when the shell hydrates clean on this project's server.
-    test.fixme('the home page loads with no React error in the console', async ({ page }) => {
+    test('the home page loads with no React error in the console', async ({ page }) => {
         const errors = await consoleErrorsOnLoad(page, '/');
         expect(errors.filter((e) => REACT_HYDRATION.test(e)), 'no hydration error').toEqual([]);
         expect(errors, `the home page load logged: ${errors.join(' | ')}`).toEqual([]);
     });
 
-    test.fixme('a working-groups tag page loads with no React error in the console', async ({ page }) => {
-        // The page the defect was actually on: its breadcrumb <nav> was being
-        // rendered inside the hero's lead <p>, and the HTML parser closes a
-        // <p> at any <nav> — 200 pages, every load.
+    test('a working-groups tag page loads with no React error in the console', async ({ page }) => {
+        // A deep tag page: exercises the breadcrumb <nav> beside the hero's
+        // lead <p> — the nesting the HTML parser is least forgiving about.
         const errors = await consoleErrorsOnLoad(page, '/working-groups/for/accounting-and-audit');
         expect(errors.filter((e) => REACT_HYDRATION.test(e)), 'no hydration error').toEqual([]);
         expect(errors, `the tag page load logged: ${errors.join(' | ')}`).toEqual([]);
