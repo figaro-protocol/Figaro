@@ -192,7 +192,7 @@ function PolicyLeafRow({
         const valid = days !== undefined && Number.isFinite(days) && days >= 0;
         onUpdate({
             ...entry,
-            calendar: valid ? { embargoDaysAfterSettlement: days } : undefined,
+            calendar: valid ? { embargoDaysAfterResolution: days } : undefined,
         });
     }
 
@@ -233,7 +233,7 @@ function PolicyLeafRow({
                             type="number"
                             min={0}
                             placeholder="0"
-                            value={entry?.calendar?.embargoDaysAfterSettlement ?? ""}
+                            value={entry?.calendar?.embargoDaysAfterResolution ?? ""}
                             onChange={(e) => propagateEmbargo(e.target.value)}
                             className="w-24 text-xs px-2 py-1.5 rounded border border-default min-h-9"
                             data-testid={`${rowId}-embargo`}

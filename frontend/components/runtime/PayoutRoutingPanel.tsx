@@ -29,7 +29,7 @@ interface Props {
  * Wallet-side, post-resolution: the kernel has already paid; this is the
  * wallet spending its own balance, so the panel mounts beside the resolution
  * proceeds (kernel-core surface, no clause to key on — the same reasoning as
- * SettlementProceedsPanel) and renders only when a multisender is configured.
+ * ResolutionProceedsPanel) and renders only when a multisender is configured.
  * Amounts are typed in token units; the wallet and the token contract stay
  * the enforcement — an over-balance batch reverts atomically.
  */

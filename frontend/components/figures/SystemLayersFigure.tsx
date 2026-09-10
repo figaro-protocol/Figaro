@@ -9,14 +9,14 @@ export interface SystemLayersFigureProps {
 // figure; the kernel page carries only FigaroCore's mechanism design).
 // Source of truth: the ratified frame (CLAUDE.md § "The frame") — the kernel
 // floor plus six layers: clauses, assemblies + checkout, composition,
-// registries + RPGF, data, agents. Glosses stay at home's layman altitude:
+// registries + rewards, data, agents. Glosses stay at home's layman altitude:
 // no contract names, no standards jargon.
 // RULED 2026-08-06: plain HTML, not SVG — the stack must read as TEXT to
 // every reader (curl, agents, screen readers), not only as shape.
 const LAYERS = [
     { name: "Agents", gloss: "software trades, authors, and competes — as an equal" },
     { name: "Data", gloss: "the market's map is public; your detail is yours to sell" },
-    { name: "Registries + RPGF", gloss: "anyone joins; work that gets used gets paid" },
+    { name: "Registries + rewards", gloss: "anyone joins; work that gets used gets paid" },
     { name: "Composition", gloss: "other on-chain contracts plug into every deal" },
     { name: "Assemblies + checkout", gloss: "whole deal-shapes, published and reused" },
     { name: "Clauses", gloss: "the terms of the deal, public and composable" },

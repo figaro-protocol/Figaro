@@ -37,7 +37,7 @@ export default function ResearchDoor() {
             </section>
             <MarketingSection title="Start here, whatever your field.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    One paper derives the equilibrium the rest of the corpus reasons from. Another says what a machine has and has not checked about the code that runs it. <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric bonding</Link> · <Link href="/papers/verified-settlement-kernel" className="text-ink-heading font-medium hover:underline">The verified kernel</Link>
+                    One paper derives the equilibrium the rest of the corpus reasons from. Another says what a machine has and has not checked about the code that runs it. <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric bonding</Link> · <Link href="/papers/verified-resolution-kernel" className="text-ink-heading font-medium hover:underline">The verified kernel</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="The firm, the platform, the court, and the bond.">

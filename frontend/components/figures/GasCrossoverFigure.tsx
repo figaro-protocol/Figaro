@@ -57,7 +57,7 @@ export interface GasCrossoverFigureProps extends BaseFigureProps {
  *    was fixed proof verification".
  *  - The two receipts are the Sepolia resolutions /spec tabulates:
  *    385,902 gas (commit + witness attestation) and 377,885 gas (resolve +
- *    RPGF usage claim), 2 net positions each.
+ *    usage claim), 2 net positions each.
  *
  * The crossover is DERIVED from those, never restated:
  * `batchFixed / (directPerOrder - batchMarginal)` = 332,902 / 140,500 ≈ 2.37,
@@ -72,7 +72,7 @@ const SPEC_RESOLVE_PER_ORDER = 23_000;
 const SPEC_RESOLVE_FIXED_OVERHEAD = 38_000;
 const SPEC_RECEIPTS: readonly GasReceipt[] = [
     { gasUsed: 385_902, positions: 2, note: "commit + witness attestation" },
-    { gasUsed: 377_885, positions: 2, note: "resolve + RPGF usage claim" },
+    { gasUsed: 377_885, positions: 2, note: "resolve + usage claim" },
 ];
 const SPEC_TITLE =
     "Gas per unit resolved against batch size — per order on the direct path, per net position on the batch path";

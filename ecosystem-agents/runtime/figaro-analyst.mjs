@@ -12,7 +12,7 @@
  *   GET  /graphs                        the projected graphs + their truth boundaries
  *   GET  /queries/market-shape          per-assembly aggregates
  *   GET  /queries/wallet-record?wallet= one wallet's public trading record
- *   GET  /queries/deal-story?process=   one process, narrated from the data
+ *   GET  /queries/trade-story?process=   one process, narrated from the data
  *   POST /prompt   {"question": "…"}    the model loop — 404 when unconfigured
  *
  * Every body names the truth boundary of what it reports. Absence is an
@@ -267,7 +267,7 @@ export function makeAnalystHandler(getCorpus, config = modelConfig()) {
                         : { available: false, reason: config.reason },
                     routes: [
                         "GET /status", "GET /graphs", "GET /queries/market-shape",
-                        "GET /queries/wallet-record?wallet=", "GET /queries/deal-story?process=",
+                        "GET /queries/wallet-record?wallet=", "GET /queries/trade-story?process=",
                         ...(config.enabled ? ["POST /prompt"] : []),
                     ],
                 });
@@ -285,7 +285,7 @@ export function makeAnalystHandler(getCorpus, config = modelConfig()) {
                 }
                 return send(res, 200, walletRecordAnswer(corpus, wallet));
             }
-            if (req.method === "GET" && url.pathname === "/queries/deal-story") {
+            if (req.method === "GET" && url.pathname === "/queries/trade-story") {
                 const processId = url.searchParams.get("process");
                 if (!processId || !/^0x[0-9a-fA-F]{64}$/.test(processId)) {
                     return send(res, 400, { error: "process= must be a 0x-prefixed bytes32" });
@@ -299,7 +299,7 @@ export function makeAnalystHandler(getCorpus, config = modelConfig()) {
                     return send(res, 404, {
                         error: "no prompt endpoint on this analyst",
                         reason: config.reason,
-                        deterministicRoutes: ["/status", "/graphs", "/queries/market-shape", "/queries/wallet-record", "/queries/deal-story"],
+                        deterministicRoutes: ["/status", "/graphs", "/queries/market-shape", "/queries/wallet-record", "/queries/trade-story"],
                     });
                 }
                 if (req.method !== "POST") return send(res, 405, { error: "POST a JSON body {\"question\": \"…\"}" });

@@ -23,7 +23,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { SettlementProceedsPanel } from "@/components/runtime/SettlementProceedsPanel";
+import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceedsPanel";
 import { PayoutRoutingPanel } from "@/components/runtime/PayoutRoutingPanel";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
@@ -154,13 +154,13 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Resolution — once resolved, what moved: payment + bond, returned.
                 Rendered only when the derived breakdown is present — absence is
                 absence, never a locally re-implemented 2x fallback. */}
-            {isResolved && (isBuyer || isSeller) && myOrder?.settlementBreakdown?.settledAvailable && (
-                <SettlementProceedsPanel
+            {isResolved && (isBuyer || isSeller) && myOrder?.resolutionBreakdown?.settledAvailable && (
+                <ResolutionProceedsPanel
                     sourceOrderId={myOrder.orderId}
                     currency={(myOrder.currency ?? ZERO_ADDRESS) as `0x${string}`}
                     isSeller={isSeller}
                     payment={myOrder.payment}
-                    bondReturned={myOrder.settlementBreakdown.settledAvailable.amount}
+                    bondReturned={myOrder.resolutionBreakdown.settledAvailable.amount}
                 />
             )}
 
@@ -175,7 +175,7 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Declared interaction surfaces — for every clause, on every order
                 this wallet is a PARTY to, whose spec declares a
                 block.runtime.interaction this frontend has a registered surface for
-                (a QR order-identity challenge at a hand-off, the private
+                (a QR order-identity challenge at a handoff, the private
                 address ceremony on a geolocation-committed order). The buyer
                 is a party to every order (kernel star shape); a seller to its
                 own. Names no clause; the dispatch key is the spec's own

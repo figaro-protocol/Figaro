@@ -22,7 +22,7 @@ interface Props {
 }
 
 /**
- * SettlementProceedsPanel
+ * ResolutionProceedsPanel
  *
  * The live kernel has no internal ledger — resolveProcess transfers tokens directly.
  * No fee, no router/cascade certification. This panel shows the human what
@@ -39,7 +39,7 @@ interface Props {
  * registry would build a one-tenant registry for a permanent kernel singleton —
  * ceremony that buys none of the open-world composition the registries exist for.
  */
-export function SettlementProceedsPanel({
+export function ResolutionProceedsPanel({
     sourceOrderId,
     currency,
     isSeller,
@@ -57,7 +57,7 @@ export function SettlementProceedsPanel({
     return (
         <div
             className="mt-3 border border-default rounded-lg p-4 bg-subtle space-y-3"
-            data-testid="settlement-proceeds"
+            data-testid="resolution-proceeds"
         >
             <p className="text-xs font-semibold text-ink-muted">
                 Resolved
@@ -65,13 +65,13 @@ export function SettlementProceedsPanel({
             <dl className="text-sm text-ink-body space-y-1">
                 <div className="flex justify-between gap-4">
                     <dt>{isSeller ? "Payment received" : "Payment sent"}</dt>
-                    <dd className="font-medium text-ink-primary" data-testid="settlement-payment">
+                    <dd className="font-medium text-ink-primary" data-testid="resolution-payment">
                         {fmt(payment)}
                     </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                     <dt>Bond returned to your wallet</dt>
-                    <dd className="font-medium text-ink-primary" data-testid="settlement-bond-returned">
+                    <dd className="font-medium text-ink-primary" data-testid="resolution-bond-returned">
                         {fmt(bondReturned)}
                     </dd>
                 </div>

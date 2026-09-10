@@ -95,7 +95,7 @@ Those runs are kept here because the evidence is owed to a reader outside the
 project. Which invariant each layer carries is `VERIFICATION_MAP.md`.
 
 - **2026-08-13, freeze commit `c7f85d0d`** — all four TLA+ models, every invariant,
-  TLC exit 0 (`SettlementUniverses` explored 7.46M states, no error); both Echidna
+  TLC exit 0 (`ResolutionUniverses` explored 7.46M states, no error); both Echidna
   harnesses held every property across the configured 50,000-call budget, exit 0;
   Halmos 32/32; Certora 6/6.
 - **2026-08-19** — `FigaroCore.tla` re-run after `A-8`/`A-9` were added: 9/9,
@@ -163,6 +163,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 | `MembersRegistry.sol` | 63 | 63 | 0 |
 | `AttestationCoordinator.sol` | 60 | 60 | 0 |
 | `WitnessSwapAndCommitCoordinator.sol` | 56 | 56 | 0 |
+| `FlorinToken.sol` | 54 | 52 | 2 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
@@ -186,6 +187,14 @@ Removing the merkle-inclusion check on the resolver path went unnoticed because 
 inclusion gate had revert tests on the seller and buyer paths only:
 `test_attestViaResolver_revertsOnClauseNotInAgreement` now shows an authorized resolver
 is bound to the signed agreement exactly as the parties are.
+
+The florin token's two survivors are one line read twice and accepted: removing or
+force-falsing the per-mint `MAX_SUPPLY` check survives because the line is an
+unreachable backstop — `registerMinter` bounds the sum of minter caps to the billion
+and every mint is bounded by its own minter's cap first, so no reachable state brings
+`totalSupply` past the cap; the check is defense in depth against a
+registration-invariant break, kept for the same reason the kernel keeps
+`DuplicateCommitment`. Every High-severity mutant was caught.
 
 The swap coordinator's run left two survivors on first pass, both real, both now caught.
 Removing the post-swap `forceApprove(router, 0)` went unnoticed because no test read the
@@ -336,7 +345,7 @@ No oracle, no bridge, no upgrade proxy, no pause anywhere.
 | `docs/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for |
 | `/spec` (site) | The origination sequence, the two resolution paths, and the system-layers figures, drawn from the deployed addresses |
 | `/kernel` (site) | The locked-bonds state figure: an order's three states and the two calls that move it |
-| `/papers/verified-settlement-kernel` (site) | The batch resolution sequence figure and the verification method, per technique |
+| `/papers/verified-resolution-kernel` (site) | The batch resolution sequence figure and the verification method, per technique |
 
 The AI-audit history is provided for context only. The external auditor should form
 their own independent findings.
@@ -469,7 +478,7 @@ mutation-testing campaign has covered the whole scope.
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Behaviors to surface". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
 | Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
-| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; mutation testing run over the kernel, the batch verifier, the three registries, the usage/rewards pair, and the attestation coordinator (§ "Mutation testing"); the swap coordinator and the florin token to follow. |
+| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; mutation testing run over the whole frozen scope — kernel, batch verifier, the three registries, the usage/rewards pair, both coordinators, and the florin token (§ "Mutation testing"). |
 
 ### The L2BEAT risk categories, applied to the batch path
 
@@ -538,7 +547,7 @@ Expected output: all properties hold on both harnesses (kernel + FlorinToken), e
 Prereqs: Java 11+, `tla2tools.jar` in `formal/` (script header has the `curl`).
 
 Expected output: all four models verify every invariant, TLC exit code 0.
-(`SettlementUniverses.cfg` ships both named assumptions TRUE; flipping either
+(`ResolutionUniverses.cfg` ships both named assumptions TRUE; flipping either
 to FALSE is a deliberate experiment that is EXPECTED to fail — not a gate
 regression.)
 

@@ -11,7 +11,7 @@ import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 // `src/protocol/usage/UsageCounter.sol`. Beside it: Tokenomics owns THE TOKEN,
 // The DAO owns THE BOOTSTRAP. Three concepts, three pages.
 export const metadata: Metadata = withOg({
-    title: "Rewards for designers — Figaro Protocol",
+    title: "Designer Rewards — Figaro Protocol",
     description:
         "600 million florins reserved for whoever writes the clauses and composes the assemblies that grow the network's use, paid by a published formula anyone can check — the schedule, the two counters, the three-seller floor, the live-stake condition.",
 });

@@ -3,7 +3,7 @@ import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 import { ArrowMarker } from "@/components/figures/ArrowMarker";
 import { FigureFrame } from "@/components/figures/FigureFrame";
 
-interface SettlementPathPanel {
+interface ResolutionPathPanel {
     heading: string;
     subheading: string;
     inputs: readonly string[];
@@ -13,9 +13,9 @@ interface SettlementPathPanel {
     stateNote?: string;
 }
 
-export interface SettlementPathsFigureProps extends BaseFigureProps {
-    directPath?: SettlementPathPanel;
-    batchPath?: SettlementPathPanel;
+export interface ResolutionPathsFigureProps extends BaseFigureProps {
+    directPath?: ResolutionPathPanel;
+    batchPath?: ResolutionPathPanel;
     /** Section labels inside both panels. */
     sectionLabels?: { inputs: string; events: string; state: string };
     /** Label beside the no-entry glyph — the kernel field the batch path never writes. */
@@ -39,7 +39,7 @@ export interface SettlementPathsFigureProps extends BaseFigureProps {
  * that bridges them.
  *
  * The default prop set is /spec's, verbatim — /spec § "The two paths share no state"
- * (the canonical #settlement-paths anchor) renders it with no props at all, and
+ * (the canonical #resolution-paths anchor) renders it with no props at all, and
  * its strings are identifiers on purpose: that surface names contracts. Names
  * verified against `docs/CONTRACTS.md` and `src/kernel/FigaroCore.sol` /
  * `src/protocol/verifier/FigaroBatchVerifier.sol`.
@@ -55,7 +55,7 @@ export interface SettlementPathsFigureProps extends BaseFigureProps {
  * per-order status, and the usage accrual is the one quantity that crosses.
  */
 
-const SPEC_DIRECT: SettlementPathPanel = {
+const SPEC_DIRECT: ResolutionPathPanel = {
     heading: "Direct path",
     subheading: "FigaroCore — kernel (frozen)",
     inputs: ["commit(commitment, buyerSig, sellerSig)", "resolveProcess(processId, commitments[])"],
@@ -64,7 +64,7 @@ const SPEC_DIRECT: SettlementPathPanel = {
     stateNote: "has no notion of a batch",
 };
 
-const SPEC_BATCH: SettlementPathPanel = {
+const SPEC_BATCH: ResolutionPathPanel = {
     heading: "Batch path",
     subheading: "FigaroBatchVerifier — proof-based (SP1)",
     inputs: [
@@ -108,7 +108,7 @@ const SECTION_GAP = 8;
 const PANEL_PAD = 16;
 
 /** Lay a panel out from its content; returns the y of every line it draws. */
-function layoutPanel(panel: SettlementPathPanel, top: number, withGlyphRow: boolean) {
+function layoutPanel(panel: ResolutionPathPanel, top: number, withGlyphRow: boolean) {
     let cursor = top + RULE_DY;
     const section = (lines: readonly string[]) => {
         const labelY = cursor + SECTION_LABEL_DY;
@@ -148,8 +148,8 @@ function layoutPanel(panel: SettlementPathPanel, top: number, withGlyphRow: bool
     };
 }
 
-export function SettlementPathsFigure({
-    idPrefix = "settlement-paths",
+export function ResolutionPathsFigure({
+    idPrefix = "resolution-paths",
     className,
     svgProps,
     directPath = SPEC_DIRECT,
@@ -164,7 +164,7 @@ export function SettlementPathsFigure({
     figureTitle = SPEC_TITLE,
     figureDesc = SPEC_DESC,
     caption = SPEC_CAPTION,
-}: SettlementPathsFigureProps) {
+}: ResolutionPathsFigureProps) {
     const lineClass = lineFont === "mono" ? "fill-ink-primary font-mono" : "fill-ink-primary";
 
     const direct = layoutPanel(directPath, 16, false);

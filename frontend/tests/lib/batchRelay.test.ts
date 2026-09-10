@@ -85,7 +85,7 @@ const commitment: Commitment = {
 const orderHash = computeOrderHash(commitment, CHAIN_ID, VERIFIER);
 const processId = computeCommitmentProcessId(commitment, CHAIN_ID, VERIFIER);
 
-const SETTLEMENT_TX = `0x${"11".repeat(32)}` as Hex;
+const RESOLUTION_TX = `0x${"11".repeat(32)}` as Hex;
 const NEW_ROOT = `0x${"22".repeat(32)}` as Hex;
 
 const batchRef: SequencerBatchRef = {
@@ -94,7 +94,7 @@ const batchRef: SequencerBatchRef = {
     verifying_contract: VERIFIER,
     prev_state_root: ZERO_BYTES32,
     new_state_root: NEW_ROOT,
-    settlement_tx: SETTLEMENT_TX,
+    resolution_tx: RESOLUTION_TX,
     block_timestamp: 1000,
 };
 
@@ -352,7 +352,7 @@ describe("createStateRootAnchorCheck", () => {
 
     it("passes when a BatchSettled carries the state root in the named transaction", async () => {
         getAllBatchSettledMock.mockResolvedValue([
-            { args: { newStateRoot: NEW_ROOT }, transactionHash: SETTLEMENT_TX },
+            { args: { newStateRoot: NEW_ROOT }, transactionHash: RESOLUTION_TX },
         ]);
         const check = await createStateRootAnchorCheck(client, CHAIN_ID)(batchRef);
         expect(check.ok).toBe(true);
@@ -360,7 +360,7 @@ describe("createStateRootAnchorCheck", () => {
 
     it("fails when no BatchSettled carries that state root", async () => {
         getAllBatchSettledMock.mockResolvedValue([
-            { args: { newStateRoot: `0x${"99".repeat(32)}` }, transactionHash: SETTLEMENT_TX },
+            { args: { newStateRoot: `0x${"99".repeat(32)}` }, transactionHash: RESOLUTION_TX },
         ]);
         const check = await createStateRootAnchorCheck(client, CHAIN_ID)(batchRef);
         expect(check.ok).toBe(false);
@@ -379,7 +379,7 @@ describe("createStateRootAnchorCheck", () => {
     it("fails a DRY RUN, which proved but never resolved", async () => {
         const check = await createStateRootAnchorCheck(client, CHAIN_ID)({
             ...batchRef,
-            settlement_tx: null,
+            resolution_tx: null,
         });
         expect(check.ok).toBe(false);
         expect(check.detail).toContain("DRY RUN");
@@ -612,7 +612,7 @@ const REAL_BATCH: SequencerBatchRef = {
     verifying_contract: REAL_VERIFIER,
     prev_state_root: "0xff7e8244f53ff09e5b59c85232fc6494f3c1987239148e9b496f127e3a90c848",
     new_state_root: "0x100344a2341d9fea7e528cdc7057928404d39a0acc34018f5b30426e6d2a331e",
-    settlement_tx: "0x8c338170d86a8cf452a3bf3790c581a456fffc7b17c67d977ae2a5d864d3bf7f",
+    resolution_tx: "0x8c338170d86a8cf452a3bf3790c581a456fffc7b17c67d977ae2a5d864d3bf7f",
     block_timestamp: 1785532158,
 };
 

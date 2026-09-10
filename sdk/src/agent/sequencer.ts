@@ -172,7 +172,7 @@ export interface SequencerStatus {
 /** Where a published fact was resolved, so the reader can anchor it on chain.
  *  `batch` is THIS relay's own sequence number — a cursor, not a protocol
  *  identity; another relay numbers differently. The chain-anchored identity is
- *  `new_state_root` + `settlement_tx`. */
+ *  `new_state_root` + `resolution_tx`. */
 export interface SequencerBatchRef {
     batch: number;
     chain_id: number;
@@ -182,7 +182,7 @@ export interface SequencerBatchRef {
     prev_state_root: Hex;
     new_state_root: Hex;
     /** null on a dry run: the batch proved but was never resolved on chain. */
-    settlement_tx: Hex | null;
+    resolution_tx: Hex | null;
     block_timestamp: number;
 }
 

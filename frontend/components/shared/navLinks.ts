@@ -119,7 +119,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/registries", label: "Registries" },
             { href: "/composition", label: "Composition" },
             { href: "/pitfalls", label: "Sharp edges" },
-            { href: "/rpgf", label: "Rewards for designers" },
+            { href: "/rpgf", label: "Designer Rewards" },
             { href: "/tokenomics", label: "Tokenomics" },
             { href: "/dao", label: "The DAO" },
         ],

@@ -40,7 +40,7 @@ import {
     extractOverlays,
     marketShape,
     projectProcessGraph,
-    projectSettlementGraph,
+    projectResolutionGraph,
     projectValueFlow,
     walletRecord,
 } from "@figaro-protocol/sdk/derive";
@@ -260,7 +260,7 @@ export async function syncCorpus({
 
     // 3. PROJECT — each graph carries its own truth boundary.
     const process = projectProcessGraph(core);
-    const settlement = projectSettlementGraph(core);
+    const resolution = projectResolutionGraph(core);
     const overlays = extractOverlays(recovered, specs);
 
     // Utility-token pins are a designer's registered fact, read from the
@@ -283,7 +283,7 @@ export async function syncCorpus({
     // that venue's ABI and handed in; this pass composes none, so the value-flow
     // graph carries resolution edges only. A venue is discovered from clause
     // fields and the deployment record, never from a list here.
-    const valueFlow = projectValueFlow(settlement, [], pins);
+    const valueFlow = projectValueFlow(resolution, [], pins);
 
     return {
         chainId: record.chainId,
@@ -302,7 +302,7 @@ export async function syncCorpus({
         substanceRecovered,
         held,
         endpointAgreement,
-        graphs: { process, settlement, overlays, valueFlow },
+        graphs: { process, resolution, overlays, valueFlow },
     };
 }
 
@@ -349,11 +349,11 @@ function parentEdges(corpus) {
  *  "what can this corpus see?". The overlay list is whatever the corpus
  *  CONTAINS: the graph class is open, so this is a census, not a menu. */
 export function graphInventory(corpus) {
-    const { process, settlement, overlays, valueFlow } = corpus.graphs;
+    const { process, resolution, overlays, valueFlow } = corpus.graphs;
     return {
         base: [
             { graph: "process", truthBoundary: process.boundary, processes: process.processes.size },
-            { graph: "settlement", truthBoundary: settlement.boundary, chains: settlement.chains.size },
+            { graph: "resolution", truthBoundary: resolution.boundary, chains: resolution.chains.size },
         ],
         overlays: overlays.map((g) => ({
             graph: "overlay",
@@ -430,7 +430,7 @@ function orderRow(o) {
  */
 export function dealStory(corpus, processId) {
     const id = processId.toLowerCase();
-    const chain = [...corpus.graphs.settlement.chains.values()]
+    const chain = [...corpus.graphs.resolution.chains.values()]
         .find((c) => c.processId.toLowerCase() === id);
     if (!chain) {
         // Absence, stated with its two live possibilities — never "it did not
@@ -471,8 +471,8 @@ export function dealStory(corpus, processId) {
     return jsonSafe({
         processId: chain.processId,
         found: true,
-        settlement: {
-            truthBoundary: corpus.graphs.settlement.boundary,
+        resolution: {
+            truthBoundary: corpus.graphs.resolution.boundary,
             currency: chain.currency,
             cumulativeValue: chain.cumulativeValue,
             resolved: chain.resolved,

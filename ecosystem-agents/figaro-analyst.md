@@ -162,13 +162,13 @@ not happen.
 
 ```ts
 import {
-  projectProcessGraph, projectSettlementGraph, extractOverlays, projectValueFlow,
+  projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
 } from "@figaro-protocol/sdk/derive";
 
 const process    = projectProcessGraph(core);        // boundary: protocol-enforced
-const settlement = projectSettlementGraph(core);     // boundary: protocol-enforced
+const resolution = projectResolutionGraph(core);     // boundary: protocol-enforced
 const overlays   = extractOverlays(recovered, specs);// one per clause family PRESENT
-const valueFlow  = projectValueFlow(settlement, swapLegs, pins);
+const valueFlow  = projectValueFlow(resolution, swapLegs, pins);
 ```
 
 `extractOverlays` takes `{ event, content }` pairs — the content from step 2, `null` where
@@ -201,7 +201,7 @@ const rec   = walletRecord(process, wallet);
 - **Wallet-record** — one wallet's public history: the processes it resolves as root buyer
   and the orders it holds either side of. A wallet with no history returns empty arrays;
   that is the answer, not an error.
-- **`deal-story`** — one process narrated from the data: its resolution chain (bonds locked
+- **`trade-story`** — one process narrated from the data: its resolution chain (bonds locked
   at commit, payouts at resolution) plus every overlay entry anchored to it, in block order.
   It is deliberately NOT an SDK export: node-side it is `reconstruct()` composed with your
   overlays, and on a site the same answer is already rendered at `/audit/view`. Do not
@@ -230,7 +230,7 @@ configured:
 | `GET /graphs` | every projected graph with its truth boundary — a census, not a menu |
 | `GET /queries/market-shape` | per-assembly aggregates, plus the unattributed count |
 | `GET /queries/wallet-record?wallet=` | one wallet's public record |
-| `GET /queries/deal-story?process=` | one process, narrated, overlays framed |
+| `GET /queries/trade-story?process=` | one process, narrated, overlays framed |
 | `POST /prompt` | the model loop — **404 when unconfigured** |
 
 The prompt endpoint requires BOTH `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL`. The model id

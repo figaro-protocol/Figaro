@@ -25,7 +25,7 @@
 
 import type { Hex, Address } from "../types.js";
 import { OrderState } from "../types.js";
-import type { SettlementGraph } from "./graphs.js";
+import type { ResolutionGraph } from "./graphs.js";
 
 // ── The venue parameterization ──────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ function addressKey(address: Address): string {
  * but a pin still appears (the pin is a registered fact), with zero flow.
  */
 export function projectValueFlow(
-    settlement: SettlementGraph,
+    resolution: ResolutionGraph,
     swaps: readonly VenueEvent<SwapLeg>[] = [],
     pins: readonly Address[] = [],
 ): ValueFlowGraph {
@@ -121,8 +121,8 @@ export function projectValueFlow(
     };
 
     // Resolution flows per denomination (protocol-enforced).
-    const settlementEdges = new Map<string, ValueFlowEdge & { basis: "protocol-enforced" }>();
-    for (const chain of settlement.chains.values()) {
+    const resolutionEdges = new Map<string, ValueFlowEdge & { basis: "protocol-enforced" }>();
+    for (const chain of resolution.chains.values()) {
         const n = node(chain.currency);
         n.processCount += 1;
         for (const order of chain.orders) {
@@ -130,10 +130,10 @@ export function projectValueFlow(
             n.settledOrderCount += 1;
             n.settledVolume += order.payment;
             const key = addressKey(chain.currency);
-            let edge = settlementEdges.get(key);
+            let edge = resolutionEdges.get(key);
             if (!edge) {
                 edge = { basis: "protocol-enforced", token: chain.currency, settledOrderCount: 0, settledVolume: 0n };
-                settlementEdges.set(key, edge);
+                resolutionEdges.set(key, edge);
             }
             edge.settledOrderCount += 1;
             edge.settledVolume += order.payment;
@@ -171,6 +171,6 @@ export function projectValueFlow(
     return {
         boundary: "composition-derived",
         nodes: [...nodes.values()],
-        edges: [...settlementEdges.values(), ...venueEdges.values()],
+        edges: [...resolutionEdges.values(), ...venueEdges.values()],
     };
 }

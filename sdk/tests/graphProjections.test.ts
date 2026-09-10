@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { projectProcessGraph, projectSettlementGraph } from "../src/derive/graphs.js";
+import { projectProcessGraph, projectResolutionGraph } from "../src/derive/graphs.js";
 import { projectValueFlow } from "../src/derive/composition.js";
 import type { VenueEvent, SwapLeg } from "../src/derive/composition.js";
 import { marketShape, walletRecord } from "../src/derive/queries.js";
@@ -74,9 +74,9 @@ describe("projectProcessGraph", () => {
     });
 });
 
-describe("projectSettlementGraph", () => {
+describe("projectResolutionGraph", () => {
     it("folds commits and resolutions into linear per-process chains with 2x bonds", () => {
-        const graph = projectSettlementGraph(resolvedChainEvents());
+        const graph = projectResolutionGraph(resolvedChainEvents());
         expect(graph.boundary).toBe("protocol-enforced");
         const chain = graph.chains.get(PID)!;
         expect(chain.currency).toBe(TOKEN);
@@ -96,7 +96,7 @@ describe("projectSettlementGraph", () => {
     });
 
     it("an active order carries null observed payouts — absence, not expectation", () => {
-        const graph = projectSettlementGraph(mkEvents({ orderCommitted: [mkCommit()] }));
+        const graph = projectResolutionGraph(mkEvents({ orderCommitted: [mkCommit()] }));
         const [entry] = graph.chains.get(PID)!.orders;
         expect(entry.state).toBe(OrderState.Active);
         expect(entry.sellerPayout).toBeNull();
@@ -110,7 +110,7 @@ describe("projectSettlementGraph", () => {
 
 describe("projectValueFlow", () => {
     it("builds token nodes from resolved denominations and edges from caller-supplied venue logs", () => {
-        const settlement = projectSettlementGraph(
+        const resolution = projectResolutionGraph(
             mkEvents({
                 orderCommitted: [
                     mkCommit(),
@@ -137,7 +137,7 @@ describe("projectValueFlow", () => {
             },
         ];
 
-        const graph = projectValueFlow(settlement, swaps, [TOKEN2]);
+        const graph = projectValueFlow(resolution, swaps, [TOKEN2]);
         expect(graph.boundary).toBe("composition-derived");
 
         const nodeA = graph.nodes.find((n) => n.token === TOKEN)!;
@@ -151,8 +151,8 @@ describe("projectValueFlow", () => {
         expect(nodeB.pinned).toBe(true);
 
         // One protocol-enforced resolution edge (only the resolved denomination)...
-        const settlementEdges = graph.edges.filter((e) => e.basis === "protocol-enforced");
-        expect(settlementEdges).toEqual([
+        const resolutionEdges = graph.edges.filter((e) => e.basis === "protocol-enforced");
+        expect(resolutionEdges).toEqual([
             { basis: "protocol-enforced", token: TOKEN, settledOrderCount: 1, settledVolume: 100n },
         ]);
         // ...and the venue legs aggregated per (venue, tokenIn, tokenOut).
@@ -171,7 +171,7 @@ describe("projectValueFlow", () => {
     });
 
     it("no venue logs supplied means no venue edges — absence, never a bundled venue", () => {
-        const graph = projectValueFlow(projectSettlementGraph(mkEvents()), [], []);
+        const graph = projectValueFlow(projectResolutionGraph(mkEvents()), [], []);
         expect(graph.nodes).toEqual([]);
         expect(graph.edges).toEqual([]);
     });

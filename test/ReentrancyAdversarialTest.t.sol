@@ -84,7 +84,7 @@ contract ReentrancyAdversarialTest is Test {
     // commit: the token re-enters during the bond pull
     // ═══════════════════════════════════════════════════════════════
 
-    function test_commit_reentry_isBlocked_settlementStillCorrect() public {
+    function test_commit_reentry_isBlocked_resolutionStillCorrect() public {
         CommitmentTypes.Commitment memory c = _root(50 ether);
         bytes memory buyerSig = _sign(c, BUYER_KEY);
         bytes memory sellerSig = _sign(c, SELLER_KEY);

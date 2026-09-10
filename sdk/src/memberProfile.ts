@@ -140,7 +140,7 @@ export interface BuyerAssemblySubscription {
  */
 export interface DisclosureCalendar {
     /** Days after the record's process resolves before disclosure opens. */
-    embargoDaysAfterSettlement?: number;
+    embargoDaysAfterResolution?: number;
     /** ISO-8601 instant before which the class is not disclosable. */
     notBefore?: string;
     /** ISO-8601 instant after which the offer lapses. */
@@ -334,9 +334,9 @@ function parseDisclosureCalendar(value: unknown, path: string): DisclosureCalend
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     return {
-        embargoDaysAfterSettlement: asOptionalNumber(
-            record.embargoDaysAfterSettlement,
-            `${path}.embargoDaysAfterSettlement`,
+        embargoDaysAfterResolution: asOptionalNumber(
+            record.embargoDaysAfterResolution,
+            `${path}.embargoDaysAfterResolution`,
         ),
         notBefore: asOptionalString(record.notBefore, `${path}.notBefore`),
         notAfter: asOptionalString(record.notAfter, `${path}.notAfter`),

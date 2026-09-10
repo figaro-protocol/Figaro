@@ -224,7 +224,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                             <ul className="space-y-2 text-sm text-ink-body">
                                 {offered.map((entry) => {
                                     const title = getClauseSpec(entry.clauseId)?.title ?? entry.clauseId;
-                                    const embargo = entry.calendar?.embargoDaysAfterSettlement;
+                                    const embargo = entry.calendar?.embargoDaysAfterResolution;
                                     return (
                                         <li
                                             key={`${entry.compositionHash}-${entry.clauseId}-${entry.posture}`}

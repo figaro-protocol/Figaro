@@ -170,7 +170,7 @@ export interface OrderNodeModel {
      *  proximity-policy band). */
     agreementHash: `0x${string}`;
     capabilities: CapabilityModel[];
-    settlementBreakdown?: EconomicBreakdownModel;
+    resolutionBreakdown?: EconomicBreakdownModel;
 }
 
 export interface ProcessModel {

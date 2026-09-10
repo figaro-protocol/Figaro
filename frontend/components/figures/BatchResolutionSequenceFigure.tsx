@@ -2,12 +2,12 @@ import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 import { ArrowMarker } from "@/components/figures/ArrowMarker";
 import { FigureFrame } from "@/components/figures/FigureFrame";
 
-export type BatchSettlementSequenceFigureProps = BaseFigureProps;
+export type BatchResolutionSequenceFigureProps = BaseFigureProps;
 
 /**
  * The batch path in order of who acts, and where the acceptance gate sits.
  *
- * `SettlementPathsFigure` renders the two resolution paths side by side —
+ * `ResolutionPathsFigure` renders the two resolution paths side by side —
  * what each path's inputs, events, and state ARE, and that they share none of
  * it. This figure renders the batch path's SEQUENCE instead: the order in which
  * the wallets, the sequencer, the off-chain execution, the verifier, and the
@@ -106,11 +106,11 @@ const TOP = 52;
 const DOT_X = 26;
 const TEXT_X = 42;
 
-export function BatchSettlementSequenceFigure({
-    idPrefix = "batch-settlement-sequence",
+export function BatchResolutionSequenceFigure({
+    idPrefix = "batch-resolution-sequence",
     className,
     svgProps,
-}: BatchSettlementSequenceFigureProps) {
+}: BatchResolutionSequenceFigureProps) {
     const firstOnChain = STEPS.findIndex((s) => s.onChain);
     // A gap opens before the first on-chain step so the acceptance-gate rule and
     // the band heading have clear air above the step-5 row.

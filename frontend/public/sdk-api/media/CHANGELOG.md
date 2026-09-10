@@ -12,6 +12,18 @@ release lives under **Unreleased**.
 
 ## [Unreleased]
 
+### Changed
+
+- **SDK 0.2.0 (breaking): the `Settlement*` export family is renamed to
+  `Resolution*`** — `ResolutionGraph`, `ResolutionChain`, `ResolutionEntry`,
+  `ResolutionBreakdown`, `ResolutionUniverse`, `calculateResolution`,
+  `projectResolutionGraph` — finishing the settlement→resolution rename across
+  every non-contract identifier. The deployed contracts' own names
+  (`settleBatch`, `BatchSettled`, `settlements`) are unchanged. The formal
+  model is now `formal/ResolutionUniverses.tla`; the analyst's route is
+  `/queries/trade-story`; the paper moved to `/papers/verified-resolution-kernel`
+  with a redirect stub at the old address.
+
 ### Added
 
 - `/data/explore` — the graph-query surface over the public record: market shape

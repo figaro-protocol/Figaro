@@ -295,7 +295,7 @@ function deriveProcessCapabilities(
     return capabilities;
 }
 
-function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], address?: string): EconomicBreakdownModel | undefined {
+function deriveResolutionBreakdown(order: Order, parentOrderHashes: string[], address?: string): EconomicBreakdownModel | undefined {
     if (!address) return undefined;
     const normalized = address.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -399,7 +399,7 @@ function deriveOrderNodeModelFromOrder(
         parentOrderHashes,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         capabilities: roleCapabilities(order, agreements, indexes, address),
-        settlementBreakdown: deriveSettlementBreakdown(order, parentOrderHashes, address),
+        resolutionBreakdown: deriveResolutionBreakdown(order, parentOrderHashes, address),
     };
 }
 

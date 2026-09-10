@@ -36,7 +36,7 @@ const summary: ProcessSummary = {
 
 const refundFor = (address: string) => {
     const model = deriveProcessModelFromRuntime(summary, [order], new Map(), address);
-    return model.orders[0]?.settlementBreakdown;
+    return model.orders[0]?.resolutionBreakdown;
 };
 
 describe("what resolution refunds, per party", () => {

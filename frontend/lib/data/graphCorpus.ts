@@ -47,13 +47,13 @@ import {
     extractOverlays,
     marketShape,
     projectProcessGraph,
-    projectSettlementGraph,
+    projectResolutionGraph,
     projectValueFlow,
     type MarketShape,
     type OverlayGraph,
     type ProcessGraph,
     type RecoveredAttestation,
-    type SettlementGraph,
+    type ResolutionGraph,
     type ValueFlowGraph,
 } from "@figaro-protocol/sdk/derive";
 import {
@@ -96,7 +96,7 @@ export interface GraphCorpus {
     chainId: number;
     /** Both protocol-enforced base graphs. */
     process: ProcessGraph;
-    settlement: SettlementGraph;
+    resolution: ResolutionGraph;
     /** One per attestable clause family present — the open class. */
     overlays: OverlayGraph[];
     /** The fifth-noun projection: denominations, pins, and venue corridors. */
@@ -237,7 +237,7 @@ async function readGraphCorpus(deps?: {
     // 3. PROJECT — each graph carries its own truth boundary.
     const specs = specSource();
     const process = projectProcessGraph(core);
-    const settlement = projectSettlementGraph(core);
+    const resolution = projectResolutionGraph(core);
     const overlays = extractOverlays(records, specs);
 
     // Utility-token pins are a designer's registered fact, read off the
@@ -253,7 +253,7 @@ async function readGraphCorpus(deps?: {
     // ABI and handed in. This pass composes none, so the value-flow graph
     // carries resolution edges only and the UI states that as absence rather
     // than as "no corridors exist".
-    const valueFlow = projectValueFlow(settlement, [], pins);
+    const valueFlow = projectValueFlow(resolution, [], pins);
 
     const byProcess = attributionFromOverlays(overlays);
     const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()));
@@ -268,7 +268,7 @@ async function readGraphCorpus(deps?: {
     return {
         chainId,
         process,
-        settlement,
+        resolution,
         overlays,
         valueFlow,
         market,

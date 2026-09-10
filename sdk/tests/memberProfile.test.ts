@@ -110,7 +110,7 @@ describe("member profile metadata parser", () => {
                     posture: "seller",
                     offered: true,
                     whitelist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
-                    calendar: { embargoDaysAfterSettlement: 30 },
+                    calendar: { embargoDaysAfterResolution: 30 },
                 },
                 {
                     // The buyer half is first-class (ruling 7): the same
@@ -133,7 +133,7 @@ describe("member profile metadata parser", () => {
             expect(seller.posture).toBe("seller");
             expect(seller.offered).toBe(true);
             expect(seller.whitelist).toEqual(["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]);
-            expect(seller.calendar?.embargoDaysAfterSettlement).toBe(30);
+            expect(seller.calendar?.embargoDaysAfterResolution).toBe(30);
             expect(buyer.posture).toBe("buyer");
             expect(buyer.offered).toBe(false);
             expect(buyer.whitelist).toBeUndefined();

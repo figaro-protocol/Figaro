@@ -211,7 +211,7 @@ and checking them against the anchors — `/audit/view?process=` is the built ex
 **The figures are derived, not stored.** `OrderCommitted` carries `payment` and
 `cumulativeValue`; the bonds are computed at the invariant 2×,
 `calculateBonds(cumulativeValue, payment)` → `{sellerBond, buyerBond, totalLocked}`,
-with `calculateSettlement` for the payouts. Timing comes from the events'
+with `calculateResolution` for the payouts. Timing comes from the events'
 `blockNumber`: commit-to-resolve is a chain interval, never a host clock reading.
 Aggregate what the events actually name — value by denomination, by seller, by
 assembly. A clearing price is not a network object: whoever wants one computes it

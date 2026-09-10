@@ -21,7 +21,7 @@ export interface RpgfScheduleFigureProps extends BaseFigureProps {
 }
 
 /**
- * The deployed RPGF budget schedule: nine annual periods, budgets grouped into
+ * The deployed designer-rewards budget schedule: nine annual periods, budgets grouped into
  * three RISING tranches.
  *
  * NUMBERS. Every figure below is the per-period budget list the deployment
@@ -42,7 +42,7 @@ const DEPLOYED_TRANCHES: readonly RpgfScheduleTranche[] = [
     { label: "55% over years 6–9", periods: 4, perPeriodMillions: 82.5 },
 ];
 
-const DEFAULT_TITLE = "The nine-period RPGF budget schedule";
+const DEFAULT_TITLE = "The nine-period designer-rewards budget schedule";
 const DEFAULT_DESC =
     "Nine annual periods. Each of years one and two budgets 45 million florins, " +
     "each of years three to five budgets 60 million, and each of years six to " +

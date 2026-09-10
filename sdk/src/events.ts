@@ -94,7 +94,7 @@ export function parseProcessResolvedLogs(logs: Log[]): ProcessResolvedEvent[] {
 /** The two resolution universes an attestation anchor can come from:
  *  "direct" = the coordinator's own emission, re-verifiable from calldata;
  *  "batch" = the batch verifier's re-emission, proved once inside a batch. */
-export type SettlementUniverse = "direct" | "batch";
+export type ResolutionUniverse = "direct" | "batch";
 
 /** An attestation record with its RESOLUTION UNIVERSE named. The two emitters
  *  share one topic hash (`FigaroBatchVerifier.Attestation` deliberately
@@ -102,7 +102,7 @@ export type SettlementUniverse = "direct" | "batch";
  *  says which universe a row came from — direct = re-verifiable from
  *  calldata, batch = proved once inside a batch. The tag preserves that
  *  evidentiary difference through the fold. */
-export type UniverseAttestationEvent = AttestationEvent & { universe: SettlementUniverse };
+export type UniverseAttestationEvent = AttestationEvent & { universe: ResolutionUniverse };
 
 /**
  * The pure fold under `fetchAttestationRecords`: tag each already-fetched

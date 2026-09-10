@@ -17,7 +17,7 @@
  * not resolve renders fingerprint-only rather than being dropped or named.
  *
  * Everything here is pure: the projections are `@figaro-protocol/sdk/derive`'s
- * (`projectProcessGraph`, `projectSettlementGraph`, `extractOverlays`,
+ * (`projectProcessGraph`, `projectResolutionGraph`, `extractOverlays`,
  * `projectValueFlow`, `marketShape`, `walletRecord`) and the I/O is
  * `lib/data/graphCorpus.ts`. This module only shapes rows, states absence, and
  * parses/serialises the URL query so every view is a permalink.
@@ -25,7 +25,7 @@
 
 import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ProcessGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
 import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
-import { OrderState, type Process, type SettlementUniverse } from "@figaro-protocol/sdk";
+import { OrderState, type Process, type ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { filterRows, pick, queryParam } from "@/lib/shared/urlQuery";
@@ -319,7 +319,7 @@ export interface OverlayRow {
     decodedCount: number;
     processCount: number;
     attesterCount: number;
-    universes: readonly SettlementUniverse[];
+    universes: readonly ResolutionUniverse[];
     firstBlock: number | null;
     lastBlock: number | null;
     /** "decoded" — at least one entry's substance was recovered and decoded

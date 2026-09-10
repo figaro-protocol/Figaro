@@ -5,8 +5,8 @@ import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigur
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
-import { BatchSettlementSequenceFigure } from "@/components/figures/BatchSettlementSequenceFigure";
-import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
+import { BatchResolutionSequenceFigure } from "@/components/figures/BatchResolutionSequenceFigure";
+import { ResolutionPathsFigure } from "@/components/figures/ResolutionPathsFigure";
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
 import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
 import { GasCrossoverFigure } from "@/components/figures/GasCrossoverFigure";
@@ -175,10 +175,10 @@ describe("DesignGraphCollapseFigure", () => {
     });
 });
 
-/** Mirrors the prop set verified-settlement-kernel §5.5 passes. The companion
+/** Mirrors the prop set verified-resolution-kernel §5.5 passes. The companion
  *  source-level assertion below is what stops this fixture drifting from the
  *  page: a banned identifier reaching the real call site fails there. */
-const PAPER_SETTLEMENT_PATHS = {
+const PAPER_RESOLUTION_PATHS = {
     lineFont: "sans" as const,
     directPath: {
         heading: "Direct path",
@@ -233,9 +233,9 @@ const BANNED_IDENTIFIERS = [
     "BatchSettled",
 ];
 
-describe("SettlementPathsFigure", () => {
+describe("ResolutionPathsFigure", () => {
     it("renders /spec's exact strings when given no props (the default must not drift)", () => {
-        const { container } = render(<SettlementPathsFigure />);
+        const { container } = render(<ResolutionPathsFigure />);
         const text = container.textContent ?? "";
         for (const specString of [
             "Direct path",
@@ -265,13 +265,13 @@ describe("SettlementPathsFigure", () => {
     });
 
     it("keeps /spec's default body lines monospaced", () => {
-        const { container } = render(<SettlementPathsFigure />);
+        const { container } = render(<ResolutionPathsFigure />);
         const mono = container.querySelectorAll("text.font-mono");
         expect(mono.length).toBeGreaterThan(0);
     });
 
     it("names no contract, function, event, or proving system in the paper register", () => {
-        const { container } = render(<SettlementPathsFigure {...PAPER_SETTLEMENT_PATHS} />);
+        const { container } = render(<ResolutionPathsFigure {...PAPER_RESOLUTION_PATHS} />);
         const text = container.textContent ?? "";
         for (const identifier of BANNED_IDENTIFIERS) {
             expect(text).not.toContain(identifier);
@@ -279,7 +279,7 @@ describe("SettlementPathsFigure", () => {
     });
 
     it("puts the crossing quantity on the crossing arrow and the bridge on the bridge", () => {
-        const { container } = render(<SettlementPathsFigure {...PAPER_SETTLEMENT_PATHS} />);
+        const { container } = render(<ResolutionPathsFigure {...PAPER_RESOLUTION_PATHS} />);
         const text = container.textContent ?? "";
         expect(text).toContain("a usage accrual");
         expect(text).toContain("the one quantity common to both");
@@ -290,11 +290,11 @@ describe("SettlementPathsFigure", () => {
     it("carries no banned identifier at the real §5.5 call site (guards fixture drift)", async () => {
         // Relative to the vitest cwd (frontend/), not to this module.
         const source = await readFile(
-            "app/(marketing)/papers/verified-settlement-kernel/page.tsx",
+            "app/(marketing)/papers/verified-resolution-kernel/page.tsx",
             "utf8",
         );
         const figureCall = source.slice(
-            source.indexOf("<SettlementPathsFigure"),
+            source.indexOf("<ResolutionPathsFigure"),
             source.indexOf("<PaperRun title=\"What is checked about the composition of the two paths.\">"),
         );
         expect(figureCall.length).toBeGreaterThan(0);
@@ -306,9 +306,9 @@ describe("SettlementPathsFigure", () => {
     it("grows a panel with its content instead of overlapping it (layout is computed)", () => {
         const heightOf = (inputs: readonly string[]) => {
             const { container } = render(
-                <SettlementPathsFigure
-                    directPath={{ ...PAPER_SETTLEMENT_PATHS.directPath, inputs }}
-                    batchPath={PAPER_SETTLEMENT_PATHS.batchPath}
+                <ResolutionPathsFigure
+                    directPath={{ ...PAPER_RESOLUTION_PATHS.directPath, inputs }}
+                    batchPath={PAPER_RESOLUTION_PATHS.batchPath}
                 />,
             );
             const h = Number((container.querySelector("svg")?.getAttribute("viewBox") ?? "").split(" ")[3]);
@@ -319,9 +319,9 @@ describe("SettlementPathsFigure", () => {
     });
 });
 
-describe("BatchSettlementSequenceFigure", () => {
+describe("BatchResolutionSequenceFigure", () => {
     it("renders all seven steps, numbered in order, and none beyond them", () => {
-        const { container } = render(<BatchSettlementSequenceFigure />);
+        const { container } = render(<BatchResolutionSequenceFigure />);
         const text = container.textContent ?? "";
         for (const n of [1, 2, 3, 4, 5, 6, 7]) {
             expect(text).toContain(String(n));
@@ -336,7 +336,7 @@ describe("BatchSettlementSequenceFigure", () => {
     });
 
     it("renders the direct-path fallback block, and marks it a new process not a migration", () => {
-        const { container } = render(<BatchSettlementSequenceFigure />);
+        const { container } = render(<BatchResolutionSequenceFigure />);
         const text = container.textContent ?? "";
         expect(text).toContain("If the sequencer stalls or censors: the direct path");
         expect(text).toContain("never a migration of a batched one");
@@ -346,14 +346,14 @@ describe("BatchSettlementSequenceFigure", () => {
     });
 
     it("states that the proof COMMITS to the batch data by hash, never that it carries it", () => {
-        const { container } = render(<BatchSettlementSequenceFigure />);
+        const { container } = render(<BatchResolutionSequenceFigure />);
         const text = container.textContent ?? "";
         expect(text).toContain("public values commit, by hash");
         expect(text).not.toContain("Public values carry");
     });
 
     it("names no contract, function, or proving system — the paper corpus convention", () => {
-        const { container } = render(<BatchSettlementSequenceFigure />);
+        const { container } = render(<BatchResolutionSequenceFigure />);
         const text = container.textContent ?? "";
         for (const identifier of BANNED_IDENTIFIERS) {
             expect(text).not.toContain(identifier);
@@ -634,7 +634,7 @@ describe("GasCrossoverFigure", () => {
         const text = container.textContent ?? "";
         expect(text).toContain("measured on chain");
         expect(text).toContain("385,902 gas ÷ 2 — commit + witness attestation");
-        expect(text).toContain("377,885 gas ÷ 2 — resolve + RPGF usage claim");
+        expect(text).toContain("377,885 gas ÷ 2 — resolve + usage claim");
         // One dot per receipt, plus the single hollow dot marking the crossing.
         expect(container.querySelectorAll('circle[r="3.25"]')).toHaveLength(3);
     });

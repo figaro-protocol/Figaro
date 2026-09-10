@@ -5,7 +5,7 @@
  * fetch and reconstruct, and the reconstructed commitment resolves. It
  * asserts NO kernel math — bond/resolution amounts are Foundry/Certora-owned
  * (K-1/2/3/6; SDK-mirror parity lives in the Foundry parity vectors), and
- * `calculateSettlement` is unit-tested in bonds.test.ts.
+ * `calculateResolution` is unit-tested in bonds.test.ts.
  *
  * Requires Anvil running at http://127.0.0.1:8545
  * Skip with: SKIP_ANVIL=1 npm test

@@ -775,25 +775,25 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             expect(recProcess, 'the asked-about process is in the record').toBeTruthy();
             expect(recProcess!.resolved).toBe(resolvedProcessIds.has(pid));
 
-            const story = await (await fetch(`${ANALYST_URL}/queries/deal-story?process=${latest.args.processId}`)).json() as {
+            const story = await (await fetch(`${ANALYST_URL}/queries/trade-story?process=${latest.args.processId}`)).json() as {
                 found: boolean;
-                settlement: { resolved: boolean; orders: Array<{ orderHash: string; payment: string; lockedBuyerBond: string; lockedSellerBond: string }> };
+                resolution: { resolved: boolean; orders: Array<{ orderHash: string; payment: string; lockedBuyerBond: string; lockedSellerBond: string }> };
                 overlays: Array<{ universe: string; clauseKey: string }>;
                 heldAgreements: number;
                 agreementBodies: string;
             };
             expect(story.found).toBe(true);
             const processOrders = allCommitted.filter((e) => (e.args.processId as string).toLowerCase() === pid);
-            expect(story.settlement.orders.length).toBe(processOrders.length);
+            expect(story.resolution.orders.length).toBe(processOrders.length);
             for (const e of processOrders) {
-                const row = story.settlement.orders.find((o) => o.orderHash.toLowerCase() === (e.args.orderHash as string).toLowerCase());
+                const row = story.resolution.orders.find((o) => o.orderHash.toLowerCase() === (e.args.orderHash as string).toLowerCase());
                 expect(row).toBeTruthy();
                 const { buyerBond, sellerBond } = calculateBonds(e.args.cumulativeValue as bigint, e.args.payment as bigint);
                 expect(row!.payment).toBe((e.args.payment as bigint).toString());
                 expect(row!.lockedBuyerBond, 'the story reports the kernel\'s own 2× bond arithmetic').toBe(buyerBond.toString());
                 expect(row!.lockedSellerBond).toBe(sellerBond.toString());
             }
-            expect(story.settlement.resolved).toBe(resolvedProcessIds.has(pid));
+            expect(story.resolution.resolved).toBe(resolvedProcessIds.has(pid));
             const processAtt = { direct: directAtt, batch: batchAtt };
             for (const universe of ['direct', 'batch'] as const) {
                 expect(

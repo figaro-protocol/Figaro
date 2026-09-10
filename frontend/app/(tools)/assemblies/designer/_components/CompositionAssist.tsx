@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * CompositionAssist — the canvas's hand-off surface to the designer's OWN
+ * CompositionAssist — the canvas's handoff surface to the designer's OWN
  * agent (punch-list block 9: composition-assist).
  *
  * The world is the PUBLIC ecosystem seam: `figaro-assembly-designer` is a
@@ -50,7 +50,7 @@ interface CompositionAssistProps {
 function serializeDraft(snapshot: DesignSnapshot | null): { json: string | null; error: string | null } {
     if (!snapshot) return { json: null, error: "Add at least one order to the canvas first." };
     try {
-        // The ONE draft→template walk publish uses — so the hand-off template
+        // The ONE draft→template walk publish uses — so the handoff template
         // is byte-identical to what publish would anchor. (It previously
         // rebuilt the walk inline and dropped `assemblyClauses`, silently
         // handing out a template missing the assembly-level terms.)

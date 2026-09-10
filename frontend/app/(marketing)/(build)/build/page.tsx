@@ -38,7 +38,7 @@ export default function BuildDoor() {
             </section>
             <MarketingSection title="Clauses.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Applicable law, arbitration, acceptance criteria, incoterms, cold chain, hazmat, emissions, data licence, delivery, schedule. Write one as a JSON spec, pin it, anchor its hash with a small ETH stake. A never-seen clause resolves through the proof path with zero code. <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
+                    Applicable law, arbitration, acceptance criteria, incoterms, cold chain, hazmat, emissions, data license, delivery, schedule. Write one as a JSON spec, pin it, anchor its hash with a small ETH stake. A never-seen clause resolves through the proof path with zero code. <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Assemblies.">

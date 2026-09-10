@@ -345,7 +345,7 @@ export interface BondBreakdown {
     totalLocked: bigint;
 }
 
-export interface SettlementBreakdown {
+export interface ResolutionBreakdown {
     /** Seller receives: payment + sellerBond. */
     sellerPayout: bigint;
     /** Buyer receives: buyerBond - payment = payment (net: paid for value received). */

@@ -431,7 +431,7 @@ paths) — never `accrualOf` alone, and if you mirror the events off-chain, fold
 `UsageRecorded` **and** `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it
 does not add).
 
-Public statement of all of this, for the owner: `/spec#settlement-paths` § "The two paths
+Public statement of all of this, for the owner: `/spec#resolution-paths` § "The two paths
 share no state" — which also answers "Is it resolved?".
 
 ### Getting the wallet's trade ONTO the batch path — a relay you do not have to trust

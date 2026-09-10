@@ -16,7 +16,7 @@
  * regardless: no template carries clause-specific knowledge.
  */
 
-import { calculateSettlement } from "@figaro-protocol/sdk";
+import { calculateResolution } from "@figaro-protocol/sdk";
 import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import { OrderState } from "@/lib/kernel/store";
@@ -197,7 +197,7 @@ export function projectDocuments(
 // per-order "invoice-style" line-item projection for financials — that would
 // duplicate the invoice document. Per-currency throughout (multi-currency
 // arithmetic is unsafe). The kernel math is never re-implemented:
-// bonds are READ from the order, resolution from the SDK's calculateSettlement.
+// bonds are READ from the order, resolution from the SDK's calculateResolution.
 
 interface CurrencyAgg {
     buyerCustody: bigint; sellerCustody: bigint;
@@ -242,7 +242,7 @@ export function projectFinancialStatements(
         cashFlow.push(["commit-buyer-deposit", o.orderHash, o.buyer, o.buyerBond.toString()]);
         cashFlow.push(["commit-seller-deposit", o.orderHash, o.seller, o.sellerBond.toString()]);
         if (o.state === OrderState.Resolved) {
-            const s = calculateSettlement(o.payment, o.sellerBond, o.buyerBond);
+            const s = calculateResolution(o.payment, o.sellerBond, o.buyerBond);
             cashFlow.push(["resolve-buyer-refund", o.orderHash, o.buyer, s.buyerPayout.toString()]);
             cashFlow.push(["resolve-seller-payout", o.orderHash, o.seller, s.sellerPayout.toString()]);
         }

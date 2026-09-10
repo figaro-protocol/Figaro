@@ -69,12 +69,12 @@ export type { TruthBoundary } from "./truth.js";
 
 // ── Base-graph projections (Process + Resolution) ───────────────────────────
 
-export { projectProcessGraph, projectSettlementGraph } from "./graphs.js";
+export { projectProcessGraph, projectResolutionGraph } from "./graphs.js";
 export type {
     ProcessGraph,
-    SettlementGraph,
-    SettlementChain,
-    SettlementEntry,
+    ResolutionGraph,
+    ResolutionChain,
+    ResolutionEntry,
 } from "./graphs.js";
 
 // ── Overlay extraction (the open graph class) ───────────────────────────────

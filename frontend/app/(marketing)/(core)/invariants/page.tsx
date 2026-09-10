@@ -46,13 +46,13 @@ export default function Invariants() {
                             <strong className="text-ink-heading">Buyer dominance.</strong> Only the buyer can close a trade. Nobody can close it for them, and nothing closes it on its own. <em>What it means for you:</em> whatever was agreed gets met first, because nothing resolves until the one paying says it is finished.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer closes, every order in the trade resolves in one transaction, or none of them does. <em>What it means for you:</em> nobody is paid while somebody else is left hanging &mdash; so everyone bonded in has their own reason to help put a fault right before the close.
+                            <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer resolves, every order in the trade resolves in one transaction, or none of them does. <em>What it means for you:</em> nobody is paid while somebody else is left hanging &mdash; so everyone bonded in has their own reason to help put a fault right before the resolution.
                         </li>
                         <li>
                             <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nobody can swap anything in underneath the data. A forum or a court reads what happened. It does not have to reconstruct it.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and closing are the only two moves the smart contract knows &mdash; no refund path, no timeout, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone outside it &mdash; and inside it, only the buyer&apos;s close moves anything &mdash; which is also why whatever is wrong gets put right before the close rather than argued about after it.
+                            <strong className="text-ink-heading">No escape hatches.</strong> Committing and resolving are the only two moves the smart contract knows &mdash; no refund path, no timeout, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone outside it &mdash; and inside it, only the buyer&apos;s resolution moves anything &mdash; which is also why whatever is wrong gets put right before the resolution rather than argued about after it.
                         </li>
                     </ol>
                     <p>

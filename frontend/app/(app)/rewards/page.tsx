@@ -3,9 +3,9 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { RewardsView } from "./_components/RewardsView";
 
 export const metadata: Metadata = withOg({
-    title: "Claim RPGF rewards — Figaro",
+    title: "Claim rewards — Figaro Protocol",
     description:
-        "The RPGF distribution: usage is counted on chain as it happens, a period's counts go final when it ends, and each author claims their pro-rata share of that period's budget.",
+        "The designer-rewards distribution: usage is counted on chain as it happens, a period's counts go final when it ends, and each author claims their pro-rata share of that period's budget.",
 });
 
 export default function RewardsPage() {

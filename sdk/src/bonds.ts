@@ -5,7 +5,7 @@
  * No chain access needed — just arithmetic.
  */
 
-import type { BondBreakdown, SettlementBreakdown } from "./types.js";
+import type { BondBreakdown, ResolutionBreakdown } from "./types.js";
 
 /**
  * Calculate the required bonds for an order.
@@ -34,11 +34,11 @@ export function calculateBonds(cumulativeValue: bigint, payment: bigint): BondBr
  *   - Buyer gets their bond back minus the payment (which went to seller)
  *   - Net transfer: exactly `payment` flows from buyer to seller
  */
-export function calculateSettlement(
+export function calculateResolution(
     payment: bigint,
     sellerBond: bigint,
     buyerBond: bigint,
-): SettlementBreakdown {
+): ResolutionBreakdown {
     return {
         sellerPayout: payment + sellerBond,
         buyerPayout: buyerBond - payment,

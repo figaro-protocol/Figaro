@@ -466,14 +466,14 @@ saveRecord({
         batch: b.batch,
         prevStateRoot: b.prev_state_root,
         newStateRoot: b.new_state_root,
-        settlementTx: b.settlement_tx,
+        resolutionTx: b.resolution_tx,
     })),
 });
 console.log(`signed records: ${recordFile}`);
 console.log(`\n── Resolved batches ──`);
 for (const b of recent) {
     console.log(`batch ${b.batch}: ${b.prev_state_root} → ${b.new_state_root}`);
-    console.log(`  resolve tx: ${b.settlement_tx ?? '(dry run)'}`);
+    console.log(`  resolve tx: ${b.resolution_tx ?? '(dry run)'}`);
 }
 
 if (failed > 0) {

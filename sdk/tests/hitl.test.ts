@@ -18,7 +18,7 @@ function mkAction(type: string = "resolve-process"): ProposedAction {
         settlements: [{
             orderHash: OH1,
             seller: SELLER,
-            settlement: { sellerPayout: 300n, buyerPayout: 100n, netTransfer: 100n },
+            resolution: { sellerPayout: 300n, buyerPayout: 100n, netTransfer: 100n },
         }],
         totalBuyerPayout: 100n,
         totalSellerPayout: 300n,

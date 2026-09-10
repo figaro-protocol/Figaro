@@ -112,7 +112,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 48 invariants across 4 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + SettlementUniverses 21)
+## TLA+ (`formal/`) — 48 invariants across 4 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -136,7 +136,7 @@ quiescent): `Inv_TypeOK`, `Inv_Conservation`, `Inv_NonNegative`,
 `Inv_CoordinatorNotCounterparty` — 38,028,525 states / 1,979,101 distinct,
 depth 17, ~3–4 min. Mutation-checked: 6 mutations, each caught.
 
-SettlementUniverses (`SettlementUniverses.tla` + `.cfg`): the
+ResolutionUniverses (`ResolutionUniverses.tla` + `.cfg`): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
 off-chain guest kernel under arbitrary interleavings; the only harness that can
 see where the two paths meet (every other layer is per-contract).
@@ -280,6 +280,25 @@ list, is the census):
 - **`devnet`** — every other `*.devnet.spec.ts`; depends on `devnet-authoring`.
 - **`mobile`** — the lone non-e2e browser project: responsive/viewport chrome
   jsdom can't render.
+- **`stranger`** — the blind visitor (`crawl.stranger.spec.ts`,
+  `npm run test:e2e:stranger`): no test-signer flag, no injected provider, no
+  `?e2e=` opt-in — the browser context a real stranger has, against the same
+  prod-mode static export. It crawls every same-origin route transitively
+  from `/` plus the one nav source (`navLinks.ts` — the mobile drawers mount
+  on demand, so their anchors never sit in the desktop DOM) and fails on any
+  console error, page error, or 404. The export's own `index.html` census is
+  the completeness bar; every exported route is visited either way, and the
+  reachability verdict follows the repo's seams, derived at test time: a
+  page declaring a canonical elsewhere is an unlinked inbound-compat alias,
+  an unreached `(app)`/`(tools)` route is annotated (wallet-scope — connected
+  chrome and runtime state own those links), and an unreached marketing-tier
+  route fails. External hrefs are never visited — asserted https and
+  `rel="noopener noreferrer"` where `target="_blank"`; the `/sdk-api` typedoc
+  bundle and linked files are status-checked, not crawled into. Plus one
+  connect-after-first-paint case: the connect affordance renders and clicks
+  with no provider, without a console error. It exists because the devnet
+  suite is a producer's suite — every spec drives a flow the project itself built —
+  so a defect only a consumer hits is invisible to it.
 - **`smoke`** — MAINTAINER-MANUAL smokes over real external transports the devnet
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
   suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a

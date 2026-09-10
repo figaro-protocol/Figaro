@@ -21,7 +21,7 @@ import * as path from "node:path";
 import { keccak256 } from "viem";
 import { computeAgreementHash } from "@figaro-protocol/sdk";
 import {
-    projectProcessGraph, projectSettlementGraph, extractOverlays, projectValueFlow,
+    projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
     witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
 import {
@@ -72,7 +72,7 @@ function fixtureCorpus({ recovered = true } = {}) {
     };
     const specs = { get: () => undefined, list: () => [] };
     const recoveredRecords = [{ event: attestation, content: recovered ? SUBSTANCE : null }];
-    const settlement = projectSettlementGraph(core);
+    const resolution = projectResolutionGraph(core);
     return {
         chainId: 31337,
         fromBlock: 0n,
@@ -90,25 +90,25 @@ function fixtureCorpus({ recovered = true } = {}) {
         held: { byHash: new Map(), rejected: [], committedRoots: 1 },
         graphs: {
             process: projectProcessGraph(core),
-            settlement,
+            resolution,
             overlays: extractOverlays(recoveredRecords, specs),
-            valueFlow: projectValueFlow(settlement, [], []),
+            valueFlow: projectValueFlow(resolution, [], []),
         },
     };
 }
 
 const emptyCorpus = () => {
     const core = { orderCommitted: [], orderResolved: [], processResolved: [], orderSeller: [] };
-    const settlement = projectSettlementGraph(core);
+    const resolution = projectResolutionGraph(core);
     return {
         chainId: 11155111, fromBlock: 0n, syncedToBlock: 5n, core, attestations: [],
         specs: { get: () => undefined, list: () => [] }, specsLoaded: 0, specsSkipped: [],
         recovered: [], framedSubstance: new Map(), substanceRecovered: 0,
         held: { byHash: new Map(), rejected: [], committedRoots: 0 },
         graphs: {
-            process: projectProcessGraph(core), settlement,
+            process: projectProcessGraph(core), resolution,
             overlays: extractOverlays([], { get: () => undefined, list: () => [] }),
-            valueFlow: projectValueFlow(settlement, [], []),
+            valueFlow: projectValueFlow(resolution, [], []),
         },
     };
 };
@@ -172,7 +172,7 @@ test("no agreements directory is absence, not an error", () => {
 test("the graph inventory is a CENSUS of what the corpus holds, each with its boundary", () => {
     const inv = graphInventory(fixtureCorpus());
     assert.deepEqual(inv.base.map((g) => [g.graph, g.truthBoundary]), [
-        ["process", "protocol-enforced"], ["settlement", "protocol-enforced"],
+        ["process", "protocol-enforced"], ["resolution", "protocol-enforced"],
     ]);
     assert.equal(inv.overlays.length, 1, "one overlay per clause family PRESENT — not a fixed list");
     assert.equal(inv.overlays[0].truthBoundary, "protocol-derived");
@@ -187,9 +187,9 @@ test("the graph inventory is a CENSUS of what the corpus holds, each with its bo
 test("the resolution chain reports the kernel's own arithmetic, per order", () => {
     const story = dealStory(fixtureCorpus(), PROCESS);
     assert.equal(story.found, true);
-    assert.equal(story.settlement.truthBoundary, "protocol-enforced");
-    assert.equal(story.settlement.resolved, true);
-    const [a, b] = story.settlement.orders;
+    assert.equal(story.resolution.truthBoundary, "protocol-enforced");
+    assert.equal(story.resolution.resolved, true);
+    const [a, b] = story.resolution.orders;
     // 2× invariants: buyer bonds 2× payment, seller bonds 2× cumulative value.
     assert.equal(a.lockedBuyerBond, "200");
     assert.equal(a.lockedSellerBond, "200");
@@ -201,7 +201,7 @@ test("the resolution chain reports the kernel's own arithmetic, per order", () =
     assert.equal(a.atResolutionNetTransfer, "100");
 });
 
-test("deal-story carries recovered substance FRAMED, and says so when it has none", () => {
+test("trade-story carries recovered substance FRAMED, and says so when it has none", () => {
     const withSubstance = dealStory(fixtureCorpus(), PROCESS);
     assert.equal(withSubstance.overlays.length, 1);
     assert.match(withSubstance.overlays[0].framedSubstance, /⟦FIGARO-DATA/);
@@ -372,7 +372,7 @@ test("the deterministic routes answer with their truth boundaries", async () => 
         const graphs = await (await fetch(`${base}/graphs`)).json();
         assert.equal(graphs.overlays[0].truthBoundary, "protocol-derived");
 
-        const story = await (await fetch(`${base}/queries/deal-story?process=${PROCESS}`)).json();
+        const story = await (await fetch(`${base}/queries/trade-story?process=${PROCESS}`)).json();
         assert.equal(story.found, true);
 
         const bad = await fetch(`${base}/queries/wallet-record?wallet=nope`);

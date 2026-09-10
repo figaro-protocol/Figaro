@@ -1,4 +1,4 @@
----- MODULE SettlementUniverses ----
+---- MODULE ResolutionUniverses ----
 
 (*
  * Formal model of Figaro's COMPOSED resolution system — the cross-contract

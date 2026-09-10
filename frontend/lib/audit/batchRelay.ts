@@ -51,7 +51,7 @@
  *
  * ZERO new crypto: the derivations are the SDK's own `computeOrderHash`,
  * `computeCommitmentProcessId`, `verifyCommitmentSignature`,
- * `verifyResolveProcessSignature` and `calculateSettlement` — the same
+ * `verifyResolveProcessSignature` and `calculateResolution` — the same
  * functions the direct path uses, pointed at the verifier's domain (they are
  * all parameterized by `verifyingContract`).
  *
@@ -68,7 +68,7 @@
 
 import {
     calculateBonds,
-    calculateSettlement,
+    calculateResolution,
     computeCommitmentProcessId,
     computeOrderHash,
     OrderState,
@@ -231,7 +231,7 @@ function checkPayouts(
     // sellerBond (2 × expectedCumulativeValue); buyerPayout = buyerBond
     // (2 × payment) − payment == payment.
     const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
-    const expected = calculateSettlement(commitment.payment, bonds.sellerBond, bonds.buyerBond);
+    const expected = calculateResolution(commitment.payment, bonds.sellerBond, bonds.buyerBond);
 
     let claimedSeller: bigint;
     let claimedBuyer: bigint;
@@ -443,7 +443,7 @@ function toOrder(
  * `batch` number is its private cursor and proves nothing; the state-root
  * transition is the chain-anchored identity.
  *
- * A dry run (`settlement_tx == null`) is reported as UNANCHORED rather than
+ * A dry run (`resolution_tx == null`) is reported as UNANCHORED rather than
  * accepted: the batch proved, but nothing resolved, so the trade did not happen
  * on chain.
  */
@@ -452,7 +452,7 @@ export function createStateRootAnchorCheck(
     chainId: number,
 ): StateRootAnchorCheck {
     return async (batch) => {
-        if (!batch.settlement_tx) {
+        if (!batch.resolution_tx) {
             return fail(
                 "state-root-anchor",
                 `relay published this as a DRY RUN (no resolution transaction) — the batch proved but never resolved on chain`,
@@ -474,10 +474,10 @@ export function createStateRootAnchorCheck(
                 `no BatchSettled on this verifier carries state root ${batch.new_state_root} — the relay's claimed resolution is not on chain`,
             );
         }
-        if (!hexEqual(match.transactionHash ?? null, batch.settlement_tx)) {
+        if (!hexEqual(match.transactionHash ?? null, batch.resolution_tx)) {
             return fail(
                 "state-root-anchor",
-                `state root ${batch.new_state_root} was resolved in ${match.transactionHash}, not in the ${batch.settlement_tx} the relay named`,
+                `state root ${batch.new_state_root} was resolved in ${match.transactionHash}, not in the ${batch.resolution_tx} the relay named`,
             );
         }
         return pass(

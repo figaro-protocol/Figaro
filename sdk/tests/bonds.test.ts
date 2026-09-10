@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
     calculateBonds,
-    calculateSettlement,
+    calculateResolution,
     calculateRootApproval,
     calculateSubOrderApproval,
     validateBonds,
@@ -32,12 +32,12 @@ describe("calculateBonds", () => {
     });
 });
 
-describe("calculateSettlement", () => {
+describe("calculateResolution", () => {
     it("resolves correctly: seller gets payment + bond, buyer gets bond - payment", () => {
         const payment = 500n;
         const sellerBond = 2000n;
         const buyerBond = 1000n;
-        const result = calculateSettlement(payment, sellerBond, buyerBond);
+        const result = calculateResolution(payment, sellerBond, buyerBond);
         expect(result.sellerPayout).toBe(2500n);
         expect(result.buyerPayout).toBe(500n);
         expect(result.netTransfer).toBe(500n);
@@ -47,7 +47,7 @@ describe("calculateSettlement", () => {
         const payment = 100n;
         const sellerBond = 200n;
         const buyerBond = 200n;
-        const result = calculateSettlement(payment, sellerBond, buyerBond);
+        const result = calculateResolution(payment, sellerBond, buyerBond);
         expect(result.sellerPayout + result.buyerPayout).toBe(sellerBond + buyerBond);
     });
 });

@@ -217,7 +217,7 @@ export interface SeedMemberProfile {
         posture: 'buyer' | 'seller';
         offered: boolean;
         whitelist?: `0x${string}`[];
-        calendar?: { embargoDaysAfterSettlement?: number };
+        calendar?: { embargoDaysAfterResolution?: number };
     }>;
 }
 

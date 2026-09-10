@@ -52,7 +52,7 @@ export default function DataDoor() {
             </MarketingSection>
             <MarketingSection title="For a market.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    The public map is what a platform used to keep to itself: a neighbourhood&apos;s demand, a seller&apos;s resolution history, a route&apos;s reliability. It is open, and the network&apos;s own token pays the designers whose clauses and assemblies the mapped trades keep using. <Link href="/registries" className="text-ink-heading font-medium hover:underline">Registries</Link>
+                    The public map is what a platform used to keep to itself: a neighborhood&apos;s demand, a seller&apos;s resolution history, a route&apos;s reliability. It is open, and the network&apos;s own token pays the designers whose clauses and assemblies the mapped trades keep using. <Link href="/registries" className="text-ink-heading font-medium hover:underline">Registries</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="For sale, on your terms.">

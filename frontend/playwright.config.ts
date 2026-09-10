@@ -210,6 +210,29 @@ export default defineConfig({
             use: { ...devices['Pixel 5'] },
         },
         {
+            // The BLIND VISITOR — no test-signer flag, no injected provider,
+            // no ?e2e= opt-in: the browser context a real stranger has. The
+            // devnet suite is a producer's suite (every spec drives flows its
+            // authors built), so a defect only a consumer hits — a broken
+            // href, a console error on a page no flow visits, a 404 behind a
+            // link — is invisible to it. This project crawls every same-origin
+            // route transitively from `/` and the one nav source against the
+            // same prod-mode static export and fails on any console error,
+            // page error, or 404.
+            //     npx playwright test --project=stranger
+            name: 'stranger',
+            testMatch: /\.stranger\.spec\.ts$/,
+            fullyParallel: false,
+            workers: 1,
+            // A retry replays the whole ~300-page crawl against the same
+            // static artifact — a deterministic failure is a finding, not a flake.
+            retries: 0,
+            // The crawl is one long test over every exported route; the
+            // per-page budget lives in the spec's navigation timeout.
+            timeout: 20 * 60_000,
+            use: { ...devices['Desktop Chrome'] },
+        },
+        {
             // MAINTAINER-MANUAL smokes — NEVER part of any suite run. Explicitly:
             //     npx playwright test --project=smoke
             // These exercise REAL external transports the devnet suite

@@ -12,9 +12,9 @@
  * The agent (human or autonomous) decides which to execute.
  */
 
-import type { Hex, Address, Process, Commitment, SettlementBreakdown, RegisteredAssembly } from "../types.js";
+import type { Hex, Address, Process, Commitment, ResolutionBreakdown, RegisteredAssembly } from "../types.js";
 import { OrderState } from "../types.js";
-import { calculateSettlement } from "../bonds.js";
+import { calculateResolution } from "../bonds.js";
 import { orderToCommitment, ZERO_PROCESS_ID } from "../commitments.js";
 
 // ── Action types ────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ export interface ResolveProcessAction extends BaseAction {
     settlements: Array<{
         orderHash: Hex;
         seller: Address;
-        settlement: SettlementBreakdown;
+        resolution: ResolutionBreakdown;
     }>;
     /** Total payout to buyer across all orders. */
     totalBuyerPayout: bigint;
@@ -132,15 +132,15 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
         const settlements = activeOrders.map((o) => {
             const sellerBond = o.cumulativeValue * 2n;
             const buyerBond = o.payment * 2n;
-            const settlement = calculateSettlement(o.payment, sellerBond, buyerBond);
-            return { orderHash: o.orderHash, seller: o.seller, settlement };
+            const resolution = calculateResolution(o.payment, sellerBond, buyerBond);
+            return { orderHash: o.orderHash, seller: o.seller, resolution };
         });
 
         const totalBuyerPayout = settlements.reduce(
-            (sum, s) => sum + s.settlement.buyerPayout, 0n,
+            (sum, s) => sum + s.resolution.buyerPayout, 0n,
         );
         const totalSellerPayout = settlements.reduce(
-            (sum, s) => sum + s.settlement.sellerPayout, 0n,
+            (sum, s) => sum + s.resolution.sellerPayout, 0n,
         );
 
         actions.push({

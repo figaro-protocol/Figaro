@@ -74,7 +74,7 @@ export type {
     EIP712Domain,
     FigaroAddresses,
     BondBreakdown,
-    SettlementBreakdown,
+    ResolutionBreakdown,
     AgentProcessContext,
     AgentOrderContext,
     ClauseRegisteredEvent,
@@ -104,7 +104,7 @@ export {
     fetchCoreEvents,
     fetchAttestationRecords,
     tagAttestationUniverses,
-    type SettlementUniverse,
+    type ResolutionUniverse,
     type UniverseAttestationEvent,
 } from "./events.js";
 
@@ -169,7 +169,7 @@ export type { CommitmentParams } from "./commitments.js";
 // Bond calculator
 export {
     calculateBonds,
-    calculateSettlement,
+    calculateResolution,
     calculateRootApproval,
     calculateSubOrderApproval,
     validateBonds,

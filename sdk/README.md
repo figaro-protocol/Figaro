@@ -307,7 +307,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `calculateBonds` | root | `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment`. |
 | `KERNEL_EQUILIBRIUM` | root | The kernel's equilibrium stated once (`sdk/src/equilibrium.json`): bonds, payoffs on both bases, the outcome table, the deterrent gap, the hypotheses, the worked example — render numbers from it, never retype them; the paper owns the theorem. |
 | `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
-| `calculateSettlement` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
+| `calculateResolution` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
 | `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
 | `canonicalContentHash` | root | `keccak256` over the canonical serialization — the digest the registries anchor. |
 | `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
@@ -377,7 +377,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalogue. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labelled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
-| `projectSettlementGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into the kernel's LINEAR per-process chains. |
+| `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into the kernel's LINEAR per-process chains. |
 | `projectValueFlow` | `/derive` | Denomination nodes and flow edges; venue legs are caller-parsed, so no venue list is bundled. |
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
@@ -453,7 +453,7 @@ import {
   fetchCoreEvents,
   reconstruct,
   calculateBonds,
-  calculateSettlement,
+  calculateResolution,
   buildCommitment,
   buildDomain,
   Topology,
@@ -526,7 +526,7 @@ const bonds = calculateBonds(cumulativeValue, payment);
 // And what those locked funds become once the buyer resolves. This is the
 // arithmetic to assert your balance deltas against — read the balances out of
 // band after the resolve, never off the screen that claims to have moved them.
-const settlement = calculateSettlement(payment, bonds.sellerBond, bonds.buyerBond);
+const resolution = calculateResolution(payment, bonds.sellerBond, bonds.buyerBond);
 // → { sellerPayout: payment + sellerBond,   // bond back, plus the payment
 //     buyerPayout:  buyerBond − payment,    // bond back, minus the payment
 //     netTransfer:  payment }               // exactly `payment` crosses, and nothing else
@@ -692,7 +692,7 @@ const swapData = encodeFunctionData({
   functionName: "exactOutputSingle",
   args: [{
     tokenIn: inputToken,
-    tokenOut: settlementCurrency,
+    tokenOut: resolutionCurrency,
     fee: 500,                  // the pool's fee tier — quote the tiers, take the cheapest
     recipient: coordinator,
     amountOut: bondAmount,
@@ -1313,13 +1313,13 @@ an institution-level claim.
 ```ts
 import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
 import {
-  projectProcessGraph, projectSettlementGraph, extractOverlays, projectValueFlow,
+  projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
   marketShape, walletRecord,
 } from "@figaro-protocol/sdk/derive";
 
 const core = await fetchCoreEvents(client, addresses, BigInt(record.deploymentBlock));
 const process    = projectProcessGraph(core);      // boundary: "protocol-enforced"
-const settlement = projectSettlementGraph(core);   // boundary: "protocol-enforced"
+const resolution = projectResolutionGraph(core);   // boundary: "protocol-enforced"
 
 // Overlays: ONE per attestable clause family the corpus actually contains.
 // fetchAttestationRecords folds BOTH resolution paths and tags each row;
@@ -1333,7 +1333,7 @@ const overlays = extractOverlays(atts.map((event) => ({ event, content: null }))
 // Composition: venue events are parsed by YOU against the venue's own ABI
 // (resolved from the deployment record or a clause field) — nothing bundles a
 // venue list, and a venue this code has never seen feeds the same shape.
-const valueFlow = projectValueFlow(settlement, swapLegs, pins);
+const valueFlow = projectValueFlow(resolution, swapLegs, pins);
 
 // Queries are thin folds over the graphs. Assembly attribution is
 // CALLER-SUPPLIED: a process you cannot key is reported in
@@ -1975,7 +1975,7 @@ registration at all.
     `posture: "buyer" | "seller"` says which side the member co-produced the data on — members hold both, on the same terms structure. `offered` is the
     toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
     (absent = any counterparty, once offered); `calendar` says when
-    (`{ embargoDaysAfterSettlement?, notBefore?, notAfter? }`). Prices never
+    (`{ embargoDaysAfterResolution?, notBefore?, notAfter? }`). Prices never
     appear here — a data product is priced as an item in the member's own
     catalogue (fixed | rate), the item referencing the class via `dataSold`.
     Field absent = the paper-contract default: each party holds its own
@@ -2177,7 +2177,7 @@ const profile = {
   name: "Survey operator",
   catalogueURI: "ipfs://…",
   disclosurePolicy: [{ ...dataOffer, offered: true,
-                       calendar: { embargoDaysAfterSettlement: 30 } }],
+                       calendar: { embargoDaysAfterResolution: 30 } }],
 };
 const catalogue = {
   subjectAddress: me, version: "1",

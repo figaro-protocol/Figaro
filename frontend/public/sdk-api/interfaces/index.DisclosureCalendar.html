@@ -17,7 +17,7 @@ All fields optional; an absent calendar means &quot;immediately, once
 offered&quot;. The canonical use is the resolution embargo: the data
 opens N days after the process it belongs to resolves.</p>
 </div></section>
-<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">DisclosureCalendar</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#embargodaysaftersettlement">embargoDaysAfterSettlement</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#notafter">notAfter</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#notbefore">notBefore</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">DisclosureCalendar</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#embargodaysafterresolution">embargoDaysAfterResolution</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#notafter">notAfter</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#notbefore">notBefore</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L141">sdk/src/memberProfile.ts:141</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
@@ -27,7 +27,7 @@ opens N days after the process it belongs to resolves.</p>
 <div class="tsd-accordion-details">
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-index-list"><a href="#embargodaysaftersettlement" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>embargo<wbr/>Days<wbr/>After<wbr/>Settlement?</span></a>
+<div class="tsd-index-list"><a href="#embargodaysafterresolution" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>embargo<wbr/>Days<wbr/>After<wbr/>Resolution?</span></a>
 <a href="#notafter" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>not<wbr/>After?</span></a>
 <a href="#notbefore" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>not<wbr/>Before?</span></a>
 </div></section></div></details></section></section>
@@ -35,8 +35,8 @@ opens N days after the process it belongs to resolves.</p>
 <h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
 <section>
 <section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="embargodaysaftersettlement"><code class="tsd-tag">Optional</code><span>embargo<wbr/>Days<wbr/>After<wbr/>Settlement</span><a href="#embargodaysaftersettlement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">embargoDaysAfterSettlement</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div>
+<h3 class="tsd-anchor-link" id="embargodaysafterresolution"><code class="tsd-tag">Optional</code><span>embargo<wbr/>Days<wbr/>After<wbr/>Resolution</span><a href="#embargodaysafterresolution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">embargoDaysAfterResolution</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>Days after the record's process resolves before disclosure opens.</p>
 </div><aside class="tsd-sources">
 <ul>
@@ -71,7 +71,7 @@ opens N days after the process it belongs to resolves.</p>
 <h3>On This Page</h3></summary>
 <div class="tsd-accordion-details">
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
-<div><a href="#embargodaysaftersettlement"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>embargo<wbr/>Days<wbr/>After<wbr/>Settlement</span></a><a href="#notafter"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>not<wbr/>After</span></a><a href="#notbefore"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>not<wbr/>Before</span></a></div></details></div></details></div>
+<div><a href="#embargodaysafterresolution"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>embargo<wbr/>Days<wbr/>After<wbr/>Resolution</span></a><a href="#notafter"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>not<wbr/>After</span></a><a href="#notbefore"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>not<wbr/>Before</span></a></div></details></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="/" class="tsd-nav-link">Site</a><a href="/spec" class="tsd-nav-link">Build</a></nav>
 <nav class="tsd-navigation"><a href="../modules.html">@figaro-protocol/sdk</a>

@@ -141,7 +141,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `@figaro-protocol/sdk` `projection.ts` | — | `/assemblies` → What the composition hash covers. | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `/s/checkout` (`CheckoutView` + `CartLineList`); `YourTurnBadge` (header signal for orders awaiting this wallet's counter-signature) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/assemblies` → How one is composed. | `TopologyCanvas` (`/assemblies/designer/new`, `/assemblies/designer/view?slug=<slug>`) | — |
-| **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/spec` → Kernel (`FigaroCore.sol`) | checkout/order surfaces render via the SDK | — |
+| **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateResolution` | `/spec` → Kernel (`FigaroCore.sol`) | checkout/order surfaces render via the SDK | — |
 | **Single-currency binding** | `src/kernel/FigaroCore.sol` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
 | **Fee-on-transfer rejection** | `src/kernel/FigaroCore.sol` `_pullExact()` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
 
@@ -151,7 +151,7 @@ This section tracks features that are not protocol invariants but are significan
 
 Four models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 8
 invariants are the E-6 rows), `WitnessSwapAndCommitCoordinator.tla` and
-`SettlementUniverses.tla` (both detailed below; harness inventory + state counts:
+`ResolutionUniverses.tla` (both detailed below; harness inventory + state counts:
 `TESTING.md` § TLA+).
 
 ### Model file: `formal/FigaroCore.tla`
@@ -221,7 +221,7 @@ assumed away — it is the modeled attack (`Inv_WitnessRouteBinding`).
 Mutation-checked: 6 deliberate Next-relation bugs, each caught by exactly its
 target invariant.
 
-### Model file: `formal/SettlementUniverses.tla`
+### Model file: `formal/ResolutionUniverses.tla`
 
 The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier + UsageCounter +
 the off-chain guest kernel under arbitrary interleavings — the only harness that
@@ -240,7 +240,7 @@ Both assumptions ship TRUE in the `.cfg`; flipping either to FALSE is the
 model's experiment and is EXPECTED to fail. Mutation-checked: 5 mutations + 7
 non-vacuity witnesses, each caught.
 
-Known cost, accepted: `SettlementUniverses.cfg` ships `MinSellers=1`; the
+Known cost, accepted: `ResolutionUniverses.cfg` ships `MinSellers=1`; the
 minimum-support floor case runs as a second green pass at `MinSellers=2`
 (both at once needs >31M states). `AssumeAccrualGatesAligned` is not
 contract-enforced — a dropped batch's accrual is forgone at process granularity,

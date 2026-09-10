@@ -73,8 +73,8 @@ describe("proposeActions", () => {
             expect(resolve.settlements).toHaveLength(1);
             // payment=100, sellerBond=2*100=200, buyerBond=2*100=200
             // sellerPayout = 100+200 = 300, buyerPayout = 200-100 = 100
-            expect(resolve.settlements[0].settlement.sellerPayout).toBe(300n);
-            expect(resolve.settlements[0].settlement.buyerPayout).toBe(100n);
+            expect(resolve.settlements[0].resolution.sellerPayout).toBe(300n);
+            expect(resolve.settlements[0].resolution.buyerPayout).toBe(100n);
             expect(resolve.totalSellerPayout).toBe(300n);
             expect(resolve.totalBuyerPayout).toBe(100n);
         }

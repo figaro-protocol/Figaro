@@ -42,7 +42,7 @@ function corpus(over: Partial<GraphCorpus> = {}): GraphCorpus {
     return {
         chainId: 31337,
         process: { boundary: "protocol-enforced", processes: new Map() },
-        settlement: { boundary: "protocol-enforced", chains: new Map() },
+        resolution: { boundary: "protocol-enforced", chains: new Map() },
         overlays: [],
         valueFlow: { boundary: "composition-derived", nodes: [], edges: [] },
         market: { boundary: "protocol-derived", groups: new Map(), unattributedProcessCount: 0 },

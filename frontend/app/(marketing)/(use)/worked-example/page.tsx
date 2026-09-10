@@ -103,9 +103,9 @@ export default function WorkedExample() {
 
             <MarketingSection title="How it runs, and how it ends.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Work moves over the encrypted hand-off channel the assembly composes, one per
+                    Work moves over the encrypted handoff channel the assembly composes, one per
                     order: the contributor delivers to the lead, the lead delivers to the buyer,
-                    each hand-off attested against its own order. Nobody supervises anybody. The
+                    each handoff attested against its own order. Nobody supervises anybody. The
                     lead has its own bond riding on the contributor&apos;s delivery and the
                     contributor has its own riding on the lead&apos;s &mdash; and nobody is paid
                     until the buyer resolves, so a leg that falls short is one the other party
@@ -145,7 +145,7 @@ export default function WorkedExample() {
                     And this assembly is one shape, published early, by one author. What the
                     protocol is built to reward is the next one: whoever composes the shape a
                     market ends up trading through draws from the reserve set aside for exactly
-                    that (<Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards for designers</Link>).
+                    that (<Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>).
                     The worked example is a start, not a catalogue.
                 </p>
             </MarketingSection>

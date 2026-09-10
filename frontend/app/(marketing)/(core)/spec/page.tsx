@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ContractEntry } from "@/components/shared/ContractEntry";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { SettlementPathsFigure } from "@/components/figures/SettlementPathsFigure";
+import { ResolutionPathsFigure } from "@/components/figures/ResolutionPathsFigure";
 import { SystemLayersFigure } from "@/components/figures/SystemLayersFigure";
 import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
 import { GasCrossoverFigure } from "@/components/figures/GasCrossoverFigure";
@@ -51,8 +51,8 @@ const JUMP_LINKS: { href: string; label: string }[] = [
     { href: "#kernel", label: "Kernel" },
     { href: "#attestation", label: "Attestation & clause" },
     { href: "#clause-validation", label: "Clause validation" },
-    { href: "#settlement-paths", label: "The two paths share no state" },
-    { href: "#settlement-costs", label: "What each path costs" },
+    { href: "#resolution-paths", label: "The two paths share no state" },
+    { href: "#resolution-costs", label: "What each path costs" },
     { href: "#sequencer", label: "The sequencer" },
     { href: "#token", label: "Token" },
     { href: "#optional-contracts", label: "Optional protocol contracts" },
@@ -542,8 +542,8 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The two paths share no state." sectionId="settlement-paths">
-                <SettlementPathsFigure className="mb-6" />
+            <MarketingSection title="The two paths share no state." sectionId="resolution-paths">
+                <ResolutionPathsFigure className="mb-6" />
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> share no state and never call each other. The batch path replaces the entire direct lifecycle &mdash; <code>commit</code> and <code>resolveProcess</code> both execute inside the proof &mdash; so <strong>a batch-resolved process never acquires kernel status</strong>: <code>core.orderStatus(orderHash)</code> returns <code>0</code> for it, permanently. The converse holds too: a kernel-resolved process is never inside a batch. There is no migration between the two, and none is planned; the split is the design.
                 </p>
@@ -551,7 +551,7 @@ function attestViaResolver(
                     <strong>The consequence for anything you build: a gate on <code>orderStatus</code> cannot see batched trade.</strong> Not &ldquo;sees it late&rdquo; &mdash; cannot see it at all. That is already true inside the protocol: <code>AttestationCoordinator</code> requires an ACTIVE order and <code>UsageCounter.recordClauseUsage</code> requires a RESOLVED one, and a batch-resolved process satisfies neither, forever &mdash; which is exactly why the batch proof carries the usage accrual for designer rewards across itself, as proved numbers, into <code>UsageCounter.applyBatchAccrual</code>. That accrual is the <em>only</em> thing that crosses. No status, no process entry, no attestation state. This is the sharpest read-time trap in the protocol and it fails silently &mdash; it is catalogued as such, with the rest, on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-4">
-                    The split is exhaustively model-checked, not just asserted: <a href="https://github.com/figaro-protocol/Figaro/blob/main/formal/SettlementUniverses.tla" target="_blank" rel="noopener noreferrer" className="underline"><code>formal/SettlementUniverses.tla</code></a> treats <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> as one composed system across every interleaving and checks 21 invariants &mdash; among them that no order resolves in both universes and that a batch-resolved order never flips a kernel status.
+                    The split is exhaustively model-checked, not just asserted: <a href="https://github.com/figaro-protocol/Figaro/blob/main/formal/ResolutionUniverses.tla" target="_blank" rel="noopener noreferrer" className="underline"><code>formal/ResolutionUniverses.tla</code></a> treats <code>FigaroCore</code> and <code>FigaroBatchVerifier</code> as one composed system across every interleaving and checks 21 invariants &mdash; among them that no order resolves in both universes and that a batch-resolved order never flips a kernel status.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     So &ldquo;is this resolved?&rdquo; is answered by a different contract on each path. Ask the right one:
@@ -613,7 +613,7 @@ function attestViaResolver(
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="What each path costs &mdash; and when the direct path is simply correct." sectionId="settlement-costs">
+            <MarketingSection title="What each path costs &mdash; and when the direct path is simply correct." sectionId="resolution-costs">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
                     Two costs, and neither falls where a platform&apos;s would. Proving is the <strong>relay operator&apos;s</strong> (a sequencer, below), paid once per batch and never once per order &mdash; nothing in the protocol passes it through to a buyer or a seller. Gas on <code>settleBatch</code> is paid by whoever submits it. The <em>direct</em> path carries neither: no prover, no relay, no proving host at all. Which of the two is cheaper for you is a volume question, and the numbers below are what it turns on.
                 </p>
@@ -765,7 +765,7 @@ function attestViaResolver(
                         title="RpgfMinter.sol"
                         href={`${GH}/rpgf/RpgfMinter.sol`}
                         meta="600M · decentralized, permissionless"
-                        desc="Designer rewards: pays the designers of record from a 600M-florin reserve, pro rata to real recorded usage. Nine annual accrual periods; the rising-budget schedule and the scoring formula are not re-derived here — see RPGF rewards. The claim unit is the PERIOD: claim(periodId, clausesOrAssemblies) pays from periodAmount[periodId] and requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. This contract knows only periods and their budgets, and its budget array is validated against UsageCounter.periodCount() at deploy so the two schedules cannot drift. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the clause's or assembly's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per period, every clause or assembly passed in that call (duplicate-free) and each verified against its own registry. Decentralized and permissionless: no pause, no sweep, no claim expiry; the budget is bounded twice (minted[periodId] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
+                        desc="Designer rewards: pays the designers of record from a 600M-florin reserve, pro rata to real recorded usage. Nine annual accrual periods; the rising-budget schedule and the scoring formula are not re-derived here — see Designer Rewards. The claim unit is the PERIOD: claim(periodId, clausesOrAssemblies) pays from periodAmount[periodId] and requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. This contract knows only periods and their budgets, and its budget array is validated against UsageCounter.periodCount() at deploy so the two schedules cannot drift. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the clause's or assembly's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per period, every clause or assembly passed in that call (duplicate-free) and each verified against its own registry. Decentralized and permissionless: no pause, no sweep, no claim expiry; the budget is bounded twice (minted[periodId] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
                     />
                     <ContractEntry
                         id="daoTreasury"
@@ -781,7 +781,7 @@ function attestViaResolver(
                     />
                 </ul>
                 <p className="text-sm text-ink-muted mt-4">
-                    The designer-rewards schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">Rewards for designers</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
+                    The designer-rewards schedule and its scoring formula are catalogued once, on <Link href="/rpgf" className="underline">Designer Rewards</Link> &mdash; this page states the contract surface (functions, events, storage), not the schedule.
                 </p>
             </MarketingSection>
 

@@ -47,7 +47,7 @@ export default function Join() {
                     You need a wallet. A wallet is an app that holds your tokens and signs for you; you alone hold its key, any standard EVM wallet works, and there is no Figaro-specific one to install.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Selling then asks for something the registration stake does not: on every trade you take, your wallet locks twice the value that trade has accumulated at your link &mdash; a bond, not a charge, held only while the trade is open, refunded whole when the buyer closes it, and paid to nobody.
+                    Selling then asks for something the registration stake does not: on every trade you take, your wallet locks twice the value that trade has accumulated at your link &mdash; a bond, not a charge, held only while the trade is open, refunded whole when the buyer resolves it, and paid to nobody.
                 </p>
                 <div className="overflow-x-auto mb-6">
                     <table className="w-full max-w-2xl text-sm text-left">

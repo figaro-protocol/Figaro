@@ -15,7 +15,7 @@ const EX = EQ.example;
 export const metadata: Metadata = withOg({
     title: "Kernel — Figaro Protocol",
     description:
-        "How a Figaro trade works: both sides lock a bond larger than the payment, so cooperation is the equilibrium; the buyer closes it out; every step is written down permanently.",
+        "How a Figaro trade works: both sides lock a bond larger than the payment, so cooperation is the equilibrium; the buyer resolves it; every step is written down permanently.",
 });
 
 // FigaroCore's mechanism design, and ONLY that: the kernel page never carries
@@ -53,7 +53,7 @@ export default function Kernel() {
                 </table>
             </div>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-A forfeited bond is simply value that is never refunded, locked in the smart contract, reaching no one &mdash; nothing is seized, and nobody judges. The math is what turns walking away into the losing move: whoever walks stands worse off than finishing would have left them &mdash; counting everything they kept &mdash; so long as the rest of the chain performs. And the lock is mutual for as long as it lasts &mdash; until the buyer closes, neither side can reach anything, so a trade nobody closes strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked. In numbers: a buyer that never resolves after delivery keeps what was delivered and leaves its whole bond locked, so it is out of pocket by {EX.outcomes_plain.buyer_out_of_pocket_after_delivery}; a seller that holds out forfeits {EX.outcomes_plain.seller_forfeits_on_holdout}.
+A forfeited bond is simply value that is never refunded, locked in the smart contract, reaching no one &mdash; nothing is seized, and nobody judges. The math is what turns walking away into the losing move: whoever walks stands worse off than finishing would have left them &mdash; counting everything they kept &mdash; so long as the rest of the chain performs. And the lock is mutual for as long as it lasts &mdash; until the buyer resolves, neither side can reach anything, so a trade nobody resolves strands both bonds in the box. The deterrent works on both sides at once, with one difference: whoever walks gave up more than finishing would ever have paid them, while the other side can lose only what they locked. In numbers: a buyer that never resolves after delivery keeps what was delivered and leaves its whole bond locked, so it is out of pocket by {EX.outcomes_plain.buyer_out_of_pocket_after_delivery}; a seller that holds out forfeits {EX.outcomes_plain.seller_forfeits_on_holdout}.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
                 For the trade&apos;s duration the bonded tokens stand idle. That is the honest price, and it weighs heaviest on whoever has the least to spare. It is a promise made expensive to break, and it is refunded intact every honest time.
@@ -62,20 +62,20 @@ A forfeited bond is simply value that is never refunded, locked in the smart con
                 Who resolves.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                One rule decides who unlocks the smart contract: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same smart contract, and nothing returns to anyone until the buyer closes. The buyer&apos;s signature is the only thing that releases what is locked. And because nothing resolves until the buyer closes, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade closes.
+                One rule decides who unlocks the smart contract: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same smart contract, and nothing returns to anyone until the buyer resolves. The buyer&apos;s signature is the only thing that releases what is locked. And because nothing resolves until the buyer signs the resolution, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade resolves.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Two mechanisms, not one.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Neither mechanism is the other&apos;s consequence. The bonds are what make cheating lose on any single pair of hands. The one-close rule is what makes many pairs of hands resolve as one trade, all together or not at all. Bonds on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a closer with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the bonds secure each pair, the close resolves the whole &mdash; and the composition is the machine.
+                Neither mechanism is the other&apos;s consequence. The bonds are what make cheating lose on any single pair of hands. The one-resolver rule is what makes many pairs of hands resolve as one trade, all together or not at all. Bonds on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a resolver with nothing locked would simply be an authority, which is the thing this design exists to do without. They compose in that order &mdash; the bonds secure each pair, the resolution carries the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 More than two pairs of hands.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Most real work is not two people. The same move repeats: every contributor posts their own bond, each bonding against everything already added ahead of them, and the buyer&apos;s single all-or-nothing close holds the whole chain together &mdash; every bond is refunded, or none is. So each contributor has a direct, bond-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a trade is a property of the trade somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
+                Most real work is not two people. The same move repeats: every contributor posts their own bond, each bonding against everything already added ahead of them, and the buyer&apos;s single all-or-nothing resolution holds the whole chain together &mdash; every bond is refunded, or none is. So each contributor has a direct, bond-backed reason to want everyone else to deliver. Nothing new arrives as the chain lengthens &mdash; no coordinator, no second mechanism, nothing further to trust: it is the same two-party arithmetic run once per link, so how many hands are in a trade is a property of the trade somebody composed, never of the machine that secures it. A lead freelancer with two contributors, or six parties moving a container from shipper to consignee, is this one move repeated; the chains published as reusable shapes are listed on{" "}
                 <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">
                     Assemblies
                 </Link>

@@ -128,7 +128,7 @@ export default function LocalCommercePage() {
                 <dl className="space-y-4 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">You, the buyer</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">You start the trade, you bond double on every leg of it, and you alone close it. Everyone else&apos;s payday waits on your confirmation &mdash; which is exactly why the whole chain works to earn it.</dd>
+                        <dd className="text-ink-body leading-relaxed mt-1">You start the trade, you bond double on every leg of it, and you alone resolve it. Everyone else&apos;s payday waits on your confirmation &mdash; which is exactly why the whole chain works to earn it.</dd>
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">The merchant</dt>

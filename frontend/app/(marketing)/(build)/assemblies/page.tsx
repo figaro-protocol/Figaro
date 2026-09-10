@@ -52,7 +52,7 @@ export default function Assemblies() {
 
             <MarketingSection title="How one is composed.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every assembly carries three mandatory clauses automatically: commerce terms, the payment and the denomination committed at buy time; order topology, which seller follows which; and assembly provenance &mdash; the record of which assembly a process instantiates, which is what credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, hand-off, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
+                    Every assembly carries three mandatory clauses automatically: commerce terms, the payment and the denomination committed at buy time; order topology, which seller follows which; and assembly provenance &mdash; the record of which assembly a process instantiates, which is what credits its designer. From there, an author composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, handoff, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
                 </p>
                 <DesignGraphCollapseFigure
                     idPrefix="assemblies-design-collapse"
@@ -225,7 +225,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 </p>
                 <RegistryCountLink family="assemblies" />
                 <p className="text-sm text-ink-body leading-relaxed mt-6">
-                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when resolved trades run through an assembly, its designer of record draws a share of the florins reserved for designers. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Rewards for designers</Link>.
+                    Drawing a shape once is work the whole network reuses, and the protocol pays for it after the fact: when resolved trades run through an assembly, its designer of record draws a share of the florins reserved for designers. The formula, the schedule, and the two conditions it carries are on <Link href="/rpgf" className="underline">Designer Rewards</Link>.
                 </p>
             </MarketingSection>
 

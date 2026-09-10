@@ -30,7 +30,7 @@ export default function CoreDoor() {
                     <CtaLink href="/spec">Read the spec</CtaLink>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
-                    <p className="text-sm text-ink-body leading-relaxed">commit: two signatures, two bonds, each twice the payment.</p>
+                    <p className="text-sm text-ink-body leading-relaxed">commit: two signatures, two bonds &mdash; the buyer&apos;s twice the payment, a seller&apos;s twice the value through its order.</p>
                     <p className="text-sm text-ink-body leading-relaxed">resolveProcess: the buyer&apos;s one call pays every seller and refunds every bond &mdash; the buyer&apos;s less the payments it carried.</p>
                     <p className="text-sm text-ink-body leading-relaxed">Decentralized and permissionless: frozen code, one ERC-20 per process compared against itself, the whole payment to the seller.</p>
                 </div>
@@ -62,7 +62,7 @@ export default function CoreDoor() {
             </MarketingSection>
             <MarketingSection title="Proven.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Cooperating is each side&apos;s best move, machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis on every commit. Not yet audited by an outside firm. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
+                    Cooperating is each side&apos;s best move, machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis on every commit. Not yet audited by an outside firm. <Link href="/invariants" className="text-ink-heading font-medium hover:underline">The six invariants</Link> &middot; <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Build on it.">
