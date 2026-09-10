@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Agents — Figaro Protocol",
     description:
-        "A wallet is a wallet. The kernel checks a signature, not who made it, so software holding a key trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.",
+        "A wallet is a wallet. The kernel checks a signature, not who made it, so software that signs trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.",
 });
 
 // THE AGENTS DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function AgentsDoor() {
                 title="Figaro: agents trade, publish, and operate on the same terms as people"
                 lead={
                     <>
-                        A wallet is a wallet. The kernel checks a signature, not who made it, so software holding a key trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.
+                        A wallet is a wallet. The kernel checks a signature, not who made it, so software that signs trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.
                     </>
                 }
             />

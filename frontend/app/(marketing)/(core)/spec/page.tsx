@@ -400,7 +400,7 @@ export default function Specifications() {
                 title="The canonical surface."
                 lead={
                     <>
-                        Every contract is a permissionless primitive. No contract belongs to a dapp. Solidity 0.8.26. Source-available at{" "}
+                        Every contract is a permissionless primitive. No contract belongs to a dapp. Solidity 0.8.26. MIT, at{" "}
                         <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">figaro-protocol/Figaro</a>.
                     </>
                 }
