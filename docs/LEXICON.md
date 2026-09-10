@@ -32,7 +32,7 @@ Nouns and their definitions. One name per thing.
 
 **community token** — A community's own token used as a denomination, so value spent through processes elsewhere sustains its worth at home.
 
-**composition** — Plugging a process into another contract on the chain: a swap, a payment splitter, an arbitration forum. Composition is what makes the protocol a network instead of a silo.
+**composition** — How anything here is built, on both sides of the core. Internal: clauses composed into agreements, agreements into assemblies, assemblies instantiated as processes — the designer's act, over the core without touching it. External: plugging a process into another contract on the chain — a swap, a payment splitter, a dispute resolution forum. Composition is what makes the protocol a network instead of a silo.
 
 **consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the kernel is what makes it hold.
 
