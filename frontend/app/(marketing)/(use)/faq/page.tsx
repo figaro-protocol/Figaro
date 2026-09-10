@@ -283,7 +283,7 @@ export default function Faq() {
 
             <MarketingSection title="Has the code been audited?" sectionId="verification">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (seven independent benches), the external-audit posture, and how to verify any trade yourself are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. Results will be published there when they exist.
+                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (seven independent benches) and the external-audit posture are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>; how to verify any trade yourself is the two checks under <Link href="#signing" className="text-ink-heading font-medium hover:underline">signing</Link>, below. Results will be published there when they exist.
                 </p>
             </MarketingSection>
 

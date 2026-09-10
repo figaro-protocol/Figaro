@@ -23,7 +23,7 @@ export default function DesignerRewards() {
                 title="Paid for what the network uses."
                 lead={
                     <>
-                        Write a clause, publish an assembly, and when resolved trade reaches for it you draw a share of 600 million florins &mdash; sixty percent of every florin that will ever exist &mdash; by a published formula anyone can check. Nobody applies, nobody decides, and nothing is taken from anyone to pay for it. Two conditions, up front: on each resolution path, a year that closes with fewer than three distinct sellers using your work scores nothing there &mdash; the floor defers the count, never destroys it &mdash; and a trade counts only if the seller who delivered it holds a live registration stake at the moment it is recorded, and you hold yours when you claim.
+                        Write a clause, publish an assembly, and when resolved trade reaches for it you draw a share of 600 million florins &mdash; sixty percent of every florin that will ever exist &mdash; by a published formula anyone can check. Nobody applies, nobody decides, and nothing is taken from anyone to pay for it. Two conditions, up front: on each resolution path, a year that closes with fewer than three distinct sellers using your work pays nothing for what was recorded in it &mdash; though a trade not yet recorded waits: recording is the designer&apos;s own act, open in any later period through the ninth &mdash; and a trade counts only if the seller who delivered it holds a live registration stake at the moment it is recorded, and you hold yours when you claim.
                     </>
                 }
             />
