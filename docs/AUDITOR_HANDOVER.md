@@ -147,7 +147,7 @@ figures are not.
 
 ### Mutation testing
 
-Run 2026-09-07 with Trail of Bits' `mewt` 4.0.0 over the kernel, high and
+Run 2026-09-07 through 2026-09-10 with Trail of Bits' `mewt` 4.0.0, high and
 medium severity mutations (statement removal, error replacement, condition
 forcing, negation removal, return-default), the kernel's own test files as the
 oracle and the gas-anchor tests excluded so a catch means behaviour:
@@ -161,6 +161,7 @@ oracle and the gas-anchor tests excluded so a catch means behaviour:
 | `ClauseRegistry.sol` | 59 | 59 | 0 |
 | `AssemblyRegistry.sol` | 43 | 43 | 0 |
 | `MembersRegistry.sol` | 63 | 63 | 0 |
+| `AttestationCoordinator.sol` | 60 | 60 | 0 |
 
 The four survivors, each read: two remove or force the `DuplicateCommitment`
 guard at `commit`, which is the documented unreachable backstop (every replay is
@@ -178,6 +179,12 @@ externally-owned account, which accepts a zero-value call as readily as no call 
 `test_zeroDeposit_contractThatRejectsEtherStillWithdraws` registers a contract member whose
 `receive` reverts, so an unconditional transfer strands its de-listing behind a transfer it
 never asked for.
+
+The attestation coordinator's run left one survivor on first pass, real, now caught.
+Removing the merkle-inclusion check on the resolver path went unnoticed because the
+inclusion gate had revert tests on the seller and buyer paths only:
+`test_attestViaResolver_revertsOnClauseNotInAgreement` now shows an authorized resolver
+is bound to the signed agreement exactly as the parties are.
 
 The batch verifier's run left two survivors on first pass, both real, both now caught.
 Removing the `verifier.verifyProof` call went unnoticed because the mock verifier accepted
@@ -453,7 +460,7 @@ mutation-testing campaign has covered the whole scope.
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Behaviors to surface". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
 | Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
-| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; mutation testing run on the kernel (§ "Mutation testing"), the rest of the scope to follow. |
+| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in scope has a test that asserts its error; the four assembly hash packers are differentially fuzzed against their `abi.encodePacked` mirrors; mutation testing run over the kernel, the batch verifier, the three registries, the usage/rewards pair, and the attestation coordinator (§ "Mutation testing"); the swap coordinator and the florin token to follow. |
 
 ### The L2BEAT risk categories, applied to the batch path
 

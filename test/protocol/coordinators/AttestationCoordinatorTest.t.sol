@@ -747,6 +747,21 @@ contract AttestationCoordinatorTest is Test {
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, keccak256("tampered"), _emptyProof(), EMPTY);
     }
 
+    /// @dev Same merkle gate from the resolver path: an authorized resolver
+    ///      is bound to the signed agreement exactly as the parties are — a
+    ///      clause that is not a leaf of it cannot be attested under.
+    function test_attestViaResolver_revertsOnClauseNotInAgreement() public {
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 4, LIFECYCLE_CLAUSE, "");
+        vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
+        vm.prank(seller2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
+            )
+        );
+        coordinator.attestViaResolver(c, UNUSED_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
+    }
+
     function test_contentRefIsKeccakOfContent() public {
         (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 3, LIFECYCLE_CLAUSE, "");
         bytes memory content = "arbitrary-content-bytes";
