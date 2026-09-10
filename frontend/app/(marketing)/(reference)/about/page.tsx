@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Who is behind Figaro — Figaro Protocol",
     description:
-        "Nothing is hidden, and it does not matter: Figaro is a pseudonym, the way the creator of Bitcoin used one. What counts is what anyone can verify — the code, the proofs, the chain — and the objective: permissionless, decentralized trade on a blockchain.",
+        "Figaro is a pseudonym, the way the creator of Bitcoin used one. What stands behind the protocol is what anyone can verify — the code, the proofs, the chain — and the objective: permissionless, decentralized trade on a blockchain.",
 });
 
 // FOOTER CHROME, never a door: the answer to "who is behind this", which every
@@ -21,7 +21,7 @@ export default function About() {
                 title="Who is behind Figaro."
                 lead={
                     <>
-                        Nothing is hidden, and it does not matter. Figaro is a pseudonym, the way the creator of Bitcoin used one. Whoever wants to find out can; nothing about the protocol depends on the answer. What counts is what anyone can verify without asking: the code, the proofs, and the chain.
+                        Figaro is a pseudonym, the way the creator of Bitcoin used one. Who holds it changes nothing a participant relies on: the contracts are decentralized and permissionless, and no holder of the name can reach into a trade. What stands behind the protocol is what anyone can verify without asking: the code, the proofs, and the chain.
                     </>
                 }
             />
@@ -37,7 +37,7 @@ export default function About() {
                     Permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade; the bond is twice the payment, and for each seller in a chain twice the value the trade has accumulated through its link, so breaking the trade costs more than keeping it, and no bank, platform, court, lawyer, boss, or company is needed to enforce it. A court, if it comes to that, rules afterwards on the same data; nothing reaches into the trade. The seller receives the whole payment. The buyer and the seller keep their own data and their own agreements. Anyone with a wallet can trade, in any ERC-20 token. Anyone can publish the terms of an agreement and be rewarded based on its use; the reward is in florins, the protocol&apos;s native token.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl mt-5">
-                    What matters is that it is safe to build on, and that nobody has to be a software engineer to use it. With the barrier to a clause, an agreement, or an assembly this low, just about anyone can change an industry, a process, or a market with very little investment, and keep doing so. Figaro is built for the young generations to rebuild the Internet in a self-sovereign manner.
+                    The design is measured by two things: safe to build on, and usable without being a software engineer. A clause, an agreement, or an assembly takes a wallet, a spec, and a reclaimable stake &mdash; a barrier low enough that one designer can change how an industry, a process, or a market coordinates, and keep doing so. Figaro is built for the generations that will rebuild the Internet self-sovereign: every wallet its own, every agreement its parties&apos;, every record verifiable by anyone.
                 </p>
             </MarketingSection>
 
