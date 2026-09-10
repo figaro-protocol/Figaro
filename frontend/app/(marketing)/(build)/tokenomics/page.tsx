@@ -22,7 +22,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Tokenomics — Figaro Protocol",
     description:
-        "The florin: one billion, minted once, closed by a one-way latch. Who holds what and on what terms — 70 million founders, 30 million supporters, 300 million the DAO treasury, 600 million reserved for the designers whose clauses and assemblies get used — and where the florin sits among the units a trade can be denominated in.",
+        "The florin: one billion, minted once, closed by a one-way latch. Who holds what and on what terms — 70 million the founder, 30 million supporters, 300 million the DAO treasury, 600 million reserved for the designers whose clauses and assemblies get used — and where the florin sits among the units a trade can be denominated in.",
 });
 
 export default function Tokenomics() {
@@ -32,7 +32,7 @@ export default function Tokenomics() {
                 title="One billion florins, and where every one of them sits."
                 lead={
                     <>
-                        The florin is the protocol&apos;s own token: a unit two strangers can converge on when they share no other. One billion is the cap, written into the token contract itself, and the ability to add a minter was given up in the same run that used it &mdash; nothing more will ever be created. Nine tenths point at the people who extend the network: 600 million reserved for whoever writes the clauses and composes the assemblies real trade reaches for, 300 million held by the DAO. The remaining tenth is held openly &mdash; 70 million founders, 30 million supporters &mdash; and stated here rather than left to be found. Nothing on this page is sold, priced, or promised: no florin earns yield, no florin is taken from anyone, and no florin votes on anyone&apos;s trade.
+                        The florin is the protocol&apos;s own token: a unit two strangers can converge on when they share no other. One billion is the cap, written into the token contract itself, and the ability to add a minter was given up in the same run that used it &mdash; nothing more will ever be created. Nine tenths point at the people who extend the network: 600 million reserved for whoever writes the clauses and composes the assemblies real trade reaches for, 300 million held by the DAO. The remaining tenth is held openly &mdash; 70 million the founder, 30 million supporters &mdash; and stated here rather than left to be found. Nothing on this page is sold, priced, or promised: no florin earns yield, no florin is taken from anyone, and no florin votes on anyone&apos;s trade.
                     </>
                 }
             />
@@ -62,7 +62,7 @@ export default function Tokenomics() {
                         </thead>
                         <tbody className="text-ink-body">
                             <tr className="border-b border-default">
-                                <td className="py-2 pr-4">Founders</td>
+                                <td className="py-2 pr-4">Founder</td>
                                 <td className="py-2 pr-4">7%</td>
                                 <td className="py-2 pr-4">70,000,000</td>
                                 <td className="py-2">Genesis mint: retroactive financing for the design work already done. No rights of any kind &mdash; no ownership interest, no influence, no vote, no claim on what others produce. No vesting, no lockup.</td>
@@ -71,7 +71,7 @@ export default function Tokenomics() {
                                 <td className="py-2 pr-4">Supporters</td>
                                 <td className="py-2 pr-4">3%</td>
                                 <td className="py-2 pr-4">30,000,000</td>
-                                <td className="py-2">Friends, family, early supporters &mdash; carved out of the founders&apos; share, not the DAO&apos;s. Genesis mint, given, not sold: no ownership interest, no influence, no claim on what others produce. No vesting, no lockup.</td>
+                                <td className="py-2">Friends, family, early supporters. Genesis mint, given, not sold: no ownership interest, no influence, no claim on what others produce. No vesting, no lockup.</td>
                             </tr>
                             <tr className="border-b border-default">
                                 <td className="py-2 pr-4">DAO</td>
@@ -89,7 +89,7 @@ export default function Tokenomics() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A florin is a Schelling point: a unit strangers converge on because others do, and nothing else. It carries no rights of any kind &mdash; no ownership interest in the protocol, no influence over it, no vote, and no claim on the value produced by the work of others. That is as true of the founders&apos; and supporters&apos; florins as of any other. The founders&apos; florins recognise design work done before the token existed, by the founder alone; the supporters&apos; florins were given, not sold; nobody bought either, and every florin is worth something only if the network is used and designers keep adding clauses and assemblies. What a florin is, and why it is not a security, is argued once, in <Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">The Florin: A Schelling-Point Token Issued at Zero</Link>.
+                    A florin is a Schelling point: a unit strangers converge on because others do, and nothing else. It carries no rights of any kind &mdash; no ownership interest in the protocol, no influence over it, no vote, and no claim on the value produced by the work of others. That is as true of the founder&apos;s and supporters&apos; florins as of any other. The founder&apos;s florins recognise design work done before the token existed; the supporters&apos; florins were given, not sold; nobody bought either, and every florin is worth something only if the network is used and designers keep adding clauses and assemblies. What a florin is, and why it is not a security, is argued once, in <Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">The Florin: A Schelling-Point Token Issued at Zero</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Nothing here was sold. There was no sale, no round, and no offer of any kind &mdash; the genesis holdings simply sit in their wallets, which is also why there is no vesting to describe. A vesting cliff exists to protect investors from founders walking away, and there are no investors; adding one would be theater, and it would recruit holders whose reason for holding is a schedule rather than agreement with what is being built.
@@ -98,32 +98,13 @@ export default function Tokenomics() {
                     In place of a schedule there is a standing position, written permanently into the token&apos;s own text: neither the DAO treasury nor the founder will ever sell, buy, or provide liquidity for the florin on any market. The first price is a stranger&apos;s to name.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Two residuals, stated rather than dressed. That stance is a commitment enforced by nothing on chain &mdash; its whole force is that a breach would be permanently legible beside the words. And it covers the founders&apos; 70 million and the treasury&apos;s 300 million only: the supporters&apos; 30 million carries no such stance and is exposed as any holding is. What a florin is worth is a market question, answered by whoever trades one; this project makes no claim about it, and this page is not the place a claim about it will ever appear.
+                    Two residuals, stated rather than dressed. That stance is a commitment enforced by nothing on chain &mdash; its whole force is that a breach would be permanently legible beside the words. And it covers the founder&apos;s 70 million and the treasury&apos;s 300 million only: the supporters&apos; 30 million carries no such stance and is exposed as any holding is. What a florin is worth is a market question, answered by whoever trades one; this project makes no claim about it, and this page is not the place a claim about it will ever appear.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="The reserve grows as the network does.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The 600 million is not held by anyone waiting to be handed out. It is minted only when a designer claims a closed period&apos;s share against use the chain already holds &mdash; nine annual periods, each paying from its own budget, grouped into three rising steps:
-                </p>
-                <div className="overflow-x-auto mb-5">
-                    <table className="w-full max-w-md text-sm text-left">
-                        <thead>
-                            <tr className="border-b border-default text-ink-heading">
-                                <th scope="col" className="py-2 pr-4 font-semibold">Years</th>
-                                <th scope="col" className="py-2 pr-4 font-semibold">Share of the reserve</th>
-                                <th scope="col" className="py-2 font-semibold">Per year</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-ink-body">
-                            <tr className="border-b border-default"><td className="py-2 pr-4">1&ndash;2</td><td className="py-2 pr-4">15% &mdash; 90M</td><td className="py-2">45,000,000</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">3&ndash;5</td><td className="py-2 pr-4">30% &mdash; 180M</td><td className="py-2">60,000,000</td></tr>
-                            <tr><td className="py-2 pr-4">6&ndash;9</td><td className="py-2 pr-4">55% &mdash; 330M</td><td className="py-2">82,500,000</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The shape is deliberate: the largest budgets pay on the most evidence, and the thinnest years &mdash; when there is least to measure &mdash; carry the smallest. Funding the network before there is evidence to measure is the treasury&apos;s job, not the meter&apos;s. How a share is worked out from a period&apos;s usage &mdash; the same rule for every clause and every assembly, no weights, no categories, no per-wallet cap, and nothing taken from anyone to fund it &mdash; is set out on <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for designers</Link>, which owns that mechanism; it is not restated here.
+                    The 600 million is not held by anyone waiting to be handed out. It is minted only when a designer claims a closed period&apos;s share against use the chain already holds &mdash; nine annual periods in three rising steps, ending after the ninth. Funding the network before there is evidence to measure is the treasury&apos;s job, not the meter&apos;s. The schedule itself, and how a share is worked out from a period&apos;s usage &mdash; the same rule for every clause and every assembly, no weights, no categories, no per-wallet cap, and nothing taken from anyone to fund it &mdash; is set out on <Link href="/rpgf" className="text-ink-heading hover:underline">Rewards for designers</Link>, which owns that mechanism; it is not restated here.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Two limits belong beside the schedule. The pool is fixed, so a wallet manufacturing usage dilutes everyone&apos;s share and inflates nothing &mdash; it can never mint a florin that was not already reserved. And the budgets end: after the ninth period nothing renews them &mdash; by design.

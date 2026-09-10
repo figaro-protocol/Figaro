@@ -77,13 +77,13 @@ the initial of Figaro — the visual protocol↔unit bridge.
 
 | Allocation | % | Tokens | Distribution |
 |---|---|---|---|
-| **Founders** | **7%** | **70,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
+| **Founder** | **7%** | **70,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **Supporters** | **3%** | **30,000,000** | Genesis mint to supporters wallet (friends & family / early supporters) — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock**. What the DAO is for: `DAO.md` |
 | **Designer rewards** | **60%** | **600,000,000** | `RpgfMinter` — minted lazily, per period, by claim. Who earns it and on what meter: `DESIGNER_REWARDS.md` |
 | **Total** | **100%** | **1,000,000,000** | |
 
-Founders, supporters, and the DAO receive tokens directly to their wallets at
+The founder, supporters, and the DAO receive tokens directly to their wallets at
 deploy time. The 600M mints only through the `RpgfMinter`'s per-period claims —
 the minter is registered at genesis (before `renounceDeployerMint`, which is
 why it must exist at deploy time), capped at exactly 600M by the FlorinToken
@@ -96,7 +96,7 @@ minter registry.
 
 ### Rationale
 
-- **No vesting for founders, supporters, or DAO.** The code is already
+- **No vesting for the founder, supporters, or DAO.** The code is already
   developed. Vesting protects investors from founders abandoning a project, but
   there are no investors. Adding a vesting cliff would be theater. The DAO
   needs its tokens at genesis to perform its coordination function from day
@@ -107,7 +107,7 @@ minter registry.
   complicates the trust surface.
 
 - **No token sale.** The florin is never sold — not in an ICO, IDO, SAFT, or
-  presale. There is no investment contract. The founders, supporters, and DAO
+  presale. There is no investment contract. The founder, supporters, and DAO
   receive their allocations at genesis.
 
 ---
