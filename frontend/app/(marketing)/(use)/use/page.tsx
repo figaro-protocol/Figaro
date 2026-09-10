@@ -37,7 +37,7 @@ export default function UseDoor() {
             </section>
             <MarketingSection title="What makes it safe.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Before a trade starts, both sides lock a bond of twice the payment in a decentralized, permissionless smart contract. Walking away costs more than finishing, on either side. When the buyer confirms, you are paid and both bonds are refunded. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link>
+                    Before a trade starts, both sides lock a bond of twice the payment in a decentralized, permissionless smart contract. Walking away costs more than finishing, on either side. When the buyer confirms, you are paid in full and your bond comes back whole; the buyer&apos;s comes back less the payment it carried. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="If something goes wrong.">

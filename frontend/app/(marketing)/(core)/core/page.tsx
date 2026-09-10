@@ -31,7 +31,7 @@ export default function CoreDoor() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
                     <p className="text-sm text-ink-body leading-relaxed">commit: two signatures, two bonds, each twice the payment.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">resolveProcess: the buyer&apos;s one call pays every seller and refunds every bond.</p>
+                    <p className="text-sm text-ink-body leading-relaxed">resolveProcess: the buyer&apos;s one call pays every seller and refunds every bond &mdash; the buyer&apos;s less the payments it carried.</p>
                     <p className="text-sm text-ink-body leading-relaxed">Decentralized and permissionless: frozen code, one ERC-20 per process compared against itself, the whole payment to the seller.</p>
                 </div>
             </section>
