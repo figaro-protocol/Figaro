@@ -89,9 +89,8 @@ const SPEC_DESC =
     "position is the first one at which the batch path is cheaper.";
 const SPEC_CAPTION = (
     <>
-        The batch path is an amortization, not a discount: the fixed proof
-        verification is the same ~300k whether two positions carry it or a
-        thousand do.
+        The batch path is an amortization, not a discount: the fixed cost is
+        the same ~333k whether two positions carry it or a thousand do.
     </>
 );
 

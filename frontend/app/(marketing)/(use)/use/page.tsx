@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Use — Figaro Protocol",
     description:
-        "Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet is all it takes.",
+        "Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet and a reclaimable ETH stake are all it takes &mdash; buying needs only the wallet.",
 });
 
 // THE USE DOOR — one of the six landing pages. Its words are the pillar
@@ -21,7 +21,7 @@ export default function UseDoor() {
                 title="Figaro: permissionless, decentralized trade on a blockchain"
                 lead={
                     <>
-                        Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet is all it takes.
+                        Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet and a reclaimable ETH stake are all it takes &mdash; buying needs only the wallet.
                     </>
                 }
             />
@@ -57,7 +57,7 @@ export default function UseDoor() {
             </MarketingSection>
             <MarketingSection title="Your agent, if you want one.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Software holding your key can trade for you, under limits you set. <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
+                    Software can trade for you, under limits you set &mdash; it gets your rules, never your key. <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Anyone.">

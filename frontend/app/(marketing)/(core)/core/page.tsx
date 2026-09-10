@@ -62,7 +62,7 @@ export default function CoreDoor() {
             </MarketingSection>
             <MarketingSection title="Proven.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Cooperating is each side&apos;s best move, machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, and Echidna on every commit. Not yet audited by an outside firm. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
+                    Cooperating is each side&apos;s best move, machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis on every commit. Not yet audited by an outside firm. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Build on it.">

@@ -37,7 +37,7 @@ export default function DataDoor() {
             </section>
             <MarketingSection title="For a regulator.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    What the chain holds is public by construction: every bond locked, every payment transferred, every resolution, timestamped and permanent. The explorer names what is protocol-enforced, what a member declared, and what a disclosure only fingerprints. Nothing here makes anyone compliant; it makes the data checkable. <Link href="/data/yours" className="text-ink-heading font-medium hover:underline">The map</Link>
+                    What the chain holds is public by construction: every bond locked, every payment transferred, every resolution, timestamped and permanent. The explorer names what is protocol-enforced, what a member declared, what a disclosure only fingerprints, and what a composed venue&apos;s own events carry. Nothing here makes anyone compliant; it makes the data checkable. <Link href="/data/yours" className="text-ink-heading font-medium hover:underline">Your data</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="For a court or a forum.">
