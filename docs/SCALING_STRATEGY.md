@@ -1,7 +1,7 @@
 # Scaling Strategy
 
 Two resolution paths, one kernel. The direct path — the kernel's atomic
-`resolveProcess`, per-process ceiling ~1,240 orders at the 30M gas limit — is
+`resolveProcess`, per-process ceiling ~1,240 orders at the 30M gas limit, ~8,260 at Glamsterdam's 200M (the ceiling scales with the block gas limit; the SDK reads it live) — is
 the always-available floor. The batch path is the throughput tier beside it: a
 Rust mirror of the kernel plus a generic clause engine (`prover/lib`,
 `prover/clause`) executes many kernel transitions off-chain, an SP1 guest
