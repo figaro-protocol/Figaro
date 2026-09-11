@@ -20,5 +20,6 @@
         "Site": "/",
         "Build": "/spec"
     },
-    "gitRevision": "main"
+    "gitRevision": "main",
+    "excludeExternals": true
 }

@@ -65,6 +65,16 @@ export default function CoreDoor() {
                     Cooperating is each side&apos;s best move, machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis on every commit. Not yet audited by an outside firm. <Link href="/invariants" className="text-ink-heading font-medium hover:underline">The six invariants</Link> &middot; <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
                 </p>
             </MarketingSection>
+            <MarketingSection title="Implementations.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-4">
+                    What runs the protocol, beside the contracts:
+                </p>
+                <ul className="space-y-2 text-base text-ink-body max-w-2xl">
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The SDK</strong>, <code>@figaro-protocol/sdk</code>: reads the chain, plans and signs commitments, attests, resolves. <Link href="/sdk-api" className="text-ink-heading font-medium hover:underline">API reference</Link></li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The prover</strong>: the batch path&apos;s witness prover, which re-checks every clause against the spec the registry anchors and emits the proof the verifier accepts; the batch verifier above is what checks it.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The ecosystem agents</strong>: an operator, a clause author, an assembly designer, an analyst, each acting for a wallet through the SDK and the signer. <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link></li>
+                </ul>
+            </MarketingSection>
             <MarketingSection title="Build on it.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     MIT. Any EVM chain. Registries, tokens, marketplaces, agents, and data markets are built above this layer by anyone, under their own name. <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">Papers</Link>

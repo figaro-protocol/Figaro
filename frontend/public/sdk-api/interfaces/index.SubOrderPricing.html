@@ -20,7 +20,7 @@ committed line item replay the payment with no reference back to the
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">SubOrderPricing</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#billedquantity">billedQuantity</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#issue">issue</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">&quot;no-item&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;unresolvable-quantity&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#item">item</a><span class="tsd-signature-symbol">:</span> <a href="index.CatalogueItemMetadata.html" class="tsd-signature-type tsd-kind-interface">CatalogueItemMetadata</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#payment">payment</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#resolvedunits">resolvedUnits</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#unitprice">unitPrice</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L501">sdk/src/checkoutPlan.ts:501</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L501">checkoutPlan.ts:501</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -45,14 +45,14 @@ committed line item replay the payment with no reference back to the
 the billed count — per STARTED unit, max(1, ceil(resolvedUnits)).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L510">sdk/src/checkoutPlan.ts:510</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L510">checkoutPlan.ts:510</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="issue"><code class="tsd-tag">Optional</code><span>issue</span><a href="#issue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">issue</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">&quot;no-item&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;unresolvable-quantity&quot;</span></div>
 <div class="tsd-comment tsd-typography"><p>Why the pricing is 0n, when it is.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L518">sdk/src/checkoutPlan.ts:518</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L518">checkoutPlan.ts:518</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="item"><span>item</span><a href="#item" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">item</span><span class="tsd-signature-symbol">:</span> <a href="index.CatalogueItemMetadata.html" class="tsd-signature-type tsd-kind-interface">CatalogueItemMetadata</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></div>
@@ -60,7 +60,7 @@ the billed count — per STARTED unit, max(1, ceil(resolvedUnits)).</p>
 null when the contributor publishes none.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L504">sdk/src/checkoutPlan.ts:504</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L504">checkoutPlan.ts:504</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="payment"><span>payment</span><a href="#payment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
@@ -68,7 +68,7 @@ null when the contributor publishes none.</p>
 unpriceable (no item, or a rate quantity that doesn't resolve).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L507">sdk/src/checkoutPlan.ts:507</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L507">checkoutPlan.ts:507</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="resolvedunits"><span>resolved<wbr/>Units</span><a href="#resolvedunits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">resolvedUnits</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></div>
@@ -76,7 +76,7 @@ unpriceable (no item, or a rate quantity that doesn't resolve).</p>
 — display only; null for fixed items or when unresolvable.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L516">sdk/src/checkoutPlan.ts:516</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L516">checkoutPlan.ts:516</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="unitprice"><span>unit<wbr/>Price</span><a href="#unitprice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">unitPrice</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
@@ -84,7 +84,7 @@ unpriceable (no item, or a rate quantity that doesn't resolve).</p>
 the per-unit rate for rate items.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L513">sdk/src/checkoutPlan.ts:513</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L513">checkoutPlan.ts:513</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -94,8 +94,7 @@ the per-unit rate for rate items.</p>
 <div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
 <ul id="tsd-filter-options">
 <li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
-<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
-<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li></ul></div>
 <div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
 <details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
 <h3>On This Page</h3></summary>
