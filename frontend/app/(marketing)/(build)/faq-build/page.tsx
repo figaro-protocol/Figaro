@@ -25,6 +25,7 @@ const QUESTIONS: { id: string; title: string }[] = [
     { id: "fork", title: "Can I fork an assembly?" },
     { id: "clause-limits", title: "What can a clause not do?" },
     { id: "forum", title: "What does composing a forum into an assembly mean?" },
+    { id: "loss", title: "How do I cover loss or damage?" },
 ];
 
 export default function Faq() {
@@ -156,6 +157,18 @@ export default function Faq() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Kleros is one forum. Any other composes the same way. The catalogue of what composes is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="How do I cover loss or damage?" sectionId="loss">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    A bond secures the trade. What can go wrong after delivery, a hired machine broken, a parcel lost, is another party&apos;s promise. You compose it in.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Two ways. Price a premium into the trade and pay an insurer with it, outside the process. Or fork the assembly and add the insurer as a leg of its own: the insurer bonds like every other seller, is paid at resolution like every other seller, and the cover is part of the trade. The second is the better design. It extends the chain, and the insurer earns inside it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    There is no damage clause, and there will not be one. Damage is not a term of the trade; it is a promise someone else makes, bonded like any other. <Link href="/assemblies/designer" className="text-ink-heading font-medium hover:underline">Designer</Link>
                 </p>
             </MarketingSection>
         </>
