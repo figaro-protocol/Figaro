@@ -42,7 +42,7 @@ instrument.
 - **Not resolution-anchored emission.** The florin is **not minted on
   `resolveProcess`**. There is no per-resolution reward path.
 - **Never market-touched by its issuers.** The market stance is stated
-  indelibly in the contract natspec (`src/florin/FlorinToken.sol`): neither the
+  indelibly in the contract natspec (`src/build/florin/FlorinToken.sol`): neither the
   DAO treasury nor the founder ever sells, buys, or provides liquidity on any
   market; the first price is a stranger's to name.
 
@@ -114,7 +114,7 @@ minter registry.
 
 ## FlorinToken mechanics
 
-`FlorinToken` (`src/florin/FlorinToken.sol`) is an ERC-20 with EIP-2612 permit
+`FlorinToken` (`src/build/florin/FlorinToken.sol`) is an ERC-20 with EIP-2612 permit
 (`ERC20Permit`) and a reentrancy-guarded `mint`. The supply discipline is
 enforced entirely at registration and mint time — there is no admin, no pause,
 no upgrade path.
@@ -138,7 +138,7 @@ no upgrade path.
 - **EIP-2612 permit.** Gasless approvals via the inherited `ERC20Permit`
   (`permit`, `nonces`, `DOMAIN_SEPARATOR`).
 
-`src/florin/IFlorinMinter.sol` is the minimal `mint(address,uint256)` interface,
+`src/build/florin/IFlorinMinter.sol` is the minimal `mint(address,uint256)` interface,
 implemented by `FlorinToken`.
 
 ---

@@ -11,7 +11,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *
  * EVERY STATE AND EDGE verified against the contracts, not against prose:
  *
- * `src/protocol/registries/MembersRegistry.sol`
+ * `src/app/MembersRegistry.sol`
  *  - `register(metadataURI) payable` requires `msg.value == registrationDeposit`
  *    EXACTLY (`InsufficientDeposit`), sets the dedup guard, emits
  *    `MemberRegistered`. A second call reverts `AlreadyRegistered`.
@@ -29,7 +29,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    its cooldown. That is the anti-rage-quit property the contract's own
  *    comment names — without it, one deposit is recyclable across identities.
  *
- * `src/protocol/registries/ClauseRegistry.sol` + `AssemblyRegistry.sol`
+ * `src/build/registries/ClauseRegistry.sol` + `AssemblyRegistry.sol`
  *  - `registerClause(...)` / `registerAssembly(...)` take the exact deposit
  *    (`WrongDeposit`), record `registeredBy`, and are first-write-wins:
  *    `AlreadyRegistered(clauseId)` / `CompositionAlreadyRegistered(hash)`.

@@ -163,7 +163,7 @@ NEVER a signature.**
   exact-match, so a composition whose result is not fixed when both parties sign cannot resolve;
   counterparty-deferring compositions are dead as a class (the auction abandonment).
 - **Placement 2 constraint — exactly one call qualifies.** `FigaroCore.commit` is the only place
-  Figaro itself pulls a named party's ERC-20 (`_pullExact`, `src/kernel/FigaroCore.sol:130-135`), and it
+  Figaro itself pulls a named party's ERC-20 (`_pullExact`, `src/core/kernel/FigaroCore.sol:130-135`), and it
   never checks `msg.sender` — so a coordinator supplies the party's tokens **in place** instead of
   substituting itself, and the commitment stays bilaterally signed
   (`WitnessSwapAndCommitCoordinator` demonstrates the shape). Swap-and-commit is therefore the
@@ -220,7 +220,7 @@ the conversion route bound under the funding party's separate witness signature.
 #### The seller problem is a boundary detector, not a composability defect
 
 Every composition that has failed here put a contract in a **party slot**. The kernel rejects that
-by construction — ECDSA-only recovery (`src/kernel/FigaroCore.sol:161`), no EIP-1271 — and the rejection is
+by construction — ECDSA-only recovery (`src/core/kernel/FigaroCore.sol:161`), no EIP-1271 — and the rejection is
 load-bearing: **a bond prices conduct, and a contract has no conduct to deter.** There is no
 external standard to adopt: EIP-1271, ERC-4337, Safe modules, and hooks all standardize
 contract-as-party, which is precisely what the mechanism design forbids.
@@ -274,7 +274,7 @@ metadata — not through bespoke app forks.)
 
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
   placement, narrative defaults). Composed in `frontend/lib/designer/`, anchored on-chain
-  via `src/protocol/registries/AssemblyRegistry.sol`.
+  via `src/build/registries/AssemblyRegistry.sol`.
 - **Mechanism package** — the reusable unit the runtime composes: contract bindings/writes,
   semantic adapters, capability mappings, default inspector/action modules, guarantee +
   risk copy.

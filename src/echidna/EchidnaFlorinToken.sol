@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {FlorinToken} from "../florin/FlorinToken.sol";
+import {FlorinToken} from "../build/florin/FlorinToken.sol";
 
 /// @title Echidna property-based tests for FlorinToken
 contract EchidnaFlorinToken {

@@ -44,7 +44,7 @@ export interface GasCrossoverFigureProps extends BaseFigureProps {
  *  - `directPerOrder` 167,000 = the ~144k sub-order `commit` marginal plus the
  *    ~23k per-order term of `resolveProcess`. Both constants are
  *    `sdk/src/gasCeilings.ts` (`COMMIT_GAS_PER_ORDER`, `RESOLVE_GAS_PER_ORDER`),
- *    measured on Anvil receipts by `test/kernel/GasCeilingTest.t.sol` and
+ *    measured on Anvil receipts by `test/core/kernel/GasCeilingTest.t.sol` and
  *    lint-pinned across the two. `resolveProcess` also carries a one-time
  *    `RESOLVE_FIXED_OVERHEAD` of 38,000 that this per-order line excludes —
  *    stated on the figure rather than buried, since excluding it FAVOURS the

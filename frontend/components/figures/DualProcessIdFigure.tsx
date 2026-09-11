@@ -33,7 +33,7 @@ export type DualProcessIdFigureProps = Omit<BaseFigureProps, "svgProps">;
  *    process it targets.
  *  - The kernel recomputes `keccak256(abi.encodePacked(processId,
  *    c.hashStruct()))` and reverts `OrderNotCommitted(orderHash)` when the
- *    result is not an active order (`src/kernel/FigaroCore.sol`,
+ *    result is not an active order (`src/core/kernel/FigaroCore.sol`,
  *    `resolveProcess`). Both ids feed that hash, which is why swapping one
  *    silently misses.
  *  - `executeAction` applies the restore to every element; the lower-level

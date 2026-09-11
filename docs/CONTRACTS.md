@@ -1,9 +1,12 @@
 # Smart Contracts — the inventory
 
 Every contract in `src/`. Solidity 0.8.26, Foundry. The directory is the tier
-map — `src/kernel/` · `src/protocol/{registries,coordinators,verifier,usage}/`
-· `src/florin/` · `src/rpgf/` · `src/mocks/` · `src/echidna/` — and the
-sections below mirror it; if they diverge, the filesystem is right.
+map, one directory per layer of the site that presents it — **core** `src/core/{kernel,attestation,verifier}/`
+(FigaroCore and its commitment types, the attestation coordinator, the batch verifier);
+**build** `src/build/{registries,rewards,florin}/` (the clause and assembly registries, the usage
+counter and the minter, the florin); **app** `src/app/` (the members registry and the swap
+coordinator) — plus `src/mocks/` and `src/echidna/`. The test tree and the sections
+below mirror it; if they diverge, the filesystem is right.
 
 **This file is the canonical inventory. A contract not listed here does not
 exist in this repo.** Every contract is a permissionless primitive; none
@@ -42,11 +45,11 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
 - Assembly→clause and seller→assembly relationships are off-chain (assembly
   content, profile bindings) — deliberately absent from this graph.
 
-## Kernel (`src/kernel/`)
+## Kernel (`src/core/kernel/`)
 
 The two frozen contracts. Never edited.
 
-**`src/kernel/FigaroCore.sol`** — Holds every deposit and resolves a process
+**`src/core/kernel/FigaroCore.sol`** — Holds every deposit and resolves a process
 when its buyer signs.
 - Two state-changing entry points: `commit(Commitment c, bytes buyerSig,
   bytes sellerSig)` and `resolveProcess(bytes32 processId, Commitment[]
@@ -66,7 +69,7 @@ when its buyer signs.
 - Decentralized and permissionless: no admin, no pause, no upgrade, no timeout, no third entry point.
   `ReentrancyGuard` on both functions.
 
-**`src/kernel/CommitmentTypes.sol`** — The `Commitment` struct and its EIP-712
+**`src/core/kernel/CommitmentTypes.sol`** — The `Commitment` struct and its EIP-712
 hashing: `{processId, buyer, seller, currency, payment, expectedCumulativeValue,
 agreementHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
 `deadline` bounds the window in which an unconsummated pair of signatures can
@@ -74,13 +77,13 @@ be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
 out; nothing expires after commit. `DESIGN_DECISIONS.md` §13 owns the
 reasoning.
 
-## Registries (`src/protocol/registries/`)
+## Registries (`src/build/registries/` — clauses and assemblies; `src/app/` — members)
 
 Three parallel anchors, each with its own identity scheme, event stream, and
 withdrawal behaviour; none references another. Registering publishes; it
 never qualifies — the kernel gates nothing on registry state.
 
-**`src/protocol/registries/ClauseRegistry.sol`** — Permissionless clause
+**`src/build/registries/ClauseRegistry.sol`** — Permissionless clause
 anchoring under a stake.
 - Key: `idHash = keccak256(abi.encode(clauseId, version))`. `contentHash` is
   keccak256 of the canonical spec JSON; `contentURI` is where readers fetch it.
@@ -98,7 +101,7 @@ anchoring under a stake.
 - Registration anchors a locator and a content hash only; the contract
   validates no content. `CLAUSES.md` owns the validation model.
 
-**`src/protocol/registries/MembersRegistry.sol`** — Permissionless member
+**`src/app/MembersRegistry.sol`** — Permissionless member
 registration under a stake. A member is a wallet that publishes a
 declaration — buyer, seller, or both; the declaration is one document, split
 between the identity envelope here and the item list behind `catalogueURI`.
@@ -119,7 +122,7 @@ between the identity envelope here and the item list behind `catalogueURI`.
   costs `stake · N · T / P`. Leaving view and refunding are different moments
   by design.
 
-**`src/protocol/registries/AssemblyRegistry.sol`** — Permissionless assembly
+**`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
 - Identity is the composition: `compositionHash = keccak256` of the assembly's
   canonical composition (the composed agreements — clauses, values, topology;
@@ -139,7 +142,7 @@ anchoring under a stake.
 The two hash-keyed registries carry no cooldown — their withdrawal is one-shot
 per key and the binding permanent, so there is nothing to recycle.
 
-## Coordinators (`src/protocol/coordinators/`)
+## Coordinators (`src/core/attestation/` — attestation; `src/app/` — the swap)
 
 Contracts that compose the kernel without becoming a party to it. A new
 capability beside the kernel is a NEW parallel contract composing kernel
@@ -180,7 +183,7 @@ seems to be no, the proposal is adding a mechanism to the kernel — stop.
 The five conditions a composed contract satisfies, what each preserves, and their
 provenance: `OPEN_WORLD.md` § "The five conditions a composed contract satisfies".
 
-**`src/protocol/coordinators/AttestationCoordinator.sol`** — Zero-storage
+**`src/core/attestation/AttestationCoordinator.sol`** — Zero-storage
 attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8
   stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — role and
@@ -207,10 +210,10 @@ committed `orderHash` via `core.orderStatus`. It validates no content shape;
 a clause not committed at signing cannot be attested (`InvalidInclusionProof`),
 and a never-seen clause is attestable with zero per-clause on-chain code.
 
-**`src/protocol/coordinators/IRoleResolver.sol`** — `isAuthorized(orderHash,
+**`src/core/attestation/IRoleResolver.sol`** — `isAuthorized(orderHash,
 caller)`, the interface a seller address implements to delegate attestation.
 
-**`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`** — Lets a
+**`src/app/WitnessSwapAndCommitCoordinator.sol`** — Lets a
 buyer and/or seller fund a bond from a token other than the process's
 denomination, in the same transaction as `commit`. One external function,
 `swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)`: for each
@@ -236,12 +239,12 @@ the party's own address, then calls `FigaroCore.commit`.
   denomination, a one-time `approve(Permit2, …)` for the input token, and a
   per-commit Permit2 witness signature.
 
-## Verifier (`src/protocol/verifier/`)
+## Verifier (`src/core/verifier/`)
 
 The proof-based path that resolves batches of processes beside the direct
 kernel path. `SCALING_STRATEGY.md` owns the design; this is the surface.
 
-**`src/protocol/verifier/FigaroBatchVerifier.sol`** — One external function,
+**`src/core/verifier/FigaroBatchVerifier.sol`** — One external function,
 `settleBatch(proof, publicValues, positions, events, usage)`:
 - verifies an SP1 proof of a batch of kernel operations (commits, resolutions,
   witness-gated attestations) against the immutable `programVKey`;
@@ -272,12 +275,12 @@ stake, the excluded set — is checked in the counter. A batch that credits no
 usage passes empty arrays; that call is a no-op, which lets trade keep
 resolving after the reward's last period closes.
 
-**`src/protocol/verifier/ISP1Verifier.sol`** — the Succinct SP1
+**`src/core/verifier/ISP1Verifier.sol`** — the Succinct SP1
 verifier-gateway ABI, `verifyProof(programVKey, publicValues, proof)`.
 
-## Usage accounting (`src/protocol/usage/`)
+## Usage accounting (`src/build/rewards/`)
 
-**`src/protocol/usage/UsageCounter.sol`** — Counts how much real trade a
+**`src/build/rewards/UsageCounter.sol`** — Counts how much real trade a
 clause or assembly carried, on chain, at the moment it happens. The chain
 cannot look backwards — the kernel calls no registry and contracts cannot read
 events — so the fact is recorded when it occurs, and nothing is posted,
@@ -352,19 +355,19 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
 - Decentralized and permissionless: no admin, no pause. The measured gas anchor for
   `recordClauseUsage` and its regression ceiling live in
-  `test/protocol/usage/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
+  `test/build/rewards/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
   analysis quotes that one home.
 
-## The florin (`src/florin/`)
+## The florin (`src/build/florin/`)
 
-**`src/florin/FlorinToken.sol`** — ERC-20 with EIP-2612 permit. `MAX_SUPPLY` of
+**`src/build/florin/FlorinToken.sol`** — ERC-20 with EIP-2612 permit. `MAX_SUPPLY` of
 one billion, enforced on every mint. A minter registry with
 `totalRegisteredCap` (the sum of registered caps may not exceed
 `MAX_SUPPLY`); the deployer registers capped minters, then
 `renounceDeployerMint` closes the registry. Reentrancy-guarded. No deployer authority after
 renounce, no upgrade, no parameter.
 
-**`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
+**`src/build/florin/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
 registered minter implements.
 
 Genesis: the deployer deploys `RpgfMinter`, registers it with a 600M cap,
@@ -372,7 +375,7 @@ registers itself as a one-shot minter with a 400M cap, mints 70M / 30M / 300M
 to the founder, supporters, and DAO wallets, then renounces. `FLORIN_TOKEN.md`
 owns the allocation and its reasoning. Nothing is minted on resolution.
 
-## Designer rewards (`src/rpgf/`)
+## Designer rewards (`src/build/rewards/`)
 
 The 600M reserve, paid to designers of record in proportion to the trade
 their clauses and assemblies carried: one claim per period, nine annual
@@ -381,7 +384,7 @@ over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each grou
 `DESIGNER_REWARDS.md` owns the schedule's reasoning and the boundary;
 `DATA_LAYER.md` owns what the stake does and does not do.
 
-**`src/rpgf/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
+**`src/build/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
 `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;
 a wallet passes every clause and assembly it designed in that one call.
 - `claim` requires `counter.periodClosed(periodId)`: the numbers it reads are

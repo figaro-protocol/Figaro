@@ -21,13 +21,13 @@ The directory IS the tier map (`CONTRACTS.md` § header).
 
 | Directory / file | Contents |
 |---|---|
-| `src/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
-| `src/protocol/registries/` | `ClauseRegistry.sol`, `MembersRegistry.sol`, `AssemblyRegistry.sol` |
-| `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol`, `WitnessSwapAndCommitCoordinator.sol` |
-| `src/protocol/usage/` | `UsageCounter.sol` |
-| `src/protocol/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` |
-| `src/rpgf/` | `RpgfMinter.sol` |
-| `src/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
+| `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
+| `src/build/registries/`, `src/app/` | `ClauseRegistry.sol`, `AssemblyRegistry.sol`; `MembersRegistry.sol` |
+| `src/core/attestation/`, `src/app/` | `AttestationCoordinator.sol`, `IRoleResolver.sol`; `WitnessSwapAndCommitCoordinator.sol` |
+| `src/build/rewards/` | `UsageCounter.sol` |
+| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` |
+| `src/build/rewards/` | `RpgfMinter.sol` |
+| `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface; deploys the swap coordinator) |
 | `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone onto a LIVE stack |
@@ -44,13 +44,13 @@ The directory IS the tier map (`CONTRACTS.md` § header).
 The kernel has NO post-stamp edits — this diff is empty and must stay empty:
 
 ```bash
-git diff c7f85d0d -- src/kernel/
+git diff c7f85d0d -- src/core/kernel/
 ```
 
 For the rest of the frozen scope:
 
 ```bash
-git diff c7f85d0d -- src/protocol/ src/rpgf/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol script/DeploySwapCoordinator.s.sol
+git diff c7f85d0d -- src/core/attestation/ src/core/verifier/ src/build/ src/app/ script/Deploy.s.sol script/DeployMainnet.s.sol script/DeploySwapCoordinator.s.sol
 ```
 
 Expected output: exactly the post-stamp amendments listed below and nothing more.

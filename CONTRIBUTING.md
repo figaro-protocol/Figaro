@@ -61,7 +61,7 @@ cd sdk && npm test
 cd prover && cargo test
 
 # Mythril analysis (Docker)
-./scripts/mythril-docker.sh src/florin/FlorinToken.sol
+./scripts/mythril-docker.sh src/build/florin/FlorinToken.sol
 ```
 
 ## Scripts layout
@@ -87,7 +87,7 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 
 ### Claude Code subagents — `.claude/agents/`
 
-- **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/kernel/FigaroCore.sol`, `src/kernel/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
+- **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/core/kernel/FigaroCore.sol`, `src/core/kernel/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
 - **`figaro-clause-lockstep`** — verifies a new or changed clause is in sync across all required surfaces (the off-chain spec, the generic SDK parse/validate/encode round-trip, `ClauseRegistry` registration, listing pages; per-clause validator contracts do not exist, permanently). Invoke after authoring a clause.
 - **`figaro-runtime-ui`** — authors runtime-tier UI for new clauses and assemblies (lens panels, attestation forms, per-role routes). Stays strictly within `frontend/`. Halts for marketing-expert review on user-facing pages. Invoke when a new clause or assembly needs a UI surface.
 - **`figaro-paper-reviewer`** — read-only verifier for academic-paper claims against the canonical code. The corpus is web-native — each paper is a `frontend/app/(marketing)/papers/<slug>/page.tsx` page — and the reviewer catches drift between those pages and `src/` / `formal/`. Cites both paper passages and source line numbers. Invoke when reviewing paper edits, when the kernel changes, or before publication.

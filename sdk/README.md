@@ -210,7 +210,7 @@ kernel's storage key, the one `OrderCommitted` carries — while every struct
 INSIDE `commitments` must carry the SIGNED id, the one the parties put under
 their signatures — and a root order signed `processId = 0`. The kernel
 recomputes `keccak256(processId ‖ hashStruct(c))` from both
-(`src/kernel/FigaroCore.sol:280-285`), so putting the derived id inside the root
+(`src/core/kernel/FigaroCore.sol:280-285`), so putting the derived id inside the root
 struct — the natural move, since that is what `OrderCommitted` carries and what
 event reconstruction hands you — yields a hash that matches no committed order
 and reverts `OrderNotCommitted`. The bridge is `restoreSignedProcessId(c,
@@ -223,7 +223,7 @@ does NOT, and neither does hand-rolled `cast`.
 
 *`AccrualClosed()`.* `recordClauseUsage` and `recordAssemblyUsage` both open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
-last accrual period has ended (`src/protocol/usage/UsageCounter.sol:389-395`) —
+last accrual period has ended (`src/build/rewards/UsageCounter.sol:389-395`) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period **open when you call**, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the
@@ -429,7 +429,7 @@ definition) and `RPGF_*` constant is a **root** export.
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the rewards mirror —
-`computeRpgfAllocations` (`src/rpgf/formula.json`): a deterministic integer
+`computeRpgfAllocations` (`src/build/rewards/formula.json`): a deterministic integer
 pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
 on chain for the 600M designer-rewards reserve. Usage is counted as the facts
 happen — recorded against a resolved order — so **there is nothing to post,
@@ -540,7 +540,7 @@ const cap = await maxOrdersResolvablePerProcess(client);
 //
 // THE FIELD ORDER BELOW IS CANONICAL, NOT STYLISTIC. There is exactly one
 // authoritative ordering: `CommitmentTypes.COMMITMENT_TYPEHASH`
-// (`src/kernel/CommitmentTypes.sol:31-33`), the type string the kernel hashes
+// (`src/core/kernel/CommitmentTypes.sol:31-33`), the type string the kernel hashes
 // and recovers both signatures against. The SDK derives its own typehash from
 // the same field list and exports it — `COMMITMENT_TYPEHASH` (a root
 // `@figaro-protocol/sdk` export) is
@@ -575,7 +575,7 @@ resolveProcess(bytes32 processId, <that same tuple>[] commitments)   // buyer on
 ```
 
 That tuple's field order is the same canonical one — `COMMITMENT_TYPEHASH` in
-`src/kernel/CommitmentTypes.sol:31-33`. The sketch above and the
+`src/core/kernel/CommitmentTypes.sol:31-33`. The sketch above and the
 `buildCommitment` literal earlier are two transcriptions of that one source;
 check either against the SDK's re-export
 (`COMMITMENT_TYPEHASH === keccak256(toBytes(yourTypeString))`) before signing
@@ -595,7 +595,7 @@ kernel pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
 nets nothing against bonds it already holds from earlier orders in the process.
 
 Two different things state that, and it is worth keeping them apart. The
-KERNEL only *pulls exactly*: `src/kernel/FigaroCore.sol:208-209` is two
+KERNEL only *pulls exactly*: `src/core/kernel/FigaroCore.sol:208-209` is two
 `_pullExact` transfer calls, `c.payment * 2` from `c.buyer` and
 `c.expectedCumulativeValue * 2` from `c.seller`, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the
@@ -1414,7 +1414,7 @@ format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 
 **Before you register: `computeClauseKey` is the pre-registration collision
 check.** `ClauseRegistry.registerClause` is permissionless and
-first-write-wins (`src/protocol/registries/ClauseRegistry.sol:154-170`) — an
+first-write-wins (`src/build/registries/ClauseRegistry.sol:154-170`) — an
 `id`+`version` someone already registered is taken **permanently** (no
 overwrite, no version bump onto the same slot; the adding-a-clause checklist
 is `docs/CLAUSES.md`). Compute the exact key the registry hashes and read
@@ -2438,7 +2438,7 @@ trade moved to the batch path under-reports.
 - **ECDSA signers only** — the SDK builds EIP-712 typed data, and any signer that
   produces a standard secp256k1 ECDSA signature works: an EOA, a hardware wallet, or
   an MPC / threshold scheme that outputs one signature. `FigaroCore` verifies both
-  commitment signatures by `ECDSA.recover` alone (`src/kernel/FigaroCore.sol:161-166`) — it
+  commitment signatures by `ECDSA.recover` alone (`src/core/kernel/FigaroCore.sol:161-166`) — it
   runs no ERC-1271 check — so an ERC-1271 contract wallet (a Safe or other smart
   account) CANNOT hold a kernel party role. A contract that must transact routes
   through a funded EOA it controls (this is how the DAO treasury buys — it never

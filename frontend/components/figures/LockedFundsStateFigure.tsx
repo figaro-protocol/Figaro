@@ -6,7 +6,7 @@ export type LockedFundsStateFigureProps = BaseFigureProps;
 
 /**
  * The locked-funds state machine, derived read-only from the kernel
- * (`src/kernel/FigaroCore.sol`, cross-checked against `docs/CONTRACTS.md`):
+ * (`src/core/kernel/FigaroCore.sol`, cross-checked against `docs/CONTRACTS.md`):
  *
  *   Unknown (orderStatus 0) --commit()--> Committed/Active (orderStatus 1)
  *     --resolveProcess()--> Resolved (orderStatus 2)

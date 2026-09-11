@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
-import {WitnessSwapAndCommitCoordinator} from "../src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol";
+import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCoordinator.sol";
 
 /// @title DeploySwapCoordinator — the swap-funded on-ramp joins a LIVE stack
 ///

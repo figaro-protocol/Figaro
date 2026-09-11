@@ -14,7 +14,7 @@ import {
     buildUsageClaims,
     fetchUsageRecords,
     fetchBatchUsageRecords,
-} from "../src/rpgf/index.js";
+} from "../src/build/rewards/index.js";
 import {
     computeAgreementHash,
     computeSectionLeaf,

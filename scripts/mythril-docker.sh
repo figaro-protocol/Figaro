@@ -5,7 +5,7 @@
 set -e
 
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-CONTRACT_PATH=${1:-src/florin/FlorinToken.sol}
+CONTRACT_PATH=${1:-src/build/florin/FlorinToken.sol}
 shift || true
 
 # Ensure dependencies are installed

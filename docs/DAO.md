@@ -100,7 +100,7 @@ holds no profile.
 
 Devnet rehearses the shape: `Deploy.s.sol` stands up `MockTreasuryMultisig` (an
 anvil-placeholder 2-of-3) as the 300M mint target, and
-`test/florin/TreasuryProcurement.t.sol` drives fund → bonded commit → resolve →
+`test/build/florin/TreasuryProcurement.t.sol` drives fund → bonded commit → resolve →
 sweep-back, asserting the treasury's net spend is exactly the payment.
 Threshold-ECDSA — a multisig in cryptography, an EOA on chain — is the recorded
 upgrade for the operator's key, rehearsed on a testnet before adoption.

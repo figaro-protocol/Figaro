@@ -40,7 +40,7 @@ export const CORE_ABI = parseAbi([
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
 
-    // ── Errors (must mirror src/kernel/FigaroCore.sol) ──────────────────────
+    // ── Errors (must mirror src/core/kernel/FigaroCore.sol) ──────────────────────
     // Carried in the ABI so viem can decode reverts by name rather than
     // surfacing raw 4-byte selectors. Order matches the contract.
     "error DeadlineExpired()",
@@ -164,7 +164,7 @@ export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
 // Permit2 is NOT a Figaro contract — it is the external, canonical
 // SignatureTransfer deployment (same address on every chain it's deployed to)
 // that `WitnessSwapAndCommitCoordinator` pulls a party's swap-input token
-// through (`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol` —
+// through (`src/app/WitnessSwapAndCommitCoordinator.sol` —
 // `IPermit2WitnessTransfer`). This is the MINIMAL surface the coordinator's
 // off-chain half (`swapFunding.ts`, `buildSwapWitnessTypedData`) exists for:
 // the WITNESS variant of `permitTransferFrom`, which folds the coordinator's

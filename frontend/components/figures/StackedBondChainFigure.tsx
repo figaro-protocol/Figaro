@@ -49,7 +49,7 @@ const PAPER_CAPTION = (
     </>
 );
 
-// Kernel bond/payout math (src/kernel/FigaroCore.sol, verified against
+// Kernel bond/payout math (src/core/kernel/FigaroCore.sol, verified against
 // docs/CONTRACTS.md): root sellerBond = 2×payment (== 2×cumulativeValue,
 // since a root order's expectedCumulativeValue must equal its payment);
 // sub-order sellerBond = 2×cumulativeValue; buyerBond = 2×payment on every

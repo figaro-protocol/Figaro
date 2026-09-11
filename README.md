@@ -25,14 +25,14 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
 
 ## What this repository contains
 
-- **Kernel** — `src/kernel/`: `FigaroCore.sol` (two entry points, three
+- **Kernel** — `src/core/kernel/`: `FigaroCore.sol` (two entry points, three
   mappings, decentralized and permissionless) and `CommitmentTypes.sol` (the commitment and its
   EIP-712 hashing). Frozen.
-- **Protocol contracts** — `src/protocol/`: the three registries (clauses,
+- **Protocol contracts** — `src/core/` (attestation, the batch verifier), `src/build/` and `src/app/`: the three registries (clauses,
   members, assemblies — permissionless, first-write-wins, under a stake), the
   attestation and swap-and-commit coordinators, the usage counter, and the
   proof-based batch verifier. Inventory: `docs/CONTRACTS.md`.
-- **The florin and designer rewards** — `src/florin/`, `src/rpgf/`: a
+- **The florin and designer rewards** — `src/build/florin/`, `src/build/rewards/`: a
   one-billion-cap ERC-20 and the minter that pays designers of record in
   proportion to the use their clauses and assemblies carried.
   `docs/FLORIN_TOKEN.md` (the token), `docs/DESIGNER_REWARDS.md` (the reward),

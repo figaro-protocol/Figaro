@@ -41,8 +41,8 @@ export interface ResolutionPathsFigureProps extends BaseFigureProps {
  * The default prop set is /spec's, verbatim — /spec § "The two paths share no state"
  * (the canonical #resolution-paths anchor) renders it with no props at all, and
  * its strings are identifiers on purpose: that surface names contracts. Names
- * verified against `docs/CONTRACTS.md` and `src/kernel/FigaroCore.sol` /
- * `src/protocol/verifier/FigaroBatchVerifier.sol`.
+ * verified against `docs/CONTRACTS.md` and `src/core/kernel/FigaroCore.sol` /
+ * `src/core/verifier/FigaroBatchVerifier.sol`.
  *
  * Every rendered string is a prop because the paper corpus names no contract,
  * function, or proving system, so a paper embedding this figure must supply its

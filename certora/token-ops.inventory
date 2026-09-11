@@ -12,9 +12,9 @@
 # marked `[PENDING: <spec target>]` — new entries MAY ship pending, but must
 # be followed by a spec PR within the same sprint.
 
-src/kernel/FigaroCore.sol:132 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/kernel/FigaroCore.sol:294 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/core/kernel/FigaroCore.sol:132 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
+src/core/kernel/FigaroCore.sol:294 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/core/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
 
 # WitnessSwapAndCommitCoordinator — the swap-and-commit coordinator (its unhardened
 # predecessor, which left the swap route outside every signature, was deleted before
@@ -27,13 +27,13 @@ src/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSingleOr
 # itself). Spec target: a CoordinatorTokenConservation rule proving the coordinator
 # retains no bond currency or input token after `swapAndCommit` (asserted by the
 # `SlippageResidualStaysWithParty` / `InputResidualRefunded` Foundry tests today).
-src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:233 | _fund (bond currency → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
-src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol:237 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
+src/app/WitnessSwapAndCommitCoordinator.sol:233 | _fund (bond currency → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
+src/app/WitnessSwapAndCommitCoordinator.sol:237 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
 
 # FigaroBatchVerifier — the batch-settlement verifier (proof-apparatus
 # rebuild, witness model). BatchVerifierTokenOps.spec covers both sites:
 # single-position rules with the documented inductive generalization;
 # contentHashOf summarized as a revert-only view (sound — the anchor gate
 # refuses settlement, never moves a token). Cloud run green 2026-07-16.
-src/protocol/verifier/FigaroBatchVerifier.sol:530 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/protocol/verifier/FigaroBatchVerifier.sol:540 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/core/verifier/FigaroBatchVerifier.sol:530 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/core/verifier/FigaroBatchVerifier.sol:540 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation

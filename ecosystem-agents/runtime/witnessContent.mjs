@@ -2,7 +2,7 @@
  * witnessContent — recover the SUBSTANCE behind an attestation's fingerprint.
  *
  * `AttestationCoordinator` records only `contentRef = keccak256(content)`; the
- * preimage never touches calldata (src/protocol/coordinators/
+ * preimage never touches calldata (src/core/attestation/
  * AttestationCoordinator.sol § "Content encoding"). The public half of that
  * seam is readable again because of one convention the attester follows: the
  * content bytes are pinned as a RAW block multihashed with keccak-256, so the

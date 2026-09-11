@@ -3,14 +3,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "src/kernel/FigaroCore.sol";
-import "src/kernel/CommitmentTypes.sol";
-import "src/protocol/verifier/FigaroBatchVerifier.sol";
-import "src/protocol/registries/ClauseRegistry.sol";
+import "src/core/kernel/FigaroCore.sol";
+import "src/core/kernel/CommitmentTypes.sol";
+import "src/core/verifier/FigaroBatchVerifier.sol";
+import "src/build/registries/ClauseRegistry.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockReentrantToken.sol";
-import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
-import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
+import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
+import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @title ReentrancyAdversarialTest — a malicious denomination token tries to

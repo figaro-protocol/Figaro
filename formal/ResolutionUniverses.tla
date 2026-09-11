@@ -7,19 +7,19 @@
  *
  * THE OBJECT UNDER TEST — three contracts and one off-chain guest:
  *
- *   FigaroCore            (src/kernel/FigaroCore.sol)
+ *   FigaroCore            (src/core/kernel/FigaroCore.sol)
  *       commit()          → locks buyer 2×payment, seller 2×cumulativeValue
  *       resolveProcess()  → buyer-triggered, ATOMIC over a process's orders,
  *                           flips orderStatus 1 → 2
  *
- *   FigaroBatchVerifier   (src/protocol/verifier/FigaroBatchVerifier.sol)
+ *   FigaroBatchVerifier   (src/core/verifier/FigaroBatchVerifier.sol)
  *       settleBatch()     → verifies an SP1 proof, reconciles NET token
  *                           positions per (token, user), re-emits attestations,
  *                           advances stateRoot, and bridges the RPGF accrual.
  *                           It writes NO kernel state — a batch-resolved order
  *                           never acquires kernel orderStatus, ever.
  *
- *   UsageCounter          (src/protocol/usage/UsageCounter.sol)
+ *   UsageCounter          (src/build/rewards/UsageCounter.sol)
  *       recordClauseUsage()  → direct path; requires core.orderStatus == 2
  *       applyBatchAccrual()  → batch path; proof-gated writer, CUMULATIVE
  *                              overwrite (REPLACE, never add)

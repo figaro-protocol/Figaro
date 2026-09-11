@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import "src/protocol/verifier/ISP1Verifier.sol";
+import "src/core/verifier/ISP1Verifier.sol";
 
 /// @title MockSP1Verifier — Accepts any proof (devnet / Anvil testing only)
 /// @notice Drop-in replacement for the real SP1 verifier gateway.

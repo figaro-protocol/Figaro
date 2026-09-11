@@ -31,8 +31,8 @@
 #        Inv_ZeroRetention       Inv_WitnessRouteBinding
 #        Inv_AllowanceHygiene    Inv_CoordinatorNotCounterparty
 #
-#   4. Composed resolution universes — via formal/SettlementUniverses.tla
-#      + formal/SettlementUniverses.cfg (1 buyer, 2 sellers, 2 processes,
+#   4. Composed resolution universes — via formal/ResolutionUniverses.tla
+#      + formal/ResolutionUniverses.cfg (1 buyer, 2 sellers, 2 processes,
 #       1 sub-order, payments 1-2, 2 clauses one EXCLUDED, 2 periods).
 #      The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier +
 #      UsageCounter + the off-chain guest kernel, under arbitrary
@@ -133,10 +133,10 @@ echo ""
 echo "▶ Pass 4/4 — Composed resolution universes (21 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
-    -config SettlementUniverses.cfg \
+    -config ResolutionUniverses.cfg \
     -workers auto \
     -cleanup \
-    SettlementUniverses.tla \
+    ResolutionUniverses.tla \
     "$@"
 
 echo ""

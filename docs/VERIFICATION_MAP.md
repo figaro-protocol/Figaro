@@ -24,7 +24,7 @@ does not log.
 
 ### In-scope (this document)
 
-- **Kernel**: `src/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, decentralized and permissionless, nothing paid to the protocol
+- **Kernel**: `src/core/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, decentralized and permissionless, nothing paid to the protocol
 - **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
 - **Florin ecosystem**: `FlorinToken` + `RpgfMinter` (implements `IFlorinMinter`; registered as a minter at genesis)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
@@ -89,7 +89,7 @@ does not log.
 | K-5 | Monotonic accumulator ($cumulativeValue$ only increases) | `uint256 actualCumulative = ps.cumulativeValue + c.payment` + `CumulativeValueMismatch` revert | `FigaroCoreTest`: accumulator tests | `CumulativeIntegrity` — $cumulativeValue = \sum(payment)$ | `echidna_cumulative_accounting` — accumulator = sum(payment) | `/kernel` → /papers/asymmetric-bonding (cumulative bonding); `/spec` → Kernel (`FigaroCore.sol`) |
 | K-6 | No internal ledger — direct ERC-20 transfer at resolution | `currency.safeTransfer(seller, 2*cumVal + payment)` + `currency.safeTransfer(buyer, payment)` | `FigaroCoreTest`: payout assertions; `FigaroCoreEventEmissionTest`: OrderResolved events | Not modeled (TLA+ abstracts transfer mechanics; wallets model is sufficient) | — | `/kernel` → resolution pays out directly, no internal ledger; `/spec` → Kernel (`FigaroCore.sol`) |
 | K-7 | Per-process immutable token binding | `if (c.currency != address(ps.currency)) revert CurrencyMismatch()` on sub-orders | `FigaroCoreRevertBranchTest`: currency mismatch revert | Implicitly via single-currency model | — | `/spec` → Kernel (`FigaroCore.sol`) |
-| K-8 | Both parties sign off-chain via EIP-712 typed data | `ECDSA.recover(digest, buyerSig)` + `ECDSA.recover(digest, sellerSig)` checks in `commit()` | `FigaroCoreTest`: signature verification; SDK `commitments.test.ts`: EIP-712 domain/typed-data build. SDK↔Solidity parity is unconditional: `sdk/tests/eip712Parity.test.ts` freezes SDK-computed vectors, `test/kernel/Eip712ParityTest.t.sol` asserts the kernel reproduces every hash (domain separator both ways, `hashStruct`, digest, order hash) — runs in sdk-ci + foundry-ci with no chain; the skipIf-gated `integration.test.ts` round-trip is the redundant belt | Not modeled (TLA+ abstracts signature mechanics) | — | `/sign` → commitment signing UI |
+| K-8 | Both parties sign off-chain via EIP-712 typed data | `ECDSA.recover(digest, buyerSig)` + `ECDSA.recover(digest, sellerSig)` checks in `commit()` | `FigaroCoreTest`: signature verification; SDK `commitments.test.ts`: EIP-712 domain/typed-data build. SDK↔Solidity parity is unconditional: `sdk/tests/eip712Parity.test.ts` freezes SDK-computed vectors, `test/core/kernel/Eip712ParityTest.t.sol` asserts the kernel reproduces every hash (domain separator both ways, `hashStruct`, digest, order hash) — runs in sdk-ci + foundry-ci with no chain; the skipIf-gated `integration.test.ts` round-trip is the redundant belt | Not modeled (TLA+ abstracts signature mechanics) | — | `/sign` → commitment signing UI |
 | K-9 | `orderHash = keccak256(processId ‖ structHash)`, content-addressed | `bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash))` + `if (orderStatus[orderHash] != 0) revert DuplicateCommitment()` — a defensive backstop: every identical-commitment replay is preempted earlier (`ProcessAlreadyExists` at the root; `CumulativeValueMismatch` on sub-orders, since the accumulator has strictly moved) | `FigaroCoreRevertBranchTest`: replay-preemption tests pin the preempting error on both paths; SDK `integration.test.ts`: live-chain acceptance of an SDK-built commitment (hash parity, skipIf-gated) | Not directly modeled (TLA+ uses sequential IDs) | — | `/spec` → Kernel (`FigaroCore.sol`) |
 
 ---
@@ -137,13 +137,13 @@ This section tracks features that are not protocol invariants but are significan
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/spec` → Composition | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (root + `/agent`, `/derive`, `/clauses`, `/handoff`, `/signer`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/spec` → The sequencer (SDK README) | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` | — | `/assemblies` → How one is composed. | `TopologyCanvas` in the design canvas (`/assemblies/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
-| **Institution assembly** | `frontend/lib/designer/`; `src/protocol/registries/AssemblyRegistry.sol` | — | `/assemblies` → Document-anchored, not catalogue-listed. | `/assemblies/designer/new`, `/assemblies/designer/edit?slug=<slug>`, `/assemblies/designer/view?slug=<slug>` | — |
+| **Institution assembly** | `frontend/lib/designer/`; `src/build/registries/AssemblyRegistry.sol` | — | `/assemblies` → Document-anchored, not catalogue-listed. | `/assemblies/designer/new`, `/assemblies/designer/edit?slug=<slug>`, `/assemblies/designer/view?slug=<slug>` | — |
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `@figaro-protocol/sdk` `projection.ts` | — | `/assemblies` → What the composition hash covers. | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `/s/checkout` (`CheckoutView` + `CartLineList`); `YourTurnBadge` (header signal for orders awaiting this wallet's counter-signature) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/assemblies` → How one is composed. | `TopologyCanvas` (`/assemblies/designer/new`, `/assemblies/designer/view?slug=<slug>`) | — |
 | **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateResolution` | `/spec` → Kernel (`FigaroCore.sol`) | checkout/order surfaces render via the SDK | — |
-| **Single-currency binding** | `src/kernel/FigaroCore.sol` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
-| **Fee-on-transfer rejection** | `src/kernel/FigaroCore.sol` `_pullExact()` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
+| **Single-currency binding** | `src/core/kernel/FigaroCore.sol` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
+| **Fee-on-transfer rejection** | `src/core/kernel/FigaroCore.sol` `_pullExact()` | — | `/spec` → Kernel (`FigaroCore.sol`) | — | — |
 
 ---
 
@@ -273,7 +273,7 @@ under-pay only.
 
 ## 9) Halmos symbolic testing — current posture
 
-### Harnesses: `test/kernel/HalmosFigaroCore.t.sol` + `test/protocol/registries/HalmosMembersRegistry.t.sol` + `test/protocol/usage/HalmosUsageCounter.t.sol` + `test/protocol/registries/HalmosClauseAndAssemblyRegistries.t.sol`
+### Harnesses: `test/core/kernel/HalmosFigaroCore.t.sol` + `test/app/HalmosMembersRegistry.t.sol` + `test/build/rewards/HalmosUsageCounter.t.sol` + `test/build/registries/HalmosClauseAndAssemblyRegistries.t.sol`
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),

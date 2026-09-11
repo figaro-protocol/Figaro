@@ -11,7 +11,7 @@ via_ir = false               # Legacy codegen — stack-depth managed by scoping
                              # Build time: ~4s vs ~17min with via_ir=true.
 force = false
 # Deploy scripts read no off-chain spec: the RPGF scoring lives on chain in
-# src/protocol/usage/UsageCounter.sol, so nothing is hashed into a contract.
+# src/build/rewards/UsageCounter.sol, so nothing is hashed into a contract.
 fs_permissions = [
     { access = "read", path = "test/fixtures/eip712-vectors.json" },
 ]

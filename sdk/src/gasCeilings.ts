@@ -3,7 +3,7 @@
  *
  * Chain-aware per-process and per-block ceilings derived from the live
  * block gas limit + empirical per-order gas costs measured by
- * `test/kernel/GasCeilingTest.t.sol`.
+ * `test/core/kernel/GasCeilingTest.t.sol`.
  *
  * Two ceilings the runtime (and any agent) asks about:
  *
@@ -25,7 +25,7 @@
  * access — just arithmetic, like the bond calculator); the async forms
  * read the live block gas limit from any viem client (structurally typed).
  *
- * Source of truth for the per-order constants is `test/kernel/GasCeilingTest.t.sol`
+ * Source of truth for the per-order constants is `test/core/kernel/GasCeilingTest.t.sol`
  * — the empirical measurement. `scripts/lint-chain-gas.sh` asserts the
  * Foundry constants and these TS constants match exactly; either side
  * moves, the other must move too.
@@ -52,7 +52,7 @@ export interface ResolveCapReader extends BlockGasReader {
     }): Promise<unknown>;
 }
 
-// ── Empirical per-order constants (mirror test/kernel/GasCeilingTest.t.sol) ─
+// ── Empirical per-order constants (mirror test/core/kernel/GasCeilingTest.t.sol) ─
 
 /**
  * Per-order cost of resolving one order during `resolveProcess`, measured on

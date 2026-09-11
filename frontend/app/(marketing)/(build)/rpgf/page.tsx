@@ -7,8 +7,8 @@ import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 
 // The designer-rewards page. Its route is an identifier and does not move —
 // two renames once buried this page. Hero + one terms
-// section + closer. Every claim traces to the minter under `src/rpgf/` and
-// `src/protocol/usage/UsageCounter.sol`. Beside it: Tokenomics owns THE TOKEN,
+// section + closer. Every claim traces to the minter under `src/build/rewards/` and
+// `src/build/rewards/UsageCounter.sol`. Beside it: Tokenomics owns THE TOKEN,
 // The DAO owns THE BOOTSTRAP. Three concepts, three pages.
 export const metadata: Metadata = withOg({
     title: "Designer Rewards — Figaro Protocol",

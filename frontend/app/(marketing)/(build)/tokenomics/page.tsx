@@ -10,10 +10,10 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // it ends). Three concepts, three pages, the same split the docs hold. Do NOT
 // re-derive the reward rule here: the formula, the three-seller floor and the
 // live-stake condition belong to the program page, pointed at
-// once. Every figure traces to src/florin/FlorinToken.sol (cap, minter
+// once. Every figure traces to src/build/florin/FlorinToken.sol (cap, minter
 // registry, renounce, market-stance natspec), script/DeployMainnet.s.sol (the
 // 70/30/300/600M allocation and the nine period budgets 45·2 / 60·3 / 82.5·4)
-// and the minter under `src/rpgf/`.
+// and the minter under `src/build/rewards/`.
 //
 // The florin paragraph in "Four kinds of token" stays SEPARATE from the
 // community- and designer-token paragraphs beside it — the same separation the

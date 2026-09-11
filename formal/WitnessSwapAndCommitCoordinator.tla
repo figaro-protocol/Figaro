@@ -1,7 +1,7 @@
 ---- MODULE WitnessSwapAndCommitCoordinator ----
 
 (*
- * Formal model of `src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`
+ * Formal model of `src/app/WitnessSwapAndCommitCoordinator.sol`
  * — the swap-funded on-ramp into a process denomination.
  *
  * The contract is a PURE EXECUTOR: it pulls a party's input token through a

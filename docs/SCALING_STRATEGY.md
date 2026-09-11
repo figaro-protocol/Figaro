@@ -139,7 +139,7 @@ binding (chainId + verifyingContract), and four commitment hashes (token
 positions, attestation events, spec bindings, usage accrual). The canonical
 batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
 
-**On-chain verifier** (`src/protocol/verifier/FigaroBatchVerifier.sol`):
+**On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
 hash-verifies auxiliary calldata (positions, attestation events, spec
 bindings, the usage accrual), checks each (clause key → spec hash) binding
@@ -202,7 +202,7 @@ by token transfers, not kernel logic.
 > mid-loop) sits below its ALL-IN cost (cold, amortising the call). The single
 > source of truth for anything downstream is the pinned pair
 > `COMMIT_GAS_PER_ORDER = 144_000` and `RESOLVE_GAS_PER_ORDER = 23_000`
-> (`sdk/src/gasCeilings.ts` ↔ `test/kernel/GasCeilingTest.t.sol`) — the same
+> (`sdk/src/gasCeilings.ts` ↔ `test/core/kernel/GasCeilingTest.t.sol`) — the same
 > anchors the ceilings table below uses, which is why the summary quotes
 > ~167k/order for a sub-order. Quote those, add the 21k base per TRANSACTION
 > when counting a full lifecycle, and do not re-derive from this table.

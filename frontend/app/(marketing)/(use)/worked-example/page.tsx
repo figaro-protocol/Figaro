@@ -12,7 +12,7 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 // a stake is a deterrent its owner posts against itself, and summing deterrents
 // across parties produces a number that means nothing and reads as a cost.
 //
-// The numbers are the arithmetic of FigaroCore.commit (src/kernel/FigaroCore.sol
+// The numbers are the arithmetic of FigaroCore.commit (src/core/kernel/FigaroCore.sol
 // :208-209): the buyer is pulled payment×2 at EVERY commit; each seller is
 // pulled expectedCumulativeValue×2. 300 + 120 gives seller stakes 600 and 840
 // and a buyer stake of 840. They are the values of THIS narrated trade, not a

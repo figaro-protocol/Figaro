@@ -15,8 +15,8 @@ never a variant of success.
 
 ## Foundry (`test/`)
 
-The test tree mirrors `src/` (`test/kernel/`, `test/protocol/{registries,coordinators,usage,verifier}/`,
-`test/florin/`, `test/rpgf/`, `test/mocks/`); audit by `find test -name '*.t.sol'`,
+The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/build/{registries,rewards,florin}/`, `test/app/`,
+`test/mocks/`); audit by `find test -name '*.t.sol'`,
 not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `FigaroCoreEventEmissionTest`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
 `AssemblyRegistryTest`, `MembersRegistryTest`, `GasCeilingTest`,
@@ -233,7 +233,7 @@ only before a move).
 `sdk/tests/eip712Parity.test.ts` freezes SDK-computed EIP-712 vectors (domain
 separator, struct hash, root digest/processId, order hash) into
 `test/fixtures/eip712-vectors.json` and self-checks the SDK still reproduces
-them (`HARVEST_EIP712_VECTORS=1` regenerates them). `test/kernel/Eip712ParityTest.t.sol`
+them (`HARVEST_EIP712_VECTORS=1` regenerates them). `test/core/kernel/Eip712ParityTest.t.sol`
 reads that same fixture and asserts the Solidity kernel reproduces every hash —
 `CommitmentTypes.hashStruct` directly, the order-hash derivation verbatim, and
 the domain separator both ways (SDK vector == formula, and a live

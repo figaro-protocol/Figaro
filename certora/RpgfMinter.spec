@@ -7,7 +7,7 @@
 // were both caught by audit, never by the Foundry suite. This spec proves the
 // six properties that class of bug would have violated.
 //
-// Scope: only `src/rpgf/RpgfMinter.sol` is in the verified scene. Every
+// Scope: only `src/build/rewards/RpgfMinter.sol` is in the verified scene. Every
 // dependency it calls through an interface — `IUsageCounter` (counter),
 // `IFlorinMinter` (florin), `IClauseAuthor`/`IAssemblyAuthor` (clauses,
 // assemblies) — is NOT itself verified here (each has, or will have, its own

@@ -20,7 +20,7 @@ export type BatchResolutionSequenceFigureProps = BaseFigureProps;
  * naming it would concede in a caption what the prose declines to concede.
  * Source identifiers belong here in the comment, not on the page.
  *
- * STEP SEMANTICS verified against `src/protocol/verifier/FigaroBatchVerifier.sol`:
+ * STEP SEMANTICS verified against `src/core/verifier/FigaroBatchVerifier.sol`:
  *  - Public values are 8 ABI-encoded words (:70-78) — two state roots, chainId,
  *    verifyingContract, and FOUR HASHES (tokenOpsHash, attestationEventsHash,
  *    specBindingsHash, usageAccrualHash). They COMMIT to the positions,

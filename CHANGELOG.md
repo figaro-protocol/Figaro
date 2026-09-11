@@ -62,7 +62,7 @@ Summary of the current state of the protocol and its verification surface:
 
 ### Protocol
 
-- The Solidity kernel (`src/kernel/FigaroCore.sol`, `src/kernel/CommitmentTypes.sol`)
+- The Solidity kernel (`src/core/kernel/FigaroCore.sol`, `src/core/kernel/CommitmentTypes.sol`)
   is frozen for external audit, alongside the full protocol/registry/coordinator/
   RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Freeze Notice —
   Solidity Surface Frozen for External Audit" for the exact frozen scope.
