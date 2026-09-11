@@ -38,7 +38,7 @@ export default function UseDoor() {
             </section>
             <MarketingSection title="What makes it safe.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Before a trade starts, both sides lock a bond of twice the payment in a decentralized, permissionless smart contract. Walking away costs more than finishing, on either side. When the buyer resolves, you are paid in full and your bond comes back whole; the buyer&apos;s comes back less the payment it carried. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link> &middot; <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">The numbers, worked</Link>
+                    Before a trade starts, both sides lock a bond of twice the payment in a decentralized, permissionless smart contract. Walking away costs more than finishing, on either side. When the buyer resolves, you are paid in full and your bond is refunded whole; the buyer&apos;s is refunded less the payment it carried. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link> &middot; <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">The numbers, worked</Link> &middot; <Link href="/invariants" className="text-ink-heading font-medium hover:underline">The six facts it rests on</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="If something goes wrong.">

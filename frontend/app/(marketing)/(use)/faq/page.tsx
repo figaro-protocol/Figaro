@@ -13,9 +13,9 @@ export const metadata: Metadata = withOg({
         "Plain-language answers to the questions people ask before sending tokens through Figaro — who holds them, what stands behind a trade, non-delivery, disputes, lost keys, privacy — with the residual risk stated beside each answer.",
 });
 
-/** The page's seventeen questions, split into two labeled groups by what each
+/** The page's questions, split into two labeled groups by what each
  *  question is actually about — plus one leading entry that is NOT a question:
- *  the pre-trade checklist (a curated digest of thirteen answers; the index
+ *  the pre-trade checklist (a curated digest of the answers below; the index
  *  POINTS at it — the map stays the complete map, the digest stays a digest,
  *  never merged). The DOM sections below run in exactly this
  *  order — index and document order are one sequence, never two. Titles are
@@ -39,6 +39,7 @@ const DEEPER_QUESTIONS: { id: string; title: string }[] = [
     { id: "signing", title: "Can this website lie about what you're signing?" },
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
     { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
+    { id: "cumulative-bond", title: "Why does a seller's bond grow along the chain?" },
     { id: "builders-registries", title: "Can someone hijack your registration or clause?" },
     { id: "demonstrating", title: "What can you show a regulator or an auditor?" },
     { id: "compatibility", title: "Gas, tokens, and tax." },
@@ -92,7 +93,7 @@ export default function Faq() {
             </MarketingSection>
 
             {/* Named in the jump index above as its leading entry: the index is the complete map and POINTS here; this
-             *  section stays a curated DIGEST — the short form of thirteen
+             *  section stays a curated DIGEST — the short form of the
              *  answers already below, kept at the top where a first-time reader
              *  lands. Never merge the two (the index exhaustive, this selective —
              *  collapsing them degrades both jobs), and never grow this list
@@ -102,7 +103,7 @@ export default function Faq() {
              *  derived there. */}
             <MarketingSection title="Before your first real trade." sectionId="before-you-send">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Fourteen things worth having answered before a first commitment. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavourable answers are on it too, in the same list as the rest.
+                    Fifteen things worth having answered before a first commitment. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavourable answers are on it too, in the same list as the rest.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">Has the code been audited?</strong> Not yet by an external auditor; what exists instead is seven independent verification benches and a frozen surface waiting for one (<Link href="#verification" className="text-ink-heading font-medium hover:underline">the full answer</Link>).</li>
@@ -111,6 +112,7 @@ export default function Faq() {
                     <li>&mdash; <strong className="text-ink-heading font-medium">What do I have to put up?</strong> As a buyer, twice the payment leaves your wallet at commit &mdash; one bond with the payment carried inside it, refunded less that payment when you sign the resolution &mdash; plus ETH for the gas each step costs, cents to a few dollars at typical network prices (<Link href="#compatibility" className="text-ink-heading font-medium hover:underline">gas, tokens, and tax</Link>).</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Can I get a refund?</strong> There is no reversal path, by design &mdash; nobody is paid until the buyer signs the resolution, so a shortfall is put right <em>before</em> that signature rather than undone after it (<Link href="#escrow" className="text-ink-heading font-medium hover:underline">who holds the bond</Link>).</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">What if I change my mind?</strong> Before the trade commits, nothing has moved &mdash; a signed order that is never committed simply lapses at its deadline. After commit there is no unwind operation, and none is needed: the seller sends the payment amount back as an ordinary transfer, you sign the resolution, and its refunds leave both of you exactly where you started &mdash; every bond home, the seller made whole by the resolution itself. Signing is your assent; committing is when the bonds move. And if the seller keeps the payment instead, you are in the vanished-seller case &mdash; nothing is ever paid, both bonds stay locked, and their refusal has already cost them more than the sale was worth; the dispute layers stand behind it (<Link href="#disputes" className="text-ink-heading font-medium hover:underline">what if you genuinely disagree?</Link>).</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">What does the kernel refuse to have?</strong> Three things, and each absence is load-bearing: no recovery path &mdash; a branch that could refund a bond without the buyer&apos;s resolution would be the surface an attacker aims at, so what protects a trade is the deterrent each side posts, never a way back out of it; no clock on an open process &mdash; nothing expires or times out once the bonds are committed, and only a signed order that has not been committed yet carries a deadline; and no dial &mdash; the 2&times; ratio is the mechanism itself, not a setting anyone tunes (<Link href="/kernel#refusals" className="text-ink-heading font-medium hover:underline">the three refusals</Link>).</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">What happens the moment I sign the resolution?</strong> It is terminal acceptance: the process resolves, and nothing inside the protocol reopens it &mdash; so look at the work before signing, not after.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">What do I lose if it goes wrong?</strong> Your bond is your own deterrent, never a pot the other side can win &mdash; the way to lose it is to leave a process open forever, which leaves every bond locked, yours included (<Link href="#escrow" className="text-ink-heading font-medium hover:underline">the residual, stated in full</Link>).</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">What if we genuinely disagree?</strong> There is no on-chain verdict and there will not be one &mdash; three inner layers stand before it, built to absorb it, and any outside forum rules on the data, to which the protocol contributes evidence, never a ruling (<Link href="#layers" className="text-ink-heading font-medium hover:underline">the five layers</Link>).</li>
@@ -161,6 +163,9 @@ export default function Faq() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Your move comes before that signature. Put right any shortfall. Attest what you delivered, under a clause the agreement carries, so it is evidence, not a later claim. Take it to the forum the agreement names: it rules on the data you both hold, and its ruling is enforced against what the buyer holds outside the process. Your co-sellers&apos; bonds ride on that same resolution; they want it closed too.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    What a process nobody ever resolves strands is everything committed to it: the buyer&apos;s bond, twice the payment with the payment carried inside it, and each seller&apos;s bond, twice the cumulative value through its own order &mdash; all of it in the one token the process is denominated in, reaching no one, permanently. Nothing was spent ahead of the ending, because payment moves only at resolution: what stays locked is what each party posted as its own deterrent, and the kernel has no operation that reaches any of it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The residual: a buyer willing to leave its whole bond, twice the payment, locked for good to deny you yours can &mdash; keeping what you delivered, it is out of pocket by exactly the payment &mdash; and nothing on chain reaches in. That is the price of no escape hatch, and why a remedy comes before resolution, not after. The arithmetic is on the kernel page; the full treatment is in <Link href="/papers/external-events" className="text-ink-heading font-medium hover:underline">External events</Link>.
@@ -322,8 +327,23 @@ export default function Faq() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Multi-party processes resolve atomically &mdash; either every commitment in the process resolves together or none of them does. Each seller is bonded against the cumulative value flowing through them, so a participant who fails to perform has their own bond at risk. Those two facts &mdash; a bond at risk at every link, and nobody paid until the buyer resolves &mdash; are what is proved, and what they give every co-seller is a live, bonded interest in seeing one seller&apos;s fault put right: a reason, not a guarantee. Whether anyone acts on it is theirs to decide; the protocol neither compels it nor predicts it. That pressure &mdash; arising from the bond architecture rather than from any platform&apos;s enforcement &mdash; is what the protocol calls its social mechanism, and it resembles the joint liability of a community-bound lending circle without a shared community, repeated interaction, or an outside punisher to supply it.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The same two facts are why there is one resolution at the end rather than a payment at each handoff as the work passes along. A handoff paid on the spot ends that seller&apos;s interest in what happens afterwards, and that interest is the whole of the social mechanism. Nobody is paid until the buyer resolves, so every co-seller keeps a live, bonded reason to see a fault put right while the process is still open. Paying locally would also break one trade into separate processes, each with its own data, and no forum, auditor, or court reading them later could tell that they were one trade.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    If the process genuinely cannot complete &mdash; an upstream contributor disappears, no co-seller can take their place, the work is impossible &mdash; the buyer still holds the resolution key. Bonds stay locked until the buyer signs &mdash; why resolution is assigned that way, and what stalling costs the buyer, is derived on <Link href="/kernel" className="text-ink-heading font-medium hover:underline">Kernel</Link>.
+                    If the process genuinely cannot complete &mdash; an upstream contributor disappears, no co-seller can take their place, the work is impossible &mdash; the buyer still holds the resolution key. Bonds stay locked until the buyer signs &mdash; why resolution is assigned that way, and what stalling costs the buyer, is derived on the kernel page.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Why does a seller's bond grow along the chain?" sectionId="cumulative-bond">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Because a bond is measured against the value the trade has accumulated at the link it secures, not against the trade as a whole. Each seller bonds twice the cumulative value through its own order &mdash; everything committed before it, its own payment counted in &mdash; which is the rule Definition 1 of <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link> states. The buyer bonds twice each payment, as that order joins.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    What the rule buys is an early link that is not bonded against work nobody has committed yet. Take the ten-token trade the kernel page splits three ways, in the order the sellers commit: 6.00 to the first, 3.00 to the second, 1.00 to the third. The running total at each link is 6.00, then 9.00, then 10.00, so the three bonds are 12.00, 18.00 and 20.00 &mdash; 50.00 locked by the sellers together. The buyer bonds twice each payment as each order joins: 12.00 + 6.00 + 2.00 = 20.00. Bond every seller against the whole trade instead and each of the three locks 20.00, 60.00 in all, with the seller adding 6.00 at the start standing behind two contributions that were not yet in the process when it signed.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The weight lands at the other end instead. Whoever commits last carries everything already added and bonds against all of it, so the seller paid least locks the most. That is the design rather than an artefact of the ordering: the last link is the one with every earlier link&apos;s work behind it, and the bond says so. <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">The numbers, worked</Link>
                 </p>
             </MarketingSection>
 
