@@ -2,6 +2,20 @@
     "name": "Freelance deliverable",
     "summary": "A digital work product handed over privately, with proof of delivery \u2014 and no marketplace fee.",
     "description": "A client commissions a digital deliverable \u2014 a design file, a production cut, a dataset, an access credential \u2014 from an independent professional. The hand-off travels an encrypted channel straight between the two of them, and a fingerprint of the file is recorded as proof it arrived. Both sides are bonded, so the client's payment and the freelancer's delivery secure each other; the freelancer's catalogue can price a fixed fee or by the hour. No marketplace takes a cut.",
+    "faq": [
+        {
+            "question": "Where does the work come from?",
+            "answer": "From buyers who find you on Discover and from clients you bring. You publish what you offer; a buyer commits to it directly. No platform holds the relationship."
+        },
+        {
+            "question": "What do I put up, and what do I get back?",
+            "answer": "A bond of twice the price of the work, in the token the trade uses. It is refunded whole when the buyer resolves, in the same transaction that pays you."
+        },
+        {
+            "question": "What if the client never signs off?",
+            "answer": "Nothing moves for either side. The client's own bond, twice the price, stays locked with yours. Deliver, attest what you delivered, and put any shortfall right before resolution; a client who walks away pays for it too."
+        }
+    ],
     "assemblyClauses": {
         "figaro-assembly-provenance": {}
     },

@@ -4,13 +4,8 @@ import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
-import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
-import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
-
-// The chain example — the kernel page's trade shared by three sellers — has one
-// owner, sdk/src/equilibrium.json; the guard fails a commit that retypes it.
-const CH = KERNEL_EQUILIBRIUM.example.chain;
+import { AssemblyFaqs } from "@/components/assemblies/AssemblyFaqs";
 
 export const metadata: Metadata = withOg({
     title: "FAQ — Figaro Protocol",
@@ -18,14 +13,6 @@ export const metadata: Metadata = withOg({
         "Plain-language answers to the questions people ask before sending tokens through Figaro — who holds them, what stands behind a trade, non-delivery, disputes, lost keys, privacy — with the residual risk stated beside each answer.",
 });
 
-/** The page's questions, split into two labeled groups by what each
- *  question is actually about — plus one leading entry that is NOT a question:
- *  the pre-trade checklist (a curated digest of the answers below; the index
- *  POINTS at it — the map stays the complete map, the digest stays a digest,
- *  never merged). The DOM sections below run in exactly this
- *  order — index and document order are one sequence, never two. Titles are
- *  copied verbatim from each `MarketingSection`;
- *  keep the three in lockstep if a heading changes. */
 const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
     { id: "before-you-send", title: "Before your first real trade." },
     { id: "custody", title: "Who holds the tokens?" },
@@ -40,14 +27,18 @@ const BEFORE_YOU_TRADE: { id: string; title: string }[] = [
 const DEEPER_QUESTIONS: { id: string; title: string }[] = [
     { id: "keys", title: "What if you lose your keys?" },
     { id: "agents", title: "Can software run a wallet here?" },
-    { id: "verification", title: "Has the code been audited?" },
     { id: "signing", title: "Can this website lie about what you're signing?" },
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
     { id: "multi-party", title: "What if one participant in a multi-party process fails?" },
-    { id: "cumulative-bond", title: "Why does a seller's bond grow along the chain?" },
-    { id: "builders-registries", title: "Can someone hijack your registration or clause?" },
-    { id: "demonstrating", title: "What can you show a regulator or an auditor?" },
     { id: "compatibility", title: "Gas, tokens, and tax." },
+];
+
+const GETTING_STARTED: { id: string; title: string }[] = [
+    { id: "wallet", title: "Do I need crypto already?" },
+    { id: "paid", title: "How and when am I paid?" },
+    { id: "orders", title: "Where do my orders come from?" },
+    { id: "deactivated", title: "Can I be deactivated?" },
+    { id: "phone", title: "Does it work on a phone?" },
 ];
 
 export default function Faq() {
@@ -57,7 +48,7 @@ export default function Faq() {
                 title="FAQ."
                 lead={
                     <>
-                        Plain-language answers to the questions you should ask before sending tokens through a protocol you didn&apos;t write. Each answer names a concern, states what the protocol can and cannot do about it, and states the residual risk beside it &mdash; never in a footnote.
+                        Plain-language answers to the questions you should ask before sending tokens through a protocol you didn&apos;t write. Each answer names a concern, states what the protocol can and cannot do about it, and states the residual risk beside it &mdash; never in a footnote. Questions about the trade you are in &mdash; where orders come from, what you need in hand &mdash; are answered by each published assembly, under Questions about a trade.
                     </>
                 }
             />
@@ -79,12 +70,27 @@ export default function Faq() {
                             ))}
                         </ul>
                     </div>
-                    <div>
+                    <div className="mb-8">
                         <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
                             Deeper questions
                         </h2>
                         <ul className="[&>li]:border-b [&>li]:border-default text-base">
                             {DEEPER_QUESTIONS.map((item) => (
+                                <li key={item.id}>
+                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
+                                        <span>{item.title}</span>
+                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div>
+                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
+                            Getting started
+                        </h2>
+                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
+                            {GETTING_STARTED.map((item) => (
                                 <li key={item.id}>
                                     <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
                                         <span>{item.title}</span>
@@ -291,12 +297,6 @@ export default function Faq() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Has the code been audited?" sectionId="verification">
-                <p className="text-base text-ink-body leading-relaxed">
-                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (seven independent benches) and the external-audit posture are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>; how to verify any trade yourself is the two checks under <Link href="#signing" className="text-ink-heading font-medium hover:underline">signing</Link>, below. Results will be published there when they exist.
-                </p>
-            </MarketingSection>
-
             <MarketingSection title="Can this website lie about what you're signing?" sectionId="signing">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Not about a trade that already exists. FigaroCore checks both parties&apos; signatures itself, on-chain, against chain data that carries the whole agreement as a single fingerprint &mdash; one hash over every section of it. Once a commitment is on-chain, nothing in the resolution path ever asks a website what the trade said, so no site &mdash; this one included &mdash; can restate it afterwards.
@@ -340,57 +340,6 @@ export default function Faq() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="Why does a seller's bond grow along the chain?" sectionId="cumulative-bond">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Because a bond is measured against the value the trade has accumulated at the link it secures, not against the trade as a whole. Each seller bonds twice the cumulative value through its own order &mdash; everything committed before it, its own payment counted in &mdash; which is the rule Definition 1 of <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link> states. The buyer bonds twice each payment, as that order joins.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What the rule buys is an early link that is not bonded against work nobody has committed yet. Take the {CH.trade}-token trade the kernel page splits three ways, in the order the sellers commit: {CH.legs[0].payment} to the first, {CH.legs[1].payment} to the second, {CH.legs[2].payment} to the third. The running total at each link is {CH.cumulative[0]}, then {CH.cumulative[1]}, then {CH.cumulative[2]}, so the three bonds are {CH.seller_bonds[0]}, {CH.seller_bonds[1]} and {CH.seller_bonds[2]} &mdash; {CH.seller_bonds_total} locked by the sellers together. The buyer bonds twice each payment as each order joins: {CH.buyer_bonds[0]} + {CH.buyer_bonds[1]} + {CH.buyer_bonds[2]} = {CH.buyer_total}. Bond every seller against the whole trade instead and each of the three locks {CH.if_every_seller_bonded_the_whole_trade.each}, {CH.if_every_seller_bonded_the_whole_trade.total} in all, with the seller adding {CH.legs[0].payment} at the start standing behind two contributions that were not yet in the process when it signed.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    The weight lands at the other end instead. Whoever commits last carries everything already added and bonds against all of it, so the seller paid least locks the most. That is the design rather than an artefact of the ordering: the last link is the one with every earlier link&apos;s work behind it, and the bond says so. <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">The numbers, worked</Link>
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Can someone hijack your registration or clause?" sectionId="builders-registries">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Clause, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a registry &mdash; a clauseId or an assembly&apos;s composition hash &mdash; the binding is immutable: nothing can rebind it, and no later registrant can displace it. On the direct attestation path the chain validates no content shape &mdash; it merkle-binds each attestation to its signed agreement and content-hash-binds the evidence. The batch path adds a content check: a generic SP1 proof engine re-validates each clause against the exact spec the <code>ClauseRegistry</code> anchors, so a permissive substitute cannot land. Either way there are no per-clause validator contracts &mdash; any registered clause is attestable and resolvable with zero on-chain code changes.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    All three registries &mdash; <code>ClauseRegistry</code>, <code>AssemblyRegistry</code>, and <code>MembersRegistry</code> &mdash; are anchored by the same anti-spam mechanism: a reclaimable stake &mdash; not the trade bond described above &mdash; staked intent, priced to deter spam, not a party&apos;s deterrent against its own defection. Nothing can seize it; withdrawing de-surfaces the registration and reclaims the stake &mdash; each family&apos;s own way, below (readers hide what carries no live stake), so polluting a registry costs the stake &times; the time it stayed surfaced. The amount is set per deployment &mdash; read it with <code>registrationDeposit()</code> on the registry you are registering against, never from a remembered constant.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What a withdrawal leaves behind differs by family. A clause&apos;s or an assembly&apos;s binding is permanent &mdash; agreements already committed against it must keep resolving forever &mdash; so only the stake and the surfacing move, in a single call with no waiting &mdash; though the protocol surface refuses the call while processes composed from the work are still in flight; the smart contract cannot count that, so the SDK and this site are what enforce it. A participant registration is keyed to a wallet instead, and leaving clears it: a clause or an assembly is a permanent publication; a participant is a live identity.
-                </p>
-                <RegistryLifecycleFigure className="my-8" />
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The participant case is why there is a cooldown. De-listing is immediate, but the ETH releases only after a delay fixed at deployment and published on-chain before anyone pays it &mdash; without the delay, a single stake could be walked through one identity after another, and a stake you can reclaim the instant you have used it prices nothing. Requesting again before claiming pools the pending amount and restarts the cooldown on all of it, and coming back costs a second stake; a released stake is claimable by its owner alone, with nobody&apos;s permission.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    For designers, the cost is permanence: a registered clauseId cannot be mutated. The remediation path for a flawed clause is to register a corrected one &mdash; a different clause, with its own id and its own hash. Nothing links the two: the flawed clause stays registered and keeps doing whatever it does, designers point their assemblies at the corrected one deliberately, and agreements already committed against the old one keep resolving. The discipline this asks of designers is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    Adoption carries the other risk, and it is a tail rather than a flaw: one assembly carrying a large share of the trade makes a defect in it a correlated stranding across every process bound to it. Anyone may publish a rival assembly, a seller&apos;s binding switches for a signature, and designer rewards are uniform in real use &mdash; mitigations that narrow that tail without removing it.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="What can you show a regulator or an auditor?" sectionId="demonstrating">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The data &mdash; which is usually the thing being asked for. Using a protocol changes none of your obligations; what it changes is the cost of demonstrating you met them. Three cases the shipped <Link href="/clauses" className="text-ink-heading font-medium hover:underline">clauses</Link> already cover:
-                </p>
-                <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Consent, for the GDPR.</strong> A consent clause affixes each document &mdash; terms, a privacy notice, a data-processing agreement &mdash; at design time by its keccak256 hash, its version, and its title; the parties&apos; signatures over the agreement root that includes it <em>are</em> the acceptance, so there is no separate ceremony to reconstruct afterwards. Who accepted which version of which document, and when, is recoverable from the commitment itself &mdash; the data a controller has to be able to produce. The residual: that is evidence of acceptance, not a lawful basis. Purpose limitation, data minimization, and handling a withdrawal stay yours to run; the clause is append-only, so a withdrawal is an off-chain process, never a content edit.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Emissions, for ESG reporting.</strong> An emissions clause names the accounting methodology the seller reports under &mdash; the GHG Protocol, ISO 14064, PAS 2050, EN 16258, or one you write &mdash; and the measured figure is filed against that order as an attestation, with a correction filed as a later attestation readers weigh for themselves &mdash; per-order data under a named methodology, which is what an emissions report consumes. The residual: the protocol validates no standard and takes no closed list of them, stores no scope 1/2/3 classification (scope is relative to a reporting boundary, so a reader derives it from its own position in the chain), and does not check whether the figure is true. Offset retirement is outside the protocol entirely.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Trade facts, for e-invoicing.</strong> The European standard for electronic invoicing (EN 16931) wants a structured set of facts: who supplied whom, what was delivered, in what amounts, in which currency, on what date, against which agreement. A resolved process carries all of them in the public data, line by line, each line&apos;s own agreement bound by fingerprint. The residual: the protocol emits no invoice in that format and files nothing for you. Mapping the data into whatever form your jurisdiction requires is your own step &mdash; the point is that it is a mapping rather than a reconstruction.</li>
-                </ul>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The pattern is the same in all three: the obligation stays with the party who has it, and what the data removes is the part where you have to be believed. Nothing here makes a deployment compliant &mdash; compliance is a property of you and how you run it &mdash; and nothing on this site is legal or tax advice.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    One boundary sits underneath all three, and it is the thinnest joint in the whole arrangement. Everything the data says about the physical world &mdash; a handoff, an arrival, a temperature reading, a measured figure &mdash; enters it as a claim signed by a party, never as the world itself. No fingerprint checks a fact. What stands behind such a claim is economic and social rather than cryptographic: the party signing it has twice the value at its own link bonded for as long as the process is open, and nobody is paid until the buyer resolves, so a co-seller who spots a fault has their own reason to see it put right first. Where a harder check than that is wanted, it is composed in at design time &mdash; an independent inspection taking its own bonded leg of the trade, a credential register named in the clause &mdash; rather than supplied by the protocol. The data layer names four boundaries for what stands behind a row: protocol-enforced, what the kernel itself enforced; institution-declared, what a party declared and the protocol never validated; protocol-derived, what is anchored on chain with the content behind the fingerprint held off it; and composition-derived, what a composed venue&apos;s own events carry. A third party reading the books &mdash; a lender, an insurer, a court &mdash; reads the boundary of each row with it, because parties acting together can emit perfectly formed books for a service never rendered.
-                </p>
-            </MarketingSection>
-
             <MarketingSection title="Gas, tokens, and tax." sectionId="compatibility">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
                     Five operational facts worth knowing before you commit. What you need in hand before a first trade is short: a wallet, some ETH for the gas each step costs, and enough of the token the trade resolves in to cover your own side of it &mdash; twice the payment as a buyer, twice the value at your link as a seller &mdash; and if what you hold is a different token, a swap composes as the on-ramp, in the same transaction as the commit.
@@ -414,6 +363,52 @@ export default function Faq() {
                 </ul>
             </MarketingSection>
 
+            <MarketingSection title="Do I need crypto already?" sectionId="wallet">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    You need three things. A wallet app, a little ETH for gas, and the token the trade is priced in.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    A wallet is free. Install one on your phone or in your browser and it gives you an address. That address is you here.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Gas is what the network charges for each transaction. It is cents to a few dollars, and you pay it in ETH. If you hold a different token than the trade uses, checkout can swap it in the same step. The details are in <Link href="#compatibility" className="text-ink-heading font-medium hover:underline">Gas, tokens, and tax</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="How and when am I paid?" sectionId="paid">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    At resolution. The buyer signs once. In that one transaction every seller is paid and every bond is refunded, straight to each wallet.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Nobody holds the tokens in between. Until the buyer resolves, nothing moves, yours or theirs. What happens if the buyer never resolves is <Link href="#unresolved" className="text-ink-heading font-medium hover:underline">answered below</Link>.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Where do my orders come from?" sectionId="orders">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    No platform routes orders to you. A buyer finds you in the members catalogue on <Link href="/discover" className="text-ink-heading font-medium hover:underline">Discover</Link>, or through a link you share. The customers you already have can order from you directly.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    What a buyer can order from you is set by the assemblies you bind to. Each published assembly answers its own questions below, under Questions about a trade.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Can I be deactivated?" sectionId="deactivated">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    No. Nobody can remove your wallet, your registration, or your history. There is no operator to do it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Only you can withdraw your own registration stake, and withdrawing takes you off the catalogue. A forum or a court can act on you outside a trade, as it always could. It cannot reach into the protocol.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Does it work on a phone?" sectionId="phone">
+                <p className="text-base text-ink-body leading-relaxed">
+                    Yes. Every page is built for a phone screen. Connect with a wallet app on the same phone and trade from the browser.
+                </p>
+            </MarketingSection>
+
+            <AssemblyFaqs />
         </>
     );
 }

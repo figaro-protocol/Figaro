@@ -37,6 +37,12 @@ export interface TemplateAgreement {
     clauseVersions?: Record<string, number>;
 }
 
+/** One question a designer answers about their assembly, in plain words. */
+export interface AssemblyFaqEntry {
+    question: string;
+    answer: string;
+}
+
 export interface AssemblyTemplate {
     /** EDITORIAL — the designer's own words, for legibility (the content-derived
      *  slug is opaque at scale). Free-form prose, NOT a taxonomy. Pinned in the
@@ -45,6 +51,13 @@ export interface AssemblyTemplate {
     name?: string;
     summary?: string;
     description?: string;
+    /** EDITORIAL — the questions a party to THIS assembly asks and the
+     *  designer's answers: where orders come from, what a party needs in hand,
+     *  how and when each side is paid under this design. Rendered wherever the
+     *  assembly is offered to a user; the users' FAQ surfaces every published
+     *  assembly's entries from the registry at runtime. Excluded from the
+     *  composition hash like the rest of the editorial prose. */
+    faq?: readonly AssemblyFaqEntry[];
     /** ASSEMBLY-SCOPED clause sections — clauses declaring
      *  `design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseId → the designer's values, `design.fills` only — same

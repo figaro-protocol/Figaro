@@ -138,7 +138,7 @@ export default function Assemblies() {
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
                     Registration is permissionless and permanent once written, on the terms
-                    every registry here shares (<Link href="/faq#builders-registries" className="underline">what that
+                    every registry here shares (<Link href="/faq-build#builders-registries" className="underline">what that
                     protects, and what the stake does</Link>). What is specific to the{" "}
                     <strong>composition</strong> binding: identical compositions collapse to
                     one binding, and withdrawing the stake de-surfaces the assembly without

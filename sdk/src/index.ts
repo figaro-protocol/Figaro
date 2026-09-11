@@ -293,7 +293,7 @@ export {
     templateClauseVersionMap,
     templateComposedClauseIds,
 } from "./assembly.js";
-export type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
+export type { AssemblyTemplate, AssemblyFaqEntry, TemplateAgreement } from "./assembly.js";
 
 // Member profile document — the identity envelope pinned to
 // MembersRegistry.metadataURI (discovery hands you the URI; this is the

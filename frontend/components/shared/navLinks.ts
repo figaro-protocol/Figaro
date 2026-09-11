@@ -122,6 +122,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/rpgf", label: "Designer Rewards" },
             { href: "/tokenomics", label: "Tokenomics" },
             { href: "/dao", label: "The DAO" },
+            { href: "/faq-build", label: "Builders' FAQ" },
         ],
     },
     {
@@ -132,6 +133,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/invariants", label: "Invariants" },
             { href: "/spec", label: "Specifications" },
             { href: "/security", label: "Security" },
+            { href: "/faq-core", label: "Core FAQ" },
         ],
     },
     {

@@ -31,6 +31,24 @@
         }
     ],
     "description": "A buyer orders a meal; the merchant makes it and a courier carries it to the door. Both work directly with the buyer, so neither loses a slice to a delivery platform. Each hand-off is receipted, and both are bonded for more than they are owed \u2014 so a single payment resolves the kitchen and the ride together.",
+    "faq": [
+        {
+            "question": "Where do my orders come from?",
+            "answer": "From buyers who find your kitchen or your bike on Discover, and from the customers you already deliver for. There is no platform in between. A buyer opens your page, picks the meal, and commits."
+        },
+        {
+            "question": "What do I need before my first order?",
+            "answer": "A wallet with a little ETH for gas, and the token this assembly is priced in for your bond. The merchant bonds twice the price of the meal; the courier bonds twice the price of the delivery leg."
+        },
+        {
+            "question": "How and when am I paid?",
+            "answer": "When the buyer resolves. In one transaction the merchant is paid for the meal, the courier for the delivery, and both bonds are refunded, each to its own wallet. Until then nothing moves."
+        },
+        {
+            "question": "What if the buyer is not there when I arrive?",
+            "answer": "Attest the arrival under the handoff clause; it is your evidence. Then put it right with the buyer before resolution, or take it to the forum this assembly names. The buyer cannot be paid back by walking away; its bond stays locked too."
+        }
+    ],
     "name": "Local commerce",
     "summary": "A meal to the door: the merchant and the courier deal direct, and keep the platform's cut."
 }

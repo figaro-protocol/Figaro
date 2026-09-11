@@ -47,6 +47,12 @@ carries the mandatory clauses on every order, carries its editorial identity
 (the name/summary/description a stranger reads first), and every affixed
 document reproduces its committed hash from the shipped bytes.
 
+Each document may carry a `faq`: the questions a party to that assembly asks and
+the designer's answers (where orders come from, what a party needs in hand, how
+and when each side is paid). It is editorial, excluded from the composition hash,
+and the users' FAQ renders every published assembly's entries from the registry at
+runtime — the site never lists them.
+
 Editorial prose here is audience-owned (the general-public register). Adding a
 reference: compose it (the designer canvas or by hand), verify with the
 conformance test, and give it the story a newcomer would recognize.
