@@ -14,16 +14,8 @@
         "dead_process_strictness": "r > 0 — on a process that will not close, holding out is strictly better than performing only when the seller retains something; at r = 0 the two are equal"
     },
     "bonds": {
-        "buyer": {
-            "formula": "2P",
-            "latex": "C_b = 2P",
-            "chain": "C_{b,i} = 2P_i"
-        },
-        "seller": {
-            "formula": "2G",
-            "latex": "C_s = 2G",
-            "chain": "C_{s,i} = 2G_i"
-        }
+        "buyer": { "formula": "2P", "latex": "C_b = 2P", "chain": "C_{b,i} = 2P_i" },
+        "seller": { "formula": "2G", "latex": "C_s = 2G", "chain": "C_{s,i} = 2G_i" }
     },
     "resolution": {
         "seller_payout": "2G + P",
@@ -32,93 +24,26 @@
     },
     "payoffs": {
         "basis": "the seller's pair is net of what it retains; the buyer's pair is stated on two bases that differ by the constant +P (the delivery the buyer holds), so the inequality is the same on either",
-        "seller_perform": {
-            "value": "+P",
-            "lean": "performPayoff = payment"
-        },
-        "seller_holdout": {
-            "value": "-2G + r",
-            "at_most": "-G",
-            "lean": "holdoutPayoff r = -(2 * cumulative) + r"
-        },
-        "buyer_resolve_token": {
-            "value": "-P",
-            "lean": "resolvePayoff = -payment"
-        },
-        "buyer_withhold_token": {
-            "value": "-2P",
-            "lean": "withholdPayoff = -(2 * payment)"
-        },
-        "buyer_resolve_net": {
-            "value": "0",
-            "latex": "u_b = \\pi_b - C_b + P = 0"
-        },
-        "buyer_withhold_net": {
-            "value": "-P"
-        }
+        "seller_perform": { "value": "+P", "lean": "performPayoff = payment" },
+        "seller_holdout": { "value": "-2G + r", "at_most": "-G", "lean": "holdoutPayoff r = -(2 * cumulative) + r" },
+        "buyer_resolve_token": { "value": "-P", "lean": "resolvePayoff = -payment" },
+        "buyer_withhold_token": { "value": "-2P", "lean": "withholdPayoff = -(2 * payment)" },
+        "buyer_resolve_net": { "value": "0", "latex": "u_b = \\pi_b - C_b + P = 0" },
+        "buyer_withhold_net": { "value": "-P" }
     },
     "outcomes": {
-        "rows": [
-            "performance occurs",
-            "no performance"
-        ],
-        "columns": [
-            "resolution occurs",
-            "no resolution"
-        ],
-        "table": [
-            [
-                "(0, +P)",
-                "(-P, -2G)"
-            ],
-            [
-                "(-P, <= P + G)",
-                "(-2P, <= -G)"
-            ]
-        ],
-        "latex": [
-            [
-                "(0, +P)",
-                "(-P, -2G)"
-            ],
-            [
-                "(-P, \\leq P + G)",
-                "(-2P, \\leq -G)"
-            ]
-        ]
+        "rows": ["performance occurs", "no performance"],
+        "columns": ["resolution occurs", "no resolution"],
+        "table": [["(0, +P)", "(-P, -2G)"], ["(-P, <= P + G)", "(-2P, <= -G)"]],
+        "latex": [["(0, +P)", "(-P, -2G)"], ["(-P, \\leq P + G)", "(-2P, \\leq -G)"]]
     },
-    "gap": {
-        "formula": "Delta_i = P_i + G_i >= 2 P_i",
-        "latex": "\\Delta_i = P_i + G_i"
-    },
+    "gap": { "formula": "Delta_i = P_i + G_i >= 2 P_i", "latex": "\\Delta_i = P_i + G_i" },
     "theorem": {
-        "a": {
-            "party": "buyer",
-            "node": "after performance",
-            "prefers": "resolve, 0",
-            "over": "never resolve, -P",
-            "conditioning": "none — the seller's conduct is fixed at that node"
-        },
-        "b": {
-            "party": "seller",
-            "node": "any seller node",
-            "prefers": "perform, +P",
-            "over": "never perform, at most -G",
-            "conditioning": "(a), and the buyer's plan: resolve once performance has occurred and not before"
-        },
-        "c": {
-            "party": "buyer",
-            "node": "before performance",
-            "prefers": "keep the process open, continuation 0",
-            "over": "resolve at once, terminal -P",
-            "conditioning": "(b)"
-        },
+        "a": { "party": "buyer", "node": "after performance", "prefers": "resolve, 0", "over": "never resolve, -P", "conditioning": "none — the seller's conduct is fixed at that node" },
+        "b": { "party": "seller", "node": "any seller node", "prefers": "perform, +P", "over": "never perform, at most -G", "conditioning": "(a), and the buyer's plan: resolve once performance has occurred and not before" },
+        "c": { "party": "buyer", "node": "before performance", "prefers": "keep the process open, continuation 0", "over": "resolve at once, terminal -P", "conditioning": "(b)" },
         "structure": "(b) and (c) are the two parties' best-response checks against one profile, jointly a fixed point; (a) is the one unconditional anchor",
-        "e": {
-            "profile": "the seller never performs and the buyer resolves regardless",
-            "outcome": "(-P, <= P + G)",
-            "status": "a second equilibrium, sustained only by a buyer that has given up the instrument the mechanism reserves to it"
-        }
+        "e": { "profile": "the seller never performs and the buyer resolves regardless", "outcome": "(-P, <= P + G)", "status": "a second equilibrium, sustained only by a buyer that has given up the instrument the mechanism reserves to it" }
     },
     "example": {
         "payment": 10,
@@ -135,43 +60,16 @@
             "description": "The two-party example shared by three sellers, committing in this order: each seller bonds twice the cumulative value at its own link; the buyer bonds twice each payment as that order joins. The derived arrays are arithmetic over the legs, and the guard recomputes them.",
             "trade": 10,
             "legs": [
-                {
-                    "name": "First contributor",
-                    "role": "opens the trade",
-                    "payment": 6
-                },
-                {
-                    "name": "Second contributor",
-                    "role": "commits next",
-                    "payment": 3
-                },
-                {
-                    "name": "Third contributor",
-                    "role": "commits last",
-                    "payment": 1
-                }
+                { "name": "First contributor", "role": "opens the trade", "payment": 6 },
+                { "name": "Second contributor", "role": "commits next", "payment": 3 },
+                { "name": "Third contributor", "role": "commits last", "payment": 1 }
             ],
-            "cumulative": [
-                6,
-                9,
-                10
-            ],
-            "seller_bonds": [
-                12,
-                18,
-                20
-            ],
+            "cumulative": [6, 9, 10],
+            "seller_bonds": [12, 18, 20],
             "seller_bonds_total": 50,
-            "buyer_bonds": [
-                12,
-                6,
-                2
-            ],
+            "buyer_bonds": [12, 6, 2],
             "buyer_total": 20,
-            "if_every_seller_bonded_the_whole_trade": {
-                "each": 20,
-                "total": 60
-            }
+            "if_every_seller_bonded_the_whole_trade": { "each": 20, "total": 60 }
         }
     }
 }
