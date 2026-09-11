@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 
 // No `openGraph`/`twitter` here (unlike its page siblings): this route's

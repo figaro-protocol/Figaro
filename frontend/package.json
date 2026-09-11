@@ -5,6 +5,7 @@
     "scripts": {
         "dev": "NODE_OPTIONS=--no-deprecation next dev",
         "build": "next build",
+        "build:sites": "NEXT_PUBLIC_SPLIT_SITES=1 next build && node scripts/split-export.mjs",
         "postbuild": "node scripts/prettify-export.mjs",
         "start": "node scripts/serve-export.mjs out 3000",
         "serve:export": "node scripts/serve-export.mjs",

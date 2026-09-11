@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { MemberDiscovery } from "./_components/MemberDiscovery";
 
 export const metadata: Metadata = withOg({

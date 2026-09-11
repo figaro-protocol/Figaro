@@ -18,7 +18,7 @@
  * discovery. It renders the count line alone.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useMemo } from "react";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";

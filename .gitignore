@@ -20,6 +20,7 @@ frontend/.next-e2e-sepolia/
 frontend/.next-export/
 frontend/.next-probe/
 frontend/out/
+frontend/out-sites/
 frontend/build/
 frontend/playwright-report/
 frontend/test-results/

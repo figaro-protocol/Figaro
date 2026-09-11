@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { parseUnits, type Hex } from "viem";
 import { Button } from "@/components/ui/Button";
 import useTokenDecimals from "@/hooks/useTokenDecimals";

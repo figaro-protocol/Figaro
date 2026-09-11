@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { RegisterClauseForm } from "./_components/RegisterClauseForm";
 import { RegisteredClausesReclaim } from "./_components/RegisteredClausesReclaim";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";

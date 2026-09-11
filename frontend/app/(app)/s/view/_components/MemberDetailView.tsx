@@ -15,7 +15,7 @@
  *  - `useCartStore` — global cart state (selection only; commit is checkout's).
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { CartLineList } from "@/components/runtime/CartLineList";

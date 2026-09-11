@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 import { FigureFrame } from "@/components/figures/FigureFrame";
 

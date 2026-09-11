@@ -14,7 +14,7 @@
  * deep-link a family preselected.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";

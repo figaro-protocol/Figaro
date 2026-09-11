@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 
 /**
  * The footer is the LEGAL/IDENTITY strip only (maintainer rule 2026-08-06):

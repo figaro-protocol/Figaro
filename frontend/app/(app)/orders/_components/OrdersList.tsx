@@ -24,7 +24,7 @@
  * derived signal through device-appropriate transports.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { calculateBonds } from "@figaro-protocol/sdk";

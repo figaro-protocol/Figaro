@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { withOg } from "@/lib/shared/pageMetadata";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { RegistryExplorer } from "@/components/registries/RegistryExplorer";

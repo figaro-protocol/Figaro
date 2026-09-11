@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import type { PaperGroup, PaperRef } from "@/app/(marketing)/_lib/paperGroups";
 import { tagSlug } from "@/app/(marketing)/_lib/paperGroups";
 

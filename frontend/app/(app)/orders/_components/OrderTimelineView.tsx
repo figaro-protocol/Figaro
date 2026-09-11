@@ -20,7 +20,7 @@
  * process is resolved. This page does NOT replace `/audit/view?process=<processId>`.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceedsPanel";

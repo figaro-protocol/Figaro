@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 
 interface BrandLogoProps {
     /** Variant: "compact" for nav (no "Protocol" word), "full" with "Protocol" suffix. */

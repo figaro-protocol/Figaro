@@ -16,7 +16,7 @@
  * the browse page. Checkout reads it, it does not mutate it.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useEffect, useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";

@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
 import { useRegisteredClausesByWallet } from "@/lib/protocol/useClauseRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";

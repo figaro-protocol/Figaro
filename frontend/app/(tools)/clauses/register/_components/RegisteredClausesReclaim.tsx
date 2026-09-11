@@ -18,7 +18,7 @@
 
 import { useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
 import { useMounted } from "@/hooks/useMounted";
 import {

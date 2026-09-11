@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Menu from "@/components/icons/Menu";
 import X from "@/components/icons/X";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
 import { navCurrent } from "@/components/shared/navActive";

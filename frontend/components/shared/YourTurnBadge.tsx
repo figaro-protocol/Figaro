@@ -10,7 +10,7 @@
  * action signal.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { usePendingSellerSignature, awaitsMyCounterSign } from "@/lib/checkout/orderPendingSellerSignature";
 import Bell from "@/components/icons/Bell";
 

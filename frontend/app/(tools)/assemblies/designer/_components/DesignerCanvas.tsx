@@ -24,7 +24,7 @@
  * applies the seed in a mount effect — localStorage is client-only.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";

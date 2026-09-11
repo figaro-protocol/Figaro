@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { LockedFundsStateFigure } from "@/components/figures/LockedFundsStateFigure";
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";

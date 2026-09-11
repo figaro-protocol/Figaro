@@ -16,7 +16,7 @@
  * no clause; `clauseId` is display attribution only.
  */
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual } from "@/lib/shared/evm";

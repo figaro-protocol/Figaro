@@ -19,7 +19,7 @@
  */
 
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { Card } from "@/components/ui/Card";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";

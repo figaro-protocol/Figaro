@@ -33,7 +33,7 @@
  * show.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";

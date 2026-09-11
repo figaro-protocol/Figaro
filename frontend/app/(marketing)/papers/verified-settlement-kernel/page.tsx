@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { Redirector } from "./redirector";
 
 // Redirect stub: the canonical address is /papers/verified-resolution-kernel;

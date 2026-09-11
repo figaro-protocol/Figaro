@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";

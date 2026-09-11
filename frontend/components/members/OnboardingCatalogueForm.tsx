@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { listRateQuantitySources } from "@figaro-protocol/sdk";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";

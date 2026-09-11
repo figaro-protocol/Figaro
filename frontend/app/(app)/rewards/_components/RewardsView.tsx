@@ -10,7 +10,7 @@
  * marketing telling lives at /rpgf; this page is the doing surface.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";

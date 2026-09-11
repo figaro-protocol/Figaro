@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { cn } from "@/lib/shared/utils";
 import {
     ONBOARDING_STEPS,

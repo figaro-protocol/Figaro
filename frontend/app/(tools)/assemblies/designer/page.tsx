@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { DraftsList } from "./_components/DraftsList";
 import { PublishedList } from "./_components/PublishedList";
 import { ClausesList } from "./_components/ClausesList";

@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
 import { Button } from "@/components/ui/Button";

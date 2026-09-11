@@ -11,6 +11,8 @@ directory listing is the source of truth; this table is a reading of it, and a r
 that disagrees with the tree is the table's error. Tier definitions and the rules
 behind them: § "Wallet-provider scope per route" below.
 
+**The three sites.** One tree, one export, three hosts plus the apex router: `frontend/lib/shared/sites.json` says which host serves which route (a shared surface lists more than one; the first owns it for links), `npm run build:sites` splits the export into `out-sites/<site>/` (`frontend/scripts/split-export.mjs` — a page's files follow its directory's site; the `_next` bundle and root files go to every host; static HTML it copies gets its cross-host links rehosted), and `scripts/lint-site-map.sh` fails a page route no host carries. With `NEXT_PUBLIC_SPLIT_SITES` unset the tree is one host, as before.
+
 **Marketing — `(marketing)/`, no wallet provider.** Seven route groups, one per
 protocol object. Marketing-tier reads reach on-chain state through the standalone
 `publicClient`; reading needs an RPC, never a wallet.
@@ -100,7 +102,7 @@ The `/assemblies/designer` tool is a composition surface (`TopologyCanvas` + `Ag
 
 Tiered, bottom to top; each tier imports only what sits below it (enforced by the maintainers' pre-commit guard battery).
 
-- **`shared/`** — the generic leaf: EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly-template reading vocabulary (`assemblyTemplate.ts`, `clauseFields.ts`), errors/formatting/json. Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
+- **`shared/`** — the generic leaf: the site map (`sites.json` — which host serves which route, the one owner; `sites.ts` reads it and resolves a link across hosts), EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly-template reading vocabulary (`assemblyTemplate.ts`, `clauseFields.ts`), errors/formatting/json. Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
 - **`kernel/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, `walletProcessQueries.ts`, `eventCache.ts`), the deployment-curried hash wrappers + agreement fetch (`signedCommitment.ts`, `agreementFetch.ts`), chain config (`contracts.ts` — the five core contract ABIs + ERC20, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`. (The agreement projection itself — `buildOrderAgreement`, the off-chain sign gate, `sectionByField` — is `@figaro-protocol/sdk`; `sdk/README.md` owns it.)
 - **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts` (liveness fold delegated to the SDK's `reconstructDiscovery`), plus the shared factory shapes the clause/assembly readers are built from (`registryEventScan.ts` — the paired registered+withdrawn cached scan with the `failed` contract; `useWithdrawStake.ts` — the `withdrawDeposit` write hook, the shared revert-extraction preamble, and the noun-parameterised withdraw revert table). Reads ClauseRegistry / MembersRegistry / AssemblyRegistry; imports `kernel/` + `shared/`.
 - **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
@@ -225,7 +227,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - **`figures/`** — shared SVG figures (papers + marketing)
 - **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`, `CtaLink`)
 - **`modules/`** — feature modules (e.g. `MemberBrandingModule`). Consumer surfaces are purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
-- **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs
+- **`shared/`** — shell/utility, and `Link` — the one Link the tree imports (never `next/link` directly; `scripts/lint-site-map.sh` enforces it): it resolves each in-tree href against the site map, so a link to a route another host owns is absolute when the sites are split and untouched when they are not; **`ui/`** — design primitives; **`icons/`** — SVGs
 
 ## Canonical exemplars — copy these shapes
 

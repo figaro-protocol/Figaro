@@ -17,7 +17,7 @@
 
 import { useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { parseClauseSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { Button } from "@/components/ui/Button";

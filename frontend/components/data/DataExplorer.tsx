@@ -22,7 +22,7 @@
  * it), so every view and every wallet subject is a permalink.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { walletRecord } from "@figaro-protocol/sdk/derive";

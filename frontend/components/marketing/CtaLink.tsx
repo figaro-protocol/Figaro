@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 
 /**
  * CtaLink — the marketing call-to-action, in one place.

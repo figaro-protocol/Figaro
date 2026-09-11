@@ -39,6 +39,7 @@ cd frontend && npx vitest run            # UI logic — component + unit tier
 cd frontend && npm run test:e2e:mobile   # responsive/viewport chrome
 cd frontend && npm run test:e2e:devnet   # e2e — real UI against Anvil + contracts
 cd frontend && E2E_CHAIN=sepolia SMOKE_SELLER_KEY=0x… SMOKE_BUYER_KEY=0x… npx playwright test --project=sepolia   # the Sepolia smoke (funded keys; TESTING.md § projects)
+cd frontend && npm run build:sites       # the three sites: one export, split into out-sites/<site>/ per frontend/lib/shared/sites.json
 cd frontend && npm run estate:crawl      # whole-estate residue/vocab sweep (scripts/estate-crawl.mjs): every sitemap route + machine text (/llms.txt, index.txt, /_headers) + ALL pinned contentURIs from the three registries; read-only, exit 1 on any hit; ESTATE_SKIP_PINS=1 for site-only
                                          #   crawls the LIVE deployed site by default (ESTATE_SITE_URL overrides) — no local webServer involved.
 
@@ -146,6 +147,17 @@ NEXT_PUBLIC_DAO_TREASURY=0x...
 
 # The 300M DAO funds public goods by discretionary decision. The 600M RPGF pays
 # uniform pro rata on real usage.
+
+# The three sites. Unset: one host, every link relative (the default; the e2e
+# suite runs this way). "1": links to a route another host owns are emitted
+# absolute, per frontend/lib/shared/sites.json (the site map), and
+# `npm run build:sites` splits the export into out-sites/<site>/. The hosts
+# default to the map's; override per environment.
+NEXT_PUBLIC_SPLIT_SITES=
+NEXT_PUBLIC_SITE_HOST_APEX=
+NEXT_PUBLIC_SITE_HOST_CORE=
+NEXT_PUBLIC_SITE_HOST_BUILD=
+NEXT_PUBLIC_SITE_HOST_APP=
 
 # Batch-resolution proof path (FigaroBatchVerifier; MockSP1Verifier accepts
 # any proof on devnet — a real deployment wires Succinct's SP1 verifier

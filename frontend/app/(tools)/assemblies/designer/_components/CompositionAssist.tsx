@@ -22,7 +22,7 @@
  *         the normal review page — nothing auto-publishes.
  */
 
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { useCallback, useMemo, useState } from "react";
 import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";

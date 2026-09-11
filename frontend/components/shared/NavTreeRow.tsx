@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
 import { navCurrent } from "@/components/shared/navActive";

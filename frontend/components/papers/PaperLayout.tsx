@@ -1,6 +1,6 @@
 import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/Link";
 import { getPaperNavigation, getPaperRef } from "@/app/(marketing)/_lib/paperGroups";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { PrintButton } from "./PrintButton";

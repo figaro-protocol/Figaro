@@ -1,0 +1,51 @@
+{
+    "description": "THE SITE MAP — the one owner of which host serves which route. Three sites and the apex router, on subdomains of figaroprotocol.com. `routes` is a longest-prefix table: [prefix, [sites]]; the FIRST site listed owns the route for link resolution, the rest carry a copy (a shared surface mounted on more than one host). `/` is matched exactly. Read by lib/shared/sites.ts (links and nav), scripts/split-export.mjs (the export split), and scripts/lint-site-map.sh (every page route must map).",
+    "hosts": {
+        "apex": "https://figaroprotocol.com",
+        "core": "https://core.figaroprotocol.com",
+        "build": "https://build.figaroprotocol.com",
+        "app": "https://app.figaroprotocol.com"
+    },
+    "routes": [
+        ["/", ["apex"]],
+        ["/about", ["apex", "core", "build", "app"]],
+
+        ["/core", ["core"]],
+        ["/kernel", ["core"]],
+        ["/invariants", ["core"]],
+        ["/spec", ["core"]],
+        ["/security", ["core"]],
+        ["/attestations", ["core"]],
+        ["/research", ["core"]],
+        ["/working-groups", ["core"]],
+        ["/papers", ["core"]],
+
+        ["/build", ["build"]],
+        ["/clauses", ["build"]],
+        ["/assemblies", ["build"]],
+        ["/registries", ["build"]],
+        ["/composition", ["build"]],
+        ["/pitfalls", ["build"]],
+        ["/rpgf", ["build"]],
+        ["/tokenomics", ["build"]],
+        ["/dao", ["build"]],
+        ["/rewards", ["build"]],
+        ["/sdk-api", ["build"]],
+
+        ["/use", ["app"]],
+        ["/faq", ["app"]],
+        ["/worked-example", ["app"]],
+        ["/local-commerce", ["app"]],
+        ["/members", ["app"]],
+        ["/data", ["app"]],
+        ["/discover", ["app"]],
+        ["/orders", ["app"]],
+        ["/s", ["app"]],
+        ["/sign", ["app"]],
+        ["/evidence-display", ["app"]],
+
+        ["/data/explore", ["core", "app"]],
+        ["/audit", ["app", "core", "build"]],
+        ["/agents", ["app", "core", "build"]]
+    ]
+}
