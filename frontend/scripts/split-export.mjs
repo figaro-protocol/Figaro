@@ -90,7 +90,8 @@ for (const rel of files) {
     const html = isHtml ? fs.readFileSync(path.join(OUT, rel), "utf8") : null;
     for (const site of targets) {
         // A renamed route lands under its served path on that host.
-        const dest = where.route ? path.join(...servedPath(where.route, site).split("/")) + rel.slice(where.route.length) : rel;
+        // rel has no leading slash, so route.length covers "dir/" exactly.
+        const dest = where.route ? path.join(servedPath(where.route, site).slice(1), rel.slice(where.route.length)) : rel;
         const to = path.join(DEST, site, dest);
         fs.mkdirSync(path.dirname(to), { recursive: true });
         if (isHtml) fs.writeFileSync(to, rehost(html, site));
