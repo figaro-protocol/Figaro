@@ -40,11 +40,6 @@ export default function ResearchDoor() {
                     One paper derives the equilibrium the rest of the corpus reasons from. Another says what a machine has and has not checked about the code that runs it. <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric bonding</Link> · <Link href="/papers/verified-resolution-kernel" className="text-ink-heading font-medium hover:underline">The verified kernel</Link>
                 </p>
             </MarketingSection>
-            <MarketingSection title="What follows, if this is adopted.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A projection derived from the mechanism rather than observed: what unwinds, in what order, where power lands instead, and what would make it wrong. <Link href="/consequences" className="text-ink-heading font-medium hover:underline">Consequences</Link>
-                </p>
-            </MarketingSection>
             <MarketingSection title="The firm, the platform, the court, and the bond.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     Four ways to make a stranger&apos;s promise good, compared on the same axes. What happens to Coase&apos;s boundary of the firm when enforcing an agreement between strangers costs a fixed lockup. <Link href="/papers/coordination-substrates" className="text-ink-heading font-medium hover:underline">Coordination substrates</Link> · <Link href="/papers/transaction-scoped-institutions" className="text-ink-heading font-medium hover:underline">Transaction-scoped institutions</Link>
