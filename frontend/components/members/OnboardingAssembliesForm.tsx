@@ -7,7 +7,7 @@ import { useAccount } from "wagmi";
 import { isAddress } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { hexEqual } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
@@ -61,6 +61,10 @@ function buildBinding(
 /** Build the full bindings array from the live selection + counterparty
  *  state. Used both for the autosave effect and the submit handler so
  *  they can't drift. */
+// A draft made before a wallet connects carries this subject; the review step
+// re-stamps every binding with the wallet that signs the registration.
+const DRAFT_SUBJECT = ZERO_ADDRESS;
+
 function buildBindings(
     wallet: `0x${string}`,
     selected: Set<string>,
@@ -112,7 +116,7 @@ export function OnboardingAssembliesForm({
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, loaded, update } = useOnboardingState(address);
+    const { state, loaded, subject, update } = useOnboardingState(address);
 
     const { data: choicesData } = useAssemblyChoices();
     // `null` while the registry read is in flight; the persist effect below
@@ -129,7 +133,9 @@ export function OnboardingAssembliesForm({
     // buyer step and are carried through every write untouched.
     const [policyEntries, setPolicyEntries] = useState<DisclosurePolicyEntry[]>([]);
     const [otherPostureEntries, setOtherPostureEntries] = useState<DisclosurePolicyEntry[]>([]);
-    const [hydrated, setHydrated] = useState(false);
+    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    const hydrated = hydratedFor === subject;
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -146,19 +152,19 @@ export function OnboardingAssembliesForm({
         const allEntries = state.disclosurePolicy ?? [];
         setPolicyEntries(allEntries.filter((e) => e.posture === "seller"));
         setOtherPostureEntries(allEntries.filter((e) => e.posture !== "seller"));
-        setHydrated(true);
-    }, [hydrated, loaded, state.assemblies, state.disclosurePolicy]);
+        setHydratedFor(subject);
+    }, [hydrated, loaded, subject, state.assemblies, state.disclosurePolicy]);
 
     useEffect(() => {
-        if (!hydrated || !isConnected || !address || !choicesLoaded) return;
+        if (!hydrated || !choicesLoaded) return;
         update({
-            assemblies: buildBindings(address, selected, choices, counterpartiesBySlug),
+            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesBySlug),
             disclosurePolicy: [
                 ...otherPostureEntries,
                 ...activePolicy(policyEntries, selected, choices),
             ],
         });
-    }, [selected, counterpartiesBySlug, policyEntries, otherPostureEntries, hydrated, isConnected, address, choices, choicesLoaded, update]);
+    }, [selected, counterpartiesBySlug, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
 
     function toggle(slug: string) {
         setSelected((prev) => {
@@ -196,9 +202,8 @@ export function OnboardingAssembliesForm({
         }
         setSubmitError(null);
         if (onSave) {
-            if (!address) return;
             onSave(
-                buildBindings(address, selected, choices, counterpartiesBySlug),
+                buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesBySlug),
                 [...otherPostureEntries, ...activePolicy(policyEntries, selected, choices)],
             ).catch(() => {
                 // Caller surfaces the error via `externalError`.
@@ -212,18 +217,6 @@ export function OnboardingAssembliesForm({
         return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-6 space-y-4">
-                <p className="text-sm text-ink-body">
-                    Connect a wallet to load your assembly bindings draft.
-                </p>
-                <Link href="/members/identity">
-                    <Button variant="outline">← Back</Button>
-                </Link>
-            </Card>
-        );
-    }
 
     return (
         <form onSubmit={handleNext} className="space-y-8">

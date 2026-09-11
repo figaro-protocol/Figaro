@@ -73,11 +73,14 @@ type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
  * rootBuyer (the root commit). For `role: "seller"` returns one row per
  * committed order the wallet sells — root or sub-order alike.
  */
-export function useWalletProcessRows(role: PartyRole): {
+export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): {
     rows: ProcessRow[];
     isLoading: boolean;
 } {
-    const { address } = useAccount();
+    // The rows of an address. The connected wallet's by default; any address
+    // when a reader names one — every order is public, and reading needs no wallet.
+    const { address: connected } = useAccount();
+    const address = subject ?? connected;
     const publicClient = usePublicClient();
     const chainId = useChainId();
     const [rows, setRows] = useState<ProcessRow[]>([]);

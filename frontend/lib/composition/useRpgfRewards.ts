@@ -74,12 +74,15 @@ export interface RpgfPeriodState {
     claimed: boolean;
 }
 
-export function useRpgfRewards() {
+export function useRpgfRewards(subject?: `0x${string}`) {
     const minter = getRpgfMinter();
     const counter = getUsageCounter();
     const publicClient = usePublicClient();
     const chainId = useChainId();
-    const { address: account } = useAccount();
+    const { address: connected } = useAccount();
+    // The accrual of an address: the connected wallet's, or any address a
+    // reader names — accrual is public; only the claim needs the wallet.
+    const account = subject ?? connected;
     const { writeContractAsync } = useWriteContract();
 
     const [periods, setPeriods] = useState<RpgfPeriodState[]>([]);

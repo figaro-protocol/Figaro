@@ -13,6 +13,7 @@
 import Link from "@/components/shared/Link";
 import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
+import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { formatUnits } from "viem";
 import { FLORIN_TOKEN_ABI } from "@figaro-protocol/sdk";
 import { Button } from "@/components/ui/Button";
@@ -31,8 +32,10 @@ function periodStatus(t: RpgfPeriodState, currentId: number): string {
 }
 
 export function RewardsView() {
-    const rewards = useRpgfRewards();
-    const { address: account } = useAccount();
+    const { address: connected } = useAccount();
+    // Reading accrual is walletless (?wallet=0x… names any address); claiming needs the wallet.
+    const account = useViewedWallet(connected);
+    const rewards = useRpgfRewards(account);
     const publicClient = usePublicClient();
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
@@ -98,7 +101,12 @@ export function RewardsView() {
                 </p>
             )}
 
-            <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to read your accrual and claim a closed period.">
+            {!account ? (
+                <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to read your accrual and claim a closed period, or name any address with ?wallet=0x… to read its accrual.">
+                    <p className="text-sm text-ink-muted">Accrual is public: add <code>?wallet=0x…</code> to read any address&apos;s.</p>
+                </WalletGate>
+            ) : (
+                <>
                 {account && florinBalance !== null && (
                     <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
                         Your florin balance: <span className="font-mono">{formatUnits(florinBalance, 18)}</span>
@@ -212,7 +220,8 @@ export function RewardsView() {
                         {error}
                     </p>
                 )}
-            </WalletGate>
+                </>
+            )}
         </section>
     );
 }

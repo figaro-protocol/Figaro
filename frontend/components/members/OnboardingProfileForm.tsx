@@ -187,11 +187,13 @@ export function OnboardingProfileForm({
     const chainId = useChainId();
     const { address, isConnected } = useAccount();
     const connectInjected = useConnectInjected();
-    const { state, loaded, update } = useOnboardingState(address);
+    const { state, loaded, subject, update } = useOnboardingState(address);
 
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [hydrated, setHydrated] = useState(false);
+    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    const hydrated = hydratedFor === subject;
     const [locating, setLocating] = useState<"device" | "address" | null>(null);
     const [locateError, setLocateError] = useState<string | null>(null);
 
@@ -214,14 +216,14 @@ export function OnboardingProfileForm({
         if (hydrated || !loaded) return;
         const next = fromDraft(state.profile);
         setForm(next);
-        setHydrated(true);
-    }, [hydrated, loaded, state.profile]);
+        setHydratedFor(subject);
+    }, [hydrated, loaded, subject, state.profile]);
 
     // Persist on every form change so a refresh / navigation doesn't lose work.
     useEffect(() => {
-        if (!hydrated || !isConnected) return;
+        if (!hydrated) return;
         update({ profile: toDraft(form) });
-    }, [form, hydrated, isConnected, update]);
+    }, [form, hydrated, update]);
 
     const validTokens = useMemo(
         () => form.acceptedTokens.filter((t) => isValidAddress(t.address) && t.symbol.trim()),
@@ -403,18 +405,6 @@ export function OnboardingProfileForm({
         return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-6 space-y-4">
-                <p className="text-sm text-ink-body">
-                    Connect a wallet to start your profile draft. The wizard
-                    saves your progress under that wallet&apos;s address; if you
-                    switch wallets, you&apos;ll see that wallet&apos;s separate draft.
-                </p>
-                <Button onClick={() => connectInjected()}>Connect wallet</Button>
-            </Card>
-        );
-    }
 
     const errorCount = Object.keys(errors).length;
 

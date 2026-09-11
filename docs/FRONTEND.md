@@ -323,6 +323,8 @@ Y", not as an open-ended build.)
 
 ## Wallet-provider scope per route
 
+**The wallet is a signer, never a login.** Reading needs no wallet: every page renders what it can from the chain and the registries before any connection, a per-wallet view (`/orders`, `/rewards`) takes the address to show from the connected wallet or from `?wallet=0x…` (`lib/shared/viewedWallet.ts` — the data is public), and the membership wizard is filled without a wallet under an anonymous draft that the first wallet to connect adopts (`lib/member/onboardingState.ts`). A connection is asked for only where a signature or a transaction is: the review step that registers, checkout's place-order, counter-signing, claiming, registering a clause, publishing an assembly. A form hidden behind "connect first" is the login pattern and is wrong here.
+
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load. **The per-tier route lists live in the ONE
 catalogue at § "Routes" above** — do not maintain a second list here.

@@ -72,7 +72,13 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         acceptedTokens: state.profile.acceptedTokens,
         defaultTokenAddress: state.profile.defaultTokenAddress,
         profileClauseValues: state.profile.profileClauseValues,
-        assemblyBindings: state.assemblies,
+        // A draft made before the wallet connected carries a placeholder
+        // subject; the wallet that signs is the subject of every binding.
+        assemblyBindings: state.assemblies?.map((b) => ({
+            ...b,
+            subjectAddress: wallet,
+            bindingId: `binding:${wallet.toLowerCase()}:${b.assemblySlug}`,
+        })),
         // Absence is each optional list's no-declaration state — an
         // empty list pins NO field, never `[]`.
         buyerAssemblies: state.buyerAssemblies && state.buyerAssemblies.length > 0

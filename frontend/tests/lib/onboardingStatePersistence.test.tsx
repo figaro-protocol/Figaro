@@ -13,8 +13,12 @@ import { useOnboardingState } from "@/lib/member/onboardingState";
  * identity, catalogue and bindings gone without a word, the step falling back
  * to its "go set a default token" guard.
  *
- * `loaded` is the seam: it means "the draft OF A KNOWN WALLET has been read",
- * so a form gated on it cannot hydrate against the wrong draft.
+ * `subject` is the seam: the hook says whose draft `state` is (the wallet, or
+ * "anonymous" before one connects), a form hydrates per subject and autosaves
+ * only for the subject it hydrated for, so the wallet's arrival re-hydrates
+ * the form from the wallet's own draft and never writes a stale form over it.
+ * A draft typed before connecting is adopted by the first wallet that
+ * connects without a draft of its own.
  */
 
 const WALLET = "0x1cbd3b2770909d4e10f157cabc84c7264073c9ec" as `0x${string}`;
@@ -23,22 +27,23 @@ const KEY = `figaro:onboarding:${WALLET}`;
 /** Exactly the hydrate-once / persist-on-change contract every
  *  `Onboarding*Form` implements, with the form reduced to one field. */
 function useFormHarness(wallet: `0x${string}` | undefined) {
-    const { state, loaded, update } = useOnboardingState(wallet);
+    const { state, loaded, subject, update } = useOnboardingState(wallet);
     const [name, setName] = useState("");
-    const [hydrated, setHydrated] = useState(false);
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    const hydrated = hydratedFor === subject;
 
     useEffect(() => {
         if (hydrated || !loaded) return;
         setName(state.profile?.name ?? "");
-        setHydrated(true);
-    }, [hydrated, loaded, state.profile]);
+        setHydratedFor(subject);
+    }, [hydrated, loaded, subject, state.profile]);
 
     useEffect(() => {
-        if (!hydrated || !wallet) return;
+        if (!hydrated) return;
         update({ profile: { name } });
-    }, [name, hydrated, wallet, update]);
+    }, [name, hydrated, update]);
 
-    return { name, setName, hydrated, loaded };
+    return { name, setName, hydrated, loaded, subject };
 }
 
 const storedName = () =>
@@ -53,10 +58,28 @@ afterEach(() => {
 });
 
 describe("useOnboardingState — the draft outlives a reload", () => {
-    it("does not report loaded until the wallet the draft is keyed by is known", () => {
+    it("reports the anonymous draft as loaded before a wallet connects", () => {
         const { result } = renderHook(() => useOnboardingState(undefined));
-        expect(result.current.loaded).toBe(false);
+        expect(result.current.loaded).toBe(true);
+        expect(result.current.subject).toBe("anonymous");
         expect(result.current.state).toEqual({});
+    });
+
+    it("adopts what was typed before connecting into the wallet that connects without a draft", async () => {
+        const { result, rerender } = renderHook(
+            ({ wallet }: { wallet: `0x${string}` | undefined }) => useFormHarness(wallet),
+            { initialProps: { wallet: undefined as `0x${string}` | undefined } },
+        );
+        await act(async () => {
+            result.current.setName("Typed before connecting");
+        });
+        await act(async () => {
+            rerender({ wallet: WALLET });
+        });
+        expect(result.current.subject).toBe(WALLET);
+        expect(result.current.name).toBe("Typed before connecting");
+        expect(storedName()).toBe("Typed before connecting");
+        expect(localStorage.getItem("figaro:onboarding:draft")).toBeNull();
     });
 
     it("reports loaded once a wallet is connected, with that wallet's draft", () => {
@@ -75,10 +98,11 @@ describe("useOnboardingState — the draft outlives a reload", () => {
             ({ wallet }: { wallet: `0x${string}` | undefined }) => useFormHarness(wallet),
             { initialProps: { wallet: undefined as `0x${string}` | undefined } },
         );
-        expect(result.current.hydrated).toBe(false);
+        // It hydrates for the anonymous draft, which is empty, and writes nothing under the wallet.
+        expect(result.current.subject).toBe("anonymous");
         expect(storedName()).toBe("Rosa's Kitchen");
 
-        // The wallet arrives.
+        // The wallet arrives: the form re-hydrates from the wallet's own draft.
         await act(async () => {
             rerender({ wallet: WALLET });
         });

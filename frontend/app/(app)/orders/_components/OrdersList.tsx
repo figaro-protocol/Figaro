@@ -27,6 +27,7 @@
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
+import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { formatToken } from "@/lib/shared/utils";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -310,8 +311,11 @@ export function OrdersList() {
     const { address, isConnected } = useAccount();
     const mounted = useMounted();
     const chainId = useChainId();
-    const buyer = useWalletProcessRows("buyer");
-    const seller = useWalletProcessRows("seller");
+    // Reading is walletless: a reader may name any address with ?wallet=.
+    // Acting (accept, counter-sign, resolve) still needs the connected wallet.
+    const viewed = useViewedWallet(address);
+    const buyer = useWalletProcessRows("buyer", viewed);
+    const seller = useWalletProcessRows("seller", viewed);
     const { listings } = useMemberListings();
     const isMock = isE2EMockSession();
 
@@ -449,10 +453,10 @@ export function OrdersList() {
                 first client render must too (wagmi restores the connection
                 synchronously from storage — branching on it during hydration is
                 React #418/#423/#425). Real state takes over post-mount. */}
-            {!mounted || !isConnected ? (
-                <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to see your orders.">
+            {!mounted || (!isConnected && !viewed) ? (
+                <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to see your orders, or name any address with ?wallet=0x… to read its orders.">
                     <div className="rounded-lg border border-default bg-paper p-5 text-sm text-ink-muted">
-                        Connect a wallet to see your orders.
+                        Connect a wallet to see your orders, or add <code>?wallet=0x…</code> to this address to read any wallet&apos;s. Every order is public.
                     </div>
                 </WalletGate>
             ) : (

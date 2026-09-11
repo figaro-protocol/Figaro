@@ -93,15 +93,25 @@ const EMPTY_STATE: OnboardingState = {};
 
 // ── Storage primitives ───────────────────────────────────────────────────────
 
-function storageKeyFor(wallet: string | undefined): string | null {
-    if (!wallet) return null;
+// A draft needs no wallet: a visitor fills the wizard first and connects at
+// the last step, where the registration is signed. Until then the draft lives
+// under one anonymous key; the moment a wallet connects, a draft that wallet
+// does not yet have is adopted from it (and the anonymous copy removed), so
+// nothing typed before connecting is lost. The wallet is a signer, not a login.
+const ANONYMOUS_KEY = "figaro:onboarding:draft";
+
+function storageKeyFor(wallet: string | undefined): string {
+    if (!wallet) return ANONYMOUS_KEY;
     return `figaro:onboarding:${wallet.toLowerCase()}`;
+}
+
+function isEmptyState(state: OnboardingState): boolean {
+    return Object.keys(state).filter((k) => k !== "walletAddress" && k !== "updatedAt").length === 0;
 }
 
 function readState(wallet: string | undefined): OnboardingState {
     if (typeof window === "undefined") return EMPTY_STATE;
     const key = storageKeyFor(wallet);
-    if (!key) return EMPTY_STATE;
     try {
         const raw = window.localStorage.getItem(key);
         if (!raw) return EMPTY_STATE;
@@ -114,11 +124,10 @@ function readState(wallet: string | undefined): OnboardingState {
 function writeState(wallet: string | undefined, state: OnboardingState): void {
     if (typeof window === "undefined") return;
     const key = storageKeyFor(wallet);
-    if (!key) return;
     try {
         const stamped: OnboardingState = {
             ...state,
-            walletAddress: wallet as `0x${string}`,
+            ...(wallet ? { walletAddress: wallet as `0x${string}` } : {}),
             updatedAt: new Date().toISOString(),
         };
         window.localStorage.setItem(key, JSON.stringify(stamped));
@@ -130,7 +139,6 @@ function writeState(wallet: string | undefined, state: OnboardingState): void {
 function removeState(wallet: string | undefined): void {
     if (typeof window === "undefined") return;
     const key = storageKeyFor(wallet);
-    if (!key) return;
     try {
         window.localStorage.removeItem(key);
     } catch {
@@ -141,22 +149,18 @@ function removeState(wallet: string | undefined): void {
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export interface UseOnboardingStateResult {
+    /** Whose draft `state` is: the wallet address, or "anonymous" before one
+     *  connects. A form hydrates per subject and autosaves only for the
+     *  subject it hydrated for, so a wallet arriving after the form mounted
+     *  never has a stale form written over its own draft. */
+    subject: string;
     state: OnboardingState;
     /**
-     * `true` once the draft OF A KNOWN WALLET has been read from
-     * localStorage. Forms must gate hydration on this flag — gating on
-     * `state.X !== undefined` is unreliable because new users have no
-     * draft (so `state` never transitions from `EMPTY_STATE`), and
-     * returning users can have their hydration race the read.
-     *
-     * It stays `false` while `walletAddress` is undefined. On a page
-     * reload the wallet reconnects asynchronously, so there is a window
-     * where the wizard is mounted with no address: a form that hydrated
-     * in that window would hydrate from `EMPTY_STATE`, latch its
-     * `hydrated` flag, and then persist the empty form over the real
-     * draft the moment the wallet arrived — a silent wipe of everything
-     * typed. No wallet means no draft to speak of, so this reads
-     * "not loaded" until the wallet the draft is keyed by is known.
+     * `true` once the draft has been read from localStorage — the wallet's
+     * own when one is connected, the anonymous draft when none is. Forms gate
+     * hydration on this flag, never on `state.X !== undefined`: a new visitor
+     * has no draft, so `state` never leaves `EMPTY_STATE`, and a returning one
+     * can have hydration race the read. A wallet switch re-reads and re-arms.
      */
     loaded: boolean;
     /** Replace the entire state. */
@@ -170,18 +174,33 @@ export interface UseOnboardingStateResult {
 /**
  * Wallet-scoped onboarding-state hook. Reads the current draft for
  * `walletAddress` from localStorage on mount and on wallet switch;
- * writes back on every update. Returns `EMPTY_STATE` when no wallet is
- * connected.
+ * writes back on every update. With no wallet connected the draft is the
+ * anonymous one, adopted by the first wallet that connects without a draft.
  */
 export function useOnboardingState(walletAddress: `0x${string}` | undefined): UseOnboardingStateResult {
     const [state, setStateInternal] = useState<OnboardingState>(EMPTY_STATE);
-    const [loaded, setLoaded] = useState(false);
+    // Whose draft `state` was read for. `loaded` is derived from it, so in the
+    // render where the subject has changed but the read has not yet run, a
+    // form sees loaded === false and waits instead of hydrating from the
+    // previous subject's state.
+    const subject = walletAddress ?? "anonymous";
+    const [loadedFor, setLoadedFor] = useState<string | null>(null);
+    const loaded = loadedFor === subject;
 
     useEffect(() => {
-        setLoaded(false);
-        setStateInternal(readState(walletAddress));
-        // Only a wallet-keyed read counts as loaded — see `loaded` above.
-        setLoaded(walletAddress !== undefined);
+        let next = readState(walletAddress);
+        // A wallet that just connected adopts the anonymous draft when it has
+        // none of its own; the anonymous copy is removed so it is adopted once.
+        if (walletAddress && isEmptyState(next)) {
+            const anonymous = readState(undefined);
+            if (!isEmptyState(anonymous)) {
+                next = anonymous;
+                writeState(walletAddress, next);
+                removeState(undefined);
+            }
+        }
+        setStateInternal(next);
+        setLoadedFor(walletAddress ?? "anonymous");
     }, [walletAddress]);
 
     const setState = useCallback((next: OnboardingState) => {
@@ -202,7 +221,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
         removeState(walletAddress);
     }, [walletAddress]);
 
-    return { state, loaded, setState, update, clear };
+    return { state, loaded, subject, setState, update, clear };
 }
 
 // ── Step progress ────────────────────────────────────────────────────────────

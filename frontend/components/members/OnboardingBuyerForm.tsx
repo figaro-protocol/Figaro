@@ -70,7 +70,7 @@ export function OnboardingBuyerForm({
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, loaded, update } = useOnboardingState(address);
+    const { state, loaded, subject, update } = useOnboardingState(address);
 
     const { data: choicesData } = useAssemblyChoices();
     const choices: AssemblyChoice[] = choicesData ?? [];
@@ -81,7 +81,9 @@ export function OnboardingBuyerForm({
     // the assemblies step and are carried through every write untouched.
     const [policyEntries, setPolicyEntries] = useState<DisclosurePolicyEntry[]>([]);
     const [otherPostureEntries, setOtherPostureEntries] = useState<DisclosurePolicyEntry[]>([]);
-    const [hydrated, setHydrated] = useState(false);
+    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    const hydrated = hydratedFor === subject;
 
     useEffect(() => {
         if (hydrated || !loaded) return;
@@ -89,11 +91,11 @@ export function OnboardingBuyerForm({
         const allEntries = state.disclosurePolicy ?? [];
         setPolicyEntries(allEntries.filter((e) => e.posture === "buyer"));
         setOtherPostureEntries(allEntries.filter((e) => e.posture !== "buyer"));
-        setHydrated(true);
-    }, [hydrated, loaded, state.buyerAssemblies, state.disclosurePolicy]);
+        setHydratedFor(subject);
+    }, [hydrated, loaded, subject, state.buyerAssemblies, state.disclosurePolicy]);
 
     useEffect(() => {
-        if (!hydrated || !isConnected || !address) return;
+        if (!hydrated) return;
         update({
             buyerAssemblies: buildSubscriptions(subscribed),
             disclosurePolicy: [
@@ -101,7 +103,7 @@ export function OnboardingBuyerForm({
                 ...activeBuyerPolicy(policyEntries, subscribed),
             ],
         });
-    }, [subscribed, policyEntries, otherPostureEntries, hydrated, isConnected, address, update]);
+    }, [subscribed, policyEntries, otherPostureEntries, hydrated, update]);
 
     function toggle(compositionHash: string) {
         setSubscribed((prev) => {
@@ -115,7 +117,6 @@ export function OnboardingBuyerForm({
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
         if (onSave) {
-            if (!address) return;
             onSave(
                 buildSubscriptions(subscribed),
                 [...otherPostureEntries, ...activeBuyerPolicy(policyEntries, subscribed)],
@@ -131,18 +132,6 @@ export function OnboardingBuyerForm({
         return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-6 space-y-4">
-                <p className="text-sm text-ink-body">
-                    Connect a wallet to load your buyer draft.
-                </p>
-                <Link href="/members/identity">
-                    <Button variant="outline">← Back</Button>
-                </Link>
-            </Card>
-        );
-    }
 
     return (
         <form onSubmit={handleNext} className="space-y-8">

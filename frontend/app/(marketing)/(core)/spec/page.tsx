@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
+import { getAbiItem, toEventSelector } from "viem";
+import { ATTESTATION_COORDINATOR_ABI, COMMITMENT_TYPES } from "@figaro-protocol/sdk";
 import Link from "@/components/shared/Link";
 import { ContractEntry } from "@/components/shared/ContractEntry";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
@@ -391,6 +393,11 @@ const ERRORS: ErrorStage[] = [
     },
 ];
 
+// The commitment's EIP-712 type string and the attestation event's topic are
+// rendered from the SDK and the ABI — never retyped here.
+const COMMITMENT_TYPE_STRING = `Commitment(${COMMITMENT_TYPES.Commitment.map((f) => `${f.type} ${f.name}`).join(",")})`;
+const ATTESTATION_TOPIC = toEventSelector(getAbiItem({ abi: ATTESTATION_COORDINATOR_ABI, name: "Attestation" }));
+
 export default function Specifications() {
     const deployRecord = deploymentRecord();
     const recordSha = deploymentRecordSha256();
@@ -464,6 +471,16 @@ export default function Specifications() {
                         meta="2 fns · 3 mappings · decentralized, permissionless"
                         desc="The protocol kernel: holds every bonded commitment, and resolves a process atomically on its buyer's signature. commit (unified dual-signed) and resolveProcess. EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution. Resolution state is the public mapping orderStatus(bytes32 orderHash) → uint8: 0 UNKNOWN, 1 ACTIVE, 2 RESOLVED. It answers for the DIRECT path only — a process resolved through FigaroBatchVerifier (below) is never written here and reads 0 forever, so 0 means 'not on this path', never 'not resolved'. See 'The two paths share no state' below."
                     />
+                    <li className="list-none pl-4 pb-2 text-sm text-ink-body space-y-2">
+                        <p>
+                            The commitment both parties sign, as EIP-712 typed data:
+                        </p>
+                        <p><code className="font-mono text-xs break-all">{COMMITMENT_TYPE_STRING}</code></p>
+                        <p>
+                            Every address in the deployment record below is source-verified on Etherscan; the ABI is on each Etherscan page and in the repository&apos;s{" "}
+                            <a href="https://github.com/figaro-protocol/Figaro/tree/main/abi" target="_blank" rel="noopener noreferrer" className="underline">abi/ bundle</a>.
+                        </p>
+                    </li>
                     <ContractEntry
                         id="CommitmentTypes"
                         title="CommitmentTypes.sol"
@@ -594,7 +611,7 @@ function attestViaResolver(
                             <tr>
                                 <td className="py-2 pr-4">Per-order evidence?</td>
                                 <td className="py-2 pr-4"><code className="font-mono text-xs">Attestation</code> from <code>AttestationCoordinator</code></td>
-                                <td className="py-2"><code className="font-mono text-xs">Attestation</code> re-emitted by the verifier &mdash; <strong>same topic hash</strong> (<code className="font-mono text-xs">0x754607f1…</code>), so filter by contract ADDRESS, not by topic &mdash; plus the ERC-20 transfers <code>settleBatch</code> executed for the net positions.</td>
+                                <td className="py-2"><code className="font-mono text-xs">Attestation</code> re-emitted by the verifier &mdash; <strong>same topic hash</strong> (<code className="font-mono text-xs break-all">{ATTESTATION_TOPIC}</code>), so filter by contract ADDRESS, not by topic &mdash; plus the ERC-20 transfers <code>settleBatch</code> executed for the net positions.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">Did it count toward designer rewards?</td>

@@ -232,12 +232,14 @@ export function OnboardingCatalogueForm({
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, loaded, update } = useOnboardingState(address);
+    const { state, loaded, subject, update } = useOnboardingState(address);
 
     const [items, setItems] = useState<FormItem[]>([emptyItem()]);
     const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [hydrated, setHydrated] = useState(false);
+    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    const hydrated = hydratedFor === subject;
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedCount, setImportedCount] = useState<number | null>(null);
 
@@ -270,15 +272,15 @@ export function OnboardingCatalogueForm({
         if (stored && stored.length > 0) {
             setItems(stored.map((item) => fromItem(item, storedUnitSystem)));
         }
-        setHydrated(true);
-    }, [hydrated, loaded, state.catalogue]);
+        setHydratedFor(subject);
+    }, [hydrated, loaded, subject, state.catalogue]);
 
     // Persist on every form change.
     useEffect(() => {
-        if (!hydrated || !isConnected) return;
+        if (!hydrated) return;
         const validItems = items.filter(isItemComplete).map((it) => toItem(it, unitSystem));
         update({ catalogue: { items: validItems, unitSystem } });
-    }, [items, unitSystem, hydrated, isConnected, update]);
+    }, [items, unitSystem, hydrated, update]);
 
     // Data-for-sale options: the member's declared data offers
     // (offered entries, both postures) — an item referencing one is the
@@ -370,18 +372,6 @@ export function OnboardingCatalogueForm({
         return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-6 space-y-4">
-                <p className="text-sm text-ink-body">
-                    Connect a wallet to load your catalogue draft.
-                </p>
-                <Link href="/members/identity">
-                    <Button variant="outline">← Back to profile</Button>
-                </Link>
-            </Card>
-        );
-    }
 
     if (!state.profile?.defaultTokenAddress) {
         return (

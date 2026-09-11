@@ -47,10 +47,6 @@
         {
             "question": "What if the buyer is not there when I arrive?",
             "answer": "Attest the arrival under the handoff clause; it is your evidence. Then put it right with the buyer before resolution, or take it to the forum this assembly names. The buyer cannot be paid back by walking away; its bond stays locked too."
-        },
-        {
-            "question": "What about a walk-in who pays at the counter?",
-            "answer": "The same order, with no courier leg. The buyer opens your page on their phone, picks the meal, and commits; you hand it over; they resolve on the spot. Their wallet app is the counter. A buyer without a wallet cannot use this assembly; that is what it asks of every buyer."
         }
     ],
     "name": "Local commerce",

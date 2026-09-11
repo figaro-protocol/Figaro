@@ -82,28 +82,30 @@ export function OnboardingAgentsForm({
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, loaded, update } = useOnboardingState(address);
+    const { state, loaded, subject, update } = useOnboardingState(address);
 
     const [services, setServices] = useState<MemberAgentServices>({});
-    const [hydrated, setHydrated] = useState(false);
+    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    const hydrated = hydratedFor === subject;
 
     // Hydrate once `loaded === true` — see OnboardingProfileForm for
     // the race-condition rationale.
     useEffect(() => {
         if (hydrated || !loaded) return;
         setServices(state.services ?? {});
-        setHydrated(true);
-    }, [hydrated, loaded, state.services]);
+        setHydratedFor(subject);
+    }, [hydrated, loaded, subject, state.services]);
 
     useEffect(() => {
-        if (!hydrated || !isConnected) return;
+        if (!hydrated) return;
         const nonEmpty = Object.fromEntries(
             Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
         ) as MemberAgentServices;
         update({
             services: Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined,
         });
-    }, [services, hydrated, isConnected, update]);
+    }, [services, hydrated, update]);
 
     function setField(key: ServiceKey, value: string) {
         setServices((prev) => ({ ...prev, [key]: value }));
@@ -132,18 +134,6 @@ export function OnboardingAgentsForm({
         return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-6 space-y-4">
-                <p className="text-sm text-ink-body">
-                    Connect a wallet to load your agent-endpoint draft.
-                </p>
-                <Link href="/members/identity">
-                    <Button variant="outline">← Back</Button>
-                </Link>
-            </Card>
-        );
-    }
 
     return (
         <form onSubmit={handleNext} className="space-y-8">

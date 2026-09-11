@@ -2,6 +2,24 @@
     "name": "Point of sale",
     "summary": "One bonded order at the counter: buyer and seller, no processor in between.",
     "description": "The simplest trade Figaro secures: a buyer and a seller resolve a purchase directly. Both lock a stake worth more than the deal, so honoring it is the only profitable move \u2014 no card network, no payment processor, no chargeback department. The buyer picks how the goods change hands (on-site, pickup) at checkout; one signature resolves it.",
+    "faq": [
+        {
+            "question": "How does a walk-in pay at the counter?",
+            "answer": "With a wallet app on their phone. They open your page, pick the item, and commit; you hand it over; they resolve on the spot. Their phone is the card reader, and nobody sits between you."
+        },
+        {
+            "question": "What does the buyer need?",
+            "answer": "A wallet, a little ETH for gas, and the token you price in, enough for the item and their own bond of twice the price. A buyer without a wallet cannot use this assembly."
+        },
+        {
+            "question": "What do I put up, and when am I paid?",
+            "answer": "A bond of twice the price, refunded whole when the buyer resolves, in the same transaction that pays you. The buyer's bond is refunded at the same moment."
+        },
+        {
+            "question": "What if the buyer walks off without resolving?",
+            "answer": "Nothing moves. Their bond, twice the price, stays locked with yours. They keep the item and are out of pocket by the price; you are out the item and your bond. Hand over after they commit, and resolve before they leave; the assembly is built for the two steps to happen at the counter."
+        }
+    ],
     "assemblyClauses": {
         "figaro-assembly-provenance": {}
     },

@@ -121,3 +121,11 @@ export function sectionOnSite(hrefs: readonly string[], pathname: string): boole
     return hrefs.some((h) => sitesOfRoute(h).includes(site));
 }
 
+/** The door each host is named for in the header: Use, Build, Core; the apex has none. */
+export function siteLabel(site: SiteId | null): string | null {
+    if (site === "app") return "Use";
+    if (site === "build") return "Build";
+    if (site === "core") return "Core";
+    return null;
+}
+
