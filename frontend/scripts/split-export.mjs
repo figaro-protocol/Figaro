@@ -96,6 +96,28 @@ function rehost(html, site) {
     });
 }
 
+// Each host publishes its own sitemap: the export's one sitemap.xml, kept to
+// the routes that host carries, with every URL on that host's origin.
+const sitemapPath = path.join(OUT, "sitemap.xml");
+if (fs.existsSync(sitemapPath)) {
+    const xml = fs.readFileSync(sitemapPath, "utf8");
+    const head = xml.slice(0, xml.indexOf("<url>"));
+    const tail = xml.slice(xml.lastIndexOf("</url>") + "</url>".length);
+    const entries = [...xml.matchAll(/<url>[\s\S]*?<\/url>/g)].map((m) => m[0]);
+    for (const site of SITES) {
+        const origin = MAP.hosts[site].replace(/\/$/, "");
+        const kept = entries
+            .filter((e) => {
+                const loc = /<loc>([^<]+)<\/loc>/.exec(e)?.[1] ?? "";
+                const route = new URL(loc).pathname.replace(/\/$/, "") || "/";
+                return sitesOfRoute(route).includes(site);
+            })
+            .map((e) => e.replace(/<loc>https?:\/\/[^/]+/, `<loc>${origin}`));
+        fs.writeFileSync(path.join(DEST, site, "sitemap.xml"), head + kept.join("") + tail);
+        console.log(`[split-export] ${site}: sitemap.xml lists ${kept.length} routes on ${origin}`);
+    }
+}
+
 if (unmapped.length > 0) {
     console.error(`[split-export] ${unmapped.length} route(s) the site map does not carry:`);
     for (const r of [...new Set(unmapped)].sort()) console.error(`  ${r}`);

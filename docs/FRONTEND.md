@@ -11,7 +11,7 @@ directory listing is the source of truth; this table is a reading of it, and a r
 that disagrees with the tree is the table's error. Tier definitions and the rules
 behind them: § "Wallet-provider scope per route" below.
 
-**The three sites.** One tree, one export, three hosts plus the apex router: `frontend/lib/shared/sites.json` says which host serves which route (a shared surface lists more than one; the first owns it for links), `npm run build:sites` splits the export into `out-sites/<site>/` (`frontend/scripts/split-export.mjs` — a page's files follow its directory's site; the `_next` bundle and root files go to every host; static HTML it copies gets its cross-host links rehosted), and `scripts/lint-site-map.sh` fails a page route no host carries. With `NEXT_PUBLIC_SPLIT_SITES` unset the tree is one host, as before.
+**The three sites.** One tree, one export, three hosts plus the apex router: `frontend/lib/shared/sites.json` says which host serves which route (a shared surface lists more than one; the first owns it for links), `npm run build:sites` splits the export into `out-sites/<site>/` (`frontend/scripts/split-export.mjs` — a page's files follow its directory's site; the `_next` bundle and root files go to every host; static HTML it copies gets its cross-host links rehosted; each host gets its own `sitemap.xml`, its routes on its origin), and `scripts/lint-site-map.sh` fails a page route no host carries. With `NEXT_PUBLIC_SPLIT_SITES` unset the tree is one host, as before.
 
 **Marketing — `(marketing)/`, no wallet provider.** Seven route groups, one per
 protocol object. Marketing-tier reads reach on-chain state through the standalone
