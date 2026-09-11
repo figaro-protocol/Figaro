@@ -13,7 +13,7 @@ export const metadata: Metadata = withOg({
 const JUMP_LINKS: { href: string; label: string }[] = [
     { href: "#strata", label: "The four orders, and where power goes" },
     { href: "#counterweights", label: "The standing counterweights" },
-    { href: "#shadow-credit", label: "Objection: a lending industry forms outside the protocol" },
+    { href: "#shadow-credit", label: "Objection: a lending industry forms to supply the bonds" },
     { href: "#provenance", label: "Objection: colluding parties can emit perfect books" },
     { href: "#monoculture", label: "Objection: one dominant assembly is a correlated risk" },
     { href: "#mercy", label: "Objection: perfect enforcement prices mercy" },
@@ -93,9 +93,9 @@ export default function Consequences() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="A lending industry forms outside the protocol." sectionId="shadow-credit">
+            <MarketingSection title="A lending industry forms to supply the bonds." sectionId="shadow-credit">
                 <p className="text-base text-ink-body leading-relaxed">
-                    An industry forms to lend a party the tokens its bond requires, and underwriting re-enters at the point of access &mdash; invisible and unappealable. The outside half is conceded: the protocol governs its own boundary and bans nothing past it. Inside a process a bond is its own party&apos;s deterrent, never an asset, never lent from a pool, and nothing on chain reads a credit history; the stake a wallet places to register is reclaimable by the wallet that placed it, not a score. Who lends a party its bond, and on what terms, is outside that boundary; a lender&apos;s scoring is the lender&apos;s. The mechanism converts a behavioral question into a solvency one, and does not solve solvency.
+                    An industry forms to lend a party the tokens its bond requires, and underwriting re-enters at the point of access &mdash; invisible, unappealable, and past a boundary the protocol does not police. The objection assumes a lent bond is still a bond, and it is not. A bond is its own party&apos;s deterrent, sized to what a defector would keep, and at 2&times; the whole of it is doing that work with none of it spare: any part of a bond that is not the party&apos;s own to lose is a part the deterrent stops covering. A bond another party supplied therefore puts the borrower outside the equilibrium the theorem proves, and a counterparty reading the bond schedule sees a deterrent the borrower does not carry. Room for a lent share would begin above 2&times;, and 2&times; is the mechanism rather than a setting anyone tunes (<Link href="/kernel#refusals" className="text-ink-heading font-medium hover:underline">the three refusals</Link>). So there is no credit function here, and none attaches from outside without breaking the game for the party it lends to. Nothing on chain reads a credit history because nothing on chain lends: the stake a wallet places to register is reclaimable by the wallet that placed it, not a score. What the refusal costs is the first thing said above about where power goes, and it is not softened here: what a wallet can bond is what it holds.
                 </p>
             </MarketingSection>
 
@@ -112,8 +112,11 @@ export default function Consequences() {
             </MarketingSection>
 
             <MarketingSection title="Perfect enforcement prices mercy." sectionId="mercy">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The strongest ethical objection anyone has put to the design: enforcement this exact, with nothing in it that forgives, prices mercy &mdash; and where mercy has a price it stops happening at scale and returns as something purchased. What the mechanism enforces is cooperation and not justice. It holds a party to what it signed and has no view on whether what it signed was fair, because fairness is a social construction and not a property a mechanism carries. The kernel forgives nothing for the same reason it holds no other exception: anything with the power to release a party from what it committed to is a seat worth capturing, and the design leaves that seat empty rather than fill it with a good intention. That is sovereignty chosen over paternalism, and the choice lands hardest on participants who are vulnerable in markets.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The strongest ethical objection anyone has put to the design: enforcement this exact, with nothing in it that forgives, prices mercy &mdash; and where mercy has a price it stops happening at scale and returns as something purchased. The kernel forgives nothing, for the same reason it holds no other exception: anything with the power to release a party from what it committed to is a seat worth capturing, and the design leaves that seat empty rather than fill it with a good intention. Forgiveness sits where it has always sat, with the parties, before resolution &mdash; a remedy accepted, a term renegotiated, a buyer who resolves anyway. Past that it lives in what someone writes above the kernel: insurance as a bonded process, floor terms, community redistribution. Those are protections this design makes composable and does not supply. A mechanism that makes cooperation the cheapest option has made nothing kind: the kindness has to be written, by someone, and that is a responsibility this creates and does not discharge.
+                    Forgiveness sits where it has always sat, with the parties, before resolution &mdash; a remedy accepted, a term renegotiated, a buyer who resolves anyway. A forum the agreement names rules on the open process, and the parties carry its ruling into a remedy while the bonds are still locked; the forum cannot resolve the process, and that limit is the design&apos;s, not an oversight. Past that, forgiveness lives in what someone writes above the kernel: insurance as a bonded process, floor terms, community redistribution, standards a community holds each other to. The firm bundled protections of that kind with subordination, and the bundling was contingent rather than necessary &mdash; unbundled, each is a voluntary bonded process someone has to write. So a mechanism that makes cooperation the cheapest option has made nothing kind: the kindness has to be written, and writing it is the ecosystem&apos;s work and never the kernel&apos;s &mdash; a responsibility this creates and does not discharge.
                 </p>
             </MarketingSection>
 
