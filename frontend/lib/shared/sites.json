@@ -34,6 +34,7 @@
 
         ["/use", ["app"]],
         ["/faq", ["app"]],
+        ["/assemblies-app", ["app"]],
         ["/faq-build", ["build"]],
         ["/faq-core", ["core"]],
         ["/worked-example", ["app"]],
@@ -51,5 +52,5 @@
         ["/agents", ["app", "core", "build"]]
     ],
     "roots": { "core": "/core", "build": "/build", "app": "/use" },
-    "aliases": [["/faq-build", "build", "/faq"], ["/faq-core", "core", "/faq"]]
+    "aliases": [["/faq-build", "build", "/faq"], ["/faq-core", "core", "/faq"], ["/assemblies-app", "app", "/assemblies"]]
 }

@@ -101,6 +101,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         links: [
             { href: "/use", label: "Use" },
             { href: "/members", label: "Members" },
+            { href: "/assemblies-app", label: "Assemblies" },
             { href: "/faq", label: "FAQ" },
             { href: "/local-commerce", label: "Local Commerce" },
             { href: "/worked-example", label: "Worked example" },

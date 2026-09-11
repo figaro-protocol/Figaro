@@ -58,6 +58,7 @@ const PUBLIC_ROUTES: Entry[] = [
     // landing that reads walletlessly — the same case as /registries.
     { path: "/data/explore", changeFrequency: "daily", priority: 0.7 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.8 },
+    { path: "/assemblies-app", changeFrequency: "daily", priority: 0.9 },
     { path: "/faq-build", changeFrequency: "monthly", priority: 0.8 },
     { path: "/faq-core", changeFrequency: "monthly", priority: 0.8 },
     { path: "/composition", changeFrequency: "monthly", priority: 0.7 },
