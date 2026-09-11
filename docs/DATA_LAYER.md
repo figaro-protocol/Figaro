@@ -213,6 +213,13 @@ substantive accuracy. **Composition-derived** rows are read from a composed venu
 own events — a swap pool, the multisender, a forum — true per that contract's rules
 and outside the kernel's guarantees.
 
+A third party that relies on the corpus — a lender, an insurer, a court — reads the
+boundary with the row. The chain enforced the bonds and the payment; every claim
+about the world entered as a party's signed claim, and parties acting together can
+emit perfectly formed books for a trade whose service was never rendered. The data
+proves what the kernel enforced, never the world, and whoever builds a decision on
+the books carries that boundary into the decision.
+
 A surface that renders this data should keep the boundaries visibly apart rather
 than blending them, so nobody mistakes a declaration for a guarantee. `/data/explore`
 is the built example: one layer at a time, each with its boundary named, and the
