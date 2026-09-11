@@ -11,6 +11,7 @@ import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 // scripts/lint-equilibrium-owner.sh fails a commit that retypes them here.
 const EQ = KERNEL_EQUILIBRIUM;
 const EX = EQ.example;
+const CH = EQ.example.chain; // the same trade shared by three sellers — legs and their arithmetic, one owner
 
 export const metadata: Metadata = withOg({
     title: "Kernel — Figaro Protocol",
@@ -98,28 +99,24 @@ A forfeited bond is simply value that is never refunded, locked in the smart con
             <StackedBondChainFigure
                 className="my-8"
                 idPrefix="kernel-stacked-stakes"
-                legs={[
-                    { name: "First contributor", role: "opens the trade", payment: 6 },
-                    { name: "Second contributor", role: "commits next", payment: 3 },
-                    { name: "Third contributor", role: "commits last", payment: 1 },
-                ]}
-                figureTitle="The same ten-token trade, shared by three contributors"
+                legs={CH.legs}
+                figureTitle={`The same ${CH.trade}-token trade, shared by ${CH.legs.length} contributors`}
                 figureDesc={
-                    "A ten-token trade split across three contributors in the order they " +
-                    "commit: the first is paid 6.00, the second 3.00, the third 1.00. " +
+                    `A ${CH.trade}-token trade split across ${CH.legs.length} contributors in the order they ` +
+                    `commit: the first is paid ${CH.legs[0].payment}, the second ${CH.legs[1].payment}, the third ${CH.legs[2].payment}. ` +
                     "Each bonds twice the value the trade has accumulated at its own " +
                     "link rather than twice its own payment, so the third contributor — " +
-                    "paid least — bonds twice the whole 10.00. The buyer bonds twice " +
-                    "each payment as that contributor commits, twenty in all. All three " +
+                    `paid least — bonds twice the whole ${CH.trade}. The buyer bonds twice ` +
+                    `each payment as that contributor commits, ${CH.buyer_total} in all. All three ` +
                     "resolve together, or none do."
                 }
                 caption={
                     <>
-                        The same ten-token trade, now shared by three pairs of hands. The third
-                        contributor is paid the least (1.00) and locks the most
-                        (2 &times; 10.00 = 20.00): by the time it commits, the running total
-                        already carries the other two. The buyer&apos;s twenty is the same
-                        twenty as before &mdash; it just arrives one commitment at a time.
+                        The same {CH.trade}-token trade, now shared by {CH.legs.length} pairs of hands. The third
+                        contributor is paid the least ({CH.legs[2].payment}) and locks the most
+                        (2 &times; {CH.trade} = {CH.seller_bonds[2]}): by the time it commits, the running total
+                        already carries the other two. The buyer&apos;s {CH.buyer_total} is the same
+                        {EX.buyer_locks} as before &mdash; it just arrives one commitment at a time.
                     </>
                 }
             />

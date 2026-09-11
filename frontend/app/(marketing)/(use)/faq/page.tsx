@@ -6,6 +6,11 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
+import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
+
+// The chain example — the kernel page's trade shared by three sellers — has one
+// owner, sdk/src/equilibrium.json; the guard fails a commit that retypes it.
+const CH = KERNEL_EQUILIBRIUM.example.chain;
 
 export const metadata: Metadata = withOg({
     title: "FAQ — Figaro Protocol",
@@ -340,7 +345,7 @@ export default function Faq() {
                     Because a bond is measured against the value the trade has accumulated at the link it secures, not against the trade as a whole. Each seller bonds twice the cumulative value through its own order &mdash; everything committed before it, its own payment counted in &mdash; which is the rule Definition 1 of <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link> states. The buyer bonds twice each payment, as that order joins.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What the rule buys is an early link that is not bonded against work nobody has committed yet. Take the ten-token trade the kernel page splits three ways, in the order the sellers commit: 6.00 to the first, 3.00 to the second, 1.00 to the third. The running total at each link is 6.00, then 9.00, then 10.00, so the three bonds are 12.00, 18.00 and 20.00 &mdash; 50.00 locked by the sellers together. The buyer bonds twice each payment as each order joins: 12.00 + 6.00 + 2.00 = 20.00. Bond every seller against the whole trade instead and each of the three locks 20.00, 60.00 in all, with the seller adding 6.00 at the start standing behind two contributions that were not yet in the process when it signed.
+                    What the rule buys is an early link that is not bonded against work nobody has committed yet. Take the {CH.trade}-token trade the kernel page splits three ways, in the order the sellers commit: {CH.legs[0].payment} to the first, {CH.legs[1].payment} to the second, {CH.legs[2].payment} to the third. The running total at each link is {CH.cumulative[0]}, then {CH.cumulative[1]}, then {CH.cumulative[2]}, so the three bonds are {CH.seller_bonds[0]}, {CH.seller_bonds[1]} and {CH.seller_bonds[2]} &mdash; {CH.seller_bonds_total} locked by the sellers together. The buyer bonds twice each payment as each order joins: {CH.buyer_bonds[0]} + {CH.buyer_bonds[1]} + {CH.buyer_bonds[2]} = {CH.buyer_total}. Bond every seller against the whole trade instead and each of the three locks {CH.if_every_seller_bonded_the_whole_trade.each}, {CH.if_every_seller_bonded_the_whole_trade.total} in all, with the seller adding {CH.legs[0].payment} at the start standing behind two contributions that were not yet in the process when it signed.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The weight lands at the other end instead. Whoever commits last carries everything already added and bonds against all of it, so the seller paid least locks the most. That is the design rather than an artefact of the ordering: the last link is the one with every earlier link&apos;s work behind it, and the bond says so. <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">The numbers, worked</Link>
