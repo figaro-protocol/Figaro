@@ -311,9 +311,6 @@ export default function Faq() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     These are detectors you run, not protection that runs for you. Neither one stops a doctored prompt; they let you catch one &mdash; the first before you sign, the second afterwards and by anybody.
                 </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The definitive answer &mdash; a verifiable build, where no single origin&apos;s word is required &mdash; is the Security page&apos;s subject.
-                </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     And what is not fixed: the hash in your wallet, rather than the trade in words. That is the kernel&apos;s doing and it is staying. The signed commitment binds the agreement by fingerprint, and the kernel has no upgrade key &mdash; a friendlier prompt would cost a kernel someone can change, and every other property described on this page depends on there being no such person. That same fingerprint-binding is what lets both checks above run outside this project&apos;s reach.
                 </p>
