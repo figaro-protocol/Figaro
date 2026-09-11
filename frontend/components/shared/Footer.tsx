@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "@/components/shared/Link";
+import { usePathname } from "next/navigation";
+import { currentSite, siteFaqRoute } from "@/lib/shared/sites";
 
 /**
  * The footer is the LEGAL/IDENTITY strip only (maintainer rule 2026-08-06):
@@ -7,6 +11,8 @@ import Link from "@/components/shared/Link";
  * on desktop, the drawer on mobile. Do not regrow link columns here.
  */
 export function Footer() {
+    // The FAQ link is the host's own FAQ (the users', the builders', or the core's).
+    const faqHref = siteFaqRoute(currentSite(usePathname() ?? "/"));
     return (
         <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-8 flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">
@@ -40,7 +46,7 @@ export function Footer() {
                         Security
                     </Link>
                     <Link
-                        href="/faq"
+                        href={faqHref}
                         className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded"
                     >
                         FAQ

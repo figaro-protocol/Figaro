@@ -109,11 +109,27 @@ function rehost(html, site) {
     return html.replace(/href="(\/[^"\/][^"]*|\/)"/g, (whole, href) => {
         if (href.startsWith("/_next")) return whole;
         const route = (href.split(/[?#]/)[0] || "/").replace(/\/$/, "") || "/";
+        // A served alias path on this host (/faq on build, from /faq-build) is
+        // carried here, whatever the source route's own map entry says.
+        if (ALIASES.some(([, aliasSite, served]) => aliasSite === site && (route === served || route.startsWith(served + "/")))) return whole;
         const sites = sitesOfRoute(route);
         if (sites.length === 0) return whole;
         if (sites.includes(site)) return `href="${servedPath(href, site)}"`;
         return `href="${MAP.hosts[sites[0]].replace(/\/$/, "")}${servedPath(href, sites[0])}"`;
     });
+}
+
+// Each host's root is its door: the apex keeps the home, the others serve the
+// page `roots` names (core → /core, build → /build, app → /use). The root
+// files every host received (the home, shared by the root-files rule) are
+// replaced by the door's.
+for (const [site, doorRoute] of Object.entries(MAP.roots ?? {})) {
+    const from = path.join(DEST, site, doorRoute.slice(1));
+    for (const name of ["index.html", "index.txt"]) {
+        const src = path.join(from, name);
+        if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DEST, site, name));
+    }
+    console.log(`[split-export] ${site}: / serves ${doorRoute}`);
 }
 
 // Each host publishes its own sitemap: the export's one sitemap.xml, kept to

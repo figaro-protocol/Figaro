@@ -86,3 +86,33 @@ describe("servedPath and aliases", () => {
     });
 });
 
+describe("the host's own chrome", () => {
+    afterEach(() => { delete process.env.NEXT_PUBLIC_SPLIT_SITES; });
+
+    it("names the current site and its own FAQ route", async () => {
+        const { currentSite, siteFaqRoute } = await load(true);
+        expect(currentSite("/kernel")).toBe("core");
+        expect(currentSite("/clauses/register")).toBe("build");
+        expect(currentSite("/orders/view?process=0x1")).toBe("app");
+        expect(currentSite("/")).toBe("apex");
+        expect(currentSite("/no-such-route")).toBeNull();
+        expect(siteFaqRoute("build")).toBe("/faq-build");
+        expect(siteFaqRoute("core")).toBe("/faq-core");
+        expect(siteFaqRoute("app")).toBe("/faq");
+        expect(siteFaqRoute("apex")).toBe("/faq");
+    });
+    it("shows a nav section on a host only if that host carries one of its pages, and every section when not split", async () => {
+        const split = await load(true);
+        const useSection = ["/use", "/members", "/faq"];
+        const coreSection = ["/core", "/kernel", "/invariants"];
+        const dataSection = ["/data", "/data/yours", "/attestations", "/data/explore", "/audit"];
+        expect(split.sectionOnSite(useSection, "/kernel")).toBe(false);
+        expect(split.sectionOnSite(coreSection, "/kernel")).toBe(true);
+        expect(split.sectionOnSite(dataSection, "/kernel")).toBe(true); // attestations and the explorer are on core
+        expect(split.sectionOnSite(coreSection, "/clauses")).toBe(false);
+        expect(split.sectionOnSite(useSection, "/")).toBe(true); // the apex router shows every door
+        const one = await load(false);
+        expect(one.sectionOnSite(useSection, "/kernel")).toBe(true);
+    });
+});
+

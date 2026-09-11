@@ -96,3 +96,28 @@ export function resolveHref(href: string, currentPath: string): string {
     const owner = targets[0];
     return siteHost(owner) + servedPath(href, owner);
 }
+
+/** The site serving the page at `pathname` — the first site carrying it; null when unmapped. */
+export function currentSite(pathname: string): SiteId | null {
+    return sitesOfRoute(pathname)[0] ?? null;
+}
+
+/** Each site's own FAQ, as a source route (the Link and the splitter render it at that host's /faq). */
+export function siteFaqRoute(site: SiteId | null): string {
+    if (site === "build") return "/faq-build";
+    if (site === "core") return "/faq-core";
+    return "/faq";
+}
+
+/**
+ * Whether a nav section belongs on the current host when the sites are split:
+ * it does if any page it lists is carried by that host. On one host every
+ * section shows, as before.
+ */
+export function sectionOnSite(hrefs: readonly string[], pathname: string): boolean {
+    if (!SPLIT_SITES) return true;
+    const site = currentSite(pathname);
+    if (!site || site === "apex") return true;
+    return hrefs.some((h) => sitesOfRoute(h).includes(site));
+}
+

@@ -1,5 +1,5 @@
 {
-    "description": "THE SITE MAP — the one owner of which host serves which route. Three sites and the apex router, on subdomains of figaroprotocol.com. `routes` is a longest-prefix table: [prefix, [sites]]; the FIRST site listed owns the route for link resolution, the rest carry a copy (a shared surface mounted on more than one host). `/` is matched exactly. Read by lib/shared/sites.ts (links and nav), scripts/split-export.mjs (the export split), and scripts/lint-site-map.sh (every page route must map). `aliases` renames a source route on one host: [sourceRoute, site, servedPath] — the tree holds the page under sourceRoute; that host serves it at servedPath; links to sourceRoute are written as servedPath on that host and as the host's servedPath elsewhere.",
+    "description": "THE SITE MAP — the one owner of which host serves which route. Three sites and the apex router, on subdomains of figaroprotocol.com. `routes` is a longest-prefix table: [prefix, [sites]]; the FIRST site listed owns the route for link resolution, the rest carry a copy (a shared surface mounted on more than one host). `/` is matched exactly. Read by lib/shared/sites.ts (links and nav), scripts/split-export.mjs (the export split), and scripts/lint-site-map.sh (every page route must map). `roots` names the page each host serves at its own root (the apex keeps the home; the others serve their door). `aliases` renames a source route on one host: [sourceRoute, site, servedPath] — the tree holds the page under sourceRoute; that host serves it at servedPath; links to sourceRoute are written as servedPath on that host and as the host's servedPath elsewhere.",
     "hosts": {
         "apex": "https://figaroprotocol.com",
         "core": "https://core.figaroprotocol.com",
@@ -50,5 +50,6 @@
         ["/audit", ["app", "core", "build"]],
         ["/agents", ["app", "core", "build"]]
     ],
+    "roots": { "core": "/core", "build": "/build", "app": "/use" },
     "aliases": [["/faq-build", "build", "/faq"], ["/faq-core", "core", "/faq"]]
 }
