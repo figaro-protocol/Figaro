@@ -66,3 +66,23 @@ describe("resolveHref, sites split", () => {
         expect(resolveHref("/kernel", "/use")).toBe("http://localhost:3101/kernel");
     });
 });
+
+describe("servedPath and aliases", () => {
+    afterEach(() => { delete process.env.NEXT_PUBLIC_SPLIT_SITES; vi.doUnmock("@/lib/shared/sites.json"); });
+
+    it("serves a source route at its alias on that host only, keeping query and hash", async () => {
+        vi.doMock("@/lib/shared/sites.json", async (orig) => {
+            const real = (await orig()) as { default: Record<string, unknown> };
+            return { default: { ...real.default, routes: [...(real.default.routes as unknown[]), ["/faq-build", ["build"]]], aliases: [["/faq-build", "build", "/faq"]] } };
+        });
+        const { servedPath, resolveHref } = await load(true);
+        expect(servedPath("/faq-build", "build")).toBe("/faq");
+        expect(servedPath("/faq-build#stake", "build")).toBe("/faq#stake");
+        expect(servedPath("/faq-build/deep?x=1", "build")).toBe("/faq/deep?x=1");
+        expect(servedPath("/faq-build", "core")).toBe("/faq-build");
+        // From a build page, the link is the served path; from elsewhere, absolute on build's origin.
+        expect(resolveHref("/faq-build#stake", "/clauses")).toBe("/faq#stake");
+        expect(resolveHref("/faq-build", "/kernel")).toBe("https://build.figaroprotocol.com/faq");
+    });
+});
+

@@ -19,6 +19,22 @@ const DEST = path.resolve(here, "..", process.argv[3] ?? "out-sites");
 const MAP = JSON.parse(fs.readFileSync(path.resolve(here, "../lib/shared/sites.json"), "utf8"));
 const SITES = Object.keys(MAP.hosts);
 const ROUTES = MAP.routes;
+const ALIASES = MAP.aliases ?? [];
+
+// The path a route is served at on a host: an alias renames a source route on
+// one host (three FAQs under three names in the tree; each host serves its own
+// at /faq); everything else keeps its own path. Query and hash ride along.
+function servedPath(href, site) {
+    const m = /^([^?#]*)(.*)$/.exec(href);
+    const bare = (m?.[1] ?? href).replace(/\/$/, "") || "/";
+    const rest = m?.[2] ?? "";
+    for (const [source, aliasSite, served] of ALIASES) {
+        if (aliasSite !== site) continue;
+        if (bare === source) return served + rest;
+        if (bare.startsWith(source + "/")) return served + bare.slice(source.length) + rest;
+    }
+    return href;
+}
 
 function sitesOfRoute(route) {
     let best;
@@ -44,7 +60,7 @@ function placement(relFile) {
     if (dir.length === 0 || dir[0] === "_next" || dir[0] === "404") return { all: true };
     const route = "/" + dir.join("/");
     const sites = sitesOfRoute(route);
-    if (sites.length > 0) return { sites };
+    if (sites.length > 0) return { sites, route };
     if (name === "index.html") return { unmapped: route };
     return { all: true };
 }
@@ -73,7 +89,9 @@ for (const rel of files) {
     const isHtml = rel.endsWith(".html");
     const html = isHtml ? fs.readFileSync(path.join(OUT, rel), "utf8") : null;
     for (const site of targets) {
-        const to = path.join(DEST, site, rel);
+        // A renamed route lands under its served path on that host.
+        const dest = where.route ? path.join(...servedPath(where.route, site).split("/")) + rel.slice(where.route.length) : rel;
+        const to = path.join(DEST, site, dest);
         fs.mkdirSync(path.dirname(to), { recursive: true });
         if (isHtml) fs.writeFileSync(to, rehost(html, site));
         else fs.copyFileSync(path.join(OUT, rel), to);
@@ -91,8 +109,9 @@ function rehost(html, site) {
         if (href.startsWith("/_next")) return whole;
         const route = (href.split(/[?#]/)[0] || "/").replace(/\/$/, "") || "/";
         const sites = sitesOfRoute(route);
-        if (sites.length === 0 || sites.includes(site)) return whole;
-        return `href="${MAP.hosts[sites[0]].replace(/\/$/, "")}${href}"`;
+        if (sites.length === 0) return whole;
+        if (sites.includes(site)) return `href="${servedPath(href, site)}"`;
+        return `href="${MAP.hosts[sites[0]].replace(/\/$/, "")}${servedPath(href, sites[0])}"`;
     });
 }
 
@@ -112,7 +131,7 @@ if (fs.existsSync(sitemapPath)) {
                 const route = new URL(loc).pathname.replace(/\/$/, "") || "/";
                 return sitesOfRoute(route).includes(site);
             })
-            .map((e) => e.replace(/<loc>https?:\/\/[^/]+/, `<loc>${origin}`));
+            .map((e) => e.replace(/<loc>https?:\/\/[^/]+([^<]*)/, (_, p) => `<loc>${origin}${servedPath(p, site)}`));
         fs.writeFileSync(path.join(DEST, site, "sitemap.xml"), head + kept.join("") + tail);
         console.log(`[split-export] ${site}: sitemap.xml lists ${kept.length} routes on ${origin}`);
     }

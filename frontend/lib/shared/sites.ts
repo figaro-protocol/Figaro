@@ -29,6 +29,26 @@ export function siteHost(site: SiteId): string {
 
 type RouteEntry = readonly [prefix: string, sites: readonly SiteId[]];
 const ROUTES = siteMap.routes as unknown as readonly RouteEntry[];
+type AliasEntry = readonly [sourceRoute: string, site: SiteId, servedPath: string];
+const ALIASES = siteMap.aliases as unknown as readonly AliasEntry[];
+
+/**
+ * The path a route is served at on a host. A source route with an alias on
+ * that host is served at the alias's path (the tree holds three FAQs under
+ * three names; each host serves its own at /faq); everything else is served
+ * at its own path. Applied to the path only — query and hash ride along.
+ */
+export function servedPath(href: string, site: SiteId): string {
+    const m = /^([^?#]*)(.*)$/.exec(href);
+    const bare = (m?.[1] ?? href).replace(/\/$/, "") || "/";
+    const rest = m?.[2] ?? "";
+    for (const [source, aliasSite, served] of ALIASES) {
+        if (aliasSite !== site) continue;
+        if (bare === source) return served + rest;
+        if (bare.startsWith(source + "/")) return served + bare.slice(source.length) + rest;
+    }
+    return href;
+}
 
 /** A pathname without its query, hash, or trailing slash; "/" stays "/". */
 function normalize(pathname: string): string {
@@ -68,6 +88,11 @@ export function resolveHref(href: string, currentPath: string): string {
     if (targets.length === 0) return href;
     const current = sitesOfRoute(currentPath);
     const carriedEverywhere = current.length > 0 && current.every((s) => targets.includes(s));
-    if (carriedEverywhere) return href;
-    return siteHost(targets[0]) + href;
+    if (carriedEverywhere) {
+        // Relative on every host carrying the page; an alias renames per host,
+        // so a page on one host only may use that host's served path.
+        return current.length === 1 ? servedPath(href, current[0]) : href;
+    }
+    const owner = targets[0];
+    return siteHost(owner) + servedPath(href, owner);
 }
