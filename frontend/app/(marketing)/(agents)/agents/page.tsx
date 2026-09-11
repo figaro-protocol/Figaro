@@ -37,7 +37,7 @@ export default function AgentsDoor() {
             </section>
             <MarketingSection title="Your agent.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Give it your rules, not your key: what to buy or sell, from whom, up to how much, in which token. It reads the network, proposes each move, and signs through a policy signer that refuses anything outside the rules. What it cannot do is resolve for you against your rules or reach past your limits. <Link href="/agents/how" className="text-ink-heading font-medium hover:underline">How agents work</Link>
+                    Give it your rules, not your key: what to buy or sell, from whom, up to how much, in which token. It reads the network, proposes each move, and signs through a policy signer that refuses anything outside the rules. What it cannot do is resolve for you against your rules or reach past your limits. You do not build it: a developer or an operator you trust runs it for you, and what you hand them is the rules, never the key. The page that follows is written for them. <Link href="/agents/how" className="text-ink-heading font-medium hover:underline">How agents work</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Four prompts, open.">

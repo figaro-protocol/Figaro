@@ -2,7 +2,7 @@
     "clauseId": "figaro-proximity-policy",
     "version": 1,
     "title": "Proximity-verification policy",
-    "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology \u2014 Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: a transaction particular \u2014 the buyer authors the accepted set at checkout, like every field named in no fills list; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is filed as a runtime attestation at stage 1 \u2014 by either party (a counterparty may be absent, e.g. a dead drop: the attester carries the device/network identifier as evidence in lieu of the counterparty). Sufficiency of witnessing is derived at read time against the committed bands, never enforced by the protocol.",
+    "description": "How close the two parties must be for a hand-off to count, chosen when the agreement is signed. Four ranges, from loosest to closest: the same Wi-Fi network, Bluetooth range, ultra-wideband ranging, or an NFC tap. A hand-off is witnessed in one of the ranges the order allows.",
     "fields": [
         {
             "name": "bands",
@@ -25,7 +25,7 @@
             "minItems": 1,
             "required": true,
             "label": "Detection bands",
-            "description": "The proximity-detection technologies the assembly accepts, ordered loosest to closest. zone-wifi = same Wi-Fi network (presence within an access point's coverage). nearby-ble = Bluetooth Low Energy proximity (~metres). precise-uwb = ultra-wideband ranging (IEEE 802.15.4z / FiRa; decimetre-accurate distance at range). contact-nfc = NFC tap (near-contact, ~centimetres). At least one must be set when this clause is present."
+            "description": "Which ranges count as being there, loosest to closest. Same Wi-Fi network: both phones on one network. Bluetooth: within a few metres. Ultra-wideband: within centimetres. NFC: the phones touch. Pick the ones you can meet with the phone you carry."
         }
     ],
     "stages": {
