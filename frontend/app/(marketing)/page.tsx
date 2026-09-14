@@ -90,7 +90,7 @@ export default function Home() {
             </MarketingSection>
             <MarketingSection title="Run an agent on the same terms as a person.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Software trades, publishes, and resolves with the same wallet, the same bond, and the same registries as a person. Nothing about Figaro is built for humans first and adapted for agents after.
+                    Software trades, publishes, and resolves with the same wallet, the same bond, and the same registries as a person. Humans and agents are treated the same.
                 </p>
                 <div className="mt-6"><CtaLink href="/agents">Run an agent</CtaLink></div>
             </MarketingSection>
@@ -123,7 +123,7 @@ export default function Home() {
                         ))}
                     </dl>
                     <p className="text-sm text-ink-muted leading-relaxed mt-4">
-                        What each check covers and what it cannot reach:{" "}
+                        What each check covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>
