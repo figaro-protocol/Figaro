@@ -4,28 +4,29 @@ import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 
 export const metadata: Metadata = withOg({
-    title: "Figaro Protocol — My word is my bond",
+    title: "Figaro Protocol",
     description:
-        "Figaro is permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade. The bond is twice the payment. Breaking the trade costs more than keeping it.",
+        "Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade. Trade with anyone, anywhere, in any token. Be paid in full when the trade closes. Set your own agreements, and keep your own books.",
 });
 
-// HOME IS A ROUTER, NEVER A DOCUMENT: the proposition as one paragraph, the
-// six doors — one per landing page, one door per destination — and the seven
-// checks the code passes on every commit. Each door's line is in its reader's
-// words; the landing page it opens carries the pillar. A comprehension gap
-// found by any probe is closed on the landing page or its owner page, never by
-// adding prose here.
+// HOME IS A ROUTER, NEVER A DOCUMENT: the opening sentence — WHAT Figaro is,
+// in the layman's nearest category and its differentiator, with no word from
+// the mechanism — the four benefits under it, the six doors — one per landing
+// page, one door per destination — and the seven checks the code passes on
+// every commit. Each door's line is in its reader's words; the landing page it
+// opens carries the pillar. A comprehension gap found by any probe is closed
+// on the landing page or its owner page, never by adding prose here. The
+// tagline belongs to the use home, never here.
 //
-// THE PROPOSITION is the maintainer's, sentence for sentence, in the lexicon's
-// nouns: the one-line, the proposition, and the spine, as /about carries them.
+// THE OPENING SENTENCE AND THE BENEFITS are the maintainer's, word for word.
 // THE SEVEN CHECKS, each with the count the tree derives — the security-counts
 // guard recomputes the four counted benches and fails the commit when a
 // number here drifts; TLA+ names models, Lean 4 names the result proved, and
 // static analysis names the tools the workflow pins.
-// What the protocol runs on and composes with, each mark from the project's
-// own brand assets, unaltered, linking to the project. One strip below the
-// doors; never a door itself.
-const BUILT_WITH: { name: string; href: string; src: string }[] = [
+// What the protocol composes with, each mark from the project's own brand
+// assets, unaltered, linking to the project. One strip below the doors; never
+// a door itself.
+const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
     { name: "Ethereum", href: "https://ethereum.org", src: "/built-with/ethereum.svg" },
     { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg" },
     { name: "Uniswap", href: "https://uniswap.org", src: "/built-with/uniswap.svg" },
@@ -56,14 +57,14 @@ const DOORS: { href: string; name: string; line: string }[] = [
 export default function Home() {
     return (
         <>
-            <MarketingHero
-                title="My word is my bond"
-                lead={
-                    <>
-                        Permissionless, decentralized trade on a blockchain. Two strangers can trade safely because each locks a bond in a smart contract before the trade; the bond is twice the payment, and for each seller in a chain twice the value the trade has accumulated through its link, so breaking the trade costs more than keeping it, and no bank, platform, court, lawyer, boss, or company is needed to enforce it. A court, if it comes to that, rules afterwards on the same data; nothing reaches into the trade. The seller receives the whole payment. The buyer and the seller keep their own data and their own agreements. Anyone with a wallet can trade, in any ERC-20 token. Anyone can publish the terms of an agreement and be rewarded based on its use; the reward is in florins, the protocol&apos;s own token.
-                    </>
-                }
-            />
+            <MarketingHero title="Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade.">
+                <ul className="text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2">
+                    <li>Trade with anyone, anywhere, in any token.</li>
+                    <li>Be paid in full when the trade closes.</li>
+                    <li>Set your own agreements, and keep your own books.</li>
+                    <li>Write agreements for others to use.</li>
+                </ul>
+            </MarketingHero>
 
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
@@ -80,9 +81,9 @@ export default function Home() {
                     ))}
                 </div>
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
-                    <p className="text-sm text-ink-muted mb-4">Built with</p>
+                    <p className="text-sm text-ink-muted mb-4">Composes with</p>
                     <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
-                        {BUILT_WITH.map((b) => (
+                        {COMPOSES_WITH.map((b) => (
                             <li key={b.name}>
                                 <a href={b.href} target="_blank" rel="noopener noreferrer" title={b.name} className="flex items-center gap-2 text-sm text-ink-body hover:text-ink-heading">
                                     {/* eslint-disable-next-line @next/next/no-img-element -- a static export; the marks are local files */}
