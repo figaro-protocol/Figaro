@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
@@ -41,6 +40,41 @@ const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
     { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg" },
 ];
 
+// THE FIVE BENEFITS, each a door: its line is the bullet under the opening
+// sentence and the heading of its card; its button opens the landing page.
+const BENEFITS: { line: string; body: string; cta: string; href: string }[] = [
+    {
+        line: "Trade with anyone, anywhere, in any token.",
+        body: "Anyone with a wallet can trade: a person, a shop, a plant, a piece of software, someone you know or someone you have never met. The token is yours to choose: your community's, a stablecoin, a memecoin, a resource token,\u2026 most ERC-20 tokens. A wallet is all it takes.",
+        cta: "Use it",
+        href: "/use",
+    },
+    {
+        line: "Be paid in full when the trade closes.",
+        body: "Before the trade, each side locks a bond in the same token large enough, so keeping the deal is worth more to each of them than breaking it. When the buyer closes, every seller in the process is paid the whole payment and every bond is refunded, all at once.",
+        cta: "Check the core",
+        href: "/core",
+    },
+    {
+        line: "Set your own agreements, and keep your own books.",
+        body: "An agreement is written in plain words and signed by both sides before the trade; what is delivered and attested during the process is signed too. Everything the trade leaves is its verifiable audit trail, yours in detail and public only in aggregate. A court or a forum, if it comes to that, rules on that same data afterward. Your data is yours to keep, or to sell, if you want.",
+        cta: "Read the data",
+        href: "/data",
+    },
+    {
+        line: "Write agreements, and compose them with other contracts.",
+        body: "Anyone can publish the agreements of a trade, a single term or a whole assembly of them, to a public registry, for any seller to adopt. An agreement composes with any other contract on the network: a forum, a payment splitter, a swap. Every trade that uses them rewards the author in Figaro's florin token.",
+        cta: "Build on it",
+        href: "/build",
+    },
+    {
+        line: "Run an agent on the same terms as a person.",
+        body: "Software trades, publishes, and resolves with the same wallet, the same bond, and the same registries as a person. Humans and agents are treated the same.",
+        cta: "Run an agent",
+        href: "/agents",
+    },
+];
+
 const CHECKS: { name: string; count: string }[] = [
     { name: "Foundry", count: "319 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
@@ -56,46 +90,24 @@ export default function Home() {
         <>
             <MarketingHero title="Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade.">
                 <ul className="text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2">
-                    <li>Trade with anyone, anywhere, in any token.</li>
-                    <li>Be paid in full when the trade closes.</li>
-                    <li>Set your own agreements, and keep your own books.</li>
-                    <li>Write agreements, and compose them with other contracts.</li>
-                    <li>Run an agent on the same terms as a person.</li>
+                    {BENEFITS.map((b) => (
+                        <li key={b.href}>{b.line}</li>
+                    ))}
                 </ul>
             </MarketingHero>
 
-            <MarketingSection title="Trade with anyone, anywhere, in any token.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Anyone with a wallet can trade: a person, a shop, a plant, a piece of software, someone you know or someone you have never met. The token is yours to choose: your community&apos;s, a stablecoin, a memecoin, a resource token,&hellip; most ERC-20 tokens. A wallet is all it takes.
-                </p>
-                <div className="mt-6"><CtaLink href="/use">Use it</CtaLink></div>
-            </MarketingSection>
-            <MarketingSection title="Be paid in full when the trade closes.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Before the trade, each side locks a bond in the same token large enough, so keeping the deal is worth more to each of them than breaking it. When the buyer closes, every seller in the process is paid the whole payment and every bond is refunded, all at once.
-                </p>
-                <div className="mt-6"><CtaLink href="/core">Check the core</CtaLink></div>
-            </MarketingSection>
-            <MarketingSection title="Set your own agreements, and keep your own books.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    An agreement is written in plain words and signed by both sides before the trade; what is delivered and attested during the process is signed too. Everything the trade leaves is its verifiable audit trail, yours in detail and public only in aggregate. A court or a forum, if it comes to that, rules on that same data afterward. Your data is yours to keep, or to sell, if you want.
-                </p>
-                <div className="mt-6"><CtaLink href="/data">Read the data</CtaLink></div>
-            </MarketingSection>
-            <MarketingSection title="Write agreements, and compose them with other contracts.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Anyone can publish the agreements of a trade, a single term or a whole assembly of them, to a public registry, for any seller to adopt. An agreement composes with any other contract on the network: a forum, a payment splitter, a swap. Every trade that uses them rewards the author in Figaro&apos;s florin token.
-                </p>
-                <div className="mt-6"><CtaLink href="/build">Build on it</CtaLink></div>
-            </MarketingSection>
-            <MarketingSection title="Run an agent on the same terms as a person.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Software trades, publishes, and resolves with the same wallet, the same bond, and the same registries as a person. Humans and agents are treated the same.
-                </p>
-                <div className="mt-6"><CtaLink href="/agents">Run an agent</CtaLink></div>
-            </MarketingSection>
-
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
+                    {BENEFITS.map((b) => (
+                        <div key={b.href} className="flex flex-col">
+                            <h2 className="text-heading-h3 text-ink-heading mb-2">{b.line}</h2>
+                            <p className="text-base text-ink-body leading-relaxed grow">{b.body}</p>
+                            <div className="mt-4">
+                                <CtaLink href={b.href}>{b.cta}</CtaLink>
+                            </div>
+                        </div>
+                    ))}
+                </div>
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
                     <p className="text-sm text-ink-muted mb-4">Composes with</p>
                     <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
