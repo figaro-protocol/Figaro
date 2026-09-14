@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
@@ -11,14 +12,17 @@ export const metadata: Metadata = withOg({
 
 // HOME IS A ROUTER, NEVER A DOCUMENT: the opening sentence — WHAT Figaro is,
 // in the layman's nearest category and its differentiator, with no word from
-// the mechanism — the four benefits under it, the six doors — one per landing
-// page, one door per destination — and the seven checks the code passes on
-// every commit. Each door's line is in its reader's words; the landing page it
+// the mechanism — the four benefits under it, each benefit again as the heading
+// of its own short paragraph, the six doors — one per landing page, one door
+// per destination — and the seven checks the code passes on every commit. Each door's line is in its reader's words; the landing page it
 // opens carries the pillar. A comprehension gap found by any probe is closed
 // on the landing page or its owner page, never by adding prose here. The
 // tagline belongs to the use home, never here.
 //
-// THE OPENING SENTENCE AND THE BENEFITS are the maintainer's, word for word.
+// THE OPENING SENTENCE, THE BENEFITS, AND THEIR PARAGRAPHS are the maintainer's,
+// word for word. "Most ERC-20 tokens": a token that changes value in transit —
+// fee-on-transfer, rebasing — is outside; the trader's token list never names
+// the florin (it is named only where the reward is the subject).
 // THE SEVEN CHECKS, each with the count the tree derives — the security-counts
 // guard recomputes the four counted benches and fails the commit when a
 // number here drifts; TLA+ names models, Lean 4 names the result proved, and
@@ -66,6 +70,26 @@ export default function Home() {
                 </ul>
             </MarketingHero>
 
+            <MarketingSection title="Trade with anyone, anywhere, in any token.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    Anyone with a wallet can trade: a person, a shop, a plant, a piece of software, someone you know or someone you have never met. The token is yours to choose: your community&apos;s, a stablecoin, a memecoin, a resource token,&hellip; most ERC-20 tokens. A wallet is all it takes.
+                </p>
+            </MarketingSection>
+            <MarketingSection title="Be paid in full when the trade closes.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    Before the trade, each side locks a bond in the same token large enough, so keeping the deal is worth more to each of them than breaking it. When the buyer closes, every seller in the process is paid the whole payment and every bond is refunded, all at once.
+                </p>
+            </MarketingSection>
+            <MarketingSection title="Set your own agreements, and keep your own books.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    An agreement is written in plain words and signed by both sides before the trade; what is delivered and attested during the process is signed too. Everything the trade leaves is its verifiable audit trail, yours in detail and public only in aggregate. A court or a forum, if it comes to that, rules on that same data afterward.
+                </p>
+            </MarketingSection>
+            <MarketingSection title="Write agreements for others to use.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    Anyone can publish the agreements of a trade, a single term or a whole assembly of them, to a public registry, for any seller to adopt. Every trade that uses them rewards the author in Figaro&apos;s florin token.
+                </p>
+            </MarketingSection>
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
