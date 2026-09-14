@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
+import { ProcessStarFigure } from "@/components/figures/ProcessStarFigure";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
@@ -28,8 +29,8 @@ export const metadata: Metadata = withOg({
 // number here drifts; TLA+ names models, Lean 4 names the result proved, and
 // static analysis names the tools the workflow pins.
 // What the protocol composes with, each mark from the project's own brand
-// assets, unaltered, linking to the project. One strip below the doors; never
-// a door itself.
+// assets, unaltered, linking to the project. Rendered inside the compose
+// card; never a door itself.
 const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
     { name: "Ethereum", href: "https://ethereum.org", src: "/built-with/ethereum.svg" },
     { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg" },
@@ -89,6 +90,10 @@ export default function Home() {
     return (
         <>
             <MarketingHero title="Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade.">
+                <div className="flex flex-wrap gap-4 mb-8">
+                    <CtaLink href="/use">Use it</CtaLink>
+                    <CtaLink href="/build">Build on it</CtaLink>
+                </div>
                 <ul className="text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2">
                     {BENEFITS.map((b) => (
                         <li key={b.href}>{b.line}</li>
@@ -96,31 +101,37 @@ export default function Home() {
                 </ul>
             </MarketingHero>
 
+            <section className="container mx-auto px-6 pb-12 max-w-3xl">
+                <ProcessStarFigure className="max-w-md" />
+            </section>
+
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
                     {BENEFITS.map((b) => (
                         <div key={b.href} className="flex flex-col">
                             <h2 className="text-heading-h3 text-ink-heading mb-2">{b.line}</h2>
                             <p className="text-base text-ink-body leading-relaxed grow">{b.body}</p>
+                            {b.href === "/build" && (
+                                <div className="mt-4" data-testid="built-with">
+                                    <p className="text-sm text-ink-muted mb-3">Composes with</p>
+                                    <ul className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                                        {COMPOSES_WITH.map((c) => (
+                                            <li key={c.name}>
+                                                <a href={c.href} target="_blank" rel="noopener noreferrer" title={c.name} className="flex items-center gap-2 text-sm text-ink-body hover:text-ink-heading">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element -- a static export; the marks are local files */}
+                                                    <img src={c.src} alt={c.name} width={20} height={20} className="h-5 w-5 object-contain" />
+                                                    <span>{c.name}</span>
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                             <div className="mt-4">
                                 <CtaLink href={b.href}>{b.cta}</CtaLink>
                             </div>
                         </div>
                     ))}
-                </div>
-                <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
-                    <p className="text-sm text-ink-muted mb-4">Composes with</p>
-                    <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
-                        {COMPOSES_WITH.map((b) => (
-                            <li key={b.name}>
-                                <a href={b.href} target="_blank" rel="noopener noreferrer" title={b.name} className="flex items-center gap-2 text-sm text-ink-body hover:text-ink-heading">
-                                    {/* eslint-disable-next-line @next/next/no-img-element -- a static export; the marks are local files */}
-                                    <img src={b.src} alt={b.name} width={24} height={24} className="h-6 w-6 object-contain" />
-                                    <span>{b.name}</span>
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
                 </div>
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-4">
