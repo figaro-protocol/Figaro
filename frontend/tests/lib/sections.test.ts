@@ -53,12 +53,10 @@ describe("the section map", () => {
         expect(navGroupShown(["/data", "/data/yours"], "/clauses")).toBe(false);
     });
 
-    it("shows only the three sections' groups on the apex", () => {
-        expect(navGroupShown(["/use", "/members"], "/")).toBe(true);
-        expect(navGroupShown(["/build", "/clauses"], "/")).toBe(true);
-        expect(navGroupShown(["/core", "/kernel"], "/")).toBe(true);
-        expect(navGroupShown(["/research", "/working-groups"], "/")).toBe(false);
-        expect(navGroupShown(["/data", "/audit"], "/")).toBe(false);
+    it("shows no group on the apex — its chrome is the three section links alone", () => {
+        expect(navGroupShown(["/use", "/members"], "/")).toBe(false);
+        expect(navGroupShown(["/build", "/clauses"], "/")).toBe(false);
+        expect(navGroupShown(["/core", "/kernel"], "/")).toBe(false);
         expect(navGroupShown(["/agents", "/agents/how"], "/")).toBe(false);
     });
 });

@@ -7,7 +7,7 @@ import X from "@/components/icons/X";
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
-import { navGroupShown } from "@/lib/shared/sections";
+import { SECTION_IDS, currentSection, navGroupShown, sectionLabel, sectionLanding } from "@/lib/shared/sections";
 import { navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
@@ -85,8 +85,9 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { ungrouped, groups: allGroups } = groupLinks(links);
-    // The drawer shows the groups of the section the reader is in; on the
-    // apex, the three sections only.
+    // Two levels, as on desktop: the three sections as plain rows first, then
+    // the groups of the section the reader is in; on the apex, the sections only.
+    const section = currentSection(pathname);
     const groups = allGroups.filter((g) => navGroupShown(g.links.map((l) => l.href), pathname));
 
     // Close menu when route changes (avoids unmounting Link before navigation completes)
@@ -245,6 +246,23 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
                             edge, so the current-row rule reads as a margin rule
                             and each row's pl-4 keeps the header's 16px inset. */}
                         <nav className="flex-1 overflow-y-auto py-sm">
+                            <ul className="list-none pl-0 mb-xs space-y-0.5 border-b border-default pb-xs" role="list" data-testid="mobile-nav-sections">
+                                {SECTION_IDS.map((id) => {
+                                    const href = sectionLanding(id);
+                                    const current = navCurrent(pathname, href) === "page" ? "page" : section === id ? "true" : undefined;
+                                    return (
+                                        <li key={id} className="mb-0">
+                                            <Link
+                                                href={href}
+                                                aria-current={current}
+                                                className={`flex min-h-11 items-center rounded-r-tile pr-md py-xs text-heading-h3 text-ink-heading transition-colors hover:bg-subtle-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${current ? "pl-3.5 border-l-2 border-ink-heading" : "pl-4"}`}
+                                            >
+                                                {sectionLabel(id)}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                             {ungrouped.length > 0 && (
                                 <ul className="list-none pl-0 mb-xs space-y-0.5" role="list">
                                     {ungrouped.map(renderLink)}

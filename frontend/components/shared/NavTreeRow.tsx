@@ -9,8 +9,10 @@ import { navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
 /**
- * Desktop publication nav — the ONE wayfinding tree, rendering
- * `MARKETING_MAP` directly. Each section title is an INERT disclosure
+ * Desktop publication nav — the header's second level: the reader's section's
+ * own tree, rendering the groups of `MARKETING_MAP` that section shows
+ * (`navGroupShown`), in its own row under the main row; nothing on the apex,
+ * whose chrome is the three section links alone. Each group title is an INERT disclosure
  * button (`components/ui/Disclosure`, the same primitive the drawer's
  * sections use — the ruled tree's semantics: titles are headers, never
  * links); its panel lists ALL of the section's pages, first page included.
@@ -48,13 +50,17 @@ export function NavTreeRow() {
         };
     }, [open]);
 
+    const groups = MARKETING_MAP.filter((group) => navGroupShown(group.links.map((l) => l.href), pathname));
+    if (groups.length === 0) return null;
+
     return (
+        <div className="hidden md:block border-t border-default">
         <nav
             ref={rootRef}
-            className="hidden md:flex flex-1 justify-center items-center gap-1 text-sm"
+            className="container mx-auto px-6 py-1.5 flex justify-center items-center gap-1 text-sm"
             data-testid="desktop-nav"
         >
-            {MARKETING_MAP.filter((group) => navGroupShown(group.links.map((l) => l.href), pathname)).map((group) => {
+            {groups.map((group) => {
                 const isOpen = open === group.section;
                 const slug = group.section.toLowerCase().replace(/[^a-z]+/g, "-");
                 const panelId = `nav-tree-${slug}`;
@@ -102,5 +108,6 @@ export function NavTreeRow() {
                 );
             })}
         </nav>
+        </div>
     );
 }

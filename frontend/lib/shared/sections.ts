@@ -54,17 +54,14 @@ export function sectionFaqRoute(section: SectionId | null): string {
 }
 
 /**
- * Whether a nav group belongs in the chrome of the page at `pathname`. In a
- * section: the group shows if any page it lists is shown by that section. On
- * the apex — the router, in no section — only the groups that hold a
- * section's landing page show: the three sections, nothing inside them.
+ * Whether a nav group belongs in the second level of the chrome on the page
+ * at `pathname`: it does if any page it lists is shown by the reader's
+ * section. The apex — the router, in no section — has no second level; its
+ * chrome is the three section links alone.
  */
 export function navGroupShown(hrefs: readonly string[], pathname: string): boolean {
     const section = currentSection(pathname);
-    if (!section) {
-        const landings = new Set(SECTION_IDS.map(sectionLanding));
-        return hrefs.some((h) => landings.has(normalize(h)));
-    }
+    if (!section) return false;
     return hrefs.some((h) => sectionsOfRoute(h).includes(section));
 }
 

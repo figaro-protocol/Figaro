@@ -1,8 +1,14 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { Header } from "@/components/shared/Header";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
+import { SECTION_IDS, navGroupShown, sectionLabel, sectionLanding } from "@/lib/shared/sections";
+
+// The header derives its two levels from the route: /orders is in the use section.
+vi.mock("next/navigation", () => ({
+    usePathname: () => "/orders/",
+}));
 
 // Mock YourTurnBadge to test conditional rendering
 vi.mock("@/components/shared/YourTurnBadge", () => ({
@@ -20,12 +26,20 @@ describe("Header", () => {
         useWalletConnectedMock.mockReset();
     });
 
-    it("renders the logo and one inert disclosure button per nav section", () => {
+    it("renders the logo, the three section links, and one inert disclosure button per group the section shows", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
         expect(screen.getByText("Figaro Protocol")).toBeInTheDocument();
+        const sections = screen.getByTestId("section-links");
+        for (const id of SECTION_IDS) {
+            expect(within(sections).getByRole("link", { name: sectionLabel(id)! })).toHaveAttribute("href", sectionLanding(id));
+        }
+        expect(within(sections).getByRole("link", { name: "Use" })).toHaveAttribute("aria-current", "true");
         for (const group of MARKETING_MAP) {
-            expect(screen.getByRole("button", { name: group.section })).toHaveAttribute("aria-expanded", "false");
+            const shown = navGroupShown(group.links.map((l) => l.href), "/orders/");
+            const button = screen.queryByRole("button", { name: group.section });
+            if (shown) expect(button).toHaveAttribute("aria-expanded", "false");
+            else expect(button).toBeNull();
         }
     });
 
