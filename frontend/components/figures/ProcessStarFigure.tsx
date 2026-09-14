@@ -32,11 +32,20 @@ export function ProcessStarFigure({
     const points = Array.from({ length: sellers }, (_, i) => {
         const angle = -Math.PI / 2 + (i * 2 * Math.PI) / sellers;
         const r = R0 + i * R_STEP;
+        const nodeR = NODE_R0 + i * NODE_R_STEP;
+        const labelR = r + nodeR + 12;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
         return {
-            x: CX + r * Math.cos(angle),
-            y: CY + r * Math.sin(angle),
-            nodeR: NODE_R0 + i * NODE_R_STEP,
-        };
+            x: CX + r * cos,
+            y: CY + r * sin,
+            nodeR,
+            // The label sits outward along the spoke, clear of the line, and
+            // is anchored toward the center so it never crosses its own spoke.
+            labelX: CX + labelR * cos,
+            labelY: CY + labelR * sin + 4,
+            anchor: cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle",
+        } as const;
     });
 
     return (
@@ -62,19 +71,13 @@ export function ProcessStarFigure({
             {points.map((p, i) => (
                 <g key={`seller-${i}`}>
                     <circle cx={p.x} cy={p.y} r={p.nodeR} className="fill-paper stroke-ink-primary" strokeWidth={1.5} />
-                    <text
-                        x={p.x}
-                        y={p.y + p.nodeR + 13}
-                        textAnchor="middle"
-                        fontSize={11}
-                        className="fill-ink-muted"
-                    >
+                    <text x={p.labelX} y={p.labelY} textAnchor={p.anchor} fontSize={11} className="fill-ink-muted">
                         seller
                     </text>
                 </g>
             ))}
-            <circle cx={CX} cy={CY} r={14} className="fill-ink-primary" />
-            <text x={CX} y={CY + 30} textAnchor="middle" fontSize={11} className="fill-ink-heading">
+            <circle cx={CX} cy={CY} r={17} className="fill-ink-primary" />
+            <text x={CX} y={CY + 3} textAnchor="middle" fontSize={9} className="fill-paper">
                 buyer
             </text>
         </FigureFrame>
