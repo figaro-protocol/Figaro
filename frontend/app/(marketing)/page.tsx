@@ -101,15 +101,12 @@ export default function Home() {
                 </ul>
             </MarketingHero>
 
-            <section className="container mx-auto px-6 pb-12 max-w-3xl">
-                <ProcessStarFigure className="max-w-md" />
-            </section>
-
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
                     {BENEFITS.map((b) => (
                         <div key={b.href} className="flex flex-col">
                             <h2 className="text-heading-h3 text-ink-heading mb-2">{b.line}</h2>
+                            {b.href === "/use" && <ProcessStarFigure className="max-w-xs mb-4" />}
                             <p className="text-base text-ink-body leading-relaxed grow">{b.body}</p>
                             {b.href === "/build" && (
                                 <div className="mt-4" data-testid="built-with">
