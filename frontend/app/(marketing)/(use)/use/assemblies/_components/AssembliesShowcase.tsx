@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "@/components/shared/Link";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { CtaLink } from "@/components/marketing/CtaLink";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { useAssemblyChoices, type AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
@@ -36,9 +37,14 @@ function useSellersByAssembly(): Map<string, Seller[]> {
     }, [data]);
 }
 
+/** One card per published assembly: the designer's name and summary from its
+ *  document, its shape, who offers it, and the one button — that assembly's own
+ *  questions. An assembly whose designer wrote none says so in the muted color;
+ *  nothing is ordered from an assembly, so no other button. */
 function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
+    const faqCount = choice.assemblyTemplate?.faq?.length ?? 0;
     return (
-        <li className="border-b border-default py-5" data-testid="showcase-assembly">
+        <li className="flex flex-col" data-testid="showcase-assembly">
             <h3 className="text-heading-h3 text-ink-heading mb-1">
                 <Link href={`/use/assemblies?slug=${encodeURIComponent(choice.slug)}`} className="hover:underline">
                     {choice.name}
@@ -46,13 +52,22 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
             </h3>
             {choice.summary && <p className="text-base text-ink-body leading-relaxed mb-2">{choice.summary}</p>}
             <AssemblyShapeLine choice={choice} className="text-xs" />
-            <p className="text-sm text-ink-muted mt-2">
+            <p className="text-sm text-ink-muted mt-2 grow">
                 {sellers.length === 0
                     ? "No seller is bound to it yet."
                     : sellers.length === 1
                       ? "One seller offers it."
                       : `${sellers.length} sellers offer it.`}
             </p>
+            <div className="mt-4">
+                {faqCount > 0 ? (
+                    <CtaLink href={`/use/assemblies?slug=${encodeURIComponent(choice.slug)}#faq`}>FAQ</CtaLink>
+                ) : (
+                    <span className="inline-flex min-w-[200px] justify-center items-center px-9 py-sm text-sm text-ink-muted rounded-tile border border-default" data-testid="showcase-no-faq">
+                        No FAQ yet
+                    </span>
+                )}
+            </div>
         </li>
     );
 }
@@ -137,7 +152,7 @@ export function AssembliesShowcase() {
                     {isLoading ? "Reading the registry…" : "Nothing is published on this network yet."}
                 </p>
             ) : (
-                <ul>
+                <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
                     {choices.map((c) => (
                         <AssemblyCard key={c.slug} choice={c} sellers={sellersByAssembly.get(c.slug) ?? []} />
                     ))}

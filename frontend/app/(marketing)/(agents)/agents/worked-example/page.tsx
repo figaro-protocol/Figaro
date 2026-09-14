@@ -34,7 +34,7 @@ export default function WorkedExample() {
             <div className="container mx-auto px-6 pt-8">
                 <Breadcrumb
                     items={[
-                        { label: "Assemblies", href: "/assemblies" },
+                        { label: "Agents", href: "/agents" },
                         { label: "Worked example" },
                     ]}
                 />

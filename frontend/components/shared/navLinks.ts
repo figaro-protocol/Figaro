@@ -100,11 +100,10 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         section: "Use",
         links: [
             { href: "/use", label: "Use" },
-            { href: "/members", label: "Members" },
+            { href: "/members", label: "Join" },
             { href: "/use/assemblies", label: "Assemblies" },
             { href: "/faq", label: "FAQ" },
             { href: "/local-commerce", label: "Local Commerce" },
-            { href: "/worked-example", label: "Worked example" },
             { href: "/discover", label: "Discover members" },
             { href: "/orders", label: "Your orders" },
         ],
@@ -159,6 +158,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         links: [
             { href: "/agents", label: "Agents" },
             { href: "/agents/how", label: "How agents work" },
+            { href: "/agents/worked-example", label: "Worked example" },
         ],
     },
 ];

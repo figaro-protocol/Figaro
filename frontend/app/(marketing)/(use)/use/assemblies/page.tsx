@@ -20,7 +20,7 @@ export default function AssembliesForUsers() {
                 title="What you can trade."
                 lead={
                     <>
-                        An assembly is a design for one kind of trade: who does what, in what order, under which terms. Designers publish them; sellers bind to them; you pick one and order. Every published assembly is below, read from the registry as this page opens.
+                        An assembly is a design for one kind of trade: who does what, in what order, under which agreements. Designers publish them; sellers bind to them. Every published assembly is below, read from the registry as this page opens.
                     </>
                 }
             />

@@ -2,75 +2,96 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Use — Figaro Protocol",
     description:
-        "Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet and a reclaimable ETH stake are all it takes — buying needs only the wallet.",
+        "Buy from anyone or sell to anyone, anywhere. Be paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. Join with a wallet and a reclaimable ETH stake; buying needs only the wallet. Trade yourself, or through an agent. Your data is yours to keep, or to sell.",
 });
 
-// THE USE DOOR — one of the six landing pages. Its words are the pillar
-// page the beta panel read; a comprehension gap found by any tester is closed on
-// the owner page a card points to, never by adding prose here.
+// THE USE LANDING — for buyers and sellers, and nothing else: join, trade, by
+// hand or through an agent. The tagline is its title (it belongs here, never
+// on the apex). The lead is the six benefits as bullets, then the same six as
+// cards, each its paragraph and the one button that opens its page — the
+// apex's shape. What makes it safe is a link to the core, what can go wrong a
+// link to the FAQ; neither is a paragraph here. The words are the
+// maintainer's; a comprehension gap found by any tester is closed on the page
+// a card points to, never by adding prose here.
+const BENEFITS: { line: string; body: string; cta: string; href: string }[] = [
+    {
+        line: "Buy from anyone or sell to anyone, anywhere.",
+        body: "A buyer picks from a seller's catalogue and places a bonded order; the payment moves wallet to wallet on chain.",
+        cta: "Order",
+        href: "/discover",
+    },
+    {
+        line: "Be paid in full the moment the buyer confirms.",
+        body: "Both sides lock a bond before the trade. When the buyer confirms, you are paid in full and your bond is refunded whole.",
+        cta: "What makes it safe",
+        href: "/core",
+    },
+    {
+        line: "Goods, services, work, or data, in the token you choose.",
+        body: "Whatever a member publishes in a catalogue, priced in the token they name: a community's, a stablecoin, most ERC-20 tokens.",
+        cta: "What you can trade",
+        href: "/use/assemblies",
+    },
+    {
+        line: "Join with a wallet and a reclaimable ETH stake; buying needs only the wallet.",
+        body: "A seller registers a catalogue with a reclaimable ETH stake. A buyer needs only a wallet.",
+        cta: "Join",
+        href: "/members",
+    },
+    {
+        line: "Trade yourself, or through an agent.",
+        body: "Software can trade for you, under limits you set. It gets your rules, never your key.",
+        cta: "Run an agent",
+        href: "/agents",
+    },
+    {
+        line: "Your data is yours to keep, or to sell.",
+        body: "Every trade leaves your books and your evidence. Yours to keep, or to publish as a catalogue other buyers order from.",
+        cta: "Read the data",
+        href: "/data",
+    },
+];
+
 export default function UseDoor() {
     return (
         <>
-            <MarketingHero
-                title="Figaro: permissionless, decentralized trade on a blockchain"
-                lead={
-                    <>
-                        Buy from anyone or sell to anyone, anywhere. The seller is paid in full the moment the buyer confirms. Goods, services, work, or data, in the token you choose. The payment moves wallet to wallet on chain, and registration is permissionless: a wallet and a reclaimable ETH stake are all it takes &mdash; buying needs only the wallet.
-                    </>
-                }
-            />
-            <section className="container mx-auto px-6 pb-12 max-w-3xl">
-                <div className="flex flex-wrap gap-4 mb-10">
-                    <CtaLink href="/discover">Open the app</CtaLink>
-                    <CtaLink href="/local-commerce">See a trade end to end</CtaLink>
+            <MarketingHero title="My word is my bond">
+                <div className="flex flex-wrap gap-4 mb-8">
+                    <CtaLink href="/members">Join</CtaLink>
+                    <CtaLink href="/discover">Order</CtaLink>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
-                    <p className="text-sm text-ink-body leading-relaxed">Your catalogue, in a public registry anyone can order from.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">Your community&apos;s token, a stablecoin, or the florin, the protocol&apos;s own token.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">Your data, yours to keep or to sell.</p>
+                <ul className="text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2">
+                    {BENEFITS.map((b) => (
+                        <li key={b.href}>{b.line}</li>
+                    ))}
+                </ul>
+            </MarketingHero>
+
+            <section className="container mx-auto px-6 pb-20 max-w-3xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
+                    {BENEFITS.map((b) => (
+                        <div key={b.href} className="flex flex-col">
+                            <h2 className="text-heading-h3 text-ink-heading mb-2">{b.line}</h2>
+                            <p className="text-base text-ink-body leading-relaxed grow">{b.body}</p>
+                            <div className="mt-4">
+                                <CtaLink href={b.href}>{b.cta}</CtaLink>
+                            </div>
+                        </div>
+                    ))}
                 </div>
+                <p className="mt-12 border-t border-default pt-8 text-sm text-ink-muted leading-relaxed max-w-2xl">
+                    If something goes wrong:{" "}
+                    <Link href="/faq" className="text-ink-heading font-medium hover:underline">
+                        FAQ
+                    </Link>
+                    .
+                </p>
             </section>
-            <MarketingSection title="What makes it safe.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Before a trade starts, both sides lock a bond of twice the payment in a decentralized, permissionless smart contract. Walking away costs more than finishing, on either side. When the buyer resolves, you are paid in full and your bond is refunded whole; the buyer&apos;s is refunded less the payment it carried. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">How it holds</Link> &middot; <Link href="/worked-example" className="text-ink-heading font-medium hover:underline">The numbers, worked</Link> &middot; <Link href="/invariants" className="text-ink-heading font-medium hover:underline">The six facts it rests on</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="If something goes wrong.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Put it right before the buyer confirms: replace the goods, return part of the payment, or go to the arbitration forum named in your agreement. If the buyer never confirms, nothing moves for either of you, and their locked bond is twice what they owed you. <Link href="/faq" className="text-ink-heading font-medium hover:underline">What can go wrong</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Terms you compose, not terms you commission.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Choose the agreement&apos;s clauses from the published ones: applicable law, arbitration, acceptance criteria, delivery, cold chain. Publish your own and be paid in florins every time a trade uses them. <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Your books, already kept.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Every trade leaves a balance sheet, an income statement, and an audit bundle for its own books. Invoices, emissions, and evidence for a court come out of the trade itself. <Link href="/audit" className="text-ink-heading font-medium hover:underline">Audit</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Your agent, if you want one.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Software can trade for you, under limits you set &mdash; it gets your rules, never your key. <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Anyone.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A person, a kitchen, a machine, a community, a software agent. A wallet is enough. <Link href="/members" className="text-ink-heading font-medium hover:underline">Members</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection bottomPad="wide">
-                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                    The code is not yet audited by an outside firm. It is checked seven independent ways on every commit. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
-                </p>
-            </MarketingSection>
         </>
     );
 }

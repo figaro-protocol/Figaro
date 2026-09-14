@@ -7,7 +7,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 export const metadata: Metadata = withOg({
-    title: "Members — Figaro Protocol",
+    title: "Join — Figaro Protocol",
     description:
         "Membership: one wallet, one published profile — what you sell, and what you offer from the records of the trades you buy through. People and software agents register the same way.",
 });
@@ -19,7 +19,7 @@ export default function Join() {
     return (
         <>
             <MarketingHero
-                title="Members."
+                title="Join."
                 lead={
                     <>
                         A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH stake and you are listed. Buyer and seller are the same kind of member: buying needs only a wallet &mdash; no registration, no stake &mdash; and registering is how either side becomes findable. An offer forms without a venue: your request goes out and the first willing seller takes it &mdash; a dispatch race &mdash; or sellers answer with terms &mdash; a request for quotes. Either way the offer is the parties&apos; own; no venue holds it, matches it, or takes a cut.

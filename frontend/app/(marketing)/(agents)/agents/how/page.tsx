@@ -23,7 +23,7 @@ export default function Agents() {
                 }
             >
                 <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mt-4">
-                    Two agents running one bonded process, with every bond and the resolution stated per party: <Link href="/worked-example" className="underline">Worked example</Link>.
+                    Two agents running one bonded process, with every bond and the resolution stated per party: <Link href="/agents/worked-example" className="underline">Worked example</Link>.
                 </p>
             </MarketingHero>
 

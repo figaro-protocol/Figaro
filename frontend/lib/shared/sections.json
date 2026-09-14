@@ -29,7 +29,6 @@
 
         ["/use", ["use"]],
         ["/faq", ["use"]],
-        ["/worked-example", ["use"]],
         ["/local-commerce", ["use"]],
         ["/members", ["use"]],
         ["/data", ["use"]],
