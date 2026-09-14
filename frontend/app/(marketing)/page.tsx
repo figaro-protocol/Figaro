@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
@@ -49,14 +50,6 @@ const CHECKS: { name: string; count: string }[] = [
     { name: "Lean 4", count: "the bonded chain\u2019s equilibrium, proved" },
     { name: "Static analysis", count: "100 Slither detectors and Semgrep\u2019s smart-contract rules" },
 ];
-const DOORS: { href: string; name: string; line: string }[] = [
-    { href: "/use", name: "Use it", line: "Sell or buy anything and be paid in full when the buyer resolves, in the token you choose." },
-    { href: "/build", name: "Build on it", line: "Publish the terms of trade, compose them into assemblies, and be paid in florins when they are used." },
-    { href: "/core", name: "Check the core", line: "Two functions, decentralized and permissionless: the kernel, the attestations, and the batch verifier, with the proofs behind them." },
-    { href: "/research", name: "Read the research", line: "The papers: the equilibrium, the firm, the market, the ledger, the law, and the industries that coordinate at scale." },
-    { href: "/data", name: "Read the data", line: "What every trade leaves: the public map, your books, and your evidence, on your terms." },
-    { href: "/agents", name: "Run an agent", line: "Software trades, publishes, and resolves on the same terms as a person: the same bond, the same registries." },
-];
 
 export default function Home() {
     return (
@@ -66,7 +59,8 @@ export default function Home() {
                     <li>Trade with anyone, anywhere, in any token.</li>
                     <li>Be paid in full when the trade closes.</li>
                     <li>Set your own agreements, and keep your own books.</li>
-                    <li>Write agreements for others to use.</li>
+                    <li>Write agreements, and compose them with other contracts.</li>
+                    <li>Run an agent on the same terms as a person.</li>
                 </ul>
             </MarketingHero>
 
@@ -74,36 +68,34 @@ export default function Home() {
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     Anyone with a wallet can trade: a person, a shop, a plant, a piece of software, someone you know or someone you have never met. The token is yours to choose: your community&apos;s, a stablecoin, a memecoin, a resource token,&hellip; most ERC-20 tokens. A wallet is all it takes.
                 </p>
+                <div className="mt-6"><CtaLink href="/use">Use it</CtaLink></div>
             </MarketingSection>
             <MarketingSection title="Be paid in full when the trade closes.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
                     Before the trade, each side locks a bond in the same token large enough, so keeping the deal is worth more to each of them than breaking it. When the buyer closes, every seller in the process is paid the whole payment and every bond is refunded, all at once.
                 </p>
+                <div className="mt-6"><CtaLink href="/core">Check the core</CtaLink></div>
             </MarketingSection>
             <MarketingSection title="Set your own agreements, and keep your own books.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    An agreement is written in plain words and signed by both sides before the trade; what is delivered and attested during the process is signed too. Everything the trade leaves is its verifiable audit trail, yours in detail and public only in aggregate. A court or a forum, if it comes to that, rules on that same data afterward.
+                    An agreement is written in plain words and signed by both sides before the trade; what is delivered and attested during the process is signed too. Everything the trade leaves is its verifiable audit trail, yours in detail and public only in aggregate. A court or a forum, if it comes to that, rules on that same data afterward. Your data is yours to keep, or to sell, if you want.
                 </p>
+                <div className="mt-6"><CtaLink href="/data">Read the data</CtaLink></div>
             </MarketingSection>
-            <MarketingSection title="Write agreements for others to use.">
+            <MarketingSection title="Write agreements, and compose them with other contracts.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Anyone can publish the agreements of a trade, a single term or a whole assembly of them, to a public registry, for any seller to adopt. Every trade that uses them rewards the author in Figaro&apos;s florin token.
+                    Anyone can publish the agreements of a trade, a single term or a whole assembly of them, to a public registry, for any seller to adopt. An agreement composes with any other contract on the network: a forum, a payment splitter, a swap. Every trade that uses them rewards the author in Figaro&apos;s florin token.
                 </p>
+                <div className="mt-6"><CtaLink href="/build">Build on it</CtaLink></div>
+            </MarketingSection>
+            <MarketingSection title="Run an agent on the same terms as a person.">
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
+                    Software trades, publishes, and resolves with the same wallet, the same bond, and the same registries as a person. Nothing about Figaro is built for humans first and adapted for agents after.
+                </p>
+                <div className="mt-6"><CtaLink href="/agents">Run an agent</CtaLink></div>
             </MarketingSection>
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
-                    {DOORS.map((d) => (
-                        <div key={d.href}>
-                            <h2 className="text-heading-h3 text-ink-heading mb-2">
-                                <Link href={d.href} className="hover:underline">
-                                    {d.name}
-                                </Link>
-                            </h2>
-                            <p className="text-base text-ink-body leading-relaxed">{d.line}</p>
-                        </div>
-                    ))}
-                </div>
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
                     <p className="text-sm text-ink-muted mb-4">Composes with</p>
                     <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
