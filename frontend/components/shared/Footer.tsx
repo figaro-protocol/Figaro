@@ -2,7 +2,7 @@
 
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
-import { currentSite, siteFaqRoute } from "@/lib/shared/sites";
+import { currentSection, sectionFaqRoute } from "@/lib/shared/sections";
 
 /**
  * The footer is the LEGAL/IDENTITY strip only (maintainer rule 2026-08-06):
@@ -11,8 +11,8 @@ import { currentSite, siteFaqRoute } from "@/lib/shared/sites";
  * on desktop, the drawer on mobile. Do not regrow link columns here.
  */
 export function Footer() {
-    // The FAQ link is the host's own FAQ (the users', the builders', or the core's).
-    const faqHref = siteFaqRoute(currentSite(usePathname() ?? "/"));
+    // The FAQ link is the section's own FAQ (the users', the builders', or the core's).
+    const faqHref = sectionFaqRoute(currentSection(usePathname() ?? "/"));
     return (
         <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-8 flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
-import { SiteName } from "@/components/shared/SiteName";
+import { SectionName } from "@/components/shared/SectionName";
 import { MobileNav } from "@/components/shared/MobileNav";
 import { NavTreeRow } from "@/components/shared/NavTreeRow";
 import type { NavLink } from "@/components/shared/navLinks";
@@ -35,7 +35,7 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
                 <div className="flex items-center gap-2">
                     <MobileNav topCta={mobileTopCta} links={mobileLinks} />
                     <BrandLogo />
-                    <SiteName />
+                    <SectionName />
                 </div>
                 <NavTreeRow />
                 <div className="flex items-center gap-3">{right}</div>

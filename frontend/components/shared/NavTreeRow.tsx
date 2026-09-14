@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
-import { sectionOnSite } from "@/lib/shared/sites";
+import { navGroupShown } from "@/lib/shared/sections";
 import { navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
@@ -54,7 +54,7 @@ export function NavTreeRow() {
             className="hidden md:flex flex-1 justify-center items-center gap-1 text-sm"
             data-testid="desktop-nav"
         >
-            {MARKETING_MAP.filter((group) => sectionOnSite(group.links.map((l) => l.href), pathname)).map((group) => {
+            {MARKETING_MAP.filter((group) => navGroupShown(group.links.map((l) => l.href), pathname)).map((group) => {
                 const isOpen = open === group.section;
                 const slug = group.section.toLowerCase().replace(/[^a-z]+/g, "-");
                 const panelId = `nav-tree-${slug}`;

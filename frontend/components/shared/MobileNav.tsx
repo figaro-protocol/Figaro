@@ -7,7 +7,7 @@ import X from "@/components/icons/X";
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
-import { sectionOnSite } from "@/lib/shared/sites";
+import { navGroupShown } from "@/lib/shared/sections";
 import { navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
@@ -85,9 +85,9 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { ungrouped, groups: allGroups } = groupLinks(links);
-    // When the sites are split, the drawer shows this host's sections; the
-    // six doors above it stay the apex router's row on every host.
-    const groups = allGroups.filter((g) => sectionOnSite(g.links.map((l) => l.href), pathname));
+    // The drawer shows the groups of the section the reader is in; on the
+    // apex, the three sections only.
+    const groups = allGroups.filter((g) => navGroupShown(g.links.map((l) => l.href), pathname));
 
     // Close menu when route changes (avoids unmounting Link before navigation completes)
     useEffect(() => {

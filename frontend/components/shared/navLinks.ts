@@ -101,7 +101,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         links: [
             { href: "/use", label: "Use" },
             { href: "/members", label: "Members" },
-            { href: "/assemblies-app", label: "Assemblies" },
+            { href: "/use/assemblies", label: "Assemblies" },
             { href: "/faq", label: "FAQ" },
             { href: "/local-commerce", label: "Local Commerce" },
             { href: "/worked-example", label: "Worked example" },
@@ -123,7 +123,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/rpgf", label: "Designer Rewards" },
             { href: "/tokenomics", label: "Tokenomics" },
             { href: "/dao", label: "The DAO" },
-            { href: "/faq-build", label: "Builders' FAQ" },
+            { href: "/build/faq", label: "Builders' FAQ" },
         ],
     },
     {
@@ -134,7 +134,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/invariants", label: "Invariants" },
             { href: "/spec", label: "Specifications" },
             { href: "/security", label: "Security" },
-            { href: "/faq-core", label: "Core FAQ" },
+            { href: "/core/faq", label: "Core FAQ" },
         ],
     },
     {

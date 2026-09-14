@@ -40,7 +40,7 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
     return (
         <li className="border-b border-default py-5" data-testid="showcase-assembly">
             <h3 className="text-heading-h3 text-ink-heading mb-1">
-                <Link href={`/assemblies-app?slug=${encodeURIComponent(choice.slug)}`} className="hover:underline">
+                <Link href={`/use/assemblies?slug=${encodeURIComponent(choice.slug)}`} className="hover:underline">
                     {choice.name}
                 </Link>
             </h3>
@@ -66,7 +66,7 @@ function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: 
                 {template?.description && <p className="text-base text-ink-body leading-relaxed mb-5">{template.description}</p>}
                 <AssemblyShapeLine choice={choice} className="text-sm" />
                 <p className="text-sm mt-4">
-                    <Link href="/assemblies-app" className="text-ink-heading font-medium hover:underline">
+                    <Link href="/use/assemblies" className="text-ink-heading font-medium hover:underline">
                         Every assembly
                     </Link>
                     {" · "}
@@ -122,7 +122,7 @@ export function AssembliesShowcase() {
                 <MarketingSection title="Not published." sectionId="assembly">
                     <p className="text-base text-ink-body leading-relaxed">
                         {isLoading ? "Reading the registry…" : "No published assembly has this address."}{" "}
-                        <Link href="/assemblies-app" className="text-ink-heading font-medium hover:underline">Every assembly</Link>
+                        <Link href="/use/assemblies" className="text-ink-heading font-medium hover:underline">Every assembly</Link>
                     </p>
                 </MarketingSection>
             );
