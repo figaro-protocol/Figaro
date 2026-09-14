@@ -102,10 +102,13 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
 
-        // The landing page holds no group's own page beneath it, so nothing is
-        // pre-expanded. Only the group triggers carry aria-expanded inside the drawer.
+        // The group holding the landing opens on arrival; close it, so what is
+        // measured is the drawer at rest. Only the group triggers carry
+        // aria-expanded inside the drawer.
         const triggers = drawer.locator('button[aria-expanded]');
         expect(await triggers.count()).toBeGreaterThan(1);
+        const open = drawer.locator('button[aria-expanded="true"]');
+        if (await open.count()) await open.first().click();
         for (const trigger of await triggers.all()) {
             await expect(trigger).toHaveAttribute('aria-expanded', 'false');
         }
