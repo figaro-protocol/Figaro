@@ -56,7 +56,7 @@ export default function LocalCommercePage() {
 
             <MarketingSection title="The courier.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    The courier takes the delivery leg at their own listed rate, on a bicycle, in a car, on foot, or by drone. They arrive to a dinner that already has the food&apos;s value on it, so a 2.10 ride locks 21.00 &mdash; the smallest earning of the evening behind the largest lock, because from the pickup onwards the courier is carrying your whole order, not just the ride. The courier wants the kitchen to have cooked what you ordered &mdash; their bond rides on your confirmation. When you confirm, the courier is paid and the bond comes home with the kitchen&apos;s, all at once.
+                    The courier takes the delivery leg at their own listed rate, on a bicycle, in a car, on foot, or by drone. They arrive to a dinner that already has the food&apos;s value on it, so a 2.10 ride locks 21.00 &mdash; the smallest earning of the evening behind the largest lock, because from the pickup onwards the courier is carrying your whole order, not just the ride. The courier wants the kitchen to have cooked what you ordered &mdash; their bond rides on your confirmation. When you confirm, the courier is paid and its bond is refunded with the kitchen&apos;s, all at once.
                 </p>
             </MarketingSection>
 

@@ -9,7 +9,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 export const metadata: Metadata = withOg({
     title: "Join — Figaro Protocol",
     description:
-        "Membership: one wallet, one published profile — what you sell, and what you offer from the records of the trades you buy through. People and software agents register the same way.",
+        "Membership: one wallet, one published profile — what you sell, and what you offer from the data of the trades you buy through. People and software agents register the same way.",
 });
 
 // The membership page — ONE subject: what a
