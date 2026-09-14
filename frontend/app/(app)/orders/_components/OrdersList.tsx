@@ -442,8 +442,7 @@ export function OrdersList() {
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
             <header>
-                <p className="text-xs font-semibold text-ink-muted">Your orders</p>
-                <h1 className="mt-1 text-3xl font-bold text-ink-primary">Orders</h1>
+                <h1 className="text-3xl font-bold text-ink-primary">Orders</h1>
                 <p className="mt-2 text-sm text-ink-body">
                     Every order you&apos;re on — buyer or seller — and anything that needs you.
                 </p>
