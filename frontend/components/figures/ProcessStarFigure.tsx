@@ -18,9 +18,9 @@ export interface ProcessStarFigureProps extends BaseFigureProps {
 
 const CX = 200;
 const CY = 150;
-const R0 = 62;
+const R0 = 80;
 const R_STEP = 14;
-const NODE_R0 = 7;
+const NODE_R0 = 8;
 const NODE_R_STEP = 1.5;
 
 export function ProcessStarFigure({
@@ -53,7 +53,7 @@ export function ProcessStarFigure({
             idPrefix={idPrefix}
             className={className}
             svgProps={svgProps}
-            viewBox="0 0 400 300"
+            viewBox="10 36 340 250"
             title="A process: one buyer, every seller on its own spoke"
             desc={`One buyer at the center and ${sellers} sellers around it, each joined to the buyer by one line and none to each other; each seller sits a little farther out than the one before it.`}
         >

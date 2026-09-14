@@ -87,6 +87,7 @@ const CHECKS: { name: string; count: string }[] = [
 ];
 
 export default function Home() {
+    const [first, ...rest] = BENEFITS;
     return (
         <>
             <MarketingHero title="Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade.">
@@ -102,11 +103,20 @@ export default function Home() {
             </MarketingHero>
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
-                    {BENEFITS.map((b) => (
+                <div className="border-t border-default pt-10 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 items-center">
+                    <div className="flex flex-col">
+                        <h2 className="text-heading-h3 text-ink-heading mb-2">{first.line}</h2>
+                        <p className="text-base text-ink-body leading-relaxed">{first.body}</p>
+                        <div className="mt-4">
+                            <CtaLink href={first.href}>{first.cta}</CtaLink>
+                        </div>
+                    </div>
+                    <ProcessStarFigure />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10 mt-12">
+                    {rest.map((b) => (
                         <div key={b.href} className="flex flex-col">
                             <h2 className="text-heading-h3 text-ink-heading mb-2">{b.line}</h2>
-                            {b.href === "/use" && <ProcessStarFigure className="max-w-xs mb-4" />}
                             <p className="text-base text-ink-body leading-relaxed grow">{b.body}</p>
                             {b.href === "/build" && (
                                 <div className="mt-4" data-testid="built-with">
