@@ -178,4 +178,4 @@ jobs:
               run: pipx install semgrep==1.176.1
 
             - name: Run Semgrep
-              run: semgrep --config p/smart-contracts --error --severity ERROR --severity WARNING src/kernel src/protocol src/rpgf src/florin
+              run: semgrep --config p/smart-contracts --error --severity ERROR --severity WARNING src/core src/build src/app
