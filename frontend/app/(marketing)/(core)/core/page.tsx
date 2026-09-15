@@ -6,7 +6,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Core — Figaro Protocol",
     description:
-        "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit, and not yet audited by an outside firm.",
+        "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
 });
 
 // THE CORE LANDING — three subjects and nothing else: the four contracts,
@@ -15,7 +15,8 @@ export const metadata: Metadata = withOg({
 // each its paragraph and the one button that opens its page. No process
 // walk-through, no gas, no bond arithmetic, no roles: those are how, and they
 // live on the pages the cards open. A comprehension gap found by any tester is
-// closed on the page a card points to, never by adding prose here.
+// closed on the page a card points to, never by adding prose here. The
+// outside-audit caveat is a footnote at the foot of the page, never a headline.
 const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     {
         line: "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier.",
@@ -30,8 +31,8 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
         href: "/invariants",
     },
     {
-        line: "The contracts are proven and checked on every commit, and not yet audited by an outside firm.",
-        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked on every commit by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The kernel is frozen. Not yet audited by an outside firm.",
+        line: "The contracts are proven and checked on every commit.",
+        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked on every commit by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The kernel is frozen.",
         cta: "Security",
         href: "/security",
     },
@@ -63,6 +64,9 @@ export default function CoreDoor() {
                         </div>
                     ))}
                 </div>
+                <p className="mt-12 border-t border-default pt-8 text-sm text-ink-muted leading-relaxed max-w-2xl">
+                    Not yet audited by an outside firm.
+                </p>
             </section>
         </>
     );
