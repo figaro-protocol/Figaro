@@ -7,7 +7,7 @@ import { navCurrent } from "@/components/shared/navActive";
 
 /**
  * The header's first level: the three sections as plain links, on every page,
- * so a reader moves between sections without going back to the apex. The
+ * so a reader moves between sections without going back to the home page. The
  * reader's own section carries the current rule; its landing page, when the
  * reader is on it, is `aria-current="page"`. The second level — the section's
  * own tree — is `NavTreeRow`, under this row. Desktop only; the drawer

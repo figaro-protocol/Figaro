@@ -1,71 +1,88 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Build — Figaro Protocol",
     description:
-        "The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. Registration is permissionless, and the florins are minted for the purpose, so the designer keeps them whole.",
+        "Build a process, be rewarded each time it is used. A clause is one term of an agreement. An assembly composes agreements into a process anyone can run. Every resolved process is counted, and the count rewards its designers in florins.",
 });
 
-// THE BUILD DOOR — one of the six landing pages. Its words are the pillar
-// page the beta panel read; a comprehension gap found by any tester is closed on
-// the owner page a card points to, never by adding prose here.
+// THE BUILD LANDING — for designers, and nothing else: write a clause, compose
+// an assembly, read the data a process leaves, and be rewarded for use. Its
+// shape is the home page's: the tagline, the two buttons, the three lines that
+// climb the ladder — clause, agreement, assembly, process — then one card per
+// surface, each its paragraph and the one button that opens its page. The
+// registries are not a card: a clause is anchored in the clause registry and an
+// assembly in the assembly registry, and each card says so. A comprehension
+// gap found by any tester is closed on the page a card points to, never by
+// adding prose here.
+const LADDER: string[] = [
+    "A clause is one term of an agreement.",
+    "An assembly composes agreements into a process anyone can run.",
+    "Every resolved process is counted, and the count rewards its designers.",
+];
+
+const SURFACES: { title: string; body: string; cta: string; href: string }[] = [
+    {
+        title: "Clauses.",
+        body: "A clause is one term: applicable law, arbitration, acceptance criteria, cold chain, a data license, a delivery window. Write it as a JSON spec, pin it, and anchor its hash in the on-chain clause registry with a small reclaimable ETH stake. A clause the network has never seen resolves through the proof path with zero code.",
+        cta: "Clauses",
+        href: "/clauses",
+    },
+    {
+        title: "Assemblies.",
+        body: "An assembly composes clauses into agreements, and agreements into one process: a kitchen and a courier, a lead and its contributors, a six-party import chain, a data subscription. Pin it and anchor its hash in the on-chain assembly registry with a small reclaimable ETH stake. It composes further with any other smart contract on the network: a forum, a payment splitter, a swap. A published assembly is a process anyone, anywhere, can coordinate around, and anyone can fork.",
+        cta: "Assemblies",
+        href: "/assemblies",
+    },
+    {
+        title: "Data.",
+        body: "A process is transparent and verifiable at both ends. At commit, the chain holds the hash of the signed agreement and both bonds; at resolution, every payment and every refund. What the parties attest in between is signed evidence they hold, tied to the process by its hash. The aggregate map is public; the detail is the parties' own, to keep sealed or to sell on their own terms.",
+        cta: "Read the data",
+        href: "/data",
+    },
+    {
+        title: "The SDK.",
+        body: "TypeScript, published on npm. It reads the chain, reconstructs any process from its events, plans a checkout, validates a clause against its spec, and signs through a policy daemon that holds the rules and never the key.",
+        cta: "API reference",
+        href: "/sdk-api",
+    },
+    {
+        title: "Be rewarded.",
+        body: "The florin is the protocol's own ERC-20 token: a Schelling point that carries no rights of any kind. Every resolved process is counted once against each clause and assembly it carried, and 600 million of a fixed 1 billion florins reward designers pro rata over nine annual periods. One rule scores every clause and assembly: the resolved processes that carried it, and the distinct sellers behind them.",
+        cta: "Rewards",
+        href: "/rpgf",
+    },
+];
+
 export default function BuildDoor() {
     return (
         <>
-            <MarketingHero
-                title="Figaro: build the market, get paid when it is used"
-                lead={
-                    <>
-                        The core is a proven, decentralized and permissionless kernel: two functions, commit and resolve. Everything a trade needs above it is published by anyone, to public registries, and the protocol pays the designer in florins each time a trade uses it. Registration is permissionless, and the florins are minted for the purpose, so the designer keeps them whole.
-                    </>
-                }
-            />
-            <section className="container mx-auto px-6 pb-12 max-w-3xl">
+            <MarketingHero title="Figaro: build a process, be rewarded each time it is used" />
+            <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="flex flex-wrap gap-4 mb-10">
                     <CtaLink href="/clauses/register">Register a clause</CtaLink>
                     <CtaLink href="/assemblies/designer">Design an assembly</CtaLink>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
-                    <p className="text-sm text-ink-body leading-relaxed">A clause is one term of an agreement.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">An assembly composes clauses into a whole trade anyone can run.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">Every trade that uses them is counted, and the count pays the designer.</p>
+                    {LADDER.map((line) => (
+                        <p key={line} className="text-sm text-ink-body leading-relaxed">{line}</p>
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10 mt-12">
+                    {SURFACES.map((s) => (
+                        <div key={s.href} className="flex flex-col">
+                            <h2 className="text-heading-h3 text-ink-heading mb-2">{s.title}</h2>
+                            <p className="text-base text-ink-body leading-relaxed grow">{s.body}</p>
+                            <div className="mt-4">
+                                <CtaLink href={s.href}>{s.cta}</CtaLink>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </section>
-            <MarketingSection title="Clauses.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Applicable law, arbitration, acceptance criteria, incoterms, cold chain, hazmat, emissions, data license, delivery, schedule. Write one as a JSON spec, pin it, anchor its hash with a small ETH stake. A never-seen clause resolves through the proof path with zero code. <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Assemblies.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Compose clauses into the shape of a trade: a kitchen and a courier, a lead freelancer and contributors, a six-party import chain, a data subscription. Fix the token, the law, the forum. Fork any published one. <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Registries.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Clauses, assemblies, and members each have their own on-chain registry: a hash, a URI, a stake, decentralized and permissionless. Everything else is derived from events by anyone. <Link href="/registries" className="text-ink-heading font-medium hover:underline">Registries</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="The SDK.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    TypeScript. Read the chain, reconstruct any process from its events, plan a checkout, validate a clause, sign through a policy daemon. <Link href="/spec" className="text-ink-heading font-medium hover:underline">SDK</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Get paid.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    The florin is the protocol&apos;s own ERC-20 token: a unit strangers with no token in common can meet in, with no yield, no vote over trades, and no fee. Every resolved trade is counted once against each clause and assembly it carried, and 600 million florins of a fixed 1 billion pay designers pro rata over nine annual periods. Every clause and assembly scores on one rule: the resolved trades that carried it, and the distinct sellers behind them. A DAO holds 300 million more for work the counter cannot see; the rest is stated on the Tokenomics page. A florin is a Schelling point and carries no rights of any kind. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection bottomPad="wide">
-                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                    Built on Figaro Core: two functions, decentralized and permissionless, cooperation proven in Lean 4, not yet audited by an outside firm. <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
-                </p>
-            </MarketingSection>
         </>
     );
 }

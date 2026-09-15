@@ -28,7 +28,7 @@ interface HeaderShellProps {
  * container, container padding, mobile-nav trigger + logo on the left, the
  * three section links in the center, caller-supplied right cluster; under the
  * main row, the reader's section's own tree (`NavTreeRow`, absent on the
- * apex), then any caller-supplied row.
+ * home page), then any caller-supplied row.
  */
 export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: HeaderShellProps) {
     return (

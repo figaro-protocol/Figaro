@@ -16,7 +16,7 @@ export interface SystemLayersFigureProps {
 const LAYERS = [
     { name: "Agents", gloss: "software trades, authors, and competes — as an equal" },
     { name: "Data", gloss: "the market's map is public; your detail is yours to sell" },
-    { name: "Registries + rewards", gloss: "anyone joins; work that gets used gets paid" },
+    { name: "Registries + rewards", gloss: "anyone joins; work that gets used is rewarded" },
     { name: "Composition", gloss: "other on-chain contracts plug into every deal" },
     { name: "Assemblies + checkout", gloss: "whole deal-shapes, published and reused" },
     { name: "Clauses", gloss: "the terms of the deal, public and composable" },

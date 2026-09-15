@@ -13,7 +13,7 @@ const CH = KERNEL_EQUILIBRIUM.example.chain;
 export const metadata: Metadata = withOg({
     title: "Builders' FAQ — Figaro Protocol",
     description:
-        "Answers for the people who publish clauses and assemblies: registration and its stake, how the designer reward is computed and paid, forking, what a clause cannot do, and what composing a forum means.",
+        "Answers for the people who publish clauses and assemblies: registration and its stake, how the designer reward is computed and claimed, forking, what a clause cannot do, and what composing a forum means.",
 });
 
 const QUESTIONS: { id: string; title: string }[] = [
@@ -21,7 +21,7 @@ const QUESTIONS: { id: string; title: string }[] = [
     { id: "cumulative-bond", title: "Why does a seller's bond grow along the chain?" },
     { id: "agents", title: "Can software run a wallet here?" },
     { id: "publish", title: "How do I publish a clause, and what does it cost?" },
-    { id: "rewards-how", title: "How are designer rewards computed and paid, and when do they end?" },
+    { id: "rewards-how", title: "How are designer rewards computed and claimed, and when do they end?" },
     { id: "fork", title: "Can I fork an assembly?" },
     { id: "clause-limits", title: "What can a clause not do?" },
     { id: "forum", title: "What does composing a forum into an assembly mean?" },
@@ -115,15 +115,15 @@ export default function Faq() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="How are designer rewards computed and paid, and when do they end?" sectionId="rewards-how">
+            <MarketingSection title="How are designer rewards computed and claimed, and when do they end?" sectionId="rewards-how">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A fixed reserve of florins pays designers in proportion to real use, and nothing else. No category, no weight, no vote.
+                    A fixed reserve of florins rewards designers in proportion to real use, and nothing else. No category, no weight, no vote.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     A clause&apos;s or assembly&apos;s score in a period counts the processes that used it and the distinct staked sellers who carried it. The formula and its floor are on <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Accrual runs in annual periods, nine in all. A closed period pays once, pro rata, when you claim it on <Link href="/rewards" className="text-ink-heading font-medium hover:underline">Rewards</Link>. After the ninth period the reserve is spent and the reward ends.
+                    Accrual runs in annual periods, nine in all. A closed period rewards once, pro rata, when you claim it on <Link href="/rewards" className="text-ink-heading font-medium hover:underline">Rewards</Link>. After the ninth period the reserve is spent and the reward ends.
                 </p>
             </MarketingSection>
 

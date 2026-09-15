@@ -9,7 +9,7 @@
  * verified usage as it happens — a resolved order plus merkle inclusion of the
  * clause or assembly in the agreement both parties signed — so a period's payout is arithmetic
  * over numbers that are already final. A period's counts stop moving the
- * moment it ends; the minter pays a wallet its clauses' and assemblies' score over the
+ * moment it ends; the minter rewards a wallet its clauses' and assemblies' score over the
  * period's total, UNIFORM pro rata (no cap), to live-staked authors of record.
  * The one act is `claim`.
  *
@@ -192,7 +192,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                             Promise.all(
                                 mine.map(async (m) => {
                                     // BOTH resolution paths. `scoreOf` is the
-                                    // merged figure the minter pays on; the
+                                    // merged figure the minter rewards on; the
                                     // components stay separate because they
                                     // measure different universes and must
                                     // never be added together.

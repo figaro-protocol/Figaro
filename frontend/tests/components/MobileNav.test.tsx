@@ -51,8 +51,8 @@ describe("MobileNav", () => {
         expect(within(rows).getByRole("link", { name: "Use" })).not.toHaveAttribute("aria-current");
     });
 
-    // The apex is the router: the drawer there is the three sections and nothing inside them.
-    it("on the apex the drawer holds the three sections and no group", () => {
+    // The home page is the router: the drawer there is the three sections and nothing inside them.
+    it("on the home page the drawer holds the three sections and no group", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 

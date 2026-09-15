@@ -377,7 +377,7 @@ owns the allocation and its reasoning. Nothing is minted on resolution.
 
 ## Designer rewards (`src/build/rewards/`)
 
-The 600M reserve, paid to designers of record in proportion to the trade
+The 600M reserve, rewarded to designers of record in proportion to the trade
 their clauses and assemblies carried: one claim per period, nine annual
 periods, per-period budgets rising over three groups (15% of the reserve
 over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each group).

@@ -318,7 +318,7 @@ security-first, never cost-first.
 
 Permissionless clause composition is an axiom of the protocol, not a forecast.
 `ClauseRegistry.registerClause` is permissionless and first-write-wins;
-designer rewards pay designers across the nine periods; the composition
+designer rewards reach designers across the nine periods; the composition
 doctrine assumes third-party clause families forever. An architecture is
 correct only if it serves an unbounded, ever-growing clause population — "is
 there enough demand to justify it" is a product question and has no place

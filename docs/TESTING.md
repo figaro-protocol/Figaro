@@ -41,7 +41,7 @@ dominant wallet takes its full pro-rata share), a withdrawn designer forfeiting 
 the live-registration gate on both registries, the closed-period requirement, and the
 per-tranche budget backstop. `RpgfIntegrationTest` (6) proves the two compose with NO stubs: a
 real bonded process resolves, its usage is counted against the real counter, the period closes,
-and the real minter pays real florins.
+and the real minter mints real florins.
 
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call

@@ -94,7 +94,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // Closed, it is one row per section — the whole map fits the viewport with
     // nothing to scroll, which is the point of the accordion.
     test('the closed drawer fits the viewport without scrolling', async ({ page }) => {
-        // A section page: the apex's drawer is the three section rows alone.
+        // A section page: the home page's drawer is the three section rows alone.
         await page.goto('/use', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
@@ -125,7 +125,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // The drawer now carries the whole marketing map — a stranger's first visit
     // is usually a phone, so this is the entry path that has to work.
     test('the marketing drawer opens the whole map, not just the doorways', async ({ page }) => {
-        // Two levels: from the apex the drawer is the three sections; a section
+        // Two levels: from the home page the drawer is the three sections; a section
         // row opens the section, whose drawer carries that section's groups.
         await page.goto('/', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');

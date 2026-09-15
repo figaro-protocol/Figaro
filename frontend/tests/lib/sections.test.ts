@@ -25,20 +25,20 @@ describe("the section map", () => {
         expect(sectionsOfRoute("/use/assemblies")).toEqual(["use"]);
     });
 
-    it("puts the apex in no section and an unknown route in none", () => {
+    it("puts the home page in no section and an unknown route in none", () => {
         expect(sectionsOfRoute("/")).toEqual([]);
         expect(currentSection("/")).toBeNull();
         expect(currentSection("/no-such-route")).toBeNull();
     });
 
-    it("names the section beside the logo, and nothing on the apex", () => {
+    it("names the section beside the logo, and nothing on the home page", () => {
         expect(sectionLabel(currentSection("/clauses"))).toBe("Build");
         expect(sectionLabel(currentSection("/spec"))).toBe("Core");
         expect(sectionLabel(currentSection("/members"))).toBe("Use");
         expect(sectionLabel(currentSection("/"))).toBeNull();
     });
 
-    it("gives each section its own FAQ, and the users' to the apex", () => {
+    it("gives each section its own FAQ, and the users' to the home page", () => {
         expect(sectionFaqRoute("use")).toBe("/faq");
         expect(sectionFaqRoute("build")).toBe("/build/faq");
         expect(sectionFaqRoute("core")).toBe("/core/faq");
@@ -53,7 +53,7 @@ describe("the section map", () => {
         expect(navGroupShown(["/data", "/data/yours"], "/clauses")).toBe(false);
     });
 
-    it("shows no group on the apex — its chrome is the three section links alone", () => {
+    it("shows no group on the home page — its chrome is the three section links alone", () => {
         expect(navGroupShown(["/use", "/members"], "/")).toBe(false);
         expect(navGroupShown(["/build", "/clauses"], "/")).toBe(false);
         expect(navGroupShown(["/core", "/kernel"], "/")).toBe(false);

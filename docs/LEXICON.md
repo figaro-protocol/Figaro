@@ -50,7 +50,7 @@ Nouns and their definitions. One name per thing.
 
 **designer** — The wallet that writes and registers a clause or an assembly, and tailors its clauses to a market.
 
-**designer rewards** — The share of florins paid, after the fact and in proportion to real use, to the designers whose clauses and assemblies processes have used.
+**designer rewards** — The share of florins a designer is rewarded, after the fact and in proportion to real use, for the clauses and assemblies processes have used. A reward, minted for the purpose; never a payment, which is the buyer's word.
 
 **dispatch race** — One way an offer forms: a buyer's request goes out and the first willing seller takes it.
 
@@ -72,7 +72,7 @@ Nouns and their definitions. One name per thing.
 
 **payment** — The value transferred from the buyer to the seller for the value transferred by the seller to the buyer.
 
-**period** — One span of time over which use is counted for designer rewards; a designer's share is paid for each period after it closes.
+**period** — One span of time over which use is counted for designer rewards; a designer's share of each period is claimed after it closes.
 
 **process** — The runtime instance of an assembly that one buyer opens: its orders, resolved together.
 
@@ -116,6 +116,8 @@ The register every public page is measured against. The lexicon above gives the 
 - The stranger's question is answered before the mechanism is explained: what it is, what it costs, what happens if it goes wrong.
 - The honest caveat lives in the same paragraph as the claim it qualifies, never on another page.
 - No sentence a regulator, a court, or a rival could quote against the project out of context. If a sentence needs the page around it to be true, it is rewritten until it is true alone.
-- A ruling given in conversation is the meaning, not the wording. It is rendered in this voice before it reaches a page.
+- A ruling given in conversation is the meaning, not the wording. It is rendered in this voice before it reaches a page; a line supplied in conversation is never pasted verbatim.
+- A designer is rewarded, never paid. Payment is the buyer's transfer to the seller and belongs to the trade; the designer's florins are a reward for use, minted for the purpose.
+- A designer builds a process, never a market: a clause, composed into an agreement, composed into an assembly, run as a process. A market in the world's sense keeps the world's word.
 
 The beta panel is the measure: a page passes when a stranger of its audience states its claim back in their own words with the mechanism attached.

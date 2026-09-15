@@ -235,7 +235,7 @@ reaches calldata, so a private section's plaintext never becomes public. Read th
 not the absence of an exception. **The mandatory clauses EARN**: commerce and topology ride
 on every order and are scored for their designer of record like any other. The reference
 deployments exclude exactly ONE key — `figaro-assembly-provenance`, which is attribution
-plumbing (scoring it would double-pay every assembly trade, whose designer accrues through
+plumbing (scoring it would double-reward every assembly trade, whose designer accrues through
 the assembly leg below) — so on a perfectly healthy assembly run that one leg appears in
 `failures` with `ClauseOrAssemblyExcluded` and nothing else does. The set is a constructor
 argument, never a fixed list: read `excludedClauseOrAssembly(key)` off the deployment you

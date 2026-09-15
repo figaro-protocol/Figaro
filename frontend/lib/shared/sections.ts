@@ -36,7 +36,7 @@ export function sectionsOfRoute(pathname: string): readonly SectionId[] {
     return best ? best[1] : [];
 }
 
-/** The section the reader is in — the first section owning the page; null on the apex or an unmapped route. */
+/** The section the reader is in — the first section owning the page; null on the home page or an unmapped route. */
 export function currentSection(pathname: string): SectionId | null {
     return sectionsOfRoute(pathname)[0] ?? null;
 }
@@ -46,7 +46,7 @@ export function sectionLanding(section: SectionId): string {
     return LANDINGS[section];
 }
 
-/** Each section's own FAQ. The apex and an unmapped route get the users'. */
+/** Each section's own FAQ. The home page and an unmapped route get the users'. */
 export function sectionFaqRoute(section: SectionId | null): string {
     if (section === "build") return "/build/faq";
     if (section === "core") return "/core/faq";
@@ -56,7 +56,7 @@ export function sectionFaqRoute(section: SectionId | null): string {
 /**
  * Whether a nav group belongs in the second level of the chrome on the page
  * at `pathname`: it does if any page it lists is shown by the reader's
- * section. The apex — the router, in no section — has no second level; its
+ * section. The home page — the router, in no section — has no second level; its
  * chrome is the three section links alone.
  */
 export function navGroupShown(hrefs: readonly string[], pathname: string): boolean {
@@ -65,7 +65,7 @@ export function navGroupShown(hrefs: readonly string[], pathname: string): boole
     return hrefs.some((h) => sectionsOfRoute(h).includes(section));
 }
 
-/** The section's name in the header: Use, Build, Core; the apex has none. */
+/** The section's name in the header: Use, Build, Core; the home page has none. */
 export function sectionLabel(section: SectionId | null): string | null {
     if (section === "use") return "Use";
     if (section === "build") return "Build";

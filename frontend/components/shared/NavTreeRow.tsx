@@ -11,7 +11,7 @@ import { Disclosure } from "@/components/ui/Disclosure";
 /**
  * Desktop publication nav — the header's second level: the reader's section's
  * own tree, rendering the groups of `MARKETING_MAP` that section shows
- * (`navGroupShown`), in its own row under the main row; nothing on the apex,
+ * (`navGroupShown`), in its own row under the main row; nothing on the home page,
  * whose chrome is the three section links alone. Each group title is an INERT disclosure
  * button (`components/ui/Disclosure`, the same primitive the drawer's
  * sections use — the ruled tree's semantics: titles are headers, never

@@ -12,9 +12,9 @@ export const metadata: Metadata = withOg({
 
 // THE USE LANDING — for buyers and sellers, and nothing else: join, trade, by
 // hand or through an agent. The tagline is its title (it belongs here, never
-// on the apex). The lead is the six benefits as bullets, then the same six as
+// on the home page). The lead is the six benefits as bullets, then the same six as
 // cards, each its paragraph and the one button that opens its page — the
-// apex's shape. What makes it safe is a link to the core, what can go wrong a
+// home page's shape. What makes it safe is a link to the core, what can go wrong a
 // link to the FAQ; neither is a paragraph here. The words are the
 // maintainer's; a comprehension gap found by any tester is closed on the page
 // a card points to, never by adding prose here.

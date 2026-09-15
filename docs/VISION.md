@@ -41,7 +41,7 @@ commit. Warranties and representations are the attestations, given while the
 process is open. Capacity is any wallet that can sign and fund its bond, a
 person's or an agent's. Legality composes in: name an arbitration forum in the
 terms, or let an outside forum rule afterward on the same data. The data a process leaves is
-public in aggregate and the parties' own in detail. Designers are paid from the
+public in aggregate and the parties' own in detail. Designers are rewarded from the
 commons in proportion to real use of what they published. And a process
 composes with any other contract on the chain — a swap, a payment splitter, a
 forum — so the protocol is a network rather than a silo.
@@ -114,7 +114,7 @@ The kernel is deployed once; it is decentralized and permissionless, with no adm
 worth more than a thousand forks of it: the same tooling, the same indexers,
 the same wallets serve every process, and every process's public data lies on
 one map. The network grows by what is built above the kernel, by anyone —
-clauses, assemblies, interfaces, other contracts — and designer rewards pay for
+clauses, assemblies, interfaces, other contracts — and designer rewards follow
 that growth in proportion to use. `DATA_LAYER.md` describes the map;
 `OPEN_WORLD.md` describes how the layers above the kernel are composed.
 

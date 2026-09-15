@@ -86,7 +86,7 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
 
     const { ungrouped, groups: allGroups } = groupLinks(links);
     // Two levels, as on desktop: the three sections as plain rows first, then
-    // the groups of the section the reader is in; on the apex, the sections only.
+    // the groups of the section the reader is in; on the home page, the sections only.
     const section = currentSection(pathname);
     const groups = allGroups.filter((g) => navGroupShown(g.links.map((l) => l.href), pathname));
 

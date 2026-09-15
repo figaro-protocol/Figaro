@@ -113,7 +113,7 @@ other reference clause and every reference assembly is registered by the founder
 wallet, from the founder's own balance; each member profile is registered by its
 own wallet — the founder direct as a buyer-side member, the DAO under its
 EIP-7702-delegated operator EOA, never the vault address (`DAO.md` § "Who holds
-the treasury"). Registrar = designer of record = who the 600M reserve pays
+the treasury"). Registrar = designer of record = who the 600M reserve rewards
 (`RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`); first-write-wins and
 permanent per id. The procedure is rehearsed end to end on the testnet.
 
@@ -152,7 +152,7 @@ live. These are separate from the external-audit gate above:
   run by the deploy script, and its signer falls back to the anvil test key when
   `REGISTRAR_PRIVATE_KEY` is unset): `ClauseRegistry` `registeredBy` for the
   `figaro-commerce` and `figaro-topology` keys == `DAO_WALLET`. The treasury is
-  paid designer rewards as designer of record only if this holds (`/dao`,
+  receives designer rewards as designer of record only if this holds (`/dao`,
   `DAO.md`); nothing else enforces it.
 - `MembersRegistry.registrationDeposit` / `.withdrawalCooldown` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `0` placeholders). Both MembersRegistry values are immutable and cannot be corrected after deploy.
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).

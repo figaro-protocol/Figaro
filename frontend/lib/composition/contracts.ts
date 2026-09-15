@@ -70,7 +70,7 @@ export function getRpgfMinter(): `0x${string}` | null {
 }
 
 /** The UsageCounter — verified clause and assembly usage, counted on chain as it
- *  happens. The minter pays from its periods; this resolver is what the
+ *  happens. The minter rewards from its periods; this resolver is what the
  *  rewards surface reads accrual (c, d, score) and period-closure from.
  *  Resolved-empty: null = accrual is unreadable on this network. Delegates to
  *  the kernel's validated accessor (the canonical env parse for

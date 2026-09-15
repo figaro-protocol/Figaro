@@ -220,7 +220,7 @@ Clause governance — which clauses are authoritative — is a convention-layer
 concern resolved off-chain, consistent with the event-sourced architecture.
 
 **Reward escalation, accepted:**
-once designer rewards pay designers, the registering wallet is also the reward PAYEE key
+once designer rewards reach designers, the registering wallet is also the reward CLAIMANT key
 (`RpgfMinter._isAuthor`), so a front-runner who copies an in-flight registration
 captures its future reward, not just a discovery slot. This was weighed and the
 first-write-wins design KEPT, for two reasons. First, the shared flat clause
@@ -541,7 +541,7 @@ owns the proof, the counter owns the reward's gates.
 batch-path accrual for clauses or assemblies of its choosing, diluting every honest
 designer's pro-rata share of a period's budget. It could not mint, could not touch
 direct-path accrual, could not reach bonds or resolution, and could not
-withdraw anything — `RpgfMinter` still pays only designers of record with a live stake. The mitigation is the same one the whole batch path already rests on:
+withdraw anything — `RpgfMinter` still rewards only designers of record with a live stake. The mitigation is the same one the whole batch path already rests on:
 the vkey is immutable, and a program change means a NEW verifier deployment,
 reviewed as such.
 

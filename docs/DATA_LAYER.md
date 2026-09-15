@@ -115,7 +115,7 @@ benchmark reasoning but fails one of the three is wrong here.
 ## Why the flow-map gets built — the geo/coordination incentive under a uniform reward
 
 This section is load-bearing: it explains why the geo/coordination clauses exist and
-get written, now that the reward pays **no more for them than for any other clause.**
+get written, now that the reward is **no more for them than for any other clause.**
 The reward is UNIFORM (contract surface: `CONTRACTS.md` § "Designer rewards"): a clause's or assembly's score is its **real usage
 alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.** The
 old "substrate-broadening weight" (`UsageCounter.BOOSTED_WEIGHT`/`BASE_WEIGHT`,
@@ -143,14 +143,14 @@ pro-rata for every clause and assembly, keyed to real usage. A geo/coordination 
 earns exactly when a real, staked seller's process invokes it — the demand for the
 flow-map is the demand of the assemblies that need it, and the reward follows that
 demand rather than a hardcoded category judgment. The map gets drawn because the
-commerce that needs it draws it, and the designer of the clause that carries it is paid
+commerce that needs it draws it, and the designer of the clause that carries it is rewarded
 pro-rata for that real usage.
 
 **Neutrality comes from the stake, not from the weight.** What keeps the uniform
 reward honest is the two-sided **live ETH stake**, not a per-category multiplier.
 Usage counts only when the process's seller of record
 holds a live `MembersRegistry` stake (`UsageCounter` reads `MembersRegistry.registered`,
-else `SellerNotStaked`), and a designer is paid only while their registration stake is
+else `SellerNotStaked`), and a designer is rewarded only while their registration stake is
 un-withdrawn (`RpgfMinter._isAuthor` requires clause `depositOf.withdrawn == false`,
 assembly `bindings.depositWithdrawn == false`); withdraw and you forfeit future rewards.
 The ETH stake is a **value loop, not a cost**: more trade means more base-currency

@@ -97,7 +97,7 @@ own currency, at the moment it counts:
   drop). A seller on both paths enters each path's breadth: the two paths'
   scores are summed, and the same sellers on both count up to 2^(2/3) times
   their pooled score — a bounded bias, at the same live stake per seller.
-- **Designer side** — a claim pays only for entries whose registry stake is
+- **Designer side** — a claim rewards only entries whose registry stake is
   live and registered by the claimant. `RpgfMinter` verifies each entry against
   its own registry; a withdrawn stake earns nothing further.
 

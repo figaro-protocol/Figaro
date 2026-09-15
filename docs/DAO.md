@@ -3,7 +3,7 @@
 The DAO exists to **bootstrap**: to pay for what the network needs before the
 network can pay for it itself, by human judgment, at a tier where human
 judgment is appropriate. It is the deliberate counterpart to the uniform meter
-that pays designer rewards — that mechanism refuses to judge which
+that mints designer rewards — that mechanism refuses to judge which
 contributions matter more than their use, and this body does nothing else.
 
 This document owns what the DAO is for, how it acts, how it earns, and how it

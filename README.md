@@ -19,7 +19,7 @@ agreements composed into a reusable design of a process — and checkout;
 capacity is any wallet, a person's or an agent's, registered under a stake;
 legality composes in, or an outside forum rules afterward on the same data;
 the data a process leaves is public in aggregate and the parties' own in
-detail; designers are paid from the commons in proportion to real use of what
+detail; designers are rewarded from the commons in proportion to real use of what
 they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
 `docs/LEXICON.md` is the vocabulary every document here uses.
 
@@ -33,7 +33,7 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
   attestation and swap-and-commit coordinators, the usage counter, and the
   proof-based batch verifier. Inventory: `docs/CONTRACTS.md`.
 - **The florin and designer rewards** — `src/build/florin/`, `src/build/rewards/`: a
-  one-billion-cap ERC-20 and the minter that pays designers of record in
+  one-billion-cap ERC-20 and the minter that rewards designers of record in
   proportion to the use their clauses and assemblies carried.
   `docs/FLORIN_TOKEN.md` (the token), `docs/DESIGNER_REWARDS.md` (the reward),
   `docs/DAO.md` (the treasury that bootstraps).
