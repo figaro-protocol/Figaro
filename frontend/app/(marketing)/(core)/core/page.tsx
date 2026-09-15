@@ -6,7 +6,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Core — Figaro Protocol",
     description:
-        "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
+        "Four smart contracts, decentralized and permissionless. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
 });
 
 // THE CORE LANDING — three subjects and nothing else: the four contracts,
@@ -19,7 +19,7 @@ export const metadata: Metadata = withOg({
 // outside-audit caveat is a footnote at the foot of the page, never a headline.
 const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     {
-        line: "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier.",
+        line: "Four smart contracts, decentralized and permissionless.",
         body: "FigaroCore holds every bond and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction. The first two are the kernel, and the kernel is frozen.",
         cta: "The spec",
         href: "/spec",
