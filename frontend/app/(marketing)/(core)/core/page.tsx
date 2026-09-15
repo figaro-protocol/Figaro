@@ -1,85 +1,69 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
-import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Core — Figaro Protocol",
     description:
-        "Three smart contracts, decentralized and permissionless. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. The network charges gas for the two transactions, cents to a few dollars; the bonds are refunded when the buyer resolves, and registering a clause, an assembly, or a profile posts a reclaimable ETH stake.",
+        "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit, and not yet audited by an outside firm.",
 });
 
-// THE CORE DOOR — one of the six landing pages. Its words are the pillar
-// page the beta panel read; a comprehension gap found by any tester is closed on
-// the owner page a card points to, never by adding prose here.
+// THE CORE LANDING — three subjects and nothing else: the four contracts,
+// mechanism design, and security. Its shape is the home page's: the tagline,
+// the one button, the three subjects as bullets, then the same three as cards,
+// each its paragraph and the one button that opens its page. No process
+// walk-through, no gas, no bond arithmetic, no roles: those are how, and they
+// live on the pages the cards open. A comprehension gap found by any tester is
+// closed on the page a card points to, never by adding prose here.
+const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
+    {
+        line: "Four smart contracts, decentralized and permissionless: FigaroCore, CommitmentTypes, AttestationCoordinator, and FigaroBatchVerifier.",
+        body: "FigaroCore holds every bond and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction. The first two are the kernel, and the kernel is frozen.",
+        cta: "The spec",
+        href: "/spec",
+    },
+    {
+        line: "Mechanism design enforces the agreement between strangers: cooperation is each party's best move.",
+        body: "Each party bonds before the trade, and the bonds are sized so that keeping the agreement is worth more to each party than breaking it. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.",
+        cta: "The six invariants",
+        href: "/invariants",
+    },
+    {
+        line: "The contracts are proven and checked on every commit, and not yet audited by an outside firm.",
+        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked on every commit by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The kernel is frozen. Not yet audited by an outside firm.",
+        cta: "Security",
+        href: "/security",
+    },
+];
+
 export default function CoreDoor() {
     return (
         <>
-            <MarketingHero
-                title="Figaro Core: a self-enforcing trade kernel"
-                lead={
-                    <>
-                        Three smart contracts, decentralized and permissionless. Two strangers bond, trade, and are paid without anyone enforcing the agreement. Goods, services, work, or data, in any ERC-20 token. The network charges gas for the two transactions, cents to a few dollars; the bonds are refunded when the buyer resolves, and registering a clause, an assembly, or a profile posts a reclaimable ETH stake.
-                    </>
-                }
-            />
-            <section className="container mx-auto px-6 pb-12 max-w-3xl">
-                <div className="flex flex-wrap gap-4 mb-10">
+            <MarketingHero title="Figaro Core: four smart contracts, secured by mechanism design">
+                <div className="flex flex-wrap gap-4 mb-8">
                     <CtaLink href="/spec">Read the spec</CtaLink>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 border-t border-default pt-8">
-                    <p className="text-sm text-ink-body leading-relaxed">commit: two signatures, two bonds &mdash; the buyer&apos;s twice the payment, a seller&apos;s twice the value through its order.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">resolveProcess: the buyer&apos;s one call pays every seller and refunds every bond &mdash; the buyer&apos;s less the payments it carried.</p>
-                    <p className="text-sm text-ink-body leading-relaxed">Decentralized and permissionless: frozen code, one ERC-20 per process compared against itself, the whole payment to the seller.</p>
+                <ul className="text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2">
+                    {SUBJECTS.map((s) => (
+                        <li key={s.href}>{s.line}</li>
+                    ))}
+                </ul>
+            </MarketingHero>
+
+            <section className="container mx-auto px-6 pb-20 max-w-3xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
+                    {SUBJECTS.map((s) => (
+                        <div key={s.href} className="flex flex-col">
+                            <h2 className="text-heading-h3 text-ink-heading mb-2">{s.line}</h2>
+                            <p className="text-base text-ink-body leading-relaxed grow">{s.body}</p>
+                            <div className="mt-4">
+                                <CtaLink href={s.href}>{s.cta}</CtaLink>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </section>
-            <MarketingSection title="One trade, end to end.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A bowl for 50. The buyer locks 100, the cook locks 100. The bowl arrives. The buyer calls resolve: the cook holds 150, the buyer holds 50 again. A process carries one buyer and any number of sellers, each bonded on the value through its own order, all paid by the same call.
-                </p>
-            </MarketingSection>
-            <MarketingSection title="If something goes wrong.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Only the buyer resolves, and nobody can resolve for them. Remedies happen before that call: replace the goods, return part of the payment, or go to the arbitration forum named in the agreement. If the buyer never resolves, nothing moves: both bonds stay locked, the buyer&apos;s at twice what they owed. <Link href="/faq" className="text-ink-heading font-medium hover:underline">What can go wrong</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="FigaroCore.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Two functions. Nine signed fields. One ERC-20 per process. Resolving costs about 38,000 gas plus 23,000 per order. <Link href="/kernel" className="text-ink-heading font-medium hover:underline">The kernel</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="AttestationCoordinator.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A party attests to a fact about an open order, and must prove the clause it attests under is a leaf of the agreement it signed. The chain holds hashes; the content stays with the parties. <Link href="/attestations" className="text-ink-heading font-medium hover:underline">Attestations</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="FigaroBatchVerifier.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A validity proof carries a batch of commits, resolutions, and attestations in one transaction. A never-seen clause resolves with zero code changes. <Link href="/spec" className="text-ink-heading font-medium hover:underline">Spec</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Proven.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Cooperating is each side&apos;s best move, machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis on every commit. Not yet audited by an outside firm. <Link href="/invariants" className="text-ink-heading font-medium hover:underline">The six invariants</Link> &middot; <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>
-                </p>
-            </MarketingSection>
-            <MarketingSection title="Implementations.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-4">
-                    What runs the protocol, beside the contracts:
-                </p>
-                <ul className="space-y-2 text-base text-ink-body max-w-2xl">
-                    <li>&mdash; <strong className="text-ink-heading font-medium">The SDK</strong>, <code>@figaro-protocol/sdk</code>: reads the chain, plans and signs commitments, attests, resolves. <Link href="/sdk-api" className="text-ink-heading font-medium hover:underline">API reference</Link></li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">The prover</strong>: the batch path&apos;s witness prover, which re-checks every clause against the spec the registry anchors and emits the proof the verifier accepts; the batch verifier above is what checks it.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">The ecosystem agents</strong>: an operator, a clause author, an assembly designer, an analyst, each acting for a wallet through the SDK and the signer. <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link></li>
-                </ul>
-            </MarketingSection>
-            <MarketingSection title="Build on it.">
-                <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    MIT. Any EVM chain. Registries, tokens, marketplaces, agents, and data markets are built above this layer by anyone, under their own name. <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">Papers</Link>
-                </p>
-            </MarketingSection>
         </>
     );
 }
