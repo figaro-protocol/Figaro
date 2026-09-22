@@ -139,10 +139,12 @@ live. These are separate from the external-audit gate above:
   `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` with `SP1_PROOF_MODE=groth16` — the
   deploy wrappers' Guard 4 (`scripts/check-sp1-gateway-route.sh`) refuses to
   broadcast otherwise: the gateway must ROUTE the proof's form, not merely exist.
-  And `SP1_PROGRAM_VKEY` recomputed from the CURRENT guest at deploy time
-  (`SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`, or the current
-  release tag's body) — any guest rebuild supersedes the pinned vkey; never reuse
-  an old value.
+  And `SP1_PROGRAM_VKEY` recomputed from the CURRENT guest at deploy time, on
+  the prover box's reproducible build (`scripts/prover-box/build-guest.sh`, or
+  `sequencer --vkey` from a binary built there) — any guest rebuild supersedes
+  the pinned vkey; never reuse an old value. The wrapper reads the pinned value
+  back into the deployment record as `programVKey`, and the sequencer refuses
+  to start against a verifier whose `programVKey()` is not its own guest's.
 - The genesis state root is computed, not deploy-time-verified against the Rust
   value — treat one REAL batch resolving cleanly post-deploy as the genesis-root
   proof, not the deploy transaction succeeding.
