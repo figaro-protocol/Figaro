@@ -16,8 +16,8 @@ use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids, resol
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 use figaro_prove_test::{
-    build_canonical_batch_input, load_spec_json, make_signing_key, sign_digest, BUYER_KEY,
-    CHAIN_ID, CORE, SELLER1_KEY,
+    build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest,
+    BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY,
 };
 use figaro_sequencer::api::{self, ApiConfig, AppState};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
@@ -391,6 +391,187 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
             .all(|(_, reason)| reason.contains("OrderResolved")),
         "{poison:?}"
     );
+}
+
+// ── Assembler: the three crafted streams an auditor would try ─────
+//
+// A relay is transport; the kernel mirror inside the filter is the
+// authority. Each stream below aims at a bond or a payout and is
+// dead-lettered by the mirror's own gate, with the reason named, so the
+// batch it would have poisoned still forms from the honest ops.
+
+/// The canonical root commitment, and a second order on the same process
+/// (same buyer, same seller, cumulative value carried forward), with the
+/// buyer's resolve signature over the process — the two-order fixture the
+/// omitted-payout stream needs.
+fn two_order_process() -> (KernelOp, KernelOp, Commitment, Commitment, B256, Signature) {
+    let ops = canonical_ops();
+    let root_op = ops[0].clone();
+    let root = match &root_op {
+        KernelOp::Commit { commitment, .. } => commitment.clone(),
+        other => panic!("canonical ops[0] is the commit, got {other:?}"),
+    };
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let (_, process_id) = derive_commitment_ids(&domain, &root);
+
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let payment = alloy_primitives::U256::from(7u64);
+    let sub = Commitment {
+        process_id,
+        buyer: root.buyer,
+        seller: root.seller,
+        currency: root.currency,
+        payment,
+        expected_cumulative_value: root.payment + payment,
+        agreement_hash: root.agreement_hash,
+        salt: root.salt + alloy_primitives::U256::from(1u64),
+        deadline: root.deadline,
+    };
+    let sub_op = KernelOp::Commit {
+        commitment: sub.clone(),
+        buyer_sig: sign_commitment(&sub, &domain, &buyer_key),
+        seller_sig: sign_commitment(&sub, &domain, &seller_key),
+    };
+    let resolve_digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id));
+    let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
+    (root_op, sub_op, root, sub, process_id, resolve_sig)
+}
+
+#[test]
+fn filter_dead_letters_a_second_commit_of_the_same_bond() {
+    // The same root commitment twice in one batch, under two pending keys
+    // (the mempool's dedup is by key; the assembler must not rely on it).
+    // A root's process id IS its digest, so the mirror refuses the second
+    // as a process that already exists — one bond, deposited once.
+    let ops = canonical_ops();
+    let twice = vec![ops[0].clone(), ops[0].clone()];
+    let (valid, poison) =
+        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(twice));
+    assert_eq!(valid.len(), 1, "one commit forms the batch");
+    assert_eq!(poison.len(), 1, "the second is dead-lettered");
+    assert!(poison[0].1.contains("ProcessAlreadyExists"), "{}", poison[0].1);
+}
+
+#[tokio::test]
+async fn filter_dead_letters_a_bond_already_committed_in_an_earlier_batch() {
+    // Batch 1 lands the commit; the same commit offered again against the
+    // advanced state root is refused by the same gate — no second deposit
+    // across batches either.
+    let ops = canonical_ops();
+    let mirror = StateMirror::genesis();
+    let batch1 = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1000,
+        vec![ops[0].clone()],
+        mirror.snapshot().await,
+        UsageContext::default(),
+    );
+    let (_, _, _, post1) = apply_batch_with_state(&batch1).unwrap();
+    mirror.advance(post1).await;
+
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID,
+        CORE,
+        1001,
+        &mirror.snapshot().await,
+        pend(vec![ops[0].clone()]),
+    );
+    assert!(valid.is_empty(), "nothing to batch");
+    assert_eq!(poison.len(), 1);
+    assert!(poison[0].1.contains("ProcessAlreadyExists"), "{}", poison[0].1);
+}
+
+#[test]
+fn filter_dead_letters_a_resolve_that_omits_an_order() {
+    // Two orders on the process; a resolve listing only the root would pay
+    // one seller and leave the other's bond locked. The mirror counts the
+    // list against activeOrderCount — IncompleteOrderList — and the full
+    // list resolves.
+    let (root_op, sub_op, root, sub, process_id, resolve_sig) = two_order_process();
+
+    let short = KernelOp::Resolve {
+        process_id,
+        commitments: vec![root.clone()],
+        buyer_sig: resolve_sig.clone(),
+    };
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        pend(vec![root_op.clone(), sub_op.clone(), short]),
+    );
+    assert_eq!(valid.len(), 2, "both commits form the batch: {poison:?}");
+    assert_eq!(poison.len(), 1, "the short resolve is dead-lettered");
+    assert!(poison[0].1.contains("IncompleteOrderList"), "{}", poison[0].1);
+
+    let full = KernelOp::Resolve {
+        process_id,
+        commitments: vec![root.clone(), sub.clone()],
+        buyer_sig: resolve_sig,
+    };
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        pend(vec![root_op, sub_op, full]),
+    );
+    assert!(poison.is_empty(), "{poison:?}");
+    assert_eq!(valid.len(), 3);
+
+    // And the resolved batch pays both orders: 2×cumulative + payment each.
+    let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
+    let batch =
+        assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, empty_snapshot(), UsageContext::default());
+    let (_, positions, _, _) = apply_batch_with_state(&batch).unwrap();
+    let seller = positions.iter().find(|p| p.user == root.seller).expect("seller leg");
+    let (root_pay, _) = resolution_payouts(&root).unwrap();
+    let (sub_pay, _) = resolution_payouts(&sub).unwrap();
+    assert_eq!(seller.payout, root_pay + sub_pay, "every order paid");
+}
+
+#[tokio::test]
+async fn filter_dead_letters_a_resolve_of_an_already_resolved_process() {
+    // A resolve replayed inside the batch that resolved it, and again in a
+    // later batch against the advanced root: the process has no active
+    // orders, so the mirror refuses — a bond is paid out once.
+    let ops = canonical_ops();
+    let resolve = ops[3].clone();
+    assert!(matches!(resolve, KernelOp::Resolve { .. }));
+
+    let mut replayed = ops.clone();
+    replayed.push(resolve.clone());
+    let (valid, poison) =
+        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(replayed));
+    assert_eq!(valid.len(), 4, "the canonical four form the batch: {poison:?}");
+    assert_eq!(poison.len(), 1);
+    assert!(poison[0].1.contains("NoActiveOrders"), "{}", poison[0].1);
+
+    let mirror = StateMirror::genesis();
+    let batch1 = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1000,
+        ops,
+        mirror.snapshot().await,
+        UsageContext::default(),
+    );
+    let (_, _, _, post1) = apply_batch_with_state(&batch1).unwrap();
+    mirror.advance(post1).await;
+
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID,
+        CORE,
+        1001,
+        &mirror.snapshot().await,
+        pend(vec![resolve]),
+    );
+    assert!(valid.is_empty());
+    assert_eq!(poison.len(), 1);
+    assert!(poison[0].1.contains("NoActiveOrders"), "{}", poison[0].1);
 }
 
 #[test]

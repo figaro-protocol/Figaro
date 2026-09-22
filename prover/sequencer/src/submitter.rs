@@ -38,6 +38,23 @@ pub fn is_deterministic_send_error(message: &str) -> bool {
     message.contains("execution reverted")
 }
 
+/// The resolution transaction signer's key, from the environment and never
+/// defaulted: a relay that fell back to a well-known devnet key would sign
+/// `settleBatch` from an account anyone can drain, on any chain it was
+/// pointed at. Unset and blank are the same refusal, so the process exits
+/// at startup with the variable's name instead of running on a key it did
+/// not choose.
+pub fn signing_key_from_env(value: Option<String>) -> Result<String, String> {
+    match value {
+        Some(key) if !key.trim().is_empty() => Ok(key.trim().to_string()),
+        _ => Err(
+            "SEQUENCER_PRIVATE_KEY is unset: the relay signs settleBatch \
+             transactions with it and has no default key"
+                .to_string(),
+        ),
+    }
+}
+
 // Generate Rust bindings for the FigaroBatchVerifier contract.
 sol! {
     #[sol(rpc)]
@@ -464,6 +481,20 @@ mod tests {
         ] {
             assert!(!is_deterministic_send_error(transient), "{transient}");
         }
+    }
+
+    /// No key, no relay: unset and blank both refuse, and the refusal names
+    /// the variable; a set key is taken as given.
+    #[test]
+    fn signing_key_is_required() {
+        for absent in [None, Some(String::new()), Some("   ".to_string())] {
+            let err = signing_key_from_env(absent).unwrap_err();
+            assert!(err.contains("SEQUENCER_PRIVATE_KEY"), "{err}");
+        }
+        assert_eq!(
+            signing_key_from_env(Some(" 0xabc ".to_string())).unwrap(),
+            "0xabc"
+        );
     }
 
     fn dummy_config(clause: Address, assembly: Address, members: Address) -> SubmitterConfig {

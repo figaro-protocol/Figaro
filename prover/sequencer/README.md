@@ -68,8 +68,11 @@ ways to get one, and the second is the one that proves anything.
 **Prebuilt.** Each `v*` tag publishes
 `figaro-sequencer-<tag>-<target>.tar.gz` for Linux x86_64 and macOS arm64 to the
 repo's GitHub Releases, built by `.github/workflows/sequencer-release.yml`.
-Download it, check the companion `.sha256`, extract, run. This removes a
-toolchain install; it grants nothing and implies no hosted service.
+Download it, check the companion `.sha256` and the build-provenance
+attestation (`gh attestation verify <archive> --repo <owner>/<repo>`, which
+checks the archive against the Sigstore record of the run that built it),
+extract, run. This removes a toolchain install; it grants nothing and implies
+no hosted service.
 
 **From source.** Needs the host Rust toolchain plus SP1 — `cargo prove`
 cross-compiles the guest program that the sequencer embeds:
@@ -176,7 +179,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; all three zero disables the filter |
 | `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves |
 | `SP1_PROOF_MODE` | `groth16` | `groth16` or `plonk` — the on-chain proof form; must match the deployed gateway |
-| `SEQUENCER_PRIVATE_KEY` | anvil account 0 | Resolution tx signer (pays gas; no protocol privilege) |
+| `SEQUENCER_PRIVATE_KEY` | none — required | Resolution tx signer (pays gas; no protocol privilege); the relay refuses to start without it |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
 | `MAX_BATCH_OPS` | `100` | Max ops per assembled batch |

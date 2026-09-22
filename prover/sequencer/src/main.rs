@@ -84,11 +84,14 @@ async fn main() {
     )
     .parse()
     .expect("invalid FIGARO_CORE_ADDRESS");
-    let private_key = env_or(
-        "SEQUENCER_PRIVATE_KEY",
-        // Anvil account[0] default
-        "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-    );
+    let private_key =
+        match submitter::signing_key_from_env(std::env::var("SEQUENCER_PRIVATE_KEY").ok()) {
+            Ok(key) => key,
+            Err(reason) => {
+                error!(%reason, "refusing to start");
+                std::process::exit(2);
+            }
+        };
     let listen_addr = env_or("LISTEN_ADDR", "0.0.0.0:3001");
     let batch_interval: u64 = env_or("BATCH_INTERVAL_SECS", "10")
         .parse()

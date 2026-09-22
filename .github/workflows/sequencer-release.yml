@@ -53,6 +53,13 @@ jobs:
         name: Build sequencer (${{ matrix.target }})
         runs-on: ${{ matrix.runner }}
         timeout-minutes: 90
+        permissions:
+            contents: read
+            # The two scopes the provenance attestation needs and nothing else:
+            # the Sigstore OIDC handshake, and writing the attestation to the
+            # repo's attestation store.
+            id-token: write
+            attestations: write
         strategy:
             # Surface both platforms' failures in one run rather than hiding the
             # second behind the first. The publish job still requires ALL matrix
@@ -196,6 +203,16 @@ jobs:
                   EOF
                   cat "dist/${{ steps.package.outputs.pkg }}.facts"
 
+            # Build provenance: a Sigstore attestation binding each archive to
+            # this repository, commit, and workflow run — the sequencer's
+            # counterpart to the SDK's `npm publish --provenance`. A download is
+            # then checked against GitHub's transparency record, not this page:
+            # `gh attestation verify <archive> --repo <owner>/<repo>`.
+            - name: Attest build provenance
+              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+              with:
+                  subject-path: prover/dist/*.tar.gz
+
             - name: Upload build output
               uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               with:
@@ -214,8 +231,8 @@ jobs:
         needs: build
         runs-on: ubuntu-latest
         permissions:
-            # The only elevated scope in this workflow, and the only one the
-            # release needs. No packages:, no id-token:, no actions:.
+            # The one scope a release needs. The attestation scopes live on
+            # the build job, never here. No packages:, no id-token:, no actions:.
             contents: write
         steps:
             - name: Download build outputs
@@ -334,6 +351,16 @@ jobs:
 
                   Verify with `shasum -a 256 -c <file>.sha256`; the `.sha256` companions are
                   attached alongside the archives.
+
+                  ## Provenance
+
+                  Each archive carries a Sigstore build-provenance attestation, recorded
+                  against this repository, commit, and workflow run. Verify a download
+                  against that record rather than this page:
+
+                  ```sh
+                  gh attestation verify figaro-sequencer-__TAG__-<target>.tar.gz --repo __REPO__
+                  ```
 
                   ## Running it
 

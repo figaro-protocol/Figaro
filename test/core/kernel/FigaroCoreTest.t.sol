@@ -472,6 +472,95 @@ contract FigaroCoreTest is Test {
         core.resolveProcess(processId, commitments);
     }
 
+    /// An order committed under process B, presented to resolve process A.
+    /// The order hash is keccak256(processId ‖ structHash), so B's struct
+    /// hashed under A names an order A never saw — for B's root and for B's
+    /// sub-order alike. Nothing moves; B's bindings stand; A then resolves
+    /// with its own order.
+    function test_resolve_orderFromAnotherProcess_reverts() public {
+        (bytes32 processA,, CommitmentTypes.Commitment memory rootA) = _commitRoot(50 ether, 1);
+        (bytes32 processB, bytes32 rootHashB, CommitmentTypes.Commitment memory rootB) = _commitRoot(50 ether, 2);
+        (bytes32 subHashB, CommitmentTypes.Commitment memory subB) =
+            _commitSub(processB, seller2, 20 ether, 70 ether, SELLER2_KEY, 3);
+        assertTrue(processA != processB, "two processes");
+
+        CommitmentTypes.Commitment[] memory foreign = new CommitmentTypes.Commitment[](1);
+
+        foreign[0] = rootB;
+        bytes32 foreignHash = keccak256(abi.encodePacked(processA, rootB.hashStruct()));
+        vm.prank(buyer);
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.OrderNotCommitted.selector, foreignHash));
+        core.resolveProcess(processA, foreign);
+
+        foreign[0] = subB;
+        foreignHash = keccak256(abi.encodePacked(processA, subB.hashStruct()));
+        vm.prank(buyer);
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.OrderNotCommitted.selector, foreignHash));
+        core.resolveProcess(processA, foreign);
+
+        assertEq(core.orderProcessId(rootHashB), processB, "B's root still bound to B");
+        assertEq(core.orderProcessId(subHashB), processB, "B's sub still bound to B");
+        assertEq(core.orderStatus(rootHashB), 1, "B's root still committed");
+        assertEq(core.orderStatus(subHashB), 1, "B's sub still committed");
+        (,,, uint256 activeA) = core.processes(processA);
+        assertEq(activeA, 1, "A untouched");
+        // A: 2×50 + 2×50; B root: 2×50 + 2×50; B sub: 2×20 + 2×70.
+        assertEq(token.balanceOf(address(core)), 200 ether + 200 ether + 180 ether, "no bond moved");
+
+        foreign[0] = rootA;
+        vm.prank(buyer);
+        core.resolveProcess(processA, foreign);
+        (,,, activeA) = core.processes(processA);
+        assertEq(activeA, 0, "A resolves with its own order");
+    }
+
+    /// A commitment signed for this kernel on another chain is refused here.
+    /// The EIP-712 domain binds block.chainid, so the same signature bytes
+    /// recover to a stranger once the chain changes — the signature is first
+    /// shown valid where it was made, then replayed and refused.
+    ///
+    /// The domain is read from the kernel by external call, never from
+    /// block.chainid in this frame: under --via-ir the optimizer folds every
+    /// CHAINID read in a frame into one (the opcode is invariant within a
+    /// real transaction), which would move a read past the cheatcode.
+    function test_commit_signatureFromAnotherChain_reverts() public {
+        uint256 home = 31337;
+        vm.chainId(home);
+        bytes32 homeDomain = core.DOMAIN_SEPARATOR();
+
+        vm.chainId(home + 1);
+        bytes32 awayDomain = core.DOMAIN_SEPARATOR();
+        assertTrue(awayDomain != homeDomain, "the domain moves with the chain id");
+        CommitmentTypes.Commitment memory accepted = _rootCommitment(50 ether, 1);
+        core.commit(
+            accepted, _signUnder(awayDomain, accepted, BUYER_KEY), _signUnder(awayDomain, accepted, SELLER1_KEY)
+        );
+
+        CommitmentTypes.Commitment memory replayed = _rootCommitment(50 ether, 2);
+        bytes memory buyerSig = _signUnder(awayDomain, replayed, BUYER_KEY);
+        bytes memory sellerSig = _signUnder(awayDomain, replayed, SELLER1_KEY);
+
+        vm.chainId(home);
+        assertEq(core.DOMAIN_SEPARATOR(), homeDomain, "back home");
+        vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
+        core.commit(replayed, buyerSig, sellerSig);
+
+        // The same struct, signed for this chain, is a valid order here.
+        core.commit(
+            replayed, _signUnder(homeDomain, replayed, BUYER_KEY), _signUnder(homeDomain, replayed, SELLER1_KEY)
+        );
+    }
+
+    function _signUnder(bytes32 domain, CommitmentTypes.Commitment memory c, uint256 privateKey)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domain, c.hashStruct()));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // 17: Solvency — contract balance zero after resolve
     // ═══════════════════════════════════════════════════════════════

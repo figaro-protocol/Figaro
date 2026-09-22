@@ -195,7 +195,11 @@ field-for-field against host `apply_batch`; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
 and `figaro-sequencer` (mempool runs the kernel's own witness gates at the
 door; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
-property; HTTP API; mempool→assemble→kernel→advance pipeline; and the
+property and the three crafted streams — a bond committed twice, in one batch
+and across two; a resolve that omits an order; a resolve replayed in its own
+batch and in the next — each dead-lettered with the mirror's own reason while
+the honest ops still form the batch; the submitter's signing key is required,
+unset or blank refuses at startup; HTTP API; mempool→assemble→kernel→advance pipeline; and the
 publication archive — retention survives the drain that clears the mempool,
 the window is bounded and evicts cleanly, the journal survives a restart and
 rotates instead of growing, and every read route republishes what the kernel
@@ -491,7 +495,9 @@ Per workflow, what it runs and when:
   production deps at high+; frontend production deps at critical-only, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in
   `frontend/.audit-ignore.json` — each with the reason it cannot reach a static
-  export — and fails on every other critical one). The
+  export — and fails on every other critical one), and a `cargo audit` leg over
+  `prover/Cargo.lock` (fails on any vulnerability advisory; unmaintained and
+  yanked notices are warnings). The
   whole-tree guard battery and the Claude semantic open-world gate run
   maintainer-side, in pre-commit — they are private tooling and not part of
   the public CI tree.
@@ -528,8 +534,9 @@ Per workflow, what it runs and when:
   Linux sandbox variant (the signer runtime's container deny cases).
 - **`sequencer-release`** — publishes the prebuilt `figaro-sequencer` relay
   binary as a GitHub Release artifact (pinned toolchains + the computed vkey
-  printed into the release body for rebuild-and-compare); build-and-publish
-  only, gates no merge.
+  printed into the release body for rebuild-and-compare, and a Sigstore
+  build-provenance attestation per archive — `gh attestation verify`);
+  build-and-publish only, gates no merge.
 - **`sdk-release`** — on an `sdk-v<version>` tag (refused unless it equals
   `sdk/package.json`'s version): type-check, pure-surface tests (`SKIP_ANVIL=1`),
   build, `npm publish --provenance` (the Sigstore attestation binds the tarball
