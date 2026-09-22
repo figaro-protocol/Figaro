@@ -29,14 +29,15 @@ tests.
 
    ```bash
    curl -L https://sp1up.succinct.xyz | bash
-   sp1up --version v6.3.1
+   sp1up --version "v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' Cargo.lock)"
    ```
 
-   The version **must match** the `sp1-sdk` / `sp1-build` / `sp1-zkvm`
-   version resolved in `prover/Cargo.lock` — a mismatch silently changes the
-   guest ELF, and therefore the verification key. See the version comment in
-   `Cargo.lock` / `sequencer-release.yml`'s `SP1_VERSION` if either drifts
-   from the value above.
+   The release is the `sp1-sdk` version `prover/Cargo.lock` resolves — the
+   same read `sequencer-release.yml`, `prover-ci.yml` and the prover box's
+   `build-guest.sh` make, so no file carries a version of its own. A toolchain
+   from another release silently changes the guest ELF, and therefore the
+   verification key; the sequencer compares its guest's key with the deployed
+   verifier's at startup and refuses to run on a mismatch.
 
 ## Building and testing
 

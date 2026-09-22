@@ -25,11 +25,11 @@ cd frontend && npm install
 # Rust deps for prover
 cd prover && cargo fetch
 
-# SP1 toolchain for prover (cargo prove + the succinct guest toolchain);
-# version must match prover/Cargo.lock's resolved sp1-sdk version — see
-# prover/README.md
+# SP1 toolchain for prover (cargo prove + the succinct guest toolchain). The
+# release is the one prover/Cargo.lock resolves for sp1-sdk — read it, never
+# type it (the CI workflows and the prover box make the same read):
 curl -L https://sp1up.succinct.xyz | bash
-sp1up --version v6.3.1
+sp1up --version "v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)"
 ```
 
 ### IPFS (Kubo) — native, not Docker
