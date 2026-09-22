@@ -160,6 +160,12 @@ jobs:
               with:
                   version: v1.5.1
 
+            # The e2e deploys the contracts itself, from the bytecode Foundry
+            # writes to out/ — so the contracts are built here, the way a
+            # developer's checkout has them built.
+            - name: forge build
+              run: forge build
+
             - name: Setup Node.js
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:

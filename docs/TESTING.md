@@ -213,7 +213,12 @@ property and the three crafted streams — a bond committed twice, in one batch
 and across two; a resolve that omits an order; a resolve replayed in its own
 batch and in the next — each dead-lettered with the mirror's own reason while
 the honest ops still form the batch; the submitter's signing key is required,
-unset or blank refuses at startup; HTTP API; mempool→assemble→kernel→advance pipeline; and the
+unset or blank refuses at startup; the funding gate — both balance and
+allowance cover the bond, a commit the chain cannot be asked about is dropped
+conservatively, no verifier means no reads; the re-queue cap dead-letters an
+op after the third transient failure and a fresh admission starts it over;
+HTTP API incl. the per-address submit rate limit (`429`, another address
+still served) and arrival-order draining across clients; mempool→assemble→kernel→advance pipeline; and the
 publication archive — retention survives the drain that clears the mempool,
 the window is bounded and evicts cleanly, the journal survives a restart and
 rotates instead of growing, and every read route republishes what the kernel

@@ -644,7 +644,112 @@ fn test_app_state() -> AppState {
         archive: Archive::in_memory(archive::DEFAULT_MAX_BATCHES),
         batch_count: std::sync::Arc::new(tokio::sync::RwLock::new(0)),
         failures: figaro_sequencer::api::FailureLog::default(),
+        funding: None,
     }
+}
+
+/// A request stamped with a client address, as the server's connect info
+/// would stamp it.
+fn from_ip(mut req: Request<Body>, ip: [u8; 4]) -> Request<Body> {
+    req.extensions_mut().insert(axum::extract::ConnectInfo(
+        std::net::SocketAddr::from((ip, 40000)),
+    ));
+    req
+}
+
+fn submit_request(op: &KernelOp) -> Request<Body> {
+    let body = serde_json::json!({ "operation": op });
+    Request::builder()
+        .method("POST")
+        .uri("/submit")
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_vec(&body).unwrap()))
+        .unwrap()
+}
+
+#[tokio::test]
+async fn api_submit_rate_limits_per_client_address() {
+    // Two submissions a minute per address: the third from one address is
+    // refused with a structured 429 while another address is still served.
+    let app = api::router(
+        test_app_state(),
+        ApiConfig {
+            submits_per_minute_per_ip: 2,
+            ..ApiConfig::default()
+        },
+    );
+    let ops = canonical_ops();
+    for _ in 0..2 {
+        let res = app
+            .clone()
+            .oneshot(from_ip(submit_request(&ops[0]), [10, 0, 0, 1]))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = app
+        .clone()
+        .oneshot(from_ip(submit_request(&ops[0]), [10, 0, 0, 1]))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::TOO_MANY_REQUESTS);
+    let body = axum::body::to_bytes(res.into_body(), 4096).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["error"].as_str().unwrap().contains("rate limit"), "{json}");
+
+    let res = app
+        .oneshot(from_ip(submit_request(&ops[3]), [10, 0, 0, 2]))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK, "another address is served");
+}
+
+#[tokio::test]
+async fn api_submissions_drain_in_arrival_order_across_clients() {
+    // Batch order is arrival order: two clients interleave and the mempool
+    // drains exactly in the order the submissions landed, ids sequential —
+    // no client can move ahead of another by anything but arriving first.
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    let ops = canonical_ops();
+    let arrivals = [(&ops[0], [10, 0, 0, 1]), (&ops[3], [10, 0, 0, 2]), (&ops[1], [10, 0, 0, 1]), (&ops[2], [10, 0, 0, 2])];
+    let mut ids = Vec::new();
+    for (op, ip) in arrivals {
+        let res = app.clone().oneshot(from_ip(submit_request(op), ip)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), 4096).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        ids.push(json["id"].as_u64().unwrap());
+    }
+    assert_eq!(ids, vec![1, 2, 3, 4], "ids are arrival order");
+    let drained = state.mempool.drain().await;
+    let drained_ids: Vec<u64> = drained.iter().map(|p| p.id).collect();
+    assert_eq!(drained_ids, ids, "the batch takes them in arrival order");
+    assert!(matches!(drained[1].op, KernelOp::Resolve { .. }), "the second arrival was the other client's resolve");
+}
+
+#[tokio::test]
+async fn mempool_requeue_dead_letters_after_the_cap() {
+    // A transiently failed op is re-queued, up to the cap; past it the op is
+    // returned for dead-lettering with a reason, and a fresh admission of
+    // the same key starts the count over.
+    let mp = Mempool::new(CHAIN_ID, CORE).with_max_requeues(2);
+    let ops = canonical_ops();
+    mp.submit(ops[0].clone()).await.unwrap();
+
+    let drained = mp.drain().await;
+    assert!(mp.requeue(drained).await.is_empty(), "first re-queue");
+    let drained = mp.drain().await;
+    assert!(mp.requeue(drained).await.is_empty(), "second re-queue");
+    let drained = mp.drain().await;
+    let dropped = mp.requeue(drained).await;
+    assert_eq!(dropped.len(), 1, "the third is dead-lettered");
+    assert!(dropped[0].1.contains("re-queued 2 times"), "{}", dropped[0].1);
+    assert_eq!(mp.len().await, 0, "and not queued");
+
+    mp.submit(ops[0].clone()).await.unwrap();
+    let drained = mp.drain().await;
+    assert!(mp.requeue(drained).await.is_empty(), "a fresh admission starts the count over");
 }
 
 #[tokio::test]
@@ -965,6 +1070,7 @@ async fn api_submit_oversized_body_returns_413_structured() {
         test_app_state(),
         ApiConfig {
             max_body_bytes: 256,
+            ..ApiConfig::default()
         },
     );
     let body = serde_json::json!({ "operation": &canonical_ops()[0] });

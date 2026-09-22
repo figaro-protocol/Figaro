@@ -23,7 +23,7 @@ use figaro_sequencer::assembler::{self, AssemblerConfig};
 use figaro_sequencer::mempool::Mempool;
 use figaro_sequencer::prover;
 use figaro_sequencer::state::StateMirror;
-use figaro_sequencer::submitter::{self, SubmitterConfig};
+use figaro_sequencer::submitter::{self, FundingGate, SubmitterConfig};
 
 fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
@@ -109,6 +109,15 @@ async fn main() {
     let max_body_bytes: usize = env_or("MAX_BODY_BYTES", "1048576")
         .parse()
         .expect("invalid MAX_BODY_BYTES");
+    let request_timeout_secs: u64 = env_or("REQUEST_TIMEOUT_SECS", "10")
+        .parse()
+        .expect("invalid REQUEST_TIMEOUT_SECS");
+    let max_in_flight: usize = env_or("MAX_IN_FLIGHT", "256")
+        .parse()
+        .expect("invalid MAX_IN_FLIGHT");
+    let submits_per_minute_per_ip: u32 = env_or("SUBMITS_PER_MINUTE_PER_IP", "60")
+        .parse()
+        .expect("invalid SUBMITS_PER_MINUTE_PER_IP");
     // Publication bounds. `ARCHIVE_PATH=` (empty) makes the archive
     // in-memory only — it then answers for this process's lifetime and
     // forgets on restart.
@@ -171,6 +180,14 @@ async fn main() {
         interval_secs: batch_interval,
     };
 
+    // The funding gate reads bonds as balance and allowance to the verifier;
+    // without a verifier (prove-only dry run) nothing is read.
+    let funding = (verifier_addr != Address::ZERO).then(|| FundingGate {
+        rpc_url: rpc_url.clone(),
+        verifier: verifier_addr,
+    });
+    let loop_funding = funding.clone();
+
     // ── Spawn batch loop ──────────────────────────────────────────
     let failures = FailureLog::default();
     let loop_mempool = mempool.clone();
@@ -188,6 +205,7 @@ async fn main() {
             loop_failures,
             assembler_config,
             submitter_config,
+            loop_funding,
             chain_id,
             verifying_contract,
         )
@@ -201,16 +219,31 @@ async fn main() {
         archive,
         batch_count,
         failures,
+        funding,
     };
 
-    let app = api::router(app_state, api::ApiConfig { max_body_bytes });
+    let app = api::router(
+        app_state,
+        api::ApiConfig {
+            max_body_bytes,
+            request_timeout: Duration::from_secs(request_timeout_secs),
+            max_in_flight,
+            submits_per_minute_per_ip,
+        },
+    );
 
     let listener = tokio::net::TcpListener::bind(&listen_addr)
         .await
         .expect("failed to bind");
 
-    info!(%listen_addr, "HTTP server listening");
-    axum::serve(listener, app).await.expect("server error");
+    info!(%listen_addr, %request_timeout_secs, %max_in_flight, %submits_per_minute_per_ip, "HTTP server listening");
+    // Connect info carries the client address the per-IP limit keys on.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await
+    .expect("server error");
 }
 
 /// Main batch loop: periodically drains the mempool, assembles a batch,
@@ -223,6 +256,7 @@ async fn batch_loop(
     failures: FailureLog,
     config: AssemblerConfig,
     submitter_config: SubmitterConfig,
+    funding: Option<FundingGate>,
     chain_id: u64,
     verifying_contract: Address,
 ) {
@@ -280,6 +314,15 @@ async fn batch_loop(
         );
         for (p, reason) in &poison {
             warn!(id = p.id, %reason, "Dropped poison op — would abort the batch");
+        }
+
+        // Funding at batch formation, against the latest block: a commit
+        // whose bonds no longer pull would revert the whole settle. Dropped
+        // here it is dead-lettered and re-submittable, never proved.
+        let (valid, unfunded) = submitter::filter_funded_commits(funding.as_ref(), valid).await;
+        for (p, reason) in &unfunded {
+            warn!(id = p.id, %reason, "Dropped commit at batch formation");
+            failures.record(1, reason.clone()).await;
         }
         if valid.is_empty() && usage_claims.is_empty() {
             continue;
@@ -406,9 +449,15 @@ async fn batch_loop(
                 }
                 Err(e) => {
                     // Transport trouble is transient — the ops are valid,
-                    // so re-queue them for the next tick.
+                    // so re-queue them for the next tick. Past the re-queue
+                    // cap an op is dead-lettered instead, so a batch that
+                    // never lands is not re-proved forever.
                     error!(error = %e, "On-chain submission failed (transient) — re-queuing operations");
-                    mempool.requeue(valid).await;
+                    let dropped = mempool.requeue(valid).await;
+                    for (op, why) in dropped {
+                        error!(id = op.id, %why, "Dead-lettered after repeated transient failures");
+                        failures.record(1, why).await;
+                    }
                 }
             }
         } else {

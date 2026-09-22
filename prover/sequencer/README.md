@@ -186,6 +186,9 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
+| `REQUEST_TIMEOUT_SECS` | `10` | A request not answered by then is `408` |
+| `MAX_IN_FLIGHT` | `256` | Requests served at once, across every route; the rest wait |
+| `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address may make a minute before `429`; `0` disables |
 | `ARCHIVE_PATH` | `sequencer-archive.jsonl` | Publication journal; empty = in-memory only |
 | `ARCHIVE_MAX_BATCHES` | `10000` | Retained resolved batches (see Publication bounds) |
 
@@ -203,8 +206,11 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. `400` on signature or witness-gate
   rejection, `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
-  variant, missing field), `413` over `MAX_BODY_BYTES`, `415` on a wrong
-  content type, `503` when the mempool is full.
+  variant, missing field), `402` for a commit whose bonds do not fund
+  (balance and allowance to the verifier, read at the door — see Funding
+  below), `408` past `REQUEST_TIMEOUT_SECS`, `413` over `MAX_BODY_BYTES`,
+  `415` on a wrong content type, `429` past `SUBMITS_PER_MINUTE_PER_IP`,
+  `503` when the mempool is full.
 - `POST /submit-usage` — body `{ "claim": <UsageClaim> }`.
   `200 {"pending": n}`; same error mapping (including `422` for valid JSON
   that is not a `UsageClaim`). Idempotent by claim BYTES — a weaker guarantee
@@ -278,6 +284,18 @@ chain-anchored identity is `new_state_root` + `settlement_tx`. The number
 resumes from the archive across a restart, so it never collides with what was
 already published.
 
+## Funding
+
+A commit's two bonds — the buyer's 2 × payment, the seller's 2 × cumulative
+value — are read as balance and allowance to the batch verifier twice: when
+the operation arrives (`/submit` answers `402` with the party and the
+shortfall) and again at batch formation, against the latest block, right
+before proving. A commit that no longer funds is dropped there, counted on
+`/status` as dead-lettered with its reason, and re-submittable once funded;
+it is never proved. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
+nothing is read. A read failure at the door is not a verdict — the batch-time
+check decides; a read failure at batch time drops the commit conservatively.
+
 ## Mempool bounds
 
 Admission is bounded (`MEMPOOL_MAX_OPS` / `MEMPOOL_MAX_USAGE_CLAIMS`).
@@ -292,6 +310,10 @@ identical batch for the same refusal, and the drop surfaces on `/status`
 (`dead_lettered_ops`, `last_settle_error`). Idempotency spans the pending
 window; after a batch resolves, a re-submission is dropped by the stateful
 assembler filter instead.
+An operation re-queued after a transient submission failure (the chain never
+evaluated the batch) is re-queued at most three times; past that it is
+dead-lettered — surfaced on `/status` with the reason, re-submittable — so a
+batch that never lands is not re-proved forever.
 
 ## Publication bounds
 

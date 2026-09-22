@@ -7,8 +7,10 @@ use alloy::signers::local::PrivateKeySigner;
 use alloy::sol;
 use tracing::info;
 
-use figaro_kernel::types::{UsageClaim, UsageClaimKind};
+use alloy::primitives::U256;
+use figaro_kernel::types::{Commitment, KernelOp, UsageClaim, UsageClaimKind};
 
+use crate::mempool::PendingOp;
 use crate::prover::ProveResult;
 
 /// A resolve failure, classified. DETERMINISTIC means the chain evaluated the
@@ -53,6 +55,116 @@ pub fn signing_key_from_env(value: Option<String>) -> Result<String, String> {
                 .to_string(),
         ),
     }
+}
+
+// ── Funding: a commit's bonds must pull, or the batch reverts ─────
+//
+// `settleBatch` pulls every position's deposit in one transaction; one
+// buyer or seller whose balance or allowance no longer covers its bond
+// reverts the whole batch — at a cost to them of nothing, repeatable. The
+// relay therefore reads the two bonds' funding (balance and allowance to
+// the verifier) when a commit arrives and again at batch formation, right
+// before proving, against the latest block. The residual window is the
+// proving time itself; a revert inside it is deterministic and dead-letters
+// the batch once (see `is_deterministic_send_error`).
+
+sol! {
+    #[sol(rpc)]
+    interface IERC20Funding {
+        function balanceOf(address who) external view returns (uint256);
+        function allowance(address owner, address spender) external view returns (uint256);
+    }
+}
+
+/// Where the funding reads go: the chain, and the spender the bonds are
+/// approved to (the batch verifier).
+#[derive(Clone, Debug)]
+pub struct FundingGate {
+    pub rpc_url: String,
+    pub verifier: Address,
+}
+
+/// A bond is funded when the wallet holds it AND has approved it to the
+/// verifier — both, or the pull reverts.
+pub fn commit_funded(balance: U256, allowance: U256, need: U256) -> bool {
+    balance >= need && allowance >= need
+}
+
+/// The two bonds a commit pulls: the buyer's 2 × payment, the seller's
+/// 2 × cumulative value at its link — the kernel's arithmetic, saturating
+/// only where the kernel would overflow (and refuse) anyway.
+pub fn bonds_of(c: &Commitment) -> (U256, U256) {
+    let two = U256::from(2u64);
+    (
+        c.payment.saturating_mul(two),
+        c.expected_cumulative_value.saturating_mul(two),
+    )
+}
+
+/// Read both parties' funding for one commit. The outer `Err` is a read
+/// failure (the chain could not be asked); the inner `Err` is a verdict:
+/// the named party does not fund its bond.
+pub async fn check_commit_funding(
+    gate: &FundingGate,
+    c: &Commitment,
+) -> Result<Result<(), String>, String> {
+    let url = gate
+        .rpc_url
+        .parse()
+        .map_err(|e| format!("invalid RPC_URL: {e}"))?;
+    let provider = ProviderBuilder::new().connect_http(url);
+    let token = IERC20Funding::new(c.currency, &provider);
+    let (buyer_need, seller_need) = bonds_of(c);
+    for (label, who, need) in [("buyer", c.buyer, buyer_need), ("seller", c.seller, seller_need)] {
+        let balance = token
+            .balanceOf(who)
+            .call()
+            .await
+            .map_err(|e| format!("balanceOf({who}) read failed: {e}"))?;
+        let allowance = token
+            .allowance(who, gate.verifier)
+            .call()
+            .await
+            .map_err(|e| format!("allowance({who}) read failed: {e}"))?;
+        if !commit_funded(balance, allowance, need) {
+            return Ok(Err(format!(
+                "{label} {who} holds {balance} and allows {allowance} to the verifier; the bond needs {need}"
+            )));
+        }
+    }
+    Ok(Ok(()))
+}
+
+/// Batch-formation funding filter over the ops that passed the kernel's
+/// trial-apply. Commits whose bonds do not fund at the latest block are
+/// dropped with the reason (re-submittable once funded); a read failure
+/// drops the commit conservatively, never proves against unverified
+/// funding. Every other op passes. `None` (no verifier configured — a
+/// prove-only dry run) passes everything through untouched.
+pub async fn filter_funded_commits(
+    gate: Option<&FundingGate>,
+    pending: Vec<PendingOp>,
+) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let Some(gate) = gate else {
+        return (pending, Vec::new());
+    };
+    let mut valid = Vec::with_capacity(pending.len());
+    let mut dropped = Vec::new();
+    for op in pending {
+        let verdict = match &op.op {
+            KernelOp::Commit { commitment, .. } => match check_commit_funding(gate, commitment).await {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(unfunded)) => Err(format!("unfunded commitment: {unfunded}")),
+                Err(read) => Err(format!("funding unverifiable, dropped conservatively: {read}")),
+            },
+            _ => Ok(()),
+        };
+        match verdict {
+            Ok(()) => valid.push(op),
+            Err(reason) => dropped.push((op, reason)),
+        }
+    }
+    (valid, dropped)
 }
 
 // Generate Rust bindings for the FigaroBatchVerifier contract.
@@ -481,6 +593,90 @@ mod tests {
         ] {
             assert!(!is_deterministic_send_error(transient), "{transient}");
         }
+    }
+
+    /// The funding verdict: both the balance and the allowance must cover
+    /// the bond; either short and the pull would revert the batch.
+    #[test]
+    fn a_bond_is_funded_only_with_both_balance_and_allowance() {
+        let need = U256::from(200u64);
+        assert!(commit_funded(U256::from(200u64), U256::from(200u64), need));
+        assert!(commit_funded(U256::MAX, U256::MAX, need));
+        assert!(!commit_funded(U256::from(199u64), U256::MAX, need), "short balance");
+        assert!(!commit_funded(U256::MAX, U256::from(199u64), need), "short allowance");
+        assert!(!commit_funded(U256::ZERO, U256::ZERO, need));
+    }
+
+    /// The bonds are the kernel's: 2 × payment for the buyer, 2 × cumulative
+    /// value for the seller.
+    #[test]
+    fn bonds_are_the_kernels_arithmetic() {
+        let mut c = dummy_claim().order;
+        c.payment = U256::from(100u64);
+        c.expected_cumulative_value = U256::from(150u64);
+        assert_eq!(bonds_of(&c), (U256::from(200u64), U256::from(300u64)));
+    }
+
+    /// No verifier configured means no funding reads: a prove-only dry run
+    /// passes everything through, and never touches the (unreachable) rpc.
+    #[tokio::test]
+    async fn funding_filter_is_a_pass_through_without_a_verifier() {
+        let ops = vec![PendingOp {
+            id: 1,
+            key: B256::repeat_byte(0x01),
+            op: KernelOp::Resolve {
+                process_id: B256::ZERO,
+                commitments: vec![],
+                buyer_sig: figaro_kernel::types::Signature {
+                    v: 27,
+                    r: B256::ZERO,
+                    s: B256::ZERO,
+                },
+            },
+        }];
+        let (valid, dropped) = filter_funded_commits(None, ops).await;
+        assert_eq!(valid.len(), 1);
+        assert!(dropped.is_empty());
+    }
+
+    /// With a verifier configured but the chain unreachable, a commit is
+    /// dropped conservatively — never proved against unverified funding —
+    /// and the reason says so; a non-commit op is not a funding question.
+    #[tokio::test]
+    async fn funding_filter_drops_a_commit_it_cannot_verify() {
+        let gate = FundingGate {
+            rpc_url: "http://127.0.0.1:1".to_string(),
+            verifier: Address::repeat_byte(0x02),
+        };
+        let sig = figaro_kernel::types::Signature {
+            v: 27,
+            r: B256::ZERO,
+            s: B256::ZERO,
+        };
+        let ops = vec![
+            PendingOp {
+                id: 1,
+                key: B256::repeat_byte(0x01),
+                op: KernelOp::Commit {
+                    commitment: dummy_claim().order,
+                    buyer_sig: sig.clone(),
+                    seller_sig: sig.clone(),
+                },
+            },
+            PendingOp {
+                id: 2,
+                key: B256::repeat_byte(0x02),
+                op: KernelOp::Resolve {
+                    process_id: B256::ZERO,
+                    commitments: vec![],
+                    buyer_sig: sig,
+                },
+            },
+        ];
+        let (valid, dropped) = filter_funded_commits(Some(&gate), ops).await;
+        assert_eq!(valid.len(), 1, "the resolve passes");
+        assert_eq!(dropped.len(), 1, "the commit is dropped");
+        assert!(dropped[0].1.contains("funding unverifiable"), "{}", dropped[0].1);
     }
 
     /// No key, no relay: unset and blank both refuse, and the refusal names

@@ -6,22 +6,31 @@
 /// admission runs the same EIP-712 recovery and witness gates the proof
 /// enforces, and republishes what it resolved. Every failure is a structured
 /// `{ "error": … }` JSON body — never a panic, never a plaintext rejection.
+use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
 use axum::{
     extract::{
         rejection::{JsonRejection, QueryRejection},
-        DefaultBodyLimit, Path, Query, State,
+        ConnectInfo, DefaultBodyLimit, Path, Query, State,
     },
     http::StatusCode,
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use tower::limit::ConcurrencyLimitLayer;
+use tower_http::timeout::TimeoutLayer;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 use crate::archive::{Archive, RetentionWindow};
 use crate::mempool::{Mempool, SubmitError};
 use crate::state::StateMirror;
+use crate::submitter::{self, FundingGate};
 use alloy_primitives::B256;
 use figaro_kernel::types::{KernelOp, UsageClaim};
 
@@ -36,6 +45,9 @@ pub struct AppState {
     pub batch_count: std::sync::Arc<tokio::sync::RwLock<u64>>,
     /// Cumulative failure facts — see `FailureLog`.
     pub failures: FailureLog,
+    /// Where a commit's bonds are checked at the door (`None`: no verifier
+    /// configured, nothing is read — the prove-only dry run).
+    pub funding: Option<FundingGate>,
 }
 
 /// Cumulative failure facts, surfaced on `/status` so a polling driver SEES a
@@ -75,14 +87,97 @@ pub struct ApiConfig {
     /// JSON + content + agreement sections + inclusion proof) is tens of
     /// KB; 1 MiB is generous headroom without inviting memory abuse.
     pub max_body_bytes: usize,
+    /// A request that has not completed by then is answered `408`.
+    pub request_timeout: Duration,
+    /// Requests in flight at once, across every route; the rest wait.
+    pub max_in_flight: usize,
+    /// Submissions (`/submit`, `/submit-usage`) one client address may make
+    /// per minute before it is answered `429`; zero disables the limit.
+    pub submits_per_minute_per_ip: u32,
 }
 
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
             max_body_bytes: 1024 * 1024,
+            request_timeout: Duration::from_secs(10),
+            max_in_flight: 256,
+            submits_per_minute_per_ip: 60,
         }
     }
+}
+
+// ── Per-IP submit rate limit ─────────────────────────────────────
+//
+// A fixed one-minute window per client address over the two submission
+// routes. The mempool already refuses an unfunded or malformed submission
+// at no cost to the sender; this bounds how fast one address can make it
+// say so, and how fast one address can fill the queue caps with
+// well-formed, self-signed operations. Behind a proxy the address is the
+// proxy's — a deployment that fronts the relay sets the limit there.
+
+#[derive(Clone)]
+pub struct RateLimiter {
+    per_minute: u32,
+    windows: Arc<Mutex<HashMap<IpAddr, (Instant, u32)>>>,
+}
+
+impl RateLimiter {
+    pub fn new(per_minute: u32) -> Self {
+        Self {
+            per_minute,
+            windows: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Whether one more submission from `ip` is within the window.
+    pub fn admit(&self, ip: IpAddr) -> bool {
+        self.admit_at(ip, Instant::now())
+    }
+
+    fn admit_at(&self, ip: IpAddr, now: Instant) -> bool {
+        if self.per_minute == 0 {
+            return true;
+        }
+        let mut windows = self.windows.lock().expect("rate limiter lock");
+        let entry = windows.entry(ip).or_insert((now, 0));
+        if now.duration_since(entry.0) >= Duration::from_secs(60) {
+            *entry = (now, 0);
+        }
+        if entry.1 >= self.per_minute {
+            return false;
+        }
+        entry.1 += 1;
+        true
+    }
+}
+
+/// The client address, from the connection; absent (a router driven
+/// without connect info) every request shares one bucket.
+fn client_ip(req: &axum::extract::Request) -> IpAddr {
+    req.extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|c| c.0.ip())
+        .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED))
+}
+
+async fn rate_limit(
+    State(limiter): State<RateLimiter>,
+    req: axum::extract::Request,
+    next: Next,
+) -> Response {
+    let ip = client_ip(&req);
+    if !limiter.admit(ip) {
+        warn!(%ip, route = %req.uri().path(), "submission rate limit");
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ErrorResponse {
+                error: "submission rate limit for this address; retry after the window".to_string(),
+            }),
+        )
+            .into_response();
+    }
+    next.run(req).await
 }
 
 // ── Request / Response types ─────────────────────────────────────
@@ -145,9 +240,15 @@ pub struct HealthResponse {
 // ── Router ───────────────────────────────────────────────────────
 
 pub fn router(state: AppState, config: ApiConfig) -> Router {
-    Router::new()
+    let submissions = Router::new()
         .route("/submit", post(submit_op))
         .route("/submit-usage", post(submit_usage))
+        .route_layer(middleware::from_fn_with_state(
+            RateLimiter::new(config.submits_per_minute_per_ip),
+            rate_limit,
+        ));
+    Router::new()
+        .merge(submissions)
         .route("/health", get(health))
         .route("/status", get(status))
         // Publication — the batch universe's mirror of the kernel's events.
@@ -155,6 +256,9 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         .route("/processes/:process_id", get(get_process))
         .route("/batches", get(get_batches))
         .layer(DefaultBodyLimit::max(config.max_body_bytes))
+        // Outermost last: the in-flight cap admits, the timeout bounds.
+        .layer(TimeoutLayer::new(config.request_timeout))
+        .layer(ConcurrencyLimitLayer::new(config.max_in_flight))
         .with_state(state)
 }
 
@@ -198,6 +302,28 @@ async fn submit_op(
         Err(rej) => return payload_error("/submit", rej),
     };
     let kind = op_kind(&req.operation);
+    // A commit's bonds are checked at the door: an unfunded commit would
+    // be dropped at batch formation anyway, so refusing it here costs the
+    // sender nothing and keeps the queue for operations that can land. A
+    // read failure is not a verdict — the batch-time check decides.
+    if let (Some(gate), KernelOp::Commit { commitment, .. }) = (&state.funding, &req.operation) {
+        match submitter::check_commit_funding(gate, commitment).await {
+            Ok(Ok(())) => {}
+            Ok(Err(unfunded)) => {
+                warn!(route = "/submit", kind, %unfunded, "unfunded commitment refused");
+                return (
+                    StatusCode::PAYMENT_REQUIRED,
+                    Json(ErrorResponse {
+                        error: format!("unfunded commitment: {unfunded}"),
+                    }),
+                )
+                    .into_response();
+            }
+            Err(read) => {
+                warn!(route = "/submit", kind, %read, "funding unverifiable at the door; the batch-time check decides");
+            }
+        }
+    }
     match state.mempool.submit(req.operation).await {
         Ok(admission) => {
             info!(
@@ -382,5 +508,27 @@ mod failure_tests {
         .unwrap();
         assert_eq!(clean["dead_lettered_ops"], 0);
         assert!(clean["last_settle_error"].is_null());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The window: `per_minute` admissions, the next refused, a fresh
+    /// window after sixty seconds; addresses are independent; zero
+    /// disables.
+    #[test]
+    fn rate_limiter_window() {
+        let limiter = RateLimiter::new(2);
+        let a = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+        let b = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2));
+        let t0 = Instant::now();
+        assert!(limiter.admit_at(a, t0));
+        assert!(limiter.admit_at(a, t0));
+        assert!(!limiter.admit_at(a, t0), "the third in the window is refused");
+        assert!(limiter.admit_at(b, t0), "another address has its own window");
+        assert!(limiter.admit_at(a, t0 + Duration::from_secs(60)), "a new window");
+        assert!(RateLimiter::new(0).admit_at(a, t0), "zero disables");
     }
 }

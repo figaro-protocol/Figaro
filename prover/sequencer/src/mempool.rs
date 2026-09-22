@@ -67,6 +67,7 @@ pub struct Mempool {
     verifying_contract: alloy_primitives::Address,
     max_pending_ops: usize,
     max_pending_usage: usize,
+    max_requeues: u32,
 }
 
 struct MempoolInner {
@@ -84,8 +85,19 @@ struct MempoolInner {
     /// Dedup index over pending usage claims (hash of the claim's
     /// canonical JSON). Cleared on drain, like `index`.
     usage_index: HashSet<B256>,
+    /// How many times each pending key has been re-queued after a transient
+    /// submission failure. Cleared on a fresh admission; consulted by
+    /// `requeue`, which dead-letters a key past `max_requeues`.
+    requeues: HashMap<B256, u32>,
     next_id: u64,
 }
+
+/// Re-queues a transiently failed op survives before it is dead-lettered.
+/// Transient means the chain never evaluated the batch (transport trouble),
+/// so the op is still valid — but an op that keeps failing to land is not
+/// re-proved forever; after this many attempts it is surfaced on `/status`
+/// and left for re-submission.
+pub const DEFAULT_MAX_REQUEUES: u32 = 3;
 
 impl Mempool {
     pub fn new(chain_id: u64, verifying_contract: alloy_primitives::Address) -> Self {
@@ -118,13 +130,21 @@ impl Mempool {
                 index: HashMap::new(),
                 pending_usage: VecDeque::new(),
                 usage_index: HashSet::new(),
+                requeues: HashMap::new(),
                 next_id: 1,
             })),
             chain_id,
             verifying_contract,
             max_pending_ops,
             max_pending_usage,
+            max_requeues: DEFAULT_MAX_REQUEUES,
         }
+    }
+
+    /// The re-queue cap (see [`DEFAULT_MAX_REQUEUES`]).
+    pub fn with_max_requeues(mut self, max_requeues: u32) -> Self {
+        self.max_requeues = max_requeues;
+        self
     }
 
     /// Submit a signed operation. Idempotent within the pending window:
@@ -148,6 +168,7 @@ impl Mempool {
         let id = inner.next_id;
         inner.next_id += 1;
         inner.index.insert(key, id);
+        inner.requeues.remove(&key);
         inner.pending.push_back(PendingOp { id, key, op });
         Ok(Admission {
             id,
@@ -276,15 +297,33 @@ impl Mempool {
         self.inner.lock().await.pending_usage.len()
     }
 
-    /// Re-queue operations at the front of the mempool (e.g. after a
-    /// failed prove or submission). Preserves original ordering.
-    /// Cap-exempt: these were already acknowledged.
-    pub async fn requeue(&self, ops: Vec<PendingOp>) {
+    /// Re-queue operations at the front of the mempool after a transient
+    /// submission failure. Preserves original ordering. Cap-exempt: these
+    /// were already acknowledged. An op re-queued more than `max_requeues`
+    /// times is not re-queued but returned, with the reason, for the caller
+    /// to dead-letter — a batch that never lands is not re-proved forever.
+    pub async fn requeue(&self, ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
         let mut inner = self.inner.lock().await;
+        let mut dropped = Vec::new();
         for op in ops.into_iter().rev() {
+            let attempts = inner.requeues.entry(op.key).or_insert(0);
+            *attempts += 1;
+            if *attempts > self.max_requeues {
+                let attempts = *attempts - 1;
+                inner.requeues.remove(&op.key);
+                dropped.push((
+                    op,
+                    format!(
+                        "re-queued {attempts} times after transient submission failures without landing; dead-lettered, re-submittable"
+                    ),
+                ));
+                continue;
+            }
             inner.index.insert(op.key, op.id);
             inner.pending.push_front(op);
         }
+        dropped.reverse();
+        dropped
     }
 
     /// Number of pending operations.

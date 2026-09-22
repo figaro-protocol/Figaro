@@ -564,19 +564,23 @@ revokes their approval in a higher-priority transaction, and the whole batch
 reverts — other participants' payouts are delayed at a cost to the attacker
 of ~21k gas, repeatable against specific counterparties.
 
-**Sequencer hardening:**
+**What the relay does about it** (`prover/sequencer`):
 
-1. **Same-block approval re-verification** — pre-submission approval checks
-   run against a recent block, ideally the submission block; a stale check
-   gives the attacker a mempool-visibility window.
-2. **Re-batch around revokers** — on an approval-revocation revert, re-batch
-   the remaining participants and exclude the address that revoked; repeated
-   revocation from one address within a window is the adversarial signal. The
-   direct path remains open to the excluded address, always.
-3. **Optional stake-based rate limiting** — a sequencer may require an
-   off-chain stake before batching a participant, making repeat griefing
-   costly. This stays within the sequencer's scope: an off-protocol liveness
-   convenience with a permanent direct-path fallback.
+1. **Funding is checked twice, against the latest block.** A commit's two
+   bonds — the buyer's 2 × payment, the seller's 2 × cumulative value — are
+   read as balance and allowance to the verifier when the operation arrives
+   (`/submit` refuses an unfunded commit with `402` and a reason) and again at
+   batch formation, right before proving; a commit that no longer funds is
+   dropped there and dead-lettered, never proved. A revocation inside the
+   proving window itself still reverts the batch; the chain's evaluated
+   refusal is deterministic, so the batch is dead-lettered on the first
+   attempt, never re-proved, and its operations are re-submittable.
+2. **The door is bounded.** A per-IP submit rate limit (`429`), an in-flight
+   cap and a request timeout stand in front of the mempool's queue caps and
+   body cap; an operation re-queued after transient submission trouble is
+   dead-lettered after a fixed number of attempts, so nothing loops.
+3. **The direct path stays open** to every address, always: a relay's refusal
+   is a liveness decision about its own batches, never a protocol outcome.
 
 ### Operational requirements
 
