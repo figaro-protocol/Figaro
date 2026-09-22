@@ -180,7 +180,13 @@ the same subset `prover-ci` gates. The crates: `figaro-clause`
 (off-chain conformance: every spec in `clauses/` parses — count derived from the
 directory; 11 encode vectors generated from the live TS encoder lock byte
 parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
-formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve +
+formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
+the kernel-transition replay — `prover/lib/tests/transition_vectors.rs` replays
+`test/fixtures/kernel-transition-vectors.json`, harvested from the live kernel
+by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
+accumulator and active count; the three packer vectors (`packers.rs`) and the
+Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
+the Solidity side too +
 the witness-gate suite: spec-identity substitution, content-hash mismatch,
 inclusion failure, attest-after-resolve; the usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
@@ -244,6 +250,35 @@ the domain separator both ways (SDK vector == formula, and a live
 `FigaroCore.DOMAIN_SEPARATOR()` == formula). Runs in BOTH the SDK and Foundry
 CI jobs with no chain and no skipIf: a hard gate on SDK↔kernel signature
 agreement.
+
+**Merkle parity — the three-way agreement-tree lock.**
+`sdk/tests/merkleParity.test.ts` freezes SDK-built roots, leaves and inclusion
+proofs (a three-section agreement and a one-section one) into
+`test/fixtures/merkle-vectors.json` (`HARVEST_MERKLE_VECTORS=1` regenerates).
+`test/core/attestation/MerkleParityTest.t.sol` rebuilds every leaf the way
+`AttestationCoordinator` and `UsageCounter` do and verifies every proof with
+the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
+the same through the guest's verifier. Three implementations, one fixture.
+
+**Kernel transition vectors — the mirror replays the kernel.**
+`test/core/kernel/KernelTransitionVectorsTest.t.sol` runs six scenarios on the
+frozen kernel (a root left open; root and sub resolved; three links; one
+seller on two orders; a self-deal; two processes in one batch) and writes what
+happened — every commitment with the ids the kernel returned, every party's
+deposit and payout, the kernel's balance delta, every process's accumulator
+and active count — to `test/fixtures/kernel-transition-vectors.json`
+(`HARVEST_KERNEL_VECTORS=true` regenerates; otherwise the run must reproduce
+the frozen bytes). `prover/lib/tests/transition_vectors.rs` signs the same
+commitments with the same keys, applies them through `apply_batch`, and asserts
+every figure — the mirror's bond and payout arithmetic is locked to the
+kernel's, not to a comment.
+
+**Packer vectors — the batch verifier's four hand-packed hashes.** The usage
+packer's Rust-generated vector is asserted against the contract's assembly
+(`test_usageHash_matchesTheRustVector`); the positions, attestations and
+spec-bindings packers have theirs in `prover/lib/tests/packers.rs`, asserted in
+`test_packerHashes_matchTheRustVectors` through a `settleBatch` that passes all
+three hash checks and stops at the spec-binding anchor.
 
 ## Playwright — the project model (`playwright.config.ts`)
 
@@ -478,9 +513,12 @@ Per workflow, what it runs and when:
   prover crates (`figaro-clause`, `figaro-kernel`); the SP1-dependent crates
   build only at release time (see `sequencer-release`).
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on
-  `frontend/public/sdk-api/**` too): tsc type-check, `npm test`, build, and
-  the typedoc freshness gate — the committed API reference
-  (`frontend/public/sdk-api`) must equal what typedoc emits from source.
+  `frontend/public/sdk-api/**` and the encoder vectors too): tsc type-check,
+  `npm test`, build, the typedoc freshness gate — the committed API reference
+  (`frontend/public/sdk-api`) must equal what typedoc emits from source — and
+  the encoder-vector freshness gate — the committed Rust conformance vectors
+  (`prover/clause/tests/encode_conformance.rs`) must equal what the live TS
+  encoder emits through `scripts/generate-encode-conformance-vectors.mjs`.
 - **`frontend-ci`** — push/PR, path-filtered: type-check, ESLint, Vitest
   (+coverage), the **mobile** Playwright project, production build.
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**

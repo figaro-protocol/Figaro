@@ -14,6 +14,8 @@ force = false
 # src/build/rewards/UsageCounter.sol, so nothing is hashed into a contract.
 fs_permissions = [
     { access = "read", path = "test/fixtures/eip712-vectors.json" },
+    { access = "read", path = "test/fixtures/merkle-vectors.json" },
+    { access = "read-write", path = "test/fixtures/kernel-transition-vectors.json" },
 ]
 build_info = false
 extra_output = []

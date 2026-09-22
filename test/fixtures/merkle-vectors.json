@@ -1,0 +1,55 @@
+{
+    "agreementCount": 2,
+    "agreements": [
+        {
+            "label": "three-sections",
+            "agreementHash": "0xc392d43716fa600fdcc5e52d87b7935cfb246c8b5d76961abd558d50434dabd0",
+            "sectionCount": 3,
+            "sections": [
+                {
+                    "clause": "figaro-modalities",
+                    "version": 1,
+                    "sectionData": "{\"modality\":\"delivery\"}",
+                    "leaf": "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d",
+                    "proof": [
+                        "0xb7547a65c4344626eb1c18136676e521c7f2dd713353eb8a8119aaadc6507379"
+                    ]
+                },
+                {
+                    "clause": "figaro-provenance",
+                    "version": 1,
+                    "sectionData": "{\"hops\":2,\"origin\":\"kitchen-7\"}",
+                    "leaf": "0x0a052bf9013a5d3c1ec24eda62568ca243d4568241ab3cbcb7799027636558df",
+                    "proof": [
+                        "0x6879dd7993969b0b8b3a74392e5245b6af73277698ed24a578eee18d8603dfa8",
+                        "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d"
+                    ]
+                },
+                {
+                    "clause": "figaro-applicable-law",
+                    "version": 1,
+                    "sectionData": "{\"law\":\"ch\"}",
+                    "leaf": "0x6879dd7993969b0b8b3a74392e5245b6af73277698ed24a578eee18d8603dfa8",
+                    "proof": [
+                        "0x0a052bf9013a5d3c1ec24eda62568ca243d4568241ab3cbcb7799027636558df",
+                        "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d"
+                    ]
+                }
+            ]
+        },
+        {
+            "label": "one-section",
+            "agreementHash": "0xeb220d75c46467df3e53c2157e41334eddf14f9060c36e66c79d2cb7ba66aa30",
+            "sectionCount": 1,
+            "sections": [
+                {
+                    "clause": "figaro-modalities",
+                    "version": 1,
+                    "sectionData": "{\"modality\":\"pickup\"}",
+                    "leaf": "0xeb220d75c46467df3e53c2157e41334eddf14f9060c36e66c79d2cb7ba66aa30",
+                    "proof": []
+                }
+            ]
+        }
+    ]
+}

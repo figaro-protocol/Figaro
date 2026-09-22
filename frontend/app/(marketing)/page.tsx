@@ -77,7 +77,7 @@ const BENEFITS: { line: string; body: string; cta: string; href: string }[] = [
 ];
 
 const CHECKS: { name: string; count: string }[] = [
-    { name: "Foundry", count: "321 test functions" },
+    { name: "Foundry", count: "325 test functions" },
     { name: "Halmos", count: "32 symbolic-execution properties" },
     { name: "Certora", count: "39 formal rules across six CVL specs" },
     { name: "TLA+", count: "four protocol state machines, model-checked" },
