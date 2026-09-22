@@ -2,24 +2,27 @@ name: Prover CI
 
 # Runs `cargo test` for the prover workspace (see prover/Cargo.toml).
 #
-# Scope: only the two crates that build and test WITHOUT the SP1 toolchain —
-# `figaro-clause` (prover/clause) and `figaro-kernel` (prover/lib). The other
-# three workspace members — `figaro-prover` (prover/program, the SP1 guest),
-# `figaro-prove-test` (prover/script), and `figaro-sequencer`
-# (prover/sequencer) — all pull in `sp1-build`/`sp1-zkvm`/`sp1-sdk` and their
-# `build.rs` calls `sp1_build::build_program`, which needs `cargo prove` (the
-# SP1 toolchain) to cross-compile the guest ELF to RISC-V. Installing that
-# toolchain and rebuilding the guest on every push/PR is exactly the cost
-# `.github/workflows/sequencer-release.yml` already pays, deliberately, only
-# at tag time (see that workflow's "Install SP1" step) — mirror that pattern
-# if/when this job needs to grow into the SP1-dependent crates rather than
-# installing the SP1 toolchain here too.
+# Two jobs, two costs.
 #
-# `figaro-clause` and `figaro-kernel` have no build.rs and no sp1-* deps
-# (figaro-kernel depends on figaro-clause, alloy-primitives, k256 — see
-# prover/lib/Cargo.toml and prover/clause/Cargo.toml), so `cargo test` on
-# just those two exercises the Layer-B clause-validation mirror without the
+# `test` — every push and PR: the two crates that build and test WITHOUT the
+# SP1 toolchain, `figaro-clause` (prover/clause) and `figaro-kernel`
+# (prover/lib). They have no build.rs and no sp1-* deps (figaro-kernel depends
+# on figaro-clause, alloy-primitives, k256 — see prover/lib/Cargo.toml and
+# prover/clause/Cargo.toml), so `cargo test` on just those two exercises the
+# Layer-B clause-validation mirror and the kernel mirror without the
 # guest-program toolchain tax.
+#
+# `sp1` — push to main and dispatch only: the other three workspace members —
+# `figaro-prover` (prover/program, the SP1 guest), `figaro-prove-test`
+# (prover/script) and `figaro-sequencer` (prover/sequencer) — pull in
+# `sp1-build`/`sp1-zkvm`/`sp1-sdk`, and their `build.rs` calls
+# `sp1_build::build_program`, which needs `cargo prove` (the SP1 toolchain) to
+# cross-compile the guest ELF to RISC-V. That job installs the toolchain the
+# way `.github/workflows/sequencer-release.yml` does, runs the sequencer and
+# guest test suites, then runs the SDK's four-layer batch e2e (TypeScript
+# signs, the Rust sequencer proves and submits, the Solidity verifier settles
+# on a live Anvil) with its skip turned into a failure. Paying that cost on
+# every PR is what the split avoids.
 
 on:
     workflow_dispatch:
@@ -35,6 +38,12 @@ on:
 
 permissions:
     contents: read
+
+env:
+    # The SP1 release that supplies `cargo prove` and the `succinct` toolchain.
+    # `.github/workflows/sequencer-release.yml` owns this pin (its env block
+    # states the lockfile constraint); keep the two equal.
+    SP1_VERSION: "v6.3.1"
 
 jobs:
     test:
@@ -79,3 +88,110 @@ jobs:
             - name: cargo test (figaro-clause, figaro-kernel)
               working-directory: ./prover
               run: cargo test --locked -p figaro-clause -p figaro-kernel
+
+    sp1:
+        name: SP1 crates + batch e2e (main only)
+        if: github.event_name != 'pull_request'
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  submodules: recursive
+
+            - name: Read pinned Rust toolchain
+              run: |
+                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
+                  if [ -z "$RUST_TOOLCHAIN" ]; then
+                      echo "could not read channel from prover/rust-toolchain.toml"
+                      exit 1
+                  fi
+                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+
+            - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
+              run: |
+                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+                  rustup default "$RUST_TOOLCHAIN"
+                  rustc --version
+
+            # Same bootstrap as sequencer-release.yml: the sp1up script is
+            # fetched rather than piped into bash because it exits when it
+            # cannot edit an interactive shell profile — the CI case.
+            - name: Install SP1 ${{ env.SP1_VERSION }}
+              env:
+                  GITHUB_TOKEN: ${{ github.token }}
+              run: |
+                  mkdir -p "$HOME/.sp1/bin"
+                  curl -sSfL https://raw.githubusercontent.com/succinctlabs/sp1/main/sp1up/sp1up \
+                      -o "$HOME/.sp1/bin/sp1up"
+                  chmod +x "$HOME/.sp1/bin/sp1up"
+                  "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
+                  echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+
+            - name: Install protoc
+              run: |
+                  sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
+                  protoc --version
+
+            - name: Cache cargo registry + target
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      prover/target
+                  key: ${{ runner.os }}-prover-sp1-${{ env.SP1_VERSION }}-${{ hashFiles('prover/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-prover-sp1-${{ env.SP1_VERSION }}-
+
+            # The debug binary is what the batch e2e launches
+            # (sdk/tests/batch-e2e.test.ts: prover/target/debug/sequencer).
+            - name: Build the sequencer
+              working-directory: ./prover
+              run: cargo build --locked -p figaro-sequencer --bin sequencer
+
+            - name: cargo test (figaro-sequencer, figaro-prove-test)
+              working-directory: ./prover
+              run: cargo test --locked -p figaro-sequencer -p figaro-prove-test
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: "npm"
+                  cache-dependency-path: package-lock.json
+
+            - name: Install + build the SDK
+              run: npm ci --workspace sdk && npm run build --workspace sdk
+
+            - name: Start Anvil
+              run: |
+                  anvil --port 8545 >/tmp/anvil.log 2>&1 &
+                  for i in $(seq 1 30); do
+                      if curl -sf -X POST -H 'content-type: application/json' \
+                          --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' \
+                          http://127.0.0.1:8545 >/dev/null; then
+                          echo "anvil up"; exit 0
+                      fi
+                      sleep 1
+                  done
+                  echo "anvil did not come up"; cat /tmp/anvil.log; exit 1
+
+            # REQUIRE_BATCH_E2E turns the spec's two prerequisite checks from
+            # skips into failures: here the binary and the chain are both
+            # provided, so a skip would be a silent loss of the lock.
+            - name: Batch e2e (SDK → sequencer → verifier)
+              working-directory: ./sdk
+              env:
+                  REQUIRE_BATCH_E2E: "1"
+              run: npx vitest run tests/batch-e2e.test.ts
+
+            - name: Anvil log on failure
+              if: failure()
+              run: tail -100 /tmp/anvil.log || true

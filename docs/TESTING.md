@@ -176,7 +176,8 @@ credibility asset, not release path.
 (`figaro-prover` — the SP1 guest at `prover/program` — plus `figaro-prove-test`
 and `figaro-sequencer`) need the SP1 toolchain (`cargo prove`) to build; without
 it, `cargo test -p figaro-clause -p figaro-kernel` runs the two host-only crates,
-the same subset `prover-ci` gates. The crates: `figaro-clause`
+the subset `prover-ci` gates on every PR (its `sp1` job runs the other three on
+main). The crates: `figaro-clause`
 (off-chain conformance: every spec in `clauses/` parses — count derived from the
 directory; 11 encode vectors generated from the live TS encoder lock byte
 parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
@@ -215,7 +216,9 @@ own order hash and both signatures recover to the parties named inside it).
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 the witness payload, the Rust sequencer binary proves + submits, the Solidity
 verifier checks the hashes and the registry anchor on a live Anvil — value
-legs asserted from the chain. Anvil-gated (skips clean without it).
+legs asserted from the chain. Anvil-gated (skips clean without it) locally;
+`prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a
+skip is a failure.
 
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
@@ -509,9 +512,14 @@ Per workflow, what it runs and when:
   frozen scope, gated to exactly the High and Medium results
   `AUDITOR_HANDOVER.md` § "Static analysis" triages, and Semgrep's
   `p/smart-contracts` rules, failing on any WARNING or ERROR.
-- **`prover-ci`** — push/PR, path-filtered: `cargo test` on the two host-only
-  prover crates (`figaro-clause`, `figaro-kernel`); the SP1-dependent crates
-  build only at release time (see `sequencer-release`).
+- **`prover-ci`** — path-filtered. Two jobs: `test` on every push/PR —
+  `cargo test` on the two host-only prover crates (`figaro-clause`,
+  `figaro-kernel`); `sp1` on push to main and dispatch — installs the SP1
+  toolchain the way `sequencer-release` does, builds the sequencer, runs
+  `cargo test` on `figaro-sequencer` and `figaro-prove-test`, then runs
+  `sdk/tests/batch-e2e.test.ts` against a live Anvil with
+  `REQUIRE_BATCH_E2E=1`, so a missing chain or binary fails instead of
+  skipping.
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on
   `frontend/public/sdk-api/**` and the encoder vectors too): tsc type-check,
   `npm test`, build, the typedoc freshness gate — the committed API reference

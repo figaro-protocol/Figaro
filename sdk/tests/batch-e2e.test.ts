@@ -67,6 +67,9 @@ import type { SequencerContentProof } from "../src/agent/sequencer.js";
 
 const ANVIL_URL = "http://127.0.0.1:8545";
 const SKIP = process.env.SKIP_ANVIL === "1";
+// In CI the chain and the binary are both provided, so a missing one is a
+// failure, never a skip (prover-ci's SP1 job sets this).
+const REQUIRE = process.env.REQUIRE_BATCH_E2E === "1";
 const SEQUENCER_PORT = 13001; // Use a non-standard port to avoid conflicts
 
 async function anvilReachable(): Promise<boolean> {
@@ -595,6 +598,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
     it("skips when Anvil is unreachable", () => {
         if (!alive) {
+            if (REQUIRE) throw new Error(`REQUIRE_BATCH_E2E=1 but Anvil is not reachable at ${ANVIL_URL}`);
             console.log("⏭ Skipping: Anvil not reachable");
             return;
         }
@@ -603,6 +607,9 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
     it("skips when sequencer binary is not built", () => {
         if (!hasBinary) {
+            if (REQUIRE) {
+                throw new Error(`REQUIRE_BATCH_E2E=1 but the sequencer binary is not at ${sequencerBinaryPath()}`);
+            }
             console.log(
                 `⏭ Skipping: sequencer binary not found at ${sequencerBinaryPath()}`,
             );
