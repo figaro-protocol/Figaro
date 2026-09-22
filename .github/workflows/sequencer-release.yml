@@ -40,11 +40,11 @@ env:
     # source of truth — see "Read pinned Rust toolchain" below) rather than
     # duplicated here; RUST_TOOLCHAIN is populated into $GITHUB_ENV by that
     # step, not hardcoded.
-    # SP1 release that supplies `cargo prove` and the `succinct` Rust toolchain
-    # which cross-compiles the guest program. MUST match the sp1-sdk / sp1-build
-    # / sp1-zkvm version resolved in prover/Cargo.lock (6.3.1) — a mismatch
-    # silently changes the guest ELF, and therefore the vkey.
-    SP1_VERSION: "v6.3.1"
+    # The SP1 release that supplies `cargo prove` and the `succinct` toolchain
+    # is READ from prover/Cargo.lock (the sp1-sdk version) by the "Read pinned
+    # SP1 version" step, never written here: the toolchain and the library
+    # the guest compiles against must be one release, or the guest ELF — and
+    # therefore the vkey — silently changes. One source of truth, the lock.
     # Emitted by prover/sequencer/build.rs via sp1_build::build_program.
     GUEST_ELF: target/elf-compilation/riscv64im-succinct-zkvm-elf/release/figaro-prover
 
@@ -95,6 +95,16 @@ jobs:
                   fi
                   echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
                   echo "pinned Rust toolchain: $RUST_TOOLCHAIN"
+
+            - name: Read pinned SP1 version
+              run: |
+                  SP1_VERSION=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)
+                  if [ "$SP1_VERSION" = "v" ]; then
+                      echo "could not read the sp1-sdk version from prover/Cargo.lock"
+                      exit 1
+                  fi
+                  echo "SP1_VERSION=$SP1_VERSION" >> "$GITHUB_ENV"
+                  echo "pinned SP1 release (from the lock): $SP1_VERSION"
 
             - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
               run: |
@@ -256,6 +266,13 @@ jobs:
                       exit 1
                   fi
                   echo "vkey=${keys#vkey=}" >> "$GITHUB_OUTPUT"
+                  sp1=$(cat staging/*.facts | grep '^sp1=' | sort -u)
+                  if [ "$(printf '%s\n' "$sp1" | wc -l | tr -d ' ')" -ne 1 ]; then
+                      echo "SP1 release differs across targets — refusing to publish:"
+                      printf '%s\n' "$sp1"
+                      exit 1
+                  fi
+                  echo "sp1=${sp1#sp1=}" >> "$GITHUB_OUTPUT"
                   rust=$(cat staging/*.facts | grep '^rust=' | sort -u | head -n 1)
                   echo "rust=${rust#rust=}" >> "$GITHUB_OUTPUT"
                   # The pinned channel (prover/rust-toolchain.toml) must also
@@ -278,6 +295,7 @@ jobs:
             - name: Assemble release notes
               env:
                   VKEY: ${{ steps.facts.outputs.vkey }}
+                  SP1_VERSION: ${{ steps.facts.outputs.sp1 }}
                   RUSTV: ${{ steps.facts.outputs.rust }}
                   RUST_TOOLCHAIN: ${{ steps.facts.outputs.rust_pin }}
               run: |

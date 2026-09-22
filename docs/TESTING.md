@@ -228,7 +228,9 @@ own order hash and both signatures recover to the parties named inside it).
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 the witness payload, the Rust sequencer binary proves + submits, the Solidity
 verifier checks the hashes and the registry anchor on a live Anvil — value
-legs asserted from the chain. Anvil-gated (skips clean without it) locally;
+legs asserted from the chain. The verifier is deployed with the fingerprint
+the binary itself reports (`sequencer --vkey`), so the sequencer's startup
+comparison against `programVKey()` runs for real. Anvil-gated (skips clean without it) locally;
 `prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a
 skip is a failure.
 

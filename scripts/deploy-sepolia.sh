@@ -149,6 +149,16 @@ if [ -z "$CORE_ADDR" ]; then
   exit 1
 fi
 
+# ── The guest fingerprint the verifier pins, read back from the chain ───────
+# Recorded beside the addresses: a relay's guest must hash to exactly this
+# value (`sequencer --vkey`), and the sequencer refuses to start otherwise.
+PROGRAM_VKEY_ONCHAIN=$(cast call --rpc-url "$RPC_URL" "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')
+if [ "$(echo "$PROGRAM_VKEY_ONCHAIN" | tr '[:upper:]' '[:lower:]')" != "$(echo "$SP1_PROGRAM_VKEY" | tr '[:upper:]' '[:lower:]')" ]; then
+  echo "❌ The verifier pins $PROGRAM_VKEY_ONCHAIN, not the SP1_PROGRAM_VKEY given ($SP1_PROGRAM_VKEY)."
+  exit 1
+fi
+echo "   programVKey pinned = $PROGRAM_VKEY_ONCHAIN"
+
 # ── Write deployments/<chainId>.json ─────────────────────────────────────────
 # Same shape as deployments/1.json plus the one testnet-only entry: the mock
 # DAO vault (mainnet uses a canonical Safe, never recorded here — config).
@@ -175,6 +185,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
+  "programVKey": "$PROGRAM_VKEY_ONCHAIN",
   "witnessSwapAndCommitCoordinator": "$SWAP_COORD_ADDR",
   "swapRouter": "$SWAP_ROUTER",
   "swapQuoter": "$SWAP_QUOTER",

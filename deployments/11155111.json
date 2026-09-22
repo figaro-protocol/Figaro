@@ -14,5 +14,6 @@
   "swapQuoter": "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
   "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   "daoTreasury": "0xfAc5C273DeeBd5D7aA670401205A4AcA44563685",
+  "programVKey": "0x00d9927da3d3bc4832970a90a8dd99adb5ccae17be71ecb482362beca8c6d178",
   "deploymentBlock": 11524852
 }

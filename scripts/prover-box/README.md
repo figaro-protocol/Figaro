@@ -23,8 +23,12 @@ proven sizing):
 ```
 
 `build-guest.sh` prints `SP1_PROGRAM_VKEY=…` — this MUST equal the deployed
-`FigaroBatchVerifier.programVKey()` or every proof reverts `ProofInvalid()`.
-Check before proving, not after a 7-minute wrap.
+`FigaroBatchVerifier.programVKey()` (recorded as `programVKey` in
+`deployments/<chainId>.json`) or every proof reverts `ProofInvalid()`. The
+sequencer checks it at startup and refuses to run on a mismatch, so the
+check happens before proving, never after a 7-minute wrap; `sequencer
+--vkey` prints a built binary's. The SP1 release the guest is built in is
+read from `prover/Cargo.lock`, the same read the CI workflows make.
 
 **Layer 2 — fork rehearsal** (spends nothing; the fork inherits live balances):
 

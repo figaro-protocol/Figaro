@@ -9,8 +9,12 @@
 set -euxo pipefail
 export PATH="$HOME/.sp1/bin:$HOME/.cargo/bin:$PATH"
 
+# The SP1 release the guest is built in is the lock's sp1-sdk version — the
+# read the CI workflows make — so the box, CI and the library agree.
+SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$HOME/Figaro/prover/Cargo.lock")
+[ "$SP1_TAG" != "v" ] || { echo "could not read the sp1-sdk version from Cargo.lock"; exit 1; }
 cd "$HOME/Figaro/prover/program"
-cargo prove build --docker --tag v6.4.0
+cargo prove build --docker --tag "$SP1_TAG"
 
 cd "$HOME/Figaro/prover"
 sha256sum target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover

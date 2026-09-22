@@ -169,7 +169,8 @@ read_call() { cast call --rpc-url "$RPC_URL" "$1" "$2" "${@:3}"; }
 expect_eq "batchVerifier.usageCounter()"  "$(read_call "$BATCH_VERIFIER_ADDR" 'usageCounter()(address)')"   "$USAGE_COUNTER_ADDR"
 expect_eq "batchVerifier.clauseRegistry()" "$(read_call "$BATCH_VERIFIER_ADDR" 'clauseRegistry()(address)')" "$CLAUSE_ADDR"
 expect_eq "batchVerifier.verifier()"       "$(read_call "$BATCH_VERIFIER_ADDR" 'verifier()(address)')"       "$SP1_VERIFIER_GATEWAY"
-expect_eq "batchVerifier.programVKey()"    "$(read_call "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')"    "$SP1_PROGRAM_VKEY"
+PROGRAM_VKEY_ONCHAIN=$(read_call "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')
+expect_eq "batchVerifier.programVKey()"    "$PROGRAM_VKEY_ONCHAIN"    "$SP1_PROGRAM_VKEY"
 expect_eq "usageCounter.batchVerifier()"   "$(read_call "$USAGE_COUNTER_ADDR" 'batchVerifier()(address)')"   "$BATCH_VERIFIER_ADDR"
 expect_eq "usageCounter.core()"            "$(read_call "$USAGE_COUNTER_ADDR" 'core()(address)')"            "$CORE_ADDR"
 expect_eq "usageCounter.members()"         "$(read_call "$USAGE_COUNTER_ADDR" 'members()(address)')"         "$MEMBERS_ADDR"
@@ -221,6 +222,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
+  "programVKey": "$PROGRAM_VKEY_ONCHAIN",
   "witnessSwapAndCommitCoordinator": "$SWAP_COORD_ADDR",
   "swapRouter": "$SWAP_ROUTER",
   "permit2": "$PERMIT2",

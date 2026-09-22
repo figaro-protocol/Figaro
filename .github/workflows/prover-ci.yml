@@ -39,12 +39,6 @@ on:
 permissions:
     contents: read
 
-env:
-    # The SP1 release that supplies `cargo prove` and the `succinct` toolchain.
-    # `.github/workflows/sequencer-release.yml` owns this pin (its env block
-    # states the lockfile constraint); keep the two equal.
-    SP1_VERSION: "v6.3.1"
-
 jobs:
     test:
         name: cargo test (figaro-clause, figaro-kernel)
@@ -115,6 +109,18 @@ jobs:
                   rustup default "$RUST_TOOLCHAIN"
                   rustc --version
 
+            # The SP1 release is the lock's sp1-sdk version — the same read
+            # sequencer-release.yml makes, so the toolchain and the library
+            # the guest compiles against are one release.
+            - name: Read pinned SP1 version
+              run: |
+                  SP1_VERSION=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)
+                  if [ "$SP1_VERSION" = "v" ]; then
+                      echo "could not read the sp1-sdk version from prover/Cargo.lock"
+                      exit 1
+                  fi
+                  echo "SP1_VERSION=$SP1_VERSION" >> "$GITHUB_ENV"
+
             # Same bootstrap as sequencer-release.yml: the sp1up script is
             # fetched rather than piped into bash because it exits when it
             # cannot edit an interactive shell profile — the CI case.
@@ -145,11 +151,13 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-prover-sp1-${{ env.SP1_VERSION }}-
 
-            # The debug binary is what the batch e2e launches
-            # (sdk/tests/batch-e2e.test.ts: prover/target/debug/sequencer).
+            # The release binary is what the batch e2e launches
+            # (sdk/tests/batch-e2e.test.ts: prover/target/release/sequencer):
+            # SP1's key setup runs inside it at startup and for `--vkey`,
+            # seconds optimised and the better part of an hour unoptimised.
             - name: Build the sequencer
               working-directory: ./prover
-              run: cargo build --locked -p figaro-sequencer --bin sequencer
+              run: cargo build --release --locked -p figaro-sequencer --bin sequencer
 
             - name: cargo test (figaro-sequencer, figaro-prove-test)
               working-directory: ./prover

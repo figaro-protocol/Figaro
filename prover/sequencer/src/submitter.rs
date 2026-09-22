@@ -219,6 +219,7 @@ sol! {
         ) external;
 
         function stateRoot() external view returns (bytes32);
+        function programVKey() external view returns (bytes32);
         function batchCount() external view returns (uint64);
     }
 }
@@ -568,6 +569,27 @@ pub async fn read_state_root(
         .map_err(|e| format!("stateRoot() call failed: {e}"))?;
 
     Ok(root)
+}
+
+/// The guest fingerprint the deployed verifier pins — `programVKey`, an
+/// immutable. A relay whose embedded guest hashes to anything else makes
+/// proofs that verifier refuses, so the relay compares this at startup
+/// against `prover::embedded_vkey()` and refuses to run on a mismatch.
+pub async fn read_program_vkey(
+    rpc_url: &str,
+    verifier_address: Address,
+) -> Result<alloy::primitives::B256, String> {
+    let provider = ProviderBuilder::new().connect_http(
+        rpc_url
+            .parse()
+            .map_err(|e| format!("invalid rpc url: {e}"))?,
+    );
+    let contract = IFigaroBatchVerifier::new(verifier_address, &provider);
+    contract
+        .programVKey()
+        .call()
+        .await
+        .map_err(|e| format!("programVKey() call failed: {e}"))
 }
 
 #[cfg(test)]

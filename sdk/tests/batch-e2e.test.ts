@@ -9,8 +9,8 @@
  *
  * Requires:
  *   - Anvil running at http://127.0.0.1:8545
- *   - Sequencer binary built at prover/target/debug/sequencer
- *     (cargo build -p figaro-sequencer)
+ *   - Sequencer binary built at prover/target/release/sequencer
+ *     (cargo build --release -p figaro-sequencer)
  *
  * Skip with: SKIP_ANVIL=1 npm test
  *
@@ -42,7 +42,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import { ChildProcess, spawn } from "node:child_process";
+import { ChildProcess, spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -154,11 +154,27 @@ function computeGenesisRoot(): Hex {
 
 function sequencerBinaryPath(): string {
     const repoRoot = path.resolve(import.meta.dirname, "../..");
-    return path.join(repoRoot, "prover", "target", "debug", "sequencer");
+    // The RELEASE binary: SP1's key setup runs inside the sequencer (the
+    // startup fingerprint check, `--vkey`), seconds optimised and the better
+    // part of an hour unoptimised.
+    return path.join(repoRoot, "prover", "target", "release", "sequencer");
 }
 
 function sequencerBinaryExists(): boolean {
     return fs.existsSync(sequencerBinaryPath());
+}
+
+/// The fingerprint of the guest the binary embeds (`sequencer --vkey`). The
+/// verifier is deployed with THIS value, so the run proves the wiring the
+/// way a real deploy does: the relay's startup check compares its own
+/// fingerprint with the verifier's and refuses to run on a mismatch.
+function embeddedVkey(): Hex {
+    const out = spawnSync(sequencerBinaryPath(), ["--vkey"], { encoding: "utf8" });
+    const line = (out.stdout ?? "").split("\n").find((l) => l.startsWith("SP1_PROGRAM_VKEY="));
+    if (out.status !== 0 || !line) {
+        throw new Error(`sequencer --vkey failed (status ${out.status}): ${out.stderr}`);
+    }
+    return line.slice("SP1_PROGRAM_VKEY=".length).trim() as Hex;
 }
 
 function startSequencer(
@@ -505,7 +521,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             bytecode: batchVerifierBytecode,
             args: [
                 mockVerifierAddress,
-                keccak256(encodePacked(["string"], ["figaro-kernel-dev"])),
+                embeddedVkey(),
                 clauseRegistryAddress,
                 usageCounterAddress,
                 genesisRoot,
@@ -582,8 +598,10 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         });
 
         sequencerClient = new SequencerClient({ url: SEQUENCER_URL });
-        await waitForSequencer(SEQUENCER_URL);
-    }, 60_000);
+        // The sequencer derives its guest fingerprint at startup (minutes on
+        // a first run, cached per guest after); `--vkey` above paid it first.
+        await waitForSequencer(SEQUENCER_URL, 10 * 60_000);
+    }, 20 * 60_000);
 
     afterAll(async () => {
         if (sequencerProcess) {

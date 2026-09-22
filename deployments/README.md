@@ -21,9 +21,15 @@ One file per network, named `<chainId>.json`, in the same shape
   "usageCounter": "0x...",
   "rpgfMinter": "0x...",
   "batchVerifier": "0x...",
+  "programVKey": "0x...",
   "deploymentBlock": 0
 }
 ```
+
+`programVKey` is the guest fingerprint the batch verifier pins, read back
+from the chain at deploy. A relay's guest must hash to exactly this value or
+every proof it makes is refused; `sequencer --vkey` prints a binary's, and
+the sequencer refuses to start against a verifier that pins another.
 
 `deploymentBlock` is the block the deploy script read just before
 broadcasting — at or below every contract's creation block. Frontends and

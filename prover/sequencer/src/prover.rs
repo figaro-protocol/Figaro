@@ -3,7 +3,7 @@
 use figaro_kernel::kernel::apply_batch_with_state;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
-use sp1_sdk::{self, Elf, ProveRequest, Prover, ProverClient, SP1Stdin};
+use sp1_sdk::{self, Elf, HashableKey, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin};
 use tracing::info;
 
 /// Result of proving a batch.
@@ -102,6 +102,45 @@ pub fn proof_mode() -> Result<ProofMode, String> {
         Ok(v) if v.eq_ignore_ascii_case("plonk") => Ok(ProofMode::Plonk),
         Ok(v) => Err(format!("SP1_PROOF_MODE must be `groth16` or `plonk`, got `{v}`")),
     }
+}
+
+/// The verification key of the guest this binary embeds — the fingerprint
+/// `FigaroBatchVerifier` pins as `programVKey`. Derived from the ELF the way
+/// `figaro-prove-test`'s `SP1_VKEY_ONLY` path derives it (setup is the cheap
+/// part of proving: seconds, no proof). Printed by `sequencer --vkey`, and
+/// compared at startup with the deployed verifier's.
+///
+/// Setup is minutes on a small host, so the result is cached in the temp
+/// dir under the hash of the ELF bytes and this crate's version: a pure
+/// function of both, so the cache can only ever hold the right answer for
+/// the guest it names. `--vkey` and the startup check then cost one setup
+/// per guest per machine, not one per run.
+pub async fn embedded_vkey() -> Result<alloy_primitives::B256, String> {
+    let elf = sp1_sdk::include_elf!("figaro-prover");
+    let cache = std::env::temp_dir().join(format!(
+        "figaro-sequencer-vkey-{:x}-{}",
+        alloy_primitives::keccak256(&elf[..]),
+        env!("CARGO_PKG_VERSION")
+    ));
+    if let Ok(cached) = std::fs::read_to_string(&cache) {
+        if let Ok(vkey) = cached.trim().parse::<alloy_primitives::B256>() {
+            return Ok(vkey);
+        }
+    }
+    let client = ProverClient::builder().cpu().build().await;
+    let pk = client
+        .setup(elf)
+        .await
+        .map_err(|e| format!("SP1 setup failed: {e}"))?;
+    let vkey: alloy_primitives::B256 = pk
+        .verifying_key()
+        .bytes32()
+        .parse()
+        .map_err(|e| format!("vkey is not a bytes32: {e}"))?;
+    // Best effort: a cache that cannot be written only costs the next run
+    // its setup.
+    let _ = std::fs::write(&cache, format!("{vkey:?}\n"));
+    Ok(vkey)
 }
 
 /// Mock prover (devnet). Executes the guest program to validate it and to

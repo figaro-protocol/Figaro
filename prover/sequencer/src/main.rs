@@ -31,6 +31,24 @@ fn env_or(key: &str, default: &str) -> String {
 
 #[tokio::main]
 async fn main() {
+    // `sequencer --vkey`: print the fingerprint of the guest this binary
+    // embeds — the value a FigaroBatchVerifier deploy takes as
+    // SP1_PROGRAM_VKEY — and stop. The batch e2e deploys its verifier with
+    // this; an operator compares it with the deployed verifier's before a
+    // 7-minute wrap, though the startup check below does that too.
+    if std::env::args().any(|a| a == "--vkey") {
+        match prover::embedded_vkey().await {
+            Ok(vkey) => {
+                println!("SP1_PROGRAM_VKEY={vkey:?}");
+                return;
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(2);
+            }
+        }
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -143,6 +161,40 @@ async fn main() {
     // Resume this relay's batch numbering where the archive left off, so a
     // restart continues the published sequence instead of colliding with it.
     let batch_count = Arc::new(RwLock::new(archive.last_batch().await.unwrap_or(0)));
+
+    // The verifier pins one guest fingerprint, immutably. A relay that
+    // embeds any other guest makes proofs it refuses — every batch would
+    // revert ProofInvalid after minutes of proving. Compared here, once,
+    // before anything is queued: a mismatch is a refusal to start, with
+    // both values printed. A verifier that cannot be read is not a
+    // verdict (it may not be deployed yet); the state-root sync below
+    // warns the same way.
+    if verifier_addr != Address::ZERO {
+        match (
+            prover::embedded_vkey().await,
+            submitter::read_program_vkey(&rpc_url, verifier_addr).await,
+        ) {
+            (Ok(embedded), Ok(pinned)) if embedded == pinned => {
+                info!(vkey = ?pinned, "Guest fingerprint matches the verifier's programVKey");
+            }
+            (Ok(embedded), Ok(pinned)) => {
+                error!(
+                    ?embedded,
+                    ?pinned,
+                    ?verifier_addr,
+                    "refusing to start: this binary's guest fingerprint is not the one the verifier pins — rebuild from the recipe that produced the verifier's, or deploy a verifier for this guest"
+                );
+                std::process::exit(2);
+            }
+            (Err(e), _) => {
+                error!(%e, "refusing to start: the embedded guest fingerprint could not be derived");
+                std::process::exit(2);
+            }
+            (Ok(_), Err(e)) => {
+                warn!(%e, "Could not read the verifier's programVKey (verifier may not be deployed yet)");
+            }
+        }
+    }
 
     // Sync initial state root from chain (if verifier is deployed)
     if verifier_addr != Address::ZERO {

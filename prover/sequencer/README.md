@@ -284,6 +284,21 @@ chain-anchored identity is `new_state_root` + `settlement_tx`. The number
 resumes from the archive across a restart, so it never collides with what was
 already published.
 
+## The guest fingerprint
+
+`sequencer --vkey` prints `SP1_PROGRAM_VKEY=…`, the verification key of the
+guest this binary embeds — the value a `FigaroBatchVerifier` deploy pins as
+`programVKey`, and what `deployments/<chainId>.json` records. At startup,
+with `BATCH_VERIFIER_ADDRESS` set, the sequencer reads the verifier's
+`programVKey()` and compares: a mismatch is a refusal to start with both
+values printed, because every proof such a binary made would be refused
+after minutes of proving. Deriving the fingerprint is SP1's key setup —
+minutes on a small host — so it is cached in the temp dir under the hash of
+the guest bytes: one setup per guest per machine. The fingerprint is a function of the guest's
+source, the SP1 library version in `prover/Cargo.lock`, the SP1 toolchain
+(read from the same lock by the release workflow and the prover box), and
+the host — the reproducible build is the prover box's docker recipe.
+
 ## Funding
 
 A commit's two bonds — the buyer's 2 × payment, the seller's 2 × cumulative
