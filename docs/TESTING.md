@@ -23,7 +23,8 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `WitnessSwapAndCommitCoordinatorTest`, `WitnessSwapAndCommitCoordinatorForkTest`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
-`Eip712ParityTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
+`Eip712ParityTest`, `MerkleParityTest`, `KernelTransitionVectorsTest`,
+`WeirdTokenTest`, `DeployWiringTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
 inclusion against the signed `agreementHash`, per-(clause-or-assembly, process) GLOBAL idempotence (a
@@ -43,6 +44,12 @@ per-tranche budget backstop. `RpgfIntegrationTest` (6) proves the two compose wi
 real bonded process resolves, its usage is counted against the real counter, the period closes,
 and the real minter mints real florins.
 
+`WeirdTokenTest` hands the kernel the ERC-20 shapes beyond fee-on-transfer —
+no return value, six decimals, an issuer blocklist, a rebase — and
+`FigaroBatchVerifierTest` the no-return and blocklist shapes on the batch
+path (`DESIGN_DECISIONS.md` #10 owns what each shape means). `DeployWiringTest`
+runs both deploy scripts as they would broadcast and reads every immutable
+and genesis parameter back from the deployed contracts.
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call
 reverts) while the outer resolution completes exactly once — across

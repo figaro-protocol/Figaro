@@ -255,7 +255,7 @@ concern (e.g. rate × geohash distance).
 
 ---
 
-## 10. `_pullExact` rejects fee-on-transfer tokens — permanently; rebasing tokens are unsupported
+## 10. `_pullExact` rejects fee-on-transfer tokens — permanently; rebasing and blocklisting tokens carry their own terms
 
 **Pattern**: `_pullExact` uses a before/after balance check with strict equality
 around the one `transferFrom` call. Any token that delivers less than requested
@@ -273,6 +273,19 @@ keep. Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be
 used; the kernel's NatSpec above `_pullExact` states the rebasing case more
 strongly than the check enforces, and this entry is the correction (the kernel
 is frozen). `RELEASE_READINESS.md` carries the deployment precondition.
+
+**The same holds for a token with an issuer blocklist.** Resolution is atomic:
+if the currency refuses a transfer to one party, the whole process stays open
+— every bond held, every other seller unpaid — until the issuer relents. That
+is the token's own term, chosen by the parties when they chose the currency;
+the kernel has no path around a currency that will not move. A currency
+whose issuer can block a wallet is an issuer inside the process. Tokens
+that return nothing from `transfer` (USDT's shape) and tokens with six
+decimals settle exactly; the kernel decodes through `SafeERC20` and never
+reads `decimals()`. `WeirdTokenTest` exercises all four shapes on `commit`
+and `resolveProcess`; `FigaroBatchVerifierTest` the no-return and blocklist
+shapes on `settleBatch`, where a blocked payee reverts the whole batch and
+the state root does not move.
 
 ---
 

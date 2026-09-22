@@ -145,6 +145,61 @@ if [ -z "$CORE_ADDR" ]; then
   exit 1
 fi
 
+# ── Guard 5: read the wiring back from the chain ────────────────────────────
+# Nothing in the stack can be upgraded or re-parameterised, so the deploy is
+# the one moment a wrong immutable is cheap to catch. Every binding below is
+# read from the deployed contracts and compared with what this script was
+# given; a mismatch prints the addresses (the broadcast has happened) and
+# refuses to write the record. test/script/DeployWiringTest.t.sol runs the
+# same read-back against the script in Foundry.
+echo ""
+echo "🔎 Reading the wiring back from chain $ACTUAL_CHAIN_ID ..."
+WIRING_FAIL=0
+lower() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
+expect_eq() { # label, got, want
+  if [ "$(lower "$2")" != "$(lower "$3")" ]; then
+    echo "❌ wiring: $1 reads $2, expected $3"
+    WIRING_FAIL=1
+  else
+    echo "   ✓ $1"
+  fi
+}
+read_call() { cast call --rpc-url "$RPC_URL" "$1" "$2" "${@:3}"; }
+
+expect_eq "batchVerifier.usageCounter()"  "$(read_call "$BATCH_VERIFIER_ADDR" 'usageCounter()(address)')"   "$USAGE_COUNTER_ADDR"
+expect_eq "batchVerifier.clauseRegistry()" "$(read_call "$BATCH_VERIFIER_ADDR" 'clauseRegistry()(address)')" "$CLAUSE_ADDR"
+expect_eq "batchVerifier.verifier()"       "$(read_call "$BATCH_VERIFIER_ADDR" 'verifier()(address)')"       "$SP1_VERIFIER_GATEWAY"
+expect_eq "batchVerifier.programVKey()"    "$(read_call "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')"    "$SP1_PROGRAM_VKEY"
+expect_eq "usageCounter.batchVerifier()"   "$(read_call "$USAGE_COUNTER_ADDR" 'batchVerifier()(address)')"   "$BATCH_VERIFIER_ADDR"
+expect_eq "usageCounter.core()"            "$(read_call "$USAGE_COUNTER_ADDR" 'core()(address)')"            "$CORE_ADDR"
+expect_eq "usageCounter.members()"         "$(read_call "$USAGE_COUNTER_ADDR" 'members()(address)')"         "$MEMBERS_ADDR"
+expect_eq "usageCounter.clauses()"         "$(read_call "$USAGE_COUNTER_ADDR" 'clauses()(address)')"         "$CLAUSE_ADDR"
+expect_eq "usageCounter.assemblies()"      "$(read_call "$USAGE_COUNTER_ADDR" 'assemblies()(address)')"      "$ASSEMBLY_ADDR"
+expect_eq "attestation.core()"             "$(read_call "$ATTESTATION_ADDR" 'core()(address)')"              "$CORE_ADDR"
+expect_eq "swapCoordinator.figaroCore()"   "$(read_call "$SWAP_COORD_ADDR" 'figaroCore()(address)')"         "$CORE_ADDR"
+expect_eq "swapCoordinator.permit2()"      "$(read_call "$SWAP_COORD_ADDR" 'permit2()(address)')"            "$PERMIT2"
+expect_eq "swapCoordinator.router()"       "$(read_call "$SWAP_COORD_ADDR" 'router()(address)')"             "$SWAP_ROUTER"
+expect_eq "rpgfMinter.florin()"            "$(read_call "$RPGF_MINTER_ADDR" 'florin()(address)')"            "$FLORIN_TOKEN_ADDR"
+expect_eq "rpgfMinter.counter()"           "$(read_call "$RPGF_MINTER_ADDR" 'counter()(address)')"           "$USAGE_COUNTER_ADDR"
+expect_eq "rpgfMinter.clauses()"           "$(read_call "$RPGF_MINTER_ADDR" 'clauses()(address)')"           "$CLAUSE_ADDR"
+expect_eq "rpgfMinter.assemblies()"        "$(read_call "$RPGF_MINTER_ADDR" 'assemblies()(address)')"        "$ASSEMBLY_ADDR"
+expect_eq "florin.deployerMintRenounced()" "$(read_call "$FLORIN_TOKEN_ADDR" 'deployerMintRenounced()(bool)')" "true"
+expect_eq "florin.balanceOf(founder)"      "$(read_call "$FLORIN_TOKEN_ADDR" 'balanceOf(address)(uint256)' "$FOUNDER_WALLET" | awk '{print $1}')"    "70000000000000000000000000"
+expect_eq "florin.balanceOf(supporters)"   "$(read_call "$FLORIN_TOKEN_ADDR" 'balanceOf(address)(uint256)' "$SUPPORTERS_WALLET" | awk '{print $1}')" "30000000000000000000000000"
+expect_eq "florin.balanceOf(dao)"          "$(read_call "$FLORIN_TOKEN_ADDR" 'balanceOf(address)(uint256)' "$DAO_WALLET" | awk '{print $1}')"        "300000000000000000000000000"
+
+if [ "$WIRING_FAIL" != "0" ]; then
+  echo ""
+  echo "❌ The deployed wiring does not match what this script was given. The"
+  echo "   broadcast above has happened; these are the addresses it produced:"
+  echo "   core=$CORE_ADDR attestation=$ATTESTATION_ADDR clauses=$CLAUSE_ADDR"
+  echo "   assemblies=$ASSEMBLY_ADDR members=$MEMBERS_ADDR florin=$FLORIN_TOKEN_ADDR"
+  echo "   usageCounter=$USAGE_COUNTER_ADDR rpgfMinter=$RPGF_MINTER_ADDR"
+  echo "   batchVerifier=$BATCH_VERIFIER_ADDR swapCoordinator=$SWAP_COORD_ADDR"
+  echo "   No record is written; a stack with a wrong immutable is redeployed, never recorded."
+  exit 1
+fi
+
 # ── Write deployments/<chainId>.json ─────────────────────────────────────────
 # Same shape as .deployments/local.json, minus the devnet-only mocks
 # DeployMainnet.s.sol never deploys (no MockERC20/MockPermitToken/swap mocks/

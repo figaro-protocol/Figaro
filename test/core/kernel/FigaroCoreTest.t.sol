@@ -635,6 +635,55 @@ contract FigaroCoreTest is Test {
     // 21: Self-deal is harmless (net-zero operation)
     // ═══════════════════════════════════════════════════════════════
 
+    /// Every universal payout proof above is single-order (Certora's
+    /// `resolveSingleOrderPayout`, Halmos's root-only `check_resolutionPayouts`,
+    /// the TLA+ model's two sub-orders). This fuzz walks the N-order loop the
+    /// proofs stop short of: N orders (1..12) with random payments, sellers
+    /// cycling over three wallets, and asserts, per seller, that resolution
+    /// pays exactly the sum over its orders of 2 × cumulative value at that
+    /// link plus the payment — the bond back and the price — and, for the
+    /// buyer, exactly the sum of payments; the kernel holds nothing after.
+    function testFuzz_resolve_paysEveryOrderItsBondPlusPayment(uint8 nRaw, uint256 seed) public {
+        uint256 n = 1 + (nRaw % 12);
+        address[3] memory sellers = [seller1, seller2, seller3];
+        uint256[3] memory sellerKeys = [SELLER1_KEY, SELLER2_KEY, SELLER3_KEY];
+        uint256[3] memory expectedSellerPayout;
+        uint256 expectedBuyerPayout;
+
+        CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](n);
+        bytes32 processId;
+        uint256 cumulative;
+        for (uint256 i = 0; i < n; i++) {
+            uint256 payment = 1 + (uint256(keccak256(abi.encodePacked(seed, i))) % 100 ether);
+            cumulative += payment;
+            uint256 who = i % 3;
+            if (i == 0) {
+                CommitmentTypes.Commitment memory root = _rootCommitment(payment, 1);
+                (processId,) = core.commit(root, _signCommitment(root, BUYER_KEY), _signCommitment(root, SELLER1_KEY));
+                commitments[0] = root;
+            } else {
+                (, commitments[i]) = _commitSub(processId, sellers[who], payment, cumulative, sellerKeys[who], i + 1);
+            }
+            expectedSellerPayout[who] += 2 * cumulative + payment;
+            expectedBuyerPayout += payment;
+        }
+
+        uint256[3] memory sellerAfterCommit =
+            [token.balanceOf(seller1), token.balanceOf(seller2), token.balanceOf(seller3)];
+        uint256 buyerAfterCommit = token.balanceOf(buyer);
+
+        vm.prank(buyer);
+        core.resolveProcess(processId, commitments);
+
+        assertEq(token.balanceOf(seller1) - sellerAfterCommit[0], expectedSellerPayout[0], "seller1 paid exactly");
+        assertEq(token.balanceOf(seller2) - sellerAfterCommit[1], expectedSellerPayout[1], "seller2 paid exactly");
+        assertEq(token.balanceOf(seller3) - sellerAfterCommit[2], expectedSellerPayout[2], "seller3 paid exactly");
+        assertEq(token.balanceOf(buyer) - buyerAfterCommit, expectedBuyerPayout, "buyer refunded exactly");
+        assertEq(token.balanceOf(address(core)), 0, "the kernel holds nothing after");
+        (,,, uint256 active) = core.processes(processId);
+        assertEq(active, 0, "process closed");
+    }
+
     function test_selfDeal_isNetZero() public {
         uint256 payment = 50 ether;
 

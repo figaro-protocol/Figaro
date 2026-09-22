@@ -427,7 +427,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
-3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence and corrects the kernel's NatSpec, which is frozen)
+3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence and corrects the kernel's NatSpec, which is frozen); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
 
 ## Accepted runtime posture
 

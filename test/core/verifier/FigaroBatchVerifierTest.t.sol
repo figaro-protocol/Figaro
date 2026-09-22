@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import "src/core/verifier/FigaroBatchVerifier.sol";
 import "src/build/registries/ClauseRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
@@ -11,6 +12,8 @@ import {MockERC20FeeOnTransfer} from "src/mocks/MockERC20FeeOnTransfer.sol";
 import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
+import {MockERC20NoReturn} from "src/mocks/MockERC20NoReturn.sol";
+import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
 
 /// @dev Unit tests for the realigned batch verifier: 8-word public values,
 ///      the spec-binding anchor check against the live ClauseRegistry,
@@ -1080,5 +1083,159 @@ contract FigaroBatchVerifierTest is Test {
             )
         );
         verifier.settleBatch(hex"", pv, positions, FigaroBatchVerifier.BatchEventData(atts, bindings), _emptyUsage());
+    }
+
+    // ── The ERC-20 shapes beyond fee-on-transfer, on the batch path ──
+
+    /// A token whose transfers return nothing settles: the verifier moves
+    /// value through SafeERC20, both the deposit and the payout leg.
+    function test_settleBatch_noReturnTokenSettles() public {
+        MockERC20NoReturn nrt = new MockERC20NoReturn();
+        nrt.mint(buyer, 1_000 ether);
+        nrt.mint(address(verifier), 1_000 ether);
+        vm.prank(buyer);
+        nrt.approve(address(verifier), type(uint256).max);
+
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](2);
+        positions[0] = FigaroBatchVerifier.NetPosition(address(nrt), buyer, 100 ether, 0);
+        positions[1] = FigaroBatchVerifier.NetPosition(address(nrt), seller, 0, 50 ether);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes32 newRoot = keccak256("no-return-root");
+        bytes memory pv = abi.encode(
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            keccak256(""),
+            keccak256(""),
+            _hashUsageEmpty()
+        );
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+
+        assertEq(nrt.balanceOf(buyer), 900 ether, "deposit pulled");
+        assertEq(nrt.balanceOf(seller), 50 ether, "payout paid");
+        assertEq(verifier.stateRoot(), newRoot, "root advanced");
+    }
+
+    /// A blocked payee's leg reverts and the batch is atomic: nothing moves,
+    /// the root stays, and the same batch settles once the issuer relents.
+    function test_settleBatch_atomicRevert_onBlocklistedPayee() public {
+        MockERC20Blocklist blk = new MockERC20Blocklist("Blocklist", "BLK");
+        blk.mint(address(verifier), 1_000 ether);
+
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] = FigaroBatchVerifier.NetPosition(address(blk), seller, 0, 50 ether);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes32 newRoot = keccak256("blocklist-root");
+        bytes memory pv = abi.encode(
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            keccak256(""),
+            keccak256(""),
+            _hashUsageEmpty()
+        );
+
+        blk.setBlocked(seller, true);
+        vm.expectRevert(abi.encodeWithSelector(MockERC20Blocklist.Blocked.selector, seller));
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
+        assertEq(blk.balanceOf(seller), 0, "no payout leg");
+
+        blk.setBlocked(seller, false);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        assertEq(verifier.stateRoot(), newRoot, "settles once the issuer relents");
+    }
+
+    // ── Completeness of the public values ─────────────────────────
+
+    /// Each effect settleBatch applies is bound to a public value — positions
+    /// to tokenOpsHash, attestations to attEventsHash, spec bindings to
+    /// specBindingsHash, the accrual to usageAccrualHash, the state advance
+    /// to newRoot — and the tampered-hash tests show each binding bites. This
+    /// closes the other direction: nothing ELSE is written. The state diff of
+    /// a settling batch is recorded and every storage write is accounted for
+    /// — the verifier writes its state root and batch count (a slot that
+    /// returns to its resting value within the call, the reentrancy latch, is
+    /// no effect), the token writes balances (the positions), the counter
+    /// writes its accrual (the usage leg); no other account is written, no
+    /// ether moves, nothing is created or destroyed. An effect added to
+    /// settleBatch without a public value to bind it surfaces here as an
+    /// unaccounted write.
+    function test_settleBatch_writesNothingThePublicValuesDoNotBind() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _batchWithUsage(usage);
+
+        vm.startStateDiffRecording();
+        verifier.settleBatch(hex"", pv, positions, events, usage);
+        VmSafe.AccountAccess[] memory accesses = vm.stopAndReturnStateDiff();
+
+        bool verifierWrote;
+        bool tokenWrote;
+        bool counterWrote;
+        for (uint256 i = 0; i < accesses.length; i++) {
+            VmSafe.AccountAccess memory a = accesses[i];
+            assertTrue(
+                a.kind != VmSafe.AccountAccessKind.Create && a.kind != VmSafe.AccountAccessKind.SelfDestruct,
+                "nothing created or destroyed"
+            );
+            assertEq(a.value, 0, "no ether moves");
+            for (uint256 j = 0; j < a.storageAccesses.length; j++) {
+                VmSafe.StorageAccess memory w = a.storageAccesses[j];
+                if (!w.isWrite || w.reverted) continue;
+                if (w.account == address(verifier)) {
+                    verifierWrote = true;
+                    bool bound = w.slot == bytes32(0) || w.slot == bytes32(uint256(1));
+                    assertTrue(
+                        bound || _returnsToRest(accesses, w.account, w.slot),
+                        "the verifier writes only the state root and the batch count"
+                    );
+                } else if (w.account == address(token)) {
+                    tokenWrote = true;
+                } else if (w.account == address(counter)) {
+                    counterWrote = true;
+                } else {
+                    fail(string.concat("a write the public values do not bind, in ", vm.toString(w.account)));
+                }
+            }
+        }
+        assertTrue(verifierWrote, "the state root was written");
+        assertTrue(tokenWrote, "the positions were written");
+        assertTrue(counterWrote, "the accrual was written");
+    }
+
+    /// True when the slot's first previous value equals its last new value
+    /// across the recorded call — written, but no effect survives it.
+    function _returnsToRest(VmSafe.AccountAccess[] memory accesses, address account, bytes32 slot)
+        internal
+        pure
+        returns (bool)
+    {
+        bytes32 first;
+        bytes32 last;
+        bool seen;
+        for (uint256 i = 0; i < accesses.length; i++) {
+            for (uint256 j = 0; j < accesses[i].storageAccesses.length; j++) {
+                VmSafe.StorageAccess memory w = accesses[i].storageAccesses[j];
+                if (w.account != account || w.slot != slot || !w.isWrite || w.reverted) continue;
+                if (!seen) {
+                    first = w.previousValue;
+                    seen = true;
+                }
+                last = w.newValue;
+            }
+        }
+        return seen && first == last;
     }
 }

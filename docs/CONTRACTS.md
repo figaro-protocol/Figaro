@@ -417,6 +417,13 @@ deploy script wires and under which environment variable.
 
 - `MockERC20.sol` — the devnet denomination; permissionless `mint(to, amount)`.
 - `MockERC20FeeOnTransfer.sol` — fee-on-transfer ERC-20, Foundry tests only.
+- `MockERC20NoReturn.sol` — `transfer`/`transferFrom`/`approve` return nothing
+  (the USDT shape); Foundry tests only.
+- `MockERC20Blocklist.sol` — an issuer blocklist on transfer (the USDC shape);
+  Foundry tests only.
+- `MockERC20Rebasing.sol` — shares scaled by an issuer-moved multiplier (the
+  stETH shape); Foundry tests only.
+- `MockERC20SixDecimals.sol` — `decimals() == 6`; Foundry tests only.
 - `MockPermitToken.sol` — a second devnet ERC-20 (EIP-2612), the swap-funding
   input token.
 - `MockWitnessPermit2.sol` — stand-in for Permit2's `permitWitnessTransferFrom`
