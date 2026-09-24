@@ -24,6 +24,7 @@
  * applies the seed in a mount effect — localStorage is client-only.
  */
 
+import { assemblyClauseDefaults } from "@/lib/designer/draftToAssemblyTemplate";
 import Link from "@/components/shared/Link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -772,7 +773,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         onToggleClause={(clauseId, next, version) => {
                             setAssemblyClauses((prev) => {
                                 const out = { ...prev };
-                                if (next) out[clauseId] = out[clauseId] ?? {};
+                                // A fresh selection starts from the spec's declared defaults.
+                                if (next) out[clauseId] = out[clauseId] ?? assemblyClauseDefaults(clauseId, version);
                                 else delete out[clauseId];
                                 return out;
                             });

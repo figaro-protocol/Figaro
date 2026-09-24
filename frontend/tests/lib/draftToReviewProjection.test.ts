@@ -23,6 +23,7 @@ import {
     snapshotToAssemblyTemplate,
     templateComposedByAgreement,
     unfilledAssemblyTerms,
+    assemblyClauseDefaults,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import {
     createSyntheticRootOrder,
@@ -238,5 +239,21 @@ describe("unfilledAssemblyTerms", () => {
 
     it("ignores a term with no required design fill, and an unknown clause", () => {
         expect(unfilledAssemblyTerms({ "figaro-assembly-provenance": {}, "figaro-never-seen": {} })).toEqual([]);
+    });
+});
+
+// Toggling an assembly term on starts from the spec's declared defaults, so a
+// required fill with a default is filled from the first moment; one without
+// a default stays for the designer.
+describe("assemblyClauseDefaults", () => {
+    it("seeds a required design fill from its declared default", () => {
+        const seeded = assemblyClauseDefaults("figaro-arbitration-kleros");
+        expect(seeded.klerosCourt).toBe("general");
+        expect(unfilledAssemblyTerms({ "figaro-arbitration-kleros": seeded })).toEqual([]);
+    });
+
+    it("leaves a fill with no default empty, and an unknown clause seeds nothing", () => {
+        expect(assemblyClauseDefaults("figaro-utility-token")).not.toHaveProperty("currency");
+        expect(assemblyClauseDefaults("figaro-never-seen")).toEqual({});
     });
 });

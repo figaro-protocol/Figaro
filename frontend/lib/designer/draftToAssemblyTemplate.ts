@@ -159,6 +159,25 @@ export interface MissingAssemblyTerm {
  *  left empty would anchor an assembly whose every agreement is missing a
  *  term it promises (beta r5: a utility-token pin published with no
  *  currency). The review refuses to publish while this is non-empty. */
+/**
+ * The design fills a clause declares defaults for, as the values a fresh
+ * selection starts from: toggling an assembly term on seeds them, so a
+ * required fill with a declared default (a forum's subcourt) is filled
+ * from the first moment and the anchored template carries it explicitly.
+ * A fill with no default (a utility token's currency) stays empty, and
+ * `unfilledAssemblyTerms` names it until the designer fills it.
+ */
+export function assemblyClauseDefaults(clauseId: string, version?: number): Record<string, unknown> {
+    const spec = getClauseSpec(clauseId, version);
+    if (!spec) return {};
+    const fills = clauseDesignFills(clauseId, version);
+    const out: Record<string, unknown> = {};
+    for (const field of spec.fields) {
+        if (fills.includes(field.name) && field.default !== undefined) out[field.name] = field.default;
+    }
+    return out;
+}
+
 export function unfilledAssemblyTerms(
     assemblyClauses: Readonly<Record<string, Record<string, unknown>>>,
     versions?: Readonly<Record<string, number>>,
