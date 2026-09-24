@@ -28,7 +28,7 @@ export default function Dao() {
                 title="Someone has to pay for what the network cannot pay for yet."
                 lead={
                     <>
-                        The DAO holds three hundred million florins &mdash; three tenths of every florin there will ever be &mdash; granted once at genesis and spent by human judgment. It exists to bootstrap: to pay for the work a young network needs before enough trade runs through it to pay for that work itself. It is the deliberate opposite of the reward counter beside it, which judges nothing and pays purely by use. And it is bounded twice over: it governs its own treasury and reaches nothing else, and when the treasury is spent it ends &mdash; unless a job remains and donations sustain it.
+                        The DAO holds three hundred million florins &mdash; three tenths of every florin there will ever be &mdash; granted once at genesis and spent by human judgment. It exists to bootstrap: to pay for the work a young network needs before enough trade runs through it to pay for that work itself. It is the deliberate opposite of the reward counter beside it, which judges nothing and rewards purely by use. And it is bounded twice over: it governs its own treasury and reaches nothing else, and when the treasury is spent it ends &mdash; unless a job remains and donations sustain it.
                     </>
                 }
             />
