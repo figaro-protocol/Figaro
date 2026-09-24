@@ -25,16 +25,19 @@ describe("Header", () => {
         useWalletConnectedMock.mockReset();
     });
 
-    it("renders the logo and one inert disclosure button per door, the reader's own marked current", () => {
+    it("renders the logo, a link per door and one inert menu button beside it, the reader's own marked current", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
         expect(screen.getByText("Figaro Protocol")).toBeInTheDocument();
         const nav = screen.getByTestId("desktop-nav");
         for (const group of MARKETING_MAP) {
-            const button = within(nav).getByRole("button", { name: group.section });
+            // The door's name links to its door page; the chevron beside it is the menu.
+            const link = within(nav).getByRole("link", { name: group.section });
+            expect(link).toHaveAttribute("href", group.links[0].href);
+            const button = within(nav).getByRole("button", { name: `${group.section} menu` });
             expect(button).toHaveAttribute("aria-expanded", "false");
-            if (group.section === "Join") expect(button).toHaveAttribute("aria-current", "true");
-            else expect(button).not.toHaveAttribute("aria-current");
+            if (group.section === "Join") expect(link).toHaveAttribute("aria-current", "true");
+            else expect(link).not.toHaveAttribute("aria-current");
         }
     });
 

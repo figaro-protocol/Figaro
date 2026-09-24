@@ -9,9 +9,10 @@ import { Disclosure } from "@/components/ui/Disclosure";
 
 /**
  * Desktop nav — one row, the six doors of `MARKETING_MAP`, on every page
- * including the home page. Each door is a disclosure button
- * (`components/ui/Disclosure`, the same primitive the drawer uses); its panel
- * lists the door's pages, the door page first. Only pages navigate.
+ * including the home page. Each door's name is a link to its door page, and
+ * the chevron beside it is a disclosure button (`components/ui/Disclosure`,
+ * the same primitive the drawer uses) whose panel lists the door's pages, the
+ * door page first — so a reader who never opens a menu still reaches every door.
  * Click-to-open; Escape and outside-click close — never hover-only.
  *
  * "You are here" runs on three ORTHOGONAL channels so no two states are
@@ -60,20 +61,28 @@ export function NavTreeRow() {
                 // The section holds the reader if ANY page under it matches —
                 // exactly (/members) or as an ancestor (/members/manage).
                 const holdsReader = group.links.some((item) => navCurrent(pathname, item.href) !== undefined);
+                const door = group.links[0];
                 return (
                     <div key={group.section} className="relative flex items-center">
+                        {/* The door's name is a LINK to the door page — a reader
+                            who never opens a menu still reaches every door. The
+                            chevron beside it is the disclosure: the door's pages,
+                            the door page first. */}
+                        <Link
+                            href={door.href}
+                            aria-current={navCurrent(pathname, door.href) === "page" ? "page" : holdsReader ? "true" : undefined}
+                            className={`py-1.5 text-ink-heading hover:bg-subtle-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${holdsReader ? "pl-2 border-l-2 border-ink-heading font-semibold" : "pl-2.5"}`}
+                        >
+                            {group.section}
+                        </Link>
                         <Disclosure
                             id={panelId}
                             triggerTestId={`nav-tree-toggle-${slug}`}
                             panelTestId={`nav-tree-panel-${slug}`}
                             expanded={isOpen}
                             onToggle={() => setOpen(isOpen ? null : group.section)}
-                            aria-current={holdsReader ? "true" : undefined}
-                            // pl-2 (8px) + the 2px rule restores px-2.5's 10px
-                            // inset, so the section that holds the reader does
-                            // not shift its label against its neighbours.
-                            triggerClassName={`pr-2.5 py-1.5 text-ink-heading hover:bg-subtle-hover ${holdsReader ? "pl-2 border-l-2 border-ink-heading font-semibold" : "pl-2.5"}`}
-                            label={group.section}
+                            triggerClassName="pl-1 pr-2.5 py-1.5 text-ink-heading hover:bg-subtle-hover"
+                            label={<span className="sr-only">{group.section} menu</span>}
                             panelClassName="absolute left-0 top-full mt-2 min-w-56 rounded border border-default bg-canvas shadow-lg py-2 z-50"
                         >
                             {group.links.map((item) => {
