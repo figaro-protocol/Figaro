@@ -41,16 +41,17 @@ const CLAIMS: { line: string; fact: string; figure: ReactNode }[] = [
     },
     {
         line: "You choose where you belong.",
-        fact: "The tokens you hold are the communities you belong to: a utility token, a meme, a stablecoin, a shared value, and kinds not yet invented. You are where they meet.",
+        fact: "The tokens you hold and the processes you take part in are the communities you belong to: a utility token, a meme, a stablecoin, a shared value, a meal, a delivery, and kinds not yet invented. You are where they meet.",
         figure: <BelongingFigure />,
     },
 ];
 
-// What the protocol composes with, each mark from the project's own brand
-// assets, unaltered, linking to the project. One strip below the sections,
-// above the code line.
+// What the protocol composes with — other protocols and contracts, never the
+// network it is deployed on (a network is a deployment fact, and belongs to
+// the deployments table) — each mark from the project's own brand assets,
+// unaltered, linking to the project. One strip below the sections, above the
+// code line.
 const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
-    { name: "Ethereum", href: "https://ethereum.org", src: "/built-with/ethereum.svg" },
     { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg" },
     { name: "Uniswap", href: "https://uniswap.org", src: "/built-with/uniswap.svg" },
     { name: "XMTP", href: "https://xmtp.org", src: "/built-with/xmtp.svg" },
