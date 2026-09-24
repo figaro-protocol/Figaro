@@ -1,36 +1,54 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
+import { SignedTermsFigure } from "@/components/figures/SignedTermsFigure";
 import { ProcessStarFigure } from "@/components/figures/ProcessStarFigure";
+import { BelongingFigure } from "@/components/figures/BelongingFigure";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
     description:
-        "Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade. Trade with anyone, anywhere, in any token. Be paid in full when the trade closes. Set your own agreements, and keep your own books.",
+        "My word is my bond. Figaro game theory provides your trades with the certainty existing institutions cannot: keeping your word is each party's best move. You know what it pays before you start, everyone is paid at once when the buyer closes, and you choose where you belong.",
 });
 
-// HOME IS A ROUTER, NEVER A DOCUMENT: the opening sentence — WHAT Figaro is,
-// in the layman's nearest category and its differentiator, with no word from
-// the mechanism — the four benefits under it, each benefit again as the heading
-// of its own short paragraph, the six doors — one per landing page, one door
-// per destination — and the seven checks the code passes on every commit. Each door's line is in its reader's words; the landing page it
-// opens carries the pillar. A comprehension gap found by any probe is closed
-// on the landing page or its owner page, never by adding prose here. The
-// tagline belongs to the use home, never here.
+// THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
+// one phrase a reader arrives already believing; the two lines under it are
+// the maintainer's, word for word, and make the phrase a fact; ONE button, the
+// real way in (a wallet and a stake: Join); three sections, each a figure with
+// the claim as its heading and one fact under it; the marks; one plain line
+// about the code at the foot. Wayfinding is the header's job, so the page has
+// no doors and states each thing once. Nothing above the foot explains how
+// anything works: certainty is stated as the parties' BEHAVIOUR, never as the
+// bond arithmetic, and every line is in the positive. A comprehension gap
+// found by any probe is closed on the owner page, never by adding prose here.
 //
-// THE OPENING SENTENCE, THE BENEFITS, AND THEIR PARAGRAPHS are the maintainer's,
-// word for word. "Most ERC-20 tokens": a token that changes value in transit —
-// fee-on-transfer, rebasing — is outside; the trader's token list never names
-// the florin (it is named only where the reward is the subject).
-// THE SEVEN CHECKS, each with the count the tree derives — the security-counts
-// guard recomputes the four counted benches and fails the commit when a
-// number here drifts; TLA+ names models, Lean 4 names the result proved, and
-// static analysis names the tools the workflow pins.
+// The three claims come from blind writers outside the repo on a brief the
+// maintainer corrected; the voicing is the lexicon's (a bond is refunded; the
+// data is evidence; a term's publisher is a designer).
+const CLAIMS: { line: string; fact: string; figure: ReactNode }[] = [
+    {
+        line: "You know what it pays before you start.",
+        fact: "Both sides sign what is expected and what it pays before any work begins.",
+        figure: <SignedTermsFigure />,
+    },
+    {
+        line: "Everyone is paid at once when the buyer closes.",
+        fact: "The moment the buyer closes the trade, everyone who added value is paid in full and every bond is refunded.",
+        figure: <ProcessStarFigure />,
+    },
+    {
+        line: "You choose where you belong.",
+        fact: "A process you coordinate in directly, a community its members define on both sides, and the token the two sides share.",
+        figure: <BelongingFigure />,
+    },
+];
+
 // What the protocol composes with, each mark from the project's own brand
-// assets, unaltered, linking to the project. One strip below the cards,
-// above the checks; never a door itself.
+// assets, unaltered, linking to the project. One strip below the sections,
+// above the code line.
 const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
     { name: "Ethereum", href: "https://ethereum.org", src: "/built-with/ethereum.svg" },
     { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg" },
@@ -41,89 +59,37 @@ const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
     { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg" },
 ];
 
-// THE FIVE BENEFITS, each a door: its line is the bullet under the opening
-// sentence and the heading of its card; its button opens the landing page.
-const BENEFITS: { line: string; body: string; cta: string; href: string }[] = [
-    {
-        line: "Trade with anyone, anywhere, in any token.",
-        body: "Anyone with a wallet can trade: a person, a shop, a plant, a piece of software, someone you know or someone you have never met. The token is yours to choose: your community's, a stablecoin, a memecoin, a resource token,\u2026 most ERC-20 tokens. A wallet is all it takes.",
-        cta: "Use it",
-        href: "/use",
-    },
-    {
-        line: "Be paid in full when the trade closes.",
-        body: "Before the trade, each side locks a bond in the same token large enough, so keeping the deal is worth more to each of them than breaking it. When the buyer closes, every seller in the process is paid the whole payment and every bond is refunded, all at once.",
-        cta: "Check the core",
-        href: "/core",
-    },
-    {
-        line: "Set your own agreements, and keep your own books.",
-        body: "An agreement is written in plain words and signed by both sides before the trade; what is delivered and attested during the process is signed too. Everything the trade leaves is its verifiable audit trail, yours in detail and public only in aggregate. A court or a forum, if it comes to that, rules on that same data afterward. Your data is yours to keep, or to sell, if you want.",
-        cta: "Read the data",
-        href: "/data",
-    },
-    {
-        line: "Write agreements, and compose them with other contracts.",
-        body: "Anyone can publish the agreements of a trade, a single term or a whole assembly of them, to a public registry, for any seller to adopt. An agreement composes with any other contract on the network: a forum, a payment splitter, a swap. Every trade that uses them rewards the author in Figaro's florin token.",
-        cta: "Build on it",
-        href: "/build",
-    },
-    {
-        line: "Run an agent on the same terms as a person.",
-        body: "Software trades, publishes, and resolves with the same wallet, the same bond, and the same registries as a person. Humans and agents are treated the same.",
-        cta: "Run an agent",
-        href: "/agents",
-    },
-];
-
-const CHECKS: { name: string; count: string }[] = [
-    { name: "Foundry", count: "337 test functions" },
-    { name: "Halmos", count: "32 symbolic-execution properties" },
-    { name: "Certora", count: "39 formal rules across six CVL specs" },
-    { name: "TLA+", count: "four protocol state machines, model-checked" },
-    { name: "Echidna", count: "15 property-based fuzzing targets" },
-    { name: "Lean 4", count: "the bonded chain\u2019s equilibrium, proved" },
-    { name: "Static analysis", count: "100 Slither detectors and Semgrep\u2019s smart-contract rules" },
-];
-
 export default function Home() {
-    const [first, ...rest] = BENEFITS;
     return (
         <>
-            <MarketingHero title="Figaro is a decentralized, permissionless ERP: a value-added process that lasts one trade.">
-                <div className="flex flex-wrap gap-4 mb-8">
-                    <CtaLink href="/use">Use it</CtaLink>
-                    <CtaLink href="/build">Build on it</CtaLink>
+            <MarketingHero
+                title="My word is my bond"
+                lead={
+                    <>
+                        Figaro game theory provides your trades with the certainty existing institutions cannot.
+                        Keeping your word is each party&apos;s best move.
+                    </>
+                }
+            >
+                <div className="mt-6 flex flex-wrap gap-4">
+                    <CtaLink href="/members">Join</CtaLink>
                 </div>
-                <ul className="text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2">
-                    {BENEFITS.map((b) => (
-                        <li key={b.href}>{b.line}</li>
-                    ))}
-                </ul>
             </MarketingHero>
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
-                <div className="border-t border-default pt-10 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 items-center">
-                    <div className="flex flex-col">
-                        <h2 className="text-heading-h3 text-ink-heading mb-2">{first.line}</h2>
-                        <p className="text-base text-ink-body leading-relaxed">{first.body}</p>
-                        <div className="mt-4">
-                            <CtaLink href={first.href}>{first.cta}</CtaLink>
+                {CLAIMS.map((c, i) => (
+                    <div
+                        key={c.line}
+                        className={`border-t border-default pt-10 ${i > 0 ? "mt-12" : ""} grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 items-center`}
+                    >
+                        <div className={`flex flex-col ${i % 2 === 1 ? "md:order-2" : ""}`}>
+                            <h2 className="text-heading-h3 text-ink-heading mb-2">{c.line}</h2>
+                            <p className="text-base text-ink-body leading-relaxed">{c.fact}</p>
                         </div>
+                        <div className={i % 2 === 1 ? "md:order-1" : ""}>{c.figure}</div>
                     </div>
-                    <ProcessStarFigure />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10 mt-12">
-                    {rest.map((b) => (
-                        <div key={b.href} className="flex flex-col">
-                            <h2 className="text-heading-h3 text-ink-heading mb-2">{b.line}</h2>
-                            <p className="text-base text-ink-body leading-relaxed grow">{b.body}</p>
-                            <div className="mt-4">
-                                <CtaLink href={b.href}>{b.cta}</CtaLink>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                ))}
+
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
                     <p className="text-sm text-ink-muted mb-4">Composes with</p>
                     <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
@@ -138,20 +104,10 @@ export default function Home() {
                         ))}
                     </ul>
                 </div>
+
                 <div className="mt-12 border-t border-default pt-8">
-                    <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-4">
-                        The code is not yet audited by an outside firm. It is checked seven independent ways on every commit:
-                    </p>
-                    <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 text-sm">
-                        {CHECKS.map((c) => (
-                            <div key={c.name}>
-                                <dt className="text-ink-heading font-medium">{c.name}</dt>
-                                <dd className="text-ink-muted">{c.count}</dd>
-                            </div>
-                        ))}
-                    </dl>
-                    <p className="text-sm text-ink-muted leading-relaxed mt-4">
-                        What each check covers:{" "}
+                    <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
+                        The code is open and checked seven independent ways on every change. It is not yet audited by an outside firm. What each check covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>
