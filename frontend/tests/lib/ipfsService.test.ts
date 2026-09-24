@@ -597,6 +597,14 @@ describe("resolveContentUri — a permissionless registry can anchor any string 
         expect(resolveContentUri("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", gw)).toBe(
             `${gw}/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi`,
         );
+        // The witness-content CID the SDK derives is a base-16 CIDv1: content too.
+        expect(resolveContentUri("ipfs://f01551b20abababababababababababababababababababababababababababababababab", gw)).toBe(
+            `${gw}/ipfs/f01551b20abababababababababababababababababababababababababababababababab`,
+        );
+        // A raw block's CIDv1 (`bafk…`), the form a JSON pin returns, is content too.
+        expect(resolveContentUri("ipfs://bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy", gw)).toBe(
+            `${gw}/ipfs/bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy`,
+        );
     });
     it("treats an IPFS path that is not a CID as absence — no gateway request, no 400", () => {
         expect(resolveContentUri("ipfs://rpgf-e2e-trade-seller", gw)).toBeNull();

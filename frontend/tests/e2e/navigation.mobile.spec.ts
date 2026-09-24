@@ -85,7 +85,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const publication = await expandSection(drawer, 'Publication');
         await publication.getByRole('link', { name: 'Terms', exact: true }).click();
 
-        await expect(page).toHaveURL(/\/build\/?$/);
+        await expect(page).toHaveURL(/\/terms\/?$/);
         // useEffect on pathname change closes the drawer
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
@@ -132,7 +132,8 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
-        await expect(drawer.locator('button[aria-expanded]')).toHaveCount(6);
+        // Six doors plus the App group the drawer derives from the primary row.
+        await expect(drawer.locator('button[aria-expanded]')).toHaveCount(7);
         await expect(drawer.locator('button[aria-expanded="true"]')).toHaveCount(0);
         const code = await expandSection(drawer, 'Code');
         await code.getByRole('link', { name: 'Code', exact: true }).click();

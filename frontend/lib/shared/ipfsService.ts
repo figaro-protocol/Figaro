@@ -136,9 +136,15 @@ export function resolveContentUri(uri: string, gatewayUrl: string = activeIpfsGa
     return null;
 }
 
-/** Whether an IPFS path begins with a CID: CIDv0 (`Qm` + 44 base58 chars) or CIDv1 (`bafy` + base-32 chars). */
+/**
+ * Whether an IPFS path begins with a CID: CIDv0 (`Qm` + 44 base-58 chars) or
+ * CIDv1 under a multibase prefix — `b` base 32 (`bafy…` dag-pb, `bafk…` raw),
+ * `f` base 16 (the witness-content CID the SDK derives from a keccak
+ * fingerprint, `f01551b20…`), `z` base 58, `k` base 36. What it refuses is a
+ * path that is no encoding at all: a separator or a word.
+ */
 function isCidPath(path: string): boolean {
-    return /^Qm[1-9A-HJ-NP-Za-km-z]{44}(\/|$)/.test(path) || /^bafy[a-z0-9]+(\/|$)/.test(path);
+    return /^Qm[1-9A-HJ-NP-Za-km-z]{44}(\/|$)/.test(path) || /^[bfkz][a-z0-9]{6,}(\/|$)/.test(path);
 }
 
 /**
