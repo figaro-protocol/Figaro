@@ -41,7 +41,7 @@ const CLAIMS: { line: string; fact: string; figure: ReactNode }[] = [
     },
     {
         line: "You choose where you belong.",
-        fact: "A process you coordinate in directly, a community its members define on both sides, and the token the two sides share.",
+        fact: "The tokens you hold are the communities you belong to: a utility token, a meme, a stablecoin, a shared value, and kinds not yet invented. You are where they meet.",
         figure: <BelongingFigure />,
     },
 ];
@@ -89,6 +89,11 @@ export default function Home() {
                         <div className={i % 2 === 1 ? "md:order-1" : ""}>{c.figure}</div>
                     </div>
                 ))}
+
+                <div className="mt-12 border-t border-default pt-8 flex flex-wrap gap-4 items-center">
+                    <p className="text-base text-ink-body">One trade, start to finish, as pictures:</p>
+                    <CtaLink href="/local-commerce">See a trade</CtaLink>
+                </div>
 
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
                     <p className="text-sm text-ink-muted mb-4">Composes with</p>

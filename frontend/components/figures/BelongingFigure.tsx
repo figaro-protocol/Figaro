@@ -1,47 +1,72 @@
 import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 import { FigureFrame } from "@/components/figures/FigureFrame";
 
-export type BelongingFigureProps = BaseFigureProps;
+export interface BelongingFigureProps extends BaseFigureProps {
+    /** The kinds of token community drawn; the last is always the open one. */
+    kinds?: readonly string[];
+}
 
 /**
- * The IDEA of belonging, chosen three ways: three rings, a process, a
- * community, and a token, each drawn by its own members, and one wallet
- * standing where the three it chose overlap. Four words on the drawing. Which
- * process, whose community, and what token are the reader's to pick, and the
- * pages that own them say how.
+ * The IDEA of belonging: a wallet is defined by the token communities it
+ * holds, and it holds many at once. One ring per kind of token, every ring
+ * passing through the one wallet at the center, so the wallet is the
+ * intersection of all of them; the last ring is open, for the kinds that do
+ * not exist yet. Labels name kinds, never tokens. Which tokens are the
+ * reader's to pick, and the pages that own them say how.
  */
 
 const CX = 200;
-const CY = 158;
-const R = 62;
-const OFFSET = 38;
+const CY = 150;
+const R = 58;
+const ORBIT = 34;
+const DEFAULT_KINDS = ["utility", "meme", "stablecoin", "shared value", "lending", "…"] as const;
 
-export function BelongingFigure({ idPrefix = "belonging", className, svgProps }: BelongingFigureProps) {
-    const rings = [
-        { cx: CX, cy: CY - OFFSET, label: "process", labelX: CX, labelY: CY - OFFSET - R - 8, anchor: "middle" },
-        { cx: CX - OFFSET, cy: CY + OFFSET * 0.6, label: "community", labelX: CX - OFFSET - R - 6, labelY: CY + OFFSET * 0.6 + 4, anchor: "end" },
-        { cx: CX + OFFSET, cy: CY + OFFSET * 0.6, label: "token", labelX: CX + OFFSET + R + 6, labelY: CY + OFFSET * 0.6 + 4, anchor: "start" },
-    ] as const;
+export function BelongingFigure({ idPrefix = "belonging", className, svgProps, kinds = DEFAULT_KINDS }: BelongingFigureProps) {
+    const rings = kinds.map((label, i) => {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / kinds.length;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const cx = CX + ORBIT * cos;
+        const cy = CY + ORBIT * sin;
+        const labelR = ORBIT + R + 8;
+        return {
+            label,
+            cx,
+            cy,
+            open: i === kinds.length - 1,
+            labelX: CX + labelR * cos,
+            labelY: CY + labelR * sin + 4,
+            anchor: cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle",
+        } as const;
+    });
 
     return (
         <FigureFrame
             idPrefix={idPrefix}
             className={className}
             svgProps={svgProps}
-            viewBox="10 36 380 230"
-            title="Belonging, chosen three ways: a process, a community, a token, and you where they overlap"
-            desc="Three overlapping rings, one for a process, one for a community, one for a token. One wallet, labelled you, stands in the small region where all three overlap."
+            viewBox="10 26 380 250"
+            title="Belonging: one wallet at the intersection of the token communities it holds"
+            desc={`${kinds.length} overlapping rings, one per kind of token community (${kinds.slice(0, -1).join(", ")}, and one left open for kinds not yet invented), all passing through one wallet, labelled you, at the center.`}
         >
             {rings.map((r) => (
                 <g key={r.label}>
-                    <circle cx={r.cx} cy={r.cy} r={R} strokeWidth={1.5} className="fill-paper stroke-ink-primary" fillOpacity={0.5} />
+                    <circle
+                        cx={r.cx}
+                        cy={r.cy}
+                        r={R}
+                        strokeWidth={1.5}
+                        strokeDasharray={r.open ? "4 4" : undefined}
+                        className="fill-paper stroke-ink-primary"
+                        fillOpacity={0.35}
+                    />
                     <text x={r.labelX} y={r.labelY} textAnchor={r.anchor} fontSize={11} className="fill-ink-muted">
                         {r.label}
                     </text>
                 </g>
             ))}
-            <circle cx={CX} cy={CY + 4} r={13} className="fill-ink-primary" />
-            <text x={CX} y={CY + 7} textAnchor="middle" fontSize={9} className="fill-paper">
+            <circle cx={CX} cy={CY} r={13} className="fill-ink-primary" />
+            <text x={CX} y={CY + 3} textAnchor="middle" fontSize={9} className="fill-paper">
                 you
             </text>
         </FigureFrame>
