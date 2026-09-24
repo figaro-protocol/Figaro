@@ -5,7 +5,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { TradeStripFigure } from "@/components/figures/TradeStripFigure";
 
 export const metadata: Metadata = {
-    title: "One trade — Figaro Protocol",
+    title: "Trade — Figaro Protocol",
     description:
         "One trade, start to finish, in six pictures: three strangers, the terms signed before the work, a bond locked by each, the work, everyone paid at once when the buyer closes, and the evidence each keeps. A delivered meal, one example among unbounded kinds of trade.",
 };
@@ -39,7 +39,7 @@ export default function LocalCommercePage() {
                     <Link href="/faq#layers" className="text-ink-heading font-medium hover:underline">
                         the FAQ
                     </Link>
-                    . Nothing here is legal or tax advice.
+                    .
                 </p>
             </MarketingSection>
         </>

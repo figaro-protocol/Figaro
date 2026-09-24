@@ -79,7 +79,7 @@ describe("the layers carry their truth boundaries", () => {
 
     it("breadcrumbs from the explainer this tool belongs to", () => {
         expect(dataExplorerBreadcrumb(parseDataExplorerQuery({ view: "overlays" })).map((b) => b.label))
-            .toEqual(["Your evidence", "Attestation overlays"]);
+            .toEqual(["Evidence", "Attestation overlays"]);
     });
 });
 

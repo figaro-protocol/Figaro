@@ -534,11 +534,11 @@ export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
 
 // ── Breadcrumb ──────────────────────────────────────────────────────────────
 
-/** The trail a deep-linked arrival sees. "Your evidence" is the door the data
+/** The trail a deep-linked arrival sees. "Evidence" is the door the data
  *  layer lives under, and `/data` is the explainer this tool belongs to. */
 export function dataExplorerBreadcrumb(state: DataExplorerQuery): BreadcrumbItem[] {
     return [
-        { label: "Your evidence", href: "/data" },
+        { label: "Evidence", href: "/data" },
         { label: graphLayer(state.view).label },
     ];
 }

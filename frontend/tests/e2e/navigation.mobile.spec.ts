@@ -134,8 +134,8 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeVisible();
         await expect(drawer.locator('button[aria-expanded]')).toHaveCount(6);
         await expect(drawer.locator('button[aria-expanded="true"]')).toHaveCount(0);
-        const code = await expandSection(drawer, 'The code');
-        await code.getByRole('link', { name: 'The code', exact: true }).click();
+        const code = await expandSection(drawer, 'Code');
+        await code.getByRole('link', { name: 'Code', exact: true }).click();
         await expect(page).toHaveURL(/\/core\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
 
@@ -144,8 +144,8 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // are reached through Working Groups — the corpus is unbounded, so the
         // working-groups page IS the index (no /papers index exists).
         for (const [landing, section, label, href] of [
-            ['/core', 'The code', 'Invariants', '/invariants'],
-            ['/core', 'Your evidence', 'Data explorer', '/data/explore'],
+            ['/core', 'Code', 'Invariants', '/invariants'],
+            ['/core', 'Evidence', 'Data explorer', '/data/explore'],
             ['/terms', 'Terms', 'Clauses', '/clauses'],
             ['/members', 'Join', 'How agents work', '/agents/how'],
         ] as const) {
@@ -165,7 +165,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await page.goto('/core', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
-        const deal = await expandSection(drawer, 'The code');
+        const deal = await expandSection(drawer, 'Code');
         await deal.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
@@ -179,11 +179,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
-        const deal = drawer.getByRole('button', { name: 'The code', exact: true });
+        const deal = drawer.getByRole('button', { name: 'Code', exact: true });
         await expect(deal).toHaveAttribute('aria-expanded', 'true');
         await expect(deal).toHaveAttribute('aria-current', 'true');
         await expect(drawer.getByRole('link', { name: 'Invariants' })).toHaveAttribute('aria-current', 'page');
-        await expect(drawer.getByRole('button', { name: 'Your evidence', exact: true })).toHaveAttribute('aria-expanded', 'false');
+        await expect(drawer.getByRole('button', { name: 'Evidence', exact: true })).toHaveAttribute('aria-expanded', 'false');
     });
 
     test('backdrop click closes the drawer', async ({ page }) => {

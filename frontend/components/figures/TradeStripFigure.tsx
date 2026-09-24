@@ -123,12 +123,12 @@ function Padlock({ x, y, size, open, label }: { x: number; y: number; size: numb
     );
 }
 
-function Arrow({ from, to, id, label }: { from: readonly [number, number]; to: readonly [number, number]; id: string; label?: string }) {
+function Arrow({ from, to, id, label, labelX }: { from: readonly [number, number]; to: readonly [number, number]; id: string; label?: string; labelX?: number }) {
     return (
         <g>
             <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} strokeWidth={1.5} className="stroke-ink-muted" markerEnd={`url(#${id})`} />
             {label && (
-                <text x={(from[0] + to[0]) / 2} y={Math.min(from[1], to[1]) - 8} textAnchor="middle" fontSize={12} className="fill-ink-heading">
+                <text x={labelX ?? (from[0] + to[0]) / 2} y={Math.min(from[1], to[1]) - 8} textAnchor="middle" fontSize={12} className="fill-ink-heading">
                     {label}
                 </text>
             )}
@@ -211,7 +211,8 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, kitchenP
                         <Person x={HOUSE_X} y={ROW_Y - 20} />
                         <Tick x={HOUSE_X} y={ROW_Y - 62} />
                         <Arrow id={arrow(5)} from={[HOUSE_X - WALLET_R - 4, ROW_Y - 28]} to={[BIKE_X + WALLET_R + 4, ROW_Y - 28]} label={courierPayment} />
-                        <Arrow id={arrow(5)} from={[HOUSE_X - WALLET_R - 4, ROW_Y - 8]} to={[POT_X + WALLET_R + 4, ROW_Y - 8]} label={kitchenPayment} />
+                        {/* The meal's payment runs under the row, clear of the bicycle, and its number sits beside the chef. */}
+                        <Arrow id={arrow(5)} from={[HOUSE_X - 18, ROW_Y + 16]} to={[POT_X + WALLET_R + 4, ROW_Y + 16]} label={kitchenPayment} labelX={POT_X + WALLET_R + 26} />
                         <Padlock x={POT_X} y={ROW_Y + 42} size={1.4} open />
                         <Padlock x={BIKE_X} y={ROW_Y + 42} size={1.7} open />
                         <Padlock x={HOUSE_X} y={ROW_Y + 42} size={1.7} open />

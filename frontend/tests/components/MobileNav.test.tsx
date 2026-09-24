@@ -92,7 +92,7 @@ describe("MobileNav", () => {
         openDrawer();
 
         // Your evidence does not hold this route, so it opens closed.
-        const trigger = sectionButton("Your evidence");
+        const trigger = sectionButton("Evidence");
         const panelId = trigger.getAttribute("aria-controls");
         expect(panelId).toBeTruthy();
         expect(document.getElementById(panelId)).toBeNull();
@@ -117,11 +117,11 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        expect(sectionButton("The code")).toHaveAttribute("aria-expanded", "true");
-        fireEvent.click(sectionButton("Your evidence"));
+        expect(sectionButton("Code")).toHaveAttribute("aria-expanded", "true");
+        fireEvent.click(sectionButton("Evidence"));
 
-        expect(sectionButton("The code")).toHaveAttribute("aria-expanded", "false");
-        expect(sectionButton("Your evidence")).toHaveAttribute("aria-expanded", "true");
+        expect(sectionButton("Code")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Evidence")).toHaveAttribute("aria-expanded", "true");
     });
 
     // The reader lands where they already are: the group holding the route
@@ -131,12 +131,12 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        const code = sectionButton("The code");
+        const code = sectionButton("Code");
         expect(code).toHaveAttribute("aria-expanded", "true");
         expect(code).toHaveAttribute("aria-current", "true");
         expect(screen.getByRole("link", { name: "Invariants" })).toHaveAttribute("aria-current", "page");
         // Every other group stays shut.
-        expect(sectionButton("Your evidence")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Evidence")).toHaveAttribute("aria-expanded", "false");
     });
 
     // Wayfinding is comprehension: on mobile the drawer is the only way in, so

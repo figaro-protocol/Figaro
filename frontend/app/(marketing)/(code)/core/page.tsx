@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "The code — Figaro Protocol",
+    title: "Code — Figaro Protocol",
     description:
         "Four smart contracts, decentralized and permissionless. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
 });

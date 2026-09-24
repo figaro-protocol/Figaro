@@ -3,8 +3,8 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The six entries are the six doors, one per door page (Join, One trade,
-//   Communities, Terms, Your evidence, The code), each the doorway of its route
+//   The six entries are the six doors, one per door page (Join, Trade,
+//   Communities, Terms, Evidence, Code), each the doorway of its route
 //   group; enforced by scripts/lint-nav-structure.sh. The logo links home; no
 //   "Home" item here.
 //
@@ -29,11 +29,11 @@ export interface NavLink {
 
 export const NAV_LINKS: NavLink[] = [
     { href: "/members", label: "Join" },
-    { href: "/local-commerce", label: "One trade" },
+    { href: "/local-commerce", label: "Trade" },
     { href: "/communities", label: "Communities" },
     { href: "/terms", label: "Terms" },
-    { href: "/data", label: "Your evidence" },
-    { href: "/core", label: "The code" },
+    { href: "/data", label: "Evidence" },
+    { href: "/core", label: "Code" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The
@@ -80,13 +80,13 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 
 /**
  * The marketing map — the site tree, six doors, one per route group: Join
- * `(join)`, One trade `(trade)`, Communities `(communities)`, Terms `(terms)`,
- * Your evidence `(evidence)`, The code `(code)`. Each group's first entry is
+ * `(join)`, Trade `(trade)`, Communities `(communities)`, Terms `(terms)`,
+ * Evidence `(evidence)`, Code `(code)`. Each group's first entry is
  * its doorway, the door page; the entries after it are the pages that door
  * owns, in reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
  * The app tier's pages a door opens onto (Discover and Orders under Join, Audit
- * and the data explorer under Your evidence) and the two authoring tools under
+ * and the data explorer under Evidence) and the two authoring tools under
  * Terms are admitted beside their object pages. `(reference)` is footer chrome,
  * never nav; papers are reached through Working Groups — the corpus has ONE
  * surface. Claim and Join remain buttons on their object's page.
@@ -110,8 +110,8 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         ],
     },
     {
-        section: "One trade",
-        links: [{ href: "/local-commerce", label: "One trade" }],
+        section: "Trade",
+        links: [{ href: "/local-commerce", label: "Trade" }],
     },
     {
         section: "Communities",
@@ -137,9 +137,9 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         ],
     },
     {
-        section: "Your evidence",
+        section: "Evidence",
         links: [
-            { href: "/data", label: "Your evidence" },
+            { href: "/data", label: "Evidence" },
             { href: "/data/yours", label: "Your data" },
             { href: "/attestations", label: "Attestations" },
             { href: "/data/explore", label: "Data explorer" },
@@ -147,9 +147,9 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         ],
     },
     {
-        section: "The code",
+        section: "Code",
         links: [
-            { href: "/core", label: "The code" },
+            { href: "/core", label: "Code" },
             { href: "/kernel", label: "Kernel" },
             { href: "/invariants", label: "Invariants" },
             { href: "/spec", label: "Specifications" },
