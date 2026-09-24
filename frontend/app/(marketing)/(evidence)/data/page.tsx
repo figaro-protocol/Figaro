@@ -21,7 +21,7 @@ export default function DataDoor() {
                 title="Figaro: the data every trade leaves"
                 lead={
                     <>
-                        A resolved trade leaves two traces. On the chain, a fingerprint: who moved what, to whom, in which token, and whether it resolved. With the parties, the detail: the agreement, the evidence, the books. The protocol holds only the first. The second is yours, pinned where you choose, disclosed when you choose, and sold on your terms if you choose.
+                        For a regulator, a court or a forum, your books and your taxes, a market, a buyer of your data, and an agent. A resolved trade leaves two traces. On the chain, a fingerprint: who moved what, to whom, in which token, and whether it resolved. With the parties, the detail: the agreement, the evidence, the books. The protocol holds only the first. The second is yours, pinned where you choose, disclosed when you choose, and sold on your terms if you choose.
                     </>
                 }
             />

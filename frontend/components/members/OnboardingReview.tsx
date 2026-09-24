@@ -102,15 +102,15 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
  *  real deployed value (a local development record wires no delay);
  *  undefined means the read has not landed yet. */
 export function cooldownPhrase(seconds: bigint | undefined): string {
-    if (seconds === undefined) return "after this deployment's withdrawal delay";
-    if (seconds === 0n) return "at once — this deployment fixed its withdrawal delay at zero";
+    if (seconds === undefined) return "after the cooldown this chain sets";
+    if (seconds === 0n) return "at once; the cooldown here is zero";
     const days = Number(seconds) / 86_400;
     if (days >= 1) {
         const n = Math.round(days * 10) / 10;
-        return `after ${n} ${n === 1 ? "day" : "days"}, the withdrawal delay this deployment fixed`;
+        return `after ${n} ${n === 1 ? "day" : "days"}, the cooldown this chain sets`;
     }
     const hours = Math.round((Number(seconds) / 3_600) * 10) / 10;
-    return `after ${hours} ${hours === 1 ? "hour" : "hours"}, the withdrawal delay this deployment fixed`;
+    return `after ${hours} ${hours === 1 ? "hour" : "hours"}, the cooldown this chain sets`;
 }
 
 export function OnboardingReview() {

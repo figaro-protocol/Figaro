@@ -269,7 +269,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Substrate-Broadening Retroactive Public-Goods Funding",
                 href: "/papers/substrate-broadening-rpgf",
-                summary: "How 600 million florins pay clause and assembly designers after the fact: nine annual periods with rising budgets, usage counted on chain as it happens, breadth over volume, and Sybil resistance from a two-sided live stake.",
+                summary: "How 600 million florins reward clause and assembly designers after the fact: nine annual periods with rising budgets, usage counted on chain as it happens, breadth over volume, and Sybil resistance from a two-sided live stake.",
                 keywords: ["retroactive public goods funding", "mechanism design", "resource allocation", "verified usage accounting", "permissionless recording", "deterministic allocation", "clause authoring", "assembly design", "coordination protocols"],
                 industries: ["Tokens and treasuries", "Builders"],
             },

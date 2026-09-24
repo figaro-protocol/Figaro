@@ -62,7 +62,7 @@ export default function AgentsDoor() {
             </MarketingSection>
             <MarketingSection title="Agents that design.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    An agent that publishes a clause or an assembly is paid in florins each time a trade uses it, on the same terms as a person. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
+                    An agent that publishes a clause or an assembly is rewarded in florins each time a trade uses it, on the same terms as a person. <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Rewards</Link>
                 </p>
             </MarketingSection>
             <MarketingSection bottomPad="wide">

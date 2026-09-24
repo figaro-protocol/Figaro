@@ -79,6 +79,12 @@
             ]
         ],
         [
+            "/shipment",
+            [
+                "trade"
+            ]
+        ],
+        [
             "/communities",
             [
                 "communities"

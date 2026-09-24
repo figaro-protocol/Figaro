@@ -11,7 +11,7 @@ import { BelongingFigure } from "@/components/figures/BelongingFigure";
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
     description:
-        "My word is my bond. Figaro game theory provides your trades with the certainty existing institutions cannot: keeping your word is each party's best move. You know what it pays before you start, everyone is paid at once when the buyer closes, and you choose where you belong.",
+        "My word is my bond. Figaro game theory provides your trades with the certainty existing institutions cannot: keeping your word is each party's best move. You know what it pays before you start, everyone is paid at once when the buyer confirms, and you choose where you belong.",
 });
 
 // THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
@@ -35,8 +35,8 @@ const CLAIMS: { line: string; fact: string; figure: ReactNode }[] = [
         figure: <SignedTermsFigure />,
     },
     {
-        line: "Everyone is paid at once when the buyer closes.",
-        fact: "The moment the buyer closes the trade, everyone who added value is paid in full and every bond is refunded.",
+        line: "Everyone is paid at once when the buyer confirms.",
+        fact: "The moment the buyer confirms, everyone who added value is paid in full and every bond is refunded. A buyer who never confirms leaves their own bond locked, twice the payment.",
         figure: <ProcessStarFigure />,
     },
     {

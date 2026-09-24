@@ -117,7 +117,7 @@ The register every public page is measured against. The lexicon above gives the 
 - The honest caveat lives in the same paragraph as the claim it qualifies, never on another page.
 - No sentence a regulator, a court, or a rival could quote against the project out of context. If a sentence needs the page around it to be true, it is rewritten until it is true alone.
 - A ruling given in conversation is the meaning, not the wording. It is rendered in this voice before it reaches a page; a line supplied in conversation is never pasted verbatim.
-- A designer is rewarded, never paid. Payment is the buyer's transfer to the seller and belongs to the trade; the designer's florins are a reward for use, minted for the purpose.
+- A designer is rewarded, never paid. Payment is the buyer's transfer to the seller and belongs to the trade; the designer's florins are a reward for use, minted for the purpose. Every florin that leaves the reward reserve is a reward. "Paid in florins" is correct in one case only: a trade whose payment is denominated in florins, where the buyer pays the seller.
 - A designer builds a process, never a market: a clause, composed into an agreement, composed into an assembly, run as a process. A market in the world's sense keeps the world's word.
 
 The beta panel is the measure: a page passes when a stranger of its audience states its claim back in their own words with the mechanism attached.
