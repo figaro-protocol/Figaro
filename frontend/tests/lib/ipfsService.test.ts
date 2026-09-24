@@ -1,14 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-    DEFAULT_IPFS_SERVICE,
-    MAX_IPFS_DOCUMENT_BYTES,
-    contentRetryDelayMs,
-    extractIpfsCid,
-    fetchCappedContent,
-    ipfsTimeoutForBytes,
-    resolveContentUri,
-    resolveImageUri,
-} from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, MAX_IPFS_DOCUMENT_BYTES, contentRetryDelayMs, extractIpfsCid, fetchCappedContent, ipfsTimeoutForBytes, resolveContentUri, resolveImageUri } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
     describe("managed pin service (deploy-build JWT)", () => {
@@ -23,14 +14,14 @@ describe("ipfsService", () => {
                 ok: true,
                 status: 200,
                 statusText: "OK",
-                json: async () => ({ IpfsHash: "QmService1" }),
-                text: async () => JSON.stringify({ IpfsHash: "QmService1" }),
+                json: async () => ({ IpfsHash: "QmService1111111111111111111111111111111111111" }),
+                text: async () => JSON.stringify({ IpfsHash: "QmService1111111111111111111111111111111111111" }),
             });
             globalThis.fetch = fetchMock;
 
             const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
 
-            expect(result.cid).toBe("QmService1");
+            expect(result.cid).toBe("QmService1111111111111111111111111111111111111");
             const [url, init] = fetchMock.mock.calls[0];
             expect(url).toBe("https://api.pinata.cloud/pinning/pinFileToIPFS");
             expect(init.headers).toEqual({ Authorization: "Bearer test-jwt" });
@@ -46,14 +37,14 @@ describe("ipfsService", () => {
                 ok: true,
                 status: 200,
                 statusText: "OK",
-                json: async () => ({ Hash: "QmMyNode1" }),
-                text: async () => JSON.stringify({ Hash: "QmMyNode1" }),
+                json: async () => ({ Hash: "QmMyNode11111111111111111111111111111111111111" }),
+                text: async () => JSON.stringify({ Hash: "QmMyNode11111111111111111111111111111111111111" }),
             });
             globalThis.fetch = fetchMock;
 
             const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
 
-            expect(result.cid).toBe("QmMyNode1");
+            expect(result.cid).toBe("QmMyNode11111111111111111111111111111111111111");
             expect(String(fetchMock.mock.calls[0][0])).toBe("http://my-node:5001/api/v0/add?pin=true");
         });
 
@@ -68,7 +59,7 @@ describe("ipfsService", () => {
             });
             const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-            await expect(DEFAULT_IPFS_SERVICE.unpin("QmGone")).resolves.toBeUndefined();
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmGone1111111111111111111111111111111111111111")).resolves.toBeUndefined();
             expect(warn).toHaveBeenCalledOnce();
         });
     });
@@ -90,17 +81,17 @@ describe("ipfsService", () => {
             ok: true,
             status: 200,
             statusText: "OK",
-            json: async () => ({ Hash: "QmJson123" }),
-            text: async () => JSON.stringify({ Hash: "QmJson123" }),
+            json: async () => ({ Hash: "QmJson1231111111111111111111111111111111111111" }),
+            text: async () => JSON.stringify({ Hash: "QmJson1231111111111111111111111111111111111111" }),
         });
 
         const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
 
         expect(result).toEqual({
-            cid: "QmJson123",
-            uri: "ipfs://QmJson123",
-            path: "/ipfs/QmJson123",
-            gatewayUrl: "http://127.0.0.1:8080/ipfs/QmJson123",
+            cid: "QmJson1231111111111111111111111111111111111111",
+            uri: "ipfs://QmJson1231111111111111111111111111111111111111",
+            path: "/ipfs/QmJson1231111111111111111111111111111111111111",
+            gatewayUrl: "http://127.0.0.1:8080/ipfs/QmJson1231111111111111111111111111111111111111",
         });
     });
 
@@ -109,8 +100,8 @@ describe("ipfsService", () => {
             ok: true,
             status: 200,
             statusText: "OK",
-            json: async () => ({ Hash: "QmPdf123" }),
-            text: async () => JSON.stringify({ Hash: "QmPdf123" }),
+            json: async () => ({ Hash: "QmPdf12311111111111111111111111111111111111111" }),
+            text: async () => JSON.stringify({ Hash: "QmPdf12311111111111111111111111111111111111111" }),
         });
 
         const blob = new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], {
@@ -118,7 +109,7 @@ describe("ipfsService", () => {
         });
         const cid = await DEFAULT_IPFS_SERVICE.pinBlob(blob);
 
-        expect(cid).toBe("QmPdf123");
+        expect(cid).toBe("QmPdf12311111111111111111111111111111111111111");
         // pinBlob skips the image-only allowlist that uploadFile enforces.
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
@@ -128,17 +119,17 @@ describe("ipfsService", () => {
             ok: true,
             status: 200,
             statusText: "OK",
-            json: async () => ({ Hash: "QmFile123" }),
-            text: async () => JSON.stringify({ Hash: "QmFile123" }),
+            json: async () => ({ Hash: "QmFike1231111111111111111111111111111111111111" }),
+            text: async () => JSON.stringify({ Hash: "QmFike1231111111111111111111111111111111111111" }),
         });
 
         const result = await DEFAULT_IPFS_SERVICE.uploadFile(
             makeFile("photo.jpg", "image/jpeg", 1024),
         );
 
-        expect(result.cid).toBe("QmFile123");
-        expect(result.uri).toBe("ipfs://QmFile123");
-        expect(result.path).toBe("/ipfs/QmFile123");
+        expect(result.cid).toBe("QmFike1231111111111111111111111111111111111111");
+        expect(result.uri).toBe("ipfs://QmFike1231111111111111111111111111111111111111");
+        expect(result.path).toBe("/ipfs/QmFike1231111111111111111111111111111111111111");
     });
 
     it("resolves ipfs, gateway-path, and http URIs for retrieval", () => {
@@ -156,7 +147,7 @@ describe("ipfsService", () => {
 
     describe("resolveContentUri (the canonical resolver)", () => {
         it("resolves ipfs://, /ipfs/, and http(s):// the same as the service method", () => {
-            expect(resolveContentUri("ipfs://QmXyz123/logo.png")).toBe("http://127.0.0.1:8080/ipfs/QmXyz123/logo.png");
+            expect(resolveContentUri("ipfs://QmXyz12311111111111111111111111111111111111111/logo.png")).toBe("http://127.0.0.1:8080/ipfs/QmXyz12311111111111111111111111111111111111111/logo.png");
             expect(resolveContentUri("/ipfs/bafy123")).toBe("http://127.0.0.1:8080/ipfs/bafy123");
             expect(resolveContentUri("http://example.com/logo.png")).toBe("http://example.com/logo.png");
             expect(resolveContentUri("https://cdn.example.com/logo.png")).toBe("https://cdn.example.com/logo.png");
@@ -270,14 +261,14 @@ describe("ipfsService", () => {
                 ok: true,
                 status: 200,
                 statusText: "OK",
-                json: async () => ({ Pins: ["QmGone"] }),
-                text: async () => JSON.stringify({ Pins: ["QmGone"] }),
+                json: async () => ({ Pins: ["QmGone1111111111111111111111111111111111111111"] }),
+                text: async () => JSON.stringify({ Pins: ["QmGone1111111111111111111111111111111111111111"] }),
             });
 
-            await DEFAULT_IPFS_SERVICE.unpin("QmGone");
+            await DEFAULT_IPFS_SERVICE.unpin("QmGone1111111111111111111111111111111111111111");
 
             const [url, init] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
-            expect(url).toBe("http://127.0.0.1:5001/api/v0/pin/rm?arg=QmGone");
+            expect(url).toBe("http://127.0.0.1:5001/api/v0/pin/rm?arg=QmGone1111111111111111111111111111111111111111");
             expect(init.method).toBe("POST");
         });
 
@@ -290,7 +281,7 @@ describe("ipfsService", () => {
                 text: async () => JSON.stringify({ Message: "not pinned or pinned indirectly" }),
             });
 
-            await expect(DEFAULT_IPFS_SERVICE.unpin("QmAbsent")).resolves.toBeUndefined();
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmAbsent11111111111111111111111111111111111111")).resolves.toBeUndefined();
         });
 
         it("throws on any other node failure", async () => {
@@ -302,14 +293,14 @@ describe("ipfsService", () => {
                 text: async () => JSON.stringify({ Message: "some other failure" }),
             });
 
-            await expect(DEFAULT_IPFS_SERVICE.unpin("QmBroken")).rejects.toThrow("IPFS unpin failed");
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmBroken11111111111111111111111111111111111111")).rejects.toThrow("IPFS unpin failed");
         });
     });
 
     describe("extractIpfsCid (the erasure path's admission check)", () => {
         it("extracts the bare CID from every IPFS URI shape", () => {
-            expect(extractIpfsCid("ipfs://QmAbc123")).toBe("QmAbc123");
-            expect(extractIpfsCid("ipfs://QmAbc123/logo.png")).toBe("QmAbc123");
+            expect(extractIpfsCid("ipfs://QmAbc12311111111111111111111111111111111111111")).toBe("QmAbc12311111111111111111111111111111111111111");
+            expect(extractIpfsCid("ipfs://QmAbc12311111111111111111111111111111111111111/logo.png")).toBe("QmAbc12311111111111111111111111111111111111111");
             expect(extractIpfsCid("/ipfs/bafyAbc")).toBe("bafyAbc");
             expect(extractIpfsCid("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")).toBe(
                 "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
@@ -328,14 +319,14 @@ describe("ipfsService", () => {
         const types = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
-            json: async () => ({ Hash: "QmValid" }),
-            text: async () => JSON.stringify({ Hash: "QmValid" }),
+            json: async () => ({ Hash: "QmVakid111111111111111111111111111111111111111" }),
+            text: async () => JSON.stringify({ Hash: "QmVakid111111111111111111111111111111111111111" }),
         });
 
         for (const type of types) {
             const file = makeFile("test", type, 100);
             const result = await DEFAULT_IPFS_SERVICE.uploadFile(file);
-            expect(result.cid).toBe("QmValid");
+            expect(result.cid).toBe("QmVakid111111111111111111111111111111111111111");
         }
     });
 
@@ -502,19 +493,19 @@ describe("ipfsService", () => {
         it("re-reads the same /ipfs/ path on the fallback gateway when the primary read fails", async () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
             const seen: string[] = [];
-            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh/spec.json", {
+            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh111111111111111111111111111111111111111/spec.json", {
                 fetch: async (u) => {
                     seen.push(u);
                     return u.startsWith("https://public.example") ? okResponse("{}") : failedResponse(504);
                 },
             });
             expect(res.ok).toBe(true);
-            expect(seen).toEqual(["http://127.0.0.1:8080/ipfs/QmFresh/spec.json", "https://public.example/ipfs/QmFresh/spec.json"]);
+            expect(seen).toEqual(["http://127.0.0.1:8080/ipfs/QmFresh111111111111111111111111111111111111111/spec.json", "https://public.example/ipfs/QmFresh111111111111111111111111111111111111111/spec.json"]);
         });
 
         it("a thrown network error on the primary also walks to the fallback", async () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
-            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh", {
+            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh111111111111111111111111111111111111111", {
                 fetch: async (u) => {
                     if (u.startsWith("http://127.0.0.1:8080")) throw new TypeError("Failed to fetch");
                     return okResponse("{}");
@@ -525,7 +516,7 @@ describe("ipfsService", () => {
 
         it("returns the LAST outcome when every gateway fails — callers' !ok branch is unchanged", async () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
-            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmMissing", {
+            const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmMissing1111111111111111111111111111111111111", {
                 fetch: async (u) => failedResponse(u.startsWith("https://public.example") ? 404 : 504),
             });
             expect(res.ok).toBe(false);
@@ -534,7 +525,7 @@ describe("ipfsService", () => {
 
         it("no fallback configured → exactly one read", async () => {
             const seen: string[] = [];
-            await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmX", {
+            await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmX1111111111111111111111111111111111111111111", {
                 fetch: async (u) => {
                     seen.push(u);
                     return failedResponse(504);
@@ -547,13 +538,13 @@ describe("ipfsService", () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
             localStorage.setItem("figaro.user-endpoints", JSON.stringify({ ipfsGatewayUrl: "http://my-node:8080" }));
             const seen: string[] = [];
-            await fetchCappedContent("http://my-node:8080/ipfs/QmX", {
+            await fetchCappedContent("http://my-node:8080/ipfs/QmX1111111111111111111111111111111111111111111", {
                 fetch: async (u) => {
                     seen.push(u);
                     return failedResponse(504);
                 },
             });
-            expect(seen).toEqual(["http://my-node:8080/ipfs/QmX"]);
+            expect(seen).toEqual(["http://my-node:8080/ipfs/QmX1111111111111111111111111111111111111111111"]);
         });
 
         it("an http(s) passthrough locator names its own host — no alternate", async () => {
@@ -572,7 +563,7 @@ describe("ipfsService", () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
             const seen: string[] = [];
             await expect(
-                fetchCappedContent("http://127.0.0.1:8080/ipfs/QmHuge", {
+                fetchCappedContent("http://127.0.0.1:8080/ipfs/QmHuge1111111111111111111111111111111111111111", {
                     fetch: async (u) => {
                         seen.push(u);
                         return {
@@ -592,5 +583,25 @@ describe("ipfsService", () => {
         it("contentRetryDelayMs: 10 s, 20 s, 40 s, then a 60 s ceiling", () => {
             expect([0, 1, 2, 3, 4, 9].map(contentRetryDelayMs)).toEqual([10_000, 20_000, 40_000, 60_000, 60_000, 60_000]);
         });
+    });
+});
+
+describe("resolveContentUri — a permissionless registry can anchor any string as a URI", () => {
+    const gw = "http://127.0.0.1:8080";
+    const cid = "QmakNHXQng43h94f8TjiTmCk7vQ2remNPrWW4QGR3vESxL";
+    it("resolves a CID path, with or without a sub-path", () => {
+        expect(resolveContentUri(`ipfs://${cid}`, gw)).toBe(`${gw}/ipfs/${cid}`);
+        expect(resolveContentUri(`ipfs://${cid}/profile.json`, gw)).toBe(`${gw}/ipfs/${cid}/profile.json`);
+        expect(resolveContentUri(`/ipfs/${cid}`, gw)).toBe(`${gw}/ipfs/${cid}`);
+        expect(resolveContentUri(cid, gw)).toBe(`${gw}/ipfs/${cid}`);
+        expect(resolveContentUri("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", gw)).toBe(
+            `${gw}/ipfs/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi`,
+        );
+    });
+    it("treats an IPFS path that is not a CID as absence — no gateway request, no 400", () => {
+        expect(resolveContentUri("ipfs://rpgf-e2e-trade-seller", gw)).toBeNull();
+        expect(resolveContentUri("/ipfs/not-a-cid", gw)).toBeNull();
+        expect(resolveContentUri("Qm-too-short", gw)).toBeNull();
+        expect(extractIpfsCid("ipfs://rpgf-e2e-trade-seller")).toBe("rpgf-e2e-trade-seller");
     });
 });

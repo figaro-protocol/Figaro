@@ -48,7 +48,7 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        const result = await fetchMemberCatalogue("ipfs://QmTest");
+        const result = await fetchMemberCatalogue("ipfs://QmTest1111111111111111111111111111111111111111");
         expect(result).not.toBeNull();
         expect(result!.subjectAddress).toBe("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
         expect(result!.items).toHaveLength(1);
@@ -61,7 +61,7 @@ describe("catalogueFetcher", () => {
             status: 404,
         } as Response);
 
-        expect(await fetchMemberCatalogue("ipfs://QmNotFound")).toBeNull();
+        expect(await fetchMemberCatalogue("ipfs://QmNotFound111111111111111111111111111111111111")).toBeNull();
     });
 
     it("returns null for invalid JSON", async () => {
@@ -71,7 +71,7 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify({ invalid: true })),
         } as Response);
 
-        expect(await fetchMemberCatalogue("ipfs://QmBad")).toBeNull();
+        expect(await fetchMemberCatalogue("ipfs://QmBad11111111111111111111111111111111111111111")).toBeNull();
     });
 
     it("caches results and does not refetch", async () => {
@@ -81,8 +81,8 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        await fetchMemberCatalogue("ipfs://QmCached");
-        await fetchMemberCatalogue("ipfs://QmCached");
+        await fetchMemberCatalogue("ipfs://QmCached11111111111111111111111111111111111111");
+        await fetchMemberCatalogue("ipfs://QmCached11111111111111111111111111111111111111");
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
@@ -94,9 +94,9 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        await fetchMemberCatalogue("ipfs://QmInv");
-        invalidateCatalogueCache("ipfs://QmInv");
-        await fetchMemberCatalogue("ipfs://QmInv");
+        await fetchMemberCatalogue("ipfs://QmJnv11111111111111111111111111111111111111111");
+        invalidateCatalogueCache("ipfs://QmJnv11111111111111111111111111111111111111111");
+        await fetchMemberCatalogue("ipfs://QmJnv11111111111111111111111111111111111111111");
 
         expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
@@ -108,11 +108,11 @@ describe("catalogueFetcher", () => {
             text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
         } as Response);
 
-        await fetchMemberCatalogue("ipfs://QmA");
-        await fetchMemberCatalogue("ipfs://QmB");
+        await fetchMemberCatalogue("ipfs://QmA1111111111111111111111111111111111111111111");
+        await fetchMemberCatalogue("ipfs://QmB1111111111111111111111111111111111111111111");
         clearCatalogueCache();
-        await fetchMemberCatalogue("ipfs://QmA");
-        await fetchMemberCatalogue("ipfs://QmB");
+        await fetchMemberCatalogue("ipfs://QmA1111111111111111111111111111111111111111111");
+        await fetchMemberCatalogue("ipfs://QmB1111111111111111111111111111111111111111111");
 
         expect(fetchSpy).toHaveBeenCalledTimes(4);
     });
@@ -120,7 +120,7 @@ describe("catalogueFetcher", () => {
     it("returns null on network error", async () => {
         vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
 
-        expect(await fetchMemberCatalogue("ipfs://QmErr")).toBeNull();
+        expect(await fetchMemberCatalogue("ipfs://QmErr11111111111111111111111111111111111111111")).toBeNull();
     });
 });
 
@@ -134,7 +134,7 @@ describe("catalogueFetcher", () => {
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),
     DEFAULT_IPFS_SERVICE: {
-        pinJSON: vi.fn().mockResolvedValue("QmPublished123"),
+        pinJSON: vi.fn().mockResolvedValue("QmPubkished12311111111111111111111111111111111"),
         buildURI: (cid: string) => `ipfs://${cid}`,
     },
 }));
@@ -148,26 +148,26 @@ describe("cataloguePublisher", () => {
     describe("publishMemberCatalogue", () => {
         it("lets catalogue services publish through an injected evidence transport", async () => {
             const evidenceTransport = {
-                pinJSON: vi.fn().mockResolvedValue("QmInjectedMerchant123"),
-                buildURI: vi.fn().mockReturnValue("ipfs://QmInjectedMerchant123"),
+                pinJSON: vi.fn().mockResolvedValue("QmJnjectedMerchant1231111111111111111111111111"),
+                buildURI: vi.fn().mockReturnValue("ipfs://QmJnjectedMerchant1231111111111111111111111111"),
             };
             const service = createCatalogueService({ evidenceTransport: evidenceTransport as never });
 
             const result = await service.publishMemberCatalogue(VALID_MERCHANT_DOC);
 
             expect(evidenceTransport.pinJSON).toHaveBeenCalledWith(VALID_MERCHANT_DOC);
-            expect(evidenceTransport.buildURI).toHaveBeenCalledWith("QmInjectedMerchant123");
+            expect(evidenceTransport.buildURI).toHaveBeenCalledWith("QmJnjectedMerchant1231111111111111111111111111");
             expect(result).toEqual({
-                cid: "QmInjectedMerchant123",
-                uri: "ipfs://QmInjectedMerchant123",
+                cid: "QmJnjectedMerchant1231111111111111111111111111",
+                uri: "ipfs://QmJnjectedMerchant1231111111111111111111111111",
             });
         });
 
         it("validates, pins, and returns a correct IPFS URI", async () => {
             const result = await publishMemberCatalogue(VALID_MERCHANT_DOC);
 
-            expect(result.cid).toBe("QmPublished123");
-            expect(result.uri).toBe("ipfs://QmPublished123");
+            expect(result.cid).toBe("QmPubkished12311111111111111111111111111111111");
+            expect(result.uri).toBe("ipfs://QmPubkished12311111111111111111111111111111111");
         });
 
         it("rejects invalid merchant documents before pinning", async () => {
@@ -180,8 +180,8 @@ describe("cataloguePublisher", () => {
             const emptyMenu = { ...VALID_MERCHANT_DOC, items: [] };
             const result = await publishMemberCatalogue(emptyMenu);
 
-            expect(result.cid).toBe("QmPublished123");
-            expect(result.uri).toBe("ipfs://QmPublished123");
+            expect(result.cid).toBe("QmPubkished12311111111111111111111111111111111");
+            expect(result.uri).toBe("ipfs://QmPubkished12311111111111111111111111111111111");
         });
 
         it("invalidates caches after publishing", async () => {
@@ -191,7 +191,7 @@ describe("cataloguePublisher", () => {
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
                 text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
-            await fetchMemberCatalogue("ipfs://QmPublished123");
+            await fetchMemberCatalogue("ipfs://QmPubkished12311111111111111111111111111111111");
 
             // Publish should clear the cache for the new URI
             await publishMemberCatalogue(VALID_MERCHANT_DOC);
@@ -202,7 +202,7 @@ describe("cataloguePublisher", () => {
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
                 text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
-            await fetchMemberCatalogue("ipfs://QmPublished123");
+            await fetchMemberCatalogue("ipfs://QmPubkished12311111111111111111111111111111111");
         });
     });
 });

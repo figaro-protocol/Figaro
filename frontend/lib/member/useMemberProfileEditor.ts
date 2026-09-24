@@ -15,11 +15,14 @@
  *      dispatch `updateProfile`.
  *   4. On success, redirect back to `/members/manage`.
  *
- * Wallet-not-connected and wallet-not-registered cases redirect to
- * `/members/manage` (mirrors the redirect-on-miss pattern at
- * `/members` itself). The hook owns the redirect discipline and the
- * pre-form gate ladder (`gate`, rendered by `MemberEditGate`); the
- * caller owns seeding, `handleSave`, and the form JSX.
+ * A wallet the registry has never seen is redirected to `/members/manage`
+ * (mirrors the redirect-on-miss pattern at `/members` itself). A wallet
+ * that is not connected is NOT redirected: the wallet is a signer, not a
+ * login, and a wallet may connect after the page mounts (the injected
+ * devnet wallet does; a person's does when they open it) — the gate waits
+ * for it instead. The hook owns the redirect discipline and the pre-form
+ * gate ladder (`gate`, rendered by `MemberEditGate`); the caller owns
+ * seeding, `handleSave`, and the form JSX.
  */
 "use client";
 
@@ -116,23 +119,21 @@ export function useMemberProfileEditor(
     const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
     const saveInFlight = updater.isPending || updater.isConfirming || extraSaveInFlight;
 
-    // Redirect unregistered wallets to onboarding — but only on COMPLETED
-    // state: `!registryLoading && !registryData` is a completed scan that
-    // found nothing (isLoading starts true in useMemberProfile), never a
-    // still-hydrating window. And never navigate away mid-save — the
-    // redirect unmounts the form and kills the in-flight pin/tx (the
-    // 2026-07-09 e2e flake fired on exactly this, between Save and the
-    // transaction dispatch).
+    // Redirect unregistered wallets to onboarding — but only for a wallet
+    // that is CONNECTED and only on COMPLETED state: `!registryLoading &&
+    // !registryData` is a completed scan that found nothing (isLoading starts
+    // true in useMemberProfile), never a still-hydrating window. A wallet
+    // that has not connected yet is never sent away — it may connect a
+    // moment after mount, and the gate below waits for it. And never
+    // navigate away mid-save — the redirect unmounts the form and kills the
+    // in-flight pin/tx.
     useEffect(() => {
         if (!mounted || saveInFlight) return;
-        if (!isConnected) {
-            router.replace("/members/manage");
-            return;
-        }
+        if (!isConnected || !address) return;
         if (!registryLoading && !registryData) {
             router.replace("/members/manage");
         }
-    }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
+    }, [mounted, saveInFlight, isConnected, address, registryLoading, registryData, router]);
 
     // Fetch the on-chain profile JSON.
     useEffect(() => {
@@ -186,7 +187,7 @@ export function useMemberProfileEditor(
     if (!mounted) {
         gate = { kind: "waiting", message: "Loading…" };
     } else if (!isConnected) {
-        gate = { kind: "waiting", message: "Redirecting…" };
+        gate = { kind: "waiting", message: "Connect your wallet to edit." };
     } else if (registryLoading || !registryData) {
         gate = { kind: "waiting", message: "Reading registry…" };
     } else if (fetchError) {

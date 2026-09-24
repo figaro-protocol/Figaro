@@ -120,13 +120,25 @@ async function warmPublicGateway(cid: string, gatewayUrl: string): Promise<void>
  */
 export function resolveContentUri(uri: string, gatewayUrl: string = activeIpfsGatewayUrl()): string | null {
     if (!uri) return null;
-    if (uri.startsWith("ipfs://")) return `${gatewayUrl}/ipfs/${uri.slice("ipfs://".length)}`;
-    if (uri.startsWith("/ipfs/")) return `${gatewayUrl}${uri}`;
+    // An IPFS path whose first segment is not a CID is not content: the
+    // registries are permissionless, so a wallet can anchor any string as
+    // its URI, and a gateway answers such a path with a 400. Absence, never
+    // a request.
+    if (uri.startsWith("ipfs://")) {
+        const path = uri.slice("ipfs://".length);
+        return isCidPath(path) ? `${gatewayUrl}/ipfs/${path}` : null;
+    }
+    if (uri.startsWith("/ipfs/")) return isCidPath(uri.slice("/ipfs/".length)) ? `${gatewayUrl}${uri}` : null;
     if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
     // Bare CIDv0 (Qm…) / CIDv1 (bafy…) fallback.
-    if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) return `${gatewayUrl}/ipfs/${uri}`;
+    if (isCidPath(uri)) return `${gatewayUrl}/ipfs/${uri}`;
     // RA-2: reject unrecognised schemes.
     return null;
+}
+
+/** Whether an IPFS path begins with a CID: CIDv0 (`Qm` + 44 base58 chars) or CIDv1 (`bafy` + base-32 chars). */
+function isCidPath(path: string): boolean {
+    return /^Qm[1-9A-HJ-NP-Za-km-z]{44}(\/|$)/.test(path) || /^bafy[a-z0-9]+(\/|$)/.test(path);
 }
 
 /**
@@ -155,7 +167,7 @@ export function extractIpfsCid(uri: string): string | null {
     if (!uri) return null;
     if (uri.startsWith("ipfs://")) return uri.slice("ipfs://".length).split("/")[0] || null;
     if (uri.startsWith("/ipfs/")) return uri.slice("/ipfs/".length).split("/")[0] || null;
-    if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) return uri.split("/")[0];
+    if (isCidPath(uri)) return uri.split("/")[0];
     return null;
 }
 
