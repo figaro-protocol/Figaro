@@ -4,20 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
-import { navGroupShown } from "@/lib/shared/sections";
 import { navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
 /**
- * Desktop publication nav — the header's second level: the reader's section's
- * own tree, rendering the groups of `MARKETING_MAP` that section shows
- * (`navGroupShown`), in its own row under the main row; nothing on the home page,
- * whose chrome is the three section links alone. Each group title is an INERT disclosure
- * button (`components/ui/Disclosure`, the same primitive the drawer's
- * sections use — the ruled tree's semantics: titles are headers, never
- * links); its panel lists ALL of the section's pages, first page included.
- * Only pages navigate. Click-to-open; Escape and outside-click close —
- * never hover-only.
+ * Desktop nav — one row, the six doors of `MARKETING_MAP`, on every page
+ * including the home page. Each door is a disclosure button
+ * (`components/ui/Disclosure`, the same primitive the drawer uses); its panel
+ * lists the door's pages, the door page first. Only pages navigate.
+ * Click-to-open; Escape and outside-click close — never hover-only.
  *
  * "You are here" runs on three ORTHOGONAL channels so no two states are
  * confusable: FILL is hover (pointer is here), RING is focus (keyboard is
@@ -50,14 +45,12 @@ export function NavTreeRow() {
         };
     }, [open]);
 
-    const groups = MARKETING_MAP.filter((group) => navGroupShown(group.links.map((l) => l.href), pathname));
-    if (groups.length === 0) return null;
+    const groups = MARKETING_MAP;
 
     return (
-        <div className="hidden md:block border-t border-default">
         <nav
             ref={rootRef}
-            className="container mx-auto px-6 py-1.5 flex justify-center items-center gap-1 text-sm"
+            className="hidden md:flex flex-1 justify-center items-center gap-1 text-sm"
             data-testid="desktop-nav"
         >
             {groups.map((group) => {
@@ -108,6 +101,5 @@ export function NavTreeRow() {
                 );
             })}
         </nav>
-        </div>
     );
 }

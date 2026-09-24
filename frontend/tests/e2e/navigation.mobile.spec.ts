@@ -94,7 +94,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // Closed, it is one row per section — the whole map fits the viewport with
     // nothing to scroll, which is the point of the accordion.
     test('the closed drawer fits the viewport without scrolling', async ({ page }) => {
-        // A section page: the home page's drawer is the six door rows alone.
+        // A door page: its own door opens on arrival.
         await page.goto('/members', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
@@ -125,20 +125,21 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // The drawer now carries the whole marketing map — a stranger's first visit
     // is usually a phone, so this is the entry path that has to work.
     test('the marketing drawer opens the whole map, not just the doorways', async ({ page }) => {
-        // Two levels: from the home page the drawer is the six doors; a door
-        // row opens the section, whose drawer carries that section's groups.
+        // From the home page the drawer is the six doors, all shut; a door opens
+        // to its pages, the door page first.
         await page.goto('/', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
-        await expect(drawer.locator('button[aria-expanded]')).toHaveCount(0);
-        await drawer.getByTestId('mobile-nav-sections').getByRole('link', { name: 'The code' }).click();
+        await expect(drawer.locator('button[aria-expanded]')).toHaveCount(6);
+        await expect(drawer.locator('button[aria-expanded="true"]')).toHaveCount(0);
+        const code = await expandSection(drawer, 'The code');
+        await code.getByRole('link', { name: 'The code', exact: true }).click();
         await expect(page).toHaveURL(/\/core\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
 
-        // A page from BEHIND each doorway, from within the section that shows
-        // its group. Labels track navLinks.ts (the one nav source): the
+        // A page from BEHIND each doorway. Labels track navLinks.ts (the one nav source): the
         // invariants page is labelled by its own metadata.title, and the papers
         // are reached through Working Groups — the corpus is unbounded, so the
         // working-groups page IS the index (no /papers index exists).

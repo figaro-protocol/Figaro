@@ -10,7 +10,6 @@ import {
     NAV_LINKS_APP_PRIMARY,
     NAV_LINKS_MARKETING_DRAWER,
 } from "@/components/shared/navLinks";
-import { SECTION_IDS, navGroupShown, sectionLabel, sectionLanding } from "@/lib/shared/sections";
 
 // Mock next/navigation. `pathnameMock` is reassigned per test: the drawer's
 // second level (which groups show, which is pre-expanded) derives from the route.
@@ -21,7 +20,6 @@ vi.mock("next/navigation", () => ({
 
 const openDrawer = () => fireEvent.click(screen.getByLabelText(/toggle mobile menu/i));
 const sectionButton = (name: string) => screen.getByRole("button", { name });
-const sectionRows = () => screen.getByTestId("mobile-nav-sections");
 
 describe("MobileNav", () => {
     beforeEach(() => {
@@ -36,43 +34,45 @@ describe("MobileNav", () => {
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     });
 
-    // The first level: the six doors as plain rows on every page, the
-    // reader's own marked current.
-    it("lists the six doors as plain rows and marks the reader's own", () => {
-        pathnameMock = "/clauses/";
-        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
-        openDrawer();
-
-        const rows = sectionRows();
-        for (const id of SECTION_IDS) {
-            expect(within(rows).getByRole("link", { name: sectionLabel(id) })).toHaveAttribute("href", sectionLanding(id));
-        }
-        expect(within(rows).getByRole("link", { name: "Terms" })).toHaveAttribute("aria-current", "true");
-        expect(within(rows).getByRole("link", { name: "Join" })).not.toHaveAttribute("aria-current");
-    });
-
-    // The home page is the router: the drawer there is the six doors and nothing inside them.
-    it("on the home page the drawer holds the six doors and no group", () => {
-        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
-        openDrawer();
-
-        expect(within(sectionRows()).getAllByRole("link")).toHaveLength(SECTION_IDS.length);
-        expect(screen.queryAllByRole("button", { expanded: false })).toHaveLength(0);
-    });
-
-    // The second level: the reader's section's groups — the one holding the
-    // route open, every other collapsed with no page link rendered until it is
-    // expanded; other sections' groups are absent.
-    it("opens with the section's groups collapsed, except the one holding the route", () => {
+    // The six doors, every one on every page, as an accordion: the door holding
+    // the route open and marked current, every other collapsed.
+    it("lists the six doors as an accordion and marks the reader's own", () => {
         pathnameMock = "/clauses/";
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
         for (const group of MARKETING_MAP) {
-            if (!navGroupShown(group.links.map((l) => l.href), pathnameMock)) {
-                expect(screen.queryByRole("button", { name: group.section })).toBeNull();
-                continue;
+            const trigger = sectionButton(group.section);
+            if (group.section === "Terms") {
+                expect(trigger).toHaveAttribute("aria-expanded", "true");
+                expect(trigger).toHaveAttribute("aria-current", "true");
+            } else {
+                expect(trigger).toHaveAttribute("aria-expanded", "false");
+                expect(trigger).not.toHaveAttribute("aria-current");
             }
+        }
+    });
+
+    // The home page is in no door: the drawer there is the six doors, all shut.
+    it("on the home page the drawer holds the six doors, all collapsed", () => {
+        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
+        openDrawer();
+
+        // The marketing drawer's groups: the six doors plus the App group the
+        // drawer derives from the primary row.
+        const groupCount = NAV_LINKS_MARKETING_DRAWER.filter((l) => l.isSectionHeader).length;
+        const drawer = within(screen.getByRole("dialog", { name: "Mobile navigation" }));
+        expect(drawer.getAllByRole("button", { expanded: false })).toHaveLength(groupCount);
+        expect(drawer.queryAllByRole("button", { expanded: true })).toHaveLength(0);
+    });
+
+    // A collapsed door renders no page link until it is expanded.
+    it("opens with every door collapsed except the one holding the route", () => {
+        pathnameMock = "/clauses/";
+        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
+        openDrawer();
+
+        for (const group of MARKETING_MAP) {
             if (group.section === "Terms") {
                 expect(sectionButton("Terms")).toHaveAttribute("aria-expanded", "true");
                 continue;
@@ -91,8 +91,7 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        // Your evidence is a group the code section shows (it holds the data
-        // explorer) and does not hold this route, so it opens closed.
+        // Your evidence does not hold this route, so it opens closed.
         const trigger = sectionButton("Your evidence");
         const panelId = trigger.getAttribute("aria-controls");
         expect(panelId).toBeTruthy();
@@ -141,19 +140,15 @@ describe("MobileNav", () => {
     });
 
     // Wayfinding is comprehension: on mobile the drawer is the only way in, so
-    // every page on the marketing map must be reachable from it — each group
-    // from within the section that shows it.
-    it("the marketing drawer exposes every page on the marketing map from its section", () => {
+    // every page on the marketing map must be reachable from it.
+    it("the marketing drawer exposes every page on the marketing map", () => {
         for (const group of MARKETING_MAP) {
-            const landing = SECTION_IDS.map(sectionLanding).find((l) => navGroupShown(group.links.map((x) => x.href), l));
-            expect(landing, `some section shows the ${group.section} group`).toBeTruthy();
-            pathnameMock = `${landing}/`;
+            pathnameMock = "/";
             render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
             openDrawer();
 
             const trigger = sectionButton(group.section);
-            // The landing's own group is already open; every other opens on a tap.
-            if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+            fireEvent.click(trigger);
             const panel = document.getElementById(trigger.getAttribute("aria-controls"));
             for (const link of group.links) {
                 expect(within(panel).getByRole("link", { name: link.label })).toHaveAttribute("href", link.href);

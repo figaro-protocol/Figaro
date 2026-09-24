@@ -2,16 +2,13 @@ import sectionMap from "./sections.json";
 
 // The section map's reader. sections.json is the one owner of which section
 // (door) owns which route; this module answers, for the chrome: which section
-// the reader is in, which nav groups that section shows, and which FAQ is the
-// section's own. One host — every link stays an in-tree path.
+// the reader is in, and which FAQ is the section's own. One host — every link stays an in-tree path.
 
 export type SectionId = "join" | "trade" | "communities" | "terms" | "evidence" | "code";
 
-export const SECTION_IDS: readonly SectionId[] = ["join", "trade", "communities", "terms", "evidence", "code"];
 
 type RouteEntry = readonly [prefix: string, sections: readonly SectionId[]];
 const ROUTES = sectionMap.routes as unknown as readonly RouteEntry[];
-const LANDINGS = sectionMap.landings as Record<SectionId, string>;
 
 /** A pathname without its query, hash, or trailing slash; "/" stays "/". */
 function normalize(pathname: string): string {
@@ -41,37 +38,9 @@ export function currentSection(pathname: string): SectionId | null {
     return sectionsOfRoute(pathname)[0] ?? null;
 }
 
-/** Each section's landing page. */
-export function sectionLanding(section: SectionId): string {
-    return LANDINGS[section];
-}
-
 /** Each section's own FAQ: the builders' for terms, the core's for the code, the users' for every other door and the home page. */
 export function sectionFaqRoute(section: SectionId | null): string {
     if (section === "terms") return "/terms/faq";
     if (section === "code") return "/core/faq";
     return "/faq";
-}
-
-/**
- * Whether a nav group belongs in the second level of the chrome on the page
- * at `pathname`: it does if any page it lists is shown by the reader's
- * section. The home page — the router, in no section — has no second level; its
- * chrome is the three section links alone.
- */
-export function navGroupShown(hrefs: readonly string[], pathname: string): boolean {
-    const section = currentSection(pathname);
-    if (!section) return false;
-    return hrefs.some((h) => sectionsOfRoute(h).includes(section));
-}
-
-/** The section's name in the header — the door's name; the home page has none. */
-export function sectionLabel(section: SectionId | null): string | null {
-    if (section === "join") return "Join";
-    if (section === "trade") return "One trade";
-    if (section === "communities") return "Communities";
-    if (section === "terms") return "Terms";
-    if (section === "evidence") return "Your evidence";
-    if (section === "code") return "The code";
-    return null;
 }

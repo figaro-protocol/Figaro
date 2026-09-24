@@ -4,8 +4,8 @@ import { FigureFrame } from "@/components/figures/FigureFrame";
 import { ArrowMarker } from "@/components/figures/ArrowMarker";
 
 /**
- * One trade, start to finish, as six pictures — a strip a reader follows
- * without reading. Three wallets drawn as what they are to a layman (a house,
+ * One trade, start to finish, as six numbered pictures in one column — a
+ * strip a reader follows without reading. Three wallets drawn as what they are to a layman (a house,
  * a pot, a bicycle), one sheet of terms, one padlock per bond, and the two
  * numbers of the meal. Words appear only as captions, at most three each.
  * The arithmetic behind the padlocks belongs to `StackedBondChainFigure`.
@@ -143,7 +143,7 @@ const VIEWBOX = "0 20 400 200";
 
 function Panel({ idPrefix, n, title, desc, caption, children }: { idPrefix: string; n: number; title: string; desc: string; caption: string; children: ReactNode }) {
     return (
-        <FigureFrame idPrefix={`${idPrefix}-${n}`} viewBox={VIEWBOX} title={title} desc={desc} caption={caption} frameClassName="w-full">
+        <FigureFrame idPrefix={`${idPrefix}-${n}`} viewBox={VIEWBOX} title={title} desc={desc} caption={`${n}. ${caption}`} frameClassName="w-full max-w-xl mx-auto">
             <defs>
                 <ArrowMarker id={`${idPrefix}-${n}-arrow`} />
             </defs>
@@ -156,13 +156,15 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, kitchenP
     const total = (Number(kitchenPayment) + Number(courierPayment)).toFixed(2);
     const lines = [kitchenPayment, courierPayment] as const;
     const arrow = (n: number) => `${idPrefix}-${n}-arrow`;
-    const kitchenBond = (Number(kitchenPayment) * 2).toFixed(2);
-    const courierBond = (Number(total) * 2).toFixed(2);
-    const buyerBond = courierBond;
+    // Each hand locks twice the value at its link: the kitchen twice the meal,
+    // the courier twice the meal and the ride, the buyer twice each payment.
+    const kitchenBond = `2 \u00d7 ${kitchenPayment}`;
+    const courierBond = `2 \u00d7 ${total}`;
+    const buyerBond = `2 \u00d7 ${total}`;
 
     return (
         <div className={className}>
-            <ol className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-12 list-none pl-0">
+            <ol className="flex flex-col gap-y-12 list-none pl-0">
                 <li>
                     <Panel idPrefix={idPrefix} n={1} title="Three strangers" desc="Three wallets side by side: a pot for the kitchen, a bicycle for the courier, a house for the buyer. None has met the others." caption="Three strangers.">
                         <Pot x={POT_X} y={ROW_Y} />
@@ -182,7 +184,7 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, kitchenP
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={3} title="Each locks a bond" desc={`A padlock beside each wallet, sized to what it locked: ${kitchenBond} for the kitchen, ${courierBond} for the courier, ${buyerBond} for the buyer.`} caption="Each locks a bond.">
+                    <Panel idPrefix={idPrefix} n={3} title="Each locks a bond" desc={`A padlock beside each wallet, sized to what it locked, and the rule under each: the kitchen twice the meal (${kitchenBond}), the courier twice the meal and the ride (${courierBond}), the buyer the same (${buyerBond}).`} caption="Each locks a bond.">
                         <Pot x={POT_X} y={ROW_Y - 20} />
                         <Bicycle x={BIKE_X} y={ROW_Y - 20} />
                         <House x={HOUSE_X} y={ROW_Y - 20} />

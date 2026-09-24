@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
-import { SectionLinks } from "@/components/shared/SectionLinks";
 import { MobileNav } from "@/components/shared/MobileNav";
 import { NavTreeRow } from "@/components/shared/NavTreeRow";
 import type { NavLink } from "@/components/shared/navLinks";
@@ -26,9 +25,8 @@ interface HeaderShellProps {
 /**
  * Shared chrome for both `MarketingHeader` and `Header`: sticky-with-blur
  * container, container padding, mobile-nav trigger + logo on the left, the
- * three section links in the center, caller-supplied right cluster; under the
- * main row, the reader's section's own tree (`NavTreeRow`, absent on the
- * home page), then any caller-supplied row.
+ * six doors as dropdowns in the center (`NavTreeRow`, one row, on every
+ * page), caller-supplied right cluster; then any caller-supplied row.
  */
 export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: HeaderShellProps) {
     return (
@@ -38,10 +36,9 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
                     <MobileNav topCta={mobileTopCta} links={mobileLinks} />
                     <BrandLogo />
                 </div>
-                <SectionLinks />
+                <NavTreeRow />
                 <div className="flex items-center gap-3">{right}</div>
             </div>
-            <NavTreeRow />
             {bottomRow && (
                 <div className="border-t border-default">
                     <div className="container mx-auto px-6 py-2 flex justify-center">
