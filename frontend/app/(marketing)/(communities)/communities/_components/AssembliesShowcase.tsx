@@ -46,7 +46,7 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
     return (
         <li className="flex flex-col" data-testid="showcase-assembly">
             <h3 className="text-heading-h3 text-ink-heading mb-1">
-                <Link href={`/use/assemblies?slug=${encodeURIComponent(choice.slug)}`} className="hover:underline">
+                <Link href={`/communities?slug=${encodeURIComponent(choice.slug)}`} className="hover:underline">
                     {choice.name}
                 </Link>
             </h3>
@@ -61,7 +61,7 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
             </p>
             <div className="mt-4">
                 {faqCount > 0 ? (
-                    <CtaLink href={`/use/assemblies?slug=${encodeURIComponent(choice.slug)}#faq`}>FAQ</CtaLink>
+                    <CtaLink href={`/communities?slug=${encodeURIComponent(choice.slug)}#faq`}>FAQ</CtaLink>
                 ) : (
                     <span className="inline-flex min-w-[200px] justify-center items-center px-9 py-sm text-sm text-ink-muted rounded-tile border border-default" data-testid="showcase-no-faq">
                         No FAQ yet
@@ -81,7 +81,7 @@ function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: 
                 {template?.description && <p className="text-base text-ink-body leading-relaxed mb-5">{template.description}</p>}
                 <AssemblyShapeLine choice={choice} className="text-sm" />
                 <p className="text-sm mt-4">
-                    <Link href="/use/assemblies" className="text-ink-heading font-medium hover:underline">
+                    <Link href="/communities" className="text-ink-heading font-medium hover:underline">
                         Every assembly
                     </Link>
                     {" · "}
@@ -137,7 +137,7 @@ export function AssembliesShowcase() {
                 <MarketingSection title="Not published." sectionId="assembly">
                     <p className="text-base text-ink-body leading-relaxed">
                         {isLoading ? "Reading the registry…" : "No published assembly has this address."}{" "}
-                        <Link href="/use/assemblies" className="text-ink-heading font-medium hover:underline">Every assembly</Link>
+                        <Link href="/communities" className="text-ink-heading font-medium hover:underline">Every assembly</Link>
                     </p>
                 </MarketingSection>
             );

@@ -5,7 +5,7 @@ import { Header } from "@/components/shared/Header";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
 import { SECTION_IDS, navGroupShown, sectionLabel, sectionLanding } from "@/lib/shared/sections";
 
-// The header derives its two levels from the route: /orders is in the use section.
+// The header derives its two levels from the route: /orders is in the join section.
 vi.mock("next/navigation", () => ({
     usePathname: () => "/orders/",
 }));
@@ -26,7 +26,7 @@ describe("Header", () => {
         useWalletConnectedMock.mockReset();
     });
 
-    it("renders the logo, the three section links, and one inert disclosure button per group the section shows", () => {
+    it("renders the logo, the six door links, and one inert disclosure button per group the section shows", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
         expect(screen.getByText("Figaro Protocol")).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe("Header", () => {
         for (const id of SECTION_IDS) {
             expect(within(sections).getByRole("link", { name: sectionLabel(id)! })).toHaveAttribute("href", sectionLanding(id));
         }
-        expect(within(sections).getByRole("link", { name: "Use" })).toHaveAttribute("aria-current", "true");
+        expect(within(sections).getByRole("link", { name: "Join" })).toHaveAttribute("aria-current", "true");
         for (const group of MARKETING_MAP) {
             const shown = navGroupShown(group.links.map((l) => l.href), "/orders/");
             const button = screen.queryByRole("button", { name: group.section });

@@ -1,46 +1,235 @@
 {
-    "description": "THE SECTION MAP — the one owner of which section of the site owns which route. One host; three sections — use, build, core — each with its own landing page, its own chrome, and its own FAQ; the home page (/) is the router and belongs to no section. `routes` is a longest-prefix table: [prefix, [sections]]; the FIRST section listed owns the route (its chrome, its FAQ), the rest also show the route in their nav (a shared surface). `/` is matched exactly. Read by lib/shared/sections.ts (chrome and nav) and scripts/lint-section-map.sh (every page route must map). `landings` names each section's landing page.",
-    "sections": ["use", "build", "core"],
-    "routes": [
-        ["/", []],
-        ["/about", ["use", "build", "core"]],
-
-        ["/core", ["core"]],
-        ["/kernel", ["core"]],
-        ["/invariants", ["core"]],
-        ["/spec", ["core"]],
-        ["/security", ["core"]],
-        ["/attestations", ["core"]],
-        ["/research", ["core"]],
-        ["/working-groups", ["core"]],
-        ["/papers", ["core"]],
-
-        ["/build", ["build"]],
-        ["/clauses", ["build"]],
-        ["/assemblies", ["build"]],
-        ["/registries", ["build"]],
-        ["/composition", ["build"]],
-        ["/pitfalls", ["build"]],
-        ["/rpgf", ["build"]],
-        ["/tokenomics", ["build"]],
-        ["/dao", ["build"]],
-        ["/rewards", ["build"]],
-        ["/sdk-api", ["build"]],
-
-        ["/use", ["use"]],
-        ["/faq", ["use"]],
-        ["/local-commerce", ["use"]],
-        ["/members", ["use"]],
-        ["/data", ["use"]],
-        ["/discover", ["use"]],
-        ["/orders", ["use"]],
-        ["/s", ["use"]],
-        ["/sign", ["use"]],
-        ["/evidence-display", ["use"]],
-
-        ["/data/explore", ["core", "use"]],
-        ["/audit", ["use", "core", "build"]],
-        ["/agents", ["use", "core", "build"]]
+    "description": "THE SECTION MAP \u2014 the one owner of which section of the site owns which route. One host; six sections, the six doors \u2014 join, trade, communities, terms, evidence, code \u2014 each with its own door page, its own chrome, and its own FAQ; the home page (/) belongs to no section. `routes` is a longest-prefix table: [prefix, [sections]]; the FIRST section listed owns the route (its chrome, its FAQ), the rest also show the route in their nav (a shared surface). `/` is matched exactly. Read by lib/shared/sections.ts (chrome and nav) and scripts/lint-section-map.sh (every page route must map). `landings` names each section's door page.",
+    "sections": [
+        "join",
+        "trade",
+        "communities",
+        "terms",
+        "evidence",
+        "code"
     ],
-    "landings": { "use": "/use", "build": "/build", "core": "/core" }
+    "routes": [
+        [
+            "/",
+            []
+        ],
+        [
+            "/about",
+            [
+                "join",
+                "trade",
+                "communities",
+                "terms",
+                "evidence",
+                "code"
+            ]
+        ],
+        [
+            "/members",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/faq",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/agents",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/discover",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/orders",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/s",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/sign",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/rewards",
+            [
+                "join"
+            ]
+        ],
+        [
+            "/local-commerce",
+            [
+                "trade"
+            ]
+        ],
+        [
+            "/communities",
+            [
+                "communities"
+            ]
+        ],
+        [
+            "/dao",
+            [
+                "communities"
+            ]
+        ],
+        [
+            "/tokenomics",
+            [
+                "communities"
+            ]
+        ],
+        [
+            "/terms",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/clauses",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/assemblies",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/registries",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/composition",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/pitfalls",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/rpgf",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/sdk-api",
+            [
+                "terms"
+            ]
+        ],
+        [
+            "/data",
+            [
+                "evidence"
+            ]
+        ],
+        [
+            "/data/explore",
+            [
+                "evidence",
+                "code"
+            ]
+        ],
+        [
+            "/attestations",
+            [
+                "evidence"
+            ]
+        ],
+        [
+            "/audit",
+            [
+                "evidence"
+            ]
+        ],
+        [
+            "/evidence-display",
+            [
+                "evidence"
+            ]
+        ],
+        [
+            "/core",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/kernel",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/invariants",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/spec",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/security",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/research",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/working-groups",
+            [
+                "code"
+            ]
+        ],
+        [
+            "/papers",
+            [
+                "code"
+            ]
+        ]
+    ],
+    "landings": {
+        "join": "/members",
+        "trade": "/local-commerce",
+        "communities": "/communities",
+        "terms": "/terms",
+        "evidence": "/data",
+        "code": "/core"
+    }
 }

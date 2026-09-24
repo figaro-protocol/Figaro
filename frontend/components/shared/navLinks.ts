@@ -3,9 +3,10 @@
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)
 //     - (app) tier (top row of two-row header)
-//   The six entries are the six doors, one per landing page (Use, Build, Core,
-//   Research, Data, Agents), each the doorway of its route group; enforced by
-//   scripts/lint-nav-structure.sh. The logo links home; no "Home" item here.
+//   The six entries are the six doors, one per door page (Join, One trade,
+//   Communities, Terms, Your evidence, The code), each the doorway of its route
+//   group; enforced by scripts/lint-nav-structure.sh. The logo links home; no
+//   "Home" item here.
 //
 // - `NAV_LINKS_APP_PRIMARY` feeds ONLY the mobile drawer's App section
 //   (no desktop row exists); entries whose routes the marketing map
@@ -27,12 +28,12 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-    { href: "/use", label: "Use" },
-    { href: "/build", label: "Build" },
-    { href: "/core", label: "Core" },
-    { href: "/research", label: "Research" },
-    { href: "/data", label: "Data" },
-    { href: "/agents", label: "Agents" },
+    { href: "/members", label: "Join" },
+    { href: "/local-commerce", label: "One trade" },
+    { href: "/communities", label: "Communities" },
+    { href: "/terms", label: "Terms" },
+    { href: "/data", label: "Your evidence" },
+    { href: "/core", label: "The code" },
 ];
 
 // Every entry below MUST be a route that lives in `app/(app)/`. The
@@ -78,15 +79,15 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
 ];
 
 /**
- * The marketing map — the site tree, six nav entries, one per landing page:
- * Use `(use)`, Build `(build)`, Core `(core)`, Research `(research)`, Data
- * `(data)`, Agents `(agents)`. Each group's first entry is its doorway, the
- * landing page whose words are the pillar the beta panel reads; the entries
- * after it are the pages that door owns, in reading order, not alphabetical.
+ * The marketing map — the site tree, six doors, one per route group: Join
+ * `(join)`, One trade `(trade)`, Communities `(communities)`, Terms `(terms)`,
+ * Your evidence `(evidence)`, The code `(code)`. Each group's first entry is
+ * its doorway, the door page; the entries after it are the pages that door
+ * owns, in reading order, not alphabetical.
  * Labels derive from each page's own `metadata.title` minus the site suffix.
- * The app tier's pages a door opens onto (Discover and Orders under Use, Audit
- * and the data explorer under Data) and the two authoring tools under Build
- * are admitted beside their object pages. `(reference)` is footer chrome,
+ * The app tier's pages a door opens onto (Discover and Orders under Join, Audit
+ * and the data explorer under Your evidence) and the two authoring tools under
+ * Terms are admitted beside their object pages. `(reference)` is footer chrome,
  * never nav; papers are reached through Working Groups — the corpus has ONE
  * surface. Claim and Join remain buttons on their object's page.
  * `scripts/lint-nav-structure.sh` enforces the mechanical half (doorway-first,
@@ -97,21 +98,33 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
  */
 export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
-        section: "Use",
+        section: "Join",
         links: [
-            { href: "/use", label: "Use" },
             { href: "/members", label: "Join" },
-            { href: "/use/assemblies", label: "Assemblies" },
-            { href: "/faq", label: "FAQ" },
-            { href: "/local-commerce", label: "Local Commerce" },
+            { href: "/agents", label: "Agents" },
+            { href: "/agents/how", label: "How agents work" },
+            { href: "/agents/worked-example", label: "Worked example" },
             { href: "/discover", label: "Discover members" },
             { href: "/orders", label: "Your orders" },
+            { href: "/faq", label: "FAQ" },
         ],
     },
     {
-        section: "Build",
+        section: "One trade",
+        links: [{ href: "/local-commerce", label: "One trade" }],
+    },
+    {
+        section: "Communities",
         links: [
-            { href: "/build", label: "Build" },
+            { href: "/communities", label: "Communities" },
+            { href: "/tokenomics", label: "Tokenomics" },
+            { href: "/dao", label: "The DAO" },
+        ],
+    },
+    {
+        section: "Terms",
+        links: [
+            { href: "/terms", label: "Terms" },
             { href: "/clauses", label: "Clauses" },
             { href: "/clauses/register", label: "Register a clause" },
             { href: "/assemblies", label: "Assemblies" },
@@ -120,33 +133,13 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/composition", label: "Composition" },
             { href: "/pitfalls", label: "Sharp edges" },
             { href: "/rpgf", label: "Designer Rewards" },
-            { href: "/tokenomics", label: "Tokenomics" },
-            { href: "/dao", label: "The DAO" },
-            { href: "/build/faq", label: "Builders' FAQ" },
+            { href: "/terms/faq", label: "Builders' FAQ" },
         ],
     },
     {
-        section: "Core",
+        section: "Your evidence",
         links: [
-            { href: "/core", label: "Core" },
-            { href: "/kernel", label: "Kernel" },
-            { href: "/invariants", label: "Invariants" },
-            { href: "/spec", label: "Specifications" },
-            { href: "/security", label: "Security" },
-            { href: "/core/faq", label: "Core FAQ" },
-        ],
-    },
-    {
-        section: "Research",
-        links: [
-            { href: "/research", label: "Research" },
-            { href: "/working-groups", label: "Working Groups" },
-        ],
-    },
-    {
-        section: "Data",
-        links: [
-            { href: "/data", label: "Data" },
+            { href: "/data", label: "Your evidence" },
             { href: "/data/yours", label: "Your data" },
             { href: "/attestations", label: "Attestations" },
             { href: "/data/explore", label: "Data explorer" },
@@ -154,11 +147,16 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
         ],
     },
     {
-        section: "Agents",
+        section: "The code",
         links: [
-            { href: "/agents", label: "Agents" },
-            { href: "/agents/how", label: "How agents work" },
-            { href: "/agents/worked-example", label: "Worked example" },
+            { href: "/core", label: "The code" },
+            { href: "/kernel", label: "Kernel" },
+            { href: "/invariants", label: "Invariants" },
+            { href: "/spec", label: "Specifications" },
+            { href: "/security", label: "Security" },
+            { href: "/research", label: "Research" },
+            { href: "/working-groups", label: "Working Groups" },
+            { href: "/core/faq", label: "Core FAQ" },
         ],
     },
 ];
@@ -173,8 +171,8 @@ export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = [
         ...group.links,
     ]),
     // The app tier — DERIVED (filtered spread), never a hand-copy. Routes the
-    // marketing map already lists (e.g. /discover, /orders, /audit under
-    // Market) are not repeated here.
+    // marketing map already lists (e.g. /discover, /orders, /audit) are not
+    // repeated here.
     { isSectionHeader: true, label: "App", href: "" },
     ...NAV_LINKS_APP_PRIMARY.filter(
         (link) => !MARKETING_MAP.some((g) => g.links.some((l) => l.href === link.href)),

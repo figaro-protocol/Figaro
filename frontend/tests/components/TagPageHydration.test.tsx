@@ -23,7 +23,7 @@ import { hydrateRoot } from "react-dom/client";
 import { act } from "react";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
-import { TagPage } from "@/app/(marketing)/(research)/working-groups/_components/TagPage";
+import { TagPage } from "@/app/(marketing)/(code)/working-groups/_components/TagPage";
 import { tagIndex } from "@/app/(marketing)/_lib/paperGroups";
 
 /** Hydrate `node` against its own server markup, parsed by the browser, and

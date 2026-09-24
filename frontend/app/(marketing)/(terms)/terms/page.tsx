@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "Build — Figaro Protocol",
+    title: "Terms — Figaro Protocol",
     description:
         "Build a process, be rewarded each time it is used. A clause is one term of an agreement. An assembly composes agreements into a process anyone can run. Every resolved process is counted, and the count rewards its designers in florins.",
 });

@@ -1,13 +1,13 @@
 import sectionMap from "./sections.json";
 
 // The section map's reader. sections.json is the one owner of which section
-// owns which route; this module answers, for the chrome: which section the
-// reader is in, which nav groups that section shows, and which FAQ is the
+// (door) owns which route; this module answers, for the chrome: which section
+// the reader is in, which nav groups that section shows, and which FAQ is the
 // section's own. One host — every link stays an in-tree path.
 
-export type SectionId = "use" | "build" | "core";
+export type SectionId = "join" | "trade" | "communities" | "terms" | "evidence" | "code";
 
-export const SECTION_IDS: readonly SectionId[] = ["use", "build", "core"];
+export const SECTION_IDS: readonly SectionId[] = ["join", "trade", "communities", "terms", "evidence", "code"];
 
 type RouteEntry = readonly [prefix: string, sections: readonly SectionId[]];
 const ROUTES = sectionMap.routes as unknown as readonly RouteEntry[];
@@ -46,10 +46,10 @@ export function sectionLanding(section: SectionId): string {
     return LANDINGS[section];
 }
 
-/** Each section's own FAQ. The home page and an unmapped route get the users'. */
+/** Each section's own FAQ: the builders' for terms, the core's for the code, the users' for every other door and the home page. */
 export function sectionFaqRoute(section: SectionId | null): string {
-    if (section === "build") return "/build/faq";
-    if (section === "core") return "/core/faq";
+    if (section === "terms") return "/terms/faq";
+    if (section === "code") return "/core/faq";
     return "/faq";
 }
 
@@ -65,10 +65,13 @@ export function navGroupShown(hrefs: readonly string[], pathname: string): boole
     return hrefs.some((h) => sectionsOfRoute(h).includes(section));
 }
 
-/** The section's name in the header: Use, Build, Core; the home page has none. */
+/** The section's name in the header — the door's name; the home page has none. */
 export function sectionLabel(section: SectionId | null): string | null {
-    if (section === "use") return "Use";
-    if (section === "build") return "Build";
-    if (section === "core") return "Core";
+    if (section === "join") return "Join";
+    if (section === "trade") return "One trade";
+    if (section === "communities") return "Communities";
+    if (section === "terms") return "Terms";
+    if (section === "evidence") return "Your evidence";
+    if (section === "code") return "The code";
     return null;
 }

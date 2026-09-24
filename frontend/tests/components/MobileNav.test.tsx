@@ -36,9 +36,9 @@ describe("MobileNav", () => {
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     });
 
-    // The first level: the three sections as plain rows on every page, the
+    // The first level: the six doors as plain rows on every page, the
     // reader's own marked current.
-    it("lists the three sections as plain rows and marks the reader's own", () => {
+    it("lists the six doors as plain rows and marks the reader's own", () => {
         pathnameMock = "/clauses/";
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
@@ -47,12 +47,12 @@ describe("MobileNav", () => {
         for (const id of SECTION_IDS) {
             expect(within(rows).getByRole("link", { name: sectionLabel(id) })).toHaveAttribute("href", sectionLanding(id));
         }
-        expect(within(rows).getByRole("link", { name: "Build" })).toHaveAttribute("aria-current", "true");
-        expect(within(rows).getByRole("link", { name: "Use" })).not.toHaveAttribute("aria-current");
+        expect(within(rows).getByRole("link", { name: "Terms" })).toHaveAttribute("aria-current", "true");
+        expect(within(rows).getByRole("link", { name: "Join" })).not.toHaveAttribute("aria-current");
     });
 
-    // The home page is the router: the drawer there is the three sections and nothing inside them.
-    it("on the home page the drawer holds the three sections and no group", () => {
+    // The home page is the router: the drawer there is the six doors and nothing inside them.
+    it("on the home page the drawer holds the six doors and no group", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
@@ -73,8 +73,8 @@ describe("MobileNav", () => {
                 expect(screen.queryByRole("button", { name: group.section })).toBeNull();
                 continue;
             }
-            if (group.section === "Build") {
-                expect(sectionButton("Build")).toHaveAttribute("aria-expanded", "true");
+            if (group.section === "Terms") {
+                expect(sectionButton("Terms")).toHaveAttribute("aria-expanded", "true");
                 continue;
             }
             expect(sectionButton(group.section)).toHaveAttribute("aria-expanded", "false");
@@ -87,13 +87,13 @@ describe("MobileNav", () => {
     // Disclosure semantics: the trigger controls a panel that is labelled by
     // the trigger, so the group name announces with its own page list.
     it("wires aria-controls to the panel the group trigger opens", () => {
-        pathnameMock = "/clauses/";
+        pathnameMock = "/kernel/";
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        // Data is a group the build section shows (it holds /audit) and does
-        // not hold this route, so it opens closed.
-        const trigger = sectionButton("Data");
+        // Your evidence is a group the code section shows (it holds the data
+        // explorer) and does not hold this route, so it opens closed.
+        const trigger = sectionButton("Your evidence");
         const panelId = trigger.getAttribute("aria-controls");
         expect(panelId).toBeTruthy();
         expect(document.getElementById(panelId)).toBeNull();
@@ -118,11 +118,11 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        fireEvent.click(sectionButton("Core"));
-        fireEvent.click(sectionButton("Research"));
+        expect(sectionButton("The code")).toHaveAttribute("aria-expanded", "true");
+        fireEvent.click(sectionButton("Your evidence"));
 
-        expect(sectionButton("Core")).toHaveAttribute("aria-expanded", "false");
-        expect(sectionButton("Research")).toHaveAttribute("aria-expanded", "true");
+        expect(sectionButton("The code")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Your evidence")).toHaveAttribute("aria-expanded", "true");
     });
 
     // The reader lands where they already are: the group holding the route
@@ -132,12 +132,12 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        const core = sectionButton("Core");
-        expect(core).toHaveAttribute("aria-expanded", "true");
-        expect(core).toHaveAttribute("aria-current", "true");
+        const code = sectionButton("The code");
+        expect(code).toHaveAttribute("aria-expanded", "true");
+        expect(code).toHaveAttribute("aria-current", "true");
         expect(screen.getByRole("link", { name: "Invariants" })).toHaveAttribute("aria-current", "page");
         // Every other group stays shut.
-        expect(sectionButton("Research")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Your evidence")).toHaveAttribute("aria-expanded", "false");
     });
 
     // Wayfinding is comprehension: on mobile the drawer is the only way in, so

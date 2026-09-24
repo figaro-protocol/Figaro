@@ -67,9 +67,9 @@ describe("facetValues + explorerBreadcrumb", () => {
     });
     it("builds the deep-link trail from the active facet", () => {
         expect(explorerBreadcrumb(parseExplorerQuery({ family: "clauses", article: "mandatory" })).map((b) => b.label))
-            .toEqual(["Build", "Registries", "Clauses", "mandatory"]);
+            .toEqual(["Terms", "Registries", "Clauses", "mandatory"]);
         expect(explorerBreadcrumb(parseExplorerQuery({ family: "members" })).map((b) => b.label))
-            .toEqual(["Build", "Registries", "Members"]);
+            .toEqual(["Terms", "Registries", "Members"]);
     });
 });
 

@@ -5,7 +5,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { TradeStripFigure } from "@/components/figures/TradeStripFigure";
 
 export const metadata: Metadata = {
-    title: "Local Commerce — Figaro Protocol",
+    title: "One trade — Figaro Protocol",
     description:
         "One trade, start to finish, in six pictures: three strangers, the terms signed before the work, a bond locked by each, the work, everyone paid at once when the buyer closes, and the evidence each keeps. A delivered meal, one example among unbounded kinds of trade.",
 };
@@ -29,7 +29,7 @@ export default function LocalCommercePage() {
             <MarketingSection bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
                     The same six pictures carry a bookshop order, a tailor&apos;s alteration, a plumber&apos;s house call: what you can trade is{" "}
-                    <Link href="/use/assemblies" className="text-ink-heading font-medium hover:underline">
+                    <Link href="/communities" className="text-ink-heading font-medium hover:underline">
                         every published assembly
                     </Link>
                     .

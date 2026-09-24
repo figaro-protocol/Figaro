@@ -8,7 +8,7 @@ import { AssembliesShowcase } from "./_components/AssembliesShowcase";
 // (the builders' host serves the registry page there). Everything below the
 // hero is read from the registries as the page opens — see AssembliesShowcase.
 export const metadata: Metadata = withOg({
-    title: "Assemblies — Figaro Protocol",
+    title: "Communities — Figaro Protocol",
     description:
         "What you can trade on Figaro: every assembly a designer has published, what each is for, who offers it, and the questions its designer answers — read from the registry as the page opens.",
 });

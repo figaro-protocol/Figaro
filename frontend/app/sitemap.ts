@@ -39,8 +39,7 @@ type Entry = {
 //     `public/_headers`. Nothing in-app links it by design.
 const PUBLIC_ROUTES: Entry[] = [
     { path: "/", changeFrequency: "weekly", priority: 1.0 },
-    { path: "/use", changeFrequency: "weekly", priority: 0.9 },
-    { path: "/build", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/terms", changeFrequency: "weekly", priority: 0.9 },
     { path: "/core", changeFrequency: "weekly", priority: 0.9 },
     { path: "/research", changeFrequency: "weekly", priority: 0.9 },
     { path: "/agents", changeFrequency: "weekly", priority: 0.9 },
@@ -58,8 +57,8 @@ const PUBLIC_ROUTES: Entry[] = [
     // landing that reads walletlessly — the same case as /registries.
     { path: "/data/explore", changeFrequency: "daily", priority: 0.7 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.8 },
-    { path: "/use/assemblies", changeFrequency: "daily", priority: 0.9 },
-    { path: "/build/faq", changeFrequency: "monthly", priority: 0.8 },
+    { path: "/communities", changeFrequency: "daily", priority: 0.9 },
+    { path: "/terms/faq", changeFrequency: "monthly", priority: 0.8 },
     { path: "/core/faq", changeFrequency: "monthly", priority: 0.8 },
     { path: "/composition", changeFrequency: "monthly", priority: 0.7 },
     { path: "/assemblies/designer", changeFrequency: "weekly", priority: 0.7 },

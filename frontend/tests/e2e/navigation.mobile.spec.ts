@@ -80,10 +80,10 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeVisible();
 
  // The (app) drawer lists the five publication doorways by their
-        // section labels — /build is the 'Build' doorway there (the
+        // section labels — /terms is the 'Terms' doorway there (the
         // 'Specifications' page label exists only in the marketing drawer's map).
         const publication = await expandSection(drawer, 'Publication');
-        await publication.getByRole('link', { name: 'Build', exact: true }).click();
+        await publication.getByRole('link', { name: 'Terms', exact: true }).click();
 
         await expect(page).toHaveURL(/\/build\/?$/);
         // useEffect on pathname change closes the drawer
@@ -94,8 +94,8 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // Closed, it is one row per section — the whole map fits the viewport with
     // nothing to scroll, which is the point of the accordion.
     test('the closed drawer fits the viewport without scrolling', async ({ page }) => {
-        // A section page: the home page's drawer is the three section rows alone.
-        await page.goto('/use', { waitUntil: 'load' });
+        // A section page: the home page's drawer is the six door rows alone.
+        await page.goto('/members', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
 
@@ -125,7 +125,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // The drawer now carries the whole marketing map — a stranger's first visit
     // is usually a phone, so this is the entry path that has to work.
     test('the marketing drawer opens the whole map, not just the doorways', async ({ page }) => {
-        // Two levels: from the home page the drawer is the three sections; a section
+        // Two levels: from the home page the drawer is the six doors; a door
         // row opens the section, whose drawer carries that section's groups.
         await page.goto('/', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
@@ -133,7 +133,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
         await expect(drawer.locator('button[aria-expanded]')).toHaveCount(0);
-        await drawer.getByTestId('mobile-nav-sections').getByRole('link', { name: 'Core' }).click();
+        await drawer.getByTestId('mobile-nav-sections').getByRole('link', { name: 'The code' }).click();
         await expect(page).toHaveURL(/\/core\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
 
@@ -143,10 +143,10 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // are reached through Working Groups — the corpus is unbounded, so the
         // working-groups page IS the index (no /papers index exists).
         for (const [landing, section, label, href] of [
-            ['/core', 'Core', 'Invariants', '/invariants'],
-            ['/core', 'Research', 'Working Groups', '/working-groups'],
-            ['/build', 'Build', 'Clauses', '/clauses'],
-            ['/build', 'Agents', 'How agents work', '/agents/how'],
+            ['/core', 'The code', 'Invariants', '/invariants'],
+            ['/core', 'Your evidence', 'Data explorer', '/data/explore'],
+            ['/terms', 'Terms', 'Clauses', '/clauses'],
+            ['/members', 'Join', 'How agents work', '/agents/how'],
         ] as const) {
             await page.goto(landing, { waitUntil: 'load' });
             await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
@@ -164,7 +164,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await page.goto('/core', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
-        const deal = await expandSection(drawer, 'Core');
+        const deal = await expandSection(drawer, 'The code');
         await deal.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
@@ -178,11 +178,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
-        const deal = drawer.getByRole('button', { name: 'Core', exact: true });
+        const deal = drawer.getByRole('button', { name: 'The code', exact: true });
         await expect(deal).toHaveAttribute('aria-expanded', 'true');
         await expect(deal).toHaveAttribute('aria-current', 'true');
         await expect(drawer.getByRole('link', { name: 'Invariants' })).toHaveAttribute('aria-current', 'page');
-        await expect(drawer.getByRole('button', { name: 'Research', exact: true })).toHaveAttribute('aria-expanded', 'false');
+        await expect(drawer.getByRole('button', { name: 'Your evidence', exact: true })).toHaveAttribute('aria-expanded', 'false');
     });
 
     test('backdrop click closes the drawer', async ({ page }) => {

@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "Data — Figaro Protocol",
+    title: "Your evidence — Figaro Protocol",
     description:
         "A resolved trade leaves two traces. On the chain, a fingerprint: who moved what, to whom, in which token, and whether it resolved. With the parties, the detail: the agreement, the evidence, the books. The protocol holds only the first. The second is yours, pinned where you choose, disclosed when you choose, and sold on your terms if you choose.",
 });
