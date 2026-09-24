@@ -81,6 +81,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
+    'function allowance(address, address) view returns (uint256)',
     'function mint(address, uint256)',
 ]);
 
@@ -411,6 +412,23 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 await authorize.waitFor({ state: 'hidden', timeout: 30000 });
             }
             await counterSign.waitFor({ state: 'visible', timeout: 60000 });
+            // CHAIN FACTS before the act, never the screen's word for them: the
+            // two allowances swapAndCommit pulls against — the kernel's pull of
+            // the courier's bond in the denomination, and Permit2's pull of the
+            // funding token. A first attempt on a fresh chain once counter-signed
+            // while one of them still read zero and reverted
+            // ERC20InsufficientAllowance; this names which, with the numbers.
+            const allowanceOf = (owner: Hex, spender: Hex, erc20: Hex) =>
+                publicClient.readContract({ address: erc20, abi: ERC20_ABI, functionName: 'allowance', args: [owner, spender] }) as Promise<bigint>;
+            const permit2 = config.permit2 as Hex;
+            await expect.poll(async () => {
+                const toCore = await allowanceOf(COURIER, core, token);
+                const toPermit2 = await allowanceOf(COURIER, permit2, permitToken);
+                return `kernel=${toCore} permit2=${toPermit2}`;
+            }, {
+                timeout: 30000,
+                message: "the courier's bond allowance to the kernel and its funding allowance to Permit2 are on chain before it counter-signs",
+            }).not.toMatch(/(kernel=0 |permit2=0$)/);
             await counterSign.click();
             await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
             await page.getByTestId('preview-confirm').click();
