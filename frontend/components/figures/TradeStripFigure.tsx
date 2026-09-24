@@ -26,27 +26,29 @@ const BIKE_X = 200;
 const ROW_Y = 110;
 const WALLET_R = 26;
 
-/** A wallet drawn as a house: the buyer. */
-function House({ x, y }: { x: number; y: number }) {
+/** A wallet drawn as a person: the buyer. */
+function Person({ x, y }: { x: number; y: number }) {
     return (
         <g>
             <circle cx={x} cy={y} r={WALLET_R} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
-            <path d={`M ${x - 12} ${y + 1} L ${x} ${y - 11} L ${x + 12} ${y + 1}`} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
-            <rect x={x - 9} y={y + 1} width={18} height={11} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
-            <rect x={x - 2.5} y={y + 5} width={5} height={7} className="fill-ink-primary" />
+            <circle cx={x} cy={y - 7} r={6} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
+            <path d={`M ${x - 13} ${y + 14} a 13 12 0 0 1 26 0 z`} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
         </g>
     );
 }
 
-/** A wallet drawn as a pot: the kitchen. */
-function Pot({ x, y }: { x: number; y: number }) {
+/** A wallet drawn as a chef's hat: the kitchen. */
+function ChefHat({ x, y }: { x: number; y: number }) {
     return (
         <g>
             <circle cx={x} cy={y} r={WALLET_R} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
-            <path d={`M ${x - 12} ${y - 2} h 24 v 3 a 12 11 0 0 1 -24 0 z`} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
-            <line x1={x - 16} y1={y - 2} x2={x - 12} y2={y - 2} strokeWidth={1.5} className="stroke-ink-primary" />
-            <line x1={x + 12} y1={y - 2} x2={x + 16} y2={y - 2} strokeWidth={1.5} className="stroke-ink-primary" />
-            <path d={`M ${x - 4} ${y - 12} q 2 -3 0 -6 M ${x + 4} ${y - 12} q 2 -3 0 -6`} fill="none" strokeWidth={1} className="stroke-ink-muted" />
+            <path
+                d={`M ${x - 9} ${y + 4} v -6 a 6 6 0 0 1 -3 -11 a 7 7 0 0 1 12 -4 a 7 7 0 0 1 12 4 a 6 6 0 0 1 -3 11 v 6 z`}
+                strokeWidth={1.5}
+                strokeLinejoin="round"
+                className="fill-paper stroke-ink-primary"
+            />
+            <rect x={x - 9} y={y + 4} width={18} height={7} rx={1} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
         </g>
     );
 }
@@ -56,10 +58,10 @@ function Bicycle({ x, y }: { x: number; y: number }) {
     return (
         <g>
             <circle cx={x} cy={y} r={WALLET_R} strokeWidth={1.5} className="fill-paper stroke-ink-primary" />
-            <circle cx={x - 9} cy={y + 5} r={6} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
-            <circle cx={x + 9} cy={y + 5} r={6} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
-            <path d={`M ${x - 9} ${y + 5} L ${x - 3} ${y - 5} L ${x + 5} ${y - 5} L ${x + 9} ${y + 5} L ${x} ${y + 5} L ${x - 3} ${y - 5}`} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
-            <line x1={x + 5} y1={y - 5} x2={x + 3} y2={y - 9} strokeWidth={1.5} className="stroke-ink-primary" />
+            <circle cx={x - 10} cy={y + 6} r={7} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
+            <circle cx={x + 10} cy={y + 6} r={7} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
+            <path d={`M ${x - 10} ${y + 6} L ${x - 4} ${y - 4} L ${x + 6} ${y - 4} L ${x + 10} ${y + 6} L ${x - 1} ${y + 6} L ${x - 4} ${y - 4}`} fill="none" strokeWidth={1.5} strokeLinejoin="round" className="stroke-ink-primary" />
+            <path d={`M ${x + 6} ${y - 4} L ${x + 4} ${y - 9} h 5 M ${x - 4} ${y - 4} l -2 -4 h -4`} fill="none" strokeWidth={1.5} className="stroke-ink-primary" />
         </g>
     );
 }
@@ -166,10 +168,10 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, kitchenP
         <div className={className}>
             <ol className="flex flex-col gap-y-12 list-none pl-0">
                 <li>
-                    <Panel idPrefix={idPrefix} n={1} title="Three strangers" desc="Three wallets side by side: a pot for the kitchen, a bicycle for the courier, a house for the buyer. None has met the others." caption="Three strangers.">
-                        <Pot x={POT_X} y={ROW_Y} />
+                    <Panel idPrefix={idPrefix} n={1} title="Three strangers" desc="Three wallets side by side: a chef's hat for the kitchen, a bicycle for the courier, a person for the buyer. None has met the others." caption="Three strangers.">
+                        <ChefHat x={POT_X} y={ROW_Y} />
                         <Bicycle x={BIKE_X} y={ROW_Y} />
-                        <House x={HOUSE_X} y={ROW_Y} />
+                        <Person x={HOUSE_X} y={ROW_Y} />
                     </Panel>
                 </li>
                 <li>
@@ -177,36 +179,36 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, kitchenP
                         <line x1={POT_X + WALLET_R} y1={ROW_Y} x2={BIKE_X - 42} y2={ROW_Y} strokeWidth={1.5} className="stroke-ink-muted" />
                         <line x1={BIKE_X + 42} y1={ROW_Y} x2={HOUSE_X - WALLET_R} y2={ROW_Y} strokeWidth={1.5} className="stroke-ink-muted" />
                         <line x1={BIKE_X} y1={ROW_Y + 54} x2={BIKE_X} y2={ROW_Y + 70} strokeWidth={1.5} className="stroke-ink-muted" />
-                        <Pot x={POT_X} y={ROW_Y} />
-                        <House x={HOUSE_X} y={ROW_Y} />
+                        <ChefHat x={POT_X} y={ROW_Y} />
+                        <Person x={HOUSE_X} y={ROW_Y} />
                         <Sheet x={BIKE_X} y={ROW_Y} lines={lines} marks={3} />
                         <Bicycle x={BIKE_X} y={ROW_Y + 96} />
                     </Panel>
                 </li>
                 <li>
                     <Panel idPrefix={idPrefix} n={3} title="Each locks a bond" desc={`A padlock beside each wallet, sized to what it locked, and the rule under each: the kitchen twice the meal (${kitchenBond}), the courier twice the meal and the ride (${courierBond}), the buyer the same (${buyerBond}).`} caption="Each locks a bond.">
-                        <Pot x={POT_X} y={ROW_Y - 20} />
+                        <ChefHat x={POT_X} y={ROW_Y - 20} />
                         <Bicycle x={BIKE_X} y={ROW_Y - 20} />
-                        <House x={HOUSE_X} y={ROW_Y - 20} />
+                        <Person x={HOUSE_X} y={ROW_Y - 20} />
                         <Padlock x={POT_X} y={ROW_Y + 42} size={1.4} label={kitchenBond} />
                         <Padlock x={BIKE_X} y={ROW_Y + 42} size={1.7} label={courierBond} />
                         <Padlock x={HOUSE_X} y={ROW_Y + 42} size={1.7} label={buyerBond} />
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={4} title="The work" desc="The meal goes from the pot to the bicycle, and from the bicycle to the house: two arrows." caption="The work.">
-                        <Pot x={POT_X} y={ROW_Y} />
+                    <Panel idPrefix={idPrefix} n={4} title="The work" desc="The meal goes from the kitchen to the bicycle, and from the bicycle to the buyer: two arrows." caption="The work.">
+                        <ChefHat x={POT_X} y={ROW_Y} />
                         <Bicycle x={BIKE_X} y={ROW_Y} />
-                        <House x={HOUSE_X} y={ROW_Y} />
+                        <Person x={HOUSE_X} y={ROW_Y} />
                         <Arrow id={arrow(4)} from={[POT_X + WALLET_R + 4, ROW_Y]} to={[BIKE_X - WALLET_R - 4, ROW_Y]} />
                         <Arrow id={arrow(4)} from={[BIKE_X + WALLET_R + 4, ROW_Y]} to={[HOUSE_X - WALLET_R - 4, ROW_Y]} />
                     </Panel>
                 </li>
                 <li>
                     <Panel idPrefix={idPrefix} n={5} title="Paid at once" desc={`The buyer ticks the trade closed. In the same moment ${kitchenPayment} goes to the kitchen, ${courierPayment} goes to the courier, and every padlock opens.`} caption="Paid at once.">
-                        <Pot x={POT_X} y={ROW_Y - 20} />
+                        <ChefHat x={POT_X} y={ROW_Y - 20} />
                         <Bicycle x={BIKE_X} y={ROW_Y - 20} />
-                        <House x={HOUSE_X} y={ROW_Y - 20} />
+                        <Person x={HOUSE_X} y={ROW_Y - 20} />
                         <Tick x={HOUSE_X} y={ROW_Y - 62} />
                         <Arrow id={arrow(5)} from={[HOUSE_X - WALLET_R - 4, ROW_Y - 28]} to={[BIKE_X + WALLET_R + 4, ROW_Y - 28]} label={courierPayment} />
                         <Arrow id={arrow(5)} from={[HOUSE_X - WALLET_R - 4, ROW_Y - 8]} to={[POT_X + WALLET_R + 4, ROW_Y - 8]} label={kitchenPayment} />
@@ -217,9 +219,9 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, kitchenP
                 </li>
                 <li>
                     <Panel idPrefix={idPrefix} n={6} title="The evidence, yours" desc="The signed sheet, one copy beside each wallet: what was agreed, delivered and paid, kept by each of the three." caption="The evidence, yours.">
-                        <Pot x={POT_X} y={ROW_Y - 20} />
+                        <ChefHat x={POT_X} y={ROW_Y - 20} />
                         <Bicycle x={BIKE_X} y={ROW_Y - 20} />
-                        <House x={HOUSE_X} y={ROW_Y - 20} />
+                        <Person x={HOUSE_X} y={ROW_Y - 20} />
                         <Sheet x={POT_X} y={ROW_Y + 44} lines={lines} marks={3} small />
                         <Sheet x={BIKE_X} y={ROW_Y + 44} lines={lines} marks={3} small />
                         <Sheet x={HOUSE_X} y={ROW_Y + 44} lines={lines} marks={3} small />
