@@ -279,6 +279,18 @@ Fetch the public record and hash it to confirm the site and the repository serve
 curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256
 ```
 
+Before you sign a commit, the checkout shows a fingerprint of the on-chain addresses that order will touch — the `sha256:` value beneath the place-order button. It is derived, never stored, over the exact thirteen address fields below; reproduce it from the canonical record and compare:
+
+```bash
+curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json \
+  | jq -j '{assemblyRegistry,attestationCoordinator,batchVerifier,clauseRegistry,figaroCore,florinToken,membersRegistry,permit2,rpgfMinter,swapQuoter,swapRouter,usageCounter,witnessSwapAndCommitCoordinator}
+      | to_entries | map(select(.value != null)) | sort_by(.key)
+      | map("\(.key)=\(.value|ascii_downcase)") | join("\n")' \
+  | shasum -a 256
+```
+
+If the printed hash matches the one the checkout shows, the client is transacting against the canonical deployment. If it differs, stop — the addresses have been swapped.
+
 Then map it into the SDK's address type in one call — the record keys are **not** the SDK's field names, and spreading a record verbatim leaves renamed fields `undefined`, silently:
 
 ```ts

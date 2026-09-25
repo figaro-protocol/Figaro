@@ -20,6 +20,8 @@ import Link from "@/components/shared/Link";
 import { useEffect, useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
+import { deploymentFingerprint } from "@/lib/shared/deploymentFingerprint";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
 import { CartLineList } from "@/components/runtime/CartLineList";
@@ -80,6 +82,11 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const chainId = useChainId();
     const publicClient = usePublicClient();
+    // A tamper-check for the buyer: the sha256 of the on-chain addresses this
+    // build will transact against, recomputable from the canonical record.
+    // Shown off the local development chain only, whose per-run addresses have
+    // no canonical record to check against.
+    const deploymentFp = useMemo(() => deploymentFingerprint(), []);
     const { compose } = useCompositionActions();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
@@ -1021,6 +1028,15 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 How &rarr;
                             </Link>
                         </p>
+
+                        {chainId !== DEVNET_CHAIN_ID && deploymentFp && (
+                            <p className="text-xs text-ink-muted" data-testid="checkout-deployment-fingerprint">
+                                You can also check the addresses this order will touch before you send it: they fingerprint to <span className="font-mono break-all">sha256:{deploymentFp}</span>, which must match the canonical deployment record.{" "}
+                                <a href="/docs/protocol/contracts/#canonical-deployments" className="underline text-ink-primary hover:text-ink-body">
+                                    How &rarr;
+                                </a>
+                            </p>
+                        )}
 
                         <Button
                             onClick={handlePlaceOrder}
