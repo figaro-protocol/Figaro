@@ -45,6 +45,56 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
 | Open work | GitHub Issues (public); the maintainer's working punch-list is private |
 
+## Content architecture — the four public surfaces
+
+Four surfaces publish to the world, and one folder never does. The test that
+decides where any page or section goes:
+
+| If the content is… | It lives on… |
+|---|---|
+| Who it is for, what they do, why it works — one screen, pictures | the **marketing site** (the six doors + home + the tellings) |
+| A surface that reads or writes live chain state (needs a wallet or the live registry) | an **app page** (`app/(app)/`) |
+| A *how* with an identifier — a hash, a field, a contract, an error, a command, a spec | **docs-site** (published at `/docs`) |
+| A standalone scholarly argument | a **paper**, under Working Groups |
+| Internal build and discipline reference for the maintainer and agents | **`docs/`** — never published |
+
+**`docs/` is not public documentation.** It is the build reference: this folder,
+read by the maintainer and by agents working on Figaro, part of the build
+process. It is never rendered to the public. docs-site does NOT mirror it (the
+mirror that copied `docs/*.md` into the published site is retired); the two never
+touch.
+
+**docs-site is the public technical manual**, written for an outsider who builds
+on the protocol. Its lesson from the genesis clean-room experiment
+(`work/2026-09-10-genesis-cleanroom/`): a cold reader with ordinary priors slides
+into a different, coherent, defensible design unless the whole model is held at
+once — so docs-site STATES the whole (the two mechanisms, the five nouns, the
+forest) before any per-object detail, and never assumes the reader induces it.
+
+**Where the technical detail behind the doors goes:** the four hashes and the
+clause-spec format, how an assembly is composed and the composition hash,
+document-anchoring, on-chain and off-chain composition, sharp edges, the invariant
+list, the contract catalogue with its inheritance/install/deployments/errors, and
+the verification stack with its counts all move to docs-site. Each marketing door
+keeps one screen — what a clause is, what an assembly is, how the code is secured
+— and links to docs-site for the rest. `/security` stays a one-screen marketing
+page at its predictable URL (status, brief, disclosure channel, "Audit in
+progress"), detail on docs-site. `/registries` and the other live-chain readers
+are app pages. sdk/README stays the SDK manual, rendered into docs-site.
+
+## Layer ownership — the instruction system
+
+Each layer owns one thing; every other layer states it as a summary plus a pointer.
+
+| Layer | Owns |
+|---|---|
+| `CLAUDE.md` | discipline — how agents work, the frame, agent permissions; not inventories |
+| `docs/` | the internal build reference and one owner per concept (this map) |
+| docs-site | the public technical manual |
+| `.claude/agents/*.md` | one public surface each (marketing-copy, builders-docs, papers-editor, runtime-ui) |
+| `scripts/lint-*.sh` | the mechanical rules that enforce the above |
+| memory dir (private) | rulings, preferences, lessons |
+
 ## Start Here
 
 1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, the florin)
