@@ -1,26 +1,52 @@
 ---
-title: Figaro Protocol — builders' documentation
-description: The protocol's own documents, rendered from the repository they live in.
+title: Figaro Protocol — builder documentation
+description: The technical manual for building on Figaro — the model, the contracts, and the SDK.
 ---
 
-Every trade is a contract. Figaro completes it: the buyer bonds twice the payment; each seller bonds twice the cumulative value through its order; each bond is its party's own deterrent; only the buyer resolves, and resolution pays every seller and refunds every bond at once. The protocol is the rules, which anyone may implement and anyone may build on.
+Figaro is a whole economic system built from one primitive: a bonded commitment that makes cooperation between strangers the dominant strategy, with no arbitrator, no timeout, and no admin. This site is the technical manual for building on it. It assumes you have a wallet, `cast`/`viem`, and the [public repository](https://github.com/figaro-protocol/Figaro).
 
-This site holds the documents a builder needs to build on those rules. Every page is one file from the [repository](https://github.com/figaro-protocol/Figaro), rendered here at build time and named at the top of the page as its source; the repository is the only place it is written. The protocol as presented to the public is at [figaroprotocol.com](https://figaroprotocol.com).
+Read the whole model first — the pages below assume it.
+
+## The two mechanisms
+
+Everything rests on two mechanisms that compose:
+
+- **Asymmetric bonding at commit.** The buyer locks twice the payment; each seller locks twice the cumulative value through its link. Each bond is that party's own deterrent, so after performance, cooperating is every party's best move.
+- **Buyer dominance with atomic resolution.** Only the buyer can resolve, and resolution pays every seller and refunds every bond at once, or not at all. That is what binds many sellers into one chain that resolves from a single signature.
+
+Neither is tunable: the `2×` ratio and one-buyer-resolves are constitutive, not parameters.
+
+## The six nouns
+
+On top of the two mechanisms there are exactly six things, ever:
+
+- **buyer** — the one party who pays and resolves; any wallet.
+- **seller** — a value-adder; any wallet.
+- **clause** — one relationship, buyer↔seller or seller↔seller; who comes before whom is itself a clause.
+- **agreement** — the clauses composed for one order, hashed to the `agreementHash` both parties sign.
+- **assembly** — agreements composed into something anyone can reuse.
+- **composition** — with other contracts on-chain, and with legal and regulatory norms off-chain (an EU electronic invoice, ESG reporting, GDPR, taxation).
+
+## The lifecycle, and the two paths
+
+An order has two operations and no others: **commit** — both parties' signatures lock their bonds — and the buyer's **resolve** — pay and refund, atomically. A process is a chain of committed orders that resolves as one.
+
+Both operations happen one of two ways, and the two share no state: the **direct path**, each operation a call to `FigaroCore`; and the **batch path**, where a validity proof applies many operations — commits and resolves alike — in one transaction against `FigaroBatchVerifier`. The direct path is always open; the batch path is a scaling convenience.
 
 <Cards>
   <Card title="Start here" href="/start-here/lexicon/">
-    The lexicon — one name per thing — then the vision and the theory: the equilibrium, bound to the kernel's transfers.
+    The nouns and the lifecycle in depth, and the equilibrium the bonds produce.
   </Card>
   <Card title="The protocol" href="/protocol/contracts/">
-    The contract inventory, the clause model, the open-world runtime, the data layer, and batch scaling.
+    The contract catalogue, the clause and agreement model with its four hashes, on-chain and off-chain composition, the data layer, and batch scaling.
   </Card>
   <Card title="Verification and security" href="/verification/verification-map/">
-    Each protocol property beside the code that enforces it and the bench that proves it; the intentional patterns an auditor will question; the audit handover; the security posture.
+    Each protocol property beside the code that enforces it and the bench that proves it; the patterns an auditor will question; the security posture.
   </Card>
-  <Card title="The token" href="/token/florin/">
-    The florin, designer rewards, and the DAO — three concepts, three documents.
+  <Card title="The token and rewards" href="/token/florin/">
+    The florin, the designer-reward meter, and the DAO.
   </Card>
   <Card title="Building against it" href="/building/sdk/">
-    The SDK manual, the generated API reference, the public agent prompts, and how agents coordinate through the public graphs.
+    The SDK manual, the generated API reference, the agent prompts, and how agents coordinate through the public graphs.
   </Card>
 </Cards>
