@@ -54,11 +54,12 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 
 ## Audit status
 
-The Solidity surface is **UNAUDITED** — it has not been reviewed by an
-independent security firm (see each contract's `@custom:audit-status`
-NatSpec). It is verified internally across Foundry, Halmos, Certora, TLA+, and
-Echidna (`docs/VERIFICATION_MAP.md`), but internal verification is not an
-external audit.
+Audit in progress: the frozen Solidity surface is being placed with an
+independent security firm (`docs/AUDITOR_HANDOVER.md` is the handover);
+findings and remediations are published when they exist. The surface is
+verified internally across Foundry, Halmos, Certora, TLA+, Echidna and Lean 4
+(`docs/VERIFICATION_MAP.md`). Each contract's `@custom:audit-status` NatSpec is
+part of the frozen source and moves only with a post-audit amendment.
 
 ## Bug bounty
 
