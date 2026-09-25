@@ -5,6 +5,7 @@ import {
     confirmPendingSign,
     cancelPendingSign,
     subscribeToPendingSign,
+    SignConfirmationBusyError,
     _resetSignPreviewStore_TESTING_ONLY,
     _setSignPreviewMode_TESTING_ONLY,
 } from "@/lib/checkout/orderPreview";
@@ -100,14 +101,17 @@ describe("orderPreview confirm gate", () => {
         unsubscribe();
     });
 
-    it("rejects concurrent requests with false (no queueing)", async () => {
+    it("rejects a concurrent request distinctly — a busy gate is NOT a user cancel", async () => {
+        // The round-7 defect: an occupied gate used to answer a fresh request
+        // with the same `false` a cancel produces, so the caller dropped the
+        // order under "Signing cancelled by user." A busy gate now rejects with
+        // its own error, which a cancel (resolves false) never does.
         const first = requestSignConfirmation(COMMITMENT, AGREEMENT);
-        const second = await requestSignConfirmation(COMMITMENT, AGREEMENT);
-        expect(second).toBe(false);
+        await expect(requestSignConfirmation(COMMITMENT, AGREEMENT)).rejects.toBeInstanceOf(SignConfirmationBusyError);
 
-        // First is still pending until resolved
-        confirmPendingSign();
-        await expect(first).resolves.toBe(true);
+        // First is still pending until resolved; a genuine cancel still returns false.
+        cancelPendingSign();
+        await expect(first).resolves.toBe(false);
     });
 
     it("handles a null agreement (when not recoverable from store)", async () => {
@@ -172,10 +176,9 @@ describe("orderPreview confirm gate", () => {
         await expect(promise).resolves.toBe(false);
     });
 
-    it("a pending commit confirmation rejects a concurrent sign request", async () => {
+    it("a pending commit confirmation rejects a concurrent sign request (busy, not cancel)", async () => {
         const first = requestCommitConfirmation(COMMITMENT, AGREEMENT);
-        const second = await requestSignConfirmation(COMMITMENT, AGREEMENT);
-        expect(second).toBe(false);
+        await expect(requestSignConfirmation(COMMITMENT, AGREEMENT)).rejects.toBeInstanceOf(SignConfirmationBusyError);
         confirmPendingSign();
         await expect(first).resolves.toBe(true);
     });

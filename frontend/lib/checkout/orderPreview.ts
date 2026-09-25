@@ -83,6 +83,22 @@ export interface PendingPreview {
     swap?: SwapConfirmationDetails | null;
 }
 
+/**
+ * Thrown when a confirmation is requested while another is still open. The gate
+ * is a singleton (one modal at a time), so an overlapping request cannot be
+ * shown — but it is NOT a user cancel, and a caller must never surface it as
+ * one. Conflating the two is the round-7 "Confirm & sign vanished, no order
+ * recorded" defect: an occupied gate answered a fresh checkout with the same
+ * `false` a cancel produces, so the order was dropped under a misleading
+ * "Signing cancelled by user."
+ */
+export class SignConfirmationBusyError extends Error {
+    constructor() {
+        super("A signing confirmation is already open — finish or cancel it first.");
+        this.name = "SignConfirmationBusyError";
+    }
+}
+
 type Subscriber = (pending: PendingPreview | null) => void;
 
 let nextId = 1;
@@ -103,7 +119,9 @@ function requestConfirmation(
 ): Promise<boolean> {
     if (testMode === "auto-approve") return Promise.resolve(true);
     if (testMode === "auto-reject") return Promise.resolve(false);
-    if (current !== null) return Promise.resolve(false); // concurrent — reject the new one
+    // Occupied: one modal at a time. Reject DISTINCTLY — never the `false` a
+    // cancel returns, or the caller drops the order under a false "cancelled".
+    if (current !== null) return Promise.reject(new SignConfirmationBusyError());
     return new Promise<boolean>((resolve) => {
         current = { id: nextId++, intent, commitment, agreement, swap };
         resolveCurrent = (approved) => {
