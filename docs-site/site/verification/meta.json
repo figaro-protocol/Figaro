@@ -3,6 +3,7 @@
     "defaultOpen": true,
     "pages": [
         "verification-map",
+        "invariants",
         "design-decisions",
         "security"
     ]

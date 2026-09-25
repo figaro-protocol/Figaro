@@ -1,0 +1,38 @@
+---
+title: Invariants
+description: The nine facts FigaroCore cannot violate, each beside the Solidity that enforces it, and the four things the kernel's boundary settles — what it holds, what couples to it, who may act, and where the meaning lives.
+---
+
+Figaro rests on facts a contract cannot violate — not policies someone chose, not promises anyone keeps. Everything else the protocol does either follows from them or is built on top of them by somebody else. This page states the kernel invariants beside the Solidity that enforces each, and the four readings of the kernel's boundary that fall out of them.
+
+Read the [whole model](/) first. Everything below binds the **kernel only** — `FigaroCore` (`src/core/kernel/FigaroCore.sol`) — never the tiers above it; kernel neutrality does not propagate upward. The property-by-property map to the tests and formal benches that check each fact is the [Verification map](/verification/verification-map/); the testing and audit posture is [Security](/verification/security/).
+
+## The nine kernel invariants
+
+Each is a checked fact of the frozen kernel. The stable IDs (`K-1`…`K-9`) match the [Verification map](/verification/verification-map/); the enforcement column cites the exact revert or transfer in `FigaroCore.sol`.
+
+| ID | Invariant | What enforces it |
+|---|---|---|
+| K-1 | **Asymmetric bonding** — the buyer locks `2 × payment`, each seller locks `2 × cumulativeValue` at its own link. | `_pullExact(currency, c.buyer, c.payment * 2)` and `_pullExact(currency, c.seller, c.expectedCumulativeValue * 2)` in `commit` (`FigaroCore.sol:208-209`). |
+| K-2 | **Buyer dominance** — only the process's root buyer can resolve, and only its buyer can extend it. | `if (msg.sender != ps.rootBuyer) revert NotProcessBuyer()` in `resolveProcess` (`:268`); the same check on a sub-order's buyer in `commit` (`:190`). |
+| K-3 | **Atomic resolution** — the resolve call must carry every active order, so no order is cherry-picked. | `if (commitments.length != ps.activeOrderCount) revert IncompleteOrderList(...)` in `resolveProcess` (`:270-271`). |
+| K-4 | **No escape hatches** — no timeout, no admin exit, no unilateral withdrawal from an active process. | No timeout action and no admin function exist; only `resolveProcess` moves a process out of active, and it zeroes `activeOrderCount` (`:302`) after `ProcessAlreadyResolved`/`ProcessAlreadyExists` guards (`:189`). Status only ever moves forward. |
+| K-5 | **Cumulative bonding** — the value accumulator only increases; each order's expected value must equal the running total plus its own payment. | `uint256 actualCumulative = ps.cumulativeValue + c.payment` then `if (c.expectedCumulativeValue != actualCumulative) revert CumulativeValueMismatch(...)` (`:193-195`). |
+| K-6 | **Direct resolution** — no internal ledger and no withdrawal step; resolution transfers ERC-20 out at once. | `currency.safeTransfer(c.seller, c.expectedCumulativeValue * 2 + c.payment)` and `currency.safeTransfer(buyer, c.payment)` in `resolveProcess` (`:291-295`). |
+| K-7 | **Single-currency binding** — one immutable denomination per process. | `if (c.currency != address(ps.currency)) revert CurrencyMismatch()` on every sub-order (`:191`). |
+| K-8 | **Dual-signed commitment** — both parties sign the same struct as EIP-712 typed data, verified on chain. | `ECDSA.recover(digest, buyerSig) != c.buyer` and `ECDSA.recover(digest, sellerSig) != c.seller` in `commit` (`:161`, `:164`). |
+| K-9 | **Content-addressed order IDs** — an order hash is derived from its content, never an auto-incrementing counter. | `orderHash = keccak256(abi.encodePacked(processId, structHash))` then `if (orderStatus[orderHash] != 0) revert DuplicateCommitment()` (`:202-204`). |
+
+The mechanism these state — why twice the value, and what walking away costs — is derived, with the worked numbers, on [Theory](/start-here/theory/) and in [A Verified Resolution Kernel](https://figaroprotocol.com/papers/verified-resolution-kernel). What the contracts stating them are tested against — seven independent benches — is on [Security](/verification/security/).
+
+## The kernel's boundary, read four ways
+
+The nine invariants make the kernel a single object — the commitment boundary — that anyone can read four ways. All four bind the **kernel only**.
+
+**HOLDS.** The chain keeps almost nothing of its own. Every token inside is bonded to one open process, earmarked for that process's parties and reachable by nobody else — the kernel holds no withdrawable balance (K-6). Resolution sends all of it back out; a process nobody resolves keeps its bonds locked, which is the deterrent the design rests on rather than a gap in it (K-4). And because each commitment only ever looks at one handoff between two parties, the chain never needs the trade itself — it holds a fingerprint of the agreement, the `agreementHash` merkle root, and nothing more. What that fingerprint covers is the [clause and agreement model](/protocol/clauses/); what stays sealed off-chain is the [data layer](/protocol/data-layer/).
+
+**COUPLES.** Everything a trade touches stays where it already lives and couples to the kernel through that same small boundary, in its own medium — data in storage the owner controls, identity as a wallet with a name attached or not, work done by a person or an autonomous agent on the same terms, the governing law named in the agreement and ruled on in its forum off-chain. Anything already on-chain composes too: if a wallet holds it, an assembly can compose it. The kernel never had to be taught about any of it — that openness is what having a boundary instead of a platform means.
+
+**ADMITS.** Nobody admits you. A wallet to sign with and a bond to lock are all any actor needs — a person, a business, or a piece of software, on the same footing. The kernel reads a signature (K-8), never a species; capacity is any wallet that can sign and fund its bond.
+
+**EMERGES.** A law this small barely says anything on its own. What it means shows up one level up — in the agreements people write on it, the roles they take, the multi-party processes they assemble. That is what the network's token pays for: not the kernel, which runs itself, but the clauses and assemblies built on it, and the designers the protocol comes to rely on. Building on it is the point — see [Designer rewards](/token/designer-rewards/).

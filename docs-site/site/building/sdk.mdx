@@ -1,0 +1,43 @@
+---
+title: The SDK
+description: An orientation to @figaro-protocol/sdk — the six subpath exports and what each owns, the recipes a builder reaches for first, and where the full manual and the generated API reference live.
+---
+
+`@figaro-protocol/sdk` is the TypeScript client for everything the protocol does off the chain: it builds the EIP-712 commitments both parties sign, reconstructs process state from events, computes every hash the registries anchor, and runs the agent choreography that turns a discovered assembly into a bonded order. It is ESM, MIT, and runs in Node and the browser over `viem` as a peer dependency.
+
+```bash
+npm install @figaro-protocol/sdk viem
+```
+
+This page is an orientation, not the manual. The canonical, exhaustive integration manual — recipes, traps, and the order to do things in — is [`sdk/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md) in the public repository, and the generated API reference (every export, every signature, one page per entry point) is at [`/sdk-api/`](/sdk-api/index.html). Read the [whole model](/) first and [The contracts](/protocol/contracts/) for the surfaces the calls below reach.
+
+## The six subpath exports
+
+Nothing is re-exported: every symbol lives in exactly one entry point. `package.json`'s `exports` field publishes six subpaths, and each owns a distinct seam.
+
+| Subpath | What it owns | Representative exports |
+|---|---|---|
+| `@figaro-protocol/sdk` (root) | The protocol primitives and the promoted choreography — commitment building and EIP-712 hashing, bond math, event parsing and state reconstruction, the four hashes, the one template→orders walk, checkout planning, gas ceilings. | `buildCommitment`, `calculateBonds`, `computeAgreementHash`, `templateCompositionHash`, `reconstruct`, `reconstructOrdersFromTemplate`, `addressesFromDeploymentRecord` |
+| `/agent` | Agent coordination — the buyer and seller loops, the coordination channels (in-process, HTTP, A2A), `did:web` resolution, action proposal and execution, and the sequencer client. | `originateProcess`, `makeSellerOfferHandler`, `proposeActions`, `executeAction`, `FigaroContext`, `SequencerClient` |
+| `/derive` | Clause-agnostic derivations — pure functions over values you already hold, no chain client and no network: process and resolution graphs, attestation overlays, withdraw gates, geo helpers. | `projectProcessGraph`, `projectResolutionGraph`, `extractOverlays`, `deriveInFlightOrders`, `walletRecord` |
+| `/clauses` | The clause-spec format and content encoding — the lockstep off-chain half of a clause: parse and validate a spec, validate and encode content generically, with no chain and no network. | `parseClauseSpec`, `validateContent`, `encodeContentFromSpec`, `decodeContentFromSpec` |
+| `/handoff` | The runtime handoff wire protocol — the message shapes two wallets speak when a pending commitment or a sealed key travels between them, plus the ECDH key agreement. | `generateOrderKeypair`, `deriveSharedSecretAsSender`, `deriveSharedSecretAsReceiver`, `wrapWithSharedSecret`, `unwrapWithSharedSecret` |
+| `/signer` | The policy signer — a Node-only daemon that holds the wallet key in its own process behind an out-of-model policy gate, exposed as a `viem` account over a local socket. | `socketSignerAccount`, `validatePolicy`, `createSignerDaemon`, the `figaro-signer` bin |
+
+Only `/signer` is Node-only (it reaches `node:net`/`node:fs`); `/handoff` needs the WebCrypto global; everything else bundles into a UI as-is. The per-entry-point host requirements and the full symbol synopsis are in the README's [Six Entry Points](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#six-entry-points) section.
+
+## The recipes you reach for first
+
+**Your first commit.** The shortest path from nothing to a bonded order on a chain you own is the README's opening walkthrough, [Your first commit](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#your-first-commit) — a cold machine to a committed order read back from its own events, every step a command you run. In the SDK's own terms: `FigaroContext.sync()` folds the registry event streams into a live catalogue; the buyer loop `originateProcess` (`/agent`) instantiates the discovered template, runs the merkle-leaf sign gate (`assertAgreementSignable`), signs the EIP-712 commitment `buildCommitment` (root) builds against a chain-time deadline (`readChainTimestamp` + `computeDeadline`), and hands the offer to the seller's `makeSellerOfferHandler`; the buyer then submits `FigaroCore.commit`. To close it, `proposeActions` + `executeAction` (`/agent`) rebuild the resolve struct from events and the buyer resolves.
+
+**Checkout planning.** Turning an adopted assembly template into the filled, hashed agreement is a deterministic projection a second frontend must reproduce byte-exactly, because its outputs are hashed. `planTemplateOrders` and `reconstructOrdersFromTemplate` (root) walk the template into orders in commit order; the fill-where-composed section writers (`fillCommerceSection`, `writeTopologySection`, `fillDerivedSections`, `planSubOrderSellers`, root) shape the committed bytes. No clause is ever named — sections are found by their declared fields. The recipe is the README's [Checkout Planning](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#checkout-planning) section.
+
+**The handoff wire protocol.** When a pending commitment or a sealed content key travels between two wallets at runtime, `/handoff` owns the message shapes and the ECDH key agreement; the transports (XMTP, a test bus, an inert channel) live with the consumer. Direction matters: the sender calls `deriveSharedSecretAsSender(myPriv, receiverPub)` and the receiver `deriveSharedSecretAsReceiver(senderPub, myPriv)`; `wrapWithSharedSecret`/`unwrapWithSharedSecret` seal and open the payload under the shared secret. The full byte-level recipe is the README's handoff entry point.
+
+**The policy signer.** For an agent that signs without a human at the keyboard, `/signer` is a daemon that holds the wallet key in its own process (encrypted V3 keystore, passphrase at start) and passes every request through an out-of-model policy gate — EIP-712 domain binding, a contract-and-selector allowlist, per-action and rolling-period value ceilings, a simulation veto, and an audit log — before anything is signed. Run the daemon with the published `figaro-signer` bin; `socketSignerAccount` (`/signer`) then drops a `viem` account backed by its socket into the same `WalletClient` the agent layer already takes, so the key is unreachable and the agent's code path is unchanged. The gate's policy shape and how to generate one are in the README's policy-signer entry point.
+
+## Where the reference lives
+
+- The full manual, with every recipe and trap: [`sdk/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md).
+- Every export and signature, one page per entry point: [`/sdk-api/`](/sdk-api/index.html).
+- The agent prompts and how agents coordinate through the public graphs: [Agent prompts](/building/agents/) and [Agent coordination](/building/agent-coordination/).

@@ -179,6 +179,8 @@ function swapWitness(address inputToken, uint256 maxInput, bytes calldata swapDa
 
 For each enabled leg it pulls the input token through a Permit2 witness signature, forwards the swap calldata to an immutable Uniswap `SwapRouter02`, sends the swapped denomination to the party's own address, then calls `FigaroCore.commit`. Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`), never from calldata; the witness binds `{router, inputToken, maxInput, keccak256(swapData)}` so no relayer can reroute the swap. The kernel still sees a single-currency, bilaterally-signed commitment. On the batch path there is no funding leg — swap in your own wallet before submitting.
 
+**The venue is SwapRouter02, and the distinction is load-bearing for the calldata you sign.** The coordinator approves the router for your input token and forwards your `swapData` verbatim (`src/app/WitnessSwapAndCommitCoordinator.sol:221-224`), so the venue must pull by ERC-20 allowance: the calldata is SwapRouter02's `exactOutputSingle` — an exact output, the bond, for at most `maxInput` of input (`:135`) — not the Universal Router, which pulls through Permit2 or spends pre-sent balances and would leave the swap unfunded. Build it with the SDK's `SWAP_ROUTER_02_ABI`, which carries exactly the venue shapes the protocol composes.
+
 **Errors** (`:153-155`): `NothingToFund`, `SwapCallFailed`, `OutputBelowBond(received, required)`. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the denomination, a one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2 witness signature.
 
 ## FigaroBatchVerifier — the batch path
