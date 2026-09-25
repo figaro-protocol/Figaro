@@ -33,7 +33,7 @@ export default function ShipmentPage() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     What stands behind a trade, layer by layer, with the gas, the tokens, and the tax, is on{" "}
-                    <Link href="/faq#layers" className="text-ink-heading font-medium hover:underline">
+                    <Link href="/core/faq#layers" className="text-ink-heading font-medium hover:underline">
                         the FAQ
                     </Link>
                     .

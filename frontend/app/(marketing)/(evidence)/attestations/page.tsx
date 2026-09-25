@@ -117,7 +117,7 @@ export default function Attestations() {
                     That boundary is why dispute recourse sits at the edge of the
                     design rather than at its center &mdash; the full stack, from the
                     chain up through an outside forum to ordinary courts, is on{" "}
-                    <Link href="/faq#layers" className="underline">
+                    <Link href="/core/faq#layers" className="underline">
                         the FAQ&apos;s &ldquo;What stands behind a trade?&rdquo;
                     </Link>
                     .

@@ -35,7 +35,7 @@ export default function Security() {
 
             <MarketingSection title="Verifying what you are served" sectionId="delivery">
                 <p className="text-base text-ink-body leading-relaxed">
-                    The contracts being verified says nothing about the page in front of you &mdash; a frontend could still misrepresent what you sign. What stands between you and that today is the two checks under signing, on the <Link href="/faq#signing" className="text-ink-heading font-medium hover:underline">FAQ</Link>: recompute the fingerprint on your own machine before you sign, and check the signatures against the chain afterward. Both run outside this site&apos;s reach, and the limitation stated there stands as written.</p>
+                    The contracts being verified says nothing about the page in front of you &mdash; a frontend could still misrepresent what you sign. What stands between you and that today is the two checks under signing, on the <Link href="/core/faq#signing" className="text-ink-heading font-medium hover:underline">FAQ</Link>: recompute the fingerprint on your own machine before you sign, and check the signatures against the chain afterward. Both run outside this site&apos;s reach, and the limitation stated there stands as written.</p>
             </MarketingSection>
 
             <MarketingSection title="The verification stack" sectionId="verification">

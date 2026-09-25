@@ -111,7 +111,7 @@ export default function WorkedExample() {
                     until the buyer resolves, so a leg that falls short is one the other party
                     wants put right before that happens. Remedies are negotiated while both
                     bonds are still locked; the{" "}
-                    <Link href="/faq#counterparty" className="text-ink-heading font-medium hover:underline">FAQ</Link>{" "}
+                    <Link href="/core/faq#counterparty" className="text-ink-heading font-medium hover:underline">FAQ</Link>{" "}
                     has the long version, including what it costs when a party simply disappears.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
@@ -128,7 +128,7 @@ export default function WorkedExample() {
                     buyer&apos;s own 840 included &mdash; and nobody is paid until the shortfall,
                     if there is one, is put right. What that standoff costs whom, and why the
                     close is the buyer&apos;s alone, is answered on the{" "}
-                    <Link href="/faq#multi-party" className="text-ink-heading hover:underline">FAQ</Link>.
+                    <Link href="/core/faq#multi-party" className="text-ink-heading hover:underline">FAQ</Link>.
                 </p>
             </MarketingSection>
 

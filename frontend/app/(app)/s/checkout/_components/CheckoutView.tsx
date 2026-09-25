@@ -1024,7 +1024,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
                         <p className="text-xs text-ink-muted" data-testid="checkout-security-link">
                             What you sign is the hash of the agreement above, and you can check it yourself.{" "}
-                            <Link href="/faq#signing" className="underline text-ink-primary hover:text-ink-body">
+                            <Link href="/core/faq#signing" className="underline text-ink-primary hover:text-ink-body">
                                 How &rarr;
                             </Link>
                         </p>

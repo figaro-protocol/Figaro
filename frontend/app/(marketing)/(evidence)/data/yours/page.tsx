@@ -69,7 +69,7 @@ export default function Data() {
 
             <MarketingSection title="Erasure, honestly." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed">
-                    What you publish you can erase by unpinning it, with two things unpinning cannot reach &mdash; the on-chain fingerprint, permanent by design, and any copy another node took before you unpinned &mdash; both stated in full on <Link href="/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
+                    What you publish you can erase by unpinning it, with two things unpinning cannot reach &mdash; the on-chain fingerprint, permanent by design, and any copy another node took before you unpinned &mdash; both stated in full on <Link href="/core/faq#privacy" className="text-ink-heading font-medium hover:underline">the FAQ</Link>.
                 </p>
             </MarketingSection>
         </>
