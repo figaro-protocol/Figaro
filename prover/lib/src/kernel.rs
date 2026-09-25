@@ -918,6 +918,7 @@ fn apply_batch_inner(
             attestation_events_hash: att_hash,
             spec_bindings_hash: bindings_hash,
             usage_accrual_hash: usage_hash,
+            block_timestamp: input.block_timestamp,
         },
         positions,
         batch_events,

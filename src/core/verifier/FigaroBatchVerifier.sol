@@ -67,7 +67,7 @@ interface IUsageCounter {
 ///         cannot see (open period, the seller of record's live member stake, exclusions) are the
 ///         counter's own and are checked there, not here.
 ///
-///         Public values (ABI-encoded, 8 × 32-byte words):
+///         Public values (ABI-encoded, 9 × 32-byte words):
 ///           0: prevStateRoot     (bytes32)
 ///           1: newStateRoot      (bytes32)
 ///           2: chainId           (uint64, left-padded to 32 bytes)
@@ -76,6 +76,7 @@ interface IUsageCounter {
 ///           5: attestationEventsHash (bytes32)
 ///           6: specBindingsHash  (bytes32)
 ///           7: usageAccrualHash  (bytes32)
+///           8: blockTimestamp    (uint64, left-padded to 32 bytes)
 contract FigaroBatchVerifier is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -86,6 +87,15 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     IClauseRegistryAnchor public immutable clauseRegistry;
     /// @notice The RPGF counter this verifier is the proof-gated writer for.
     IUsageCounter public immutable usageCounter;
+
+    /// @notice The widest gap allowed between the clock the guest checked
+    ///         deadlines against (committed in the public values) and this
+    ///         block's timestamp. It bounds a prover-chosen time to reality —
+    ///         a batch is proven then submitted, so a few minutes of lag is
+    ///         normal — while keeping the guest's deadline gate meaningful: a
+    ///         caller cannot pick an arbitrary past time to bond an
+    ///         already-expired signed commitment.
+    uint64 public constant MAX_BATCH_STALENESS = 1 hours;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -187,6 +197,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error AttestationHashMismatch();
     error SpecBindingsHashMismatch();
     error UsageAccrualHashMismatch();
+    error BatchTimestampOutOfRange(uint64 committed, uint64 current);
     /// @dev The proof validated content against a spec the registry does
     ///      not anchor for this clause key — including the unregistered
     ///      case (`contentHashOf` returns zero, which never equals a
@@ -234,13 +245,14 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 attEventsHash;
         bytes32 specBindingsHash;
         bytes32 usageAccrualHash;
+        uint64 blockTimestamp;
     }
 
     // ── Batch resolution ──────────────────────────────────────────
 
     /// @notice Resolve a batch of Figaro protocol operations.
     /// @param proof        The SP1 validity proof for the batch.
-    /// @param publicValues ABI-encoded public values (8 × 32-byte words).
+    /// @param publicValues ABI-encoded public values (9 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
     /// @param events       Attestation events to re-emit + spec bindings to
     ///                     check against the ClauseRegistry (both hash-verified).
@@ -267,6 +279,15 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         }
         if (pv.verifyingContract != address(this)) {
             revert VerifyingContractMismatch(address(this), pv.verifyingContract);
+        }
+        // Bind the guest's deadline clock to reality: the committed timestamp
+        // must not be in the future and must be recent. Without this, the
+        // prover-chosen `block_timestamp` the guest checks every deadline
+        // against is unconstrained, and a caller of this permissionless
+        // function could pick `0` to bond a signed commitment whose deadline
+        // has long expired — one the direct path rejects.
+        if (pv.blockTimestamp > block.timestamp || block.timestamp - pv.blockTimestamp > MAX_BATCH_STALENESS) {
+            revert BatchTimestampOutOfRange(pv.blockTimestamp, uint64(block.timestamp));
         }
 
         // ── 3. Verify auxiliary data hashes ───────────────────────
@@ -348,6 +369,11 @@ contract FigaroBatchVerifier is ReentrancyGuard {
             pv.specBindingsHash,
             pv.usageAccrualHash
         ) = abi.decode(publicValues, (bytes32, bytes32, uint64, address, bytes32, bytes32, bytes32, bytes32));
+        // Word 8 (the last 32 bytes) is blockTimestamp — read from the calldata
+        // slice rather than a 9-tuple abi.decode, which tips settleBatch over
+        // the legacy-codegen stack limit. The SP1 verifier already bound the
+        // whole 288-byte stream to the proof, so this reads a committed word.
+        pv.blockTimestamp = uint64(uint256(bytes32(publicValues[256:288])));
     }
 
     // ── Hash functions (byte-exact parity with Rust kernel) ───────

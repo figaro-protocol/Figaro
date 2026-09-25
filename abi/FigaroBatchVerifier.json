@@ -32,6 +32,19 @@
   },
   {
     "type": "function",
+    "name": "MAX_BATCH_STALENESS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "batchCount",
     "inputs": [],
     "outputs": [
@@ -355,6 +368,22 @@
     "type": "error",
     "name": "AttestationHashMismatch",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BatchTimestampOutOfRange",
+    "inputs": [
+      {
+        "name": "committed",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "current",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
   },
   {
     "type": "error",

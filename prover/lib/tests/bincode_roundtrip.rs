@@ -185,9 +185,19 @@ fn bincode_roundtrip_public_values_and_events() {
         attestation_events_hash: B256::repeat_byte(0x04),
         spec_bindings_hash: B256::repeat_byte(0x05),
         usage_accrual_hash: B256::repeat_byte(0x0a),
+        block_timestamp: 1000,
     };
     let bytes = bincode::serialize(&pv).expect("serialize");
     let _decoded: PublicValues = bincode::deserialize(&bytes).expect("deserialize");
+
+    // The ABI layout the on-chain verifier decodes: 9 words (288 bytes), with
+    // block_timestamp as word 8. A drift here silently mis-decodes on chain.
+    let abi = pv.abi_encode();
+    assert_eq!(abi.len(), 288, "public values are 9 × 32-byte words");
+    let abi_decoded = PublicValues::abi_decode(&abi).expect("abi round-trips");
+    assert_eq!(abi_decoded.block_timestamp, pv.block_timestamp, "block_timestamp survives the abi round-trip");
+    assert_eq!(abi_decoded.prev_state_root, pv.prev_state_root);
+    assert_eq!(abi_decoded.usage_accrual_hash, pv.usage_accrual_hash);
 
     let events = BatchEvents {
         attestations: vec![AttestationEventData {

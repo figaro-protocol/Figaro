@@ -190,7 +190,8 @@ contract ReentrancyAdversarialTest is Test {
             _hashPositions(positions),
             keccak256(""), // empty attestations
             keccak256(""), // empty spec bindings
-            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))) // empty usage accrual
+            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))), // empty usage accrual
+            uint64(block.timestamp)
         );
 
         FigaroBatchVerifier.BatchUsageData memory usage;
