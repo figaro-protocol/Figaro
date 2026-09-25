@@ -32,8 +32,6 @@ const SOURCES = [
     ['docs/LEXICON.md', 'start-here/lexicon.md', 'Lexicon'],
     ['docs/VISION.md', 'start-here/vision.md', 'Vision'],
     ['docs/THEORY.md', 'start-here/theory.md', 'Theory'],
-    ['docs/CONTRACTS.md', 'protocol/contracts.md', 'Contracts'],
-    ['docs/CLAUSES.md', 'protocol/clauses.md', 'Clauses'],
     ['docs/OPEN_WORLD.md', 'protocol/open-world.md', 'Open world'],
     ['docs/DATA_LAYER.md', 'protocol/data-layer.md', 'Data layer'],
     ['docs/SCALING_STRATEGY.md', 'protocol/scaling.md', 'Scaling'],

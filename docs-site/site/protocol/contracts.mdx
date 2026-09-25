@@ -1,0 +1,287 @@
+---
+title: The contracts
+description: Every deployed contract a builder calls — purpose, external signatures, custom errors, and how a stranger drives it from the chain with cast or viem.
+---
+
+Everything on this page is a permissionless primitive. No contract belongs to an app, and none has an admin, an owner, a pause, or an upgrade key. You reach them with a wallet and `cast` or `viem` over a public RPC — nothing is gated on who you are.
+
+Read the [whole model](/) first; this page assumes it. In those terms: the **kernel** (`FigaroCore`) holds the two mechanisms — asymmetric bonding at commit, buyer dominance with atomic resolution — and the six nouns (buyer, seller, clause, agreement, assembly, composition) live in the data those calls carry and in the registries that anchor them. An order has exactly two operations, **commit** and **resolve**, and they happen one of two ways that share no state: the **direct path** calls `FigaroCore`; the **batch path** proves many operations at once against `FigaroBatchVerifier`. Both paths carry commit *and* resolve.
+
+Solidity 0.8.26, MIT, at [figaro-protocol/Figaro](https://github.com/figaro-protocol/Figaro). Every fact below is cited to the source line a builder would read; nothing here asks you to edit a repository file — the path is the chain, the SDK, and IPFS.
+
+## Install the client
+
+`@figaro-protocol/sdk` builds the EIP-712 commitments, reconstructs process state from events, and computes every hash on this page, over `viem` as a peer dependency:
+
+```bash
+npm install @figaro-protocol/sdk viem
+```
+
+You do not need it — every call below is reachable with raw `cast` — but it is the difference between signing a struct by hand and calling `buildCommitment`. Its manual is the [SDK page](/building/sdk/); its generated API reference is at [`/sdk-api/`](/sdk-api/index.html).
+
+## FigaroCore — the kernel
+
+`FigaroCore` holds every deposit and resolves a process on its buyer's signature. It reads no contract above it and has no third entry point (`src/core/kernel/FigaroCore.sol:26`).
+
+**Two state-changing functions:**
+
+```solidity
+function commit(CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig)
+    external returns (bytes32 processId, bytes32 orderHash);          // src/core/kernel/FigaroCore.sol:148
+
+function resolveProcess(bytes32 processId, CommitmentTypes.Commitment[] calldata commitments)
+    external;                                                          // src/core/kernel/FigaroCore.sol:262
+```
+
+Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment` from the buyer and `2 × expectedCumulativeValue` from the seller. A root order (`c.processId == 0`) opens a process; any other order extends one and must carry the same `c.buyer` as the process's root buyer and an `expectedCumulativeValue` equal to the live accumulator plus this order's `payment`. `resolveProcess` requires `msg.sender` to be the root buyer and the complete active-order list, then pays every seller `2 × expectedCumulativeValue + payment` and refunds the buyer `payment` — every deposited token leaves in one call; the kernel never holds a withdrawable balance.
+
+**Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), `orderProcessId(bytes32) → bytes32`, the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:52-115`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
+
+**The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:107`). The version is a schema counter, not a deploy sequence.
+
+**Custom errors** (`src/core/kernel/FigaroCore.sol:64-79`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — the kernel pulls the full per-order bond every time and nets nothing against bonds it already holds).
+
+**Events:** `OrderCommitted` (carries every struct field but no signatures — the signature bytes live in the commit transaction's calldata), `OrderSeller`, `OrderCurrency`, `OrderResolved`, `ProcessResolved` (`src/core/kernel/FigaroCore.sol:35-60`).
+
+### Calling it from the chain
+
+The denomination is an ordinary ERC-20 named in `c.currency`; approve `FigaroCore` for the full bond before you commit. With the SDK doing the EIP-712 signing:
+
+```ts
+import { createWalletClient, http } from "viem";
+import { buildCommitment, CORE_ABI } from "@figaro-protocol/sdk";
+
+// both parties sign the same struct as EIP-712 typed data over the
+// { name: "FigaroCore", version: "3", chainId, verifyingContract: core } domain
+const { commitment, buyerSig, sellerSig } = /* buildCommitment + two signTypedData calls */;
+
+await wallet.writeContract({
+  address: core, abi: CORE_ABI, functionName: "commit",
+  args: [commitment, buyerSig, sellerSig],
+});
+```
+
+To resolve, rebuild the full active-order set from `OrderCommitted` events (nothing has to be kept client-side) and call `resolveProcess(processId, commitments)` from the buyer wallet. Build every `deadline` from chain time, not host time, or you race `DeadlineExpired`.
+
+## CommitmentTypes — the signed struct
+
+`CommitmentTypes` is the shared struct-and-hashing library both the kernel and its coordinators import (`src/core/kernel/CommitmentTypes.sol:19`). One `Commitment` covers root and sub-orders:
+
+```solidity
+struct Commitment {
+    bytes32 processId;   // 0 for a root order
+    address buyer;
+    address seller;
+    address currency;    // the ERC-20 denomination
+    uint256 payment;
+    uint256 expectedCumulativeValue;
+    bytes32 agreementHash;  // merkle root of the order's composed clause sections
+    uint256 salt;        // makes a repeat order hash distinctly
+    uint256 deadline;    // commit window; a signature ages out, it never expires post-commit
+}
+```
+
+`agreementHash` is the seam to the [clause and agreement model](/protocol/clauses/): it is the merkle root over the order's composed clause sections, and it is what offer and acceptance — the two signatures — are taken over. The `COMMITMENT_TYPEHASH` string is exported as `COMMITMENT_TYPES` from the SDK; never retype it.
+
+## ClauseRegistry — anchoring a clause
+
+Permissionless, first-write-wins clause anchoring under a stake (`src/build/registries/ClauseRegistry.sol`). It anchors a locator and a content hash only; it validates no content shape — a registered clause is immediately attestable and batch-resolvable.
+
+```solidity
+function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI)
+    external payable;                          // src/build/registries/ClauseRegistry.sol:156
+function withdrawDeposit(bytes32 idHash) external;        // :185
+function setMechanismClause(bytes32 idHash) external;     // :207
+```
+
+The key is `idHash = keccak256(abi.encode(clauseId, version))` — pass the bare name to `registerClause`, the hash to the other two. `contentHash` is keccak256 of the canonical spec JSON; `contentHashOf(idHash) → bytes32` is never cleared, because it is the anchor `FigaroBatchVerifier` checks every witness spec against. `withdrawDeposit` is caller-only, once, no time lock: it refunds the stake and de-surfaces the clause for new compositions, but the binding is permanent and committed agreements keep resolving it. `setMechanismClause` is permissionless self-declaration that writes no storage and confers nothing — it emits `MechanismClauseSet(msg.sender, idHash)` so indexers can see which clause a composed mechanism speaks.
+
+`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/build/registries/ClauseRegistry.sol:64`).
+
+**Errors** (`:129-137`): `AlreadyRegistered(clauseId)`, `NotRegistered(clauseId)`, `EmptyClauseId`, `EmptyContentURI`, `ZeroContentHash`, `WrongDeposit(provided, required)`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `ClauseRegistered`, `DepositWithdrawn`, `MechanismClauseSet`.
+
+```bash
+# read the required stake, then register (deposit is deploy-time; never assume a number)
+cast call $CLAUSE_REGISTRY "registrationDeposit()(uint256)" --rpc-url $RPC
+cast send $CLAUSE_REGISTRY \
+  "registerClause(string,uint64,bytes32,string)" \
+  "figaro-my-clause" 1 $CONTENT_HASH "ipfs://$CID" \
+  --value $DEPOSIT --rpc-url $RPC --private-key $PK
+```
+
+## AssemblyRegistry — anchoring an assembly
+
+Permissionless, first-write-wins assembly anchoring under a stake (`src/build/registries/AssemblyRegistry.sol`). Identity *is* the composition.
+
+```solidity
+function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable;  // :148
+function withdrawDeposit(bytes32 compositionHash) external;                                        // :175
+```
+
+`compositionHash = keccak256` of the assembly's canonical composition subset (composed agreements — clauses, values, topology; editorial prose excluded), so identical compositions collapse to one binding and no caller-chosen name exists on chain; the human slug is derived off-chain. `bindings(compositionHash)` returns `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)` — the whole on-chain record. Withdrawal refunds the stake and de-surfaces the assembly; the binding stays, because buyers and sellers referencing it rely on stable content.
+
+**Errors** (`:120-127`): `EmptyContentURI`, `ZeroCompositionHash`, `CompositionAlreadyRegistered(compositionHash)`, `WrongDeposit(provided, required)`, `NotRegistered`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `AssemblyRegistered`, `DepositWithdrawn`. Compute the hash off-chain with `templateCompositionHash(template)` from the SDK — see [Clauses and agreements](/protocol/clauses/).
+
+## MembersRegistry — a participant declaration
+
+Permissionless self-registration under a reclaimable stake — one declaration document per wallet, whichever side of a trade it takes (`src/app/MembersRegistry.sol`).
+
+```solidity
+function register(string calldata metadataURI) external payable;   // :142
+function updateProfile(string calldata metadataURI) external;      // :162
+function requestWithdrawal() external;                             // :179
+function withdraw() external;                                      // :194
+function registered(address member) external view returns (bool);  // :120
+function withdrawable(address member) external view returns (bool);// :131
+```
+
+Withdrawal is two steps: `requestWithdrawal()` de-lists you at once and schedules the stake, `withdraw()` releases it after `withdrawalCooldown` elapses — so one stake cannot serve identity after identity. `registered(address)` is the seller-side gate `UsageCounter` reads for designer rewards. Availability is signalled off-chain, never as registry state — there is no active flag, no role field.
+
+**Errors** (`:92-97`): `AlreadyRegistered`, `NotRegistered`, `InsufficientDeposit` (the exact-match deposit check, despite the name), `NothingPending`, `CooldownActive(releaseAt)`, `TransferFailed`. **Events:** `MemberRegistered`, `MemberProfileUpdated`, `MemberWithdrawalRequested`, `MemberWithdrawn`.
+
+The three registries carry no edges among themselves — parallel anchors, never nested. Assembly→clause and seller→assembly relationships are off-chain.
+
+## AttestationCoordinator — evidence while an order is live
+
+Zero-storage, merkle-only attestation bound to the signed `agreementHash` (`src/core/attestation/AttestationCoordinator.sol`). It composes the kernel without becoming a party: it reads `orderStatus` and `DOMAIN_SEPARATOR`, and enforces nothing about resolution.
+
+```solidity
+function attestAsSeller(
+    CommitmentTypes.Commitment calldata role, CommitmentTypes.Commitment calldata target,
+    bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] calldata proof, bytes32 contentRef
+) external;                                    // :118
+function attestAsBuyer(
+    CommitmentTypes.Commitment calldata target,
+    bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] calldata proof, bytes32 contentRef
+) external;                                    // :145
+function attestViaResolver(
+    CommitmentTypes.Commitment calldata target,
+    bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] calldata proof, bytes32 contentRef
+) external;                                    // :165
+```
+
+`attestAsSeller` takes the same commitment twice for same-order attestation, or distinct commitments for cross-order attestation within one process. `attestAsBuyer`'s caller must equal `target.buyer`. `attestViaResolver`'s caller is authorized by `IRoleResolver(target.seller).isAuthorized` — reachable only through EIP-7702 delegation, no production caller today. Every call carries fingerprints, never preimages: `sectionHash = keccak256(sectionData)`, `contentRef = keccak256(content)`. The coordinator verifies a merkle inclusion proof of `leaf = keccak256(keccak256(clauseId || sectionHash))` against `target.agreementHash`, then emits `Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`. A clause not committed at signing cannot be attested; a never-seen clause is attestable with zero per-clause code.
+
+**Errors** (`:94-98`): `NotAuthorized`, `ProcessMismatch`, `UnknownOrder`, `OrderResolved`, `InvalidInclusionProof(agreementHash, clauseId)`. Build the proof with `buildSectionInclusionProof` from the SDK, over the agreement that was actually signed.
+
+## WitnessSwapAndCommitCoordinator — bond in a token you do not hold
+
+Direct-path only. Lets a buyer and/or seller fund a bond from a token other than the process's denomination, in the same transaction as `commit` (`src/app/WitnessSwapAndCommitCoordinator.sol`).
+
+```solidity
+function swapAndCommit(
+    CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig,
+    SwapFunding calldata buyerFunding, SwapFunding calldata sellerFunding
+) external returns (bytes32 processId, bytes32 orderHash);   // :180
+function swapWitness(address inputToken, uint256 maxInput, bytes calldata swapData)
+    external view returns (bytes32);                          // :170
+```
+
+For each enabled leg it pulls the input token through a Permit2 witness signature, forwards the swap calldata to an immutable Uniswap `SwapRouter02`, sends the swapped denomination to the party's own address, then calls `FigaroCore.commit`. Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`), never from calldata; the witness binds `{router, inputToken, maxInput, keccak256(swapData)}` so no relayer can reroute the swap. The kernel still sees a single-currency, bilaterally-signed commitment. On the batch path there is no funding leg — swap in your own wallet before submitting.
+
+**Errors** (`:153-155`): `NothingToFund`, `SwapCallFailed`, `OutputBelowBond(received, required)`. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the denomination, a one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2 witness signature.
+
+## FigaroBatchVerifier — the batch path
+
+Resolves batches of kernel operations beside the direct path, under one SP1 validity proof (`src/core/verifier/FigaroBatchVerifier.sol`). It applies commit *and* resolve — the whole lifecycle executes inside the proof.
+
+```solidity
+function settleBatch(
+    bytes calldata proof, bytes calldata publicValues,
+    NetPosition[] calldata positions, BatchEventData calldata events, BatchUsageData calldata usage
+) external;                                    // :261  (nonReentrant, external, no caller gate)
+```
+
+`settleBatch` verifies the proof against the immutable `programVKey`, checks state-root continuity and chain binding, hash-verifies the calldata byte-for-byte, checks every `(clause key → witness-spec hash)` binding against `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine, the registry anchors the constraint set, so a new clause never touches the prover — then reconciles net token positions (pulls net deposits, pushes net payouts), re-emits proven `Attestation` events, and forwards usage accrual to `UsageCounter.applyBatchAccrual`. Public state is `stateRoot() → bytes32` and `batchCount() → uint64`, advanced per `BatchSettled`.
+
+**The public values are nine 32-byte words** (`src/core/verifier/FigaroBatchVerifier.sol:70-79`): `prevStateRoot`, `newStateRoot`, `chainId`, `verifyingContract`, `tokenOpsHash`, `attestationEventsHash`, `specBindingsHash`, `usageAccrualHash`, and word 8 **`blockTimestamp`** (uint64). That last word is bounded: `settleBatch` reverts unless `blockTimestamp <= block.timestamp` and `block.timestamp - blockTimestamp <= MAX_BATCH_STALENESS`, where `MAX_BATCH_STALENESS = 1 hours` (`:98`, `:289`). It pins the clock the guest checked deadlines against to reality — a batch is proven then submitted, so a few minutes of lag is normal — while stopping a caller from picking an arbitrary past time to bond an already-expired commitment.
+
+**Errors** (`:193-206`): `StateRootMismatch(expected, actual)`, `ChainIdMismatch(expected, actual)`, `VerifyingContractMismatch(expected, actual)`, `PositionHashMismatch`, `AttestationHashMismatch`, `SpecBindingsHashMismatch`, `UsageAccrualHashMismatch`, `BatchTimestampOutOfRange(committed, current)`, `SpecBindingMismatch(clauseId, anchored, proven)`, `FeeOnTransferDetected`. **Events:** `BatchSettled(batchId, prevStateRoot, newStateRoot, positionCount)`, `BatchAccrualSkipped(batchId, reason)`, and `Attestation` — which **shares its topic hash with the coordinator's, so filter by contract address, not by topic** (`:180`).
+
+### The two paths share no state
+
+A batch-resolved process never acquires kernel status: `core.orderStatus` stays `0` for it, permanently, and there is no migration between the two. The single thing that crosses is the usage accrual for designer rewards. `settleBatch` is `external` with no caller gate — anyone who can produce the proof may land it — but producing the proof is the work a **sequencer** relay does for you. The relay is transport, not an authority; its only powers are censor and delay, and the fallback is always direct `FigaroCore` submission with the same signed artifacts. Its wire protocol and the read endpoints (which mirror the kernel events a batch-resolved order does not emit) are on the [SDK page](/building/sdk/) and in [`docs/SCALING_STRATEGY.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md).
+
+| Question | Direct — `FigaroCore` | Batch — `FigaroBatchVerifier` |
+|---|---|---|
+| Get onto the path | broadcast `commit`, then `resolveProcess` | submit signed structs to a sequencer; it proves and calls `settleBatch` |
+| Is this order resolved? | `orderStatus(bytes32) == 2` | no per-order flag; the transfers under `stateRoot()` are the proof — ask a relay for the per-order answer, verify against the chain |
+| Resolution event | `OrderResolved` · `ProcessResolved` | `BatchSettled` |
+| Per-order evidence | `Attestation` from the coordinator | `Attestation` re-emitted by the verifier (same topic — filter by address) |
+| Designer-reward credit | `UsageRecorded` / `accrualOf` | `BatchUsageRecorded` / `batchAccrualOf` |
+| Total usage score | `UsageCounter.scoreOf(clauseOrAssembly, period)` — sums both paths | same |
+
+## UsageCounter — verified clause and assembly usage
+
+Counts how much real trade a clause or assembly carried, on chain, at the moment it happens — because the kernel calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/build/rewards/UsageCounter.sol`).
+
+```solidity
+function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,
+    bytes32 sectionHash, bytes32[] calldata proof) external;                     // :439
+function recordAssemblyUsage(CommitmentTypes.Commitment calldata order, bytes32 compositionHash,
+    bytes32[] calldata proof) external;                                          // :480
+function applyBatchAccrual(uint8 period, bytes32 claimedProvenance,
+    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :552  (batchVerifier only)
+function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :417
+function currentPeriod() external view returns (uint8);                          // :398
+function periodClosed(uint8 period) external view returns (bool);                // :408
+function periodCount() external view returns (uint256);                          // :393
+```
+
+`recordClauseUsage` proves from state the chain already holds that the order is RESOLVED (`orderStatus == 2`) and that the clause was merkle-committed in the signed `agreementHash` — the same leaf shape the coordinator checks, with the status gate inverted. Anyone may call; the proof is trusted, never the caller. Per clause or assembly per period it keeps `c` (distinct resolved processes), `d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)` when `d ≥ minSellers`, else zero. Uniform — no tag, category, or weight. Usage counts only for a live-staked seller of record; a process counts once ever. Read `scoreOf`, which sums both paths' scores — `accrualOf` alone under-reports any key whose trade moved to batches.
+
+**Runtime errors** (`:318-329`): `ClauseOrAssemblyNotRegistered(clauseOrAssembly)`, `AccrualClosed` (`currentPeriod()` reverts once the last period ends — the revert is the answer), `UnknownOrder`, `OrderNotResolved`, `AlreadyCounted`, `InvalidInclusionProof`, `ClauseOrAssemblyExcluded(clauseOrAssembly)` (the one excluded key is `figaro-assembly-provenance` — scoring the credit-carrying leaf would double-pay), `SellerNotStaked(seller)`, `NotBatchVerifier`, `PeriodMismatch(open, claimed)`, `ProvenanceClauseMismatch(expected, claimed)`, `AccrualWentBackwards(clauseOrAssembly)`. **Events:** `UsageRecorded` (adds), `BatchUsageRecorded` (cumulative, replaces) — indexers fold them differently.
+
+## FlorinToken — the unit
+
+ERC-20 with EIP-2612 permit (`src/build/florin/FlorinToken.sol`). `MAX_SUPPLY` of one billion, enforced on every mint. It is not a call surface for a stranger: `mint` is gated to registered minters, and the minter registry is closed by `renounceDeployerMint` at genesis.
+
+```solidity
+function registerMinter(address minter, uint256 cap) external;    // :51  (deployer, pre-renounce)
+function mint(address to, uint256 amount) external;               // :64  (registered minter only)
+function renounceDeployerMint() external;                         // :79
+```
+
+**Errors** (`:18-24`): `NotMinter`, `DeployerMintRenounced`, `ZeroAddress`, `SupplyCapExceeded`, `MinterAlreadySet`, `MinterNotRegistered`, `MinterCapExceeded`. A florin carries no rights of any kind; nothing is minted on resolution. Allocation and the token argument are on the [florin page](/token/florin/).
+
+## RpgfMinter — claiming designer rewards
+
+Rewards designers of record from a 600M-florin reserve, pro rata to real recorded usage (`src/build/rewards/RpgfMinter.sol`). One state-changing entry point:
+
+```solidity
+function claim(uint8 periodId, bytes32[] calldata clausesOrAssemblies) external;  // :172
+```
+
+`claim` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period, and requires the period closed — so a share is score-over-total against numbers that stopped moving, no snapshot or history walk. A wallet passes every clause and assembly it designed in one duplicate-free call; each entry is verified against its own registry with a live stake (`ClauseRegistry.depositOf` or `AssemblyRegistry.bindings`, `registeredBy == caller` and not withdrawn). This is the designer-side half of a two-sided live-stake gate; the seller-side half is `UsageCounter`'s.
+
+**Errors** (`:112-120`): `UnknownPeriod(periodId)`, `PeriodStillAccruing(periodId)`, `AlreadyClaimed(periodId, account)`, `NoClausesOrAssemblies`, `DuplicateClauseOrAssembly(key)`, `NotAuthorOfRecord(clauseOrAssembly, caller)`, `NothingToClaim`, `PeriodBudgetExceeded(periodId)`. The schedule and formula are on [Designer rewards](/token/designer-rewards/); this page states the surface, not the schedule.
+
+## Composed, not owned
+
+The deployment record also wires external canonical contracts the kernel neither knows nor depends on: Uniswap's **Permit2** and **SwapRouter02** (the swap coordinator composes these), Succinct's **SP1 verifier gateway** (the batch verifier calls it), the **DAO treasury Safe**, and the canonical **Disperse** multisender at `0xD152f549545093347A162Dce210e7293f1452150` (the same address across chains) — post-resolution batch dispersal a wallet composes to split its own receipts. Addresses are deployment configuration, never code. On a local development run these are stood in by interface-matching mocks; wherever a network names the real one, the record wires it.
+
+## Canonical deployments
+
+Addresses are deploy-time configuration, published in a per-chain deployment record — never hardcode them, and never quote a deposit or gas figure as mainnet-stable, since each is a deploy-time parameter.
+
+| Network | Chain ID | Where the addresses are |
+|---|---|---|
+| Local Anvil | `31337` | the local run's own record, handed to you by the run |
+| Ethereum Sepolia | `11155111` | the committed public record: [`deployments/11155111.json`](https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json) |
+
+Fetch the public record and hash it to confirm the site and the repository serve the same bytes:
+
+```bash
+curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256
+```
+
+Then map it into the SDK's address type in one call — the record keys are **not** the SDK's field names, and spreading a record verbatim leaves renamed fields `undefined`, silently:
+
+```ts
+import { addressesFromDeploymentRecord } from "@figaro-protocol/sdk";
+const addresses = addressesFromDeploymentRecord(record);   // never { ...record }
+```
+
+Two keys are renamed (`figaroCore → core`, `tokenAddress → token`), five carry no SDK field (`florinToken`, `swapQuoter`, `permitTokenAddress`, `chainId`, `deploymentBlock`), and every other address key passes through under its own name. Only a missing `figaroCore` throws; every unknown key is ignored, never an error. Start every `getLogs` scan at the record's `deploymentBlock` — there are no getters to fall back on, so the event log is the read path, and scanning from block `0` on a public network is a great deal of range for nothing.
+
+The kernel surface is frozen for external audit; the frozen-surface declaration and how to verify it are in [`docs/AUDITOR_HANDOVER.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md).

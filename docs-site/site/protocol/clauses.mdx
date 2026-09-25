@@ -1,0 +1,109 @@
+---
+title: Clauses and agreements
+description: What a clause is, the four hashes and exactly what each covers, the spec format, how an agreement composes from clauses and an assembly from agreements, and permissionless registration.
+---
+
+A clause is data — a JSON spec, registered publicly, that defines one term of an agreement. It is what a clause is in a paper contract, made verifiable: its content is a public document, identified by a hash over its own bytes and anchored on chain, so what a trade's terms say can be checked, not asserted.
+
+Read the [whole model](/) first. Two of the six nouns live here and one seam runs through them: a **clause** is one relationship's term; an **agreement** is the clauses composed for one order, whose merkle root is the `agreementHash` that offer and acceptance — the buyer's and seller's signatures — are taken over; an **assembly** is agreements composed into something anyone can reuse. Composition is permissionless: someone writes a term once and publishes it; anyone whose agreement needs it composes it in, and nobody asks permission either way.
+
+Everything below is verified against the shipped SDK (`sdk/src/agreement.ts`, `sdk/src/assembly.ts`, `sdk/src/clauses/`) and the registries; every hash is a pure function you can call with no chain.
+
+## The four hashes, and exactly what each covers
+
+Four different hashes are computed over what you write, and mixing them up is the most expensive authoring mistake — registration is permanent and first-write-wins.
+
+**1. `contentHash` — a clause's content.** keccak256 over the canonical JSON of the *whole* spec document — `title`, `description`, `fields`, and *all* of `block`, editorial text included. It is the integrity anchor `ClauseRegistry` stores under `(clauseId, version)` and the anchor `FigaroBatchVerifier` binds witness specs to. Change one label in `block` and you get a different `contentHash`, so pin the exact bytes. In the SDK it is `canonicalContentHash(spec)` (`sdk/src/agreement.ts:97`).
+
+**2. The section leaf — one clause's place in one agreement.** `keccak256(keccak256(clauseId || sectionDataHash))` (`sdk/src/agreement.ts:168`), where `clauseId` is the on-chain key `keccak256(abi.encode(clause, version))` used verbatim (not re-hashed), and `sectionDataHash = keccak256(canonicalJSON(section.data))`. The inner hash binds the section; the outer hash domain-separates leaves from internal nodes (a leaf preimage is 32 bytes, an internal node's is 64, so no node can be replayed as a leaf). This is the *only* thing the merkle tree — and the on-chain `sectionHash` argument to the attest calls and `recordClauseUsage` — needs, so a private section's plaintext never has to be present to build or verify the tree.
+
+**3. `agreementHash` — an order's terms, what both parties sign.** The merkle root over an order's sorted section leaves (`sdk/src/agreement.ts:202`). The agreement hash *is* the merkle root — there is no separate wrapper. It is the field of the same name in the `Commitment` struct, so the two signatures at commit are taken over exactly the set of clause sections composed for that order. Any clause not in the tree cannot be attested against the order, and any clause in it is inclusion-provable on chain.
+
+**4. `compositionHash` — an assembly's identity.** keccak256 over the canonical *composition subset* of an assembly template — its composed agreements (their clauses, values, and topology), plus assembly-scoped clauses when any are composed; editorial prose excluded. It is `templateCompositionHash(template)` (`sdk/src/assembly.ts:125`), and it is the key `AssemblyRegistry` binds on. Identical compositions collapse to one binding; renaming never forks identity.
+
+```ts
+import { canonicalContentHash, computeAgreementHash,
+         templateCompositionHash } from "@figaro-protocol/sdk";
+
+canonicalContentHash(spec);          // (1) the clause's contentHash — registry anchor
+computeAgreementHash(agreement);     // (3) the agreementHash both parties sign
+templateCompositionHash(template);   // (4) an assembly's compositionHash — its identity
+// (2) the section leaf falls out of the agreement's merkle tree; inspect it with
+//     buildSectionInclusionProof(agreement, clauseId)
+```
+
+## The clause-spec format
+
+A spec lives off-chain as JSON at the `contentURI` its registration emits; `contentHash` is its integrity. The published definition of the format is the JSON Schema at [`sdk/src/clauses/clause-spec.schema.json`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/clause-spec.schema.json) — a closed subset of JSON Schema whose field `type` is one of `string`, `integer`, `bigint` (a decimal string), `boolean`, `enum`, `array`, `object`.
+
+**The spec has two halves, and the protocol ends between them.**
+
+- **Top level — the protocol:** identity (`clauseId`, `version`, `title`, `description`) and the content `fields`/`stages`. `fields` are stage-0, the committed content; `stages` keyed by the on-chain `uint8` stage are the shapes of *evidence* attested while the process is open (a temperature reading, measured grams). The SDK validates content against this off-chain; the bonds secure what was signed.
+- **`block` — the presentation:** phase sections named for their reader — `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime`. Nothing on-chain or in the SDK's content layer reads `block`.
+
+`fields` are the protocol; everything in `block` is replaceable presentation. Anyone can build a different frontend — ignore `block`, invent their own — and still get the contracts, the mechanisms, the verified `fields`, and designer rewards. A surface driven by `block` is designed presentation of verified clauses; a hardcoded list or a stored role or category is drift.
+
+Two `block.design.article` values are reserved and read straight off your spec: `"mandatory"` folds the clause into every agreement (this is how `figaro-commerce` and `figaro-topology` ride along), and `"attestations"` makes the clause a runtime process log committed as an empty anchor. Both behave differently than a plain group with no warning, and registration is permanent — so if that is not what you mean, group under any other word before you register.
+
+Validate and encode generically — there is no per-clause code path:
+
+```ts
+import { parseClauseSpec, validateContent,
+         encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
+
+const spec = parseClauseSpec(json);          // validates against the published schema
+validateContent(content, spec, { stage: 0 });// rejects unknown fields; applies the stage's field set
+encodeContentFromSpec(content, spec);        // the one spec-driven encoder, any clause
+```
+
+Every consumer loads each spec live from `ClauseRegistry` → IPFS; nothing bundles a copy. A never-seen clause hashes, validates, and encodes the same way as any other.
+
+## How an agreement composes from clauses
+
+An agreement is the set of clause sections composed for one order. Each `AgreementSection` names its `clause` and `version` and carries the clause's content; the parties sort the leaves, build the merkle root, and sign it. That root is the `agreementHash` in the `Commitment` — so signing the order *is* signing exactly the composed terms.
+
+One clause is always the order's shape: `figaro-topology` states which seller follows which. It is committed at signing as a merkle leaf like every other section, inclusion-provable against `agreementHash` — the kernel stores no parent or child, so indexers read a process's topology from the signed agreement, never from the chain.
+
+## How an assembly composes from agreements
+
+An assembly is a composition template: it wires per-order agreements into a multi-order process and registers once, so anyone who fits the shape trades through it without drawing it again. An author spawns sub-orders from any node and attaches the clauses that define each edge; those clauses are read live from `ClauseRegistry`, never a fixed menu.
+
+Every assembly folds in three clauses automatically: `figaro-commerce` (payment and denomination), `figaro-topology` (order shape), and `figaro-assembly-provenance` — the leaf whose committed content *is* the assembly's `compositionHash`, which is how a resolved process credits the assembly's designer through `UsageCounter.recordAssemblyUsage`. That provenance leaf is the one key excluded from scoring, so the credit-carrying leaf never earns twice.
+
+The `compositionHash` covers the composition and nothing else: a different clause set, one different design-authored value, a re-wired topology, or a different clause `version` pin all produce a different assembly; editorial prose (`name`, `summary`, `description`) is excluded, so renaming never forks it. The flip side of excluding prose: prose is not identity, so it does not protect a composition from being anchored by someone else first.
+
+```ts
+import { templateCompositionHash, deriveAssemblySlug } from "@figaro-protocol/sdk";
+
+const h = templateCompositionHash(template);            // the registry key
+deriveAssemblySlug(h);                                  // "asm-<first 8 bytes>" — off-chain, never stored
+templateCompositionHash({ ...template, name: "Anything" }) === h;  // true: prose is excluded
+```
+
+Compute the hash from the *raw* template, before any buyer, catalogue, or pricing fill touches it; compute it after merging those fills and you get a hash the registry never anchored.
+
+## Document anchoring — the public/withheld seam
+
+The chain holds fingerprints, never preimages, so each clause section is anchored by its `sectionDataHash` while its content lives off-chain on IPFS. A section takes one of two forms, and the merkle leaf is identical either way:
+
+- **Public** — the section carries plaintext `data`, pinned as plaintext, and `sectionDataHash` is computed from it. A reader fetches the bytes, hashes them back, and decodes against the spec.
+- **Withheld** — the section carries a `dataHash` fingerprint in place of `data` (paid-edge or private content), pinned encrypted. It contributes the exact same leaf, so the agreement root is unchanged — a party can publish or verify the agreement's structure while keeping the plaintext off every public surface.
+
+**A section carries `data` XOR `dataHash`, never both.** The hashing function refuses a section with both, at the hashing locus, so no consumer — leaf, root, or the sign gate — can pass a section that signs one thing and shows another (`sdk/src/agreement.ts:133-144`). Per-field disposition (`"public"` default, or `"private"`) is declared in the spec and governs publication and grain policy; the chain carries only the section hash either way. Withholding is fail-closed: an unknown spec, or any private field in the encoded set, publishes nothing, and a lookup that resolves empty reads as absence.
+
+## Registration — permissionless, first-write-wins, ETH-staked
+
+A new clause is a spec plus a registration, nothing else — no validator contract, no interface step; the proof engine is generic and takes the spec as a witness input anchored by the registration's `contentHash`.
+
+```solidity
+function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI)
+    external payable;   // ClauseRegistry — first-write-wins, immutable, under a stake
+```
+
+The key is `keccak256(abi.encode(clauseId, version))`, `clauseId` being the bare human-readable name (`figaro-emissions`). Registration anchors identity and integrity only — no group field (grouping is `block.design.article`, off-chain), no reward tag (designer rewards are uniform on real use), no validator (a registered clause is immediately attestable and batch-resolvable). The stake is a deploy-time deposit: read `registrationDeposit()` live and send exactly it. `version` is an integer lineage counter, never semver — consumers pin an exact `(clauseId, version)`, every content change produces a different hash, and compatibility, if it ever matters, is derived by diffing two immutable specs.
+
+Withdrawing the stake de-surfaces the clause for new compositions but never deletes the binding: agreements already committed against it keep resolving forever. Assemblies register the same way on `AssemblyRegistry` (keyed by `compositionHash`), with the same permanence.
+
+**One spec, two enforcement layers, in lockstep.** Off-chain, the SDK's `parseClauseSpec` and `validateContent` gate every signature. On the batch path, that same spec drives an in-proof content check: a generic SP1 engine validates each clause's content against its spec (supplied as a witness), and `FigaroBatchVerifier` resolves the batch only if every witness spec's hash equals the `contentHash` the `ClauseRegistry` anchors for that clause. The engine's verification key covers the *engine*, not a clause list, so a never-seen clause resolves through the proven path with zero code changes. There are no per-clause validator contracts, by design — a clause is data, not code.
+
+The contract surfaces these calls belong to — `ClauseRegistry`, `AssemblyRegistry`, `AttestationCoordinator`, `UsageCounter`, `FigaroBatchVerifier` — are on [The contracts](/protocol/contracts/); the reward that follows real use is on [Designer rewards](/token/designer-rewards/).
