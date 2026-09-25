@@ -113,7 +113,7 @@ export default function Home() {
 
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                        The code is open and checked seven independent ways on every change. It is not yet audited by an outside firm. What each check covers:{" "}
+                        The code is open and checked seven independent ways on every change. What each check covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>

@@ -57,7 +57,7 @@ export default function Faq() {
 
             <MarketingSection title="Has the code been audited?" sectionId="verification">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Not yet by an external auditor &mdash; and the full answer lives on its own page: the verification stack (seven independent benches) and the external-audit posture are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>; how to verify any trade yourself is the two checks under <Link href="#signing" className="text-ink-heading font-medium hover:underline">signing</Link>, below. Results will be published there when they exist.
+                    Audit in progress &mdash; and the full answer lives on its own page: the verification stack (seven independent benches) and the external-audit posture are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>; how to verify any trade yourself is the two checks under <Link href="#signing" className="text-ink-heading font-medium hover:underline">signing</Link>, below. The results will be published there when they exist.
                 </p>
             </MarketingSection>
 
@@ -139,7 +139,7 @@ export default function Faq() {
                     Unit and fuzz tests, symbolic execution, formal specification checking, and a machine-checked proof of the equilibrium, on every commit. Each bench and what it reaches is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Not yet an external audit. That is the honest answer, and it stays on the page until it changes.
+                    The external audit is in progress; the results will be published there when they exist.
                 </p>
             </MarketingSection>
 

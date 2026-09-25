@@ -53,6 +53,7 @@ export function Footer() {
                     </Link>
                 </div>
                 <div className="space-y-1 sm:text-right">
+                    <p>Audit in progress.</p>
                     <p>Figaro is a registered trademark. &copy; {new Date().getFullYear()} Figaro Protocol. All rights reserved.</p>
                     <p>Provided as-is, without warranty of any kind. No liability is accepted for loss, damages, or bugs. Use at your own risk.</p>
                 </div>

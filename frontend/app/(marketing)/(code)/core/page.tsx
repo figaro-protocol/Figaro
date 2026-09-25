@@ -64,9 +64,6 @@ export default function CoreDoor() {
                         </div>
                     ))}
                 </div>
-                <p className="mt-12 border-t border-default pt-8 text-sm text-ink-muted leading-relaxed max-w-2xl">
-                    Not yet audited by an outside firm.
-                </p>
             </section>
         </>
     );
