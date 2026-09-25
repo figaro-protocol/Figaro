@@ -238,7 +238,10 @@ skip is a failure.
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 The census is the directory listing (`ls frontend/tests/{components,lib}` —
-derived, never a stored count).
+derived, never a stored count). Pre-commit runs the slice a staged file reaches:
+`scripts/lint-vitest-related.sh` (lint-staged, `vitest related` over staged files
+under `frontend/{app,components,lib,tests}`, never an e2e spec), so a source change
+that empties a fixture fails before the push rather than in Frontend CI.
 
 - **Component tier** (`tests/components/`) — React Testing Library:
   `Header`, `MobileNav`, `CapabilityRail`,
