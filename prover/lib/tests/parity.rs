@@ -836,3 +836,46 @@ fn test_empty_state_root_is_deterministic() {
     let b = KernelState::from_snapshot(&empty_snapshot()).compute_root();
     assert_eq!(a, b, "genesis root must be deterministic");
 }
+
+#[test]
+fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
+    // A self-dealing commit (buyer == seller) with a huge payment: each bond
+    // fits U256 (2 * 2^254 = 2^255) but both accumulate under the same
+    // (token, user) to 2^256. Before the fix the TokenTracker `.expect()`
+    // PANICKED here, crashing the sequencer's batch loop for free; now it is a
+    // clean KernelError::Overflow that the batch rejects.
+    let key = make_signing_key(BUYER_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let huge = U256::from(1u8) << 254;
+    let c = Commitment {
+        process_id: B256::ZERO,
+        buyer: BUYER,
+        seller: BUYER,
+        currency: TOKEN,
+        payment: huge,
+        expected_cumulative_value: huge,
+        agreement_hash: keccak256("overflow"),
+        salt: U256::from(1u64),
+        deadline: U256::from(1_000_000u64),
+    };
+    let sig = sign_commitment(&c, &domain, &key);
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![KernelOp::Commit {
+            commitment: c,
+            buyer_sig: sig.clone(),
+            seller_sig: sig,
+        }],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
+    };
+    let result = apply_batch(&input);
+    assert!(
+        matches!(result, Err(KernelError::Overflow)),
+        "expected a clean Overflow error, got {result:?}",
+    );
+}

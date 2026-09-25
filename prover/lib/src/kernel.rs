@@ -25,18 +25,21 @@ impl TokenTracker {
         }
     }
 
-    fn deposit(&mut self, token: Address, user: Address, amount: U256) {
+    // Accumulation overflow is a rejectable input, not a crash: a batch whose
+    // bonds sum past U256 (a self-dealing commit with a huge payment reaches it)
+    // must fail as `KernelError::Overflow` — the same way `apply_commit`'s bond
+    // math already does — so the sequencer's batch loop rejects the op instead
+    // of panicking on `.expect()` and taking the relay down for free.
+    fn deposit(&mut self, token: Address, user: Address, amount: U256) -> Result<(), KernelError> {
         let entry = self.deposits.entry((token, user)).or_insert(U256::ZERO);
-        *entry = entry
-            .checked_add(amount)
-            .expect("deposit accumulator overflow");
+        *entry = entry.checked_add(amount).ok_or(KernelError::Overflow)?;
+        Ok(())
     }
 
-    fn payout(&mut self, token: Address, user: Address, amount: U256) {
+    fn payout(&mut self, token: Address, user: Address, amount: U256) -> Result<(), KernelError> {
         let entry = self.payouts.entry((token, user)).or_insert(U256::ZERO);
-        *entry = entry
-            .checked_add(amount)
-            .expect("payout accumulator overflow");
+        *entry = entry.checked_add(amount).ok_or(KernelError::Overflow)?;
+        Ok(())
     }
 
     fn net_positions(&self) -> Vec<NetPosition> {
@@ -208,8 +211,8 @@ fn apply_commit(
         .checked_mul(U256::from(2))
         .ok_or(KernelError::Overflow)?;
 
-    tracker.deposit(c.currency, c.buyer, buyer_bond);
-    tracker.deposit(c.currency, c.seller, seller_bond);
+    tracker.deposit(c.currency, c.buyer, buyer_bond)?;
+    tracker.deposit(c.currency, c.seller, seller_bond)?;
 
     Ok((process_id, order_hash))
 }
@@ -265,8 +268,8 @@ fn apply_resolve(
 
         let (seller_payout, buyer_payout) = resolution_payouts(c)?;
 
-        tracker.payout(currency, c.seller, seller_payout);
-        tracker.payout(currency, buyer, buyer_payout);
+        tracker.payout(currency, c.seller, seller_payout)?;
+        tracker.payout(currency, buyer, buyer_payout)?;
 
         state.order_status.insert(order_hash, 2);
     }
