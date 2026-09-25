@@ -124,13 +124,13 @@ export default function Faq() {
                     Commit refuses a signed order past its deadline, a missing or wrong signature from either party, a zero payment, a cumulative value that does not match, a token that takes a fee on transfer, and a second currency in one process.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Resolve refuses anyone but the buyer, an incomplete order list, and a process already resolved. The full surface is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>.
+                    Resolve refuses anyone but the buyer, an incomplete order list, and a process already resolved. The full surface is in the <a href="/docs/protocol/contracts/" className="text-ink-heading font-medium hover:underline">builder documentation</a>.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Where is it deployed?" sectionId="deployments">
                 <p className="text-base text-ink-body leading-relaxed">
-                    The address of every contract, per network, is in the deployment record in the repository and on <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>. Read addresses from there, never from a remembered constant.
+                    The address of every contract, per network, is in the deployment record in the repository and in the <a href="/docs/protocol/contracts/" className="text-ink-heading font-medium hover:underline">builder documentation</a>. Read addresses from there, never from a remembered constant.
                 </p>
             </MarketingSection>
 
