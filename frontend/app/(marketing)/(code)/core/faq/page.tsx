@@ -124,7 +124,7 @@ export default function Faq() {
                     Commit refuses a signed order past its deadline, a missing or wrong signature from either party, a zero payment, a cumulative value that does not match, a token that takes a fee on transfer, and a second currency in one process.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Resolve refuses anyone but the buyer, an incomplete order list, and a process already resolved. The full surface is on <Link href="/spec#FigaroCore" className="text-ink-heading font-medium hover:underline">Specifications</Link>.
+                    Resolve refuses anyone but the buyer, an incomplete order list, and a process already resolved. The full surface is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>.
                 </p>
             </MarketingSection>
 
