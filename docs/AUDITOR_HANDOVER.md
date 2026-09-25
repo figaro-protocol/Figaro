@@ -1,8 +1,9 @@
 # External Audit Handover
 
-The handover package for the external audit of the frozen Solidity surface: what
-is frozen, how to verify the freeze, what to read, which behaviors are
-intentional, and the validation gate the audited tree must pass.
+The handover package for the external audit: the frozen Solidity surface, the
+two off-chain tiers the batch path adds (the proof program and the relay), how
+to verify the freeze, what to read, which behaviors are intentional, and the
+validation gate the audited tree must pass.
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
@@ -39,23 +40,81 @@ The directory IS the tier map (`CONTRACTS.md` § header).
 - `test/`, `frontend/`, `sdk/` — non-Solidity surfaces (see the Frontend + SDK
   audit posture at the bottom)
 
+### The off-chain tiers — in scope, each frozen by its own anchor
+
+The batch path adds two components the Solidity table does not hold. Both are
+in scope. Neither is frozen at the stamp, because each has its own anchor.
+
+**Tier 1b — the proof program** (`prover/program/`, the guest; `prover/lib/`,
+the kernel mirror and the witness gates; `prover/clause/`, the generic clause
+engine). It is what a valid proof proves: `FigaroBatchVerifier` accepts any
+public values a proof under `programVKey` commits to, so a defect in the guest
+is a batch the chain resolves wrongly — the same class of loss as a kernel
+defect. Its anchor is the verification key
+`0x00d9927da3d3bc4832970a90a8dd99adb5ccae17be71ecb482362beca8c6d178`, recorded
+in `deployments/11155111.json` since the redeploy of 2026-08-20 (`27963986`,
+`92d35f9b`); the guest's source has no non-comment change since that commit.
+The key is a function of the guest bytes, so a changed program is a new
+verifier at a new address (§ "Actors"). Reproducible build: the prover box's
+`scripts/prover-box/build-guest.sh`, the SP1 release read from
+`prover/Cargo.lock`; the sequencer derives the key from the guest it embeds
+(`sequencer --vkey`) and refuses to start when the deployed `programVKey()`
+differs. Tests: `prover/lib/tests/` (the calldata packers and the Merkle
+three-way against the Solidity, the kernel-transition replay, the bincode
+round-trip, usage accrual), `prover/clause/tests/` (conformance against the
+TypeScript reference), `prover/script/tests/guest_program.rs` (the guest end to
+end); `.github/workflows/prover-ci.yml` runs them on every push and builds the
+guest. Review
+goal: public-values completeness — no operation stream yields public values the
+verifier accepts that differ from what `FigaroCore` would have done with the
+same signatures.
+
+**Tier 2 — the relay** (`prover/sequencer/`). An HTTP relay that collects
+signed operations, forms batches, proves them, calls `settleBatch`, and
+publishes what it resolved. `settleBatch` is permissionless and the proof is
+checked on chain, so the relay cannot forge; the direct path stays open, so it
+cannot censor terminally. Its failure class is liveness and griefing
+(`SCALING_STRATEGY.md` § Trust analysis). It holds one key,
+`SEQUENCER_PRIVATE_KEY`, which signs the `settleBatch` transaction and pays its
+gas; the key grants no protocol privilege. It is the component that changed
+most since the stamp: the bounded door, the funding pre-check and the re-queue
+cap landed 2026-09-22 (`3c35daab`), each with tests — 62 in
+`prover/sequencer/tests/sequencer.rs`: the per-client rate limit, the mempool
+cap and its eviction, dead-lettering, poison operations, crafted streams, the
+publication routes. Review goals: a stall for free, mempool poisoning,
+re-queue exhaustion, and the handling of its one key. Priced as a second tier:
+its risk is bounded by the architecture, not by its code.
+
 ### Verifying the freeze
 
-The kernel has NO post-stamp edits — this diff is empty and must stay empty:
+The frozen files moved on 2026-09-11 (amendment 6), so the diffs are taken
+rename-aware, old path and new path together. The kernel has NO post-stamp
+edits — this prints two renames and `0 insertions(+), 0 deletions(-)`, and must
+stay that way:
 
 ```bash
-git diff c7f85d0d -- src/core/kernel/
+git diff -M --stat c7f85d0d HEAD -- src/kernel/ src/core/kernel/
 ```
 
 For the rest of the frozen scope:
 
 ```bash
-git diff c7f85d0d -- src/core/attestation/ src/core/verifier/ src/build/ src/app/ script/Deploy.s.sol script/DeployMainnet.s.sol script/DeploySwapCoordinator.s.sol
+git diff -M c7f85d0d HEAD -- src/protocol/ src/rpgf/ src/florin/ src/core/attestation/ src/core/verifier/ src/build/ src/app/ script/Deploy.s.sol script/DeployMainnet.s.sol script/DeploySwapCoordinator.s.sol
 ```
 
 Expected output: exactly the post-stamp amendments listed below and nothing more.
 Any hunk not traceable to a listed amendment is an unlisted frozen-scope edit —
 a Post-Audit Policy violation.
+
+Where an amendment claims "comments only", the bytecode is the authority: build
+the tree at the tag `audit-2026-09` (`48d89248`, which carries amendments 1 to
+5) in a worktree over the same `lib/` submodule commits, then compare each
+contract's `forge inspect <C> deployedBytecode` at the tag and at HEAD with the
+trailing CBOR metadata removed (its last two bytes give its length). Run
+2026-09-25: identical for all ten deployable contracts — FigaroCore,
+ClauseRegistry, AssemblyRegistry, MembersRegistry, AttestationCoordinator,
+WitnessSwapAndCommitCoordinator, UsageCounter, FigaroBatchVerifier, RpgfMinter,
+FlorinToken.
 
 ### Post-stamp amendments
 
@@ -86,6 +145,15 @@ a Post-Audit Policy violation.
    before and after with `forge inspect <C> deployedBytecode` for the three
    contracts: every byte before the trailing CBOR metadata identical; only the
    metadata hash, which digests the source including comments, differs. Recorded
+   per the amendment-4 precedent, no re-run required.
+6. **2026-09-11** — `a124f5c3`: the tree became the three layers, core / build /
+   app, and every frozen file moved with it (`src/kernel/` → `src/core/kernel/`;
+   `src/protocol/coordinators/` → `src/core/attestation/` and `src/app/`;
+   `src/protocol/verifier/` → `src/core/verifier/`; `src/protocol/registries/`,
+   `src/rpgf/`, `src/protocol/usage/`, `src/florin/` → `src/build/`;
+   `MembersRegistry.sol` → `src/app/`). Paths, and the import lines that name
+   them; no other token changed. Runtime bytecode compared 2026-09-25 as
+   § "Verifying the freeze" describes: identical for every contract. Recorded
    per the amendment-4 precedent, no re-run required.
 
 ### Formal run evidence
@@ -225,8 +293,6 @@ The two that remain are equivalent: the zero-score early return in `_entitlement
 a division whose numerator is already zero, so removing or forcing it yields the same quote
 and the same `NothingToClaim` revert. Two mutants of the file were skipped by the tool as
 unmutable.
-The rest of the frozen scope is mutated one contract per sitting; the results are recorded
-here as they land.
 
 ### Post-Audit Policy
 
@@ -268,6 +334,12 @@ direct path would have refused.
 4. Token-boundary behaviour: the Permit2 witness digest and SwapRouter02 call in
    `WitnessSwapAndCommitCoordinator`, and non-standard ERC-20s beyond the
    fee-on-transfer rejection.
+5. The proof program (tier 1b): public-values completeness, and the witness
+   gates the mirror enforces — spec-identity substitution, content-hash
+   mismatch, inclusion failure, attest-after-resolve — agreeing with
+   `AttestationCoordinator` and the kernel.
+6. The relay (tier 2): liveness under a hostile client — the door, the cap, the
+   re-queue — and the handling of its one key.
 
 **Questions for the auditor.**
 
@@ -282,6 +354,10 @@ direct path would have refused.
    plus the member stake it requires?
 5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would
    want bound, so a relayer cannot substitute a route?
+6. Can any operation stream make the guest commit public values `settleBatch`
+   accepts that `FigaroCore` would have refused for the same signatures?
+7. Can one client stall the relay, or exhaust its re-queue, at a cost below its
+   own rate-limit budget?
 
 ## Static analysis
 
@@ -300,7 +376,7 @@ results, triaged:
 | Medium | incorrect-equality | `MembersRegistry.withdraw` (`unlockAt == 0`) | Sentinel for "nothing pending"; `DESIGN_DECISIONS.md` #15. |
 | Medium | reentrancy-no-eth | `settleBatch` writes `stateRoot` after calling `UsageCounter` | `nonReentrant`; the callee is an immutable address that accepts only this caller and calls nothing back; the call sits in a try/catch so its revert cannot unwind the token legs. |
 | Medium | unused-return | tuple destructuring of `assemblies.bindings` | Reads the fields it needs. |
-| Medium | missing zero-check | `WitnessSwapAndCommitCoordinator` constructor `router_` | A zero router yields a coordinator whose swap leg always reverts and holds nothing; the deploy scripts probe the router before construction. Left as is under the freeze. |
+| Low | missing zero-check | `WitnessSwapAndCommitCoordinator` constructor `router_` | A zero router yields a coordinator whose swap leg always reverts and holds nothing; the deploy scripts probe the router before construction. Left as is under the freeze. |
 | Low | calls-loop | accrual, spec-binding, position, and entitlement loops | Designed; loops are over caller-sized calldata and gas-bounded (accepted risk 2). No loop body reverts on a third party's action. |
 | Low | timestamp | `deadline` in `commit`; registry cooldowns; reward periods | `deadline` is the expiry of the unconsummated signature window (`DESIGN_DECISIONS.md` #13); the rest are day-scale comparisons. |
 | Info | assembly, cyclomatic-complexity, low-level-calls, missing-inheritance, naming | verifier hashing helpers; `commit`; the swap call and the three ETH refunds; local interfaces; `DOMAIN_SEPARATOR` | Calldata hashing mirrored by the prover's parity tests; the kernel's one entry point; checks-effects-interactions on every refund; style. |
@@ -328,7 +404,7 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | OpenZeppelin Contracts 5.5.0 (`lib/`, pinned submodule) | inheritance and SafeERC20 | library correctness |
 | Permit2 (canonical, `0x000000000022D473030F116dDEE9F6B43aC78BA3`) | `WitnessSwapAndCommitCoordinator` constructor, probed for code at deploy | witness-transfer semantics on the swap leg only |
 | Uniswap SwapRouter02 (per chain; `deployments/<chainId>.json`) | same constructor, probed for `factory()` and `WETH9()` at deploy | executing the swap the signer's witness commits to |
-| SP1 verifier gateway + program vkey (`SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable | proof soundness on the batch path; a changed program is a new verifier at a new address |
+| SP1 verifier gateway (`SP1_VERIFIER_GATEWAY`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable, beside `programVKey` (`SP1_PROGRAM_VKEY`) | proof soundness: that a proof under `programVKey` came from that program. The program is the project's own, tier 1b above; a changed program is a new verifier at a new address |
 | IPFS | content behind every on-chain hash | availability, never integrity (`DATA_LAYER.md`) |
 | XMTP | the runtime's coordination channel | nothing on-chain |
 | Arbitration forums | composed at the edge (`CONTRACTS.md` § coordinators) | nothing on-chain; a forum rules on open data and cannot call resolve |
@@ -343,6 +419,8 @@ No oracle, no bridge, no upgrade proxy, no pause anywhere.
 | `docs/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/RELEASE_READINESS.md` | The open release tasks (testnet + mainnet) |
 | `docs/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for |
+| `prover/README.md` | The five crates of the proof apparatus, the toolchain, and how the tests run |
+| `prover/sequencer/README.md` | The relay's trust model, its routes and bounds, the guest fingerprint, and how to run one |
 | `/spec` (site) | The origination sequence, the two resolution paths, and the system-layers figures, drawn from the deployed addresses |
 | `/kernel` (site) | The locked-bonds state figure: an order's three states and the two calls that move it |
 | `/papers/verified-resolution-kernel` (site) | The batch resolution sequence figure and the verification method, per technique |
@@ -382,7 +460,9 @@ re-deriving they are intentional:
 
 **Naming, as practised across the frozen scope.** Contracts and structs
 PascalCase; external and public functions camelCase; every internal and private
-function carries a leading underscore (22 of them, none without); immutables
+function carries a leading underscore (23 of them; the one exception is the
+library function `CommitmentTypes.hashStruct`, named for the EIP-712 operation
+it performs); immutables
 camelCase, constants UPPER_SNAKE (`COMMITMENT_TYPEHASH`, `MAX_SUPPLY`,
 `CUBE_MAX`); custom errors are PascalCase statements of the condition
 (`OrderNotCommitted`, `SellerNotStaked`); events are PascalCase past-tense facts
@@ -454,7 +534,7 @@ shape, answered from the tree. Each answer names its evidence.
 | 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
 | 9 | Key invariants defined and tested on every commit | Yes | Foundry runs in pre-commit; Halmos, Certora, TLA+, Echidna, and the Lean 4 equilibrium proof run in the battery. `VERIFICATION_MAP.md` maps each invariant to its test. |
 | 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither and Semgrep on every push in CI (§ "Static analysis" above). |
-| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Open on the audit | No external audit has been performed; this document is the handover for the first. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
+| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | In progress | The first external audit is being arranged; this document is its handover. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
 | 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
 
 ### Trail of Bits' code-maturity categories
@@ -464,14 +544,12 @@ Contracts, code-maturity evaluation v0.1.0) on its four-step scale, from the
 tree alone; the categories that rate a process rather than code are rated on
 what the tree shows. Overall 3.0 of 4. The rubric is threshold-based: a
 category holds a tier only when every criterion of that tier is met, so Auditing
-stays Moderate until the monitoring log is reviewed on its schedule and the
-incident plan has been rehearsed, and Testing stays Satisfactory until the
-mutation-testing campaign has covered the whole scope.
+stays Moderate until the incident plan has been rehearsed.
 
 | Category | Rating | What holds it there |
 |---|---|---|
 | Arithmetic | Satisfactory | Checked math throughout; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:667-670`) carries no inline bound argument. |
-| Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs hourly in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); the daily review by an agent and a rehearsal of the redeploy leg are what Satisfactory still needs. |
+| Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs hourly in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); the daily review runs (the incident-review routine reads the watcher's issues each morning); a rehearsal of the redeploy leg is what Satisfactory still needs. |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and below (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented byte-parity mirrors. |
 | Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
