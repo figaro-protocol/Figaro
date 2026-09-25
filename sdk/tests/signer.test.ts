@@ -376,3 +376,61 @@ describe("reviveTypedMessage", () => {
         expect(out.who).toBe(OTHER);
     });
 });
+
+// ── Rolling-ceiling concurrency (TOCTOU regression) ─────────────────────────
+
+describe("daemon rolling ceiling under pipelined requests", () => {
+    it("grants only within the per-period ceiling when two requests arrive in one socket write", async () => {
+        // The gate reads the spend window, then AWAITS the signature, then
+        // records — so two requests dispatched before either records once let
+        // both pass the same empty window. The daemon serializes the critical
+        // section; this pins that. perPeriod admits one commitment's 2×payment
+        // bond (1_000_000) but not two.
+        const net = await import("node:net");
+        const { wireStringify } = await import("../src/signer/wire.js");
+        const { strippingReviver } = await import("../src/safeJson.js");
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "signer-toctou-"));
+        const socketPath = path.join(dir, "signer.sock");
+        const p = policy({ ceilings: { perAction: "1000000", perPeriod: "1500000", periodSecs: 86400 } });
+        const d = createSignerDaemon({
+            policy: p, privateKey: KEY, socketPath,
+            auditPath: path.join(dir, "audit.jsonl"),
+            journalPath: path.join(dir, "window.jsonl"),
+            simulate: async () => ({ reverted: false }),
+        });
+        await d.listen();
+        try {
+            const domain = buildDomain(p.chainId, CORE);
+            const line = (id: number, salt: bigint) => {
+                const { typedData } = buildCommitment({
+                    processId: ("0x" + "00".repeat(32)) as Hex,
+                    buyer: WALLET, seller: OTHER, currency: TOKEN,
+                    payment: 500_000n, expectedCumulativeValue: 500_000n,
+                    agreementHash: ("0x" + "11".repeat(32)) as Hex,
+                    salt, deadline: 9_999_999_999n,
+                }, domain);
+                return wireStringify({ id, op: "signTypedData", params: typedData });
+            };
+            const responses = await new Promise<Array<{ ok: boolean }>>((resolve, reject) => {
+                const conn = net.connect(socketPath);
+                let buf = "";
+                const got: Array<{ ok: boolean }> = [];
+                conn.on("connect", () => conn.write(`${line(1, 1n)}\n${line(2, 2n)}\n`));
+                conn.on("data", (chunk) => {
+                    buf += chunk.toString("utf-8");
+                    let nl: number;
+                    while ((nl = buf.indexOf("\n")) >= 0) {
+                        got.push(JSON.parse(buf.slice(0, nl), strippingReviver));
+                        buf = buf.slice(nl + 1);
+                        if (got.length === 2) { conn.end(); resolve(got); }
+                    }
+                });
+                conn.on("error", reject);
+            });
+            const granted = responses.filter((r) => r.ok).length;
+            expect(granted, `daemon granted ${granted} signatures; the ceiling allows 1`).toBe(1);
+        } finally {
+            await d.close();
+        }
+    });
+});

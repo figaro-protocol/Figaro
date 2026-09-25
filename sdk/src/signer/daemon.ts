@@ -118,6 +118,19 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
         riskNative: d.risk.native.toString(),
     });
 
+    // Serialize the gate's check-sign-record so pipelined requests cannot read
+    // the same spend window before either records — a TOCTOU that let two
+    // requests in one socket write each pass the per-period ceiling (the check
+    // reads `journal.spent()`, then `await`s the signature, and records only
+    // after). The daemon holds one key over one window, so one-at-a-time is the
+    // correct and complete fix.
+    let signingChain: Promise<unknown> = Promise.resolve();
+    function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+        const result = signingChain.then(fn, fn);
+        signingChain = result.then(() => undefined, () => undefined);
+        return result;
+    }
+
     async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promise<WireResponse> {
         if (req.op === "health") {
             return { id: req.id, ok: true, result: { status: "ok", address: account.address } };
@@ -207,7 +220,7 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
                                 conn.write(`${wireStringify({ id: -1, ok: false, error: "malformed request" })}\n`);
                                 continue;
                             }
-                            handle(req)
+                            runExclusive(() => handle(req))
                                 .then((res) => conn.write(`${wireStringify(res)}\n`))
                                 .catch((e) => conn.write(`${wireStringify({
                                     id: req.id, ok: false,
