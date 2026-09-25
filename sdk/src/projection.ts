@@ -449,6 +449,19 @@ export function validateCommitmentAgreement(
     const issues: CommitmentAgreementIssue[] = [];
 
     for (const section of agreement.sections) {
+        // Structural, before any spec lookup (an attacker can withhold the spec
+        // by naming an unregistered clause id): a section carries EITHER
+        // plaintext `data` OR a content-withheld `dataHash`, never both. The
+        // signed merkle leaf uses `dataHash` verbatim while the review renders
+        // `data`, so a section carrying both signs one thing and shows another.
+        if (section.data !== undefined && section.dataHash !== undefined) {
+            issues.push({
+                clause: section.clause,
+                path: "dataHash",
+                message: `section carries both plaintext data and a dataHash fingerprint — exactly one is allowed (the signed leaf uses dataHash while the review shows data)`,
+            });
+            continue;
+        }
         const spec = specs.get(section.clause);
         if (!spec) continue;
         // A runtime-lifecycle clause is an empty anchor at commit — its content

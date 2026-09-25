@@ -101,6 +101,32 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         expect(paths.some((p) => p.includes("applicableLaw"))).toBe(true);
         expect(paths.some((p) => p.includes("language"))).toBe(true);
     });
+
+    it("refuses a section carrying BOTH data and dataHash — the what-you-see-is-what-you-sign invariant", () => {
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, {
+            "figaro-commerce": commerceData(),
+            "figaro-applicable-law": { applicableLaw: "US-NY" },
+        }, SPECS);
+        // The attack: keep the benign `data` a review renders, and ALSO attach a
+        // `dataHash` fingerprint of hidden content, which the merkle leaf would
+        // sign verbatim — sign one thing, show another.
+        const sections = agreement.sections.map((s) =>
+            s.clause === "figaro-applicable-law"
+                ? { ...s, dataHash: `0x${"ee".repeat(32)}` as `0x${string}` }
+                : s,
+        );
+        const evil = { ...agreement, sections };
+        const dual = sections.find((s) => s.clause === "figaro-applicable-law");
+        // Refused at the hashing locus …
+        expect(() => sectionDataHash(dual!)).toThrow(/both plaintext data and a dataHash/);
+        // … and at the sign gate, structurally, regardless of the hash presented.
+        const anyHash = `0x${"00".repeat(32)}` as `0x${string}`;
+        const check = validateCommitmentAgreement(evil, anyHash, SPECS, STRUCT);
+        expect(check.ok).toBe(false);
+        expect(check.issues.some((i) => i.path === "dataHash" && /both/.test(i.message))).toBe(true);
+        expect(() => assertAgreementSignable(evil, anyHash, SPECS, STRUCT))
+            .toThrow(/both plaintext data and a dataHash/);
+    });
 });
 
 describe("the sign gate's denomination chain — pin == leaf == struct", () => {

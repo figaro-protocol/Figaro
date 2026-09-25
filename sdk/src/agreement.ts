@@ -128,7 +128,19 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
  * otherwise it is computed from the plaintext.
  */
 export function sectionDataHash(section: AgreementSection): Hex {
-    if (section.dataHash !== undefined) return section.dataHash;
+    if (section.dataHash !== undefined) {
+        // A section carries EITHER plaintext `data` OR a content-withheld
+        // `dataHash` — never both. The merkle leaf uses `dataHash` verbatim
+        // while a review surface renders `data`, so a section carrying both
+        // would sign one thing and show another. Refuse it at the hashing
+        // locus, so no consumer (leaf, root, sign gate) can pass it.
+        if (section.data !== undefined) {
+            throw new Error(
+                `Section ${section.clause} carries both plaintext data and a dataHash fingerprint — exactly one is allowed`,
+            );
+        }
+        return section.dataHash;
+    }
     return keccak256(getSectionDataBytes(section));
 }
 
