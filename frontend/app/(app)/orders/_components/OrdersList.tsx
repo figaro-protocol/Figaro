@@ -240,7 +240,7 @@ function SignedUnsentRow({
 }
 
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
-function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing> }) {
+function AwaitingAcceptanceRow({ payload, listings, onDismiss }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
     const { commitment } = payload;
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, commitment.seller);
@@ -257,12 +257,22 @@ function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPaylo
                             Awaiting acceptance
                         </span>
                     </div>
-                    <p className="mt-1 text-xs text-ink-muted">Waiting for {counterpartyName} to counter-sign.</p>
+                    <p className="mt-1 text-xs text-ink-muted">Waiting for {counterpartyName} to counter-sign. Nothing is on-chain yet, and the commitment expires on its deadline if never accepted.</p>
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
                     <p className="text-sm font-semibold text-ink-primary">{formatToken(commitment.payment, decimals)}</p>
                 </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle"
+                    data-testid="btn-dismiss-pending"
+                >
+                    Dismiss
+                </button>
             </div>
         </div>
     );
@@ -379,7 +389,7 @@ export function OrdersList() {
     }, [readyToSubmit, commitOrder, dismissReady, reset]);
 
     // AWAITING ACCEPTANCE — commitments I relayed, waiting on the counterparty.
-    const { pending: outbound } = usePendingSellerSignature(awaitsCounterpartySignature);
+    const { pending: outbound, dismiss: dismissOutbound } = usePendingSellerSignature(awaitsCounterpartySignature);
 
     // SIGNED, NOT YET SENT — the tab's copy of what I signed but never relayed.
     const unsent = useSignedUnsentOrders(address, chainId);
@@ -424,7 +434,12 @@ export function OrdersList() {
     const visibleIncoming = incoming
         .map((payload, index) => ({ payload, index }))
         .filter(({ payload }) => notCommitted(payload));
-    const visibleOutbound = address && core ? outbound.filter(notCommitted) : outbound;
+    // Preserve the original index into `outbound` (what `dismissOutbound`
+    // indexes), the same shape as visibleIncoming/visibleReady — a plain
+    // .filter() would misalign the dismiss index once notCommitted drops a row.
+    const visibleOutbound = outbound
+        .map((payload, index) => ({ payload, index }))
+        .filter(({ payload }) => (address && core ? notCommitted(payload) : true));
     const relayedIds = new Set(
         chainId && core
             ? outbound.map((p) => { try { return computeOrderHash(p.commitment, chainId, core).toLowerCase(); } catch { return ""; } })
@@ -526,9 +541,9 @@ export function OrdersList() {
                         <section className="space-y-3" data-testid="orders-pending-section">
                             <p className="text-xs font-semibold text-ink-muted">Awaiting acceptance</p>
                             <ul className="space-y-3" data-testid="orders-pending">
-                                {visibleOutbound.map((payload, index) => (
+                                {visibleOutbound.map(({ payload, index }) => (
                                     <li key={`pending-${index}`}>
-                                        <AwaitingAcceptanceRow payload={payload} listings={listings} />
+                                        <AwaitingAcceptanceRow payload={payload} listings={listings} onDismiss={() => dismissOutbound(index)} />
                                     </li>
                                 ))}
                             </ul>

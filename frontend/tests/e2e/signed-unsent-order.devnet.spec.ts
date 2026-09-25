@@ -24,7 +24,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const KIOSK = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 5 }).address;
 
 test.describe('signed, not yet sent (devnet)', () => {
-    test('the buyer finds the signed order on /orders after navigating away, and sends it from there', async ({ page }) => {
+    test('the buyer finds the signed order on /orders after navigating away, sends it, and can dismiss it if the seller never accepts', async ({ page }) => {
         // ── Buyer signs at checkout, then leaves before Send ──
         await page.goto(`/s/view?seller=${KIOSK}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30_000 });
@@ -61,5 +61,16 @@ test.describe('signed, not yet sent (devnet)', () => {
         await unsent.first().getByTestId('btn-send-unsent').click();
         await expect(page.getByTestId('order-unsent-row'), 'the unsent row leaves once relayed').toHaveCount(0, { timeout: 30_000 });
         await expect(page.getByTestId('order-pending-row').first(), 'the relayed order awaits acceptance').toBeVisible({ timeout: 30_000 });
+
+        // ── The buyer can dismiss a relayed order the seller never accepts ──
+        // Beta r7 (procurement-buyer): a courier leg never counter-signed and
+        // the "Awaiting acceptance" row carried no control — the buyer was
+        // stuck. Nothing is on-chain (the commitment expires on its deadline),
+        // so abandoning is safe; Dismiss clears the row, as it already does for
+        // the incoming and ready-to-submit rows.
+        const dismiss = page.getByTestId('order-pending-row').first().getByTestId('btn-dismiss-pending');
+        await expect(dismiss, 'the awaiting-acceptance row offers a way out').toBeVisible();
+        await dismiss.click();
+        await expect(page.getByTestId('order-pending-row'), 'dismiss clears the stuck row').toHaveCount(0, { timeout: 30_000 });
     });
 });
