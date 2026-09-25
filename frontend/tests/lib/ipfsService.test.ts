@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import { DEFAULT_IPFS_SERVICE, MAX_IPFS_DOCUMENT_BYTES, contentRetryDelayMs, extractIpfsCid, fetchCappedContent, ipfsTimeoutForBytes, resolveContentUri, resolveImageUri } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
@@ -159,6 +160,24 @@ describe("ipfsService", () => {
             expect(resolveContentUri("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi")).toMatch(
                 /^http:\/\/127\.0\.0\.1:8080\/ipfs\/bafy/,
             );
+        });
+
+        it("accepts every real CID form the recogniser must know — the SDK's canonical derivations, not hard-coded strings", () => {
+            // The CID recogniser once knew base 32 only and rejected the base-16 witness
+            // CID the SDK derives from a keccak fingerprint (2026-09-24). This drives the
+            // recogniser from the SDK's own derivation so a narrowing cannot pass unseen.
+            const contentRef = "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff" as const;
+            const forms = [
+                witnessContentCid(contentRef), // f01551b20… — CIDv1, multibase base 16
+                witnessContentCidBase32(contentRef), // bafkrwi… — CIDv1, multibase base 32
+                "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", // a real base-58 CIDv0
+            ];
+            for (const cid of forms) {
+                expect(resolveContentUri(`ipfs://${cid}`)).toBe(`http://127.0.0.1:8080/ipfs/${cid}`);
+                expect(extractIpfsCid(`ipfs://${cid}`)).toBe(cid);
+            }
+            // A path that is no encoding at all is absence, never a gateway request.
+            expect(resolveContentUri("ipfs://not-a-cid")).toBeNull();
         });
 
         it("returns null for empty and unknown/dangerous schemes (RA-2)", () => {
