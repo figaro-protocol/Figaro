@@ -1,5 +1,5 @@
 {
     "title": "The protocol",
     "defaultOpen": true,
-    "pages": ["contracts", "clauses", "open-world", "data-layer", "scaling"]
+    "pages": ["contracts", "clauses", "composition", "open-world", "data-layer", "scaling", "sharp-edges"]
 }

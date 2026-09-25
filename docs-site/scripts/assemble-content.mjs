@@ -34,7 +34,6 @@ const SOURCES = [
     ['docs/THEORY.md', 'start-here/theory.md', 'Theory'],
     ['docs/OPEN_WORLD.md', 'protocol/open-world.md', 'Open world'],
     ['docs/DATA_LAYER.md', 'protocol/data-layer.md', 'Data layer'],
-    ['docs/SCALING_STRATEGY.md', 'protocol/scaling.md', 'Scaling'],
     ['docs/VERIFICATION_MAP.md', 'verification/verification-map.md', 'Verification map'],
     ['docs/DESIGN_DECISIONS.md', 'verification/design-decisions.md', 'Design decisions'],
     ['docs/FLORIN_TOKEN.md', 'token/florin.md', 'Florin'],

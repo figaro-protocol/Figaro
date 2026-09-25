@@ -1,0 +1,45 @@
+---
+title: Composition
+description: The two ways a trade composes — clauses into agreements into assemblies over the core, and a running process into other on-chain contracts — the one-token-per-process cost model, and the open list of what is wired today.
+---
+
+Composition is the fifth noun, and it is what makes Figaro a network rather than a silo. It happens two ways, and a trade uses both at once — they are never an either/or.
+
+Read the [whole model](/) first; this page assumes it. In those terms: **internal** composition builds the trade — [clauses](/protocol/clauses/) compose into agreements and agreements into assemblies, reusable designs of a trade built over the [kernel](/protocol/contracts/) without touching it. **External** composition wires the trade into the rest of the chain — a running process plugs into other on-chain contracts for funding, storage, messaging, payout, and recourse.
+
+## Internal — clauses, agreements, assemblies
+
+A clause is one relationship's term. An agreement is the clauses composed for one order, whose merkle root is the `agreementHash` both parties sign. An assembly is agreements composed into a reusable design of a trade, anchored once and traded through by anyone who fits the shape. Every step is permissionless: someone publishes a clause once, and anyone whose agreement needs it composes it in without asking. None of it edits the kernel — the kernel sees only a bilaterally-signed `Commitment` carrying an `agreementHash`; the composition lives in the data that hash commits to. The full mechanics — the four hashes, the spec format, how an agreement composes and an assembly registers — are on [Clauses and agreements](/protocol/clauses/).
+
+## External — a process plugs into other contracts
+
+Relative to the two bilateral signatures, an external contract stands in one of four places, and supplies **terms, funding, evidence, or consequences — never a signature**:
+
+- **Terms in**, before the signature — a contract produces deterministic output that becomes content `fields` both parties sign under `agreementHash`. The output must be fully known at signing; the accumulator is exact-match, so a composition whose result is not fixed when both parties sign cannot resolve.
+- **Funding at the kernel-pull**, inside the `commit` transaction — a contract supplies a party's bond currency in place, delivered to that party's own address, and the commitment stays bilaterally signed. `WitnessSwapAndCommitCoordinator` is the shape (below); it is the whole family, because `commit` is the only place Figaro pulls a named party's ERC-20.
+- **Attested evidence**, after commit and off the bond path — the buyer transacts with an external contract directly, then attests the receipt against the root order under a purpose-built clause. This is how a contract that cannot sign EIP-712 (an aggregator, an oracle, a router) composes: as evidence, not as a party.
+- **Resolution consumer**, after resolution — a parallel contract reads kernel state (`orderStatus`, the events) and derives consequences. It reads; it never inserts itself into the payment leg.
+
+A composed contract writes no kernel state on its own account, offers no second way to resolve, holds no kernel bonds, and promises no off-kernel payout indexed to how the kernel resolves. Those constraints are what keep every kernel invariant true under composition.
+
+## Composition is never either/or
+
+The list below is an **open category, not a menu you pick one item from**. A process composes Disperse *and* a second multisender *and* any other contract that fits a placement, all at once. Nothing is a shipped, graded integration; anything a wallet holds and any on-chain contract composes through the boundary permissionlessly — that openness *is* the composability, not a feature delivered one at a time. Naming a fixed roster, or ranking integrations by depth, is the closed-world tell to avoid.
+
+## The cost model — one token per process, a swap is the on-ramp
+
+A process is denominated in exactly one ERC-20, named in `c.currency`, and the kernel refuses to compare across tokens — the 2:1 bond ratio is a same-unit comparison, so mixing currencies within one process would need an oracle or a DEX and reintroduce a trusted actor (this is a [sharp edge](/protocol/sharp-edges/), enforced by `CurrencyMismatch`).
+
+Each token denominates an economy of its own — a community's, a designer's, a stablecoin's — and a swap is the route between them. A buyer holding one economy's token can bond in another's: `WitnessSwapAndCommitCoordinator` converts at commitment in one signed hop, sends the swapped denomination to the party's own address, and calls `FigaroCore.commit` — the process itself never sees a second unit. Value mobility, not enforcement, is what makes many small economies one network. The swap-funded route is direct-path only; on the [batch path](/protocol/scaling/) a party swaps in their own wallet before submitting the signed commitment. Either way the kernel sees a single-currency, bilaterally-signed commitment. The coordinator's surface is on [The contracts](/protocol/contracts/).
+
+## What is wired today
+
+Provider-agnostic examples of the four placements — each is one instance of an open category, listed the way a trade meets it: what carries value in, what a running process needs, then what the world outside the trade asks for.
+
+- **Uniswap — the swap on-ramp.** `WitnessSwapAndCommitCoordinator` routes a party's input token through Permit2 and an immutable `SwapRouter02`, funds the bond in the denomination, and commits in the same transaction. The same single hop carries a resolved payout onward.
+- **IPFS — storage and evidence.** Off-chain agreement documents, public and private section data, and an audit trail live on IPFS; the chain holds only the fingerprints (`contentHash`, section hashes) that pin them.
+- **XMTP — per-order handoff.** Encrypted per-order channels for exchanging public and private data while an order is live.
+- **Disperse — post-resolution payout splitting.** The canonical Disperse multisender (`0xD152f549545093347A162Dce210e7293f1452150`, the same address across chains) splits a resolved wallet's own receipts, the moment they land, to addresses it earmarked itself — a fiscal set-aside, savings, what it owes a supplier. The split is the wallet's own arithmetic over its own tokens, done afterward; nothing in the trade routed it and no clause computed it. Post-resolution routing is path-blind — both the direct and batch paths deliver by ERC-20 transfer to the party's own address.
+- **Kleros — one dispute-resolution forum.** The parties' agreement designates a forum as configuration, never code, so any forum — an on-chain court, an arbitral institution, a national court — sits behind the same seam. Kleros is the wired example; the seam is provider-agnostic. A forum is the exception, not the norm: the bonded equilibrium closes most trades without one, and a forum that was never composed still rules on the same public record. A composed forum weighs the record and the parties act on its ruling; it holds no key, and resolution stays where it always was — the buyer's alone.
+
+The contract surfaces these compositions reach — `WitnessSwapAndCommitCoordinator`, `AttestationCoordinator`, and the externally-wired canonical contracts — are on [The contracts](/protocol/contracts/); the internal composition units are on [Clauses and agreements](/protocol/clauses/).
