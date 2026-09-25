@@ -202,6 +202,8 @@ function settleBatch(
 
 A batch-resolved process never acquires kernel status: `core.orderStatus` stays `0` for it, permanently, and there is no migration between the two. The single thing that crosses is the usage accrual for designer rewards. `settleBatch` is `external` with no caller gate — anyone who can produce the proof may land it — but producing the proof is the work a **sequencer** relay does for you. The relay is transport, not an authority; its only powers are censor and delay, and the fallback is always direct `FigaroCore` submission with the same signed artifacts. Its wire protocol and the read endpoints (which mirror the kernel events a batch-resolved order does not emit) are on the [SDK page](/building/sdk/) and in [`docs/SCALING_STRATEGY.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md).
 
+Running your own relay, as opposed to using one, is the one advanced path that is not public-surface-only: the proving apparatus is the repository's `prover/` Rust workspace, and its reproducible build and run recipe are in [`prover/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/prover/README.md) and [`prover/sequencer/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md). Because `settleBatch` is permissionless, a relay adds throughput, never trust.
+
 | Question | Direct — `FigaroCore` | Batch — `FigaroBatchVerifier` |
 |---|---|---|
 | Get onto the path | broadcast `commit`, then `resolveProcess` | submit signed structs to a sequencer; it proves and calls `settleBatch` |
