@@ -27,8 +27,8 @@ describe('memberBranding', () => {
                 name: "Bob's Pizza Palace",
                 branding: {
                     displayName: "Bob's Pizza",
-                    logoURI: 'ipfs://QmLogo123',
-                    heroImageURI: 'ipfs://QmHero456',
+                    logoURI: 'ipfs://QmLogo1231111111111111111111111111111111111111',
+                    heroImageURI: 'ipfs://QmHero4561111111111111111111111111111111111111',
                     accentColor: '#c2410c',
                     themeClass: 'seller-pizza',
                 },
@@ -43,11 +43,11 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchMemberBranding('ipfs://QmMetadata');
+            const result = await fetchMemberBranding('ipfs://QmMetadata111111111111111111111111111111111111');
 
             expect(result).not.toBeNull();
-            expect(result!.branding.logoURI).toBe('ipfs://QmLogo123');
-            expect(result!.logoURI).toBe('ipfs://QmLogo123'); // raw locator; render layer resolves once via resolveImageUri
+            expect(result!.branding.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111');
+            expect(result!.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111'); // raw locator; render layer resolves once via resolveImageUri
             expect(result!.name).toBe("Bob's Pizza Palace");
         });
 
@@ -55,7 +55,7 @@ describe('memberBranding', () => {
             const mockDoc = {
                 name: 'Minimal Seller',
                 assets: {
-                    imageBaseURI: 'ipfs://QmBase',
+                    imageBaseURI: 'ipfs://QmBase1111111111111111111111111111111111111111',
                 },
             };
 
@@ -68,7 +68,7 @@ describe('memberBranding', () => {
             const result = await fetchMemberBranding('http://example.com/metadata.json');
 
             expect(result).not.toBeNull();
-            expect(result!.assets.imageBaseURI).toBe('ipfs://QmBase');
+            expect(result!.assets.imageBaseURI).toBe('ipfs://QmBase1111111111111111111111111111111111111111');
             expect(result!.branding.logoURI).toBeUndefined();
             expect(result!.logoURI).toBeUndefined();
         });
@@ -80,14 +80,14 @@ describe('memberBranding', () => {
                 statusText: 'Not Found',
             } as Response);
 
-            const result = await fetchMemberBranding('ipfs://QmMissing');
+            const result = await fetchMemberBranding('ipfs://QmMissing1111111111111111111111111111111111111');
             expect(result).toBeNull();
         });
 
         it('returns null when fetch throws', async () => {
             vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
-            const result = await fetchMemberBranding('ipfs://QmUnreachable');
+            const result = await fetchMemberBranding('ipfs://QmUnreachabke111111111111111111111111111111111');
             expect(result).toBeNull();
         });
 
@@ -98,7 +98,7 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify('not an object')),
             } as Response);
 
-            const result = await fetchMemberBranding('ipfs://QmNotJson');
+            const result = await fetchMemberBranding('ipfs://QmNotJson1111111111111111111111111111111111111');
             expect(result).toBeNull();
         });
 
@@ -109,7 +109,7 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify([1, 2, 3])),
             } as Response);
 
-            const result = await fetchMemberBranding('ipfs://QmArray');
+            const result = await fetchMemberBranding('ipfs://QmArray111111111111111111111111111111111111111');
             expect(result).toBeNull();
         });
 
@@ -121,8 +121,8 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            await fetchMemberBranding('ipfs://QmCached');
-            await fetchMemberBranding('ipfs://QmCached');
+            await fetchMemberBranding('ipfs://QmCached11111111111111111111111111111111111111');
+            await fetchMemberBranding('ipfs://QmCached11111111111111111111111111111111111111');
 
             // Only one fetch despite two calls
             expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -136,9 +136,9 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            await fetchMemberBranding('ipfs://QmClearTest');
+            await fetchMemberBranding('ipfs://QmCkearTest11111111111111111111111111111111111');
             clearBrandingCache();
-            await fetchMemberBranding('ipfs://QmClearTest');
+            await fetchMemberBranding('ipfs://QmCkearTest11111111111111111111111111111111111');
 
             expect(fetchSpy).toHaveBeenCalledTimes(2);
         });

@@ -59,7 +59,7 @@ describe('discoveryService', () => {
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,
-                metadataURI: 'ipfs://merchant-a',
+                metadataURI: 'ipfs://Qmmerchanta11111111111111111111111111111111111',
             },
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
@@ -96,7 +96,7 @@ describe('discoveryService', () => {
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
                 role: 1,
-                metadataURI: 'ipfs://op-profile',
+                metadataURI: 'ipfs://Qmopprofike11111111111111111111111111111111111',
             },
         ]);
         // First fetch: member profile
@@ -107,7 +107,7 @@ describe('discoveryService', () => {
                 { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
             ],
             assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
-            catalogueURI: 'ipfs://op-catalogue',
+            catalogueURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
         }));
         // Second fetch: catalogue document
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
@@ -130,7 +130,7 @@ describe('discoveryService', () => {
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
                 role: 1,
-                metadataURI: 'ipfs://op-profile-no-cat',
+                metadataURI: 'ipfs://Qmopprofikenocat111111111111111111111111111111',
             },
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
@@ -157,7 +157,7 @@ describe('discoveryService', () => {
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,
-                metadataURI: 'ipfs://unbound',
+                metadataURI: 'ipfs://Qmunbound1111111111111111111111111111111111111',
             },
         ]);
         // Parses fine as a profile — but binds nothing anchored in the
@@ -183,7 +183,7 @@ describe('discoveryService', () => {
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,
-                metadataURI: 'ipfs://bad',
+                metadataURI: 'ipfs://Qmbad11111111111111111111111111111111111111111',
             },
         ]);
         fetchDocumentMock.mockResolvedValueOnce({ ok: false } as Response);
