@@ -48,8 +48,22 @@ export interface SwapVenue {
     quote(tokenIn: Hex, tokenOut: Hex, amountOut: bigint): Promise<SwapQuote>;
 }
 
-/** Add the venue's headroom to a quoted input (rounded up). */
+/** The hard ceiling on the headroom the signed input cap may carry. The party
+ *  signs `maxInput`, so a loose cap is a window a sandwiching MEV bot extracts,
+ *  not just a price-move buffer. A live pool needs ~1% (`UNISWAP_SLIPPAGE_BPS`);
+ *  10% is the refusal line — beyond it the cap is a misconfiguration, not a
+ *  slippage tolerance. */
+export const MAX_SLIPPAGE_BPS = 1_000;
+
+/** Add the venue's headroom to a quoted input (rounded up). Refuses a headroom
+ *  outside [0, MAX_SLIPPAGE_BPS] so a loose, MEV-extractable cap can never be
+ *  built into the signed `maxInput`. */
 export function capWithSlippage(amountIn: bigint, slippageBps: number): bigint {
+    if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps > MAX_SLIPPAGE_BPS) {
+        throw new Error(
+            `slippageBps ${slippageBps} is out of range [0, ${MAX_SLIPPAGE_BPS}] — a loose input cap is MEV-extractable`,
+        );
+    }
     if (slippageBps === 0) return amountIn;
     return amountIn + (amountIn * BigInt(slippageBps) + 9_999n) / 10_000n;
 }

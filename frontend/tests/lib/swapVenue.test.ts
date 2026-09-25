@@ -7,7 +7,7 @@ vi.mock("@/lib/composition/contracts", () => ({
     getSwapQuoter: () => quoterMock(),
 }));
 
-import { _resetSwapVenueCache_TESTING_ONLY, capWithSlippage, detectSwapVenue } from "@/lib/composition/swapVenue";
+import { _resetSwapVenueCache_TESTING_ONLY, capWithSlippage, MAX_SLIPPAGE_BPS, detectSwapVenue } from "@/lib/composition/swapVenue";
 
 const ROUTER = ("0x" + "d0".repeat(20)) as `0x${string}`;
 const QUOTER = ("0x" + "e0".repeat(20)) as `0x${string}`;
@@ -112,5 +112,16 @@ describe("swapVenue — the venue is DERIVED from the router; two siblings behin
     it("a router that is neither venue is refused", async () => {
         const client = { readContract: vi.fn(async () => { throw new Error("revert"); }) } as never;
         await expect(detectSwapVenue(client, ROUTER)).rejects.toThrow(/neither/);
+    });
+});
+
+describe("capWithSlippage refuses a loose, MEV-extractable input cap", () => {
+    it("caps within range and refuses beyond MAX_SLIPPAGE_BPS", () => {
+        expect(capWithSlippage(1_000n, 0)).toBe(1_000n);
+        expect(capWithSlippage(1_000n, 100)).toBe(1_010n); // 1%
+        expect(capWithSlippage(1_000n, MAX_SLIPPAGE_BPS)).toBe(1_100n); // 10%, the ceiling
+        expect(() => capWithSlippage(1_000n, MAX_SLIPPAGE_BPS + 1)).toThrow(/out of range/);
+        expect(() => capWithSlippage(1_000n, 5_000)).toThrow(/MEV-extractable/);
+        expect(() => capWithSlippage(1_000n, -1)).toThrow(/out of range/);
     });
 });
