@@ -11,7 +11,7 @@ import { BelongingFigure } from "@/components/figures/BelongingFigure";
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
     description:
-        "My word is my bond. Figaro game theory provides your trades with the certainty existing institutions cannot: keeping your word is each party's best move. You know what it pays before you start, everyone is paid at once when the buyer confirms, and you choose where you belong.",
+        "My word is my bond. Figaro game theory provides your commercial trades with the certainty existing institutions cannot: keeping your word is every party's best move. You know what it pays before you start, everyone is paid at once when the buyer confirms, and you choose where you belong.",
 });
 
 // THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
@@ -31,17 +31,17 @@ export const metadata: Metadata = withOg({
 const CLAIMS: { line: string; fact: string; figure: ReactNode }[] = [
     {
         line: "You know what it pays before you start.",
-        fact: "Both sides sign what is expected and what it pays before any work begins.",
+        fact: "Every side signs what they expect and are paid before any work begins.",
         figure: <SignedTermsFigure />,
     },
     {
         line: "Everyone is paid at once when the buyer confirms.",
-        fact: "The moment the buyer confirms, everyone who added value is paid in full and every bond is refunded. A buyer who never confirms leaves their own bond locked, twice the payment.",
+        fact: "The moment the buyer confirms, everyone who added value to the process is paid in full and every bond is refunded. A buyer who never confirms leaves their own bond locked.",
         figure: <ProcessStarFigure />,
     },
     {
         line: "You choose where you belong.",
-        fact: "The tokens you hold and the processes you take part in are the communities you belong to: a utility token, a meme, a stablecoin, a shared value, a meal, a delivery, and kinds not yet invented. You are where they meet.",
+        fact: "The tokens you hold and the processes you take part in are the communities you belong to. Identity is derived from where tokens and processes meet.",
         figure: <BelongingFigure />,
     },
 ];
@@ -60,6 +60,16 @@ const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
     { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg" },
 ];
 
+// Off-chain, a process composes with the legal and regulatory norms a trade
+// meets in the world — the data it leaves satisfies them. Named as facts, not
+// products, so they carry no mark; an open category, not a fixed roster.
+const COMPOSES_WITH_OFF_CHAIN: string[] = [
+    "EU electronic invoice",
+    "ESG reporting",
+    "GDPR",
+    "taxation",
+];
+
 export default function Home() {
     return (
         <>
@@ -67,8 +77,8 @@ export default function Home() {
                 title="My word is my bond"
                 lead={
                     <>
-                        Figaro game theory provides your trades with the certainty existing institutions cannot.
-                        Keeping your word is each party&apos;s best move.
+                        Figaro game theory provides your commercial trades with the certainty existing institutions cannot.
+                        Keeping your word is every party&apos;s best move.
                     </>
                 }
             >
@@ -91,13 +101,8 @@ export default function Home() {
                     </div>
                 ))}
 
-                <div className="mt-12 border-t border-default pt-8 flex flex-wrap gap-4 items-center">
-                    <p className="text-base text-ink-body">One trade, start to finish, as pictures:</p>
-                    <CtaLink href="/local-commerce">See a trade</CtaLink>
-                </div>
-
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
-                    <p className="text-sm text-ink-muted mb-4">Composes with</p>
+                    <p className="text-sm text-ink-muted mb-4">Composes with on-chain</p>
                     <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
                         {COMPOSES_WITH.map((b) => (
                             <li key={b.name}>
@@ -107,6 +112,15 @@ export default function Home() {
                                     <span>{b.name}</span>
                                 </a>
                             </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="mt-12 border-t border-default pt-8" data-testid="composes-with-off-chain">
+                    <p className="text-sm text-ink-muted mb-4">Composes with off-chain</p>
+                    <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
+                        {COMPOSES_WITH_OFF_CHAIN.map((n) => (
+                            <li key={n} className="text-sm text-ink-body">{n}</li>
                         ))}
                     </ul>
                 </div>
