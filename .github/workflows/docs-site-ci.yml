@@ -1,0 +1,60 @@
+name: Docs Site CI
+
+# Build-check for the builder documentation (the fumadocs static export served
+# at /docs). The maintainer deploys by direct upload on their own word; this job
+# only proves the export still builds, it never deploys. `prebuild` runs the
+# assemble step, which copies the committed typedoc output from
+# frontend/public/sdk-api into the site, so a stale API reference fails here.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - "docs-site/**"
+      - "frontend/public/sdk-api/**"
+      - ".nvmrc"
+      - ".github/workflows/docs-site-ci.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "docs-site/**"
+      - "frontend/public/sdk-api/**"
+      - ".nvmrc"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Assemble & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs-site
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docs-site-out
+          path: docs-site/out/
+          retention-days: 7
