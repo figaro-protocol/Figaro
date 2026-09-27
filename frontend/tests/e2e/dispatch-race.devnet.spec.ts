@@ -29,7 +29,7 @@
  *
  * Cast (scenario labels only — the kernel sees ordinary wallets):
  *   buyer      anvil[14]  (deltas only — shared wallets never assume absolutes)
- *   merchant   anvil[6]   Aurora Café (seeded; undesignated binding)
+ *   merchant   anvil[6]   Ridgeway Hardware (seeded; undesignated binding)
  *   courier A  anvil[10]  re-seeded, delivery at 2 MOCK — the CHEAP courier
  *   courier B  anvil[11]  re-seeded, delivery at 3 MOCK — the EXPENSIVE one
  *
@@ -71,7 +71,7 @@ const ERC20_ABI = parseAbi([
 ]);
 
 const BUYER = ANVIL_ACCOUNTS[14] as Hex; // shared wallet — every assert is a delta
-const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex; // Aurora Café
+const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex; // Ridgeway Hardware
 
 // The racing couriers — seeded sellers no spec references, re-seeded here
 // with distinct posted prices (the canonical seeder is idempotent; other
@@ -350,7 +350,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
         const [buyerF, merchantF, cheapF, dearF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER_CHEAP), balanceOf(COURIER_DEAR), balanceOf(core),
         ]);
-        expect(buyer0 - buyerF, 'buyer net paid meal + the raced delivery')
+        expect(buyer0 - buyerF, 'buyer net paid item + the raced delivery')
             .toBe(rootEvent.args.payment! + courierEvent.args.payment!);
         expect(merchantF - merchant0, 'merchant net earned exactly its payment').toBe(rootEvent.args.payment!);
         expect(cheapF - cheap0, 'the race winner net earned exactly its posted price').toBe(courierEvent.args.payment!);

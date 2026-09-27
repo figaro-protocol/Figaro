@@ -49,13 +49,13 @@ const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
 // buyer's checkout choice or dispatch race.
 const COURIER_CLAUSE = 'figaro-courier-process';
 const SELLERS = [
-    { addressIndex: 5, name: 'Kiosk Corner', specialty: 'kiosk', geohash: '9q8yyk8yu', binds: 'pos.json', products: [{ name: 'Newspaper', price: '1' }] },
-    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', binds: 'pos.json', products: [{ name: 'Espresso', price: '1' }] },
-    { addressIndex: 7, name: "Rosa's Kitchen", specialty: 'prepared food, own delivery', geohash: '9q8yyk8yv', binds: 'local-commerce.json', courierIndex: 8, products: [{ name: 'Margherita pizza', price: '1' }] },
+    { addressIndex: 5, name: 'Northside Stationers', specialty: 'stationery', geohash: '9q8yyk8yu', binds: 'pos.json', products: [{ name: 'Notebook', price: '1' }] },
+    { addressIndex: 6, name: 'Ridgeway Hardware', specialty: 'hardware counter', geohash: '9q8yyk8yt', binds: 'pos.json', products: [{ name: 'Box of screws', price: '1' }] },
+    { addressIndex: 7, name: 'Meridian Books', specialty: 'books, own delivery', geohash: '9q8yyk8yv', binds: 'local-commerce.json', courierIndex: 8, products: [{ name: 'Paperback', price: '1' }] },
     { addressIndex: 8, name: 'Cardinal Couriers', specialty: 'last-mile delivery', geohash: '9q8yyk8yw', binds: 'local-commerce.json', products: [{ name: 'Standard delivery', price: '1', category: 'delivery' }] },
-    { addressIndex: 9, name: 'Saffron Table', specialty: 'prepared food, buyer-arranged delivery', geohash: '9q8yyk8yx', binds: 'local-commerce.json', products: [{ name: 'Margherita pizza', price: '1' }] },
-    { addressIndex: 10, name: 'Pomodoro Kitchen', specialty: 'prepared food, auction-arranged delivery', geohash: '9q8yyk8yy', binds: 'local-commerce.json', products: [{ name: 'Margherita pizza', price: '1' }] },
-    { addressIndex: 11, name: 'Harbor Provisions', specialty: 'grocery, emissions-disclosed delivery', geohash: '9q8yyk8yz', binds: 'local-commerce.json', courierIndex: 8, products: [{ name: 'Grocery box', price: '1' }] },
+    { addressIndex: 9, name: 'Linden Florist', specialty: 'flowers, buyer-arranged delivery', geohash: '9q8yyk8yx', binds: 'local-commerce.json', products: [{ name: 'Bouquet', price: '1' }] },
+    { addressIndex: 10, name: 'Copperline Parts', specialty: 'spare parts, auction-arranged delivery', geohash: '9q8yyk8yy', binds: 'local-commerce.json', products: [{ name: 'Spare part', price: '1' }] },
+    { addressIndex: 11, name: 'Fernhill Nursery', specialty: 'plants, emissions-disclosed delivery', geohash: '9q8yyk8yz', binds: 'local-commerce.json', courierIndex: 8, products: [{ name: 'Potted plant', price: '1' }] },
     { addressIndex: 12, name: 'Sterling Goods', specialty: 'general goods, delivery with named recourse', geohash: '9q8yyk8z0', binds: 'pos.json', products: [{ name: 'Hardware kit', price: '1' }] },
 ];
 
@@ -131,7 +131,7 @@ function seedTemplateBlank() {
 }
 
 /** The multi-order value-added CHAIN — the externalized P&L the multi-order
- *  e2e runs end-to-end: a root meal agreement (merchant process, delivery
+ *  e2e runs end-to-end: a root merchant agreement (merchant process, delivery
  *  modality) plus courier and supplier sub-agreements. Which clauses compose
  *  which agreement is scenario DATA (a designed assembly this seed reproduces
  *  byte-for-byte), exactly like the seller roster above. Counterparties are
@@ -139,7 +139,7 @@ function seedTemplateBlank() {
 function seedTemplateChain() {
     return {
         name: 'Devnet delivery chain',
-        summary: 'Three-order value-added chain: meal, courier, supplier.',
+        summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
         // The provenance declaration lives at ASSEMBLY SCOPE (ruled
         // 2026-07-28) — the fold carries it into EVERY agreement, checkout

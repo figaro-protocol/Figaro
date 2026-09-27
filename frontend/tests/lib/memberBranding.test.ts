@@ -24,7 +24,7 @@ describe('memberBranding', () => {
 
         it('extracts branding fields from a valid metadata document', async () => {
             const mockDoc = {
-                name: "Bob's Pizza Palace",
+                name: "Bob's Repair Shop",
                 branding: {
                     displayName: "Bob's Pizza",
                     logoURI: 'ipfs://QmLogo1231111111111111111111111111111111111111',
@@ -48,7 +48,7 @@ describe('memberBranding', () => {
             expect(result).not.toBeNull();
             expect(result!.branding.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111');
             expect(result!.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111'); // raw locator; render layer resolves once via resolveImageUri
-            expect(result!.name).toBe("Bob's Pizza Palace");
+            expect(result!.name).toBe("Bob's Repair Shop");
         });
 
         it('returns branding when only the asset base URI exists (no logo)', async () => {

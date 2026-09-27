@@ -7,7 +7,7 @@
  * "Signed, not yet sent", Send relays it from there, and the channel-derived
  * "Awaiting acceptance" row takes over.
  *
- * Seller: a populate seller (Kiosk Corner, anvil[5], bound to the point-of-
+ * Seller: a populate seller (Northside Stationers, anvil[5], bound to the point-of-
  * sale reference by populate) — nothing seeded here. Buyer: anvil[0].
  *
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
@@ -21,12 +21,12 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { waitForConnected } from './devnet-helpers';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const KIOSK = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 5 }).address;
+const STATIONER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 5 }).address;
 
 test.describe('signed, not yet sent (devnet)', () => {
     test('the buyer finds the signed order on /orders after navigating away, sends it, and can dismiss it if the seller never accepts', async ({ page }) => {
         // ── Buyer signs at checkout, then leaves before Send ──
-        await page.goto(`/s/view?seller=${KIOSK}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/view?seller=${STATIONER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30_000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();

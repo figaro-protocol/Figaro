@@ -20,8 +20,8 @@ import { discoverAnchoredAssemblies, memberProfileBindings } from './devnet-help
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 /** populate-test-data.mjs owns anvil[5..12]; the names are its rows. */
 const POPULATE_SELLERS = [
-    [5, 'Kiosk Corner'], [6, 'Aurora Café'], [7, "Rosa's Kitchen"], [8, 'Cardinal Couriers'],
-    [9, 'Saffron Table'], [10, 'Pomodoro Kitchen'], [11, 'Harbor Provisions'], [12, 'Sterling Goods'],
+    [5, 'Northside Stationers'], [6, 'Ridgeway Hardware'], [7, "Meridian Books"], [8, 'Cardinal Couriers'],
+    [9, 'Linden Florist'], [10, 'Copperline Parts'], [11, 'Fernhill Nursery'], [12, 'Sterling Goods'],
 ] as const;
 
 test.describe('/discover as a visitor (devnet)', () => {

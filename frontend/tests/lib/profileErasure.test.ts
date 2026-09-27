@@ -12,7 +12,7 @@ import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 function profile(overrides: Partial<MemberProfileMetadata>): MemberProfileMetadata {
     return {
-        name: "Rosa's Kitchen",
+        name: "Meridian Books",
         subjectAddress: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
         ...overrides,
     } as MemberProfileMetadata;

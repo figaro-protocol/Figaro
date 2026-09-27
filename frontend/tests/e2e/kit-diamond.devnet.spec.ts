@@ -52,7 +52,7 @@
  *                          every assert is a delta)
  *   lead       anvil[17]  Kit Works (this spec's wizard seller)
  *   suppliers  DESIGNATED seeded sellers: Cardinal Couriers (anvil[8]),
- *              Harbor Provisions (anvil[11]), Sterling Goods (anvil[12]) —
+ *              Fernhill Nursery (anvil[11]), Sterling Goods (anvil[12]) —
  *              their catalogues price the sub-orders live.
  *
  * K3 note: cross-order sibling attest has no client plumbing — no sister-
@@ -103,7 +103,7 @@ const LEAD = {
 };
 // Seeded counterparties (their catalogues price the sub-orders live).
 const SUPPLIER_B = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
-const SUPPLIER_D = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Harbor Provisions
+const SUPPLIER_D = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Fernhill Nursery
 const SUPPLIER_C = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 12 }).address as Hex; // Sterling Goods
 
 const EMISSIONS_CLAUSE = 'figaro-emissions';

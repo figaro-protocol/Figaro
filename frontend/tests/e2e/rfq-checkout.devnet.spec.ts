@@ -283,7 +283,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         const [buyerF, merchantF, cheapF, dearF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER_CHEAP), balanceOf(COURIER_DEAR), balanceOf(core),
         ]);
-        expect(buyer0 - buyerF, 'buyer net paid meal + the QUOTED delivery')
+        expect(buyer0 - buyerF, 'buyer net paid item + the QUOTED delivery')
             .toBe(rootEvent.args.payment! + courierEvent.args.payment!);
         expect(merchantF - merchant0).toBe(rootEvent.args.payment!);
         expect(cheapF - cheap0, 'the winner net earned exactly their quote').toBe(courierEvent.args.payment!);

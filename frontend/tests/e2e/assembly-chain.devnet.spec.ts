@@ -46,7 +46,7 @@
  * designations are this test's INPUT DATA (an authoring act), exactly as
  * sellers-onboarding's wizard seller is. anvil[15] is used by no other spec;
  * the courier/supplier counterparties are the seeded Cardinal Couriers
- * (anvil[8]) and Harbor Provisions (anvil[11]) — pre-populated sellers whose
+ * (anvil[8]) and Fernhill Nursery (anvil[11]) — pre-populated sellers whose
  * catalogues price the sub-orders live.
  *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; the gate is
@@ -94,13 +94,13 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex; // anvil[0] — the fixture's default bu
 //    their catalogues price the sub-orders live at checkout.
 const LEAD = {
     address: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 15 }).address as Hex,
-    name: 'Chain Lead Kitchen',
+    name: 'Chain Lead Workshop',
     specialty: 'delivery chain lead',
     geohash: '9q8yyk8z1',
     product: { name: 'Family dinner box', price: '1' },
 };
 const COURIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
-const SUPPLIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Harbor Provisions
+const SUPPLIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Fernhill Nursery
 
 // The chain assembly's sub-order process clauses — the designation keys the
 // lead fills in the counterparty editor (scenario input, mirrored from the

@@ -1,10 +1,10 @@
 /**
- * local-commerce.devnet.spec.ts — MEAL/GROCERY DELIVERY, the local-commerce
+ * local-commerce.devnet.spec.ts — MERCHANT + COURIER DELIVERY, the local-commerce
  * runtime, end to end.
  *
- * The everyday scenario the protocol generalizes: a buyer orders a meal from
+ * The everyday scenario the protocol generalizes: a buyer orders an item from
  * a merchant and a courier delivers it. Two co-equal orders — the merchant
- * order (the meal, requested as delivery via the modalities clause) and the
+ * order (the item, requested as delivery via the modalities clause) and the
  * courier order (the transfer) — one process, one resolve. Every leg runs
  * THROUGH THE UI; every chain effect is verified out-of-band:
  *
@@ -17,12 +17,12 @@
  *              spawned) and published to the AssemblyRegistry. Idempotent:
  *              the composition is content-addressed, so a re-run discovers
  *              the anchored assembly by SHAPE and consumes it.
- *   bind     → the merchant (Rosa's Kitchen, a pre-populated seller) pins the
+ *   bind     → the merchant (Meridian Books, a pre-populated seller) pins the
  *              assembly to its profile through the seller-edit surface and
  *              DESIGNATES its courier (Cardinal Couriers); the courier pins
  *              the assembly it participates in (the even-surfacing rule:
  *              only a bound seller's catalogue is readable anywhere).
- *   checkout → the buyer orders the pizza from the merchant's page; the
+ *   checkout → the buyer orders the paperback from the merchant's page; the
  *              method line shows the delivery assembly; the P&L breakdown
  *              prices the courier LIVE from the courier's own catalogue;
  *              the buyer signs BOTH orders through the one confirm gate.
@@ -71,7 +71,7 @@
  * Cast (scenario labels only — the kernel sees ordinary wallets):
  *   author   anvil[0]  (any wallet designs; neither party here)
  *   buyer    anvil[2]  (used as a buyer by no other spec)
- *   merchant anvil[7]  Rosa's Kitchen  (seeded; catalogue: Margherita pizza @1)
+ *   merchant anvil[7]  Meridian Books  (seeded; catalogue: Paperback @1)
  *   courier  anvil[8]  Cardinal Couriers (seeded; catalogue: Standard delivery @1)
  *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; both gates are
@@ -113,7 +113,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = ANVIL_ACCOUNTS[2] as Hex; // anvil[2] — a buyer no other spec uses
-const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 7 }).address as Hex; // Rosa's Kitchen
+const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 7 }).address as Hex; // Meridian Books
 const COURIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
 
 const {
@@ -169,7 +169,7 @@ async function waitForConnected(page: Page) {
     );
 }
 
-test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → attest → one resolve pays both (devnet)', () => {
+test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → attest → one resolve pays both (devnet)', () => {
     test.setTimeout(480_000);
 
     test('the delivery scenario is authored on the canvas, pinned by its sellers, and run to a fully-attested resolution', async ({ page, browser }) => {
@@ -248,7 +248,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER), balanceOf(core),
         ]);
 
-        // ── CHECKOUT: the buyer orders the pizza with delivery. One bound
+        // ── CHECKOUT: the buyer orders the paperback with delivery. One bound
         //    assembly → the static method line names it; the breakdown prices
         //    the courier live from the courier's own catalogue. ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
@@ -266,7 +266,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         ).toHaveAttribute('data-method', deliverySlug!, { timeout: 30000 });
         await expect(page.getByTestId('cart-contributor-breakdown'), 'checkout shows the two-contributor P&L')
             .toBeVisible({ timeout: 30000 });
-        await expect(page.getByTestId('cart-kit-total'), 'meal 1 + delivery 1').toHaveText(/^2(\.0*)?$/, { timeout: 15000 });
+        await expect(page.getByTestId('cart-kit-total'), 'item 1 + delivery 1').toHaveText(/^2(\.0*)?$/, { timeout: 15000 });
         await expect(page.getByTestId('checkout-locked-total'), 'the buyer locks 2× the total').toHaveText(/^4(\.0*)?$/, { timeout: 15000 });
 
         // ── WHAT THE REVIEW SAYS BEFORE ANYTHING IS FILLED. Three blind buyers
@@ -377,20 +377,20 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
 
         const merchantEvent = await acceptAs(MERCHANT, 'merchant');
         const processId = merchantEvent.args.processId!;
-        expect(merchantEvent.args.payment, "meal payment = the merchant's catalogue price").toBe(parseEther('1'));
+        expect(merchantEvent.args.payment, "item payment = the merchant's catalogue price").toBe(parseEther('1'));
         expect(merchantEvent.args.cumulativeValue, 'root cumulative = its own payment').toBe(parseEther('1'));
         const merchantBonds = calculateBonds(merchantEvent.args.cumulativeValue!, merchantEvent.args.payment!);
         {
             const [b, m, c] = await Promise.all([balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(core)]);
-            expect(buyer0 - b, 'after the meal commit: buyer down by its buyer bond').toBe(merchantBonds.buyerBond);
-            expect(merchant0 - m, 'after the meal commit: merchant down by its seller bond').toBe(merchantBonds.sellerBond);
-            expect(c - core0, 'after the meal commit: escrow up by both bonds').toBe(merchantBonds.buyerBond + merchantBonds.sellerBond);
+            expect(buyer0 - b, 'after the item commit: buyer down by its buyer bond').toBe(merchantBonds.buyerBond);
+            expect(merchant0 - m, 'after the item commit: merchant down by its seller bond').toBe(merchantBonds.sellerBond);
+            expect(c - core0, 'after the item commit: escrow up by both bonds').toBe(merchantBonds.buyerBond + merchantBonds.sellerBond);
         }
 
         const courierEvent = await acceptAs(COURIER, 'courier');
         expect(courierEvent.args.processId, 'the courier order extends the SAME process').toBe(processId);
         expect(courierEvent.args.payment, "delivery payment = the courier's own catalogue price").toBe(parseEther('1'));
-        expect(courierEvent.args.cumulativeValue, 'courier cumulative = meal + delivery').toBe(parseEther('2'));
+        expect(courierEvent.args.cumulativeValue, 'courier cumulative = item + delivery').toBe(parseEther('2'));
         const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
         {
             const [b, cr, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER), balanceOf(core)]);
@@ -696,13 +696,13 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── RESOLUTION: the whole point — one signature pays the meal AND the
+        // ── RESOLUTION: the whole point — one signature pays the item AND the
         //    delivery; the bonds were the mechanism, the net is the trade. ──
         const [buyerF, merchantF, courierF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER), balanceOf(core),
         ]);
-        expect(buyer0 - buyerF, 'buyer net paid meal + delivery').toBe(parseEther('2'));
-        expect(merchantF - merchant0, 'merchant net earned exactly the meal price').toBe(parseEther('1'));
+        expect(buyer0 - buyerF, 'buyer net paid item + delivery').toBe(parseEther('2'));
+        expect(merchantF - merchant0, 'merchant net earned exactly the item price').toBe(parseEther('1'));
         expect(courierF - courier0, 'courier net earned exactly the delivery price').toBe(parseEther('1'));
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
@@ -802,7 +802,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
-            [merchantEvent, 'meal', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
+            [merchantEvent, 'item', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
             [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
         ] as const) {
             const agreementHash = event.args.agreementHash as `0x${string}`;
@@ -912,28 +912,28 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    this is the merchant spending its own balance. VALUE LEGS from
         //    chain: both recipients' deltas and the merchant's own, asserted
         //    out-of-band via balanceOf, never from the screen. ──
-        const KITCHEN_SUPPLIER = '0x00000000000000000000000000000000000000a1' as Hex;
-        const KITCHEN_LANDLORD = '0x00000000000000000000000000000000000000b2' as Hex;
+        const MERCHANT_SUPPLIER = '0x00000000000000000000000000000000000000a1' as Hex;
+        const MERCHANT_LANDLORD = '0x00000000000000000000000000000000000000b2' as Hex;
         const [supplier0, landlord0, merchantSettled] = await Promise.all([
-            balanceOf(KITCHEN_SUPPLIER), balanceOf(KITCHEN_LANDLORD), balanceOf(MERCHANT),
+            balanceOf(MERCHANT_SUPPLIER), balanceOf(MERCHANT_LANDLORD), balanceOf(MERCHANT),
         ]);
         await gotoAsWallet(page, MERCHANT, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const routing = page.getByTestId('payout-routing');
         await expect(routing, 'the routing surface derives for the resolved seller').toBeVisible({ timeout: 30000 });
-        await page.getByTestId('payout-routing-recipient-0').fill(KITCHEN_SUPPLIER);
+        await page.getByTestId('payout-routing-recipient-0').fill(MERCHANT_SUPPLIER);
         await page.getByTestId('payout-routing-amount-0').fill('0.3');
         await page.getByTestId('payout-routing-add-leg').click();
-        await page.getByTestId('payout-routing-recipient-1').fill(KITCHEN_LANDLORD);
+        await page.getByTestId('payout-routing-recipient-1').fill(MERCHANT_LANDLORD);
         await page.getByTestId('payout-routing-amount-1').fill('0.25');
         await page.getByTestId('payout-routing-execute').click();
         await expect(
             page.getByTestId('payout-routing-success'),
             'the batch routes (approve + one atomic disperse)',
         ).toBeVisible({ timeout: 60000 });
-        expect(await balanceOf(KITCHEN_SUPPLIER) - supplier0, 'the supplier leg arrived exactly').toBe(parseEther('0.3'));
-        expect(await balanceOf(KITCHEN_LANDLORD) - landlord0, 'the landlord leg arrived exactly').toBe(parseEther('0.25'));
+        expect(await balanceOf(MERCHANT_SUPPLIER) - supplier0, 'the supplier leg arrived exactly').toBe(parseEther('0.3'));
+        expect(await balanceOf(MERCHANT_LANDLORD) - landlord0, 'the landlord leg arrived exactly').toBe(parseEther('0.25'));
         expect(merchantSettled - await balanceOf(MERCHANT), 'the merchant paid exactly the batch total').toBe(parseEther('0.55'));
     });
 });

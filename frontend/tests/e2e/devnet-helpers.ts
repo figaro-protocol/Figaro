@@ -799,7 +799,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         const rootTestId = await orderNodes.first().getAttribute('data-testid');
         const rootId = rootTestId!.replace('order-node-', '');
 
-        // Root order — the meal: the merchant's process ladder + the buyer's
+        // Root order — the merchant's item: the merchant's process ladder + the buyer's
         // committed delivery request (the modalities clause).
         await orderNodes.first().click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
@@ -836,7 +836,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
 
         // Editorial identity + publish (pin template → AssemblyRegistered).
         await page.getByTestId('designer-name-input').fill('Local commerce');
-        await page.getByTestId('designer-summary-input').fill('Meal/grocery delivery: a merchant order plus one co-equal courier order.');
+        await page.getByTestId('designer-summary-input').fill('Merchant delivery: a merchant order plus one co-equal courier order.');
         await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();

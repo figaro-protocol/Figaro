@@ -13,7 +13,7 @@
  *   ensure   → the delivery assembly is discovered by SHAPE (or authored
  *              once, via the shared author-if-absent helper local-commerce
  *              uses — both specs adopt the same anchored composition).
- *   bind     → the merchant (Aurora Café, a pre-populated seller) pins the
+ *   bind     → the merchant (Ridgeway Hardware, a pre-populated seller) pins the
  *              assembly through the seller-edit surface and designates
  *              NOBODY — that absence IS buyer-assigned.
  *   checkout → the buyer orders from the merchant; the P&L's courier row
@@ -35,7 +35,7 @@
  *
  * Cast (scenario labels only — the kernel sees ordinary wallets):
  *   buyer    anvil[4]  (used as a buyer by no other spec)
- *   merchant anvil[6]  Aurora Café (seeded)
+ *   merchant anvil[6]  Ridgeway Hardware (seeded)
  *   courier  DISCOVERED from chain (first bound seller that isn't the merchant)
  *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; the gates are
@@ -72,7 +72,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = ANVIL_ACCOUNTS[4] as Hex; // anvil[4] — a buyer no other spec uses
-const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex; // Aurora Café
+const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex; // Ridgeway Hardware
 
 test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devnet)', () => {
     test.setTimeout(420_000);
@@ -257,7 +257,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const [buyerF, merchantF, courierF, coreF] = await Promise.all([
             balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(COURIER), balanceOf(core),
         ]);
-        expect(buyer0 - buyerF, 'buyer net paid meal + the picked delivery')
+        expect(buyer0 - buyerF, 'buyer net paid item + the picked delivery')
             .toBe(rootEvent.args.payment! + courierEvent.args.payment!);
         expect(merchantF - merchant0, 'merchant net earned exactly its payment').toBe(rootEvent.args.payment!);
         expect(courierF - courier0, "the buyer's pick net earned exactly its payment").toBe(courierEvent.args.payment!);

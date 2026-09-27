@@ -350,7 +350,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             const [buyerF, merchantF, agentF, humanF, coreF] = await Promise.all([
                 balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(AGENT_COURIER), balanceOf(HUMAN_COURIER), balanceOf(core),
             ]);
-            expect(buyerF, 'buyer net paid meal + the agent delivery')
+            expect(buyerF, 'buyer net paid item + the agent delivery')
                 .toBe(buyer0 - rootEvent.args.payment! - courierEvent.args.payment!);
             expect(merchantF - merchant0).toBe(rootEvent.args.payment!);
             expect(agentF - agent0, 'the AGENT net earned exactly its posted price (bond returned)')

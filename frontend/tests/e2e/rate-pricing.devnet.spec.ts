@@ -55,7 +55,7 @@ const RATE = '0.01';
 const KM = geohashCentroidDistanceKm(ORIGIN_GEOHASH, DESTINATION_GEOHASH);
 const BILLED_KM = Math.max(1, Math.ceil(KM));
 const EXPECTED_SUB_PAYMENT = parseEther(RATE) * BigInt(BILLED_KM);
-const EXPECTED_TOTAL = parseEther('1') + EXPECTED_SUB_PAYMENT; // lead meal 1 + hauled leg
+const EXPECTED_TOTAL = parseEther('1') + EXPECTED_SUB_PAYMENT; // lead item 1 + hauled leg
 
 async function waitForConnected(page: Page) {
     await page.waitForFunction(

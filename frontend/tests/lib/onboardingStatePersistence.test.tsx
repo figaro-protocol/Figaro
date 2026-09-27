@@ -83,15 +83,15 @@ describe("useOnboardingState — the draft outlives a reload", () => {
     });
 
     it("reports loaded once a wallet is connected, with that wallet's draft", () => {
-        localStorage.setItem(KEY, JSON.stringify({ profile: { name: "Rosa's Kitchen" } }));
+        localStorage.setItem(KEY, JSON.stringify({ profile: { name: "Meridian Books" } }));
         const { result } = renderHook(() => useOnboardingState(WALLET));
         expect(result.current.loaded).toBe(true);
-        expect(result.current.state.profile?.name).toBe("Rosa's Kitchen");
+        expect(result.current.state.profile?.name).toBe("Meridian Books");
     });
 
     it("keeps what the seller typed when the wallet reconnects after the reload", async () => {
         // A seller typed a name and reloaded: the draft is on disk.
-        localStorage.setItem(KEY, JSON.stringify({ profile: { name: "Rosa's Kitchen" } }));
+        localStorage.setItem(KEY, JSON.stringify({ profile: { name: "Meridian Books" } }));
 
         // The step remounts with no wallet yet — wagmi is still reconnecting.
         const { result, rerender } = renderHook(
@@ -100,7 +100,7 @@ describe("useOnboardingState — the draft outlives a reload", () => {
         );
         // It hydrates for the anonymous draft, which is empty, and writes nothing under the wallet.
         expect(result.current.subject).toBe("anonymous");
-        expect(storedName()).toBe("Rosa's Kitchen");
+        expect(storedName()).toBe("Meridian Books");
 
         // The wallet arrives: the form re-hydrates from the wallet's own draft.
         await act(async () => {
@@ -108,8 +108,8 @@ describe("useOnboardingState — the draft outlives a reload", () => {
         });
 
         expect(result.current.hydrated).toBe(true);
-        expect(result.current.name).toBe("Rosa's Kitchen");
-        expect(storedName()).toBe("Rosa's Kitchen");
+        expect(result.current.name).toBe("Meridian Books");
+        expect(storedName()).toBe("Meridian Books");
     });
 
     it("persists each edit under the connected wallet's own key", async () => {

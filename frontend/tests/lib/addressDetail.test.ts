@@ -190,7 +190,7 @@ describe("the private-address ceremony", () => {
         });
         const buyerPub = sent.find((m) => m.kind === "pubkey" && m.value !== sellerPub)!.value;
         // Reverse: the SELLER shares its precise pickup point with the buyer.
-        const pickup: AddresseeBlock = { name: "Rosa's Kitchen", street: "4 Market Lane", unit: "rear door" };
+        const pickup: AddresseeBlock = { name: "Meridian Books", street: "4 Market Lane", unit: "rear door" };
         const { blobB64: pickupBlob } = await sendAddressDetail(channel, {
             myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
             recipientPubKeyHex: buyerPub, block: pickup, signAuth: sellerSign,
