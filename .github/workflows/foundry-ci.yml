@@ -63,10 +63,10 @@ jobs:
               with:
                   version: v1.5.1
 
-            # scripts/coverage.sh runs FOUNDRY_PROFILE=coverage forge coverage
-            # --ir-minimum (full Yul IR pipeline, needed to avoid stack-too-deep
-            # from the shadow counters coverage instrumentation inserts per
-            # source statement — plain via-ir is not enough). It also excludes
+            # scripts/coverage.sh runs FOUNDRY_PROFILE=coverage forge coverage under
+            # the profile's FULL via-IR pipeline (optimizer + yul stack allocation):
+            # the minimal-optimization --ir-minimum path fails stack-too-deep in the
+            # batch verifier's decoder under coverage instrumentation. It also excludes
             # the two gas-anchor tests calibrated for non-instrumented bytecode
             # (see the script's own comment). --report lcov writes lcov.info at
             # the repo root alongside the printed summary table.

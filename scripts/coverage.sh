@@ -3,9 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-# --ir-minimum enables the Yul IR pipeline for coverage instrumentation, preventing
-# stack-too-deep from the shadow counter variables inserted per source statement.
-# FOUNDRY_PROFILE=coverage uses via_ir=true + optimizer=true (see foundry.toml).
+# FOUNDRY_PROFILE=coverage runs the FULL Yul IR pipeline (via_ir=true, optimizer=true,
+# yul stack_allocation — see foundry.toml) for coverage instrumentation. The shadow
+# counters inserted per source statement push FigaroBatchVerifier._decodePV over the
+# stack under --ir-minimum's minimal optimization ("too deep in the stack by 6 slots");
+# the full optimizer's stack allocation clears it, so --ir-minimum is NOT passed.
 #
 # Two gas-anchor tests are excluded: their assertions are calibrated for
 # non-instrumented bytecode, and coverage's shadow counters raise per-call gas.
@@ -16,5 +18,5 @@ cd "$(dirname "$0")"
 # instrumentation measures ~258,000. Both measure gas COST, not correctness — the
 # code paths they exercise are otherwise fully covered by the surrounding test
 # files' non-gas assertions.
-exec env FOUNDRY_PROFILE=coverage forge coverage --ir-minimum \
+exec env FOUNDRY_PROFILE=coverage forge coverage \
   --no-match-test "test_Gas_resolveExecutionMarginal|test_Gas_recordUsageStaysAtItsAnchor" "$@"
