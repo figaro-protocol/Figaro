@@ -91,7 +91,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Procurement", "Marketplaces"],
             },
             {
-                title: "From Firms to Transaction-Scoped Institutions: A Coasean Re-Examination",
+                title: "From Firms to Transaction-Scoped Institutions",
                 href: "/papers/transaction-scoped-institutions",
                 summary: "The Coasean collapse: when a stranger's promise enforces itself for the network's gas and the time value of a bond, the institution a trade needs exists for the time of that trade — terms, evidence, books, enforcement, close — and what remains of the firm is a legal wrapper around assets that hold their own wallets.",
                 keywords: ["transaction cost economics", "theory of the firm", "subordination", "coordination economics", "two-sided markets", "organizational substrate", "institutional economics"],

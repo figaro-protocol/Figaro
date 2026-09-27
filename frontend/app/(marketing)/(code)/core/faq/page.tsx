@@ -74,7 +74,7 @@ export default function Faq() {
 
             <MarketingSection title="Who can shut this down or freeze your funds?" sectionId="shutdown">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one. FigaroCore is decentralized and permissionless, with no governance holding discretionary power over tokens. The kernel does not contain code that any address can call to halt resolution, blacklist a participant, or move tokens it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold.
+                    No one. FigaroCore is decentralized and permissionless, with no governance holding discretionary power over tokens. The kernel does not contain code that any address can call to halt resolution, blacklist a participant, or move tokens it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold. A token is a different object from the kernel: a token whose own contract lets its issuer freeze addresses stays freezable by that issuer, inside a process or outside one, and that is a property of the token the parties chose, never of the kernel.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The exposure that remains is the underlying chain. If the chain itself halts, resolution halts &mdash; that risk is external to Figaro and shared with every other protocol on that chain. Inside Figaro, no party can halt the kernel; the property is called <em>no escape hatches</em>, and the protocol&apos;s security argument depends on it. Removing it would mean a different protocol with different guarantees.
