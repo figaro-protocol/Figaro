@@ -16,11 +16,12 @@
  * Mirrors `ClausesList`'s states: no-wallet, loading, empty, list.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
 import { useMounted } from "@/hooks/useMounted";
+import { useRegistryWriteVersion } from "@/lib/protocol/registryWrites";
 import {
     useRegisteredClausesByWallet,
     useWithdrawClause,
@@ -39,6 +40,15 @@ export function RegisteredClausesReclaim() {
     const mounted = useMounted();
     const { address } = useAccount();
     const { data, isLoading, refetch } = useRegisteredClausesByWallet(address);
+    // A registration confirmed by the form above is a write this scan ran
+    // before: read the events again when the write signal changes.
+    const writeVersion = useRegistryWriteVersion();
+    const seenWriteVersion = useRef(writeVersion);
+    useEffect(() => {
+        if (seenWriteVersion.current === writeVersion) return;
+        seenWriteVersion.current = writeVersion;
+        void refetch();
+    }, [writeVersion, refetch]);
     // Warm the spec cache so each row can read its `block.design.article`. The returned
     // state changes as specs resolve, re-rendering the rows against the cache.
     useClauseSpecs();

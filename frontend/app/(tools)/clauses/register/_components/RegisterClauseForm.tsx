@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
+import { noteRegistryWrite } from "@/lib/protocol/registryWrites";
 import {
     useRegisterClause,
     type RegisterClauseOutcome,
@@ -70,6 +71,7 @@ export function RegisterClauseForm() {
         try {
             const outcome = await register(validation.raw);
             setReceipt(outcome);
+            noteRegistryWrite();
         } catch (err) {
             setSubmitError(extractErrorMessage(err, "Registering the clause failed."));
         } finally {
