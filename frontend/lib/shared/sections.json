@@ -1,5 +1,5 @@
 {
-    "description": "THE SECTION MAP \u2014 the one owner of which section of the site owns which route. One host; six sections, the six doors \u2014 join, trade, communities, terms, evidence, code \u2014 each with its own door page, its own chrome, and its own FAQ; the home page (/) belongs to no section. `routes` is a longest-prefix table: [prefix, [sections]]; the FIRST section listed owns the route (its chrome, its FAQ), the rest also show the route in their nav (a shared surface). `/` is matched exactly. Read by lib/shared/sections.ts (chrome and nav) and scripts/lint-section-map.sh (every page route must map). `landings` names each section's door page.",
+    "description": "THE SECTION MAP — the one owner of which section of the site owns which route. One host; six sections, the six doors — join, trade, communities, terms, evidence, code — each with its own door page, its own chrome, and its own FAQ; the home page (/) belongs to no section. `routes` is a longest-prefix table: [prefix, [sections]]; the FIRST section listed owns the route (its chrome, its FAQ), the rest also show the route in their nav (a shared surface). `/` is matched exactly. Read by lib/shared/sections.ts (chrome and nav) and scripts/lint-section-map.sh (every page route must map). `landings` names each section's door page.",
     "sections": [
         "join",
         "trade",
@@ -73,13 +73,7 @@
             ]
         ],
         [
-            "/local-commerce",
-            [
-                "trade"
-            ]
-        ],
-        [
-            "/shipment",
+            "/trade",
             [
                 "trade"
             ]
@@ -232,7 +226,7 @@
     ],
     "landings": {
         "join": "/members",
-        "trade": "/local-commerce",
+        "trade": "/trade",
         "communities": "/communities",
         "terms": "/terms",
         "evidence": "/data",

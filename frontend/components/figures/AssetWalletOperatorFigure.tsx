@@ -25,7 +25,7 @@ const TRIAD = [
     },
     {
         name: "Asset",
-        gloss: "off-chain, on its owner's books, never tokenized — a kitchen, a van, labour, a service",
+        gloss: "off-chain, on its owner's books, never tokenized — a workshop, a van, labour, a service",
         edge: null,
         kernelSees: false,
     },

@@ -21,7 +21,7 @@ export default function Assemblies() {
                 lead={
                     <>
                         Every kind of trade has a shape: the parties it takes and the terms
-                        binding them &mdash; a delivered meal, a freight leg across an ocean,
+                        binding them &mdash; a repair at the door, a freight leg across an ocean,
                         a data sale, a certified repair. Somebody draws a shape once, and
                         anyone who fits it can trade through it without drawing it again.
                         An assembly is that drawing &mdash; a composition template

@@ -26,7 +26,7 @@ export default function DiscoverPage() {
             </p>
             <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-10">
                 Everyone here is someone you can order from directly &mdash; a
-                kitchen, a tailor, a courier, a service &mdash; each running its
+                workshop, a tailor, a carrier, a service &mdash; each running its
                 own wallet, with no company in between. Nothing near you?
                 The registry fills as members join, and this page is where
                 they appear &mdash; it reads the chain live, never a curated
@@ -36,7 +36,7 @@ export default function DiscoverPage() {
             </p>
             <p className="text-sm text-ink-muted mb-10">
                 New to this? <Link href="/members" className="underline hover:text-ink-primary">See what membership is</Link>, or read{" "}
-                <Link href="/local-commerce" className="underline hover:text-ink-primary">one deal, lived</Link> end to end.
+                <Link href="/trade" className="underline hover:text-ink-primary">one deal, lived</Link> end to end.
             </p>
             <MemberDiscovery />
         </section>

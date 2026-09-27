@@ -18,7 +18,7 @@ const SITE_SUFFIX = " — Figaro Protocol";
  * so every caller points at the emitted `/opengraph-image` card here;
  * `metadataBase` makes the URL absolute.
  */
-export const OG_IMAGE = {
+const OG_IMAGE = {
     url: "/opengraph-image",
     width: 1200,
     height: 630,

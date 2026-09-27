@@ -29,7 +29,7 @@ export interface NavLink {
 
 export const NAV_LINKS: NavLink[] = [
     { href: "/members", label: "Join" },
-    { href: "/local-commerce", label: "Trade" },
+    { href: "/trade", label: "Trade" },
     { href: "/communities", label: "Communities" },
     { href: "/terms", label: "Terms" },
     { href: "/data", label: "Evidence" },
@@ -112,8 +112,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
     {
         section: "Trade",
         links: [
-            { href: "/local-commerce", label: "Trade" },
-            { href: "/shipment", label: "A shipment" },
+            { href: "/trade", label: "Trade" },
         ],
     },
     {

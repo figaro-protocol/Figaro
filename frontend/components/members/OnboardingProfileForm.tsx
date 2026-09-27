@@ -428,7 +428,7 @@ export function OnboardingProfileForm({
                     <Input
                         id="profile-name"
                         type="text"
-                        placeholder="e.g. Bob's Pizza Palace"
+                        placeholder="e.g. Northside Repairs"
                         value={form.name}
                         onChange={(e) => setName(e.target.value)}
                         hasError={!!errors.name}
@@ -449,7 +449,7 @@ export function OnboardingProfileForm({
                     <Input
                         id="profile-specialty"
                         type="text"
-                        placeholder='e.g. "Italian café", "immigration law", "bicycle repair"'
+                        placeholder='e.g. "bicycle repair", "immigration law", "drone survey"'
                         value={form.specialty}
                         onChange={(e) => setField("specialty", e.target.value)}
                     />

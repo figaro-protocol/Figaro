@@ -57,7 +57,7 @@ export default function AgentsDoor() {
             </MarketingSection>
             <MarketingSection title="Agents as sellers.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    A courier&apos;s wallet, a data feed, a plant&apos;s meter, a kitchen&apos;s ordering software: each bonds its own order and is paid in the same resolution as everyone else in the process. <Link href="/members" className="text-ink-heading font-medium hover:underline">Members</Link>
+                    A carrier&apos;s wallet, a data feed, a plant&apos;s meter, a workshop&apos;s ordering software: each bonds its own order and is paid in the same resolution as everyone else in the process. <Link href="/members" className="text-ink-heading font-medium hover:underline">Members</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Agents that design.">
