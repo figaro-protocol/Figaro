@@ -143,11 +143,6 @@ function Panel({ idPrefix, n, title, desc, caption, children }: { idPrefix: stri
 }
 
 export function TradeStripFigure({ idPrefix = "trade-strip", className, firstPayment = "100", secondPayment = "40" }: TradeStripFigureProps) {
-    const Maker = Wallet;
-    const Carrier = Wallet;
-    const Buyer = Person;
-    const maker = FIRST;
-    const carrier = SECOND;
     const sum = Number(firstPayment) + Number(secondPayment);
     const total = Number.isInteger(sum) ? String(sum) : sum.toFixed(2);
     const lines = [firstPayment, secondPayment] as const;
@@ -162,47 +157,47 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, firstPay
         <div className={className}>
             <ol className="flex flex-col gap-y-12 list-none pl-0">
                 <li>
-                    <Panel idPrefix={idPrefix} n={1} title="Three strangers" desc={`Three wallets side by side: ${maker}, ${carrier}, and the buyer. None has met the others.`} caption="Three strangers.">
-                        <Maker x={FIRST_X} y={ROW_Y} />
-                        <Carrier x={SECOND_X} y={ROW_Y} />
-                        <Buyer x={BUYER_X} y={ROW_Y} />
+                    <Panel idPrefix={idPrefix} n={1} title="Three strangers" desc={`Three wallets side by side: ${FIRST}, ${SECOND}, and the buyer. None has met the others.`} caption="Three strangers.">
+                        <Wallet x={FIRST_X} y={ROW_Y} />
+                        <Wallet x={SECOND_X} y={ROW_Y} />
+                        <Person x={BUYER_X} y={ROW_Y} />
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={2} title="Signed before the work" desc={`One sheet of terms with two lines, ${firstPayment} for ${maker} and ${secondPayment} for ${carrier}, and three signatures at its foot. Each wallet is joined to the sheet by one line.`} caption="Signed before.">
+                    <Panel idPrefix={idPrefix} n={2} title="Signed before the work" desc={`One sheet of terms with two lines, ${firstPayment} for ${FIRST} and ${secondPayment} for ${SECOND}, and three signatures at its foot. Each wallet is joined to the sheet by one line.`} caption="Signed before.">
                         <line x1={FIRST_X + WALLET_R} y1={ROW_Y} x2={SECOND_X - 42} y2={ROW_Y} strokeWidth={1.5} className="stroke-ink-muted" />
                         <line x1={SECOND_X + 42} y1={ROW_Y} x2={BUYER_X - WALLET_R} y2={ROW_Y} strokeWidth={1.5} className="stroke-ink-muted" />
                         <line x1={SECOND_X} y1={ROW_Y + 54} x2={SECOND_X} y2={ROW_Y + 70} strokeWidth={1.5} className="stroke-ink-muted" />
-                        <Maker x={FIRST_X} y={ROW_Y} />
-                        <Buyer x={BUYER_X} y={ROW_Y} />
+                        <Wallet x={FIRST_X} y={ROW_Y} />
+                        <Person x={BUYER_X} y={ROW_Y} />
                         <Sheet x={SECOND_X} y={ROW_Y} lines={lines} marks={3} />
-                        <Carrier x={SECOND_X} y={ROW_Y + 96} />
+                        <Wallet x={SECOND_X} y={ROW_Y + 96} />
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={3} title="Each locks a bond" desc={`A padlock beside each wallet, sized to what it locked, and the rule under each: ${maker} twice its own line (${firstBond}), ${carrier} twice both lines (${secondBond}), the buyer the same (${buyerBond}).`} caption="Each locks a bond.">
-                        <Maker x={FIRST_X} y={ROW_Y - 20} />
-                        <Carrier x={SECOND_X} y={ROW_Y - 20} />
-                        <Buyer x={BUYER_X} y={ROW_Y - 20} />
+                    <Panel idPrefix={idPrefix} n={3} title="Each locks a bond" desc={`A padlock beside each wallet, sized to what it locked, and the rule under each: ${FIRST} twice its own line (${firstBond}), ${SECOND} twice both lines (${secondBond}), the buyer the same (${buyerBond}).`} caption="Each locks a bond.">
+                        <Wallet x={FIRST_X} y={ROW_Y - 20} />
+                        <Wallet x={SECOND_X} y={ROW_Y - 20} />
+                        <Person x={BUYER_X} y={ROW_Y - 20} />
                         <Padlock x={FIRST_X} y={ROW_Y + 42} size={1.4} label={firstBond} />
                         <Padlock x={SECOND_X} y={ROW_Y + 42} size={1.7} label={secondBond} />
                         <Padlock x={BUYER_X} y={ROW_Y + 42} size={1.7} label={buyerBond} />
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={4} title="The work" desc={`What ${maker} made goes to ${carrier}, and what ${carrier} added goes on to the buyer: two arrows.`} caption="The work.">
-                        <Maker x={FIRST_X} y={ROW_Y} />
-                        <Carrier x={SECOND_X} y={ROW_Y} />
-                        <Buyer x={BUYER_X} y={ROW_Y} />
+                    <Panel idPrefix={idPrefix} n={4} title="The work" desc={`What ${FIRST} made goes to ${SECOND}, and what ${SECOND} added goes on to the buyer: two arrows.`} caption="The work.">
+                        <Wallet x={FIRST_X} y={ROW_Y} />
+                        <Wallet x={SECOND_X} y={ROW_Y} />
+                        <Person x={BUYER_X} y={ROW_Y} />
                         <Arrow id={arrow(4)} from={[FIRST_X + WALLET_R + 4, ROW_Y]} to={[SECOND_X - WALLET_R - 4, ROW_Y]} />
                         <Arrow id={arrow(4)} from={[SECOND_X + WALLET_R + 4, ROW_Y]} to={[BUYER_X - WALLET_R - 4, ROW_Y]} />
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={5} title="Paid at once" desc={`The buyer ticks the trade confirmed. In the same moment ${firstPayment} goes to ${maker}, ${secondPayment} goes to ${carrier}, and every padlock opens.`} caption="Paid at once.">
-                        <Maker x={FIRST_X} y={ROW_Y - 20} />
-                        <Carrier x={SECOND_X} y={ROW_Y - 20} />
-                        <Buyer x={BUYER_X} y={ROW_Y - 20} />
+                    <Panel idPrefix={idPrefix} n={5} title="Paid at once" desc={`The buyer ticks the trade confirmed. In the same moment ${firstPayment} goes to ${FIRST}, ${secondPayment} goes to ${SECOND}, and every padlock opens.`} caption="Paid at once.">
+                        <Wallet x={FIRST_X} y={ROW_Y - 20} />
+                        <Wallet x={SECOND_X} y={ROW_Y - 20} />
+                        <Person x={BUYER_X} y={ROW_Y - 20} />
                         <Tick x={BUYER_X} y={ROW_Y - 62} />
                         <Arrow id={arrow(5)} from={[BUYER_X - WALLET_R - 4, ROW_Y - 28]} to={[SECOND_X + WALLET_R + 4, ROW_Y - 28]} label={secondPayment} />
                         {/* The first seller's payment runs under the row, clear of the second, and its number sits beside it. */}
@@ -214,9 +209,9 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, firstPay
                 </li>
                 <li>
                     <Panel idPrefix={idPrefix} n={6} title="The evidence, yours" desc="The signed sheet, one copy beside each wallet: what was agreed, delivered and paid, kept by each of the three." caption="The evidence, yours.">
-                        <Maker x={FIRST_X} y={ROW_Y - 20} />
-                        <Carrier x={SECOND_X} y={ROW_Y - 20} />
-                        <Buyer x={BUYER_X} y={ROW_Y - 20} />
+                        <Wallet x={FIRST_X} y={ROW_Y - 20} />
+                        <Wallet x={SECOND_X} y={ROW_Y - 20} />
+                        <Person x={BUYER_X} y={ROW_Y - 20} />
                         <Sheet x={FIRST_X} y={ROW_Y + 44} lines={lines} marks={3} small />
                         <Sheet x={SECOND_X} y={ROW_Y + 44} lines={lines} marks={3} small />
                         <Sheet x={BUYER_X} y={ROW_Y + 44} lines={lines} marks={3} small />
