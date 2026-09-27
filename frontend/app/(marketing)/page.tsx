@@ -11,7 +11,7 @@ import { BelongingFigure } from "@/components/figures/BelongingFigure";
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
     description:
-        "My word is my bond. Figaro game theory provides your commercial trades with the certainty existing institutions cannot: keeping your word is every party's best move. You know what it pays before you start, everyone is paid at once when the buyer confirms, and you choose where you belong.",
+        "My word is my bond. Figaro cryptoeconomics provides your commercial trades with the certainty existing institutions cannot: keeping your word is every party's best move. You know what it pays before you start, everyone is paid at once when the buyer confirms, and you choose where you belong.",
 });
 
 // THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
@@ -77,7 +77,7 @@ export default function Home() {
                 title="My word is my bond"
                 lead={
                     <>
-                        Figaro game theory provides your commercial trades with the certainty existing institutions cannot.
+                        Figaro cryptoeconomics provides your commercial trades with the certainty existing institutions cannot.
                         Keeping your word is every party&apos;s best move.
                     </>
                 }

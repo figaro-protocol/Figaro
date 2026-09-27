@@ -6,11 +6,11 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Code — Figaro Protocol",
     description:
-        "Four smart contracts, decentralized and permissionless. Mechanism design enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
+        "Four smart contracts, decentralized and permissionless. Cryptoeconomics enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
 });
 
 // THE CORE LANDING — three subjects and nothing else: the four contracts,
-// mechanism design, and security. Its shape is the home page's: the tagline,
+// cryptoeconomics, and security. Its shape is the home page's: the tagline,
 // the one button, the three subjects as bullets, then the same three as cards,
 // each its paragraph and the one button that opens its page. No process
 // walk-through, no gas, no bond arithmetic, no roles: those are how, and they
@@ -25,8 +25,8 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
         href: "/spec",
     },
     {
-        line: "Mechanism design enforces the agreement between strangers: cooperation is each party's best move.",
-        body: "Each party bonds before the trade, and the bonds are sized so that keeping the agreement is worth more to each party than breaking it. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.",
+        line: "Cryptoeconomics enforces the agreement between strangers: cooperation is each party's best move.",
+        body: "Cryptoeconomics is the discipline that designs and characterizes the protocols governing the production, distribution and consumption of goods and services in a decentralized digital economy; Figaro is one such protocol. Each party bonds before the trade, and the bonds are sized so that keeping the agreement is worth more to each party than breaking it. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.",
         cta: "The six invariants",
         href: "/invariants",
     },
@@ -41,7 +41,7 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
 export default function CoreDoor() {
     return (
         <>
-            <MarketingHero title="Figaro Core: four smart contracts, secured by mechanism design">
+            <MarketingHero title="Figaro Core: four smart contracts, secured by cryptoeconomics">
                 <div className="flex flex-wrap gap-4 mb-8">
                     <CtaLink href="/spec">Read the spec</CtaLink>
                 </div>
