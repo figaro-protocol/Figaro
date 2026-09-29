@@ -42,7 +42,7 @@ delay, never forge:**
 - `seller_payout` / `buyer_payout` are a pure function of the signed struct
   (`2 × expectedCumulativeValue + payment`, and `payment`);
 - the batch itself is anchored on chain by its `prev_state_root →
-  new_state_root` transition and, when present, `settlement_tx`.
+  new_state_root` transition and, when present, `resolution_tx`.
 
 A relay that publishes a struct nobody signed publishes something that fails
 these checks. A relay that publishes nothing is simply less useful than one
@@ -251,7 +251,7 @@ serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
       "seller_signature": { "v": 28, "r": "0x…", "s": "0x…" },
       "batch": { "batch": 1, "chain_id": 31337, "verifying_contract": "0x…",
                  "prev_state_root": "0x…", "new_state_root": "0x…",
-                 "settlement_tx": "0x…" /* null on a dry run */,
+                 "resolution_tx": "0x…" /* null on a dry run */,
                  "block_timestamp": 1000 }
     },
     // absent (null) while the process is still open
@@ -271,7 +271,7 @@ serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
   has resolved, for an indexer walking the batch universe the way it walks
   kernel logs:
   `{ "batches": [ { "batch", "chain_id", "verifying_contract",
-  "prev_state_root", "new_state_root", "settlement_tx", "block_timestamp",
+  "prev_state_root", "new_state_root", "resolution_tx", "block_timestamp",
   "commits": [...], "resolutions": [...] } ], "next_cursor": n | null,
   "retained": { … } }`.
   `from` defaults to the oldest retained batch; `limit` defaults to 10 and is
@@ -280,7 +280,7 @@ serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
 
 `batch` numbers are **this relay's own resolved sequence** — a cursor, not a
 protocol identity. Another relay numbers its batches differently; the
-chain-anchored identity is `new_state_root` + `settlement_tx`. The number
+chain-anchored identity is `new_state_root` + `resolution_tx`. The number
 resumes from the archive across a restart, so it never collides with what was
 already published.
 

@@ -542,7 +542,7 @@ async fn publish(
     number: u64,
     batch: &figaro_kernel::types::BatchInput,
     result: &prover::ProveResult,
-    settlement_tx: Option<alloy_primitives::B256>,
+    resolution_tx: Option<alloy_primitives::B256>,
 ) {
     let (commits, resolutions) =
         archive::publication_from_ops(batch.chain_id, batch.verifying_contract, &batch.operations);
@@ -553,7 +553,7 @@ async fn publish(
             verifying_contract: batch.verifying_contract,
             prev_state_root: result.public_values.prev_state_root,
             new_state_root: result.public_values.new_state_root,
-            settlement_tx,
+            resolution_tx,
             block_timestamp: batch.block_timestamp,
             commits,
             resolutions,

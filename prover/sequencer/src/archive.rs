@@ -83,7 +83,7 @@ pub struct ProcessResolution {
 /// One resolved batch, as published. `batch` is this RELAY's own resolved
 /// sequence number (a cursor, not a protocol identity — a different relay
 /// numbers its batches differently). The chain-anchored identity is
-/// `new_state_root` + `settlement_tx`.
+/// `new_state_root` + `resolution_tx`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchRecord {
     pub batch: u64,
@@ -93,7 +93,7 @@ pub struct BatchRecord {
     pub new_state_root: B256,
     /// `None` for a dry run (no verifier configured) — the batch proved
     /// but was never resolved, and the reader must be told so.
-    pub settlement_tx: Option<B256>,
+    pub resolution_tx: Option<B256>,
     pub block_timestamp: u64,
     pub commits: Vec<OrderRecord>,
     pub resolutions: Vec<ProcessResolution>,
@@ -109,7 +109,7 @@ pub struct BatchRef {
     pub verifying_contract: Address,
     pub prev_state_root: B256,
     pub new_state_root: B256,
-    pub settlement_tx: Option<B256>,
+    pub resolution_tx: Option<B256>,
     pub block_timestamp: u64,
 }
 
@@ -121,7 +121,7 @@ impl From<&BatchRecord> for BatchRef {
             verifying_contract: r.verifying_contract,
             prev_state_root: r.prev_state_root,
             new_state_root: r.new_state_root,
-            settlement_tx: r.settlement_tx,
+            resolution_tx: r.resolution_tx,
             block_timestamp: r.block_timestamp,
         }
     }

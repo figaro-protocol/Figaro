@@ -31,7 +31,9 @@ curl -L https://sp1up.succinct.xyz | bash
 
 # Foundry (anvil for the fork rehearsal, cast for reads)
 curl -L https://foundry.paradigm.xyz | bash
-"$HOME/.foundry/bin/foundryup"
+# The release CI pins (.github/workflows/foundry-ci.yml); a bare foundryup
+# installs whatever is newest that day.
+"$HOME/.foundry/bin/foundryup" --install v1.5.1
 
 # Node 22 (only needed if the driver ever runs box-side; the normal posture
 # runs the driver on the laptop through an SSH tunnel)

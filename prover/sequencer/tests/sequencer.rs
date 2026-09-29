@@ -1252,7 +1252,7 @@ fn settle_and_publish(number: u64, ops: Vec<KernelOp>, tx: Option<B256>) -> Batc
         verifying_contract: batch.verifying_contract,
         prev_state_root: pv.prev_state_root,
         new_state_root: pv.new_state_root,
-        settlement_tx: tx,
+        resolution_tx: tx,
         block_timestamp: batch.block_timestamp,
         commits,
         resolutions,
@@ -1267,7 +1267,7 @@ fn filler_record(number: u64) -> BatchRecord {
         verifying_contract: CORE,
         prev_state_root: B256::ZERO,
         new_state_root: B256::repeat_byte(number as u8),
-        settlement_tx: None,
+        resolution_tx: None,
         block_timestamp: 1000 + number,
         commits: vec![],
         resolutions: vec![],
@@ -1377,7 +1377,7 @@ async fn archive_journal_survives_a_restart() {
         .await
         .expect("published across the restart");
     assert_eq!(
-        view.commit.expect("commit leg").batch.settlement_tx,
+        view.commit.expect("commit leg").batch.resolution_tx,
         Some(tx),
         "including which transaction resolved it"
     );
@@ -1496,7 +1496,7 @@ async fn api_order_route_publishes_the_signed_struct_and_both_signatures() {
         serde_json::to_value(seller_sig).unwrap()
     );
     assert_eq!(
-        json["commit"]["batch"]["settlement_tx"],
+        json["commit"]["batch"]["resolution_tx"],
         serde_json::to_value(B256::repeat_byte(0xab)).unwrap(),
         "and where to anchor it on chain"
     );

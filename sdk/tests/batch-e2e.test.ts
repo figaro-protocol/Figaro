@@ -856,5 +856,32 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         const status = await sequencerClient.status();
         expect(status.batches_settled).toBe(2);
         expect(status.pending_ops).toBe(0);
+
+        // ── 8. What the relay PUBLISHED, read as a stranger reads it ──
+        // The relay's wire and this client's types are two statements of one
+        // record; a field the two name differently arrives as `undefined` and
+        // reads as a batch that never reached the chain. Every anchor the
+        // relay publishes is checked against the chain's own receipt.
+        const published = await sequencerClient.order(orderHash);
+        expect(published, "the relay publishes the order it resolved").not.toBeNull();
+        const commitAnchor = published!.commit!.batch;
+        const resolutionAnchor = published!.resolution!.batch;
+        expect(resolutionAnchor.new_state_root, "the resolution's batch left the final root").toBe(finalRoot);
+        for (const [leg, anchor] of [["commit", commitAnchor], ["resolution", resolutionAnchor]] as const) {
+            expect(anchor.resolution_tx, `${leg}: the relay names the transaction`).toMatch(/^0x[0-9a-f]{64}$/);
+            const receipt = await publicClient.getTransactionReceipt({ hash: anchor.resolution_tx! });
+            expect(receipt.status, `${leg}: that transaction succeeded`).toBe("success");
+            expect(receipt.to?.toLowerCase(), `${leg}: and it called the verifier`).toBe(
+                batchVerifierAddress.toLowerCase(),
+            );
+            expect(anchor.verifying_contract.toLowerCase()).toBe(batchVerifierAddress.toLowerCase());
+            expect(anchor.chain_id).toBe(Number(await publicClient.getChainId()));
+        }
+        expect(commitAnchor.resolution_tx).not.toBe(resolutionAnchor.resolution_tx);
+        const page = await sequencerClient.batches();
+        expect(page.batches.map((b) => b.resolution_tx)).toEqual([
+            commitAnchor.resolution_tx,
+            resolutionAnchor.resolution_tx,
+        ]);
     }, 60_000);
 });
