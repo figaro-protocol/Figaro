@@ -12,6 +12,10 @@ name: Prover CI
 # Layer-B clause-validation mirror and the kernel mirror without the
 # guest-program toolchain tax.
 #
+# `test` also runs the static analysis: clippy with its correctness and
+# suspicious groups denied, and Semgrep's Rust ruleset failing on any WARNING
+# or ERROR. The `sp1` job runs clippy over the two crates it builds.
+#
 # `cross-impl-fuzz` — every push and PR: the differential fuzz across the
 # implementations (scripts/test-cross-impl-fuzz.sh). Foundry runs a seeded
 # stream of operations on FigaroCore and figaro-kernel replays it; the SDK
@@ -105,6 +109,27 @@ jobs:
             - name: cargo test (figaro-clause, figaro-kernel)
               working-directory: ./prover
               run: cargo test --locked -p figaro-clause -p figaro-kernel
+
+            # Static analysis over the guest's two crates. Clippy's correctness
+            # and suspicious groups are denied; its style groups are printed,
+            # not gated. Semgrep's Rust ruleset fails on any WARNING or ERROR
+            # (--error), over every crate in scope, the relay included.
+            - name: Install clippy
+              run: rustup component add clippy --toolchain "$RUST_TOOLCHAIN"
+
+            - name: cargo clippy (figaro-clause, figaro-kernel)
+              working-directory: ./prover
+              run: >-
+                  cargo clippy --locked -p figaro-clause -p figaro-kernel --all-targets
+                  -- -D clippy::correctness -D clippy::suspicious
+
+            - name: Install Semgrep
+              run: pipx install semgrep==1.176.1
+
+            - name: Run Semgrep (Rust)
+              run: >-
+                  semgrep --config p/rust --error --severity ERROR --severity WARNING
+                  prover/program/src prover/lib/src prover/clause/src prover/sequencer/src
 
     cross-impl-fuzz:
         name: differential fuzz (kernel, agreement tree, clause engine)
@@ -235,6 +260,12 @@ jobs:
             - name: Build the sequencer
               working-directory: ./prover
               run: cargo build --release --locked -p figaro-sequencer --bin sequencer
+
+            - name: cargo clippy (figaro-sequencer, figaro-prove-test)
+              working-directory: ./prover
+              run: |
+                  rustup component add clippy --toolchain "$RUST_TOOLCHAIN"
+                  cargo clippy --locked -p figaro-sequencer -p figaro-prove-test --all-targets -- -D clippy::correctness -D clippy::suspicious
 
             - name: cargo test (figaro-sequencer, figaro-prove-test)
               working-directory: ./prover
