@@ -74,6 +74,7 @@ jobs:
                   MAINNET_RPC_URL: https://ethereum-rpc.publicnode.com
                   SEPOLIA_RPC_URL: https://ethereum-sepolia-rpc.publicnode.com
               run: |
+                  set -o pipefail
                   forge test --via-ir --match-path test/app/WitnessSwapAndCommitCoordinatorForkTest.t.sol | tee fork.log
                   if grep -q '\[SKIP\]' fork.log; then
                       echo "a fork test skipped: its RPC variable did not reach it"
