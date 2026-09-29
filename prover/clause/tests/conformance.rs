@@ -307,6 +307,75 @@ fn integer_content_stays_inside_the_safe_range() {
 }
 
 #[test]
+fn a_spec_integer_written_as_a_float_meets_the_same_bound() {
+    // JSON `9007199254740991.0` is the integer to Layer A; one past it is not.
+    let spec_with_version = |version: &str| -> Value {
+        serde_json::from_str(&format!(
+            r#"{{"clauseId":"t","version":{version},"title":"T","description":"D",
+                "fields":[{{"name":"b","type":"boolean","required":true}}]}}"#
+        ))
+        .unwrap()
+    };
+    let at = parse_or_panic(&spec_with_version("9007199254740991.0"));
+    assert_eq!(at.version, 9007199254740991);
+    parse_errors(&spec_with_version("9007199254740992.0"));
+    parse_errors(&spec_with_version("1e21"));
+}
+
+#[test]
+fn a_content_integer_written_as_a_float_is_read_exactly() {
+    // The text is the witness: the engine reads the integer Layer A's
+    // JSON.parse reads from it, to the last digit, and encodes that one.
+    use figaro_clause::{encode_content_from_spec, EncodeOptions};
+    let spec = spec_of(json!([{ "name": "n", "type": "integer", "required": true }]));
+    let text = |n: &str| -> Value { serde_json::from_str(&format!(r#"{{"n":{n}}}"#)).unwrap() };
+    for (written, exact) in [
+        ("9007199254740991.0", "9007199254740991"),
+        ("9007199254740989.0", "9007199254740989"),
+        ("4503599627370497.0", "4503599627370497"),
+        ("-9007199254740991.0", "-9007199254740991"),
+        ("1e15", "1000000000000000"),
+        ("1.5e1", "15"),
+    ] {
+        assert!(ok(&text(written), &spec), "{written} is an integer");
+        assert_eq!(
+            encode_content_from_spec(&spec, &text(written), EncodeOptions::default()).unwrap(),
+            encode_content_from_spec(&spec, &text(exact), EncodeOptions::default()).unwrap(),
+            "{written} encodes as {exact}"
+        );
+    }
+    for past in ["9007199254740992.0", "9007199254740993.0", "1e16", "-9007199254740993.0", "1.5"] {
+        assert!(!ok(&text(past), &spec), "{past} is refused");
+    }
+}
+
+#[test]
+fn a_default_is_carried_in_its_own_form() {
+    use figaro_clause::spec::DefaultValue;
+    let default_of = |field: Value| -> Option<DefaultValue> {
+        spec_of(json!([field])).fields[0].base().default.clone()
+    };
+    assert!(matches!(
+        default_of(json!({ "name": "v", "type": "string", "required": true, "default": "x" })),
+        Some(DefaultValue::String(s)) if s == "x"
+    ));
+    assert!(matches!(
+        default_of(json!({ "name": "v", "type": "boolean", "required": true, "default": true })),
+        Some(DefaultValue::Boolean(true))
+    ));
+    assert!(matches!(
+        default_of(json!({ "name": "v", "type": "integer", "required": true, "default": 7 })),
+        Some(DefaultValue::Integer(7))
+    ));
+    assert!(matches!(
+        default_of(json!({ "name": "v", "type": "array", "required": true,
+            "items": { "type": "enum", "values": ["a", "b"] }, "default": ["b", "a"] })),
+        Some(DefaultValue::StringArray(v)) if v == ["b", "a"]
+    ));
+    assert!(default_of(json!({ "name": "v", "type": "boolean", "required": true })).is_none());
+}
+
+#[test]
 fn json_float_with_zero_fraction_is_an_integer_bound() {
     // JS has no int/float distinction: `1.0` IS the integer 1 to Layer A.
     let spec = parse_or_panic(&json!({

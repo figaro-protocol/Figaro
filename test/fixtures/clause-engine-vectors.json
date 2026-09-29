@@ -4005,6 +4005,1106 @@
    "ok": false
   },
   {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^([a][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][+])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([a][b][*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([a][b][*])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]+])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\]][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\]][+])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([\\\\][+])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([\\\\][+])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+\\]])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+\\]])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([{])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([{])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+]b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+]b+)+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^([+]b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^([+]b)+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
    "group": "dialect ^(?!foo).*$",
    "field": {
     "name": "v",
@@ -36445,6 +37545,998 @@
       "required": true,
       "type": "string",
       "pattern": 5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array nesting depth 6",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n6",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n5",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n4",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n3",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n2",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n1",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "leaf",
+            "type": "boolean",
+            "required": true
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 7",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n7",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n6",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n5",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n4",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n3",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n2",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n1",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "leaf",
+             "type": "boolean",
+             "required": true
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 8",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n8",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n7",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n6",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n5",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n4",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n3",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n2",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n1",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "leaf",
+              "type": "boolean",
+              "required": true
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 9",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n9",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n8",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n7",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n6",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n5",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n4",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n3",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n2",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n1",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "leaf",
+               "type": "boolean",
+               "required": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 10",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n10",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n9",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n8",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n7",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n6",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n5",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n4",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n3",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n2",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n1",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "leaf",
+                "type": "boolean",
+                "required": true
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 11",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n11",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n10",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n9",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n8",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n7",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n6",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n5",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n4",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n3",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n2",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "n1",
+                "type": "array",
+                "required": true,
+                "items": {
+                 "name": "leaf",
+                 "type": "boolean",
+                 "required": true
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 12",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n12",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n11",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n10",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n9",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n8",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n7",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n6",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n5",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n4",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n3",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "n2",
+                "type": "array",
+                "required": true,
+                "items": {
+                 "name": "n1",
+                 "type": "array",
+                 "required": true,
+                 "items": {
+                  "name": "leaf",
+                  "type": "boolean",
+                  "required": true
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 16",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n16",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n15",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n14",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n13",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n12",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n11",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n10",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n9",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n8",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n7",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "n6",
+                "type": "array",
+                "required": true,
+                "items": {
+                 "name": "n5",
+                 "type": "array",
+                 "required": true,
+                 "items": {
+                  "name": "n4",
+                  "type": "array",
+                  "required": true,
+                  "items": {
+                   "name": "n3",
+                   "type": "array",
+                   "required": true,
+                   "items": {
+                    "name": "n2",
+                    "type": "array",
+                    "required": true,
+                    "items": {
+                     "name": "n1",
+                     "type": "array",
+                     "required": true,
+                     "items": {
+                      "name": "leaf",
+                      "type": "boolean",
+                      "required": true
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array nesting depth 17",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n17",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n16",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n15",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n14",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n13",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n12",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n11",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n10",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n9",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n8",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "n7",
+                "type": "array",
+                "required": true,
+                "items": {
+                 "name": "n6",
+                 "type": "array",
+                 "required": true,
+                 "items": {
+                  "name": "n5",
+                  "type": "array",
+                  "required": true,
+                  "items": {
+                   "name": "n4",
+                   "type": "array",
+                   "required": true,
+                   "items": {
+                    "name": "n3",
+                    "type": "array",
+                    "required": true,
+                    "items": {
+                     "name": "n2",
+                     "type": "array",
+                     "required": true,
+                     "items": {
+                      "name": "n1",
+                      "type": "array",
+                      "required": true,
+                      "items": {
+                       "name": "leaf",
+                       "type": "boolean",
+                       "required": true
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array nesting depth 32",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n32",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n31",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n30",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n29",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n28",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n27",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n26",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n25",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n24",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n23",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "n22",
+                "type": "array",
+                "required": true,
+                "items": {
+                 "name": "n21",
+                 "type": "array",
+                 "required": true,
+                 "items": {
+                  "name": "n20",
+                  "type": "array",
+                  "required": true,
+                  "items": {
+                   "name": "n19",
+                   "type": "array",
+                   "required": true,
+                   "items": {
+                    "name": "n18",
+                    "type": "array",
+                    "required": true,
+                    "items": {
+                     "name": "n17",
+                     "type": "array",
+                     "required": true,
+                     "items": {
+                      "name": "n16",
+                      "type": "array",
+                      "required": true,
+                      "items": {
+                       "name": "n15",
+                       "type": "array",
+                       "required": true,
+                       "items": {
+                        "name": "n14",
+                        "type": "array",
+                        "required": true,
+                        "items": {
+                         "name": "n13",
+                         "type": "array",
+                         "required": true,
+                         "items": {
+                          "name": "n12",
+                          "type": "array",
+                          "required": true,
+                          "items": {
+                           "name": "n11",
+                           "type": "array",
+                           "required": true,
+                           "items": {
+                            "name": "n10",
+                            "type": "array",
+                            "required": true,
+                            "items": {
+                             "name": "n9",
+                             "type": "array",
+                             "required": true,
+                             "items": {
+                              "name": "n8",
+                              "type": "array",
+                              "required": true,
+                              "items": {
+                               "name": "n7",
+                               "type": "array",
+                               "required": true,
+                               "items": {
+                                "name": "n6",
+                                "type": "array",
+                                "required": true,
+                                "items": {
+                                 "name": "n5",
+                                 "type": "array",
+                                 "required": true,
+                                 "items": {
+                                  "name": "n4",
+                                  "type": "array",
+                                  "required": true,
+                                  "items": {
+                                   "name": "n3",
+                                   "type": "array",
+                                   "required": true,
+                                   "items": {
+                                    "name": "n2",
+                                    "type": "array",
+                                    "required": true,
+                                    "items": {
+                                     "name": "n1",
+                                     "type": "array",
+                                     "required": true,
+                                     "items": {
+                                      "name": "leaf",
+                                      "type": "boolean",
+                                      "required": true
+                                     }
+                                    }
+                                   }
+                                  }
+                                 }
+                                }
+                               }
+                              }
+                             }
+                            }
+                           }
+                          }
+                         }
+                        }
+                       }
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array nesting depth 33",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n33",
+      "type": "array",
+      "required": true,
+      "items": {
+       "name": "n32",
+       "type": "array",
+       "required": true,
+       "items": {
+        "name": "n31",
+        "type": "array",
+        "required": true,
+        "items": {
+         "name": "n30",
+         "type": "array",
+         "required": true,
+         "items": {
+          "name": "n29",
+          "type": "array",
+          "required": true,
+          "items": {
+           "name": "n28",
+           "type": "array",
+           "required": true,
+           "items": {
+            "name": "n27",
+            "type": "array",
+            "required": true,
+            "items": {
+             "name": "n26",
+             "type": "array",
+             "required": true,
+             "items": {
+              "name": "n25",
+              "type": "array",
+              "required": true,
+              "items": {
+               "name": "n24",
+               "type": "array",
+               "required": true,
+               "items": {
+                "name": "n23",
+                "type": "array",
+                "required": true,
+                "items": {
+                 "name": "n22",
+                 "type": "array",
+                 "required": true,
+                 "items": {
+                  "name": "n21",
+                  "type": "array",
+                  "required": true,
+                  "items": {
+                   "name": "n20",
+                   "type": "array",
+                   "required": true,
+                   "items": {
+                    "name": "n19",
+                    "type": "array",
+                    "required": true,
+                    "items": {
+                     "name": "n18",
+                     "type": "array",
+                     "required": true,
+                     "items": {
+                      "name": "n17",
+                      "type": "array",
+                      "required": true,
+                      "items": {
+                       "name": "n16",
+                       "type": "array",
+                       "required": true,
+                       "items": {
+                        "name": "n15",
+                        "type": "array",
+                        "required": true,
+                        "items": {
+                         "name": "n14",
+                         "type": "array",
+                         "required": true,
+                         "items": {
+                          "name": "n13",
+                          "type": "array",
+                          "required": true,
+                          "items": {
+                           "name": "n12",
+                           "type": "array",
+                           "required": true,
+                           "items": {
+                            "name": "n11",
+                            "type": "array",
+                            "required": true,
+                            "items": {
+                             "name": "n10",
+                             "type": "array",
+                             "required": true,
+                             "items": {
+                              "name": "n9",
+                              "type": "array",
+                              "required": true,
+                              "items": {
+                               "name": "n8",
+                               "type": "array",
+                               "required": true,
+                               "items": {
+                                "name": "n7",
+                                "type": "array",
+                                "required": true,
+                                "items": {
+                                 "name": "n6",
+                                 "type": "array",
+                                 "required": true,
+                                 "items": {
+                                  "name": "n5",
+                                  "type": "array",
+                                  "required": true,
+                                  "items": {
+                                   "name": "n4",
+                                   "type": "array",
+                                   "required": true,
+                                   "items": {
+                                    "name": "n3",
+                                    "type": "array",
+                                    "required": true,
+                                    "items": {
+                                     "name": "n2",
+                                     "type": "array",
+                                     "required": true,
+                                     "items": {
+                                      "name": "n1",
+                                      "type": "array",
+                                      "required": true,
+                                      "items": {
+                                       "name": "leaf",
+                                       "type": "boolean",
+                                       "required": true
+                                      }
+                                     }
+                                    }
+                                   }
+                                  }
+                                 }
+                                }
+                               }
+                              }
+                             }
+                            }
+                           }
+                          }
+                         }
+                        }
+                       }
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
      }
     ]
    },

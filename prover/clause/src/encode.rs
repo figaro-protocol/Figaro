@@ -89,8 +89,12 @@ fn parse_unsigned(name: &str, v: &Value) -> Result<U256, EncodeError> {
 /// SIGNED (the spec grammar admits negative bounds; a cold-chain window
 /// declares min -273), mirroring Layer A's `int256` word.
 fn parse_signed(name: &str, v: &Value) -> Result<I256, EncodeError> {
-    if let Some(n) = v.as_i64() {
-        return Ok(I256::try_from(n).expect("i64 fits I256"));
+    // The validator's reading of a JSON number: `5.0` is the integer 5.
+    if v.is_number() {
+        return match crate::spec::as_js_integer(v) {
+            Some(n) => Ok(I256::try_from(n).expect("i64 fits I256")),
+            None => Err(field_err(name, "expected an integer inside the safe range")),
+        };
     }
     if let Some(s) = v.as_str() {
         return s

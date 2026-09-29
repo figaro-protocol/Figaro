@@ -7,7 +7,10 @@ description = "Generic clause-validation engine — the Rust mirror of @figaro-p
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# float_roundtrip: without it serde_json reads a large number written with a
+# fraction inexactly (`9007199254740991.0` as …990), where Layer A's
+# JSON.parse reads it exactly — one text, two integers.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 # Regex is needed for user-supplied `pattern` constraints on string fields
 # (only one protocol clause uses it today — figaro-geo-v2's geohash pattern —
 # but the format must support any closed regex per the spec). SP1's zkVM

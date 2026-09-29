@@ -486,12 +486,24 @@ fn validate_integer(
     path: &str,
     errors: &mut Vec<ValidationError>,
 ) {
-    let n = match value.as_i64() {
-        Some(n) if value.is_i64() || value.is_u64() => n,
+    // One reading of a JSON number, the spec parser's and the encoder's:
+    // `Number.isSafeInteger` over the text. `5.0` and `5e0` are the integer
+    // 5 to Layer A, whose JSON.parse keeps no trace of how it was written.
+    let n = match value {
+        Value::Number(_) => match crate::spec::as_js_integer(value) {
+            Some(n) => n,
+            None => {
+                let message = match value.as_f64() {
+                    Some(f) if f.fract() == 0.0 => {
+                        format!("value {value} is outside the safe integer range")
+                    }
+                    _ => format!("expected integer, got {}", type_name(value)),
+                };
+                errors.push(ValidationError { path: path.to_string(), message });
+                return;
+            }
+        },
         _ => {
-            // Reject floats and non-numbers — Layer A uses Number.isInteger
-            // which is false for any non-integer JSON Number, and for any
-            // non-Number type entirely.
             errors.push(ValidationError {
                 path: path.to_string(),
                 message: format!("expected integer, got {}", type_name(value)),
@@ -499,26 +511,6 @@ fn validate_integer(
             return;
         }
     };
-    // serde_json's `is_i64` already excludes floats with non-zero fractional
-    // parts and overly large unsigned integers. Numbers larger than i64::MAX
-    // are caught here.
-    if value.as_f64().map(|f| f.fract() != 0.0).unwrap_or(false) {
-        errors.push(ValidationError {
-            path: path.to_string(),
-            message: format!("expected integer, got {}", type_name(value)),
-        });
-        return;
-    }
-    // An `integer` is exact only inside JSON's safe range: past it Layer A
-    // reads a rounded number from the same text this engine reads exactly.
-    // Both refuse it; larger values are a `bigint` field's.
-    if !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n) {
-        errors.push(ValidationError {
-            path: path.to_string(),
-            message: format!("value {n} is outside the safe integer range"),
-        });
-        return;
-    }
     if let Some(min) = spec.min {
         if n < min {
             errors.push(ValidationError {
@@ -536,9 +528,6 @@ fn validate_integer(
         }
     }
 }
-
-/// `Number.MAX_SAFE_INTEGER`, 2^53 − 1.
-const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
 
 /// The largest value a `bigint` field carries: its ABI word is uint256.
 const UINT256_MAX: &str =

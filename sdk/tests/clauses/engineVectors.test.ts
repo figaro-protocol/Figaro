@@ -159,6 +159,17 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         "^(a(b)c)*$",
         "^(?:a+)+$",
         "^a{2}$",
+        // Classes inside a group: what a class holds is never a quantifier.
+        "^([+])+$",
+        "^([a][+])+$",
+        "^([a][b][*])+$",
+        "^([\\]+])+$",
+        "^([\\]][+])+$",
+        "^([\\\\][+])+$",
+        "^([+\\]])+$",
+        "^([{])+$",
+        "^(a[+]b+)+$",
+        "^([+]b)+$",
     ].map((pattern) => ({
         group: `screen ${pattern}`,
         field: str({ pattern }),
@@ -359,6 +370,10 @@ const nest = (depth: number): Field =>
     depth === 0
         ? { name: "leaf", type: "boolean", required: true }
         : { name: `n${depth}`, type: "object", required: true, fields: [nest(depth - 1)] };
+const nestArrays = (depth: number): Field =>
+    depth === 0
+        ? { name: "leaf", type: "boolean", required: true }
+        : { name: `n${depth}`, type: "array", required: true, items: nestArrays(depth - 1) };
 
 const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "minimal", spec: specOf(f({ type: "boolean" })) },
@@ -423,6 +438,7 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "pattern unbalanced open", spec: specOf(f({ type: "string", pattern: "(a+" })) },
     { label: "pattern open class", spec: specOf(f({ type: "string", pattern: "[a" })) },
     { label: "pattern not a string", spec: specOf(f({ type: "string", pattern: 5 })) },
+    ...[6, 7, 8, 9, 10, 11, 12, 16, 17, 32, 33].map((depth) => ({ label: `array nesting depth ${depth}`, spec: specOf([nestArrays(depth)]) })),
     { label: "stages", spec: specOf(f({ type: "boolean" }), { 1: f({ type: "integer" }) }) },
     { label: "stages not an object", spec: specOf(f({ type: "boolean" }), []) },
     { label: "fields not an array", spec: specOf({}) },

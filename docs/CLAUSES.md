@@ -44,7 +44,8 @@ its manual.
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. An `integer` value is a JSON number inside the safe range
-  (±(2^53 − 1)); a `bigint` value is an unsigned decimal string inside the
+  (±(2^53 − 1)), however the text writes it (`5`, `5.0` and `5e0` are one
+  integer, read exactly by both engines); a `bigint` value is an unsigned decimal string inside the
   uint256 word. Content that validates encodes, in both engines. Every
   integer a spec itself declares (`version`, a bound, a length, an item
   count) is inside the safe range too.

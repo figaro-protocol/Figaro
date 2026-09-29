@@ -222,7 +222,7 @@ const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
 /// the integer 1 to Layer A — JavaScript has no int/float distinction.)
 /// Past the safe range Layer A reads a rounded number from the text this
 /// engine reads exactly, so neither admits it.
-fn as_js_integer(v: &Value) -> Option<i64> {
+pub(crate) fn as_js_integer(v: &Value) -> Option<i64> {
     let i = match v.as_i64() {
         Some(i) => i,
         None => {
