@@ -1,8 +1,9 @@
 #!/bin/bash
-# test-cross-impl-fuzz.sh — the differential fuzz lock between the kernel and
-# its Rust mirror.
+# test-cross-impl-fuzz.sh — the differential fuzz across the implementations:
+# the kernel against its Rust mirror, and the agreement tree across the SDK,
+# the Solidity library the contracts call, and the guest's verifier.
 #
-# Two halves under one seed:
+# THE KERNEL STREAM — two halves under one seed:
 #
 #   1. Foundry (test/core/kernel/KernelDifferentialFuzzTest.t.sol) draws a
 #      stream of commits and resolutions from the seed — valid ones and
@@ -12,6 +13,17 @@
 #      mirror, one operation per batch, and must accept what the kernel
 #      accepted, reject what it rejected with the same error, and arrive at
 #      the same ids, deposits, payouts and process states.
+#
+# THE AGREEMENT STREAM — three legs under the same seed:
+#
+#   1. The SDK (sdk/tests/merkleParity.test.ts, AGREEMENT_FUZZ_SEED) generates
+#      agreements of one to six sections and writes each root, leaf and
+#      inclusion proof to cache/agreement-fuzz-vectors.json.
+#   2. Foundry (MerkleParityTest, MERKLE_VECTORS) rebuilds every leaf the way
+#      AttestationCoordinator and UsageCounter do and opens every proof with
+#      OpenZeppelin MerkleProof; a tampered leaf must not open.
+#   3. Rust (prover/lib/tests/merkle_parity.rs, MERKLE_VECTORS) does the same
+#      through the guest's verifier.
 #
 # A divergence prints the seed and the step; the same seed reproduces it.
 #
@@ -33,6 +45,7 @@ SEED="${1:-$(date +%s)}"
 STEPS="${2:-400}"
 ROUNDS="${FUZZ_ROUNDS:-1}"
 STREAM="$PWD/cache/kernel-fuzz-stream.json"
+AGREEMENTS="$PWD/cache/agreement-fuzz-vectors.json"
 
 for ((round = 0; round < ROUNDS; round++)); do
     seed=$((SEED + round))
@@ -48,6 +61,17 @@ for ((round = 0; round < ROUNDS; round++)); do
 
     (cd prover && KERNEL_FUZZ_STREAM="$STREAM" \
         cargo test --locked -p figaro-kernel --test fuzz_stream -- --ignored --nocapture)
+
+    rm -f "$AGREEMENTS"
+    (cd sdk && AGREEMENT_FUZZ_SEED="$seed" npx vitest run tests/merkleParity.test.ts)
+    if [ ! -s "$AGREEMENTS" ]; then
+        echo "❌ the SDK leg wrote no agreements at $AGREEMENTS"
+        exit 1
+    fi
+    MERKLE_VECTORS="cache/agreement-fuzz-vectors.json" \
+        forge test --match-contract MerkleParityTest
+    (cd prover && MERKLE_VECTORS="$AGREEMENTS" \
+        cargo test --locked -p figaro-kernel --test merkle_parity)
 done
 
-echo "✅ The kernel and its mirror agree on every operation ($ROUNDS round(s) from seed $SEED)."
+echo "✅ The implementations agree on every operation and every agreement ($ROUNDS round(s) from seed $SEED)."

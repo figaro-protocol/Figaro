@@ -295,7 +295,15 @@ every figure — the mirror's bond and payout arithmetic is locked to the
 kernel's, not to a comment.
 
 **The differential fuzz — the mirror answers a generated stream as the kernel
-did.** `scripts/test-cross-impl-fuzz.sh` runs two halves under one seed.
+did, and both Merkle verifiers open generated agreements.**
+`scripts/test-cross-impl-fuzz.sh` runs two streams under one seed. The
+agreement stream: `sdk/tests/merkleParity.test.ts` under `AGREEMENT_FUZZ_SEED`
+generates agreements of one to six sections (`agreementArb`, the SDK's own
+property generator) and writes each root, leaf and inclusion proof to
+`cache/agreement-fuzz-vectors.json` in the Merkle fixture's format;
+`MerkleParityTest` and `prover/lib/tests/merkle_parity.rs` read that file
+through `MERKLE_VECTORS`, rebuild every leaf, open every proof, and refuse a
+tampered leaf. The kernel stream has two halves.
 `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits
 and resolutions from the seed, over five wallets and two tokens: valid ones,
 and malformed ones (an expired deadline, a zero payment, a wrong signer, a

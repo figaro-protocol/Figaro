@@ -20,10 +20,15 @@
  * unpaired) and one section (an empty proof, leaf == root).
  *
  *   1. Regenerate the fixture on `HARVEST_MERKLE_VECTORS=1`.
- *   2. Otherwise, assert the SDK still reproduces the frozen bytes.
+ *   2. On `AGREEMENT_FUZZ_SEED=<n>`, write GENERATED agreements in the
+ *      fixture's format to `cache/agreement-fuzz-vectors.json`: the
+ *      differential fuzz (`scripts/test-cross-impl-fuzz.sh`) points the
+ *      Solidity and Rust legs at that file through `MERKLE_VECTORS`.
+ *   3. Otherwise, assert the SDK still reproduces the frozen bytes.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
     buildSectionInclusionProof,
@@ -31,7 +36,9 @@ import {
     computeAgreementHash,
     type Agreement,
 } from "../src/agreement.js";
+import { agreementArb } from "./propertyArbs.js";
 
+const FUZZ_PATH = path.resolve(__dirname, "../../cache/agreement-fuzz-vectors.json");
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json");
 
 const THREE: Agreement = {
@@ -79,7 +86,30 @@ function build() {
     };
 }
 
+/** Generated agreements, one to six sections each, in the fixture's format. */
+function buildGenerated(seed: number, count: number) {
+    const agreements = fc.sample(agreementArb(1), { seed, numRuns: count });
+    return {
+        seed,
+        agreementCount: agreements.length,
+        agreements: agreements.map((agreement, i) => vectorFor(`generated-${i}`, agreement)),
+    };
+}
+
 describe("Merkle parity vectors — the three-way lock", () => {
+    if (process.env.AGREEMENT_FUZZ_SEED !== undefined) {
+        it("writes generated agreements to cache/agreement-fuzz-vectors.json", () => {
+            const seed = Number(process.env.AGREEMENT_FUZZ_SEED);
+            const count = Number(process.env.AGREEMENT_FUZZ_COUNT ?? "64");
+            expect(Number.isSafeInteger(seed), "AGREEMENT_FUZZ_SEED is an integer").toBe(true);
+            const generated = buildGenerated(seed, count);
+            expect(generated.agreementCount).toBe(count);
+            mkdirSync(path.dirname(FUZZ_PATH), { recursive: true });
+            writeFileSync(FUZZ_PATH, `${JSON.stringify(generated, null, 4)}\n`);
+        });
+        return;
+    }
+
     if (process.env.HARVEST_MERKLE_VECTORS === "1") {
         it("regenerates test/fixtures/merkle-vectors.json", () => {
             mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });

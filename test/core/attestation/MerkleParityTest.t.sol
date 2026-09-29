@@ -16,11 +16,20 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 ///         consumers do — clause key `keccak256(abi.encode(clause, uint64(version)))`
 ///         as `ClauseRegistry` computes it, section hash over the canonical bytes
 ///         — and verifies every frozen proof with the library the consumers call.
+///
+///         `MERKLE_VECTORS` names another file in the same format: the
+///         differential fuzz (`scripts/test-cross-impl-fuzz.sh`) points it at
+///         the agreements the SDK generated from a seed.
 contract MerkleParityTest is Test {
+    string internal constant FIXTURE = "test/fixtures/merkle-vectors.json";
+
     string internal json;
+    bool internal generated;
 
     function setUp() public {
-        json = vm.readFile("test/fixtures/merkle-vectors.json");
+        string memory path = vm.envOr("MERKLE_VECTORS", FIXTURE);
+        generated = keccak256(bytes(path)) != keccak256(bytes(FIXTURE));
+        json = vm.readFile(path);
     }
 
     function _leaf(string memory clause, uint256 version, string memory sectionData) internal pure returns (bytes32) {
@@ -56,6 +65,7 @@ contract MerkleParityTest is Test {
     /// A single-section agreement's root IS its leaf and its proof is empty —
     /// the case the fixture's second agreement pins.
     function test_singleSectionRootIsTheLeaf() public view {
+        if (generated) return; // the pinned case is the fixture's
         bytes32 root = vm.parseJsonBytes32(json, ".agreements[1].agreementHash");
         assertEq(vm.parseJsonUint(json, ".agreements[1].sectionCount"), 1);
         bytes32 leaf = vm.parseJsonBytes32(json, ".agreements[1].sections[0].leaf");

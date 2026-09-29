@@ -8,6 +8,10 @@
 //! the way the guest rebuilds it for a usage claim — clause key
 //! `clause_id_hash(clause, version)`, section hash over the canonical bytes,
 //! `keccak256(keccak256(key ‖ sectionHash))`.
+//!
+//! `MERKLE_VECTORS` names another file in the same format: the differential
+//! fuzz (`scripts/test-cross-impl-fuzz.sh`) points it at the agreements the
+//! SDK generated from a seed.
 use std::str::FromStr;
 
 use alloy_primitives::{keccak256, B256};
@@ -15,11 +19,18 @@ use alloy_primitives::{keccak256, B256};
 use figaro_kernel::kernel::clause_id_hash;
 use figaro_kernel::merkle::verify_inclusion;
 
+fn generated() -> bool {
+    std::env::var_os("MERKLE_VECTORS").is_some()
+}
+
 fn fixture() -> serde_json::Value {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("test/fixtures/merkle-vectors.json");
+    let p = std::env::var("MERKLE_VECTORS").map(std::path::PathBuf::from).unwrap_or_else(|_| {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        p.pop(); // prover/
+        p.pop(); // repo root
+        p.push("test/fixtures/merkle-vectors.json");
+        p
+    });
     let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
     serde_json::from_str(&text).expect("fixture JSON")
 }
@@ -85,6 +96,9 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
 
 #[test]
 fn a_single_section_root_is_the_leaf() {
+    if generated() {
+        return; // the pinned case is the fixture's
+    }
     let fx = fixture();
     let one = &fx["agreements"][1];
     assert_eq!(one["sectionCount"].as_u64().unwrap(), 1);

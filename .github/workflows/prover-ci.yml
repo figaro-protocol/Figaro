@@ -12,10 +12,11 @@ name: Prover CI
 # Layer-B clause-validation mirror and the kernel mirror without the
 # guest-program toolchain tax.
 #
-# `cross-impl-fuzz` — every push and PR: the differential fuzz lock between
-# the kernel and its mirror (scripts/test-cross-impl-fuzz.sh). Foundry runs a
-# seeded stream of operations on FigaroCore; figaro-kernel replays it. The
-# seed is the run id, so every run draws a new stream, and the log prints it.
+# `cross-impl-fuzz` — every push and PR: the differential fuzz across the
+# implementations (scripts/test-cross-impl-fuzz.sh). Foundry runs a seeded
+# stream of operations on FigaroCore and figaro-kernel replays it; the SDK
+# generates agreements and both Merkle verifiers open their proofs. The seed
+# is the run id, so every run draws new streams, and the log prints it.
 #
 # `sp1` — push to main and dispatch only: the other three workspace members —
 # `figaro-prover` (prover/program, the SP1 guest), `figaro-prove-test`
@@ -36,6 +37,9 @@ on:
         paths:
             - "prover/**"
             - "test/core/kernel/KernelDifferentialFuzzTest.t.sol"
+            - "test/core/attestation/MerkleParityTest.t.sol"
+            - "sdk/src/agreement.ts"
+            - "sdk/tests/merkleParity.test.ts"
             - "scripts/test-cross-impl-fuzz.sh"
             - ".github/workflows/prover-ci.yml"
     pull_request:
@@ -43,6 +47,9 @@ on:
         paths:
             - "prover/**"
             - "test/core/kernel/KernelDifferentialFuzzTest.t.sol"
+            - "test/core/attestation/MerkleParityTest.t.sol"
+            - "sdk/src/agreement.ts"
+            - "sdk/tests/merkleParity.test.ts"
             - "scripts/test-cross-impl-fuzz.sh"
 
 permissions:
@@ -93,7 +100,7 @@ jobs:
               run: cargo test --locked -p figaro-clause -p figaro-kernel
 
     cross-impl-fuzz:
-        name: differential fuzz (FigaroCore vs figaro-kernel)
+        name: differential fuzz (kernel vs mirror; agreement tree, three legs)
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -130,6 +137,16 @@ jobs:
                   key: ${{ runner.os }}-prover-cargo-${{ hashFiles('prover/Cargo.lock') }}
                   restore-keys: |
                       ${{ runner.os }}-prover-cargo-
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: "npm"
+                  cache-dependency-path: package-lock.json
+
+            - name: Install the SDK
+              run: npm ci --workspace sdk
 
             - name: Differential fuzz, four rounds from the run id
               env:
