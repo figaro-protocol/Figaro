@@ -16,6 +16,7 @@ fs_permissions = [
     { access = "read", path = "test/fixtures/eip712-vectors.json" },
     { access = "read", path = "test/fixtures/merkle-vectors.json" },
     { access = "read-write", path = "test/fixtures/kernel-transition-vectors.json" },
+    { access = "read-write", path = "cache/kernel-fuzz-stream.json" },
 ]
 build_info = false
 extra_output = []

@@ -24,6 +24,7 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
 `Eip712ParityTest`, `MerkleParityTest`, `KernelTransitionVectorsTest`,
+`KernelDifferentialFuzzTest`,
 `WeirdTokenTest`, `DeployWiringTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
@@ -292,6 +293,29 @@ the frozen bytes). `prover/lib/tests/transition_vectors.rs` signs the same
 commitments with the same keys, applies them through `apply_batch`, and asserts
 every figure — the mirror's bond and payout arithmetic is locked to the
 kernel's, not to a comment.
+
+**The differential fuzz — the mirror answers a generated stream as the kernel
+did.** `scripts/test-cross-impl-fuzz.sh` runs two halves under one seed.
+`test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits
+and resolutions from the seed, over five wallets and two tokens: valid ones,
+and malformed ones (an expired deadline, a zero payment, a wrong signer, a
+cumulative value off by one, an unknown or resolved process, another wallet as
+buyer, the other token, a replay, a payment in the overflow window, a high-s
+signature, a recovery id written 0/1, a zeroed signature; a resolution by a
+wallet that is not the buyer, one order short, holding a foreign order, of a
+resolved process, of an unknown process). Each runs on `FigaroCore`; the ids
+the kernel returned, or the error it reverted with, go to
+`cache/kernel-fuzz-stream.json`, one JSON object per line, followed by every
+wallet's deposits and payouts and every process's final state. The generator
+asserts nothing about which error a malformed operation earns: the kernel's
+answer is the oracle. `prover/lib/tests/fuzz_stream.rs` replays the stream
+through `apply_batch_with_state`, one operation per batch over the state the
+previous batch left, with the stream's own signature bytes, and asserts the
+same acceptance, the same error, the same ids, deposits, payouts, accumulators
+and active counts. The Rust half is `#[ignore]`d under a plain `cargo test`
+(it needs the stream) and fails, never skips, when run without one.
+`prover-ci`'s `cross-impl-fuzz` job runs four rounds on every push, seeded
+from the run id; a divergence prints the seed and the step.
 
 **Packer vectors — the batch verifier's four hand-packed hashes.** The usage
 packer's Rust-generated vector is asserted against the contract's assembly

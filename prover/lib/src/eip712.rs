@@ -158,10 +158,14 @@ pub fn compute_order_hash(process_id: &B256, struct_hash: &B256) -> B256 {
 pub fn recover_signer(digest: &B256, sig: &Signature) -> Result<Address, KernelError> {
     use k256::ecdsa::{RecoveryId, Signature as EcdsaSignature, VerifyingKey};
 
-    // Normalize v: Ethereum uses 27/28, recovery ID uses 0/1.
-    let v = if sig.v >= 27 { sig.v - 27 } else { sig.v };
+    // v is 27 or 28 and nothing else: `ECDSA.recover` hands v to `ecrecover`
+    // as written, and `ecrecover` answers the zero address for a recovery id
+    // written 0/1, which the kernel rejects. The mirror rejects it too.
+    if sig.v != 27 && sig.v != 28 {
+        return Err(KernelError::InvalidSignature);
+    }
     let recovery_id =
-        RecoveryId::try_from(v).map_err(|_| KernelError::InvalidSignature)?;
+        RecoveryId::try_from(sig.v - 27).map_err(|_| KernelError::InvalidSignature)?;
 
     let mut sig_bytes = [0u8; 64];
     sig_bytes[..32].copy_from_slice(sig.r.as_slice());
