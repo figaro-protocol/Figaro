@@ -13,7 +13,7 @@ set -euxo pipefail
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git curl build-essential pkg-config libssl-dev python3 docker.io \
-    protobuf-compiler
+    protobuf-compiler libprotobuf-dev
 
 # Rust (the sequencer + prover host toolchain)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
