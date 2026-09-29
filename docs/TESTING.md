@@ -297,8 +297,9 @@ kernel's, not to a comment.
 **Clause-engine vectors — the engine's boundaries, one by one.**
 `sdk/tests/clauses/engineVectors.test.ts` names each boundary of the clause
 engine — every character position of the datetime format, every hex width,
-every shape the regex screen reads, every bound a spec declares, the specs
-that parse and the ones that do not — and freezes Layer A's verdict on each
+every shape the regex screen reads, every construct on which the two regex
+libraries part and every edge of the portable pattern core, every bound a
+spec declares, the specs that parse and the ones that do not — and freezes Layer A's verdict on each
 into `test/fixtures/clause-engine-vectors.json`
 (`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
 `prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
@@ -320,7 +321,9 @@ through `MERKLE_VECTORS`, rebuild every leaf, open every proof, and refuse a
 tampered leaf. The clause stream:
 `sdk/tests/clauses/clauseFuzzVectors.test.ts` under `CLAUSE_FUZZ_SEED` draws
 cases from every spec in `clauses/` and from generated specs nobody has seen
-(some malformed), with content drawn from each spec's field shapes — half of
+(some malformed) and from specs of one patterned field whose pattern is drawn
+from the characters regexes are written in, with content drawn from each
+spec's field shapes — half of
 the draws inside every bound, half crossing them, strings leaving ASCII in
 both — and writes Layer A's three answers to `cache/clause-fuzz-vectors.json`:
 whether the spec parses, whether the content validates, and the canonical ABI

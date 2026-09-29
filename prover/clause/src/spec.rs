@@ -490,6 +490,14 @@ fn parse_field_spec_core(
                         return None;
                     }
                 };
+                if !crate::validate::is_portable_pattern(s) {
+                    err(
+                        errors,
+                        &format!("{path}.pattern"),
+                        "pattern must be written in the portable core",
+                    );
+                    return None;
+                }
                 if regex::Regex::new(s).is_err() {
                     err(errors, &format!("{path}.pattern"), "pattern must be a valid regex");
                     return None;

@@ -48,6 +48,16 @@ its manual.
   uint256 word. Content that validates encodes, in both engines. Every
   integer a spec itself declares (`version`, a bound, a length, an item
   count) is inside the safe range too.
+- A string field's `pattern` is a regex written in the **portable core** —
+  the constructs JavaScript's regex library (Layer A) and Rust's (the guest)
+  read alike. `isPortablePattern` (`sdk/src/clauses/safeRegex.ts`) is its one
+  statement and `is_portable_pattern` (`prover/clause/src/validate.rs`) its
+  port: printable ASCII, at most 256 characters; literals, `.`, classes,
+  groups `(...)` and `(?:...)`, `\d \D \w \W \s \S`, escaped punctuation,
+  `^ $ \b \B`, alternation, and the quantifiers `* + ? {n} {n,} {n,m}` with
+  counts up to 64, each optionally lazy. A spec whose pattern is outside the
+  core does not parse, in either engine. A patterned field's value is
+  printable ASCII; a value outside it does not validate.
 - `encodeContentFromSpec` / `decodeContentFromSpec` — the one spec-driven
   encoder and its inverse, reading the field-to-position mapping from the
   parsed spec for any clause, with the same stage selection. There is no

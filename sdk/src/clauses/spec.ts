@@ -13,6 +13,8 @@
  * never code — a new clause adds a spec, not a code path.
  */
 
+import { isPortablePattern } from "./safeRegex.js";
+
 export type FieldType =
     | "string"
     | "integer"
@@ -331,6 +333,10 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
             if (raw.pattern !== undefined) {
                 if (typeof raw.pattern !== "string") {
                     errors.push({ path: `${path}.pattern`, message: "pattern must be a string (regex)" });
+                    return null;
+                }
+                if (!isPortablePattern(raw.pattern)) {
+                    errors.push({ path: `${path}.pattern`, message: "pattern must be written in the portable core" });
                     return null;
                 }
                 try { new RegExp(raw.pattern); } catch {

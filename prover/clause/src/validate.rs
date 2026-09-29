@@ -188,11 +188,221 @@ fn is_potentially_catastrophic_regex(pattern: &str) -> bool {
     false
 }
 
-/// ReDoS-safe `pattern.test(value)`. Returns `true` (satisfied) when the pattern
-/// matches, when it is unsafe to run, when it is not a valid regex, or when the
-/// input is over-long. Mirror of `safeRegexTest` in
-/// `sdk/src/clauses/safeRegex.ts`.
+// ── The portable pattern ──────────────────────────────────────────────
+//
+// The port of `isPortablePattern` in `sdk/src/clauses/safeRegex.ts`, which
+// states the core: the constructs JavaScript's regex library and the
+// `regex` crate read alike. The two are conformance-locked
+// (`tests/engine_vectors.rs`, `tests/fuzz_vectors.rs`); a spec whose pattern
+// is outside the core does not parse, here or there.
+
+/// Longest pattern a spec may declare.
+const MAX_PATTERN_LENGTH: usize = 256;
+/// Largest count a `{n,m}` quantifier may name.
+const MAX_PATTERN_REPEAT: u32 = 64;
+
+const ESCAPABLE_PUNCTUATION: &[u8] = b"\\.+*?()|[]{}^$-/#&~,:;=!@%\"'`";
+const CLASS_LETTERS: &[u8] = b"dDwWsS";
+
+/// Is every character of `value` printable ASCII (0x20–0x7E)?
+pub(crate) fn is_printable_ascii(value: &str) -> bool {
+    value.bytes().all(|b| (0x20..=0x7e).contains(&b))
+}
+
+/// Reads a class starting at `p[start] == b'['`; returns the index past its
+/// `]`, or `None` when the class is outside the portable core.
+fn scan_class(p: &[u8], start: usize) -> Option<usize> {
+    let mut i = start + 1;
+    if p.get(i) == Some(&b'^') {
+        i += 1;
+    }
+    let first = i;
+    // Was the previous item a plain literal (a range may start from it)?
+    let mut range_from: Option<u8> = None;
+    while i < p.len() && p[i] != b']' {
+        let c = p[i];
+        if c == b'[' {
+            return None;
+        }
+        if (c == b'&' || c == b'~') && p.get(i + 1) == Some(&c) {
+            return None;
+        }
+        if c == b'-' {
+            let next = p.get(i + 1).copied();
+            if next == Some(b'-') {
+                return None;
+            }
+            if i == first || next == Some(b']') {
+                range_from = None;
+                i += 1;
+                continue;
+            }
+            // A range: a plain literal on each side, in order.
+            let (from, to) = match (range_from, next) {
+                (Some(from), Some(to)) if to != b'\\' && to != b'[' && to != b'-' => (from, to),
+                _ => return None,
+            };
+            if to < from {
+                return None;
+            }
+            range_from = None;
+            i += 2;
+            // The character after a range starts afresh: `a-z-9` is no range.
+            if p.get(i) == Some(&b'-') && p.get(i + 1) != Some(&b']') {
+                return None;
+            }
+            continue;
+        }
+        if c == b'\\' {
+            let e = *p.get(i + 1)?;
+            if !CLASS_LETTERS.contains(&e) && !ESCAPABLE_PUNCTUATION.contains(&e) {
+                return None;
+            }
+            range_from = None;
+            i += 2;
+            continue;
+        }
+        range_from = Some(c);
+        i += 1;
+    }
+    if i >= p.len() || i == first {
+        return None;
+    }
+    Some(i + 1)
+}
+
+/// Reads a counted quantifier starting at `p[start] == b'{'`; returns the
+/// index past its `}`, or `None` when it is malformed or over the bound.
+fn scan_count(p: &[u8], start: usize) -> Option<usize> {
+    fn read_number(p: &[u8], from: usize) -> Option<(u32, usize)> {
+        let mut i = from;
+        let mut n: u32 = 0;
+        while i < p.len() && p[i].is_ascii_digit() {
+            n = n * 10 + u32::from(p[i] - b'0');
+            i += 1;
+            if i - from > 3 {
+                return None;
+            }
+        }
+        if i == from {
+            return None;
+        }
+        Some((n, i))
+    }
+    let (n, mut i) = read_number(p, start + 1)?;
+    let mut m = n;
+    if p.get(i) == Some(&b',') {
+        i += 1;
+        if p.get(i) != Some(&b'}') {
+            let (high, next) = read_number(p, i)?;
+            m = high;
+            i = next;
+        }
+    }
+    if p.get(i) != Some(&b'}') {
+        return None;
+    }
+    if n > m || m > MAX_PATTERN_REPEAT {
+        return None;
+    }
+    Some(i + 1)
+}
+
+/// Is `pattern` written in the portable core?
+pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
+    let p = pattern.as_bytes();
+    // Printable ASCII first: past it a byte is not a character, and Layer
+    // A's length is in UTF-16 units.
+    if !is_printable_ascii(pattern) || p.is_empty() || p.len() > MAX_PATTERN_LENGTH {
+        return false;
+    }
+    let mut depth = 0usize;
+    // May a quantifier follow what was just read?
+    let mut atom = false;
+    let mut i = 0usize;
+    while i < p.len() {
+        let c = p[i];
+        match c {
+            b'\\' => {
+                let e = match p.get(i + 1) {
+                    Some(e) => *e,
+                    None => return false,
+                };
+                if e == b'b' || e == b'B' {
+                    atom = false;
+                } else if CLASS_LETTERS.contains(&e) || ESCAPABLE_PUNCTUATION.contains(&e) {
+                    atom = true;
+                } else {
+                    return false;
+                }
+                i += 2;
+            }
+            b'[' => {
+                i = match scan_class(p, i) {
+                    Some(next) => next,
+                    None => return false,
+                };
+                atom = true;
+            }
+            b'(' => {
+                depth += 1;
+                i += 1;
+                if p.get(i) == Some(&b'?') {
+                    if p.get(i + 1) != Some(&b':') {
+                        return false;
+                    }
+                    i += 2;
+                }
+                atom = false;
+            }
+            b')' => {
+                if depth == 0 {
+                    return false;
+                }
+                depth -= 1;
+                i += 1;
+                atom = true;
+            }
+            b'*' | b'+' | b'?' | b'{' => {
+                if !atom {
+                    return false;
+                }
+                if c == b'{' {
+                    i = match scan_count(p, i) {
+                        Some(next) => next,
+                        None => return false,
+                    };
+                } else {
+                    i += 1;
+                }
+                if p.get(i) == Some(&b'?') {
+                    i += 1; // lazy
+                }
+                atom = false;
+            }
+            b']' | b'}' => return false,
+            b'|' | b'^' | b'$' => {
+                atom = false;
+                i += 1;
+            }
+            _ => {
+                atom = true;
+                i += 1;
+            }
+        }
+    }
+    depth == 0
+}
+
+/// ReDoS-safe `pattern.test(value)`. Returns `false` when the value leaves
+/// printable ASCII, or when a safe, valid pattern definitively does not
+/// match. Returns `true` (satisfied) when the pattern matches, when it is
+/// unsafe to run, when it is not a valid regex, or when the input is
+/// over-long. Mirror of `safeRegexTest` in `sdk/src/clauses/safeRegex.ts`.
 fn safe_regex_test(pattern: &str, value: &str) -> bool {
+    if !is_printable_ascii(value) {
+        return false;
+    }
     if utf16_len(value) > MAX_PATTERN_TEST_INPUT {
         return true;
     }

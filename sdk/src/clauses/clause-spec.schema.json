@@ -46,7 +46,7 @@
                 "formatFromField": { "type": "string", "minLength": 1, "description": "string only. VALUE-DRIVEN input format: name a SIBLING field whose committed VALUE is the format key, instead of the static `format`. Lets a field's richer input follow an open, per-composition standard axis (figaro-geolocation's origin/destination declare formatFromField:\"geocodeStandard\" — the geohash picker + grain cap render when the committed standard is geohash, degrading to plain text otherwise). Resolved as values[formatFromField] ?? sibling default ?? format." },
                 "minLength": { "type": "integer", "description": "string only." },
                 "maxLength": { "type": "integer", "description": "string only." },
-                "pattern": { "type": "string", "description": "string only (regex)." },
+                "pattern": { "type": "string", "maxLength": 256, "description": "string only. A regex written in the portable core: printable ASCII; literals, '.', classes, groups '(...)' and '(?:...)', \\d \\D \\w \\W \\s \\S, escaped punctuation, ^ $ \\b \\B, alternation, and the quantifiers * + ? {n} {n,} {n,m} with counts up to 64, each optionally lazy. No lookaround, backreference, named group, inline flag, possessive quantifier, Unicode class, nested class or letter escape. A patterned field's value is printable ASCII." },
                 "min": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
                 "max": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
                 "values": { "type": "array", "items": { "type": "string" }, "description": "enum only — the ordered value codes." },

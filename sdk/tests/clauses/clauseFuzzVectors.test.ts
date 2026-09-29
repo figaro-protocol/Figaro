@@ -79,11 +79,14 @@ function stringArb(field: Extract<FieldSpec, { type: "string" }>, careful: boole
         }
         default:
             if (field.pattern !== undefined) {
+                // Short values over the pattern alphabet's letters hit a
+                // generated pattern far more often than free strings do.
+                const near = fc.string({ unit: fc.constantFrom(..."abc019 .-UN"), minLength: min, maxLength: Math.max(min, 6) });
                 try {
                     const matching = fc.stringMatching(new RegExp(field.pattern));
-                    return careful ? matching : fc.oneof(matching, anyString(min, max));
+                    return careful ? fc.oneof(matching, near) : fc.oneof(matching, near, anyString(min, max));
                 } catch {
-                    return anyString(min, max);
+                    return fc.oneof(near, anyString(min, max));
                 }
             }
             return anyString(min, max);
@@ -184,6 +187,20 @@ function contentArb(
 
 // ── Specs nobody has seen ───────────────────────────────────────────────────
 
+/** A pattern: a known one, or characters drawn from the alphabet regexes are
+ *  written in — most draws are outside the portable core, some inside it,
+ *  and the parse verdict on each is one of the three answers. */
+const PATTERN_ALPHABET = [..."abc019 .*+?()[]{}|^$\\-,:=!<>&~#dwsbDWSB", "(?:", "(?=", "(?!", "\\d", "\\w", "\\.", "[a-z]", "[^0-9]", "{2}", "{1,3}"];
+const patternArb = fc.oneof(
+    { weight: 2, arbitrary: fc.constantFrom("^[a-z]+$", "^[0-9a-f]{4}$", "^(a|b)*c$", "^UN[0-9]{4}$", "^[A-Za-z0-9 ./-]{0,8}$") },
+    {
+        weight: 3,
+        arbitrary: fc
+            .array(fc.constantFrom(...PATTERN_ALPHABET), { minLength: 1, maxLength: 8 })
+            .map((parts) => parts.join("")),
+    },
+);
+
 const nameArb = fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,7}$/);
 
 function fieldSpecArb(depth: number): fc.Arbitrary<Record<string, unknown>> {
@@ -196,7 +213,7 @@ function fieldSpecArb(depth: number): fc.Arbitrary<Record<string, unknown>> {
                 format: fc.constantFrom("bytes32-hex", "address-hex", "bytes-hex", "iso-datetime", "uri", "free-form"),
                 minLength: fc.integer({ min: 0, max: 4 }),
                 maxLength: fc.integer({ min: 0, max: 40 }),
-                pattern: fc.constantFrom("^[a-z]+$", "^[0-9a-f]{4}$", "^(a|b)*c$"),
+                pattern: patternArb,
             },
             { requiredKeys: ["name", "required", "type"] },
         ),
@@ -326,8 +343,22 @@ function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] 
         .sample(generatedSpecArb, { seed, numRuns: generatedSpecs })
         .map((spec, i) => ({ origin: `generated-${i}`, spec: spec as unknown }));
 
+    // One patterned field per spec, so a pattern's verdict is the spec's.
+    const patterned = fc
+        .sample(patternArb, { seed: seed + 7, numRuns: generatedSpecs * 4 })
+        .map((pattern, i) => ({
+            origin: `pattern-${i}`,
+            spec: {
+                clauseId: "p",
+                version: 1,
+                title: "P",
+                description: "D",
+                fields: [{ name: "v", type: "string", required: true, pattern }],
+            } as unknown,
+        }));
+
     const vectors: Vector[] = [];
-    [...protocol, ...generated].forEach(({ origin, spec }, s) => {
+    [...protocol, ...generated, ...patterned].forEach(({ origin, spec }, s) => {
         for (const stage of stagesOf(spec)) {
             const fields = fieldsOf(spec, stage);
             const draw = seed + s * 31 + (stage ?? 0);

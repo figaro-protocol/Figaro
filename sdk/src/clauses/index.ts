@@ -42,7 +42,11 @@ export { validateContent } from "./validate.js";
 export {
     safeRegexTest,
     isPotentiallyCatastrophicRegex,
+    isPortablePattern,
+    isPrintableAscii,
     MAX_PATTERN_TEST_INPUT,
+    MAX_PATTERN_LENGTH,
+    MAX_PATTERN_REPEAT,
 } from "./safeRegex.js";
 
 // ── Content encoding (generic, spec-driven) ─────────────────────────────────

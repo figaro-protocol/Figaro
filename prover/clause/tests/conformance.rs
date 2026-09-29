@@ -435,7 +435,25 @@ fn rejects_invalid_regex_pattern() {
             { "name": "s", "type": "string", "required": true, "pattern": "([" },
         ],
     }));
-    assert!(errors.iter().any(|e| e.message.contains("valid regex")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.path.ends_with(".pattern")), "{errors:?}");
+}
+
+#[test]
+fn rejects_a_pattern_outside_the_portable_core() {
+    // A valid regex in one library or the other, and outside what both read
+    // alike (`tests/engine_vectors.rs` carries the cases one by one).
+    for pattern in ["^(?!foo).*$", "(?i)^a$", "^\\p{L}$", "^[a&&b]$", "^a++$"] {
+        let errors = parse_errors(&json!({
+            "clauseId": "t", "version": 1, "title": "T", "description": "D",
+            "fields": [
+                { "name": "s", "type": "string", "required": true, "pattern": pattern },
+            ],
+        }));
+        assert!(
+            errors.iter().any(|e| e.message.contains("portable core")),
+            "{pattern}: {errors:?}"
+        );
+    }
 }
 
 #[test]
