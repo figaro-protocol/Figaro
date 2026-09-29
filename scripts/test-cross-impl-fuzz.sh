@@ -1,7 +1,8 @@
 #!/bin/bash
 # test-cross-impl-fuzz.sh — the differential fuzz across the implementations:
-# the kernel against its Rust mirror, and the agreement tree across the SDK,
-# the Solidity library the contracts call, and the guest's verifier.
+# the kernel against its Rust mirror; the agreement tree across the SDK, the
+# Solidity library the contracts call, and the guest's verifier; the clause
+# engine across the SDK and the guest.
 #
 # THE KERNEL STREAM — two halves under one seed:
 #
@@ -25,6 +26,16 @@
 #   3. Rust (prover/lib/tests/merkle_parity.rs, MERKLE_VECTORS) does the same
 #      through the guest's verifier.
 #
+# THE CLAUSE STREAM — two legs under the same seed:
+#
+#   1. The SDK (sdk/tests/clauses/clauseFuzzVectors.test.ts, CLAUSE_FUZZ_SEED)
+#      draws cases — every protocol clause and generated specs nobody has
+#      seen, some malformed; content inside the bounds and across them — and
+#      writes Layer A's answers to cache/clause-fuzz-vectors.json: whether
+#      the spec parses, whether the content validates, the canonical bytes.
+#   2. Rust (prover/clause/tests/fuzz_vectors.rs) asks the guest's engine the
+#      same three questions and must give the same answers.
+#
 # A divergence prints the seed and the step; the same seed reproduces it.
 #
 # Usage:
@@ -46,6 +57,7 @@ STEPS="${2:-400}"
 ROUNDS="${FUZZ_ROUNDS:-1}"
 STREAM="$PWD/cache/kernel-fuzz-stream.json"
 AGREEMENTS="$PWD/cache/agreement-fuzz-vectors.json"
+CLAUSES="$PWD/cache/clause-fuzz-vectors.json"
 
 for ((round = 0; round < ROUNDS; round++)); do
     seed=$((SEED + round))
@@ -72,6 +84,15 @@ for ((round = 0; round < ROUNDS; round++)); do
         forge test --match-contract MerkleParityTest
     (cd prover && MERKLE_VECTORS="$AGREEMENTS" \
         cargo test --locked -p figaro-kernel --test merkle_parity)
+
+    rm -f "$CLAUSES"
+    (cd sdk && CLAUSE_FUZZ_SEED="$seed" npx vitest run tests/clauses/clauseFuzzVectors.test.ts)
+    if [ ! -s "$CLAUSES" ]; then
+        echo "❌ the SDK leg wrote no clause vectors at $CLAUSES"
+        exit 1
+    fi
+    (cd prover && CLAUSE_FUZZ_VECTORS="$CLAUSES" \
+        cargo test --locked -p figaro-clause --test fuzz_vectors -- --ignored --nocapture)
 done
 
-echo "✅ The implementations agree on every operation and every agreement ($ROUNDS round(s) from seed $SEED)."
+echo "✅ The implementations agree on every operation, agreement and clause case ($ROUNDS round(s) from seed $SEED)."

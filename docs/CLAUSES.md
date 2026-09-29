@@ -43,7 +43,9 @@ its manual.
   a richer input.
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
-  stage is named.
+  stage is named. An `integer` value is a JSON number inside the safe range
+  (±(2^53 − 1)); a `bigint` value is an unsigned decimal string inside the
+  uint256 word. Content that validates encodes, in both engines.
 - `encodeContentFromSpec` / `decodeContentFromSpec` — the one spec-driven
   encoder and its inverse, reading the field-to-position mapping from the
   parsed spec for any clause, with the same stage selection. There is no

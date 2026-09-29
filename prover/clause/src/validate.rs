@@ -299,6 +299,16 @@ fn validate_integer(
         });
         return;
     }
+    // An `integer` is exact only inside JSON's safe range: past it Layer A
+    // reads a rounded number from the same text this engine reads exactly.
+    // Both refuse it; larger values are a `bigint` field's.
+    if !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n) {
+        errors.push(ValidationError {
+            path: path.to_string(),
+            message: format!("value {n} is outside the safe integer range"),
+        });
+        return;
+    }
     if let Some(min) = spec.min {
         if n < min {
             errors.push(ValidationError {
@@ -316,6 +326,13 @@ fn validate_integer(
         }
     }
 }
+
+/// `Number.MAX_SAFE_INTEGER`, 2^53 − 1.
+const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+
+/// The largest value a `bigint` field carries: its ABI word is uint256.
+const UINT256_MAX: &str =
+    "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 fn strip_sign(s: &str) -> (bool, &str) {
     if let Some(rest) = s.strip_prefix('-') {
@@ -387,6 +404,15 @@ fn validate_bigint(
         errors.push(ValidationError {
             path: path.to_string(),
             message: format!("value \"{s}\" does not parse as BigInt"),
+        });
+        return;
+    }
+    // The field's ABI word is uint256: a signed value or one past the word
+    // validates nowhere, because it encodes nowhere — Layer A's rule.
+    if s.starts_with('-') || cmp_decimal(s, UINT256_MAX) == std::cmp::Ordering::Greater {
+        errors.push(ValidationError {
+            path: path.to_string(),
+            message: format!("value {s} is outside the uint256 range"),
         });
         return;
     }

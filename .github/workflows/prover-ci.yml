@@ -15,7 +15,8 @@ name: Prover CI
 # `cross-impl-fuzz` — every push and PR: the differential fuzz across the
 # implementations (scripts/test-cross-impl-fuzz.sh). Foundry runs a seeded
 # stream of operations on FigaroCore and figaro-kernel replays it; the SDK
-# generates agreements and both Merkle verifiers open their proofs. The seed
+# generates agreements and both Merkle verifiers open their proofs; the SDK
+# draws clause cases and the guest's engine gives the same answers. The seed
 # is the run id, so every run draws new streams, and the log prints it.
 #
 # `sp1` — push to main and dispatch only: the other three workspace members —
@@ -39,7 +40,10 @@ on:
             - "test/core/kernel/KernelDifferentialFuzzTest.t.sol"
             - "test/core/attestation/MerkleParityTest.t.sol"
             - "sdk/src/agreement.ts"
+            - "sdk/src/clauses/**"
             - "sdk/tests/merkleParity.test.ts"
+            - "sdk/tests/clauses/clauseFuzzVectors.test.ts"
+            - "clauses/**"
             - "scripts/test-cross-impl-fuzz.sh"
             - ".github/workflows/prover-ci.yml"
     pull_request:
@@ -49,7 +53,10 @@ on:
             - "test/core/kernel/KernelDifferentialFuzzTest.t.sol"
             - "test/core/attestation/MerkleParityTest.t.sol"
             - "sdk/src/agreement.ts"
+            - "sdk/src/clauses/**"
             - "sdk/tests/merkleParity.test.ts"
+            - "sdk/tests/clauses/clauseFuzzVectors.test.ts"
+            - "clauses/**"
             - "scripts/test-cross-impl-fuzz.sh"
 
 permissions:
@@ -100,7 +107,7 @@ jobs:
               run: cargo test --locked -p figaro-clause -p figaro-kernel
 
     cross-impl-fuzz:
-        name: differential fuzz (kernel vs mirror; agreement tree, three legs)
+        name: differential fuzz (kernel, agreement tree, clause engine)
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code

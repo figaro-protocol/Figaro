@@ -269,18 +269,41 @@ fn string_length_counts_utf16_code_units() {
 #[test]
 fn bigint_grammar_is_decimal_only() {
     // The tightened grammar `-?[0-9]+` — no empty string, no `+`, no hex,
-    // no whitespace (Layer A enforces the same grammar).
+    // no whitespace (Layer A enforces the same grammar). A content value
+    // carries no sign at all: the field's ABI word is uint256.
     let spec = spec_of(json!([
         { "name": "v", "type": "bigint", "required": true, "min": "-100", "max": "1000000000000000000000000" },
     ]));
     assert!(ok(&json!({ "v": "123456789012345678901234" }), &spec));
-    assert!(ok(&json!({ "v": "-100" }), &spec));
-    assert!(!ok(&json!({ "v": "-101" }), &spec));
+    assert!(!ok(&json!({ "v": "-100" }), &spec));
+    assert!(!ok(&json!({ "v": "-0" }), &spec));
     assert!(!ok(&json!({ "v": "" }), &spec));
     assert!(!ok(&json!({ "v": "+5" }), &spec));
     assert!(!ok(&json!({ "v": "0x10" }), &spec));
     assert!(!ok(&json!({ "v": " 5" }), &spec));
     assert!(!ok(&json!({ "v": 5 }), &spec)); // must be a decimal string
+}
+
+#[test]
+fn bigint_content_stays_inside_the_uint256_word() {
+    let spec = spec_of(json!([{ "name": "v", "type": "bigint", "required": true }]));
+    let max = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+    let past = "115792089237316195423570985008687907853269984665640564039457584007913129639936";
+    assert!(ok(&json!({ "v": "0" }), &spec));
+    assert!(ok(&json!({ "v": max }), &spec));
+    assert!(!ok(&json!({ "v": past }), &spec));
+}
+
+#[test]
+fn integer_content_stays_inside_the_safe_range() {
+    // Past 2^53 − 1 Layer A reads a rounded number from the text this engine
+    // reads exactly; both refuse it.
+    let spec = spec_of(json!([{ "name": "n", "type": "integer", "required": true }]));
+    assert!(ok(&json!({ "n": 9007199254740991i64 }), &spec));
+    assert!(ok(&json!({ "n": -9007199254740991i64 }), &spec));
+    assert!(!ok(&json!({ "n": 9007199254740992i64 }), &spec));
+    assert!(!ok(&json!({ "n": -9007199254740992i64 }), &spec));
+    assert!(!ok(&json!({ "n": 1e21 }), &spec));
 }
 
 #[test]

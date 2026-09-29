@@ -63,6 +63,24 @@ describe("validateContent — happy paths", () => {
         expect(validateContent({ amount: "9999999999999999999999" }, spec).ok).toBe(false);
     });
 
+    it("keeps bigint content inside the uint256 word, unsigned", () => {
+        const spec = specOf([{ name: "v", type: "bigint", required: true, min: "-100" }]);
+        const max = ((1n << 256n) - 1n).toString();
+        expect(validateContent({ v: "0" }, spec).ok).toBe(true);
+        expect(validateContent({ v: max }, spec).ok).toBe(true);
+        expect(validateContent({ v: (1n << 256n).toString() }, spec).ok).toBe(false);
+        expect(validateContent({ v: "-100" }, spec).ok).toBe(false);
+        expect(validateContent({ v: "-0" }, spec).ok).toBe(false);
+    });
+
+    it("keeps integer content inside the safe range", () => {
+        const spec = specOf([{ name: "n", type: "integer", required: true }]);
+        expect(validateContent({ n: Number.MAX_SAFE_INTEGER }, spec).ok).toBe(true);
+        expect(validateContent({ n: -Number.MAX_SAFE_INTEGER }, spec).ok).toBe(true);
+        expect(validateContent({ n: Number.MAX_SAFE_INTEGER + 1 }, spec).ok).toBe(false);
+        expect(validateContent({ n: 1e21 }, spec).ok).toBe(false);
+    });
+
     it("validates enum values", () => {
         const spec = specOf([
             { name: "color", type: "enum", required: true, values: ["red", "green", "blue"] },

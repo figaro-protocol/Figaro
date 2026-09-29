@@ -89,9 +89,21 @@ function validateString(value: unknown, spec: StringFieldSpec, path: string, err
     }
 }
 
+/** The largest value a `bigint` field carries: its ABI word is uint256. */
+const UINT256_MAX = (1n << 256n) - 1n;
+
 function validateInteger(value: unknown, spec: IntegerFieldSpec, path: string, errors: ValidationError[]): void {
     if (typeof value !== "number" || !Number.isInteger(value)) {
         errors.push({ path, message: `expected integer, got ${typeof value}` });
+        return;
+    }
+    // An `integer` is a JSON number, exact only inside the safe range: past
+    // it two JSON texts name one JS number, and a reader in another language
+    // reads a different integer from the same text. Larger values are a
+    // `bigint` field's, carried as a decimal string. The prover's Rust mirror
+    // enforces the same bound in lockstep.
+    if (!Number.isSafeInteger(value)) {
+        errors.push({ path, message: `value ${value} is outside the safe integer range` });
         return;
     }
     if (spec.min !== undefined && value < spec.min) {
@@ -112,6 +124,13 @@ function validateBigint(value: unknown, spec: BigintFieldSpec, path: string, err
         return;
     }
     const parsed = BigInt(value);
+    // The field's ABI word is uint256: a signed value or one past the word
+    // validates nowhere, because it encodes nowhere. The prover's Rust mirror
+    // enforces the same range in lockstep.
+    if (value.startsWith("-") || parsed > UINT256_MAX) {
+        errors.push({ path, message: `value ${value} is outside the uint256 range` });
+        return;
+    }
     if (spec.min !== undefined && parsed < BigInt(spec.min)) {
         errors.push({ path, message: `value ${parsed} is below min ${spec.min}` });
     }

@@ -303,7 +303,16 @@ property generator) and writes each root, leaf and inclusion proof to
 `cache/agreement-fuzz-vectors.json` in the Merkle fixture's format;
 `MerkleParityTest` and `prover/lib/tests/merkle_parity.rs` read that file
 through `MERKLE_VECTORS`, rebuild every leaf, open every proof, and refuse a
-tampered leaf. The kernel stream has two halves.
+tampered leaf. The clause stream:
+`sdk/tests/clauses/clauseFuzzVectors.test.ts` under `CLAUSE_FUZZ_SEED` draws
+cases from every spec in `clauses/` and from generated specs nobody has seen
+(some malformed), with content drawn from each spec's field shapes — half of
+the draws inside every bound, half crossing them, strings leaving ASCII in
+both — and writes Layer A's three answers to `cache/clause-fuzz-vectors.json`:
+whether the spec parses, whether the content validates, and the canonical ABI
+bytes; `prover/clause/tests/fuzz_vectors.rs` asks the guest's engine the same
+three questions. Without the variable the SDK file asserts the generator is
+deterministic. The kernel stream has two halves.
 `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits
 and resolutions from the seed, over five wallets and two tokens: valid ones,
 and malformed ones (an expired deadline, a zero payment, a wrong signer, a

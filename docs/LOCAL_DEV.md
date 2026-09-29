@@ -25,7 +25,7 @@ forge test --via-ir
                               #   Prelude: the maintainers' pre-commit guard battery gates
                               #   certora/token-ops.inventory against every ERC20 token-moving
                               #   call site in production src/.
-./scripts/test-cross-impl-fuzz.sh  # Differential fuzz under one seed: FigaroCore vs its Rust mirror; SDK agreements vs both Merkle verifiers
+./scripts/test-cross-impl-fuzz.sh  # Differential fuzz under one seed: kernel vs mirror; agreement tree, three legs; clause engine, SDK vs guest
                               #   (args: [seed] [steps]; FUZZ_ROUNDS=n for n consecutive seeds).
 cd prover && cargo test       # Rust prover workspace. Prereq: SP1 toolchain (cargo prove); without it,
                               #   cargo test -p figaro-clause -p figaro-kernel (host-only crates, = prover-ci).
