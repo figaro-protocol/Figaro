@@ -20,7 +20,7 @@
  * nothing about what a case deserves.
  *
  * Runs only under `CLAUSE_FUZZ_SEED=<n>` (`scripts/test-cross-impl-fuzz.sh`
- * sets it), writing `cache/clause-fuzz-vectors.json`, one JSON object per
+ * sets it), writing `test/fixtures/streams/clauses.jsonl`, one JSON object per
  * line. Without the variable the file asserts the generator itself: the
  * same seed yields the same vectors.
  */
@@ -37,7 +37,7 @@ import {
 } from "../../src/clauses/index.js";
 
 const CLAUSES_DIR = path.resolve(__dirname, "../../../clauses");
-const OUT_PATH = path.resolve(__dirname, "../../../cache/clause-fuzz-vectors.json");
+const OUT_PATH = path.resolve(__dirname, "../../../test/fixtures/streams/clauses.jsonl");
 
 // ── Content, drawn from a field's shape ─────────────────────────────────────
 
@@ -376,7 +376,7 @@ function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] 
 
 describe("Clause fuzz vectors — the generated leg of the clause-engine lock", () => {
     if (process.env.CLAUSE_FUZZ_SEED !== undefined) {
-        it("writes generated vectors to cache/clause-fuzz-vectors.json", () => {
+        it("writes generated vectors to test/fixtures/streams/clauses.jsonl", () => {
             const seed = Number(process.env.CLAUSE_FUZZ_SEED);
             expect(Number.isSafeInteger(seed), "CLAUSE_FUZZ_SEED is an integer").toBe(true);
             const vectors = build(seed, Number(process.env.CLAUSE_FUZZ_PER_SPEC ?? "8"), 40);

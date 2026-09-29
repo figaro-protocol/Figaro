@@ -5,7 +5,7 @@
 //! every protocol clause in `clauses/` and generated specs nobody has seen,
 //! some malformed; content drawn from each spec's field shapes, half of it
 //! inside every bound and half crossing them — and records Layer A's three
-//! answers in `cache/clause-fuzz-vectors.json`, one JSON object per line:
+//! answers in `test/fixtures/streams/clauses.jsonl`, one JSON object per line:
 //! whether the spec parses, whether the content validates, and the canonical
 //! ABI bytes when it does. This file asks the Rust engine the same three
 //! questions and asserts the same answers.
@@ -31,7 +31,7 @@ fn vectors() -> Vec<Value> {
             let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             p.pop(); // prover/
             p.pop(); // repo root
-            p.push("cache/clause-fuzz-vectors.json");
+            p.push("test/fixtures/streams/clauses.jsonl");
             p
         });
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {

@@ -21,7 +21,7 @@
  *
  *   1. Regenerate the fixture on `HARVEST_MERKLE_VECTORS=1`.
  *   2. On `AGREEMENT_FUZZ_SEED=<n>`, write GENERATED agreements in the
- *      fixture's format to `cache/agreement-fuzz-vectors.json`: the
+ *      fixture's format to `test/fixtures/streams/agreements.json`: the
  *      differential fuzz (`scripts/test-cross-impl-fuzz.sh`) points the
  *      Solidity and Rust legs at that file through `MERKLE_VECTORS`.
  *   3. Otherwise, assert the SDK still reproduces the frozen bytes.
@@ -38,7 +38,7 @@ import {
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
 
-const FUZZ_PATH = path.resolve(__dirname, "../../cache/agreement-fuzz-vectors.json");
+const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json");
 
 const THREE: Agreement = {
@@ -98,7 +98,7 @@ function buildGenerated(seed: number, count: number) {
 
 describe("Merkle parity vectors — the three-way lock", () => {
     if (process.env.AGREEMENT_FUZZ_SEED !== undefined) {
-        it("writes generated agreements to cache/agreement-fuzz-vectors.json", () => {
+        it("writes generated agreements to test/fixtures/streams/agreements.json", () => {
             const seed = Number(process.env.AGREEMENT_FUZZ_SEED);
             const count = Number(process.env.AGREEMENT_FUZZ_COUNT ?? "64");
             expect(Number.isSafeInteger(seed), "AGREEMENT_FUZZ_SEED is an integer").toBe(true);

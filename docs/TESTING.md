@@ -315,7 +315,7 @@ did, and both Merkle verifiers open generated agreements.**
 agreement stream: `sdk/tests/merkleParity.test.ts` under `AGREEMENT_FUZZ_SEED`
 generates agreements of one to six sections (`agreementArb`, the SDK's own
 property generator) and writes each root, leaf and inclusion proof to
-`cache/agreement-fuzz-vectors.json` in the Merkle fixture's format;
+`test/fixtures/streams/agreements.json` in the Merkle fixture's format;
 `MerkleParityTest` and `prover/lib/tests/merkle_parity.rs` read that file
 through `MERKLE_VECTORS`, rebuild every leaf, open every proof, and refuse a
 tampered leaf. The clause stream:
@@ -325,7 +325,7 @@ cases from every spec in `clauses/` and from generated specs nobody has seen
 from the characters regexes are written in, with content drawn from each
 spec's field shapes — half of
 the draws inside every bound, half crossing them, strings leaving ASCII in
-both — and writes Layer A's three answers to `cache/clause-fuzz-vectors.json`:
+both — and writes Layer A's three answers to `test/fixtures/streams/clauses.jsonl`:
 whether the spec parses, whether the content validates, and the canonical ABI
 bytes; `prover/clause/tests/fuzz_vectors.rs` asks the guest's engine the same
 three questions. Without the variable the SDK file asserts the generator is
@@ -339,7 +339,7 @@ signature, a recovery id written 0/1, a zeroed signature; a resolution by a
 wallet that is not the buyer, one order short, holding a foreign order, of a
 resolved process, of an unknown process). Each runs on `FigaroCore`; the ids
 the kernel returned, or the error it reverted with, go to
-`cache/kernel-fuzz-stream.json`, one JSON object per line, followed by every
+`test/fixtures/streams/kernel.jsonl`, one JSON object per line, followed by every
 wallet's deposits and payouts and every process's final state. The generator
 asserts nothing about which error a malformed operation earns: the kernel's
 answer is the oracle. `prover/lib/tests/fuzz_stream.rs` replays the stream

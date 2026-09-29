@@ -4,7 +4,7 @@
 //! `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of
 //! commits and resolutions from a seed — valid ones and deliberately
 //! malformed ones — runs each on `FigaroCore`, and writes what the kernel
-//! did to `cache/kernel-fuzz-stream.json`, one JSON object per line. This
+//! did to `test/fixtures/streams/kernel.jsonl`, one JSON object per line. This
 //! file replays the stream through `apply_batch_with_state`, one operation
 //! per batch over the state the previous batch left, and asserts:
 //!
@@ -43,7 +43,7 @@ fn stream() -> Vec<serde_json::Value> {
         let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         p.pop(); // prover/
         p.pop(); // repo root
-        p.push("cache/kernel-fuzz-stream.json");
+        p.push("test/fixtures/streams/kernel.jsonl");
         p
     });
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {

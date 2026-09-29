@@ -9,7 +9,7 @@
 #   1. Foundry (test/core/kernel/KernelDifferentialFuzzTest.t.sol) draws a
 #      stream of commits and resolutions from the seed — valid ones and
 #      deliberately malformed ones — runs each on FigaroCore, and writes what
-#      the kernel did to cache/kernel-fuzz-stream.json.
+#      the kernel did to test/fixtures/streams/kernel.jsonl.
 #   2. Rust (prover/lib/tests/fuzz_stream.rs) replays the stream through the
 #      mirror, one operation per batch, and must accept what the kernel
 #      accepted, reject what it rejected with the same error, and arrive at
@@ -19,7 +19,7 @@
 #
 #   1. The SDK (sdk/tests/merkleParity.test.ts, AGREEMENT_FUZZ_SEED) generates
 #      agreements of one to six sections and writes each root, leaf and
-#      inclusion proof to cache/agreement-fuzz-vectors.json.
+#      inclusion proof to test/fixtures/streams/agreements.json.
 #   2. Foundry (MerkleParityTest, MERKLE_VECTORS) rebuilds every leaf the way
 #      AttestationCoordinator and UsageCounter do and opens every proof with
 #      OpenZeppelin MerkleProof; a tampered leaf must not open.
@@ -31,7 +31,7 @@
 #   1. The SDK (sdk/tests/clauses/clauseFuzzVectors.test.ts, CLAUSE_FUZZ_SEED)
 #      draws cases — every protocol clause and generated specs nobody has
 #      seen, some malformed; content inside the bounds and across them — and
-#      writes Layer A's answers to cache/clause-fuzz-vectors.json: whether
+#      writes Layer A's answers to test/fixtures/streams/clauses.jsonl: whether
 #      the spec parses, whether the content validates, the canonical bytes.
 #   2. Rust (prover/clause/tests/fuzz_vectors.rs) asks the guest's engine the
 #      same three questions and must give the same answers.
@@ -55,9 +55,9 @@ cd "$(dirname "$0")/.."
 SEED="${1:-$(date +%s)}"
 STEPS="${2:-400}"
 ROUNDS="${FUZZ_ROUNDS:-1}"
-STREAM="$PWD/cache/kernel-fuzz-stream.json"
-AGREEMENTS="$PWD/cache/agreement-fuzz-vectors.json"
-CLAUSES="$PWD/cache/clause-fuzz-vectors.json"
+STREAM="$PWD/test/fixtures/streams/kernel.jsonl"
+AGREEMENTS="$PWD/test/fixtures/streams/agreements.json"
+CLAUSES="$PWD/test/fixtures/streams/clauses.jsonl"
 
 for ((round = 0; round < ROUNDS; round++)); do
     seed=$((SEED + round))
@@ -80,7 +80,7 @@ for ((round = 0; round < ROUNDS; round++)); do
         echo "❌ the SDK leg wrote no agreements at $AGREEMENTS"
         exit 1
     fi
-    MERKLE_VECTORS="cache/agreement-fuzz-vectors.json" \
+    MERKLE_VECTORS="test/fixtures/streams/agreements.json" \
         forge test --match-contract MerkleParityTest
     (cd prover && MERKLE_VECTORS="$AGREEMENTS" \
         cargo test --locked -p figaro-kernel --test merkle_parity)

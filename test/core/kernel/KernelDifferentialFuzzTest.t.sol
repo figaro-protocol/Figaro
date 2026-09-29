@@ -17,7 +17,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///         resolution list, a payment in the overflow window, ...). Every
 ///         operation runs on the live kernel; what the kernel did — the ids it
 ///         returned, or the error it reverted with — is written to
-///         `cache/kernel-fuzz-stream.json`, one JSON object per line: a
+///         `test/fixtures/streams/kernel.jsonl`, one JSON object per line: a
 ///         header, the steps, then every wallet's deposits and payouts and
 ///         every process's final state.
 ///         `prover/lib/tests/fuzz_stream.rs` replays the same stream through
@@ -32,7 +32,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 contract KernelDifferentialFuzzTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
-    string internal constant STREAM = "cache/kernel-fuzz-stream.json";
+    string internal constant STREAM = "test/fixtures/streams/kernel.jsonl";
     uint256 internal constant KEY_COUNT = 5;
 
     FigaroCore internal core;
