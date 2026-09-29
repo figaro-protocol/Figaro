@@ -566,6 +566,53 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(token.balanceOf(buyer), buyerBefore, "no value leg on a rejected proof");
     }
 
+    // ── The public values are nine words, no more and no fewer ─────
+
+    function test_settleBatch_revertsOnPublicValuesOfAnotherLength() public {
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
+        assertEq(pv.length, verifier.PUBLIC_VALUES_LENGTH(), "the canonical batch carries nine words");
+        uint256 buyerBefore = token.balanceOf(buyer);
+
+        // Eight words — the stream as it was before the batch's clock joined it.
+        bytes memory eight = new bytes(256);
+        for (uint256 i = 0; i < 256; i++) {
+            eight[i] = pv[i];
+        }
+        bytes memory ten = bytes.concat(pv, bytes32(uint256(1)));
+        bytes memory oneShort = new bytes(287);
+        bytes memory oneOver = bytes.concat(pv, bytes1(0));
+        bytes[5] memory wrong = [eight, ten, oneShort, oneOver, bytes("")];
+
+        for (uint256 i = 0; i < wrong.length; i++) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    FigaroBatchVerifier.PublicValuesLengthMismatch.selector, uint256(288), wrong[i].length
+                )
+            );
+            verifier.settleBatch(hex"", wrong[i], positions, events, _emptyUsage());
+        }
+
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
+        assertEq(verifier.batchCount(), 0, "no batch counted");
+        assertEq(token.balanceOf(buyer), buyerBefore, "no value leg");
+    }
+
+    function test_settleBatch_refusesALengthBeforeItAsksTheVerifier() public {
+        // The length is the contract's own check: a verifier that would
+        // reject the proof is never reached.
+        (, FigaroBatchVerifier.NetPosition[] memory positions, FigaroBatchVerifier.BatchEventData memory events,) =
+            _canonicalBatch();
+        sp1.setRejectProofs(true);
+        vm.expectRevert(
+            abi.encodeWithSelector(FigaroBatchVerifier.PublicValuesLengthMismatch.selector, uint256(288), uint256(256))
+        );
+        verifier.settleBatch(hex"", new bytes(256), positions, events, _emptyUsage());
+    }
+
     // ── Sequential batches: root chains, counter increments, and the
     //    stage-255 boundary packs identically to abi.encodePacked ────
 

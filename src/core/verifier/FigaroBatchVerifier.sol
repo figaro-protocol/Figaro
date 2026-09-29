@@ -97,6 +97,11 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ///         already-expired signed commitment.
     uint64 public constant MAX_BATCH_STALENESS = 1 hours;
 
+    /// @notice The length of the public values, in bytes: nine 32-byte words.
+    ///         A stream of any other length is another program's, or a
+    ///         malformed one, and is refused by name before anything reads it.
+    uint256 public constant PUBLIC_VALUES_LENGTH = 288;
+
     // ── State ─────────────────────────────────────────────────────
 
     bytes32 public stateRoot;
@@ -198,6 +203,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error SpecBindingsHashMismatch();
     error UsageAccrualHashMismatch();
     error BatchTimestampOutOfRange(uint64 committed, uint64 current);
+    error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
     /// @dev The proof validated content against a spec the registry does
     ///      not anchor for this clause key — including the unregistered
     ///      case (`contentHashOf` returns zero, which never equals a
@@ -265,6 +271,10 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         BatchEventData calldata events,
         BatchUsageData calldata usage
     ) external nonReentrant {
+        if (publicValues.length != PUBLIC_VALUES_LENGTH) {
+            revert PublicValuesLengthMismatch(PUBLIC_VALUES_LENGTH, publicValues.length);
+        }
+
         // ── 1. Verify the SP1 proof ───────────────────────────────
         verifier.verifyProof(programVKey, publicValues, proof);
 

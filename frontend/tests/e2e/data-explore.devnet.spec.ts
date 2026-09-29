@@ -889,6 +889,18 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 { name: 'positionCount', type: 'uint256', indexed: false },
             ],
         },
+        // The verifier's refusals, so a revert here is named in the failure
+        // and never reads "for an unknown reason".
+        { type: 'error', name: 'StateRootMismatch', inputs: [{ name: 'expected', type: 'bytes32' }, { name: 'actual', type: 'bytes32' }] },
+        { type: 'error', name: 'ChainIdMismatch', inputs: [{ name: 'expected', type: 'uint64' }, { name: 'actual', type: 'uint64' }] },
+        { type: 'error', name: 'VerifyingContractMismatch', inputs: [{ name: 'expected', type: 'address' }, { name: 'actual', type: 'address' }] },
+        { type: 'error', name: 'PositionHashMismatch', inputs: [] },
+        { type: 'error', name: 'AttestationHashMismatch', inputs: [] },
+        { type: 'error', name: 'SpecBindingsHashMismatch', inputs: [] },
+        { type: 'error', name: 'UsageAccrualHashMismatch', inputs: [] },
+        { type: 'error', name: 'BatchTimestampOutOfRange', inputs: [{ name: 'committed', type: 'uint64' }, { name: 'current', type: 'uint64' }] },
+        { type: 'error', name: 'PublicValuesLengthMismatch', inputs: [{ name: 'expected', type: 'uint256' }, { name: 'actual', type: 'uint256' }] },
+        { type: 'error', name: 'SpecBindingMismatch', inputs: [{ name: 'clauseId', type: 'bytes32' }, { name: 'anchored', type: 'bytes32' }, { name: 'proven', type: 'bytes32' }] },
     ] as const;
 
     test('the batch-universe leg — one mock-verified settleBatch, and the overlay row folds both universes by ADDRESS', async ({ page }) => {
@@ -956,10 +968,13 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await pinWitnessBytes(content);
         expect(await fetchWitnessBytes(contentRef), 'the batch substance resolves from its own fingerprint').toBe(content);
 
-        // Public values: 8 static ABI words. prevRoot must be the LIVE root
-        // (it advances every resolve — never hardcode genesis); newRoot is
-        // whatever the values say, because the mock accepts any proof — the
-        // devnet posture this leg is explicit about.
+        // Public values: 9 static ABI words, 288 bytes; the verifier refuses
+        // any other length by name. prevRoot
+        // must be the LIVE root (it advances every resolve — never hardcode
+        // genesis); newRoot is whatever the values say, because the mock
+        // accepts any proof — the devnet posture this leg is explicit about.
+        // The ninth word is the batch's clock, and it is the CHAIN's: the
+        // verifier refuses one ahead of its block or more than an hour behind.
         const prevRoot = await publicClient.readContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot',
         });
@@ -975,13 +990,16 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const specBindingsHash = keccak256(encodePacked(['bytes32', 'bytes32'], [geoKey, specHash]));
         const emptyPositionsHash = keccak256('0x');
         const emptyUsageHash = keccak256(encodePacked(['uint8', 'bytes32', 'uint64', 'uint64'], [0, zeroHash, 0n, 0n]));
+        const batchTimestamp = (await publicClient.getBlock()).timestamp;
         const publicValues = encodeAbiParameters(
             [
                 { type: 'bytes32' }, { type: 'bytes32' }, { type: 'uint64' }, { type: 'address' },
                 { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' },
+                { type: 'uint64' },
             ],
-            [prevRoot, newRoot, BigInt(LOCAL_ANVIL.id), batchVerifier, emptyPositionsHash, attestationsHash, specBindingsHash, emptyUsageHash],
+            [prevRoot, newRoot, BigInt(LOCAL_ANVIL.id), batchVerifier, emptyPositionsHash, attestationsHash, specBindingsHash, emptyUsageHash, batchTimestamp],
         );
+        expect(publicValues.length, 'nine words, 288 bytes').toBe(2 + 288 * 2);
 
         const settleReceipt = await receipt(await surveyorWallet.writeContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'settleBatch',

@@ -246,6 +246,8 @@ kernel path. `SCALING_STRATEGY.md` owns the design; this is the surface.
 
 **`src/core/verifier/FigaroBatchVerifier.sol`** — One external function,
 `settleBatch(proof, publicValues, positions, events, usage)`:
+- refuses public values of any length but `PUBLIC_VALUES_LENGTH` (288 bytes,
+  nine words) with `PublicValuesLengthMismatch`, before the proof is read;
 - verifies an SP1 proof of a batch of kernel operations (commits, resolutions,
   witness-gated attestations) against the immutable `programVKey`;
 - checks state-root continuity and chain binding, and hash-verifies the
