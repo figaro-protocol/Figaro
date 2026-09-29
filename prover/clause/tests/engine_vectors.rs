@@ -157,6 +157,43 @@ fn a_verdict_carries_its_reasons() {
         );
     }
 
+    // An integer written as a whole number and out of range names the range;
+    // a fraction names the type.
+    let unbounded = spec_of(&json!([{ "name": "v", "type": "integer", "required": true }])).unwrap();
+    let past: Value = serde_json::from_str(r#"{"v":1e21}"#).unwrap();
+    assert_eq!(
+        validate_content(&past, &unbounded, ValidateOptions::default()).errors()[0].message,
+        "value 1e+21 is outside the safe integer range"
+    );
+    let fraction: Value = serde_json::from_str(r#"{"v":1.5}"#).unwrap();
+    assert_eq!(
+        validate_content(&fraction, &unbounded, ValidateOptions::default()).errors()[0].message,
+        "expected integer, got number"
+    );
+
+    // A reason's path is the field's place in the content: `$.name` at the
+    // root, and one more step for each level below it.
+    let nested = spec_of(&json!([{
+        "name": "o", "type": "object", "required": true,
+        "fields": [
+            { "name": "a", "type": "integer", "required": true },
+            { "name": "l", "type": "array", "required": true, "items": { "type": "integer" } },
+        ],
+    }]))
+    .unwrap();
+    let v = validate_content(
+        &json!({ "o": { "a": "x", "l": [1, "y"], "z": 1 }, "w": 1 }),
+        &nested,
+        ValidateOptions::default(),
+    );
+    let mut paths: Vec<&str> = v.errors().iter().map(|e| e.path.as_str()).collect();
+    paths.sort();
+    assert_eq!(paths, ["$.o.a", "$.o.l[1]", "$.o.z", "$.w"], "{:?}", v.errors());
+    let absent = validate_content(&json!({ "o": {} }), &nested, ValidateOptions::default());
+    let mut paths: Vec<&str> = absent.errors().iter().map(|e| e.path.as_str()).collect();
+    paths.sort();
+    assert_eq!(paths, ["$.o.a", "$.o.l"], "{:?}", absent.errors());
+
     let formatted = spec_of(&json!([{ "name": "v", "type": "string", "required": true, "format": "address-hex" }])).unwrap();
     let v = validate_content(&json!({ "v": "0x00" }), &formatted, ValidateOptions::default());
     assert!(
