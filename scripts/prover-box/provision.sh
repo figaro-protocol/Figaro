@@ -12,15 +12,22 @@ set -euxo pipefail
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    git curl build-essential pkg-config libssl-dev python3 docker.io
+    git curl build-essential pkg-config libssl-dev python3 docker.io \
+    protobuf-compiler
 
 # Rust (the sequencer + prover host toolchain)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
-# SP1 (cargo prove + the succinct toolchain)
+git clone https://github.com/figaro-protocol/Figaro "$HOME/Figaro"
+
+# SP1 (cargo prove + the succinct toolchain), at the release the lock names:
+# the verification key is a function of the toolchain release, and a bare
+# `sp1up` installs whatever is newest that day.
+SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$HOME/Figaro/prover/Cargo.lock")
+[ "$SP1_TAG" != "v" ] || { echo "could not read the sp1-sdk version from Cargo.lock"; exit 1; }
 curl -L https://sp1up.succinct.xyz | bash
-"$HOME/.sp1/bin/sp1up"
+"$HOME/.sp1/bin/sp1up" --version "$SP1_TAG"
 
 # Foundry (anvil for the fork rehearsal, cast for reads)
 curl -L https://foundry.paradigm.xyz | bash
@@ -31,10 +38,9 @@ curl -L https://foundry.paradigm.xyz | bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs
 
-git clone https://github.com/figaro-protocol/Figaro "$HOME/Figaro"
-
-# The pinned SP1 build image — the docker guest build and the gnark wrap use it.
-docker pull ghcr.io/succinctlabs/sp1:v6.4.0
+# The SP1 build image of the same release — the docker guest build and the
+# gnark wrap use it.
+docker pull "ghcr.io/succinctlabs/sp1:$SP1_TAG"
 
 # Swap: the Groth16 gnark wrap peaks ~18 GB inside docker. On a 30 GB host the
 # OOM killer takes gnark-cli at the proving spike without this.
