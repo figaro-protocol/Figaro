@@ -30,7 +30,8 @@ import {
     computeOrderHash,
     type Commitment,
 } from "../src/index.js";
-import { keccak256, encodeAbiParameters, toBytes, type Hex } from "viem";
+import { RESOLVE_PROCESS_TYPES } from "../src/commitments.js";
+import { keccak256, encodeAbiParameters, hashStruct, hashTypedData, toBytes, type Hex } from "viem";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/eip712-vectors.json");
 
@@ -108,12 +109,86 @@ function vectorFor(label: string, c: Commitment) {
     };
 }
 
+// ── The batch path's three authorizations ──────────────────────────────────
+//
+// Not kernel types: on the batch path a signature stands where the direct
+// path reads `msg.sender`, and the guest checks it
+// (`prover/lib/src/eip712.rs`). The domain is the VERIFIER's. The hashes
+// below are viem's, from the type strings alone;
+// `prover/lib/tests/eip712_vectors.rs` asserts the guest's.
+const BATCH_VERIFIER = "0xF62849F9A0B5Bf2913b396098F7c7019b51A820a" as const;
+
+const ATTEST_SELLER_TYPES = {
+    AttestSeller: [
+        { name: "orderHash", type: "bytes32" },
+        { name: "clauseId", type: "bytes32" },
+        { name: "stage", type: "uint8" },
+        { name: "contentRef", type: "bytes32" },
+    ],
+} as const;
+
+const ATTEST_BUYER_TYPES = {
+    AttestBuyer: [
+        { name: "processId", type: "bytes32" },
+        { name: "orderHash", type: "bytes32" },
+        { name: "clauseId", type: "bytes32" },
+        { name: "stage", type: "uint8" },
+        { name: "contentRef", type: "bytes32" },
+    ],
+} as const;
+
+function batchVectors() {
+    const domain = {
+        name: "FigaroCore",
+        version: "3",
+        chainId: CHAIN_ID,
+        verifyingContract: BATCH_VERIFIER,
+    } as const;
+    const processId = keccak256(toBytes("batch-process"));
+    const orderHash = keccak256(toBytes("batch-order"));
+    const clauseId = keccak256(toBytes("batch-clause"));
+    const contentRef = keccak256(toBytes("batch-content"));
+    const resolve = { processId };
+    const authorizations = [1, 0, 255].flatMap((stage) => {
+        const seller = { orderHash, clauseId, stage, contentRef };
+        const buyer = { processId, orderHash, clauseId, stage, contentRef };
+        return [
+            {
+                type: "AttestSeller",
+                message: seller,
+                structHash: hashStruct({ types: ATTEST_SELLER_TYPES, primaryType: "AttestSeller", data: seller }),
+                digest: hashTypedData({ domain, types: ATTEST_SELLER_TYPES, primaryType: "AttestSeller", message: seller }),
+            },
+            {
+                type: "AttestBuyer",
+                message: buyer,
+                structHash: hashStruct({ types: ATTEST_BUYER_TYPES, primaryType: "AttestBuyer", data: buyer }),
+                digest: hashTypedData({ domain, types: ATTEST_BUYER_TYPES, primaryType: "AttestBuyer", message: buyer }),
+            },
+        ];
+    });
+    return {
+        verifyingContract: BATCH_VERIFIER,
+        domainSeparator: domainSeparator(CHAIN_ID, BATCH_VERIFIER),
+        authorizations: [
+            {
+                type: "ResolveProcess",
+                message: resolve,
+                structHash: hashStruct({ types: RESOLVE_PROCESS_TYPES, primaryType: "ResolveProcess", data: resolve }),
+                digest: hashTypedData({ domain, types: RESOLVE_PROCESS_TYPES, primaryType: "ResolveProcess", message: resolve }),
+            },
+            ...authorizations,
+        ],
+    };
+}
+
 function build() {
     return {
         chainId: CHAIN_ID,
         verifyingContract: VERIFYING_CONTRACT,
         domainSeparator: domainSeparator(CHAIN_ID, VERIFYING_CONTRACT),
         vectors: [vectorFor("root", ROOT), vectorFor("sub", SUB)],
+        batch: batchVectors(),
     };
 }
 

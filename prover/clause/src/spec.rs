@@ -214,19 +214,26 @@ fn err(errors: &mut Vec<SpecParseError>, path: &str, msg: &str) {
     });
 }
 
-/// JS `Number.isInteger` semantics over a serde_json number: any JSON
-/// number whose value is a whole number in i64 range. (JSON `1.0` IS the
-/// integer 1 to Layer A — JavaScript has no int/float distinction.)
+/// `Number.MAX_SAFE_INTEGER`, 2^53 − 1.
+const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+
+/// JS `Number.isSafeInteger` semantics over a serde_json number: any JSON
+/// number whose value is a whole number inside ±(2^53 − 1). (JSON `1.0` IS
+/// the integer 1 to Layer A — JavaScript has no int/float distinction.)
+/// Past the safe range Layer A reads a rounded number from the text this
+/// engine reads exactly, so neither admits it.
 fn as_js_integer(v: &Value) -> Option<i64> {
-    if let Some(i) = v.as_i64() {
-        return Some(i);
-    }
-    if let Some(f) = v.as_f64() {
-        if f.fract() == 0.0 && f >= i64::MIN as f64 && f <= i64::MAX as f64 {
-            return Some(f as i64);
+    let i = match v.as_i64() {
+        Some(i) => i,
+        None => {
+            let f = v.as_f64()?;
+            if f.fract() != 0.0 || f.abs() > MAX_SAFE_INTEGER as f64 {
+                return None;
+            }
+            f as i64
         }
-    }
-    None
+    };
+    (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&i).then_some(i)
 }
 
 /// The tightened bigint grammar: `-?[0-9]+`, no empty string, no `+`

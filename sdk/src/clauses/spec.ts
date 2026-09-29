@@ -205,7 +205,7 @@ function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
         case "string":
             return typeof value === "string";
         case "integer":
-            return typeof value === "number" && Number.isInteger(value)
+            return typeof value === "number" && Number.isSafeInteger(value)
                 && (spec.min === undefined || value >= spec.min)
                 && (spec.max === undefined || value <= spec.max);
         case "bigint":
@@ -315,14 +315,14 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                 spec.formatFromField = raw.formatFromField;
             }
             if (raw.minLength !== undefined) {
-                if (typeof raw.minLength !== "number" || !Number.isInteger(raw.minLength) || raw.minLength < 0) {
+                if (typeof raw.minLength !== "number" || !Number.isSafeInteger(raw.minLength) || raw.minLength < 0) {
                     errors.push({ path: `${path}.minLength`, message: "minLength must be a non-negative integer" });
                     return null;
                 }
                 spec.minLength = raw.minLength;
             }
             if (raw.maxLength !== undefined) {
-                if (typeof raw.maxLength !== "number" || !Number.isInteger(raw.maxLength) || raw.maxLength < 0) {
+                if (typeof raw.maxLength !== "number" || !Number.isSafeInteger(raw.maxLength) || raw.maxLength < 0) {
                     errors.push({ path: `${path}.maxLength`, message: "maxLength must be a non-negative integer" });
                     return null;
                 }
@@ -344,14 +344,14 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         case "integer": {
             const spec: IntegerFieldSpec = { ...base, type: "integer" };
             if (raw.min !== undefined) {
-                if (typeof raw.min !== "number" || !Number.isInteger(raw.min)) {
+                if (typeof raw.min !== "number" || !Number.isSafeInteger(raw.min)) {
                     errors.push({ path: `${path}.min`, message: "min must be an integer" });
                     return null;
                 }
                 spec.min = raw.min;
             }
             if (raw.max !== undefined) {
-                if (typeof raw.max !== "number" || !Number.isInteger(raw.max)) {
+                if (typeof raw.max !== "number" || !Number.isSafeInteger(raw.max)) {
                     errors.push({ path: `${path}.max`, message: "max must be an integer" });
                     return null;
                 }
@@ -437,14 +437,14 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
             if (items === null) return null;
             const spec: ArrayFieldSpec = { ...base, type: "array", items };
             if (raw.minItems !== undefined) {
-                if (typeof raw.minItems !== "number" || !Number.isInteger(raw.minItems) || raw.minItems < 0) {
+                if (typeof raw.minItems !== "number" || !Number.isSafeInteger(raw.minItems) || raw.minItems < 0) {
                     errors.push({ path: `${path}.minItems`, message: "minItems must be a non-negative integer" });
                     return null;
                 }
                 spec.minItems = raw.minItems;
             }
             if (raw.maxItems !== undefined) {
-                if (typeof raw.maxItems !== "number" || !Number.isInteger(raw.maxItems) || raw.maxItems < 0) {
+                if (typeof raw.maxItems !== "number" || !Number.isSafeInteger(raw.maxItems) || raw.maxItems < 0) {
                     errors.push({ path: `${path}.maxItems`, message: "maxItems must be a non-negative integer" });
                     return null;
                 }
@@ -481,7 +481,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (typeof clauseId !== "string" || clauseId.length === 0) {
         errors.push({ path: "$.clauseId", message: "clauseId must be a non-empty string" });
     }
-    if (typeof version !== "number" || !Number.isInteger(version) || version < 0) {
+    if (typeof version !== "number" || !Number.isSafeInteger(version) || version < 0) {
         errors.push({ path: "$.version", message: "version must be a non-negative integer" });
     }
     if (typeof title !== "string" || title.length === 0) {
@@ -524,7 +524,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             parsedStages = {};
             for (const [key, value] of Object.entries(stages)) {
                 const stageNum = Number(key);
-                if (!Number.isInteger(stageNum) || stageNum < 0 || stageNum > 255) {
+                if (!Number.isSafeInteger(stageNum) || stageNum < 0 || stageNum > 255) {
                     errors.push({ path: `$.stages.${key}`, message: "stage key must be an integer 0..255" });
                     continue;
                 }

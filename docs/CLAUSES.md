@@ -45,7 +45,9 @@ its manual.
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. An `integer` value is a JSON number inside the safe range
   (±(2^53 − 1)); a `bigint` value is an unsigned decimal string inside the
-  uint256 word. Content that validates encodes, in both engines.
+  uint256 word. Content that validates encodes, in both engines. Every
+  integer a spec itself declares (`version`, a bound, a length, an item
+  count) is inside the safe range too.
 - `encodeContentFromSpec` / `decodeContentFromSpec` — the one spec-driven
   encoder and its inverse, reading the field-to-position mapping from the
   parsed spec for any clause, with the same stage selection. There is no

@@ -294,6 +294,20 @@ commitments with the same keys, applies them through `apply_batch`, and asserts
 every figure — the mirror's bond and payout arithmetic is locked to the
 kernel's, not to a comment.
 
+**Clause-engine vectors — the engine's boundaries, one by one.**
+`sdk/tests/clauses/engineVectors.test.ts` names each boundary of the clause
+engine — every character position of the datetime format, every hex width,
+every shape the regex screen reads, every bound a spec declares, the specs
+that parse and the ones that do not — and freezes Layer A's verdict on each
+into `test/fixtures/clause-engine-vectors.json`
+(`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
+`prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
+same verdicts and the same bytes. The EIP-712 fixture carries the batch
+path's three authorizations — `ResolveProcess`, `AttestSeller`, `AttestBuyer`,
+hashed by viem from the type strings — and
+`prover/lib/tests/eip712_vectors.rs` asserts the guest's hashes and digests
+against them and against the commitment vectors.
+
 **The differential fuzz — the mirror answers a generated stream as the kernel
 did, and both Merkle verifiers open generated agreements.**
 `scripts/test-cross-impl-fuzz.sh` runs two streams under one seed. The

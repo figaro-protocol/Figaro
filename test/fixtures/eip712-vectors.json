@@ -37,5 +37,88 @@
             "processId": "0x83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4",
             "orderHash": "0x4ab8b13d6589e595e04b7858c75ee32c0293b49f92b38d8f4a25480e75e5e5ea"
         }
-    ]
+    ],
+    "batch": {
+        "verifyingContract": "0xF62849F9A0B5Bf2913b396098F7c7019b51A820a",
+        "domainSeparator": "0xd09663d6e8d38719332238b82ab08a2d04a94a5bcb46a3a55d1d3131ae212e44",
+        "authorizations": [
+            {
+                "type": "ResolveProcess",
+                "message": {
+                    "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661"
+                },
+                "structHash": "0x77aa5cbdacd7296d81317bf2e234e3d02188490f0ac48192c8d2511acf1b1f0a",
+                "digest": "0x82fec0b695f641d5c511a3ce3f46f8f385e68677e9f86a5f0c48d1c41701ebeb"
+            },
+            {
+                "type": "AttestSeller",
+                "message": {
+                    "orderHash": "0x46c146e7187fdba6e4e3775301c269e6a259252f122c4e1432a57b8a57c1fe60",
+                    "clauseId": "0x7d419a21191bd4810e316d38bea25e1140880c853a77d8f12900ed651be612aa",
+                    "stage": 1,
+                    "contentRef": "0x55637964600005e95d7b4515e1389c82ce162b7b6c68deb76fe19a38eb72d40c"
+                },
+                "structHash": "0x8f14c9ed5d46891a9654e95967a38a8a5dcad86b009100a940c27b4e83baa32f",
+                "digest": "0x2941fbdb8588953563fb2589712ebbee1dc2cc727f1db364a769b354fe965157"
+            },
+            {
+                "type": "AttestBuyer",
+                "message": {
+                    "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661",
+                    "orderHash": "0x46c146e7187fdba6e4e3775301c269e6a259252f122c4e1432a57b8a57c1fe60",
+                    "clauseId": "0x7d419a21191bd4810e316d38bea25e1140880c853a77d8f12900ed651be612aa",
+                    "stage": 1,
+                    "contentRef": "0x55637964600005e95d7b4515e1389c82ce162b7b6c68deb76fe19a38eb72d40c"
+                },
+                "structHash": "0xf6143e35c51423145d4480846565e6e1e9bcf418821ead052677658ecde3a4b6",
+                "digest": "0xb7610d1b57c429a20839d4790cd6db5d9a25083178f8979bbf03793b63367862"
+            },
+            {
+                "type": "AttestSeller",
+                "message": {
+                    "orderHash": "0x46c146e7187fdba6e4e3775301c269e6a259252f122c4e1432a57b8a57c1fe60",
+                    "clauseId": "0x7d419a21191bd4810e316d38bea25e1140880c853a77d8f12900ed651be612aa",
+                    "stage": 0,
+                    "contentRef": "0x55637964600005e95d7b4515e1389c82ce162b7b6c68deb76fe19a38eb72d40c"
+                },
+                "structHash": "0xbfa43c29d4917f3c3bbcc9b0654e94d971a775f2397c74414b75b6d77ddd00ae",
+                "digest": "0x4d1b7b15f9e411a7c4154952ad1e99bf117208e5f916ad7cb9366b6630b7e761"
+            },
+            {
+                "type": "AttestBuyer",
+                "message": {
+                    "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661",
+                    "orderHash": "0x46c146e7187fdba6e4e3775301c269e6a259252f122c4e1432a57b8a57c1fe60",
+                    "clauseId": "0x7d419a21191bd4810e316d38bea25e1140880c853a77d8f12900ed651be612aa",
+                    "stage": 0,
+                    "contentRef": "0x55637964600005e95d7b4515e1389c82ce162b7b6c68deb76fe19a38eb72d40c"
+                },
+                "structHash": "0x7d1b304bb51d85160d87dd9bb0c09ada9f611220c021ed4cda4df0523b1caced",
+                "digest": "0xaf2eceb88ce540445431c530d09d0f6db0fb491a97e0711faf15ba5593ea60ee"
+            },
+            {
+                "type": "AttestSeller",
+                "message": {
+                    "orderHash": "0x46c146e7187fdba6e4e3775301c269e6a259252f122c4e1432a57b8a57c1fe60",
+                    "clauseId": "0x7d419a21191bd4810e316d38bea25e1140880c853a77d8f12900ed651be612aa",
+                    "stage": 255,
+                    "contentRef": "0x55637964600005e95d7b4515e1389c82ce162b7b6c68deb76fe19a38eb72d40c"
+                },
+                "structHash": "0x143a9852e07ab93dffe3f1c4a771e4d600092888dbdf38cc3c17ed053531da4b",
+                "digest": "0x792ea17ff103713a63fc08b23a41fa53492c9662414717d46c98bc4b6cbe2a6b"
+            },
+            {
+                "type": "AttestBuyer",
+                "message": {
+                    "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661",
+                    "orderHash": "0x46c146e7187fdba6e4e3775301c269e6a259252f122c4e1432a57b8a57c1fe60",
+                    "clauseId": "0x7d419a21191bd4810e316d38bea25e1140880c853a77d8f12900ed651be612aa",
+                    "stage": 255,
+                    "contentRef": "0x55637964600005e95d7b4515e1389c82ce162b7b6c68deb76fe19a38eb72d40c"
+                },
+                "structHash": "0x40e512d91f830314bce8328451bc5b69884f0e4c31a32166138635c9b9afe61a",
+                "digest": "0x5626c52b07662b719bd1c11409dc0e49278278ca8685813cf17de4abadf82719"
+            }
+        ]
+    }
 }

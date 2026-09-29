@@ -1,0 +1,7898 @@
+{
+ "values": [
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00Z",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.1Z",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.123456789Z",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02:00",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00-11:30",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.5+02:00",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "9999-99-99T99:99:99Z",
+   "ok": true
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:0Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00ZZ",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00Z ",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": " 2026-01-01T00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.123",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.12a",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00X",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01t00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01 00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "202a-01-01T00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-0a-01T00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-0aT00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T0a:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:0a:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:0aZ",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026/01-01T00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01/01T00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00.00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00.00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+0200",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02:0",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02:000",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+2:00",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02-00",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+0a:00",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02:0a",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00+02:",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.5",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "2026-01-01T00:00:00.5+",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "２０２６-01-01T00:00:00Z",
+   "ok": false
+  },
+  {
+   "group": "iso-datetime",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "iso-datetime"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": true
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "ok": true
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00",
+   "ok": false
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "0Xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "0xgggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+   "ok": false
+  },
+  {
+   "group": "bytes32-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes32-hex"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": true
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+   "ok": true
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0Xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0xgggggggggggggggggggggggggggggggggggggggg",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaé",
+   "ok": false
+  },
+  {
+   "group": "address-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "address-hex"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0x",
+   "ok": true
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xab",
+   "ok": true
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xAB",
+   "ok": true
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xabcd",
+   "ok": true
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xa",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xabc",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xzz",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "abcd",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0Xab",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "x0ab",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "bytes-hex",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "bytes-hex"
+   },
+   "value": "0xabababababababababababababababababababababababababababababababababababababababab",
+   "ok": true
+  },
+  {
+   "group": "open format",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "evidence-capture"
+   },
+   "value": "anything at all",
+   "ok": true
+  },
+  {
+   "group": "open format",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "evidence-capture"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "open format",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "evidence-capture"
+   },
+   "value": "0xzz",
+   "ok": true
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "abcd",
+   "ok": false
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "é",
+   "ok": false
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "éé",
+   "ok": true
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "🚚",
+   "ok": true
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "🚚a",
+   "ok": true
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "🚚🚚",
+   "ok": false
+  },
+  {
+   "group": "string length, UTF-16 units",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "minLength": 2,
+    "maxLength": 3
+   },
+   "value": "a🚚",
+   "ok": true
+  },
+  {
+   "group": "pattern",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[a-z]+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "pattern",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[a-z]+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "pattern",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[a-z]+$"
+   },
+   "value": "ABC",
+   "ok": false
+  },
+  {
+   "group": "pattern",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[a-z]+$"
+   },
+   "value": "ab1",
+   "ok": false
+  },
+  {
+   "group": "pattern",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[a-z]+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen (a*)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a*)*$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen (a+)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a+)*$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen (a{2,})+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a{2,})+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ((a+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a+))+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ((a)+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "((a)+)+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen (a|b+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "(a|b+)+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(ab)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(ab)+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^a+b+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a+b+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)(b+)$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)(b+)$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)(b)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)(b)+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^\\(a+\\)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^\\(a+\\)+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^[+*]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[+*]+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^[(+)]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[(+)]+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^[\\]+]+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^[\\]+]+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a[+*])+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a[+*])+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a\\+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a\\+)+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a)+$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a){2}$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+){2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+){2}$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a+)?$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a+)?$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^((a)(b+))+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^((a)(b+))+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b+)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b+)c)*$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "aa",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^(a(b)c)*$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(a(b)c)*$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "zzz",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "a",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "ab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "aab",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "abc",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "(a)",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "a+",
+   "ok": true
+  },
+  {
+   "group": "screen ^(?:a+)+$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^(?:a+)+$"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "zzz",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "a",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "aa",
+   "ok": true
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "ab",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "aab",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "abc",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "(a)",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "+",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "a+",
+   "ok": false
+  },
+  {
+   "group": "screen ^a{2}$",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a{2}$"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "pattern input bound",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a$"
+   },
+   "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "ok": false
+  },
+  {
+   "group": "pattern input bound",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a$"
+   },
+   "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "ok": true
+  },
+  {
+   "group": "pattern input bound",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a$"
+   },
+   "value": "🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚",
+   "ok": false
+  },
+  {
+   "group": "pattern input bound",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "pattern": "^a$"
+   },
+   "value": "🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚🚚",
+   "ok": true
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": -6,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": -5,
+   "ok": true
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 0,
+   "ok": true
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 5,
+   "ok": true
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 6,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 1.5,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 1,
+   "ok": true
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": "1",
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": true,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 9007199254740991,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 9007199254740992,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": -9007199254740992,
+   "ok": false
+  },
+  {
+   "group": "integer",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true,
+    "min": -5,
+    "max": 5
+   },
+   "value": 1e+21,
+   "ok": false
+  },
+  {
+   "group": "integer, unbounded",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true
+   },
+   "value": 9007199254740991,
+   "ok": true
+  },
+  {
+   "group": "integer, unbounded",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true
+   },
+   "value": -9007199254740991,
+   "ok": true
+  },
+  {
+   "group": "integer, unbounded",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true
+   },
+   "value": 9007199254740992,
+   "ok": false
+  },
+  {
+   "group": "integer, unbounded",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true
+   },
+   "value": -9007199254740992,
+   "ok": false
+  },
+  {
+   "group": "integer, unbounded",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true
+   },
+   "value": 1e+21,
+   "ok": false
+  },
+  {
+   "group": "integer, unbounded",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": true
+   },
+   "value": 0,
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "9",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "10",
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "010",
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "0010",
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "00",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "11",
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "1000000000000000000000000",
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "1000000000000000000000001",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "0999999999999999999999999",
+   "ok": true
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "-10",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "-0",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "+5",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "0x10",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": " 5",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": "5 ",
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": 5,
+   "ok": false
+  },
+  {
+   "group": "bigint",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true,
+    "min": "10",
+    "max": "1000000000000000000000000"
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "bigint, unbounded",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true
+   },
+   "value": "0",
+   "ok": true
+  },
+  {
+   "group": "bigint, unbounded",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true
+   },
+   "value": "000",
+   "ok": true
+  },
+  {
+   "group": "bigint, unbounded",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true
+   },
+   "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+   "ok": true
+  },
+  {
+   "group": "bigint, unbounded",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true
+   },
+   "value": "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+   "ok": false
+  },
+  {
+   "group": "bigint, unbounded",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true
+   },
+   "value": "0115792089237316195423570985008687907853269984665640564039457584007913129639935",
+   "ok": true
+  },
+  {
+   "group": "bigint, unbounded",
+   "field": {
+    "name": "v",
+    "type": "bigint",
+    "required": true
+   },
+   "value": "99999999999999999999999999999999999999999999999999999999999999999999999999999",
+   "ok": true
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": "red",
+   "ok": true
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": "green",
+   "ok": true
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": "blue",
+   "ok": false
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": "RED",
+   "ok": false
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": 0,
+   "ok": false
+  },
+  {
+   "group": "enum",
+   "field": {
+    "name": "v",
+    "type": "enum",
+    "required": true,
+    "values": [
+     "red",
+     "green"
+    ]
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "boolean",
+   "field": {
+    "name": "v",
+    "type": "boolean",
+    "required": true
+   },
+   "value": true,
+   "ok": true
+  },
+  {
+   "group": "boolean",
+   "field": {
+    "name": "v",
+    "type": "boolean",
+    "required": true
+   },
+   "value": false,
+   "ok": true
+  },
+  {
+   "group": "boolean",
+   "field": {
+    "name": "v",
+    "type": "boolean",
+    "required": true
+   },
+   "value": 0,
+   "ok": false
+  },
+  {
+   "group": "boolean",
+   "field": {
+    "name": "v",
+    "type": "boolean",
+    "required": true
+   },
+   "value": 1,
+   "ok": false
+  },
+  {
+   "group": "boolean",
+   "field": {
+    "name": "v",
+    "type": "boolean",
+    "required": true
+   },
+   "value": "true",
+   "ok": false
+  },
+  {
+   "group": "boolean",
+   "field": {
+    "name": "v",
+    "type": "boolean",
+    "required": true
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": [],
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": [
+    1
+   ],
+   "ok": true
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": [
+    1,
+    2
+   ],
+   "ok": true
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": [
+    1,
+    2,
+    3
+   ],
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": [
+    -1
+   ],
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": [
+    1,
+    "2"
+   ],
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": "x",
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": {},
+   "ok": false
+  },
+  {
+   "group": "array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "minItems": 1,
+    "maxItems": 2,
+    "items": {
+     "type": "integer",
+     "min": 0
+    }
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {
+    "a": 1
+   },
+   "ok": true
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {
+    "a": 1,
+    "b": "x"
+   },
+   "ok": true
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {
+    "b": "x"
+   },
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {
+    "a": 1,
+    "c": 2
+   },
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {
+    "a": 1,
+    "b": null
+   },
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {
+    "a": null
+   },
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": {},
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": [],
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": "x",
+   "ok": false
+  },
+  {
+   "group": "object",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "a",
+      "type": "integer",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "optional",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": false
+   },
+   "value": 1,
+   "ok": true
+  },
+  {
+   "group": "optional",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": false
+   },
+   "value": null,
+   "ok": false
+  },
+  {
+   "group": "optional",
+   "field": {
+    "name": "v",
+    "type": "integer",
+    "required": false
+   },
+   "value": "x",
+   "ok": false
+  }
+ ],
+ "contents": [
+  {
+   "label": "absent optional",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": false
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "absent required",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": true
+    }
+   ],
+   "content": {},
+   "ok": false
+  },
+  {
+   "label": "unknown field",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": false
+    }
+   ],
+   "content": {
+    "w": 1
+   },
+   "ok": false
+  },
+  {
+   "label": "unknown field beside a known one",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": true
+    }
+   ],
+   "content": {
+    "v": 1,
+    "w": 1
+   },
+   "ok": false
+  },
+  {
+   "label": "content is an array",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": false
+    }
+   ],
+   "content": [],
+   "ok": false
+  },
+  {
+   "label": "content is null",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": false
+    }
+   ],
+   "content": null,
+   "ok": false
+  },
+  {
+   "label": "content is a string",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": false
+    }
+   ],
+   "content": "x",
+   "ok": false
+  }
+ ],
+ "specs": [
+  {
+   "label": "minimal",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "empty field name",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "",
+      "type": "boolean",
+      "required": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "missing required flag",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "unknown type",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "decimal"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "version 0",
+   "spec": {
+    "clauseId": "t",
+    "version": 0,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "version -1",
+   "spec": {
+    "clauseId": "t",
+    "version": -1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "version 1.5",
+   "spec": {
+    "clauseId": "t",
+    "version": 1.5,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "version 1.0",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "version 1e21",
+   "spec": {
+    "clauseId": "t",
+    "version": 1e+21,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "version as string",
+   "spec": {
+    "clauseId": "t",
+    "version": "1",
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "version past the safe range",
+   "spec": {
+    "clauseId": "t",
+    "version": 9007199254740992,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "version at the safe range",
+   "spec": {
+    "clauseId": "t",
+    "version": 9007199254740991,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "integer max past the safe range",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "max": 1e+21
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "maxLength past the safe range",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "maxLength": 1e+21
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "minLength 0",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "minLength": 0
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "minLength -1",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "minLength": -1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "minLength 1.5",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "minLength": 1.5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "maxLength -1",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "maxLength": -1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "integer min 1.5",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "min": 1.5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "integer min -3",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "min": -3
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "bigint min empty",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "min": ""
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "bigint min signed",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "min": "-5"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "bigint min lone sign",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "min": "-"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "bigint min hex",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "min": "0x10"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "bigint min number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "min": 5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "bigint max plus",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "max": "+5"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "enum empty values",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": []
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "enum no values",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "enum one value",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a"
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "enum sentinel",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "none",
+       "a"
+      ],
+      "sentinel": "none"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array without items",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array items a string",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": "integer"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array items an array",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": []
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array items ok",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": {
+       "type": "integer"
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "array minItems -1",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": {
+       "type": "integer"
+      },
+      "minItems": -1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "object without fields",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "object"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "object empty fields",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "object",
+      "fields": []
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default string",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "default": "x"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default string wrong type",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "default": 1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default integer",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "min": 0,
+      "max": 5,
+      "default": 5
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default integer at min",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "min": 0,
+      "max": 5,
+      "default": 0
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default integer above max",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "min": 0,
+      "max": 5,
+      "default": 6
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default integer below min",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "min": 0,
+      "max": 5,
+      "default": -1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default integer 1.5",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "default": 1.5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default integer 2.0",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "default": 2
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default bigint",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "default": "5"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default bigint number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "default": 5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default bigint malformed",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "bigint",
+      "default": "5x"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default boolean",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "default": true
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default boolean wrong type",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "default": "true"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default enum member",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ],
+      "default": "b"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default enum stranger",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ],
+      "default": "c"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default enum sentinel",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "none",
+       "a"
+      ],
+      "sentinel": "none",
+      "default": "none"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default array of enum",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": {
+       "type": "enum",
+       "values": [
+        "a",
+        "b"
+       ]
+      },
+      "default": [
+       "a"
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "default array of enum stranger",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": {
+       "type": "enum",
+       "values": [
+        "a",
+        "b"
+       ]
+      },
+      "default": [
+       "c"
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default array not an array",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": {
+       "type": "enum",
+       "values": [
+        "a"
+       ]
+      },
+      "default": "a"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "default on an object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "object",
+      "fields": [
+       {
+        "name": "a",
+        "type": "boolean",
+        "required": true
+       }
+      ],
+      "default": "x"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "nesting depth 6",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n6",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n5",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n4",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n3",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n2",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n1",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "leaf",
+                  "type": "boolean",
+                  "required": true
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 7",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n7",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n6",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n5",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n4",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n3",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n2",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n1",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "leaf",
+                    "type": "boolean",
+                    "required": true
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 8",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n8",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n7",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n6",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n5",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n4",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n3",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n2",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n1",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "leaf",
+                      "type": "boolean",
+                      "required": true
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 9",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n9",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n8",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n7",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n6",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n5",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n4",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n3",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n2",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n1",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "leaf",
+                        "type": "boolean",
+                        "required": true
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 10",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n10",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n9",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n8",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n7",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n6",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n5",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n4",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n3",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n2",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n1",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "leaf",
+                          "type": "boolean",
+                          "required": true
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 11",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n11",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n10",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n9",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n8",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n7",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n6",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n5",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n4",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n3",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n2",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "n1",
+                          "type": "object",
+                          "required": true,
+                          "fields": [
+                           {
+                            "name": "leaf",
+                            "type": "boolean",
+                            "required": true
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 12",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n12",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n11",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n10",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n9",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n8",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n7",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n6",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n5",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n4",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n3",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "n2",
+                          "type": "object",
+                          "required": true,
+                          "fields": [
+                           {
+                            "name": "n1",
+                            "type": "object",
+                            "required": true,
+                            "fields": [
+                             {
+                              "name": "leaf",
+                              "type": "boolean",
+                              "required": true
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 16",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n16",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n15",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n14",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n13",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n12",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n11",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n10",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n9",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n8",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n7",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "n6",
+                          "type": "object",
+                          "required": true,
+                          "fields": [
+                           {
+                            "name": "n5",
+                            "type": "object",
+                            "required": true,
+                            "fields": [
+                             {
+                              "name": "n4",
+                              "type": "object",
+                              "required": true,
+                              "fields": [
+                               {
+                                "name": "n3",
+                                "type": "object",
+                                "required": true,
+                                "fields": [
+                                 {
+                                  "name": "n2",
+                                  "type": "object",
+                                  "required": true,
+                                  "fields": [
+                                   {
+                                    "name": "n1",
+                                    "type": "object",
+                                    "required": true,
+                                    "fields": [
+                                     {
+                                      "name": "leaf",
+                                      "type": "boolean",
+                                      "required": true
+                                     }
+                                    ]
+                                   }
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "nesting depth 17",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n17",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n16",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n15",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n14",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n13",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n12",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n11",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n10",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n9",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n8",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "n7",
+                          "type": "object",
+                          "required": true,
+                          "fields": [
+                           {
+                            "name": "n6",
+                            "type": "object",
+                            "required": true,
+                            "fields": [
+                             {
+                              "name": "n5",
+                              "type": "object",
+                              "required": true,
+                              "fields": [
+                               {
+                                "name": "n4",
+                                "type": "object",
+                                "required": true,
+                                "fields": [
+                                 {
+                                  "name": "n3",
+                                  "type": "object",
+                                  "required": true,
+                                  "fields": [
+                                   {
+                                    "name": "n2",
+                                    "type": "object",
+                                    "required": true,
+                                    "fields": [
+                                     {
+                                      "name": "n1",
+                                      "type": "object",
+                                      "required": true,
+                                      "fields": [
+                                       {
+                                        "name": "leaf",
+                                        "type": "boolean",
+                                        "required": true
+                                       }
+                                      ]
+                                     }
+                                    ]
+                                   }
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "nesting depth 32",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n32",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n31",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n30",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n29",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n28",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n27",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n26",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n25",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n24",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n23",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "n22",
+                          "type": "object",
+                          "required": true,
+                          "fields": [
+                           {
+                            "name": "n21",
+                            "type": "object",
+                            "required": true,
+                            "fields": [
+                             {
+                              "name": "n20",
+                              "type": "object",
+                              "required": true,
+                              "fields": [
+                               {
+                                "name": "n19",
+                                "type": "object",
+                                "required": true,
+                                "fields": [
+                                 {
+                                  "name": "n18",
+                                  "type": "object",
+                                  "required": true,
+                                  "fields": [
+                                   {
+                                    "name": "n17",
+                                    "type": "object",
+                                    "required": true,
+                                    "fields": [
+                                     {
+                                      "name": "n16",
+                                      "type": "object",
+                                      "required": true,
+                                      "fields": [
+                                       {
+                                        "name": "n15",
+                                        "type": "object",
+                                        "required": true,
+                                        "fields": [
+                                         {
+                                          "name": "n14",
+                                          "type": "object",
+                                          "required": true,
+                                          "fields": [
+                                           {
+                                            "name": "n13",
+                                            "type": "object",
+                                            "required": true,
+                                            "fields": [
+                                             {
+                                              "name": "n12",
+                                              "type": "object",
+                                              "required": true,
+                                              "fields": [
+                                               {
+                                                "name": "n11",
+                                                "type": "object",
+                                                "required": true,
+                                                "fields": [
+                                                 {
+                                                  "name": "n10",
+                                                  "type": "object",
+                                                  "required": true,
+                                                  "fields": [
+                                                   {
+                                                    "name": "n9",
+                                                    "type": "object",
+                                                    "required": true,
+                                                    "fields": [
+                                                     {
+                                                      "name": "n8",
+                                                      "type": "object",
+                                                      "required": true,
+                                                      "fields": [
+                                                       {
+                                                        "name": "n7",
+                                                        "type": "object",
+                                                        "required": true,
+                                                        "fields": [
+                                                         {
+                                                          "name": "n6",
+                                                          "type": "object",
+                                                          "required": true,
+                                                          "fields": [
+                                                           {
+                                                            "name": "n5",
+                                                            "type": "object",
+                                                            "required": true,
+                                                            "fields": [
+                                                             {
+                                                              "name": "n4",
+                                                              "type": "object",
+                                                              "required": true,
+                                                              "fields": [
+                                                               {
+                                                                "name": "n3",
+                                                                "type": "object",
+                                                                "required": true,
+                                                                "fields": [
+                                                                 {
+                                                                  "name": "n2",
+                                                                  "type": "object",
+                                                                  "required": true,
+                                                                  "fields": [
+                                                                   {
+                                                                    "name": "n1",
+                                                                    "type": "object",
+                                                                    "required": true,
+                                                                    "fields": [
+                                                                     {
+                                                                      "name": "leaf",
+                                                                      "type": "boolean",
+                                                                      "required": true
+                                                                     }
+                                                                    ]
+                                                                   }
+                                                                  ]
+                                                                 }
+                                                                ]
+                                                               }
+                                                              ]
+                                                             }
+                                                            ]
+                                                           }
+                                                          ]
+                                                         }
+                                                        ]
+                                                       }
+                                                      ]
+                                                     }
+                                                    ]
+                                                   }
+                                                  ]
+                                                 }
+                                                ]
+                                               }
+                                              ]
+                                             }
+                                            ]
+                                           }
+                                          ]
+                                         }
+                                        ]
+                                       }
+                                      ]
+                                     }
+                                    ]
+                                   }
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "nesting depth 33",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "n33",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "n32",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "n31",
+          "type": "object",
+          "required": true,
+          "fields": [
+           {
+            "name": "n30",
+            "type": "object",
+            "required": true,
+            "fields": [
+             {
+              "name": "n29",
+              "type": "object",
+              "required": true,
+              "fields": [
+               {
+                "name": "n28",
+                "type": "object",
+                "required": true,
+                "fields": [
+                 {
+                  "name": "n27",
+                  "type": "object",
+                  "required": true,
+                  "fields": [
+                   {
+                    "name": "n26",
+                    "type": "object",
+                    "required": true,
+                    "fields": [
+                     {
+                      "name": "n25",
+                      "type": "object",
+                      "required": true,
+                      "fields": [
+                       {
+                        "name": "n24",
+                        "type": "object",
+                        "required": true,
+                        "fields": [
+                         {
+                          "name": "n23",
+                          "type": "object",
+                          "required": true,
+                          "fields": [
+                           {
+                            "name": "n22",
+                            "type": "object",
+                            "required": true,
+                            "fields": [
+                             {
+                              "name": "n21",
+                              "type": "object",
+                              "required": true,
+                              "fields": [
+                               {
+                                "name": "n20",
+                                "type": "object",
+                                "required": true,
+                                "fields": [
+                                 {
+                                  "name": "n19",
+                                  "type": "object",
+                                  "required": true,
+                                  "fields": [
+                                   {
+                                    "name": "n18",
+                                    "type": "object",
+                                    "required": true,
+                                    "fields": [
+                                     {
+                                      "name": "n17",
+                                      "type": "object",
+                                      "required": true,
+                                      "fields": [
+                                       {
+                                        "name": "n16",
+                                        "type": "object",
+                                        "required": true,
+                                        "fields": [
+                                         {
+                                          "name": "n15",
+                                          "type": "object",
+                                          "required": true,
+                                          "fields": [
+                                           {
+                                            "name": "n14",
+                                            "type": "object",
+                                            "required": true,
+                                            "fields": [
+                                             {
+                                              "name": "n13",
+                                              "type": "object",
+                                              "required": true,
+                                              "fields": [
+                                               {
+                                                "name": "n12",
+                                                "type": "object",
+                                                "required": true,
+                                                "fields": [
+                                                 {
+                                                  "name": "n11",
+                                                  "type": "object",
+                                                  "required": true,
+                                                  "fields": [
+                                                   {
+                                                    "name": "n10",
+                                                    "type": "object",
+                                                    "required": true,
+                                                    "fields": [
+                                                     {
+                                                      "name": "n9",
+                                                      "type": "object",
+                                                      "required": true,
+                                                      "fields": [
+                                                       {
+                                                        "name": "n8",
+                                                        "type": "object",
+                                                        "required": true,
+                                                        "fields": [
+                                                         {
+                                                          "name": "n7",
+                                                          "type": "object",
+                                                          "required": true,
+                                                          "fields": [
+                                                           {
+                                                            "name": "n6",
+                                                            "type": "object",
+                                                            "required": true,
+                                                            "fields": [
+                                                             {
+                                                              "name": "n5",
+                                                              "type": "object",
+                                                              "required": true,
+                                                              "fields": [
+                                                               {
+                                                                "name": "n4",
+                                                                "type": "object",
+                                                                "required": true,
+                                                                "fields": [
+                                                                 {
+                                                                  "name": "n3",
+                                                                  "type": "object",
+                                                                  "required": true,
+                                                                  "fields": [
+                                                                   {
+                                                                    "name": "n2",
+                                                                    "type": "object",
+                                                                    "required": true,
+                                                                    "fields": [
+                                                                     {
+                                                                      "name": "n1",
+                                                                      "type": "object",
+                                                                      "required": true,
+                                                                      "fields": [
+                                                                       {
+                                                                        "name": "leaf",
+                                                                        "type": "boolean",
+                                                                        "required": true
+                                                                       }
+                                                                      ]
+                                                                     }
+                                                                    ]
+                                                                   }
+                                                                  ]
+                                                                 }
+                                                                ]
+                                                               }
+                                                              ]
+                                                             }
+                                                            ]
+                                                           }
+                                                          ]
+                                                         }
+                                                        ]
+                                                       }
+                                                      ]
+                                                     }
+                                                    ]
+                                                   }
+                                                  ]
+                                                 }
+                                                ]
+                                               }
+                                              ]
+                                             }
+                                            ]
+                                           }
+                                          ]
+                                         }
+                                        ]
+                                       }
+                                      ]
+                                     }
+                                    ]
+                                   }
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "pattern unbalanced close",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "pattern": "a+)+"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "pattern unbalanced open",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "pattern": "(a+"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "pattern open class",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "pattern": "[a"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "pattern not a string",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "pattern": 5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "stages",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "label": "stages not an object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": []
+   },
+   "ok": false
+  },
+  {
+   "label": "fields not an array",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": {}
+   },
+   "ok": false
+  },
+  {
+   "label": "empty fields",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": []
+   },
+   "ok": true
+  },
+  {
+   "label": "spec is an array",
+   "spec": [],
+   "ok": false
+  },
+  {
+   "label": "spec is null",
+   "spec": null,
+   "ok": false
+  }
+ ],
+ "encodings": [
+  {
+   "label": "bytes-hex empty",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true,
+     "format": "bytes-hex"
+    }
+   ],
+   "content": {
+    "v": "0x"
+   },
+   "encoded": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "label": "bytes-hex one byte",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true,
+     "format": "bytes-hex"
+    }
+   ],
+   "content": {
+    "v": "0x00"
+   },
+   "encoded": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "label": "bytes-hex 01",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true,
+     "format": "bytes-hex"
+    }
+   ],
+   "content": {
+    "v": "0x01"
+   },
+   "encoded": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "label": "bytes-hex long",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true,
+     "format": "bytes-hex"
+    }
+   ],
+   "content": {
+    "v": "0xabababababababababababababababababababababababababababababababababababababababab"
+   },
+   "encoded": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000028abababababababababababababababababababababababababababababababababababababababab000000000000000000000000000000000000000000000000"
+  },
+  {
+   "label": "bytes-hex upper",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true,
+     "format": "bytes-hex"
+    }
+   ],
+   "content": {
+    "v": "0xABCD"
+   },
+   "encoded": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002ABCD000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "label": "bigint leading zeros",
+   "fields": [
+    {
+     "name": "v",
+     "type": "bigint",
+     "required": true
+    }
+   ],
+   "content": {
+    "v": "007"
+   },
+   "encoded": "0x0000000000000000000000000000000000000000000000000000000000000007"
+  },
+  {
+   "label": "integer negative",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": true
+    }
+   ],
+   "content": {
+    "v": -273
+   },
+   "encoded": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeef"
+  },
+  {
+   "label": "integer safe max",
+   "fields": [
+    {
+     "name": "v",
+     "type": "integer",
+     "required": true
+    }
+   ],
+   "content": {
+    "v": 9007199254740991
+   },
+   "encoded": "0x000000000000000000000000000000000000000000000000001fffffffffffff"
+  },
+  {
+   "label": "string outside ASCII",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true
+    }
+   ],
+   "content": {
+    "v": "é🚚"
+   },
+   "encoded": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000006c3a9f09f9a9a0000000000000000000000000000000000000000000000000000"
+  }
+ ]
+}

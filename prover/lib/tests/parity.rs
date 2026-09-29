@@ -827,6 +827,132 @@ fn attest_cross_order_same_process_passes() {
     assert_eq!(events.attestations[0].order_hash, f.root_order_hash);
 }
 
+// ── The boundaries a mutant crosses unseen ────────────────────────
+
+fn commit_at(timestamp: u64) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents), KernelError> {
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let root = root_commitment();
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: timestamp,
+        operations: vec![KernelOp::Commit {
+            buyer_sig: sign_commitment(&root, &domain, &make_signing_key(BUYER_KEY)),
+            seller_sig: sign_commitment(&root, &domain, &make_signing_key(SELLER1_KEY)),
+            commitment: root,
+        }],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
+    };
+    apply_batch(&input)
+}
+
+#[test]
+fn a_commitment_lives_through_its_deadline_and_not_one_second_past() {
+    // FigaroCore: `if (c.deadline < block.timestamp) revert DeadlineExpired()`.
+    let deadline: u64 = root_commitment().deadline.try_into().unwrap();
+    assert!(commit_at(deadline - 1).is_ok(), "before the deadline");
+    assert!(commit_at(deadline).is_ok(), "AT the deadline the commitment is live");
+    match commit_at(deadline + 1) {
+        Err(KernelError::DeadlineExpired) => {}
+        other => panic!("expected DeadlineExpired one second past, got {other:?}"),
+    }
+}
+
+#[test]
+fn an_attestation_on_an_order_nobody_committed_is_an_unknown_order() {
+    // The coordinator's `_requireKnownCommitment`: status 0 is no order at
+    // all, and must not read as a resolved one.
+    let f = attest_fixture();
+    let (proof, content_ref) = runtime_witness_proof(&f);
+    let op = seller_attest_op(&f, proof, content_ref, &make_signing_key(SELLER1_KEY));
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![op],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
+    };
+    match apply_batch(&input) {
+        Err(KernelError::UnknownOrder) => {}
+        other => panic!("expected UnknownOrder, got {other:?}"),
+    }
+}
+
+#[test]
+fn the_state_root_binds_every_map_it_covers() {
+    use figaro_kernel::state::KernelState;
+    // The verifier chains batches by this root: a map the root does not
+    // bind is state a prover may rewrite between batches.
+    let base = {
+        let mut s = empty_snapshot();
+        s.processes = vec![(
+            PROCESS_ID,
+            ProcessState {
+                root_buyer: BUYER,
+                currency: TOKEN,
+                cumulative_value: U256::from(100u64),
+                active_order_count: 1,
+            },
+        )];
+        s.order_status = vec![(ROOT_ORDER_HASH, 1)];
+        s.order_process_id = vec![(ROOT_ORDER_HASH, PROCESS_ID)];
+        s
+    };
+    let root_of = |s: &KernelStateSnapshot| KernelState::from_snapshot(s).compute_root();
+    let base_root = root_of(&base);
+    assert_ne!(base_root, root_of(&empty_snapshot()), "a populated state is not the empty one");
+
+    let mut cases: Vec<(&str, KernelStateSnapshot)> = Vec::new();
+    let mut s = base.clone();
+    s.processes[0].1.cumulative_value = U256::from(101u64);
+    cases.push(("a process's cumulative value", s));
+    let mut s = base.clone();
+    s.processes[0].1.active_order_count = 0;
+    cases.push(("a process's active count", s));
+    let mut s = base.clone();
+    s.processes[0].1.root_buyer = SELLER1;
+    cases.push(("a process's buyer", s));
+    let mut s = base.clone();
+    s.processes[0].1.currency = CORE;
+    cases.push(("a process's currency", s));
+    let mut s = base.clone();
+    s.processes[0].0 = SUB_DIGEST;
+    cases.push(("a process's id", s));
+    let mut s = base.clone();
+    s.order_status[0].1 = 2;
+    cases.push(("an order's status", s));
+    let mut s = base.clone();
+    s.order_status[0].0 = SUB_ORDER_HASH;
+    cases.push(("which order carries the status", s));
+    let mut s = base.clone();
+    s.order_process_id[0].1 = SUB_DIGEST;
+    cases.push(("an order's process", s));
+    let mut s = base.clone();
+    s.order_process_id[0].0 = SUB_ORDER_HASH;
+    cases.push(("which order belongs to the process", s));
+
+    let mut roots = std::collections::BTreeSet::new();
+    roots.insert(base_root);
+    for (what, snapshot) in &cases {
+        let root = root_of(snapshot);
+        assert_ne!(root, base_root, "the root binds {what}");
+        assert!(roots.insert(root), "changing {what} yields a root of its own");
+    }
+
+    // Insertion order is not state: the maps are ordered by key.
+    let mut two = base.clone();
+    two.order_status.push((SUB_ORDER_HASH, 1));
+    let mut two_reversed = two.clone();
+    two_reversed.order_status.reverse();
+    assert_eq!(root_of(&two), root_of(&two_reversed), "the root ignores insertion order");
+}
+
 // ── Determinism ───────────────────────────────────────────────────
 
 #[test]
