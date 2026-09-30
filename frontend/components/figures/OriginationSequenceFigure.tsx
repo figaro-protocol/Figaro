@@ -161,7 +161,7 @@ const ROWS: readonly Row[] = [
         to: "chain",
         label: "approve 2 × payment, then commit(c, buyerSig, sellerSig)",
         detail: [
-            "Two transactions — signing is not committing. The kernel verifies both",
+            "Two transactions — signing is not committing. FigaroCore verifies both",
             "signatures against one digest, pulls both bonds inside commit, and",
             "emits OrderCommitted.",
         ],
@@ -202,7 +202,7 @@ const COLUMN_SUB: Record<Column, string> = {
     channel: "transport",
     seller: "any wallet",
     // Not "FigaroCore": of the five interactions reaching this column, only the
-    // commit and the resolve are the kernel — the read is the registries, the
+    // commit and the resolve are FigaroCore — the read is the registries, the
     // approvals are the denomination, the attestation is the coordinator.
     chain: "on chain",
 };

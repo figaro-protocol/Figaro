@@ -47,7 +47,7 @@ const STEPS: readonly Step[] = [
         actor: "Buyer + seller wallets",
         lines: [
             "Both parties sign one typed-data commitment. Its domain names the",
-            "batch verifier, so a batch signature is not a kernel signature.",
+            "batch verifier, so a batch signature is not a direct-path signature.",
         ],
         onChain: false,
     },
@@ -62,7 +62,7 @@ const STEPS: readonly Step[] = [
     {
         actor: "→ Off-chain execution",
         lines: [
-            "A mirror of the kernel's state machine runs the ordered batch,",
+            "A mirror of the mechanism's state machine runs the ordered batch,",
             "validating each clause against its published specification.",
         ],
         onChain: false,
@@ -87,7 +87,7 @@ const STEPS: readonly Step[] = [
         actor: "→ Net positions, then attestations",
         lines: [
             "Each party's net position transfers — parties approve the verifier,",
-            "not the kernel — and the attestations are re-emitted.",
+            "not the direct path — and the attestations are re-emitted.",
         ],
         onChain: true,
     },
@@ -133,8 +133,8 @@ export function BatchResolutionSequenceFigure({
                 <>
                     Seven steps in order. Off chain: both parties sign one typed-data
                     commitment whose domain names the batch verifier rather than the
-                    kernel; a sequencer gathers and orders signed commitments, as transport
-                    rather than as authority; a mirror of the kernel&apos;s state machine
+                    the direct path; a sequencer gathers and orders signed commitments, as transport
+                    rather than as authority; a mirror of the mechanism&apos;s state machine
                     runs the ordered batch off chain, validating each clause against its
                     published specification supplied as witness input; the resulting
                     validity proof does not carry that data but commits to it by hash — its
@@ -144,14 +144,14 @@ export function BatchResolutionSequenceFigure({
                     submitted data against those hash commitments, and anchors every
                     witness specification to its registration, reverting otherwise; then
                     each party&apos;s net position transfers, against approvals the parties
-                    gave the verifier rather than the kernel, and the attestations are
+                    gave the verifier rather than the direct path, and the attestations are
                     re-emitted; then the usage accrual reaches the counter, and if a
                     reward-tier gate refuses it the accrual is dropped whole rather than
                     unwinding or blocking the resolution already executed; the state root
                     advances last. The verifier is the sole acceptance gate — sequencer and
                     prover can each produce a candidate batch and neither can admit one. If
                     the sequencer stalls or censors, the parties sign again for the
-                    kernel&apos;s own domain and resolve directly; that is a new process, not
+                    the direct path&apos;s own domain and resolve directly; that is a new process, not
                     a migration of a batched one.
                 </>
             }
@@ -269,7 +269,7 @@ export function BatchResolutionSequenceFigure({
                     If the sequencer stalls or censors: the direct path
                 </text>
                 <text x="26" y={fallbackY + 33} fontSize="8.5" className="fill-ink-body">
-                    The parties sign again for the kernel&rsquo;s own domain and resolve
+                    The parties sign again for the direct path&rsquo;s own domain and resolve
                 </text>
                 <text x="26" y={fallbackY + 44} fontSize="8.5" className="fill-ink-body">
                     directly. Batch resolution is itself permissionless, so anyone
@@ -278,7 +278,7 @@ export function BatchResolutionSequenceFigure({
                     may prove and submit what a stalled sequencer will not.
                 </text>
                 <text x="26" y={fallbackY + 68} fontSize="8" fontStyle="italic" className="fill-ink-muted">
-                    A new process on the kernel &mdash; never a migration of a batched one.
+                    A new process on the direct path &mdash; never a migration of a batched one.
                 </text>
         </FigureFrame>
     );

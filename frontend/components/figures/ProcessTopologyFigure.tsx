@@ -30,7 +30,7 @@ export interface ProcessTopologyFigureProps extends BaseFigureProps {
  * This figure answers a different question from `StackedBondChainFigure`,
  * which renders the bond ARITHMETIC of a short chain as stacked bars. Here the
  * load-bearing facts are topological: every order in a process runs to the same
- * root buyer (the kernel requires it), no edge joins one seller to another, and
+ * root buyer (FigaroCore requires it), no edge joins one seller to another, and
  * the sellers are ordered — the accumulator each seller bonds twice over is the
  * value the process has reached at that seller's own commit.
  *

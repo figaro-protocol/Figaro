@@ -42,7 +42,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    that is why this panel's subheading takes two lines.)
  *  - The withdraw gate lives at the PROTOCOL SURFACE, not in the contract:
  *    "SDK/frontend refuse while commits > resolves", because the usage count is
- *    the indexer's and "the kernel is frozen and carries no composition
+ *    the indexer's and "FigaroCore carries no composition
  *    provenance, so there is no on-chain hardening of this gate."
  *  - `withdrawDeposit(key)` is callable ONLY by the recorded `registeredBy`
  *    (`NotRegisteredBy`), exactly once (`AlreadyWithdrawn`), with no cooldown
@@ -131,7 +131,7 @@ const CLAUSE: Machine = {
         "",
         "One call — but the protocol surface refuses",
         "while commits outnumber resolves. That count",
-        "lives in the indexer; the frozen kernel carries",
+        "lives in the indexer; FigaroCore carries",
         "no composition provenance to harden the gate.",
     ],
 };

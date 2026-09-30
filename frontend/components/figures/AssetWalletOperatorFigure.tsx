@@ -8,7 +8,7 @@ export interface AssetWalletOperatorFigureProps {
 // The asset/wallet/operator triad, drawn once for /agents — the page's own
 // three-layer prose as a figure. The figures' standing rule:
 // plain HTML, not SVG — the triad must read as TEXT to every reader (curl,
-// agents, screen readers), not only as shape. The kernel's
+// agents, screen readers), not only as shape. FigaroCore's
 // resolution boundary sits ON the wallet row: everything the chain ever sees.
 const TRIAD = [
     {
@@ -55,7 +55,7 @@ export function AssetWalletOperatorFigure({ className }: AssetWalletOperatorFigu
                                 {row.gloss}
                                 {row.kernelSees && (
                                     <span className="block font-semibold text-ink-heading">
-                                        — all the kernel ever sees
+                                        — all FigaroCore ever sees
                                     </span>
                                 )}
                             </span>
@@ -69,7 +69,7 @@ export function AssetWalletOperatorFigure({ className }: AssetWalletOperatorFigu
                 ))}
             </ol>
             <figcaption className="mt-3 text-center text-sm text-ink-muted">
-                The kernel&apos;s resolution ends at the wallet: whether the operator is a person
+                FigaroCore&apos;s resolution ends at the wallet: whether the operator is a person
                 or software is invisible to resolution, and the asset never leaves its
                 owner&apos;s books.
             </figcaption>

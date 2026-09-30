@@ -14,7 +14,7 @@ interface DesignGraphNode {
 export interface DesignGraphCollapseFigureProps extends BaseFigureProps {
     /** The design-layer graph, in operational order. */
     designNodes: readonly DesignGraphNode[];
-    /** The commit sequence the kernel sees, in commit order. */
+    /** The commit sequence FigaroCore sees, in commit order. */
     commitOrder: readonly string[];
     /** The one party on the buyer side of every order. */
     rootBuyerLabel: string;
@@ -36,7 +36,7 @@ export interface DesignGraphCollapseFigureProps extends BaseFigureProps {
 }
 
 /**
- * The design layer branches; the kernel's commit sequence does not.
+ * The design layer branches; FigaroCore's commit sequence does not.
  *
  * The left panel is an upper-layer graph — operational handoffs plus
  * value-adders that sit off the main line. The right panel is what
@@ -122,7 +122,7 @@ export function DesignGraphCollapseFigure({
                     </text>
                 ))}
                 <text x={R_X} y="22" fontSize="11" fontWeight="600" className="fill-ink-heading">
-                    What the kernel holds
+                    What FigaroCore holds
                 </text>
                 {RIGHT_SUBHEADING.map((line, i) => (
                     <text key={line} x={R_X} y={36 + i * SUB_LEADING} fontSize="8.5" className="fill-ink-muted">

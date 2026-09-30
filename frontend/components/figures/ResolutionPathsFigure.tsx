@@ -18,7 +18,7 @@ export interface ResolutionPathsFigureProps extends BaseFigureProps {
     batchPath?: ResolutionPathPanel;
     /** Section labels inside both panels. */
     sectionLabels?: { inputs: string; events: string; state: string };
-    /** Label beside the no-entry glyph — the kernel field the batch path never writes. */
+    /** Label beside the no-entry glyph — FigaroCore field the batch path never writes. */
     neverWrittenNote?: string;
     /** The bridge box: the one surface both paths touch. */
     bridgeLabel?: string;
@@ -51,13 +51,13 @@ export interface ResolutionPathsFigureProps extends BaseFigureProps {
  * overlap.
  *
  * The structural facts the figure asserts are the same under any register: the
- * two paths share no resolution state, the batch path never writes the kernel's
+ * two paths share no resolution state, the batch path never writes FigaroCore's
  * per-order status, and the usage accrual is the one quantity that crosses.
  */
 
 const SPEC_DIRECT: ResolutionPathPanel = {
     heading: "Direct path",
-    subheading: "FigaroCore — kernel (frozen)",
+    subheading: "FigaroCore — the direct path",
     inputs: ["commit(commitment, buyerSig, sellerSig)", "resolveProcess(processId, commitments[])"],
     events: ["OrderCommitted", "OrderResolved", "ProcessResolved"],
     state: ["orderStatus[orderHash]: 0 → 1 → 2"],
@@ -92,7 +92,7 @@ const SPEC_DESC =
     "accrual, carried from settleBatch into UsageCounter in the same transaction.";
 const SPEC_CAPTION = (
     <>
-        Batch-resolved orders never acquire kernel status &mdash; FigaroBatchVerifier
+        Batch-resolved orders never acquire FigaroCore status &mdash; FigaroBatchVerifier
         never writes FigaroCore.orderStatus. UsageCounter is the only bridge
         between the two resolution paths.
     </>
@@ -245,7 +245,7 @@ export function ResolutionPathsFigure({
                         )}
 
                         {/* Visually explicit disjointness: a no-entry glyph beside the
-                            one kernel field the batch path never touches. */}
+                            one FigaroCore field the batch path never touches. */}
                         {layout.glyphY !== undefined && (
                             <>
                                 <g transform={`translate(46, ${layout.glyphY - 5})`}>
