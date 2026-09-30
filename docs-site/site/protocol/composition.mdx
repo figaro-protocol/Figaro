@@ -5,22 +5,22 @@ description: The two ways a trade composes — clauses into agreements into asse
 
 Composition is the fifth noun, and it is what makes Figaro a network rather than a silo. It happens two ways, and a trade uses both at once — they are never an either/or.
 
-Read the [whole model](/) first; this page assumes it. In those terms: **internal** composition builds the trade — [clauses](/protocol/clauses/) compose into agreements and agreements into assemblies, reusable designs of a trade built over the [kernel](/protocol/contracts/) without touching it. **External** composition wires the trade into the rest of the chain — a running process plugs into other on-chain contracts for funding, storage, messaging, payout, and recourse.
+Read the [whole model](/) first; this page assumes it. In those terms: **internal** composition builds the trade — [clauses](/protocol/clauses/) compose into agreements and agreements into assemblies, reusable designs of a trade built over the [Core](/protocol/contracts/) without touching it. **External** composition wires the trade into the rest of the chain — a running process plugs into other on-chain contracts for funding, storage, messaging, payout, and recourse.
 
 ## Internal — clauses, agreements, assemblies
 
-A clause is one relationship's term. An agreement is the clauses composed for one order, whose merkle root is the `agreementHash` both parties sign. An assembly is agreements composed into a reusable design of a trade, anchored once and traded through by anyone who fits the shape. Every step is permissionless: someone publishes a clause once, and anyone whose agreement needs it composes it in without asking. None of it edits the kernel — the kernel sees only a bilaterally-signed `Commitment` carrying an `agreementHash`; the composition lives in the data that hash commits to. The full mechanics — the four hashes, the spec format, how an agreement composes and an assembly registers — are on [Clauses and agreements](/protocol/clauses/).
+A clause is one relationship's term. An agreement is the clauses composed for one order, whose merkle root is the `agreementHash` both parties sign. An assembly is agreements composed into a reusable design of a trade, anchored once and traded through by anyone who fits the shape. Every step is permissionless: someone publishes a clause once, and anyone whose agreement needs it composes it in without asking. None of it edits the Core — `FigaroCore` sees only a bilaterally-signed `Commitment` carrying an `agreementHash`; the composition lives in the data that hash commits to. The full mechanics — the four hashes, the spec format, how an agreement composes and an assembly registers — are on [Clauses and agreements](/protocol/clauses/).
 
 ## External — a process plugs into other contracts
 
 Relative to the two bilateral signatures, an external contract stands in one of four places, and supplies **terms, funding, evidence, or consequences — never a signature**:
 
 - **Terms in**, before the signature — a contract produces deterministic output that becomes content `fields` both parties sign under `agreementHash`. The output must be fully known at signing; the accumulator is exact-match, so a composition whose result is not fixed when both parties sign cannot resolve.
-- **Funding at the kernel-pull**, inside the `commit` transaction — a contract supplies a party's bond currency in place, delivered to that party's own address, and the commitment stays bilaterally signed. `WitnessSwapAndCommitCoordinator` is the shape (below); it is the whole family, because `commit` is the only place Figaro pulls a named party's ERC-20.
+- **Funding at `FigaroCore`'s pull**, inside the `commit` transaction — a contract supplies a party's bond currency in place, delivered to that party's own address, and the commitment stays bilaterally signed. `WitnessSwapAndCommitCoordinator` is the shape (below); it is the whole family, because `commit` is the only place Figaro pulls a named party's ERC-20.
 - **Attested evidence**, after commit and off the bond path — the buyer transacts with an external contract directly, then attests the receipt against the root order under a purpose-built clause. This is how a contract that cannot sign EIP-712 (an aggregator, an oracle, a router) composes: as evidence, not as a party.
-- **Resolution consumer**, after resolution — a parallel contract reads kernel state (`orderStatus`, the events) and derives consequences. It reads; it never inserts itself into the payment leg.
+- **Resolution consumer**, after resolution — a parallel contract reads `FigaroCore` state (`orderStatus`, the events) and derives consequences. It reads; it never inserts itself into the payment leg.
 
-A composed contract writes no kernel state on its own account, offers no second way to resolve, holds no kernel bonds, and promises no off-kernel payout indexed to how the kernel resolves. Those constraints are what keep every kernel invariant true under composition.
+A composed contract writes no `FigaroCore` state on its own account, offers no second way to resolve, holds no `FigaroCore` bonds, and promises no payout outside `FigaroCore` indexed to how `FigaroCore` resolves. Those constraints are what keep every `FigaroCore` invariant true under composition.
 
 ## Composition is never either/or
 
@@ -28,9 +28,9 @@ The list below is an **open category, not a menu you pick one item from**. A pro
 
 ## The cost model — one token per process, a swap is the on-ramp
 
-A process is denominated in exactly one ERC-20, named in `c.currency`, and the kernel refuses to compare across tokens — the 2:1 bond ratio is a same-unit comparison, so mixing currencies within one process would need an oracle or a DEX and reintroduce a trusted actor (this is a [sharp edge](/protocol/sharp-edges/), enforced by `CurrencyMismatch`).
+A process is denominated in exactly one ERC-20, named in `c.currency`, and `FigaroCore` refuses to compare across tokens — the 2:1 bond ratio is a same-unit comparison, so mixing currencies within one process would need an oracle or a DEX and reintroduce a trusted actor (this is a [sharp edge](/protocol/sharp-edges/), enforced by `CurrencyMismatch`).
 
-Each token denominates an economy of its own — a community's, a designer's, a stablecoin's — and a swap is the route between them. A buyer holding one economy's token can bond in another's: `WitnessSwapAndCommitCoordinator` converts at commitment in one signed hop, sends the swapped denomination to the party's own address, and calls `FigaroCore.commit` — the process itself never sees a second unit. Value mobility, not enforcement, is what makes many small economies one network. The swap-funded route is direct-path only; on the [batch path](/protocol/scaling/) a party swaps in their own wallet before submitting the signed commitment. Either way the kernel sees a single-currency, bilaterally-signed commitment. The coordinator's surface is on [The contracts](/protocol/contracts/).
+Each token denominates an economy of its own — a community's, a designer's, a stablecoin's — and a swap is the route between them. A buyer holding one economy's token can bond in another's: `WitnessSwapAndCommitCoordinator` converts at commitment in one signed hop, sends the swapped denomination to the party's own address, and calls `FigaroCore.commit` — the process itself never sees a second unit. Value mobility, not enforcement, is what makes many small economies one network. The swap-funded route is direct-path only; on the [batch path](/protocol/scaling/) a party swaps in their own wallet before submitting the signed commitment. Either way `FigaroCore` sees a single-currency, bilaterally-signed commitment. The coordinator's surface is on [The contracts](/protocol/contracts/).
 
 ## What is wired today
 
