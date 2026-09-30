@@ -239,7 +239,7 @@ describe("ResolutionPathsFigure", () => {
         const text = container.textContent ?? "";
         for (const specString of [
             "Direct path",
-            "FigaroCore — kernel (frozen)",
+            "FigaroCore — the direct path",
             "commit(commitment, buyerSig, sellerSig)",
             "resolveProcess(processId, commitments[])",
             "OrderCommitted",
@@ -390,10 +390,10 @@ describe("MarketFormationSwimlaneFigure", () => {
         expect(container.querySelectorAll("circle")).toHaveLength(5);
     });
 
-    it("puts the kernel beneath both lanes and marks the on-chain boundary", () => {
+    it("puts the mechanism beneath both lanes and marks the on-chain boundary", () => {
         const { container } = render(<MarketFormationSwimlaneFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("Kernel — market-blind");
+        expect(text).toContain("The mechanism — market-blind");
         expect(text).toContain("nothing above this line is on chain");
         // The market-blindness claim, stated where it can be read off the shape.
         expect(text).toContain("Nothing in the artifact says how the seller was found");
