@@ -297,8 +297,8 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
 
-        // ── RPGF USAGE RECORDING (count usage when it happens, ruled
-        //    2026-07-28): the resolve capability records every committed
+        // ── RPGF USAGE RECORDING (count usage when it happens):
+        //    the resolve capability records every committed
         //    clause's or assembly's use on the UsageCounter — one UsageRecorded per
         //    DISTINCT clause or assembly in the process (duplicates AlreadyCounted by
         //    design), INCLUDING the assembly's compositionHash via the

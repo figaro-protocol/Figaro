@@ -1,6 +1,6 @@
 /**
  * dao-operator-delegation.mjs — stand up the DAO's operator EOA on the
- * MetaMask Delegation Framework (RULED 2026-08-19; RELEASE_READINESS Task 13
+ * MetaMask Delegation Framework (RELEASE_READINESS Task 13
  * carries the addresses; FLORIN_TOKEN.md § DAO custody the design).
  *
  * The operator EOA is the DAO's ONE account in the ecosystem. Two acts, each

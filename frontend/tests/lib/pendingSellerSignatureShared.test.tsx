@@ -22,8 +22,8 @@ vi.mock("wagmi", () => ({
 
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
-// The pin gate verifies a counterparty signature before pinning (audit
-// 2026-07-23); these tests exercise dismiss/resubscription with fixture
+// The pin gate verifies a counterparty signature before pinning;
+// these tests exercise dismiss/resubscription with fixture
 // sigs, so treat the signature as valid and give the gate a core domain.
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();

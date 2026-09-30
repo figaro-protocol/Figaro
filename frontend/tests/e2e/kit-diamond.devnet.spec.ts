@@ -182,7 +182,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
                 await page.getByTestId('drawer-tab-registry').click();
                 await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             };
-            // Design time is STRUCTURAL (ruled 2026-07-14): select the clauses
+            // Design time is STRUCTURAL: select the clauses
             // and the nesting; the mode/band CHOICES are the buyer's, at checkout.
             const composeHandoffProximity = async () => {
                 await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.handoff}`).check();

@@ -76,8 +76,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (the even-surfacing rule: a seller surfaces only with an anchored binding,
 // so an empty AssemblyRegistry means zero surfaced sellers). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
-// (maintainer ruling 2026-07-02; the scenario-era build-order coupling is the
-// cautionary tale). The template reproduces the designer's emission byte for
+// (the scenario-era build-order coupling is the cautionary tale). The template reproduces the designer's emission byte for
 // byte: identity (compositionHash + slug) and canonical JSON come from the
 // SDK; the mandatory fold mirrors `lib/designer/buildAssemblyTemplate.ts`
 // (composeStructuralClauses) — so the anchored document is indistinguishable
@@ -93,7 +92,7 @@ function mandatoryClauseFold(parents = []) {
     for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         if (spec.block?.design?.article !== 'mandatory') continue;
-        // Mandatory folds at the level its scope names (ruled 2026-07-28):
+        // Mandatory folds at the level its scope names:
         // assembly-scoped mandatory (assembly-provenance) is a template-level
         // fold, not a per-agreement one.
         if (spec.block?.design?.scope === 'assembly') continue;
@@ -119,7 +118,7 @@ function seedTemplateBlank() {
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        // Provenance is MANDATORY AT ASSEMBLY SCOPE (ruled 2026-07-28): the
+        // Provenance is MANDATORY AT ASSEMBLY SCOPE: the
         // assembly-scope fold carries it into every agreement, checkout fills
         // the template's own compositionHash mechanically, and the designer
         // credit can land. A seed without it denies every run that binds it
@@ -141,8 +140,7 @@ function seedTemplateChain() {
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
-        // The provenance declaration lives at ASSEMBLY SCOPE (ruled
-        // 2026-07-28) — the fold carries it into EVERY agreement, checkout
+        // The provenance declaration lives at ASSEMBLY SCOPE — the fold carries it into EVERY agreement, checkout
         // fills the template's own compositionHash mechanically (the hash
         // cannot appear inside the composition it hashes), and the buyer's
         // record of it at resolve is the RPGF designer-credit event.
@@ -152,7 +150,7 @@ function seedTemplateChain() {
                 id: 'order-0',
                 clauses: {
                     'figaro-merchant-process': {},
-                    // Design time is STRUCTURAL (ruled 2026-07-14): the clause
+                    // Design time is STRUCTURAL: the clause
                     // is SELECTED; the modality is the buyer's checkout pick.
                     'figaro-modalities': {},
                     ...mandatoryClauseFold([]),
@@ -220,7 +218,7 @@ async function main() {
     // sign-countersign, checkout-assembly-choice, …) must resolve the blank,
     // not a single-order REFERENCE (pos/freelancer). The references anchor
     // after and are discovered by their OWN specific shapes, so order doesn't
-    // affect them. (Regression fixed 2026-07-23: refs-first shadowed the blank.)
+    // affect them. (Refs-first would shadow the blank.)
     await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
     await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
     await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20 });

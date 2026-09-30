@@ -12,7 +12,7 @@ import { publishAgreement } from "@/lib/kernel/agreementFetch";
 
 /**
  * Regression for the unsolicited-pin finding (frontend security audit,
- * 2026-07-22, finding 2): `COMMITMENT_PAYLOAD` carries no wallet-auth, so any
+ * finding 2): `COMMITMENT_PAYLOAD` carries no wallet-auth, so any
  * inbox that can DM the wallet can deliver one. Pre-fix, the handler pinned the
  * referenced agreement to THIS wallet's own IPFS node BEFORE checking party
  * membership — a "pin arbitrary data to a stranger's node" + storage-
@@ -46,7 +46,7 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
 });
 
 // The pin gate now ALSO requires a present signature to recover to its named
-// party (audit 2026-07-23, pin-amplification) — `isCommitmentParty` alone
+// party (pin-amplification) — `isCommitmentParty` alone
 // trusts sender-controlled buyer/seller fields. We control recovery here.
 const verifyCommitmentSignatureMock = vi.fn();
 vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
@@ -156,7 +156,7 @@ describe("usePendingSellerSignature does not pin a stranger's payload (finding 2
     });
 });
 
-describe("pin gate also requires a REAL counterparty signature (audit 2026-07-23)", () => {
+describe("pin gate also requires a REAL counterparty signature", () => {
     beforeEach(() => {
         callbacks = [];
         useAccountMock.mockReset();

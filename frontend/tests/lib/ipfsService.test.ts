@@ -164,7 +164,7 @@ describe("ipfsService", () => {
 
         it("accepts every real CID form the recogniser must know — the SDK's canonical derivations, not hard-coded strings", () => {
             // The CID recogniser once knew base 32 only and rejected the base-16 witness
-            // CID the SDK derives from a keccak fingerprint (2026-09-24). This drives the
+            // CID the SDK derives from a keccak fingerprint. This drives the
             // recogniser from the SDK's own derivation so a narrowing cannot pass unseen.
             const contentRef = "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff" as const;
             const forms = [

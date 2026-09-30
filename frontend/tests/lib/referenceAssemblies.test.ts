@@ -23,7 +23,7 @@ const referenceFiles = readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith(".js
 const registeredClauseIds = new Set(
     readdirSync(CLAUSES_DIR).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/u, "")),
 );
-// Mandatory folds at the level its scope names (ruled 2026-07-28):
+// Mandatory folds at the level its scope names:
 // agreement-scoped mandatory on every ORDER; assembly-scoped mandatory
 // (assembly-provenance) once in the template's assemblyClauses.
 const mandatorySpecs = readdirSync(CLAUSES_DIR)

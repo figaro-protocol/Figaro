@@ -604,7 +604,7 @@ export function referenceAssemblySlug(name: string): string {
 }
 
 /** Identity of a reference that composes `figaro-utility-token` (the
- *  assembly-scoped designer currency pin, ruled 2026-07-28): its checked-in
+ *  assembly-scoped designer currency pin): its checked-in
  *  copy carries the ZERO_ADDRESS sentinel (a live token address is new every
  *  fresh deploy, so `assemblies/*.json` cannot ship a real one) — mirrors
  *  `populate-test-data.mjs`'s `fillDeployTimeCurrency`, which substitutes the
@@ -727,7 +727,7 @@ function checkoutField(page: Page, clauseId: string, fieldPath: string) {
 }
 
 /** Fill the delivery assembly's GENERAL-clause transaction particulars on the
- *  buyer's checkout view. Design time is STRUCTURAL (ruled 2026-07-14):
+ *  buyer's checkout view. Design time is STRUCTURAL:
  *  templates arrive value-free by construction; the buyer authors the
  *  modality request, the hand-off mode, the proximity band, and the
  *  geolocation endpoints HERE. Call after `checkout-view` renders, before
@@ -806,7 +806,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.merchant}`).check();
-        // Design time is STRUCTURAL (ruled 2026-07-14): the designer SELECTS
+        // Design time is STRUCTURAL: the designer SELECTS
         // the modalities clause; WHICH modality is the buyer's request — a
         // transaction particular picked at checkout (fillDeliveryCheckout).
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.modalities}`).check();

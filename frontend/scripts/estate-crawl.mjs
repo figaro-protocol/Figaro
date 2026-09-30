@@ -2,7 +2,7 @@
 /**
  * estate-crawl.mjs — hygiene crawl of the PUBLIC estate the repo-side guards
  * structurally cannot see: the deployed site and the registered/pinned
- * documents. Added by the 2026-08-24 hygiene audit ("Sorry"/"dutch auction"
+ * documents. It serves the hygiene audit ("Sorry"/"dutch auction"
  * reports reproduced on no surface; this keeps that provable).
  *
  * What it checks, with the same residue class the pre-commit vocab guard
@@ -21,7 +21,7 @@
  *   ESTATE_SITE_URL — site origin (default https://figaro-protocol.pages.dev;
  *                     the apex hostname is filtered on the maintainer's LAN)
  *   RPC_URL         — chain RPC. publicnode intermittently returns EMPTY
- *                     eth_getLogs results with no error (observed 2026-08-24)
+ *                     eth_getLogs results with no error
  *                     — prefer the Infura endpoint from ~/.figaro-deploy.env.
  *   ESTATE_RECORD   — deployment record (default deployments/11155111.json)
  *   ESTATE_GATEWAY  — IPFS gateway origin (default the record-era Pinata
@@ -113,7 +113,7 @@ console.log(`[estate] site: ${routes.length} routes crawled${siteMisses ? `, ${s
 if (process.env.ESTATE_SKIP_PINS !== "1") {
     const record = JSON.parse(fs.readFileSync(RECORD, "utf8"));
     const client = createPublicClient({
-        // 429 backoff: Infura throttles the chunked scan (observed 2026-08-24).
+        // 429 backoff: Infura throttles the chunked scan.
         transport: http(process.env.RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com", {
             retryCount: 6,
             retryDelay: 1500,

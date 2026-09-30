@@ -24,7 +24,7 @@
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
- * genuinely runs. Assembly binding is MANDATORY (user rule 2026-06-12 — a
+ * genuinely runs. Assembly binding is MANDATORY (a
  * profile without bindings cannot be ordered from), so the spec asserts the
  * refusal first, then binds the SINGLE-ORDER seed assembly, discovered from
  * the live registry by SHAPE (one order), never by slug or list position —
@@ -304,7 +304,7 @@ async function onboardViaWizard(
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
     await page.waitForURL(/\/members\/manage\/?$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
-    // BOTH calls visible on the dashboard (user rule 2026-06-12): the
+    // BOTH calls visible on the dashboard: the
     // profile view/edit above, and the onboarding wizard entry.
     await expect(page.getByTestId("link-onboarding-wizard")).toBeVisible();
     return promisedHref;
@@ -450,7 +450,7 @@ test.describe("seller registration wizard (devnet)", () => {
             ).toHaveCount(0);
         }
 
-        // ── /members/manage dashboard carries BOTH calls (user rule 2026-06-12):
+        // ── /members/manage dashboard carries BOTH calls:
         // the profile view/edit, and the onboarding-wizard entry. Runs on
         // every pass, including the conformant-skip path.
         await gotoAsWallet(page, SELLER.address, "/members/manage?e2e=devnet");

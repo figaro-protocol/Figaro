@@ -25,7 +25,7 @@ function makeJsonResponse(body: unknown): Response {
 }
 
 // The AssemblyRegistry's anchored slugs the surfacing rule cross-checks
-// against (applied evenly across every projection, maintainer 2026-07-02).
+// against (applied evenly across every projection).
 const ANCHORED = new Set(['asm-anchored']);
 
 function anchoredBinding(subjectAddress: string) {

@@ -115,7 +115,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
                 nodeIds.push(after.find((id) => !before.has(id))!);
             }
 
-            // ASSEMBLY TERMS (design.scope: "assembly", ruled 2026-07-28):
+            // ASSEMBLY TERMS (design.scope: "assembly"):
             // the dispute clauses compose ONCE in the AssemblyTermsPanel and
             // the DESIGNER authors their values — terms of the composition's
             // identity, folded into every agreement at checkout; never

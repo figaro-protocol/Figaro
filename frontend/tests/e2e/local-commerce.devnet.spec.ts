@@ -39,7 +39,7 @@
  *              single-band proximity policy through the rail's standalone
  *              witness form — evidence of the custodial transfer is the
  *              proximity clause's own capability, never engine pairing
- *              (custody is reader-derived; ruled 2026-07-28). The BUYER
+ *              (custody is reader-derived). The BUYER
  *              co-witnesses through the same form (who must witness is never
  *              engine policy). The hand-off clause's DECLARED
  *              interaction (block.runtime.interaction: qr-challenge) mounts the
@@ -332,7 +332,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
 
         // The buyer authors the transaction particulars (modality request,
         // hand-off mode, proximity band, geolocation endpoints) — templates
-        // arrive value-free by construction (ruled 2026-07-14).
+        // arrive value-free by construction.
         await fillDeliveryCheckout(page);
         // Every required term authored ⇒ the gate clears and the button says so.
         await expect(page.getByTestId('checkout-missing-fills'), 'nothing required is left owed')
@@ -449,7 +449,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    transfer is the proximity clause's OWN standalone capability —
         //    the courier picks the detected band and files. No engine
         //    pairing: custody is reader-derived from the composed clauses'
-        //    events (ruled 2026-07-28), and the diary stays a pure diary. ──
+        //    events, and the diary stays a pure diary. ──
         const courierWitnessCap = page.locator(
             `[data-testid="capability-submit-clause-attestation"][data-clause-id="${PROXIMITY_CLAUSE}"]`,
         );
@@ -829,8 +829,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             ).toHaveText(/Matches expected hash/, { timeout: 15000 });
         }
 
-        // ── SELECTIVE DISCLOSURE (Mode B — the privacy model, post the
-        //    2026-07-02 cleartext ruling): a party reveals ONE section of a
+        // ── SELECTIVE DISCLOSURE (Mode B — the privacy model under the
+        //    cleartext rule): a party reveals ONE section of a
         //    signed agreement and proves it belongs to the on-chain commitment,
         //    disclosing nothing else. Disclose only the delivery order's
         //    commerce section: the verifier recomputes its leaf hash from the

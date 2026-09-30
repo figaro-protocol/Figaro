@@ -225,7 +225,7 @@ describe("FieldControl constraint guidance", () => {
 });
 
 // The array-of-object REPEATER — a required object-array is a design-time
-// TERM (a consent clause's affixed documents; ruled 2026-07-10); an optional
+// TERM (a consent clause's affixed documents); an optional
 // one still defers. Items render their child fields recursively; the
 // companion channel routes a format input's derived sibling value (the
 // content-anchor's pinned locator) to the sibling declaring that format.

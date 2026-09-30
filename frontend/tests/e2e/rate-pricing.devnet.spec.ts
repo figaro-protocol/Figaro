@@ -71,7 +71,7 @@ async function waitForConnected(page: Page) {
  *  on the same slug). */
 async function findRateAssembly(): Promise<string | undefined> {
     const templates = await discoverAnchoredAssemblies();
-    // Discovery is STRUCTURAL (ruled 2026-07-14: templates are value-free by
+    // Discovery is STRUCTURAL (templates are value-free by
     // construction — the geohashes are the buyer's checkout fills, so no
     // anchored value can identify the assembly). The rate shape: a two-node
     // chain whose hauled leg composes process + geo and NOTHING else beyond
@@ -187,7 +187,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             await page.getByTestId(`drawer-registry-clause-${PROCESS_CLAUSE}`).check();
-            // Design time is STRUCTURAL (ruled 2026-07-14): the geolocation
+            // Design time is STRUCTURAL: the geolocation
             // clause is SELECTED here; the endpoints are the buyer's, at checkout.
             await page.getByTestId(`drawer-registry-clause-${GEO_CLAUSE}`).check();
 

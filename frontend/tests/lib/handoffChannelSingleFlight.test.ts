@@ -2,8 +2,8 @@
  * handoffChannelSingleFlight.test.ts — the channel factory's single-flight
  * gate. Concurrent `getHandoffChannel` calls for one address must share
  * ONE creation: XMTP's OPFS store uses exclusive sync access handles, so two
- * concurrent `Client.create` calls fight over the same database (relay smoke
- * 2026-07-23). A failed flight must clear so a later caller — e.g. one that
+ * concurrent `Client.create` calls fight over the same database (as the relay
+ * smoke shows). A failed flight must clear so a later caller — e.g. one that
  * now has the wallet signer — retries cleanly.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";

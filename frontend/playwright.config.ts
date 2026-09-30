@@ -33,7 +33,7 @@ if (E2E_CHAIN === 'sepolia') {
         // key's Infura endpoint: keyed, and rate-limited under a long run).
         NEXT_PUBLIC_RPC_URL: process.env.E2E_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
         NEXT_PUBLIC_PERMIT2: String(record.permit2 ?? '0x000000000022D473030F116dDEE9F6B43aC78BA3'),
-        // The swap-funded on-ramp (deployed alone onto the live stack 2026-08-18): the
+        // The swap-funded on-ramp (deployed alone onto the live stack): the
         // coordinator, Uniswap SwapRouter02, and QuoterV2 — read from the record; absent
         // entries stay empty and the frontend gates the feature off (resolved-empty).
         NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR: String(record.witnessSwapAndCommitCoordinator ?? ''),
@@ -87,7 +87,7 @@ const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 
 // Web-server mode. Default = production (`next build` → static export, served
 // by `serve`): the dev server degrades after ~25 min of compile-on-demand (the
-// seller-track-record tail-position pattern, 2026-06-11), and devnet is a
+// seller-track-record tail-position pattern), and devnet is a
 // mainnet rehearsal — participants hit the exported production artifact, not a
 // dev server. `output: 'export'` (next.config.mjs) writes the static site into
 // the build dir (`.next-e2e` here, isolated from the dev :3000 `.next`), which
@@ -136,7 +136,7 @@ export default defineConfig({
                 // deploy never sets this escape.
                 // The dist dir is WIPED first, every run: rebuilding into an existing
                 // .next-e2e after source renames corrupts it (PageNotFoundError:
-                // /_document — three occurrences on 2026-08-06), and the build is
+                // /_document), and the build is
                 // full-cost either way.
                 ? `rm -rf ${DIST_DIR} && ${BUILD_ENV_PREFIX} FIGARO_ALLOW_TEST_HELPERS=1 NEXT_DISTDIR=${DIST_DIR} npm run build && SERVE_DIR=${DIST_DIR} PORT=${PLAYWRIGHT_PORT} npm run serve:export`
                 : `rm -rf ${DIST_DIR} && ${BUILD_ENV_PREFIX} NEXT_DISTDIR=${DIST_DIR} PORT=${PLAYWRIGHT_PORT} npm run dev`,

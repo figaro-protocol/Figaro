@@ -10,8 +10,8 @@
  *   drawer  → the target clause surfaces from the live ClauseRegistry → IPFS
  *   encode  → composing it (a selection or nested sub-clause tick at design
  *             time; values from the checkout fill surface, the catalogue, or
- *             a designer-fills affix — design time is STRUCTURAL, ruled
- *             2026-07-14) carries its section into the committed agreement,
+ *             a designer-fills affix — design time is STRUCTURAL)
+ *             carries its section into the committed agreement,
  *             past the off-chain validation sign gate
  *   commit  → a real bilateral order commits that agreement on-chain, and the
  *             asymmetric bonds actually move in the payment token
@@ -92,7 +92,7 @@ const SELLER = seller.address;
 interface ClauseRung {
     clauseId: string;
     /** Extra drawer work after ticking the target clause. Design time is
-     *  STRUCTURAL (ruled 2026-07-14): this hook is for design.fills only
+     *  STRUCTURAL: this hook is for design.fills only
      *  (consent's affix — the designer's tailoring); general clauses have no
      *  drawer editors — their fields fill at checkout (`checkout` below). */
     design?: (page: Page) => Promise<void>;
@@ -220,7 +220,7 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // ASSEMBLY-SCOPED (design.scope: "assembly", ruled 2026-07-28): the
+        // ASSEMBLY-SCOPED (design.scope: "assembly"): the
         // recourse terms are part of the assembly's identity, composed ONCE
         // on the AssemblyTermsPanel — never per order, never buyer-authored
         // at checkout. The spec constrains applicableLaw to a shaped
@@ -233,7 +233,7 @@ const RUNGS: ClauseRung[] = [
         leaf: (data) => expect(data.applicableLaw).toBe('US-NY'),
     },
     {
-        // ASSEMBLY-SCOPED (design.scope: "assembly", ruled 2026-07-28): same
+        // ASSEMBLY-SCOPED (design.scope: "assembly"): same
         // designer-authored recourse family as figaro-applicable-law.
         clauseId: 'figaro-arbitration-kleros',
         design: assemblyTermsPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
@@ -508,8 +508,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
             await rootNode.waitFor({ state: 'visible', timeout: 10000 });
 
-            // ASSEMBLY-SCOPED clauses (design.scope: "assembly", ruled
-            // 2026-07-28) compose ONCE on the AssemblyTermsPanel, never per
+            // ASSEMBLY-SCOPED clauses (design.scope: "assembly") compose ONCE on the AssemblyTermsPanel, never per
             // order — AgreementDrawer's registry list excludes them by design
             // (AgreementDrawer.tsx / AssemblyTermsPanel.tsx partition the live
             // registry by declared scope). Everything else keeps the per-order
@@ -645,7 +644,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.getByTestId('btn-review-order').click();
             await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
             // GENERAL-clause transaction particulars are authored HERE, on the
-            // checkout's spec-routed fill surface (ruled 2026-07-14) — the
+            // checkout's spec-routed fill surface — the
             // template arrived value-free by construction.
             if (rung.checkout) await rung.checkout(page);
             const place = page.getByTestId('btn-place-order');

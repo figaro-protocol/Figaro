@@ -11,7 +11,7 @@
  *              (courier + supplier wallets) on the chain assembly's binding;
  *              the courier + supplier each pin the chain assembly to their OWN
  *              profiles through the seller-edit surface — the even-surfacing
- *              rule (maintainer 2026-07-02) admits a seller's catalogue to every
+ *              rule admits a seller's catalogue to every
  *              read (discovery, checkout pricing) only with an anchored
  *              binding, and a participating seller binding the assembly it
  *              participates in IS the designed conformance path
@@ -306,7 +306,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             .toHaveText(/^6(\.0*)?$/, { timeout: 15000 });
 
         // The buyer's modality request — a transaction particular authored at
-        // checkout (templates arrive value-free by construction, ruled 2026-07-14).
+        // checkout (templates arrive value-free by construction).
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-delivery"]').first().check();
 
         const place = page.getByTestId('btn-place-order');

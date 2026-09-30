@@ -123,7 +123,7 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
     // A compact law TAG (the spec's format pattern) — the jurisdiction label,
     // not prose.
     // applicable-law + arbitration are DESIGNER-authored assembly terms
-    // (design.fills, ruled 2026-07-28) — nothing for the buyer to fill.
+    // (design.fills) — nothing for the buyer to fill.
     // The emissions methodology is committed at signing by the parties — not
     // catalogue-sourced (no block.checkout.catalogueFills on the spec).
     await forEachCheckoutField(page, C.emissions, 'standard', (c) => c.fill('EN 16258'));

@@ -4,7 +4,7 @@ import { commerceLineItems, fullDumpSections } from "@/components/runtime/Agreem
 
 /**
  * Regression for the signing-integrity finding (frontend security audit,
- * 2026-07-22, finding 1): the whole `section.data` is merkle-committed into
+ * finding 1): the whole `section.data` is merkle-committed into
  * `agreementHash`, so the review surface must render EVERY section's data in
  * full. The pre-fix classifier rendered only the FIRST `lineItems`-bearing
  * section (name/qty/unitPrice) and EXCLUDED every `lineItems`-bearing section

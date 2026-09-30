@@ -215,7 +215,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         //    lives in the origin-private file system, and OPFS sync access
         //    handles are EXCLUSIVE — two XMTP clients in one context fight
         //    over one database ("An error occurred while creating sync access
-        //    handle", first smoke run 2026-07-22). The mock channel needed
+        //    handle"). The mock channel needed
         //    same-context tabs; the real transport needs the opposite. Each
         //    context has its own storage, so each party flips its own
         //    /settings opt-in. ──

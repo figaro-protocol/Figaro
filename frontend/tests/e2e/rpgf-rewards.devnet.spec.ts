@@ -12,12 +12,12 @@
  * so the reward leg is undrivable against a schedule measured in years —
  * accrual would run and nothing could ever be claimed. `Deploy.s.sol` therefore
  * rehearses the ruled nine-period annual structure at 30-minute periods
- * (maintainer ruling 2026-07-27: "we can write the e2e test by compressing
+ * (the maintainer's rule: "we can write the e2e test by compressing
  * time"). This spec records usage, advances the chain just past the open
  * period's own end, and claims — the same shape mainnet runs over years, at a
  * scale a test run can observe. Devnet is a mainnet REHEARSAL, not a sandbox.
  *
- * THE MINIMUM-SUPPORT FLOOR IS DRIVEN, NOT DODGED (ruled 2026-07-31). Devnet
+ * THE MINIMUM-SUPPORT FLOOR IS DRIVEN, NOT DODGED. Devnet
  * deploys `minSellers = 3`, the mainnet value: a clause or assembly scores ZERO until
  * three distinct live-staked sellers carried it. The scenario resolves the
  * clause through THREE sellers and asserts both halves — nothing scores below
@@ -251,7 +251,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
                 address: counter, abi: USAGE_COUNTER_ABI, functionName: 'accrualOf', args: [clauseKey, period],
             })) as readonly [bigint, bigint, bigint];
 
-        // ── The floor, both halves (ruled 2026-07-31) ─────────────────────
+        // ── The floor, both halves ─────────────────────────────────────────
         const minSellers = (await publicClient.readContract({
             address: counter, abi: USAGE_COUNTER_ABI, functionName: 'minSellers',
         })) as bigint;

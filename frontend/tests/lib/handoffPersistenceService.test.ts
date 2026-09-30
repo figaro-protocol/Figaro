@@ -1,7 +1,7 @@
 /**
  * handoffPersistenceService — the resolution-path purge choreography.
  *
- * The service's whole surface after the GDPR ruling (2026-07-22): purge an
+ * The service's whole surface under the GDPR posture: purge an
  * order's ECDH ephemeral keypair from the live sessionStorage store —
  * crypto-shredding on resolution — immediately or after a grace period via
  * the localStorage purge queue. The deleted durable data side (saved handoff

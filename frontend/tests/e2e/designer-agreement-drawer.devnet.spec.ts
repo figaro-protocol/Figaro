@@ -3,7 +3,7 @@
  * designer-agreement-drawer.devnet.spec.ts
  *
  * AgreementDrawer clause composition persists — and design time is
- * STRUCTURAL (ruled 2026-07-14). The drawer's registry tab lists every
+ * STRUCTURAL. The drawer's registry tab lists every
  * clause the live ClauseRegistry holds (chain → IPFS); checking a clause
  * composes it onto the selected order, and the composition must survive the
  * save + reload round-trip — through the UI on both ends:
@@ -110,11 +110,11 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         //    editors here — its geohashes are the buyer's, at checkout. ──
         await expect(
             page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-origin`),
-            'a general clause renders no design-time field editor (ruled 2026-07-14)',
+            'a general clause renders no design-time field editor',
         ).toHaveCount(0);
         await expect(
             page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destination`),
-            'a general clause renders no design-time field editor (ruled 2026-07-14)',
+            'a general clause renders no design-time field editor',
         ).toHaveCount(0);
 
         // ── A clause declaring designer fills (consent — block.design.fills:

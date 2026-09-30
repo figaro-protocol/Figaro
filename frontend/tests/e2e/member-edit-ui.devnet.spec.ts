@@ -90,7 +90,7 @@ async function waitForOneUpdateEvent(
     // event satisfy the exactly-one check instantly (a false pass) — or,
     // when this test's own tx mined before the first poll, push the count
     // to two and deadlock the poll into its timeout (the assemblies-toggle
-    // flake, root-caused 2026-07-09 from the persisted chain's block
+    // flake, root-caused from the persisted chain's block
     // timestamps). This test's events all mine strictly after blockBefore.
     const fromBlock = blockBefore + 1n;
     const deadline = Date.now() + timeoutMs;

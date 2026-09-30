@@ -34,8 +34,8 @@
  * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET
  * role — a wallet registers only what it claims ownership of. The default
  * registrar is an EOA (REGISTRAR_PRIVATE_KEY). When the registrar is a
- * multisig VAULT — the DAO's vault for the genesis seed set (endowment ruling
- * 2026-08-13: author-of-record is the literal registrar,
+ * multisig VAULT — the DAO's vault for the genesis seed set (the endowment
+ * rule: author-of-record is the literal registrar,
  * `RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`) — set:
  *   REGISTRAR_VAULT    — the vault's address; it becomes msg.sender/registrar
  *                        via its approve/execute cycle, staking deposits from
@@ -56,7 +56,7 @@
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — the AssemblyRegistry address
  *   ASSEMBLY_TOKEN_ADDRESS        — the denomination substituted for the
  *                                   checked-in ZERO_ADDRESS sentinel (Sepolia:
- *                                   USDC, ruled 2026-08-14)
+ *                                   USDC)
  *
  * INCREMENTAL RELEASE controls (the nudge-per-session Sepolia rollout):
  *   SEED_ASSEMBLIES       — comma-separated reference-assembly names (the
@@ -423,7 +423,7 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const deposit = await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
         });
-        // No reward tag: the 600M reward is UNIFORM (ratified 2026-07-29) — the
+        // No reward tag: the 600M reward is UNIFORM — the
         // registry stores no incentive input. The only classification a clause
         // carries is block.design.article, a reader grouping that stays off-chain.
         if (vault) {
@@ -504,8 +504,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
     // Idempotency via STATE, not an event scan: `bindings[hash].registeredAt`
     // is the contract's own already-registered test. A fromBlock:0 log scan
     // works on devnet's short chain but exceeds every public provider's
-    // getLogs range cap on a real network (caught on the Sepolia fork,
-    // 2026-08-14).
+    // getLogs range cap on a real network (as the Sepolia fork shows).
     const [, registeredAt] = await publicClient.readContract({
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [compositionHash],
     });
@@ -652,8 +651,8 @@ async function main() {
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
 
     // Reference assemblies ride the same invocation when the registry and the
-    // denomination fill are both provided (testnet/mainnet: Sepolia USDC
-    // ruled 2026-08-14; devnet's populate-test-data passes its mock instead).
+    // denomination fill are both provided (testnet/mainnet: Sepolia USDC;
+    // devnet's populate-test-data passes its mock instead).
     const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
     if (assemblyRegistry && assemblyToken) {

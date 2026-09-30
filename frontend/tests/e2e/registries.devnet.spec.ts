@@ -2,7 +2,7 @@
  * registries.devnet.spec.ts
  *
  * Smoke for the registry explorer (`/registries`) — the ONE search surface
- * over the three protocol registries (maintainer ruling 2026-08-17; it took
+ * over the three protocol registries (it took
  * over the inventories the `/clauses` and `/assemblies` marketing pages
  * carried). The page reads `ClauseRegistered`, `AssemblyRegistered`, and
  * `MemberRegistered` events through the standalone viem `publicClient`

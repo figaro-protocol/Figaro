@@ -158,7 +158,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             'the drawer surfaces the never-seen WITNESS clause from the live registry',
         ).toHaveCount(1, { timeout: 20000 });
         await witnessNovel.check();
-        // Design time is STRUCTURAL (ruled 2026-07-14): the never-seen clause
+        // Design time is STRUCTURAL: the never-seen clause
         // is SELECTED here; its required committed policy — a transaction
         // particular — is authored by the buyer at checkout, proving the
         // open-world path end to end under the same rule as every clause.

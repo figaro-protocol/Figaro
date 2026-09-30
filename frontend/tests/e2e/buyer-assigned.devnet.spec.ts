@@ -174,7 +174,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
 
         // The buyer authors the transaction particulars (modality request,
         // hand-off mode, proximity band, geolocation endpoints) — templates
-        // arrive value-free by construction (ruled 2026-07-14).
+        // arrive value-free by construction.
         await fillDeliveryCheckout(page);
 
         const place = page.getByTestId('btn-place-order');

@@ -1,6 +1,6 @@
 /**
- * The race's profile-keyed endpoint routing (channel-seam ruling 2026-08-14,
- * the DID residual closed 2026-08-20): a declared did:web routes through the
+ * The race's profile-keyed endpoint routing (the channel seam, DID
+ * verification included): a declared did:web routes through the
  * DID-VERIFYING resolver, and a DID that fails verification yields NO
  * endpoint — never a fallback to the raw `services.rest` it was supposed to
  * vouch for.
