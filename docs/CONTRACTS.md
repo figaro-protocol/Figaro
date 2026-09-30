@@ -18,7 +18,7 @@ in `LOCAL_DEV.md`; the mechanism's derivation is in `THEORY.md`.
 
 Every arrow is an immutable pointer fixed at construction (a read, unless
 marked); parenthesized nodes are external canonical contracts, not this
-repo's. Two structural facts: the kernel is the centre and points at nothing,
+repo's. Two structural facts: `FigaroCore` is the centre and points at nothing,
 and the three registries carry no edges among themselves — parallel anchors,
 never nested.
 
@@ -37,7 +37,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
                       (contentHashOf)  (registered minter at genesis, 600M cap)
 ```
 
-- `FigaroCore` — no outbound edges: the kernel reads no contract above it.
+- `FigaroCore` — no outbound edges: it reads no contract above it.
 - `UsageCounter.applyBatchAccrual` is the verifier's one write edge and the
   counter's one privileged caller; everything else on the graph is a read.
 - `FlorinToken` — no outbound edges: minters point at it, registered by the
@@ -45,7 +45,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
 - Assembly→clause and seller→assembly relationships are off-chain (assembly
   content, profile bindings) — deliberately absent from this graph.
 
-## Kernel (`src/core/kernel/`)
+## `src/core/kernel/` — `FigaroCore` and `CommitmentTypes`
 
 The two frozen contracts. Never edited.
 
@@ -65,7 +65,7 @@ when its buyer signs.
 - `resolveProcess` requires `msg.sender == rootBuyer` (`NotProcessBuyer`) and
   the complete active-order list (`IncompleteOrderList`), then pays every order
   at once: seller `2 × expectedCumulativeValue + payment`, buyer `payment`.
-  Every deposited token leaves; the kernel never holds a withdrawable balance.
+  Every deposited token leaves; `FigaroCore` never holds a withdrawable balance.
 - Decentralized and permissionless: no admin, no pause, no upgrade, no timeout, no third entry point.
   `ReentrancyGuard` on both functions.
 
@@ -81,7 +81,7 @@ reasoning.
 
 Three parallel anchors, each with its own identity scheme, event stream, and
 withdrawal behaviour; none references another. Registering publishes; it
-never qualifies — the kernel gates nothing on registry state.
+never qualifies — the Core gates nothing on registry state.
 
 **`src/build/registries/ClauseRegistry.sol`** — Permissionless clause
 anchoring under a stake.
@@ -144,41 +144,41 @@ per key and the binding permanent, so there is nothing to recycle.
 
 ## Coordinators (`src/core/attestation/` — attestation; `src/app/` — the swap)
 
-Contracts that compose the kernel without becoming a party to it. A new
-capability beside the kernel is a NEW parallel contract composing kernel
-state — never a kernel edit, never a tenant inside an existing registry. The
+Contracts that compose `FigaroCore` without becoming a party to it. A new
+capability beside `FigaroCore` is a NEW parallel contract composing its
+state — never an edit to it, never a tenant inside an existing registry. The
 copyable shape:
 
-1. **Bind through a minimal, immutable surface.** Declare only the kernel
+1. **Bind through a minimal, immutable surface.** Declare only the `FigaroCore`
    functions you call and bind at construction: each coordinator declares its
    own local `interface IFigaroCore` naming exactly the surface it uses
    (`commit` in `WitnessSwapAndCommitCoordinator.sol`; `orderStatus` +
    `DOMAIN_SEPARATOR` in `AttestationCoordinator.sol`) and holds it
    `immutable`. The local-minimal interface is the pattern for external
-   composers too: a third party composing the deployed kernel cannot import
+   composers too: a third party composing the deployed `FigaroCore` cannot import
    this repo's files, only its ABI. (`CommitmentTypes` is the shared
    struct/hashing library both import.)
-2. **Read kernel state as the single source of truth; never re-implement
-   kernel logic.** A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`),
-   call (`commit`), and — when it cannot import a constant from the frozen
-   kernel — mirror one with a comment pinning the source (the 2× bond
-   multiplier in `WitnessSwapAndCommitCoordinator`). The kernel does the
+2. **Read `FigaroCore`'s state as the single source of truth; never re-implement
+   its logic.** A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`),
+   call (`commit`), and — when it cannot import a constant from
+   `FigaroCore` — mirror one with a comment pinning the source (the 2× bond
+   multiplier in `WitnessSwapAndCommitCoordinator`). `FigaroCore` does the
    enforcing: the bond pull, the status transition, the atomic resolution. A
-   contract that enforces bonding or resolution itself is re-implementing the
-   kernel, not composing it.
+   contract that enforces bonding or resolution itself is re-implementing
+   `FigaroCore`, not composing it.
 3. **Hold no resolution-time discretion.** A coordinator carries setup or
    evidence legs (a swap before `commit`; a merkle-checked attestation), never a
    lever over a live process's resolution.
-4. **The arrow points one way.** The kernel never knows the coordinator exists
+4. **The arrow points one way.** `FigaroCore` never knows the coordinator exists
    (its one mention of `AttestationCoordinator`, in the `DOMAIN_SEPARATOR` doc
    comment, is illustrative, not a dependency). Tenant names — Kleros, Uniswap,
    a lender — live at the edge: in the composing contract, in a clause's
-   `block.design.composes`, in the UI dispatch. Never in the kernel, never in
+   `block.design.composes`, in the UI dispatch. Never in `FigaroCore`, never in
    the SDK's protocol modules.
 
-The test before building anything beside the kernel: *can this be a parallel
-contract that reads kernel state and lets the kernel enforce?* If the answer
-seems to be no, the proposal is adding a mechanism to the kernel — stop.
+The test before building anything beside `FigaroCore`: *can this be a parallel
+contract that reads `FigaroCore`'s state and lets it enforce?* If the answer
+seems to be no, the proposal is adding a mechanism to `FigaroCore` — stop.
 
 The five conditions a composed contract satisfies, what each preserves, and their
 provenance: `OPEN_WORLD.md` § "The five conditions a composed contract satisfies".
@@ -193,7 +193,7 @@ attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
   sectionHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
   `target.buyer`.
 - `attestViaResolver(Commitment target, ...)` — caller authorized by
-  `IRoleResolver(target.seller).isAuthorized`. Kernel parties are ECDSA
+  `IRoleResolver(target.seller).isAuthorized`. `FigaroCore`'s parties are ECDSA
   externally owned accounts, so `target.seller` can expose `isAuthorized` only
   through EIP-7702 delegation; without it the staticcall finds no code and the
   path reverts. No production caller today.
@@ -222,7 +222,7 @@ signature (`permitWitnessTransferFrom`), forwards the swap calldata to the
 immutable `router` (Uniswap SwapRouter02 — a venue that pulls by ERC-20
 allowance; never the Universal Router), forwards the swapped denomination to
 the party's own address, then calls `FigaroCore.commit`.
-- The kernel pulls each bond from the named party and never checks
+- `FigaroCore` pulls each bond from the named party and never checks
   `msg.sender`, so the coordinator supplies the party in place and never becomes
   a counterparty; the commitment stays bilaterally signed.
 - Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`),
@@ -242,17 +242,17 @@ the party's own address, then calls `FigaroCore.commit`.
 ## Verifier (`src/core/verifier/`)
 
 The proof-based path that resolves batches of processes beside the direct
-kernel path. `SCALING_STRATEGY.md` owns the design; this is the surface.
+`FigaroCore` path. `SCALING_STRATEGY.md` owns the design; this is the surface.
 
 **`src/core/verifier/FigaroBatchVerifier.sol`** — One external function,
 `settleBatch(proof, publicValues, positions, events, usage)`:
 - refuses public values of any length but `PUBLIC_VALUES_LENGTH` (288 bytes,
   nine words) with `PublicValuesLengthMismatch`, before the proof is read;
-- verifies an SP1 proof of a batch of kernel operations (commits, resolutions,
+- verifies an SP1 proof of a batch of `FigaroCore` operations (commits, resolutions,
   witness-gated attestations) against the immutable `programVKey`;
 - checks state-root continuity and chain binding, and hash-verifies the
   calldata (positions, attestations, spec bindings) byte-for-byte against the
-  Rust kernel's `compute_*_hash`;
+  Rust mirror's `compute_*_hash`;
 - checks every (clause key → witness-spec hash) binding against
   `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine,
   the registry anchors the constraint set, so a new clause never touches the
@@ -265,7 +265,7 @@ kernel path. `SCALING_STRATEGY.md` owns the design; this is the surface.
   admin, no upgrade path — a program change is a fresh deploy. Not a florin
   minter.
 
-The two paths share no state: a batch-resolved process never acquires kernel
+The two paths share no state: a batch-resolved process never acquires `FigaroCore`
 status (`core.orderStatus` stays 0 for it), so every reader folds both
 streams. The usage accrual is the one thing that crosses: the guest proves each
 clause's or assembly's cumulative `(c, d)`, an eighth public value
@@ -284,7 +284,7 @@ verifier-gateway ABI, `verifyProof(programVKey, publicValues, proof)`.
 
 **`src/build/rewards/UsageCounter.sol`** — Counts how much real trade a
 clause or assembly carried, on chain, at the moment it happens. The chain
-cannot look backwards — the kernel calls no registry and contracts cannot read
+cannot look backwards — the Core calls no registry and contracts cannot read
 events — so the fact is recorded when it occurs, and nothing is posted,
 bonded, challenged, or adjudicated afterward.
 
@@ -452,7 +452,7 @@ deploy script wires and under which environment variable.
 **Multisender.** Batch dispersal — one payment, many recipients, one
 transaction — is a wallet splitting its own receipts after resolution to
 earmarked addresses, leaving a fiscal trail as a byproduct. It reads neither
-the kernel nor any registry, and the network already supplies it: the
+the Core nor any registry, and the network already supplies it: the
 canonical public Disperse deployment
 (`0xD152f549545093347A162Dce210e7293f1452150`, the same address
 across chains) is composed, never duplicated. `MockDisperse.sol` mirrors its
