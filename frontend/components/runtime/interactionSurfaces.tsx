@@ -22,7 +22,7 @@ import { ContentDeliveryPanel } from "@/components/runtime/ContentDeliveryPanel"
 
 /** The contract an interaction surface satisfies: the order it mounts on,
  *  identified — nothing clause-specific crosses this boundary. The order's
- *  two parties are part of the order's identity (the kernel star shape):
+ *  two parties are part of the order's identity (FigaroCore star shape):
  *  a ceremony surface derives its own role from the connected wallet. */
 export interface InteractionSurfaceProps {
     processId: string;

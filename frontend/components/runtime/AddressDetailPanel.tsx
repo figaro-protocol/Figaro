@@ -5,7 +5,7 @@
  * standard: the private-address ceremony on an order whose clause commits
  * public geohashes (the geolocation clause declares this interaction).
  *
- * SYMMETRIC over one order edge (the kernel star shape routes the secrets:
+ * SYMMETRIC over one order edge (FigaroCore star shape routes the secrets:
  * this order's buyer↔seller ARE the two parties who need the detail).
  * Either party may REQUEST (ephemeral pubkey over the coordination channel)
  * and either may ANSWER (the addressee block — name, street, floor/door,

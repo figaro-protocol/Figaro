@@ -24,19 +24,19 @@ interface Props {
 /**
  * ResolutionProceedsPanel
  *
- * The live kernel has no internal ledger — resolveProcess transfers tokens directly.
+ * The live FigaroCore has no internal ledger — resolveProcess transfers tokens directly.
  * No fee, no router/cascade certification. This panel shows the human what
  * resolution moved: the payment (sent or received) and their bond, returned in
  * full. The amounts are read from the protocol-derived process model — the same
- * 2×payment / 2×cumulative-value bond the kernel locked and returned.
+ * 2×payment / 2×cumulative-value bond FigaroCore locked and returned.
  *
- * Kernel-core, NOT a clause surface. Resolution is the kernel's own proceeds —
+ * Core surface, NOT a clause surface. Resolution is FigaroCore's own proceeds —
  * clause-less by construction — so this mounts by symbol on the process-detail
  * page, a peer of CapabilityRail and the timeline. It is deliberately NOT a
  * candidate for the declared-semantic component registries (fieldFormatInputs /
  * interactionSurfaces / rateQuantitySources): those key on a semantic the clause
  * SPEC declares, and there is no clause here to key on. "Re-homing" it under a
- * registry would build a one-tenant registry for a permanent kernel singleton —
+ * registry would build a one-tenant registry for a permanent FigaroCore singleton —
  * ceremony that buys none of the open-world composition the registries exist for.
  */
 export function ResolutionProceedsPanel({
