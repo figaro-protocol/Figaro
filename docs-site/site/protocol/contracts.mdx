@@ -5,7 +5,7 @@ description: Every deployed contract a builder calls — purpose, external signa
 
 Everything on this page is a permissionless primitive. No contract belongs to an app, and none has an admin, an owner, a pause, or an upgrade key. You reach them with a wallet and `cast` or `viem` over a public RPC — nothing is gated on who you are.
 
-Read the [whole model](/) first; this page assumes it. In those terms: the **kernel** (`FigaroCore`) holds the two mechanisms — asymmetric bonding at commit, buyer dominance with atomic resolution — and the six nouns (buyer, seller, clause, agreement, assembly, composition) live in the data those calls carry and in the registries that anchor them. An order has exactly two operations, **commit** and **resolve**, and they happen one of two ways that share no state: the **direct path** calls `FigaroCore`; the **batch path** proves many operations at once against `FigaroBatchVerifier`. Both paths carry commit *and* resolve.
+Read the [whole model](/) first; this page assumes it. In those terms: **`FigaroCore`** holds the two mechanisms — asymmetric bonding at commit, buyer dominance with atomic resolution — and the six nouns (buyer, seller, clause, agreement, assembly, composition) live in the data those calls carry and in the registries that anchor them. An order has exactly two operations, **commit** and **resolve**, and they happen one of two ways that share no state: the **direct path** calls `FigaroCore`; the **batch path** proves many operations at once against `FigaroBatchVerifier`. Both paths carry commit *and* resolve.
 
 Solidity 0.8.26, MIT, at [figaro-protocol/Figaro](https://github.com/figaro-protocol/Figaro). Every fact below is cited to the source line a builder would read; nothing here asks you to edit a repository file — the path is the chain, the SDK, and IPFS.
 
@@ -19,7 +19,7 @@ npm install @figaro-protocol/sdk viem
 
 You do not need it — every call below is reachable with raw `cast` — but it is the difference between signing a struct by hand and calling `buildCommitment`. Its manual is the [SDK page](/building/sdk/); its generated API reference is at [`/sdk-api/`](/sdk-api/index.html).
 
-## FigaroCore — the kernel
+## FigaroCore
 
 `FigaroCore` holds every deposit and resolves a process on its buyer's signature. It reads no contract above it and has no third entry point (`src/core/kernel/FigaroCore.sol:26`).
 
@@ -33,13 +33,13 @@ function resolveProcess(bytes32 processId, CommitmentTypes.Commitment[] calldata
     external;                                                          // src/core/kernel/FigaroCore.sol:262
 ```
 
-Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment` from the buyer and `2 × expectedCumulativeValue` from the seller. A root order (`c.processId == 0`) opens a process; any other order extends one and must carry the same `c.buyer` as the process's root buyer and an `expectedCumulativeValue` equal to the live accumulator plus this order's `payment`. `resolveProcess` requires `msg.sender` to be the root buyer and the complete active-order list, then pays every seller `2 × expectedCumulativeValue + payment` and refunds the buyer `payment` — every deposited token leaves in one call; the kernel never holds a withdrawable balance.
+Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment` from the buyer and `2 × expectedCumulativeValue` from the seller. A root order (`c.processId == 0`) opens a process; any other order extends one and must carry the same `c.buyer` as the process's root buyer and an `expectedCumulativeValue` equal to the live accumulator plus this order's `payment`. `resolveProcess` requires `msg.sender` to be the root buyer and the complete active-order list, then pays every seller `2 × expectedCumulativeValue + payment` and refunds the buyer `payment` — every deposited token leaves in one call; `FigaroCore` never holds a withdrawable balance.
 
 **Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), `orderProcessId(bytes32) → bytes32`, the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:52-115`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
 
 **The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:107`). The version is a schema counter, not a deploy sequence.
 
-**Custom errors** (`src/core/kernel/FigaroCore.sol:64-79`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — the kernel pulls the full per-order bond every time and nets nothing against bonds it already holds).
+**Custom errors** (`src/core/kernel/FigaroCore.sol:64-79`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — `FigaroCore` pulls the full per-order bond every time and nets nothing against bonds it already holds).
 
 **Events:** `OrderCommitted` (carries every struct field but no signatures — the signature bytes live in the commit transaction's calldata), `OrderSeller`, `OrderCurrency`, `OrderResolved`, `ProcessResolved` (`src/core/kernel/FigaroCore.sol:35-60`).
 
@@ -65,7 +65,7 @@ To resolve, rebuild the full active-order set from `OrderCommitted` events (noth
 
 ## CommitmentTypes — the signed struct
 
-`CommitmentTypes` is the shared struct-and-hashing library both the kernel and its coordinators import (`src/core/kernel/CommitmentTypes.sol:19`). One `Commitment` covers root and sub-orders:
+`CommitmentTypes` is the shared struct-and-hashing library both `FigaroCore` and its coordinators import (`src/core/kernel/CommitmentTypes.sol:19`). One `Commitment` covers root and sub-orders:
 
 ```solidity
 struct Commitment {
@@ -143,7 +143,7 @@ The three registries carry no edges among themselves — parallel anchors, never
 
 ## AttestationCoordinator — evidence while an order is live
 
-Zero-storage, merkle-only attestation bound to the signed `agreementHash` (`src/core/attestation/AttestationCoordinator.sol`). It composes the kernel without becoming a party: it reads `orderStatus` and `DOMAIN_SEPARATOR`, and enforces nothing about resolution.
+Zero-storage, merkle-only attestation bound to the signed `agreementHash` (`src/core/attestation/AttestationCoordinator.sol`). It composes `FigaroCore` without becoming a party: it reads `orderStatus` and `DOMAIN_SEPARATOR`, and enforces nothing about resolution.
 
 ```solidity
 function attestAsSeller(
@@ -177,7 +177,7 @@ function swapWitness(address inputToken, uint256 maxInput, bytes calldata swapDa
     external view returns (bytes32);                          // :170
 ```
 
-For each enabled leg it pulls the input token through a Permit2 witness signature, forwards the swap calldata to an immutable Uniswap `SwapRouter02`, sends the swapped denomination to the party's own address, then calls `FigaroCore.commit`. Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`), never from calldata; the witness binds `{router, inputToken, maxInput, keccak256(swapData)}` so no relayer can reroute the swap. The kernel still sees a single-currency, bilaterally-signed commitment. On the batch path there is no funding leg — swap in your own wallet before submitting.
+For each enabled leg it pulls the input token through a Permit2 witness signature, forwards the swap calldata to an immutable Uniswap `SwapRouter02`, sends the swapped denomination to the party's own address, then calls `FigaroCore.commit`. Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`), never from calldata; the witness binds `{router, inputToken, maxInput, keccak256(swapData)}` so no relayer can reroute the swap. `FigaroCore` still sees a single-currency, bilaterally-signed commitment. On the batch path there is no funding leg — swap in your own wallet before submitting.
 
 **The venue is SwapRouter02, and the distinction is load-bearing for the calldata you sign.** The coordinator approves the router for your input token and forwards your `swapData` verbatim (`src/app/WitnessSwapAndCommitCoordinator.sol:221-224`), so the venue must pull by ERC-20 allowance: the calldata is SwapRouter02's `exactOutputSingle` — an exact output, the bond, for at most `maxInput` of input (`:135`) — not the Universal Router, which pulls through Permit2 or spends pre-sent balances and would leave the swap unfunded. Build it with the SDK's `SWAP_ROUTER_02_ABI`, which carries exactly the venue shapes the protocol composes.
 
@@ -185,7 +185,7 @@ For each enabled leg it pulls the input token through a Permit2 witness signatur
 
 ## FigaroBatchVerifier — the batch path
 
-Resolves batches of kernel operations beside the direct path, under one SP1 validity proof (`src/core/verifier/FigaroBatchVerifier.sol`). It applies commit *and* resolve — the whole lifecycle executes inside the proof.
+Resolves batches of `FigaroCore` operations beside the direct path, under one SP1 validity proof (`src/core/verifier/FigaroBatchVerifier.sol`). It applies commit *and* resolve — the whole lifecycle executes inside the proof.
 
 ```solidity
 function settleBatch(
@@ -202,7 +202,7 @@ function settleBatch(
 
 ### The two paths share no state
 
-A batch-resolved process never acquires kernel status: `core.orderStatus` stays `0` for it, permanently, and there is no migration between the two. The single thing that crosses is the usage accrual for designer rewards. `settleBatch` is `external` with no caller gate — anyone who can produce the proof may land it — but producing the proof is the work a **sequencer** relay does for you. The relay is transport, not an authority; its only powers are censor and delay, and the fallback is always direct `FigaroCore` submission with the same signed artifacts. Its wire protocol and the read endpoints (which mirror the kernel events a batch-resolved order does not emit) are on the [SDK page](/building/sdk/) and in [`docs/SCALING_STRATEGY.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md).
+A batch-resolved process never acquires `FigaroCore` status: `core.orderStatus` stays `0` for it, permanently, and there is no migration between the two. The single thing that crosses is the usage accrual for designer rewards. `settleBatch` is `external` with no caller gate — anyone who can produce the proof may land it — but producing the proof is the work a **sequencer** relay does for you. The relay is transport, not an authority; its only powers are censor and delay, and the fallback is always direct `FigaroCore` submission with the same signed artifacts. Its wire protocol and the read endpoints (which mirror `FigaroCore` events a batch-resolved order does not emit) are on the [SDK page](/building/sdk/) and in [`docs/SCALING_STRATEGY.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/SCALING_STRATEGY.md).
 
 Running your own relay, as opposed to using one, is the one advanced path that is not public-surface-only: the proving apparatus is the repository's `prover/` Rust workspace, and its reproducible build and run recipe are in [`prover/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/prover/README.md) and [`prover/sequencer/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md). Because `settleBatch` is permissionless, a relay adds throughput, never trust.
 
@@ -217,7 +217,7 @@ Running your own relay, as opposed to using one, is the one advanced path that i
 
 ## UsageCounter — verified clause and assembly usage
 
-Counts how much real trade a clause or assembly carried, on chain, at the moment it happens — because the kernel calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/build/rewards/UsageCounter.sol`).
+Counts how much real trade a clause or assembly carried, on chain, at the moment it happens — because the Core calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/build/rewards/UsageCounter.sol`).
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,
@@ -262,7 +262,7 @@ function claim(uint8 periodId, bytes32[] calldata clausesOrAssemblies) external;
 
 ## Composed, not owned
 
-The deployment record also wires external canonical contracts the kernel neither knows nor depends on: Uniswap's **Permit2** and **SwapRouter02** (the swap coordinator composes these), Succinct's **SP1 verifier gateway** (the batch verifier calls it), the **DAO treasury Safe**, and the canonical **Disperse** multisender at `0xD152f549545093347A162Dce210e7293f1452150` (the same address across chains) — post-resolution batch dispersal a wallet composes to split its own receipts. Addresses are deployment configuration, never code. On a local development run these are stood in by interface-matching mocks; wherever a network names the real one, the record wires it.
+The deployment record also wires external canonical contracts `FigaroCore` neither knows nor depends on: Uniswap's **Permit2** and **SwapRouter02** (the swap coordinator composes these), Succinct's **SP1 verifier gateway** (the batch verifier calls it), the **DAO treasury Safe**, and the canonical **Disperse** multisender at `0xD152f549545093347A162Dce210e7293f1452150` (the same address across chains) — post-resolution batch dispersal a wallet composes to split its own receipts. Addresses are deployment configuration, never code. On a local development run these are stood in by interface-matching mocks; wherever a network names the real one, the record wires it.
 
 ## Canonical deployments
 
@@ -300,4 +300,4 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
 
 Two keys are renamed (`figaroCore → core`, `tokenAddress → token`), five carry no SDK field (`florinToken`, `swapQuoter`, `permitTokenAddress`, `chainId`, `deploymentBlock`), and every other address key passes through under its own name. Only a missing `figaroCore` throws; every unknown key is ignored, never an error. Start every `getLogs` scan at the record's `deploymentBlock` — there are no getters to fall back on, so the event log is the read path, and scanning from block `0` on a public network is a great deal of range for nothing.
 
-The kernel surface is frozen for external audit; the frozen-surface declaration and how to verify it are in [`docs/AUDITOR_HANDOVER.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md).
+Every contract in the audit scope is frozen while the audit tag stands; the scope and how to verify the freeze are in [`docs/AUDITOR_HANDOVER.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md).
