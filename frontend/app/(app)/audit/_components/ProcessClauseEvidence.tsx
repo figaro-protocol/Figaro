@@ -38,7 +38,7 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
  *
  *  DIRECT path — signature bytes are re-verified here from the commit
  *  transaction's calldata against the EXACT struct it carried
- *  (`lib/audit/signatureVerdicts`); the kernel verified the same signatures at
+ *  (`lib/audit/signatureVerdicts`); the Core verified the same signatures at
  *  commit time.
  *
  *  BATCH path — there are no signature bytes on chain to re-verify, so the
@@ -114,7 +114,7 @@ function OrderSignatureRows({
 
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // BOTH resolution universes: a batch-resolved order emits no OrderCommitted,
-    // so reading only the kernel would render no evidence and make the "proved"
+    // so reading only the Core would render no evidence and make the "proved"
     // signature verdict below unreachable.
     const { orders } = useAuditProcessOrders(processId);
     const publicClient = usePublicClient();
