@@ -19,7 +19,7 @@ type Entry = {
 // (`/orders`, `/audit`, `/rewards`, `/members/manage`): each is a real,
 // linked landing that prerenders a walletless-readable shell, so the
 // sitemap must agree with the nav in both directions — a nav-listed page
-// absent here is the drift the 2026-08-07 blind probe flagged.
+// absent here is drift a blind probe flags.
 //
 // Drift audit for this hand list (papers are derived below):
 //   cd frontend && find app -name page.tsx | sort

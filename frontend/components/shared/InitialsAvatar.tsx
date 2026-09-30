@@ -57,8 +57,8 @@ export function InitialsAvatar({
                 borderRadius: radius,
                 ...(fontSize !== undefined ? { fontSize } : {}),
                 // `ink.body`, not `ink.muted`: the initials sit in `text-paper`
-                // on this fill, and muted drops the pair below AA (ruled
-                // 2026-08-25). Taken from the palette module rather than spelled
+                // on this fill, and muted drops the pair below AA.
+                // Taken from the palette module rather than spelled
                 // as a hex — the sibling values here are numeric, so the fill
                 // stays in the same `style` object.
                 ...(tone === "accent" ? { backgroundColor: colorTokens.ink.body } : {}),

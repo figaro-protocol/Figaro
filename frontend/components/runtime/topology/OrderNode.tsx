@@ -9,8 +9,7 @@ import { colorTokens } from "@/lib/shared/designTokenValues";
 
 // ── Visual maps ─────────────────────────────────────────────────────────────
 //
-// Deliberately OUTSIDE the status-token system (ruled 2026-08-25;
-// DESIGN_TOKENS §1). Everything in this block — the per-state node chrome, the
+// Deliberately OUTSIDE the status-token system (DESIGN_TOKENS §1). Everything in this block — the per-state node chrome, the
 // state dot, and the buyer/seller role ring and dot below — is a CATEGORICAL
 // data-viz encoding: what it must deliver is mutual distinguishability across
 // a dense canvas, not a good/bad reading. A seller is not "info" and a buyer

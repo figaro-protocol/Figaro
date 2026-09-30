@@ -14,7 +14,7 @@
  * what an assembly row is keyed by — stays on the page.
  *
  * `members` carries NO scaffolding by design: /members is a one-subject page
- * (maintainer ruling 2026-08-06) whose only outbound links are the wizard and
+ * whose only outbound links are the wizard and
  * discovery. It renders the count line alone.
  */
 

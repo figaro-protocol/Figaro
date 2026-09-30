@@ -25,8 +25,8 @@ export const metadata: Metadata = withOg({
  * What lives here is the authoring PROCEDURE — how to write a spec, and the
  * four steps that take it from an editor to an anchored clause. The reference
  * half — what each part of the hash covers, the reserved-`article` trap, and
- * the Ricardian framing — lives on `/clauses#what-the-hash-covers` (maintainer
- * ruling 2026-08-12, the URL-depth rule in `docs/FRONTEND.md`): this page
+ * the Ricardian framing — lives on `/clauses#what-the-hash-covers` (the
+ * URL-depth rule in `docs/FRONTEND.md`): this page
  * points at it and must never fork a copy of it. Reading state needs no
  * wallet; the register + reclaim WRITES do (connect is a signing prerequisite,
  * gated inline, not a login).

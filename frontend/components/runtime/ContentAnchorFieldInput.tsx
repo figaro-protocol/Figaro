@@ -8,7 +8,7 @@
  * The ONLY fill path is the AFFIX: pick a file → pin it to IPFS (the
  * document must be fetchable for a counterparty to verify by rehashing) →
  * keccak256 of the bytes fills the field. There is no paste-hex input —
- * raw hex is used nowhere as a content fill (ruled 2026-07-10); the anchor
+ * raw hex is used nowhere as a content fill; the anchor
  * is derived from the artifact, never typed.
  *
  * When the artifact pins, its locator is emitted on the COMPANION channel

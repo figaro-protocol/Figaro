@@ -7,7 +7,7 @@ import { cn } from "@/lib/shared/utils";
  * `<title>`/`<desc>` pair is minted under `idPrefix` (the collision
  * guard `BaseFigureProps` documents), plus the standard `<figcaption>`.
  * Each figure keeps its own drawing (the SVG children) and any fields
- * of its own; plain-HTML figures (ruled 2026-08-06: the stack must read
+ * of its own; plain-HTML figures (the stack must read
  * as TEXT) do not use this frame.
  */
 export interface FigureFrameProps {

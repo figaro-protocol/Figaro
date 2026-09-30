@@ -46,8 +46,7 @@ interface Props {
     /** clauseId → composed clause map for the current order. A clause's
      *  presence as a key = selected; values exist only for clauses declaring
      *  `block.design.fills` (the designer's tailoring — consent's affix);
-     *  every other clause carries `{}`, its fields fill at checkout (ruled
-     *  2026-07-14). */
+     *  every other clause carries `{}`, its fields fill at checkout. */
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     /** Toggle a clause on/off for the current order. */
     onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
@@ -382,8 +381,7 @@ function ClauseRegistryPanel({
                     // Mandatory clauses fold in automatically; ASSEMBLY-SCOPED
                     // clauses (design.scope: "assembly") compose once at the
                     // assembly level, never per order — the drawer offering
-                    // them here is how duplicates would happen (ruled
-                    // 2026-07-28).
+                    // them here is how duplicates would happen.
                     .filter((c) => !clauseIsMandatory(c.clauseId, c.version)
                         && !clauseIsAssemblyScoped(c.clauseId, c.version))
                     .map((c) => eventByIdentity.get(`${c.clauseId}#${c.version}`))
@@ -505,7 +503,7 @@ function ClauseControl({
                             const nested = (registeredClauses ?? []).filter(
                                 (c) => c.clauseId != null && clauseNestsUnder(c.clauseId) === field.name,
                             );
-                            // Design time is STRUCTURAL (ruled 2026-07-14): the
+                            // Design time is STRUCTURAL: the
                             // designer edits ONLY the fields a clause names in
                             // `block.design.fills` — the tailoring (a pinned
                             // consent document, a pinned denomination).

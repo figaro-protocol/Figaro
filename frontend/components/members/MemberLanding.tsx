@@ -46,7 +46,7 @@ export function MemberLanding() {
     const { data: deposit } = useRegistrationDeposit();
     const { pending, isLoading: withdrawalLoading, refetch: refetchWithdrawal } = useWithdrawalStatus(address);
 
-    // NO doorway page (maintainer rule 2026-08-06): the reader arrives from
+    // NO doorway page: the reader arrives from
     // /join already sold — an unregistered wallet goes STRAIGHT to Identity.
     // The one exception is a wallet that LEFT but is still owed its deposit:
     // redirecting it would strand the ETH behind a screen it can't reach, so
@@ -56,7 +56,7 @@ export function MemberLanding() {
     // The redirect decision NEEDS the withdrawal status loaded: while it is
     // in flight, owedDeposit reads false and the race bounces a wallet that
     // IS owed its deposit into the wizard — the exact stranded-ETH case the
-    // owedDeposit exception exists to prevent (caught by e2e 2026-08-07).
+    // owedDeposit exception exists to prevent.
     const depositKnown = !isConnected || !withdrawalLoading;
     useEffect(() => {
         if (unregistered && depositKnown && !owedDeposit) {
@@ -164,7 +164,7 @@ function RegisteredCard({
         setProfile(null);
         setProfileError(null);
         // The shared reviver-backed, size-capped, cached fetcher — NOT a
-        // hand-rolled fetch+JSON.parse (audit 2026-07-23): a member profile is
+        // hand-rolled fetch+JSON.parse: a member profile is
         // permissionless untrusted network JSON, so it routes through the same
         // prototype-pollution-stripping path every other profile read uses.
         fetchMemberProfile(metadataURI)
@@ -211,7 +211,7 @@ function RegisteredCard({
                 profile={profile}
             />
 
-            {/* Both calls stay visible (user rule 2026-06-12): the profile
+            {/* Both calls stay visible: the profile
                 view/edit above, AND the onboarding wizard — for a registered
                 wallet the wizard re-walks the steps and publishing updates
                 this profile in place. */}
@@ -317,7 +317,7 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
     // `withdrawable` is the CHAIN's answer. Do not reintroduce a
     // `Date.now() >= releaseAt` comparison here: `releaseAt` is a block
     // timestamp, the two clocks drift, and the comparison disabled a
-    // legitimate claim outright (e2e 2026-07-30). `releaseAt` is still shown,
+    // legitimate claim outright. `releaseAt` is still shown,
     // as human-readable context only.
     const unlockAt = releaseAt ? Number(releaseAt) * 1000 : 0;
     const busy = isPending || isConfirming;

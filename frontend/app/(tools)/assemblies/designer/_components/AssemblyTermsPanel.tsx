@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * AssemblyTermsPanel — the ASSEMBLY-LEVEL composition surface (ruled
- * 2026-07-28): every registered clause declaring `design.scope: "assembly"`
+ * AssemblyTermsPanel — the ASSEMBLY-LEVEL composition surface:
+ * every registered clause declaring `design.scope: "assembly"`
  * (a term of the composition itself — a denomination pin, a dispute forum),
  * read live from `ClauseRegistry`, a checkbox each, composed ONCE for the
  * whole design. Field editors render exactly for `design.fills` — the same

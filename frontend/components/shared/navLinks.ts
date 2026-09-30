@@ -56,8 +56,8 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/discover", label: "Discover" },
     { href: "/members/manage", label: "Manage membership" },
     { href: "/audit", label: "Audit" },
-    // The graphs' query surface — a READING tool for spectators (maintainer-ruled
-    // 2026-08-26 to sit here too: mobile is exactly where a spectator stands).
+    // The graphs' query surface — a READING tool for spectators (it sits
+    // here too: mobile is exactly where a spectator stands).
     // Also a Build leaf beside /data in MARKETING_MAP; both listings are the
     // ruled "distinct entry point", not a duplication.
     { href: "/data/explore", label: "Data explorer" },

@@ -195,7 +195,7 @@ export function OnboardingAssembliesForm({
         e.preventDefault();
         // MANDATORY: a profile without assembly bindings cannot be ordered
         // from (checkout enables only for a bound profile) — neither the
-        // wizard nor the edit surface may produce one (user rule 2026-06-12).
+        // wizard nor the edit surface may produce one.
         if (selected.size === 0) {
             setSubmitError("Bind at least one published assembly — a member profile without one cannot be ordered from.");
             return;

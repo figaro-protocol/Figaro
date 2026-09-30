@@ -12,8 +12,8 @@
  * The one axis that differs between those two uses is the fill-vs-defer policy
  * for scalars, carried by `mode`:
  *
- *   - `"design"` (default) — the AgreementDrawer's policy, FULLY RULED
- *     2026-07-10: a REQUIRED field is a design-time TERM — scalars with no
+ *   - `"design"` (default) — the AgreementDrawer's policy, FULLY RULED:
+ *     a REQUIRED field is a design-time TERM — scalars with no
  *     default fill inline, array-of-object renders its repeater (a consent
  *     clause's affixed documents). OPTIONAL fields are NEVER design-filled,
  *     and there is NO checkout clause-content surface (the old "provided at

@@ -63,7 +63,7 @@ const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([
     ["geohash", GeohashFieldInput],
     // bytes32-hex = a CONTENT ANCHOR (keccak256 of a canonical artifact). The
     // ONLY fill path is affix → pin → hash — pasting raw hex is used nowhere
-    // as a content fill (ruled 2026-07-10), so the anchor input replaces the
+    // as a content fill, so the anchor input replaces the
     // plain text input for every bytes32-hex content field, including on
     // clauses this codebase has never seen.
     ["bytes32-hex", ContentAnchorFieldInput],

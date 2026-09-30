@@ -6,7 +6,7 @@ import { colorTokens } from "@/lib/shared/designTokenValues";
 
 // No `runtime = "edge"` here: edge runtime disables static generation, so the
 // static export would emit the <meta og:image> URL but never the image itself
-// (a guaranteed 404 on every deploy — measured 2026-08-05). Default runtime
+// (a guaranteed 404 on every deploy). Default runtime
 // lets `output: 'export'` render the PNG at build time.
 //
 // Every page references this one card: `withOg` points `openGraph.images` at

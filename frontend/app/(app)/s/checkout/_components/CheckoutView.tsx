@@ -130,7 +130,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // unit of account the catalogue quotes in). None ⇒ undefined — never a
     // coined default (resolved-empty = absence); ordering is gated off below.
     // The pin lives at the ASSEMBLY level of the template (design.scope:
-    // "assembly", ruled 2026-07-28) — a term of the composition, folded into
+    // "assembly") — a term of the composition, folded into
     // every agreement at checkout; the old root-order convention is dead.
     const utilityTokenPin = pickedAssembly
         ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
@@ -215,7 +215,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // renders whatever fields the composing clause declares, naming no clause.
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
     // The buyer's GENERAL-clause field fills, nodeId → clauseId → values.
-    // Design time is structural (ruled 2026-07-14): general clauses arrive
+    // Design time is structural: general clauses arrive
     // from the template as `{}`; their transaction particulars are authored
     // here, at checkout. Spec-routed — the checkout names no clause.
     const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});

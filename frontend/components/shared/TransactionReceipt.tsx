@@ -41,7 +41,7 @@ const DEFAULT_INLINE_ROWS_CLASSNAME = "text-xs text-ink-faint font-mono break-al
  * Shared receipt panel: heading, prose, label/value rows, actions. Replaces
  * the hand-rolled `<dl>`-based receipt markup duplicated across the clause
  * registration, assembly publish, and member onboarding publish flows
- * (maintainer ruling 2026-08-07). Read-only by construction — it renders a
+ * Read-only by construction — it renders a
  * result already produced by a completed transaction; it never initiates one.
  */
 export function TransactionReceipt({

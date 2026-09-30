@@ -24,7 +24,7 @@ export const metadata: Metadata = withOg({
 // parties' BEHAVIOUR, never as the bond arithmetic, and every line is in the
 // positive. The six frames are the five parts and the loop: wallets, terms, a
 // process signed and bonded, paid at once, the evidence, the count that
-// rewards. The three claims of 2026-09-24 sit on the frames they belong to.
+// rewards. The three claims sit on the frames they belong to.
 const FRAMES: { line: string; fact: string }[] = [
     {
         line: "You choose where you belong.",

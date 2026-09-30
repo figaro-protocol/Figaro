@@ -75,7 +75,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Economics and Game Theory",
         discipline: "Mechanism design · market design · institutional economics · monetary theory",
         intro: "The micro-foundations: mechanism design as reverse game theory — constructing the game so that the desired behavior is what self-interested actors converge on — tempered by the evolution-of-cooperation result that cooperation among selfish actors is a sufficient condition, not a necessary one, so richer theories of human behavior belong here too.",
-        definition: "What a market can be built out of, once the standing firm is no longer the uniquely efficient unit of production. This group reads the substrate as economists and game theorists read it — the bonding equilibrium and its extension from two parties to N, institutional form, market formation, monetary design.",
+        definition: "What a market can be built out of, once the standing firm is no longer the uniquely efficient unit of production. The papers here ask what economists and game theorists ask — the bonding equilibrium and its extension from two parties to N, institutional form, market formation, monetary design.",
         papers: [
             {
                 title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination",
@@ -127,7 +127,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Industrial and Systems Engineering",
         discipline: "Process modeling · supply-chain coordination",
         intro: "The system as a designed whole: complex adaptive networks whose collective behavior cannot be inferred from individual actions, and resilient protocol design that accounts for the network's spatial and temporal dynamics.",
-        definition: "How bonded commitments compose into multi-party processes with auditable handoffs, lifecycle attestation, and proximity proof. This group reads the substrate as process and supply-chain engineers read it, worked through on two sectors that already coordinate at scale — air service, and container shipping after TradeLens.",
+        definition: "How bonded commitments compose into multi-party processes with auditable handoffs, lifecycle attestation, and proximity proof. The papers here ask what process and supply-chain engineers ask, worked through on two sectors that already coordinate at scale — air service, and container shipping after TradeLens.",
         papers: [
             {
                 title: "Air Service as Coordinated Resource Markets",
@@ -151,7 +151,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Computer Science and Cryptography",
         discipline: "Cryptographic primitives · adversarial review · formal verification · protocol composition · runtime architecture",
         intro: "Economic policies embedded in software: protocol and smart-contract code as the rule layer, cryptographic tools combined with economic incentives so that the cost of wrongdoing is disproportionate to its benefit.",
-        definition: "Two complementary lenses on the protocol's CS surface: what stands above the kernel as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. This group reads the substrate as engineers, cryptographers and verification people read it; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
+        definition: "Two complementary lenses on the protocol's CS surface: what stands above the kernel as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. The papers here ask what engineers, cryptographers and verification people ask; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
         papers: [
             {
                 title: "A Verified Resolution Kernel: Formal Verification, Threat Model, and the Scope of the Claim",
@@ -168,7 +168,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
         intro: "The normative layer: any choice of coordination objective is a subjective choice, so whose values a system encodes, the accountability of its designers, and the ethics of decision algorithms in social systems come before the engineering.",
-        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. This group reads the substrate as lawyers, philosophers, and ethicists read it.",
+        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. The papers here ask what lawyers, philosophers, and ethicists ask.",
         papers: [
             {
                 title: "On-Chain Evidence, Off-Chain Adjudication",
@@ -213,7 +213,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Political Science, Institutional Economics and Governance",
         discipline: "Political economy · hegemony · sovereign coordination",
         intro: "The meso-institutional level: who gets to make which decisions, under which circumstances, accountable to whom, and how that changes over time — automation in socioeconomic systems as algorithmic policy-making.",
-        definition: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. This group reads the substrate as political theorists read it — Gramsci, Arendt, post-hegemony: what governance is when the primitive refuses to take positions, and what a capacity to have commerce amounts to with no polity behind it.",
+        definition: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. The papers here ask what political theorists ask — Gramsci, Arendt, post-hegemony: what governance is when the primitive refuses to take positions, and what a capacity to have commerce amounts to with no polity behind it.",
         papers: [
             {
                 title: "The Wallet Without a Polity",
@@ -258,7 +258,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Operations Research and Management Science",
         discipline: "Resource allocation · accounting · ledger design",
         intro: "Allocation made operational: physical, financial, and social resources allocated among stakeholders with unique preferences, information, and capabilities — and the coordination and scaling of those allocation decisions.",
-        definition: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. This group reads the substrate as operations researchers and accountants — the kernel as an accounting primitive, the process topology as a coordination problem, the closure as a scheduling invariant.",
+        definition: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. The papers here ask what operations researchers and accountants ask — the kernel as an accounting primitive, the process topology as a coordination problem, the closure as a scheduling invariant.",
         papers: [
             {
                 title: "Bookkeeping as Protocol Byproduct: Self-Closing Ledger Periods",
@@ -282,7 +282,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "AI, Optimization and Control Theory",
         discipline: "Agent coordination · allocation · control of the mesh",
         intro: "Steering and stability: encoding a coordination objective as a cost function and designing for dynamic stability around it, with the multiscale dynamics that link individual decisions to system-level outcomes.",
-        definition: "Agent-mediated coordination over bonded commitments: the kernel's actor-neutrality property turns them into the missing enforcement layer for mutually-untrusted multi-agent systems. This group reads the substrate as control theorists and multi-agent-systems people read it; the Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization the paper reads back as control.",
+        definition: "Agent-mediated coordination over bonded commitments: the kernel's actor-neutrality property turns them into the missing enforcement layer for mutually-untrusted multi-agent systems. The papers here ask what control theorists and multi-agent-systems people ask; the Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization the paper reads back as control.",
         papers: [
             {
                 title: "Actor-Neutral Coordination over Bonded Commitments",
@@ -299,7 +299,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Psychology and Decisions Science",
         discipline: "Behavioral game theory · incentive legibility · interface cognition",
         intro: "How individuals actually decide, given knowledge of the rules and uncertainty about the decisions of others; the security of any incentive system depends on how people respond to incentives — an empirical question, not a theorem.",
-        definition: "How participants read a bonded equilibrium under uncertainty, and how legible the incentive structure is to a non-specialist. This group reads the substrate as behavioral game theorists and decision scientists read it — what the comparison at a party's own node actually asks of them, and where the experimental literature on coordination failure does and does not carry over.",
+        definition: "How participants read a bonded equilibrium under uncertainty, and how legible the incentive structure is to a non-specialist. The papers here ask what behavioral game theorists and decision scientists ask — what the comparison at a party's own node actually asks of them, and where the experimental literature on coordination failure does and does not carry over.",
         papers: [
             {
                 title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment",

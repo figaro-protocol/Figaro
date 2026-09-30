@@ -6,7 +6,7 @@ export interface AssetWalletOperatorFigureProps {
 }
 
 // The asset/wallet/operator triad, drawn once for /agents — the page's own
-// three-layer prose as a figure. The figures' standing rule (ruled 2026-08-06):
+// three-layer prose as a figure. The figures' standing rule:
 // plain HTML, not SVG — the triad must read as TEXT to every reader (curl,
 // agents, screen readers), not only as shape. The kernel's
 // resolution boundary sits ON the wallet row: everything the chain ever sees.
