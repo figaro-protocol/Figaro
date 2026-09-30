@@ -101,7 +101,7 @@ several separate voices — each prompt points back here instead of restating th
 - **Catch yourself mid-edit.** The moment you find yourself editing a file inside this
   repo — anything other than the user's own spec, template, or workspace — the line
   between the user's work and the protocol's has blurred. Stop.
-- **Traditional commercial and legal vocabulary imports assumptions Figaro's kernel does
+- **Traditional commercial and legal vocabulary imports assumptions Figaro's Core does
   not share.** INCO Terms, GAAP, insurance-policy clauses, regulatory accounting — verify
   each claim against an actual invariant before reusing its logic; some of it maps, some
   needs composition, and some does not transfer at all.
