@@ -151,7 +151,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Computer Science and Cryptography",
         discipline: "Cryptographic primitives · adversarial review · formal verification · protocol composition · runtime architecture",
         intro: "Economic policies embedded in software: protocol and smart-contract code as the rule layer, cryptographic tools combined with economic incentives so that the cost of wrongdoing is disproportionate to its benefit.",
-        definition: "Two complementary lenses on the protocol's CS surface: what stands above the kernel as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. The papers here ask what engineers, cryptographers and verification people ask; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
+        definition: "Two complementary lenses on the protocol's CS surface: what stands above the mechanism as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. The papers here ask what engineers, cryptographers and verification people ask; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
         papers: [
             {
                 title: "A Verified Resolution Contract: Formal Verification, Threat Model, and the Scope of the Claim",
@@ -213,12 +213,12 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Political Science, Institutional Economics and Governance",
         discipline: "Political economy · hegemony · sovereign coordination",
         intro: "The meso-institutional level: who gets to make which decisions, under which circumstances, accountable to whom, and how that changes over time — automation in socioeconomic systems as algorithmic policy-making.",
-        definition: "The kernel is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. The papers here ask what political theorists ask — Gramsci, Arendt, post-hegemony: what governance is when the primitive refuses to take positions, and what a capacity to have commerce amounts to with no polity behind it.",
+        definition: "The mechanism is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same kernel. The papers here ask what political theorists ask — Gramsci, Arendt, post-hegemony: what governance is when the primitive refuses to take positions, and what a capacity to have commerce amounts to with no polity behind it.",
         papers: [
             {
                 title: "The Wallet Without a Polity",
                 href: "/papers/wallet-without-polity",
-                summary: "Capacity is the contract element a polity confers; the kernel tests it by two acts that consult no polity, signing and funding a bond. What the bonded commitment means for refugees, the stateless, and populations outside stable banking and enforcement, and the boundary: a bond they can fund.",
+                summary: "Capacity is the contract element a polity confers; the mechanism tests it by two acts that consult no polity, signing and funding a bond. What the bonded commitment means for refugees, the stateless, and populations outside stable banking and enforcement, and the boundary: a bond they can fund.",
                 keywords: ["statelessness", "refugee economies", "displaced populations", "the wallet as legal subject", "Arendt", "humanitarian economics", "commerce-without-recognition"],
                 industries: ["Humanitarian"],
             },
@@ -282,12 +282,12 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "AI, Optimization and Control Theory",
         discipline: "Agent coordination · allocation · control of the mesh",
         intro: "Steering and stability: encoding a coordination objective as a cost function and designing for dynamic stability around it, with the multiscale dynamics that link individual decisions to system-level outcomes.",
-        definition: "Agent-mediated coordination over bonded commitments: the kernel's actor-neutrality property turns them into the missing enforcement layer for mutually-untrusted multi-agent systems. The papers here ask what control theorists and multi-agent-systems people ask; the Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization the paper reads back as control.",
+        definition: "Agent-mediated coordination over bonded commitments: the Core's actor-neutrality property turns them into the missing enforcement layer for mutually-untrusted multi-agent systems. The papers here ask what control theorists and multi-agent-systems people ask; the Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization the paper reads back as control.",
         papers: [
             {
                 title: "Actor-Neutral Coordination over Bonded Commitments",
                 href: "/papers/actor-neutral-coordination",
-                summary: "The kernel reads signatures and bond posture, never the kind of entity behind a key, so people and software coordinate on the same footing, with the bond as what lets a stranger trust a stranger: the enforcement layer that market design and control theory both lacked.",
+                summary: "The Core reads signatures and bond posture, never the kind of entity behind a key, so people and software coordinate on the same footing, with the bond as what lets a stranger trust a stranger: the enforcement layer that market design and control theory both lacked.",
                 keywords: ["multi-agent coordination", "bonded commitment", "control theory", "actor-neutrality", "autonomous agents", "AI agent design", "human-in-the-loop"],
                 industries: ["AI agents"],
             },
