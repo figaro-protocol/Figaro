@@ -69,7 +69,7 @@ export default function AirServiceCoordinationPaper() {
                 </PaperRun>
             </PaperSection>
 
-            <PaperSection title="2. The Kernel">
+            <PaperSection title="2. The Mechanism">
                 <p>The mechanism has two calls, each with a mechanism design of its own. This section states them, and the equilibrium they compose to, at the depth the air-service argument uses; nothing below is domain-specific, and nothing in the air-service reading modifies it.</p>
                 <PaperRun title="Commit &mdash; asymmetric bonding.">
                     A commitment is signed by both parties and names a payment <Math>{"P > 0"}</Math> and a cumulative value <Math>{"G"}</Math>. The buyer locks <Math>{"2P"}</Math>; the seller locks <Math>{"2G"}</Math>. The base is the value the process has accumulated <em>through the seller&rsquo;s own link, its own payment included</em>: for the <Math>{"i"}</Math>-th commit into a process, <Math>{"G_i = \\sum_{j \\leq i} P_j"}</Math>. It is fixed by arithmetic rather than reported &mdash; a commitment declares the standing accumulator plus its own payment, and any other declaration is refused &mdash; so a seller&rsquo;s bond base is determined jointly by the process&rsquo;s history and the payment the two parties signed. The first commit opens the process, where <Math>{"G = P"}</Math> and the two bonds coincide; every later commit raises the accumulator by its own payment and bonds its seller against the whole of it.
