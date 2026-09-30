@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Watches for the terminal order event — OrderResolved (the kernel has NO
+ * Watches for the terminal order event — OrderResolved (FigaroCore has NO
  * cancel, and `resolveProcess` emits OrderResolved for EVERY order before the
  * one ProcessResolved) — and purges the order's ECDH ephemeral keypair
  * (sessionStorage ecdh store) via handoffPersistenceService: the
@@ -78,7 +78,7 @@ export function useHandoffCleanup(opts: UseHandoffCleanupOpts = {}) {
                 onLogs: (logs) => {
                     if (!mounted) return;
                     for (const log of logs) {
-                        // The kernel event's field is `orderHash` — destructuring
+                        // FigaroCore event's field is `orderHash` — destructuring
                         // `orderId` here was a silent no-op that killed the
                         // per-order purge path (every log skipped on the guard).
                         const { orderHash, processId } = (log.args ?? {}) as Partial<{
