@@ -62,7 +62,7 @@ Every consumer loads each spec live from `ClauseRegistry` → IPFS; nothing bund
 
 An agreement is the set of clause sections composed for one order. Each `AgreementSection` names its `clause` and `version` and carries the clause's content; the parties sort the leaves, build the merkle root, and sign it. That root is the `agreementHash` in the `Commitment` — so signing the order *is* signing exactly the composed terms.
 
-One clause is always the order's shape: `figaro-topology` states which seller follows which. It is committed at signing as a merkle leaf like every other section, inclusion-provable against `agreementHash` — the kernel stores no parent or child, so indexers read a process's topology from the signed agreement, never from the chain.
+One clause is always the order's shape: `figaro-topology` states which seller follows which. It is committed at signing as a merkle leaf like every other section, inclusion-provable against `agreementHash` — `FigaroCore` stores no parent or child, so indexers read a process's topology from the signed agreement, never from the chain.
 
 ## How an assembly composes from agreements
 
