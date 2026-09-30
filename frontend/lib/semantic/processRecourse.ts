@@ -2,7 +2,7 @@
  * Process-recourse resolution.
  *
  * Layer 3 of the three-layer dispute model (see the on-chain-evidence paper) is the only
- * *configured* layer: Layers 1 (bonding) and 2 (peer coordination) are kernel
+ * *configured* layer: Layers 1 (bonding) and 2 (peer coordination) are Core
  * mechanisms, always on. Layer 3 is the off-chain forum, and the parties'
  * agreement NAMES it — the dispute-resolution clause(s) the assembly designer
  * authored into the order(s).
@@ -39,7 +39,7 @@ export interface RecourseClause {
  * whose clause declares the dispute-resolution article. A designer may author
  * more than one (e.g. a decentralized-ADR clause + an applicable-law clause),
  * so every distinct one is returned in first-seen order. Named `derive`, not
- * `resolve`, to stay clear of the kernel's `resolveProcess` resolve call.
+ * `resolve`, to stay clear of FigaroCore's `resolveProcess` resolve call.
  */
 export function deriveProcessRecourse(
     orders: readonly Order[],

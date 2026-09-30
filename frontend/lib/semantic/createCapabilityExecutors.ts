@@ -40,7 +40,7 @@ export interface CapabilityExecutorDeps {
     publicClient: { waitForTransactionReceipt(args: { hash: Hex }): Promise<{ status: string }>; chain?: { id: number } } | undefined;
     processOrders: readonly Order[];
     processAgreements: Map<string, Agreement>;
-    /** The kernel resolve — buyer dominance's single signature. */
+    /** FigaroCore resolve — buyer dominance's single signature. */
     resolveProcess: (processId: string, commitments: ReturnType<typeof restoreSignedProcessId>[]) => Promise<Hex | undefined | void>;
     /** RPGF usage recording (permissionless; UsageCounter re-verifies every
      *  fact, so a revert is bookkeeping, not failure). Fired after resolve —

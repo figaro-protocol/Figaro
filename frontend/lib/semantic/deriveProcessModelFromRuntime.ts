@@ -16,7 +16,7 @@ import {
 } from "@/lib/semantic/models";
 
 // Rootness is a TOPOLOGY concept (no parent edges in the committed topology
-// section) — never derived from bond arithmetic. Bonding is kernel-layer,
+// section) — never derived from bond arithmetic. Bonding is Core-layer,
 // linear, and has nothing to do with topology.
 
 function runtimeSource(sourceLabel: string, referenceId?: string) {
@@ -28,7 +28,7 @@ function runtimeSource(sourceLabel: string, referenceId?: string) {
 }
 
 /** Pre-indexed runtime state, built ONCE per process derivation so the
- *  per-order capability loop stays O(orders + attestations). The kernel's
+ *  per-order capability loop stays O(orders + attestations). FigaroCore's
  *  resolve ceiling (~1,240 orders / 30M gas) must flow through this deriver
  *  without quadratic blowup — per-order scans of the full attestation array
  *  are the O(N²) shape this bundle exists to prevent. */
