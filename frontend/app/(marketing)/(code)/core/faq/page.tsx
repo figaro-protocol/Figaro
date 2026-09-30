@@ -9,7 +9,7 @@ import { LabelledListRow } from "@/components/shared/LabelledListRow";
 export const metadata: Metadata = withOg({
     title: "Core FAQ — Figaro Protocol",
     description:
-        "Answers about the kernel and what stands beside it: what is frozen, the only two calls, where it is deployed, what has been verified and what has not, and what batch resolution changes.",
+        "Answers about the Core and what stands beside it: what is frozen, the only two calls, where it is deployed, what has been verified and what has not, and what batch resolution changes.",
 });
 
 const QUESTIONS: { id: string; title: string }[] = [
@@ -41,7 +41,7 @@ export default function Faq() {
                 title="Core FAQ."
                 lead={
                     <>
-                        Answers about the kernel. Each states a fact of the contracts and points at the page that owns it.
+                        Answers about the Core. Each states a fact of the contracts and points at the page that owns it.
                     </>
                 }
             />
@@ -74,10 +74,10 @@ export default function Faq() {
 
             <MarketingSection title="Who can shut this down or freeze your funds?" sectionId="shutdown">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one. FigaroCore is decentralized and permissionless, with no governance holding discretionary power over tokens. The kernel does not contain code that any address can call to halt resolution, blacklist a participant, or move tokens it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold. A token is a different object from the kernel: a token whose own contract lets its issuer freeze addresses stays freezable by that issuer, inside a process or outside one, and that is a property of the token the parties chose, never of the kernel.
+                    No one. FigaroCore is decentralized and permissionless, with no governance holding discretionary power over tokens. The Core does not contain code that any address can call to halt resolution, blacklist a participant, or move tokens it does not have a signed commitment against. There is nothing to capture because there is no privileged role to hold. A token is a different object from the Core: a token whose own contract lets its issuer freeze addresses stays freezable by that issuer, inside a process or outside one, and that is a property of the token the parties chose, never of the Core.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The exposure that remains is the underlying chain. If the chain itself halts, resolution halts &mdash; that risk is external to Figaro and shared with every other protocol on that chain. Inside Figaro, no party can halt the kernel; the property is called <em>no escape hatches</em>, and the protocol&apos;s security argument depends on it. Removing it would mean a different protocol with different guarantees.
+                    The exposure that remains is the underlying chain. If the chain itself halts, resolution halts &mdash; that risk is external to Figaro and shared with every other protocol on that chain. Inside Figaro, no party can halt the Core; the property is called <em>no escape hatches</em>, and the protocol&apos;s security argument depends on it. Removing it would mean a different protocol with different guarantees.
                 </p>
             </MarketingSection>
 
@@ -103,7 +103,7 @@ export default function Faq() {
 
             <MarketingSection title="Who holds the tokens?" sectionId="custody">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No one. When a buyer and seller commit to a process, both bonds &mdash; the buyer&apos;s with the payment carried inside it &mdash; move into <em>FigaroCore</em> &mdash; the kernel contract &mdash; and stay there until the buyer signs the atomic resolution that releases them. The tokens sit in one smart contract, and the only thing that moves them is the resolution the buyer signs.
+                    No one. When a buyer and seller commit to a process, both bonds &mdash; the buyer&apos;s with the payment carried inside it &mdash; move into <em>FigaroCore</em> &mdash; the Core contract &mdash; and stay there until the buyer signs the atomic resolution that releases them. The tokens sit in one smart contract, and the only thing that moves them is the resolution the buyer signs.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     FigaroCore is decentralized and permissionless. No address can withdraw tokens it does not have a signed commitment against. The only path out is the resolution the buyer signs &mdash; one call that pays every seller and refunds every bond, encoded in the smart contract and auditable on-chain. Smart contracts are code, and code can have bugs. What has been done about that is set out under <Link href="#verified" className="text-ink-heading font-medium hover:underline">verification</Link>, below.
@@ -139,10 +139,10 @@ export default function Faq() {
                     Your move comes before that signature. Put right any shortfall. Attest what you delivered, under a clause the agreement carries, so it is evidence, not a later claim. Take it to the forum the agreement names: it rules on the data you both hold, and its ruling is enforced against what the buyer holds outside the process. Your co-sellers&apos; bonds ride on that same resolution; they want it closed too.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What a process nobody ever resolves strands is everything committed to it: the buyer&apos;s bond, twice the payment with the payment carried inside it, and each seller&apos;s bond, twice the cumulative value through its own order &mdash; all of it in the one token the process is denominated in, reaching no one, permanently. Nothing was spent ahead of the ending, because payment moves only at resolution: what stays locked is what each party posted as its own deterrent, and the kernel has no operation that reaches any of it.
+                    What a process nobody ever resolves strands is everything committed to it: the buyer&apos;s bond, twice the payment with the payment carried inside it, and each seller&apos;s bond, twice the cumulative value through its own order &mdash; all of it in the one token the process is denominated in, reaching no one, permanently. Nothing was spent ahead of the ending, because payment moves only at resolution: what stays locked is what each party posted as its own deterrent, and the Core has no operation that reaches any of it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The residual: a buyer willing to leave its whole bond, twice the payment, locked for good to deny you yours can &mdash; keeping what you delivered, it is out of pocket by exactly the payment &mdash; and nothing on chain reaches in. That is the price of no escape hatch, and why a remedy comes before resolution, not after. The arithmetic is on the kernel page; the full treatment is in <Link href="/papers/external-events" className="text-ink-heading font-medium hover:underline">External events</Link>.
+                    The residual: a buyer willing to leave its whole bond, twice the payment, locked for good to deny you yours can &mdash; keeping what you delivered, it is out of pocket by exactly the payment &mdash; and nothing on chain reaches in. That is the price of no escape hatch, and why a remedy comes before resolution, not after. The arithmetic is on the Core page; the full treatment is in <Link href="/papers/external-events" className="text-ink-heading font-medium hover:underline">External events</Link>.
                 </p>
             </MarketingSection>
 
@@ -151,10 +151,10 @@ export default function Faq() {
                     Then five layers stand behind the trade, and the next answer walks all five with the figure. What this answer owns is the honest caveat underneath them:
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    But start with what the arithmetic is built to do to the question: the trade&apos;s own arithmetic is built so that performing, then resolving, is each side&apos;s best answer to the other while the bonds are locked &mdash; so the ordinary ending of a disagreement is a remedy the parties agree between themselves, before resolution, with both deterrents still in force. A dispute is the exception the deterrent failed to dissolve. That is why dispute resolution lives at the edge of the design rather than at its center: not because disagreement is ignored, but because the mechanism is built to starve it. The kernel itself forgives nothing &mdash; anything with the power to release a party from what it committed to is a seat worth capturing &mdash; so forgiveness lives with the parties before resolution, in a forum&apos;s ruling they carry into a remedy there, and in the protections someone composes above the kernel.
+                    But start with what the arithmetic is built to do to the question: the trade&apos;s own arithmetic is built so that performing, then resolving, is each side&apos;s best answer to the other while the bonds are locked &mdash; so the ordinary ending of a disagreement is a remedy the parties agree between themselves, before resolution, with both deterrents still in force. A dispute is the exception the deterrent failed to dissolve. That is why dispute resolution lives at the edge of the design rather than at its center: not because disagreement is ignored, but because the mechanism is built to starve it. The Core itself forgives nothing &mdash; anything with the power to release a party from what it committed to is a seat worth capturing &mdash; so forgiveness lives with the parties before resolution, in a forum&apos;s ruling they carry into a remedy there, and in the protections someone composes above the Core.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    There is no on-chain verdict, and there will not be one. The protocol does not adjudicate. Disagreements that exhaust the first three layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the kernel takes no position on which forum a community uses. A Kleros clause is published, so composing that forum into an assembly is a design-time choice a designer makes &mdash; and any other forum composes the same way. The full external-composition catalogue &mdash; forums, and everything else the kernel deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
+                    There is no on-chain verdict, and there will not be one. The protocol does not adjudicate. Disagreements that exhaust the first three layers go to whatever off-chain forum the parties chose &mdash; Figaro contributes evidence, not a ruling. The dispute layer is provider-agnostic by design; the Core takes no position on which forum a community uses. A Kleros clause is published, so composing that forum into an assembly is a design-time choice a designer makes &mdash; and any other forum composes the same way. The full external-composition catalogue &mdash; forums, and everything else the Core deliberately leaves outside itself &mdash; is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
                 </p>
             </MarketingSection>
 
@@ -166,13 +166,13 @@ export default function Faq() {
                     The same two facts are why there is one resolution at the end rather than a payment at each handoff as the work passes along. A handoff paid on the spot ends that seller&apos;s interest in what happens afterwards, and that interest is the whole of the social mechanism. Nobody is paid until the buyer resolves, so every co-seller keeps a live, bonded reason to see a fault put right while the process is still open. Paying locally would also break one trade into separate processes, each with its own data, and no forum, auditor, or court reading them later could tell that they were one trade.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    If the process genuinely cannot complete &mdash; an upstream contributor disappears, no co-seller can take their place, the work is impossible &mdash; the buyer still holds the resolution key. Bonds stay locked until the buyer signs &mdash; why resolution is assigned that way, and what stalling costs the buyer, is derived on the kernel page.
+                    If the process genuinely cannot complete &mdash; an upstream contributor disappears, no co-seller can take their place, the work is impossible &mdash; the buyer still holds the resolution key. Bonds stay locked until the buyer signs &mdash; why resolution is assigned that way, and what stalling costs the buyer, is derived on the Core page.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="What does the network learn about you?" sectionId="privacy">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Almost nothing. The kernel stores fingerprints, never content &mdash; the hashes of the agreements, and the keccak256 of each attestation&apos;s content. Everything a person might recognize as personal data stays off-chain, encrypted, held where the parties can erase it. The European Data Protection Board&apos;s Guidelines 02/2025 lay out what that looks like for a blockchain: keep personal data off the ledger, store it off-chain under crypto-shredding, make pinned content erasable, and minimize any location data that is published. Figaro implements that pattern, and does not call itself &ldquo;compliant&rdquo; &mdash; compliance is a property of a deployment and the party running it, not of the code.
+                    Almost nothing. The Core stores fingerprints, never content &mdash; the hashes of the agreements, and the keccak256 of each attestation&apos;s content. Everything a person might recognize as personal data stays off-chain, encrypted, held where the parties can erase it. The European Data Protection Board&apos;s Guidelines 02/2025 lay out what that looks like for a blockchain: keep personal data off the ledger, store it off-chain under crypto-shredding, make pinned content erasable, and minimize any location data that is published. Figaro implements that pattern, and does not call itself &ldquo;compliant&rdquo; &mdash; compliance is a property of a deployment and the party running it, not of the code.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Each trade also chooses, term by term, what it publishes to the open commons and what it seals behind the fingerprint &mdash; the full story of that choice is on <Link href="/data" className="text-ink-heading font-medium hover:underline">Data</Link>.
@@ -229,10 +229,10 @@ export default function Faq() {
 
             <MarketingSection title="What if you lose your keys?" sectionId="keys">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Key loss is a wallet concern, not a protocol concern &mdash; with one sharp qualifier. The kernel verifies every commitment signature by ECDSA recovery, so a buyer or seller is always an externally-owned account: a Safe or other contract wallet cannot hold the role directly. The durable posture is decided before you commit: keep the key in hardware-grade keeping, and set up a recovery path on the account in advance. On a chain that has adopted EIP-7702 that path is a delegation: it lets you authorize, ahead of time, a backup way to act for your account, so that if the key is lost you can still close out your active trades from the same address. Figaro inherits whatever your account provides; it adds no recovery surface and removes none.
+                    Key loss is a wallet concern, not a protocol concern &mdash; with one sharp qualifier. The Core verifies every commitment signature by ECDSA recovery, so a buyer or seller is always an externally-owned account: a Safe or other contract wallet cannot hold the role directly. The durable posture is decided before you commit: keep the key in hardware-grade keeping, and set up a recovery path on the account in advance. On a chain that has adopted EIP-7702 that path is a delegation: it lets you authorize, ahead of time, a backup way to act for your account, so that if the key is lost you can still close out your active trades from the same address. Figaro inherits whatever your account provides; it adds no recovery surface and removes none.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The kernel has no recovery path of any kind. New commitments always require a fresh signature from the party&apos;s key &mdash; lose the key and no one can produce one, not Figaro, not a court order, not a software update. Resolution differs in exactly one way: it is authorized by the buyer&apos;s <em>address</em>, not a fresh signature. A buyer who pre-installed an EIP-7702 delegation before losing the key can still trigger resolution from that address and resolve every active process; a buyer who didn&apos;t leaves the bonds locked, permanently. This is the explicit accepted risk of the no-escape-hatch posture: the same property that prevents anyone from stealing tokens also prevents anyone from recovering them. Plan for key loss before you commit tokens to an active process.
+                    The Core has no recovery path of any kind. New commitments always require a fresh signature from the party&apos;s key &mdash; lose the key and no one can produce one, not Figaro, not a court order, not a software update. Resolution differs in exactly one way: it is authorized by the buyer&apos;s <em>address</em>, not a fresh signature. A buyer who pre-installed an EIP-7702 delegation before losing the key can still trigger resolution from that address and resolve every active process; a buyer who didn&apos;t leaves the bonds locked, permanently. This is the explicit accepted risk of the no-escape-hatch posture: the same property that prevents anyone from stealing tokens also prevents anyone from recovering them. Plan for key loss before you commit tokens to an active process.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-5 mb-3">How to set it up, before your first order:</p>
                 <ol className="list-decimal pl-6 space-y-2 text-base text-ink-body leading-relaxed">
@@ -258,7 +258,7 @@ export default function Faq() {
                     These are detectors you run, not protection that runs for you. Neither one stops a doctored prompt; they let you catch one &mdash; the first before you sign, the second afterwards and by anybody.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    And what is not fixed: the hash in your wallet, rather than the trade in words. That is the kernel&apos;s doing and it is staying. The signed commitment binds the agreement by fingerprint, and the kernel has no upgrade key &mdash; a friendlier prompt would cost a kernel someone can change, and every other property described on this page depends on there being no such person. That same fingerprint-binding is what lets both checks above run outside this project&apos;s reach.
+                    And what is not fixed: the hash in your wallet, rather than the trade in words. That is the Core&apos;s doing and it is staying. The signed commitment binds the agreement by fingerprint, and the Core has no upgrade key &mdash; a friendlier prompt would cost a Core someone can change, and every other property described on this page depends on there being no such person. That same fingerprint-binding is what lets both checks above run outside this project&apos;s reach.
                 </p>
             </MarketingSection>
 
@@ -275,22 +275,22 @@ export default function Faq() {
                     The pattern is the same in all three: the obligation stays with the party who has it, and what the data removes is the part where you have to be believed. Nothing here makes a deployment compliant &mdash; compliance is a property of you and how you run it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    One boundary sits underneath all three, and it is the thinnest joint in the whole arrangement. Everything the data says about the physical world &mdash; a handoff, an arrival, a temperature reading, a measured figure &mdash; enters it as a claim signed by a party, never as the world itself. No fingerprint checks a fact. What stands behind such a claim is economic and social rather than cryptographic: the party signing it has twice the value at its own link bonded for as long as the process is open, and nobody is paid until the buyer resolves, so a co-seller who spots a fault has their own reason to see it put right first. Where a harder check than that is wanted, it is composed in at design time &mdash; an independent inspection taking its own bonded leg of the trade, a credential register named in the clause &mdash; rather than supplied by the protocol. The data layer names four boundaries for what stands behind a row: protocol-enforced, what the kernel itself enforced; institution-declared, what a party declared and the protocol never validated; protocol-derived, what is anchored on chain with the content behind the fingerprint held off it; and composition-derived, what a composed venue&apos;s own events carry. A third party reading the books &mdash; a lender, an insurer, a court &mdash; reads the boundary of each row with it, because parties acting together can emit perfectly formed books for a service never rendered.
+                    One boundary sits underneath all three, and it is the thinnest joint in the whole arrangement. Everything the data says about the physical world &mdash; a handoff, an arrival, a temperature reading, a measured figure &mdash; enters it as a claim signed by a party, never as the world itself. No fingerprint checks a fact. What stands behind such a claim is economic and social rather than cryptographic: the party signing it has twice the value at its own link bonded for as long as the process is open, and nobody is paid until the buyer resolves, so a co-seller who spots a fault has their own reason to see it put right first. Where a harder check than that is wanted, it is composed in at design time &mdash; an independent inspection taking its own bonded leg of the trade, a credential register named in the clause &mdash; rather than supplied by the protocol. The data layer names four boundaries for what stands behind a row: protocol-enforced, what the Core itself enforced; institution-declared, what a party declared and the protocol never validated; protocol-derived, what is anchored on chain with the content behind the fingerprint held off it; and composition-derived, what a composed venue&apos;s own events carry. A third party reading the books &mdash; a lender, an insurer, a court &mdash; reads the boundary of each row with it, because parties acting together can emit perfectly formed books for a service never rendered.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="What exactly is frozen?" sectionId="frozen">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Two contracts: FigaroCore and its commitment types. No admin, no upgrade path, no pause.
+                    While the audit stands, every contract the audit reviews: the four Core contracts, the registries, the usage counter, the reward minter, the florin token, the swap coordinator, and the batch path&apos;s Rust. Only comments change until the auditors&apos; findings are closed.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Everything beside them is a separate contract. A change to the attestation coordinator, the batch verifier, or a registry is a new contract at a new address, deployed beside the old one. The kernel itself is never redeployed.
+                    Once deployed, a contract is what it is: no admin, no upgrade path, no pause. A change is a new contract at a new address, deployed beside the old one.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="What are the only two calls?" sectionId="two-calls">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Commit and resolve. Nothing else changes the kernel&apos;s state.
+                    Commit and resolve. Nothing else changes FigaroCore&apos;s state.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Commit refuses a signed order past its deadline, a missing or wrong signature from either party, a zero payment, a cumulative value that does not match, a token that takes a fee on transfer, and a second currency in one process.
@@ -317,10 +317,10 @@ export default function Faq() {
 
             <MarketingSection title="What does batch resolution change?" sectionId="batch">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A separate contract resolves many orders under one proof. It shares no state with the kernel and never calls it.
+                    A separate contract resolves many orders under one proof. It shares no state with FigaroCore and never calls it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The kernel&apos;s rules do not change. A process resolved on the batch path has its record in the verifier, and the proof re-checks every clause against the spec the registry anchors.
+                    FigaroCore&apos;s rules do not change. A process resolved on the batch path has its record in the verifier, and the proof re-checks every clause against the spec the registry anchors.
                 </p>
             </MarketingSection>
 
@@ -336,13 +336,13 @@ export default function Faq() {
                         <strong className="text-ink-heading font-medium">Two separate gas constraints govern a process.</strong> <em>Resolution</em> pays every order in one transaction, so it caps process size. Under a 30M-gas block that cap is about 1,240 orders &mdash; ~23k gas per order plus a fixed ~38k overhead, held to 95% of the 30M block limit. <em>Commit</em> is per-transaction (~144k gas for a sub-order, ~235k for the process root), so a block lands about 200 commits and a 1,200-order process needs roughly 6 blocks to assemble. A single commit or resolution costs cents to a few dollars at typical network prices &mdash; the figure moves with the network&apos;s gas price, not with anything Figaro sets or charges. Keep the two currencies apart: gas is the network&apos;s own charge for running the step and is paid in ETH, while the trade itself &mdash; both bonds, the payment carried inside the buyer&apos;s &mdash; resolves in whichever ERC-20 the parties chose, and nothing is taken out of either. Both numbers are chain-specific and rise with a chain&apos;s block gas limit &mdash; the SDK reads the live limit, never a stored constant, so the same arithmetic under a 200M-gas block resolves about 8,260 orders in one call. Large coordinations compose across processes rather than pushing one process toward either ceiling.
                     </LabelledListRow>
                     <LabelledListRow label="Fee-on-transfer" labelWidth="wide" uppercase>
-                        <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you pay with takes a percentage on transfer, FigaroCore refuses the commit &mdash; the bond arithmetic depends on the kernel receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.
+                        <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you pay with takes a percentage on transfer, FigaroCore refuses the commit &mdash; the bond arithmetic depends on the Core receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.
                     </LabelledListRow>
                     <LabelledListRow label="One currency" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">One denomination per process.</strong> A process cannot mix ERC-20s &mdash; the 2:1 bond ratio is a same-unit comparison, and an oracle or DEX dependency would reintroduce a trusted actor. Multi-token behavior composes as parallel processes in different currencies, never within one.
                     </LabelledListRow>
                     <LabelledListRow label="Token volatility" labelWidth="wide" uppercase>
-                        <strong className="text-ink-heading font-medium">The parties pick the denomination, and its behavior comes with it.</strong> A volatile ERC-20 moves both bonds together, the payment carried inside the buyer&apos;s &mdash; the 2:1 ratio between them is fixed by the kernel, but what any of them is worth measured in anything else is not, and a trade that stays open for days carries that movement for its whole duration. A stablecoin narrows the exposure to whatever that stablecoin&apos;s own peg is worth. Nothing in the protocol quotes, hedges, or converts; nothing on this site is financial advice.
+                        <strong className="text-ink-heading font-medium">The parties pick the denomination, and its behavior comes with it.</strong> A volatile ERC-20 moves both bonds together, the payment carried inside the buyer&apos;s &mdash; the 2:1 ratio between them is fixed by the Core, but what any of them is worth measured in anything else is not, and a trade that stays open for days carries that movement for its whole duration. A stablecoin narrows the exposure to whatever that stablecoin&apos;s own peg is worth. Nothing in the protocol quotes, hedges, or converts; nothing on this site is financial advice.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>
