@@ -14,9 +14,9 @@ Nouns and their definitions. One name per thing.
 
 **attestation** — A representation or warranty a party gives about a process while it is open, signed and bound to the order it concerns: a term of the agreement, executed before resolve. Attestations are the evidence a process's data holds.
 
-**batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through the kernel.
+**batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through `FigaroCore`.
 
-**bond** — What a party locks in the kernel when it commits to an order: the buyer twice the payment — the payments travel inside it — and each seller twice the cumulative value through its order. A bond is what lets two strangers trust each other with no bank, platform, or court between them, the way a permissionless chain lets them transact with no bank: each bond is its party's own deterrent against its own defection, measured net of what a defector keeps. A seller that walks away forfeits twice what it promised and keeps only what it withheld, so it is out exactly what it promised; a buyer that never resolves forfeits twice the payment and keeps what arrived, so it is out exactly the payment. Defection never pays, on either side, and that is what frees a wallet to trade with anyone, anywhere, in any token, on any terms. At resolution each seller's bond is refunded whole; the buyer's is refunded less the payments it carried.
+**bond** — What a party locks in the Core when it commits to an order: the buyer twice the payment — the payments travel inside it — and each seller twice the cumulative value through its order. A bond is what lets two strangers trust each other with no bank, platform, or court between them, the way a permissionless chain lets them transact with no bank: each bond is its party's own deterrent against its own defection, measured net of what a defector keeps. A seller that walks away forfeits twice what it promised and keeps only what it withheld, so it is out exactly what it promised; a buyer that never resolves forfeits twice the payment and keeps what arrived, so it is out exactly the payment. Defection never pays, on either side, and that is what frees a wallet to trade with anyone, anywhere, in any token, on any terms. At resolution each seller's bond is refunded whole; the buyer's is refunded less the payments it carried.
 
 **buyer** — The one party in a process who pays, and the only party who can resolve it.
 
@@ -28,17 +28,19 @@ Nouns and their definitions. One name per thing.
 
 **clause** — One reusable term of an agreement, written once and registered publicly for anyone to compose. A clause defines a relationship between a buyer and a seller or between two sellers.
 
-**commitment** — The signed object the kernel accepts for one order: the process it belongs to, the parties, the payment, the cumulative value, the denomination, the agreement's merkle root, and the deadline after which it can no longer be committed.
+**commitment** — The signed object the Core accepts for one order: the process it belongs to, the parties, the payment, the cumulative value, the denomination, the agreement's merkle root, and the deadline after which it can no longer be committed.
 
 **community token** — A community's own token used as a denomination, so value spent through processes elsewhere sustains its worth at home.
 
-**composition** — How anything here is built, on both sides of the core. Internal: clauses composed into agreements, agreements into assemblies, assemblies instantiated as processes — the designer's act, over the core without touching it. External: plugging a process into another contract on the chain — a swap, a payment splitter, a dispute resolution forum. Composition is what makes the protocol a network instead of a silo.
+**composition** — How anything here is built, on both sides of the Core. Internal: clauses composed into agreements, agreements into assemblies, assemblies instantiated as processes — the designer's act, over the Core without touching it. External: plugging a process into another contract on the chain — a swap, a payment splitter, a dispute resolution forum. Composition is what makes the protocol a network instead of a silo.
 
-**consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the kernel is what makes it hold.
+**consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the Core is what makes it hold.
 
-**contract** — What every trade is in law. A binding contract needs six elements, and each has one place here: offer is the buyer's signature over the commitment, carried to the seller; acceptance is the seller's counter-signature over the same commitment; mutual assent is the kernel's check at commit that both signatures recover to the named parties over one hash; consideration is the bonds pulled at commit and the payment moved at resolve; capacity is any wallet that can sign and fund its bond, a person's or an agent's; legality is absent from the kernel by design and enters through the clauses the agreement hash binds, or through a forum ruling on the data afterward. Its terms are the agreement; its warranties and representations are the attestations; the trail it leaves is the process's data. On chain the word means code, so Figaro says agreement for the parties' document and keeps contract for this definition and for smart contracts.
+**contract** — What every trade is in law. A binding contract needs six elements, and each has one place here: offer is the buyer's signature over the commitment, carried to the seller; acceptance is the seller's counter-signature over the same commitment; mutual assent is the Core's check at commit that both signatures recover to the named parties over one hash; consideration is the bonds pulled at commit and the payment moved at resolve; capacity is any wallet that can sign and fund its bond, a person's or an agent's; legality is absent from the Core by design and enters through the clauses the agreement hash binds, or through a forum ruling on the data afterward. Its terms are the agreement; its warranties and representations are the attestations; the trail it leaves is the process's data. On chain the word means code, so Figaro says agreement for the parties' document and keeps contract for this definition and for smart contracts.
 
 **coordination token** — A token two strangers can agree on because it is neutral to both: a stablecoin, or the florin. Any process may be denominated in one.
+
+**Core** — The four contracts every trade runs on. `FigaroCore` holds every bond and resolves a process when its buyer signs. `CommitmentTypes` defines the commitment each party signs and how it is hashed for signing. `AttestationCoordinator` binds what a party attests to the agreement it signed. `FigaroBatchVerifier` accepts a validity proof of many processes and resolves them in one transaction.
 
 **cumulative value** — The total value a process has accumulated through a given seller's order, that seller's own payment included. A seller's bond is twice it.
 
@@ -60,8 +62,6 @@ Nouns and their definitions. One name per thing.
 
 **judgment** — What a party decides rather than what the chain computes. Every judgment is exercised before both parties have signed — in design, in binding, at checkout, in negotiating the offer — or is kept by a named party afterwards: the buyer alone deciding to resolve, a forum ruling on a process's data, the DAO spending its treasury. The chain accepts exactly one judgment after commit — the buyer's resolution — and everything else it does is arithmetic.
 
-**kernel** — The two frozen contracts: `FigaroCore`, which holds every bond and resolves a process when its buyer signs, and `CommitmentTypes`, which defines the commitment and how it is hashed for signing. Two operations: commit and resolve.
-
 **member** — A wallet that has registered a profile, with a stake, so that others can find it.
 
 **offer** — The buyer's signed commitment over an order's terms, carried to the seller before the seller has signed; the seller's counter-signature is the acceptance. Offers form by dispatch race or by request for quotes.
@@ -78,7 +78,7 @@ Nouns and their definitions. One name per thing.
 
 **profile** — The document a wallet publishes about itself when it registers as a member.
 
-**protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The kernel and the registries enforce the rules on a chain; any interface may read them, and anyone may build another. Decentralized and permissionless are the protocol's words, and they describe the protocol, never a wallet: the protocol is never called ownerless or said to have no owner, because an owner is the firm's question and the protocol has no seat for one to be missing from.
+**protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The Core and the registries enforce the rules on a chain; any interface may read them, and anyone may build another. Decentralized and permissionless are the protocol's words, and they describe the protocol, never a wallet: the protocol is never called ownerless or said to have no owner, because an owner is the firm's question and the protocol has no seat for one to be missing from.
 
 **refund** — The return of a bond to the party that deposited it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers. The reversal of a payment, which commerce calls by the same name, has no path in the protocol — a shortfall is put right before the buyer resolves.
 
@@ -112,7 +112,7 @@ The register every public page is measured against. The lexicon above gives the 
 
 - Third person, or the reader's "you". Never "we" or "I": the protocol has no speaker, and nobody signs the site.
 - Declarative. One claim per sentence, in the lexicon's nouns and the industry's exact words — permissionless, decentralized, on-chain, smart contract, wallet, token, gas — never a paraphrase of them, and never the register of banking or of platforms.
-- No exhortation, no combative absolute, no slogan beyond the tagline. A claim is stated, then shown: the theorem, the kernel, or the chain fact it traces to sits beside it or one link away.
+- No exhortation, no combative absolute, no slogan beyond the tagline. A claim is stated, then shown: the theorem, the Core, or the chain fact it traces to sits beside it or one link away.
 - The stranger's question is answered before the mechanism is explained: what it is, what it costs, what happens if it goes wrong.
 - The honest caveat lives in the same paragraph as the claim it qualifies, never on another page.
 - No sentence a regulator, a court, or a rival could quote against the project out of context. If a sentence needs the page around it to be true, it is rewritten until it is true alone.
