@@ -1,22 +1,22 @@
 # Scaling Strategy
 
-Two resolution paths, one kernel. The direct path — the kernel's atomic
+Two resolution paths, one set of rules — `FigaroCore`'s. The direct path — `FigaroCore`'s atomic
 `resolveProcess`, per-process ceiling ~1,240 orders at the 30M gas limit, ~8,260 at Glamsterdam's 200M (the ceiling scales with the block gas limit; the SDK reads it live) — is
 the always-available floor. The batch path is the throughput tier beside it: a
-Rust mirror of the kernel plus a generic clause engine (`prover/lib`,
-`prover/clause`) executes many kernel transitions off-chain, an SP1 guest
+Rust mirror of `FigaroCore` plus a generic clause engine (`prover/lib`,
+`prover/clause`) executes many `FigaroCore` transitions off-chain, an SP1 guest
 (`prover/program`) proves them, and `FigaroBatchVerifier` verifies the proof
 on-chain and reconciles net token positions. A sequencer (`prover/sequencer`)
 carries operations to the prover; the SDK's `SequencerClient` speaks its wire.
 Which networks carry a deployment is stated by the deployment records in
 `deployments/`, never here.
 
-## The Kernel's Shape
+## `FigaroCore`'s Shape
 
 FigaroCore has two external functions: `commit` and `resolveProcess`. No
 admin, no timeout, no cancel, no escape hatches.
 
-The kernel is small and correct. Scaling must preserve it exactly. Any
+`FigaroCore` is small and correct. Scaling must preserve it exactly. Any
 execution environment must preserve these properties:
 
 1. asymmetric bonding: buyer bond = 2 × payment, seller bond = 2 × cumulativeValue
@@ -26,13 +26,13 @@ execution environment must preserve these properties:
 5. monotonic cumulative value per process
 6. single-denomination invariant per process
 7. direct transfer at resolution
-8. the kernel takes nothing from any transfer
+8. `FigaroCore` takes nothing from any transfer
 9. no timeout / cancel / admin escape hatches
 
 If an execution environment changes any of these, it is not scaling the
-kernel. It is proposing a different protocol.
+`FigaroCore`. It is proposing a different protocol.
 
-(These nine are the kernel invariants K-1–K-9; their canonical definitions and
+(These nine are `FigaroCore` invariants K-1–K-9; their canonical definitions and
 code/test/formal-layer mappings are authoritative in `VERIFICATION_MAP.md` —
 this list is the scaling-relevant restatement, not a second source.)
 
@@ -48,8 +48,8 @@ iterates every commitment in the process (~23k gas per order, all-in), so at a
 30M gas limit the ceiling is ~1,240 orders; practical assemblies stay well
 below it (50–100). Depth is already solved by multi-process composition — an
 order in process A roots process B, each process linear and within the
-ceiling. This is an existing kernel property, not a scaling layer to build.
-(The kernel sees linear process chains; topology lives off-chain —
+ceiling. This is an existing `FigaroCore` property, not a scaling layer to build.
+(`FigaroCore` sees linear process chains; topology lives off-chain —
 `OPEN_WORLD.md` §1.)
 
 ## The two paths share no state
@@ -58,9 +58,9 @@ This is the single most important thing to hold about the scaling path.
 
 `FigaroCore` and `FigaroBatchVerifier` do not share state and never call each
 other. A process resolved through a batch advances the verifier's own
-`stateRoot`; it **never acquires kernel status**. `core.orderStatus(orderHash)`
+`stateRoot`; it **never acquires `FigaroCore` status**. `core.orderStatus(orderHash)`
 returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
-kernel-resolved process is never inside a batch.
+`FigaroCore`-resolved process is never inside a batch.
 
 **What follows from it, mechanically:**
 
@@ -81,7 +81,7 @@ kernel-resolved process is never inside a batch.
 
 **What crosses the boundary, and what does not.** Exactly one thing crosses:
 the usage accrual for designer rewards, carried by `settleBatch` into
-`UsageCounter.applyBatchAccrual` as proved numbers, never as kernel state.
+`UsageCounter.applyBatchAccrual` as proved numbers, never as `FigaroCore` state.
 Value crosses as net token positions, which is payment, not state. Nothing
 else does — no status, no process, no attestation entry. Registry mutations
 never enter a batch at all (they are once-per-registry-entry staked intents on
@@ -95,7 +95,7 @@ operation is `KernelOp::Commit { commitment, buyer_sig, seller_sig }`
 (`prover/lib/src/types.rs`) — there is no funding leg in the wire format or in
 the proof — and `settleBatch` pulls each party's NET deposit by `transferFrom`
 when the batch lands, so the party must already hold the denomination and have
-approved the VERIFIER, not the kernel. The batch-path equivalent is a
+approved the VERIFIER, not `FigaroCore`. The batch-path equivalent is a
 wallet-side swap performed before the signed commitment is submitted.
 Post-resolution composition is identical on both paths — both contracts
 deliver by ERC-20 transfer to the party's own address, so wallet-side routing
@@ -103,29 +103,29 @@ of received tokens is path-blind.
 
 **The direct path remains the fallback.** The sequencer is a liveness
 convenience, never a trust assumption — but "fall back to direct" means
-starting a NEW process on the kernel, not migrating a batched one. There is no
+starting a NEW process on `FigaroCore`, not migrating a batched one. There is no
 migration between the paths and none is planned; the disjointness is the
 design, not a gap in it.
 
-## Proof-Based Kernel Scaling
+## Proof-Based `FigaroCore` Scaling
 
-The kernel scaling problem: how do you batch many `commit` and
+`FigaroCore` scaling problem: how do you batch many `commit` and
 `resolveProcess` transitions so that the on-chain cost is sublinear in the
 number of operations?
 
-The answer is validity proofs. A prover executes many kernel transitions
+The answer is validity proofs. A prover executes many `FigaroCore` transitions
 off-chain and publishes a succinct proof that the resulting state root is
-reachable from the prior state root under the kernel's rules.
+reachable from the prior state root under `FigaroCore`'s rules.
 
 ### The live surface
 
-**Rust kernel mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
+**Rust `FigaroCore` mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
 plus the attestation witness gates and the usage bridge, translated to Rust.
 Four `KernelOp` variants — `Commit`, `Resolve`, `AttestAsSeller`,
 `AttestAsBuyer` (registry mutations never enter a batch). Six-member merkle
 state (processes, orderStatus, orderProcessId, plus the three usage members
 `usage_counted`, `usage_seller_seen`, `usage_accrual`). EIP-712 signature
-verification with byte-exact parity to the Solidity kernel.
+verification with byte-exact parity to the Solidity.
 
 **Generic clause engine** (`prover/clause/`): parse + validate + encode over
 any clause spec supplied as witness input — the Rust mirror of the SDK's
@@ -162,7 +162,7 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
    validated against a witness spec whose bytes are bound to
    `ClauseRegistry.contentHashOf`
 4. the resulting state root follows from the prior state root under the
-   kernel's rules — no transition skipped, reordered, or fabricated
+   `FigaroCore`'s rules — no transition skipped, reordered, or fabricated
 
 ### What this changes
 
@@ -171,12 +171,12 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
   state-root update, and net token reconciliation
 - attestation events are hash-verified against the proof and re-emitted for
   interface/indexer compatibility
-- the kernel invariants are preserved exactly — the proof enforces the same
-  rules the Solidity kernel enforces, at batch scale
+- `FigaroCore` invariants are preserved exactly — the proof enforces the same
+  rules the Solidity `FigaroCore` enforces, at batch scale
 
 ### What this does not change
 
-- the kernel's external interface (`commit`, `resolveProcess`)
+- `FigaroCore`'s external interface (`commit`, `resolveProcess`)
 - the nine invariants listed above
 - the event semantics consumed by the SDK and the interfaces
 - buyer dominance, atomic resolution, no escape hatches
@@ -186,7 +186,7 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
 The batch path is not competing with `resolveProcess` for per-block
 throughput. It replaces the *entire* direct lifecycle (`commit` +
 `resolveProcess`) with a single on-chain transaction whose cost is dominated
-by token transfers, not kernel logic.
+by token transfers, not `FigaroCore` logic.
 
 **Direct path — full per-order on-chain cost:**
 
@@ -218,7 +218,7 @@ For 100 orders, the direct path costs ~25.7M gas across 100+ transactions.
 | Net token transfer | ~24k/position | one `safeTransfer` per net position |
 | **Total per position** | **~26.5k** | in a single transaction |
 
-For 100 kernel operations producing ~30 net positions (after netting), the
+For 100 `FigaroCore` operations producing ~30 net positions (after netting), the
 batch path costs ~1.1M gas in one transaction.
 
 **The netting effect.** On the direct path, every order triggers its own token
@@ -260,7 +260,7 @@ advantage entirely.
 
 1. **Proof system**: SP1 (Succinct) — a RISC-V zkVM. Chosen for Rust
    compatibility, a mature toolchain, and a mock prover for development.
-2. **State representation**: BTree-based kernel state with six members; a
+2. **State representation**: BTree-based mirror state with six members; a
    deterministic `compute_root()` hashes sorted key-value pairs into a bytes32
    root, and the on-chain root chain prevents fabricated transitions. Known
    cost, accepted: `compute_root()` rehashes the entire state every batch; a
@@ -271,21 +271,21 @@ advantage entirely.
    the direct `FigaroCore` path is always available beside it.
 4. **Verification wiring**: a devnet wires `MockSP1Verifier`; a public
    deployment wires the canonical Succinct gateway and the program vkey, by
-   environment. The batch verifier and the kernel coexist — two resolution
+   environment. The batch verifier and `FigaroCore` coexist — two resolution
    paths.
 5. **Event reconstruction**: the verifier re-emits proven attestation events
    with protocol-compatible signatures, hash-verified against proof
    commitments. Event-sourced readers consume verifier events identically to
-   kernel events — filtered by contract address — so builder surfaces need no
+   `FigaroCore` events — filtered by contract address — so builder surfaces need no
    changes.
 
-### What is not kernel scaling
+### What is not `FigaroCore` scaling
 
 - merkle trees for evidence or disclosure bundles → composition infrastructure
 - zk proofs for proximity, compliance, or selective reveal → composition-layer
   tooling
 - deploying on a cheaper network → an execution-environment choice
-- multi-process composition → already a kernel property
+- multi-process composition → already a `FigaroCore` property
 
 ## Secondary-network deployment
 
@@ -299,7 +299,7 @@ multi-network deployment being specified.
    chain? Sequencer, upgrade, governance, and withdrawal assumptions must be
    explicitly acceptable. Only public networks with verifiable security
    properties qualify.
-2. **Kernel fidelity** — the same Solidity, the same ABI, the same event
+2. **`FigaroCore` fidelity** — the same Solidity, the same ABI, the same event
    semantics, the same ERC-20 interaction model.
 3. **Operational continuity** — standard RPC, stable explorers, reliable
    archive and log access, standard wallet compatibility.
@@ -328,7 +328,7 @@ Compiling specs into the guest fails that test: adding a clause would change
 the guest ELF → the program verification key → a `FigaroBatchVerifier`
 redeploy, making registration a protocol-side migration event and the prover a
 gatekeeper of the clause namespace — a component with opinions about which
-clauses exist. The kernel owns nothing; a prover that knows the clause list
+clauses exist. `FigaroCore` owns nothing; a prover that knows the clause list
 owns something. Per-clause anything — embedded specs, `clauseId` dispatch,
 per-clause validator contracts — is permanently rejected (`CONTRACTS.md`
 § "What the protocol has no contract for").
@@ -364,7 +364,7 @@ encoding of a clause's content is a **total function of its `ClauseSpec`** —
 no per-clause code. `encode_content_from_spec` (`prover/clause/src/encode.rs`)
 and its TypeScript mirror (`sdk/src/clauses/encode.ts`) implement it,
 byte-identical under the encode-conformance suite. This is the cross-form
-binding the kernel uses inside the proof: `content_bytes` are derived from the
+binding `FigaroCore` uses inside the proof: `content_bytes` are derived from the
 JSON content, and the guest asserts `keccak256(content_bytes) == content_ref`,
 so "some bytes hash to content_ref" and "some JSON validates" cannot be forged
 apart.
@@ -407,7 +407,7 @@ vectors derive from the same specs.
 specialized path (mitigable: per-batch spec amortization, since a batch's
 attestations share clauses). That in-circuit cost buys the deletion of the
 *recurring* cost a compiled-in design imposes: a verifier redeploy per clause,
-forever. None of this touches the kernel or its invariants.
+forever. None of this touches `FigaroCore` or its invariants.
 
 ## Proving Infrastructure — Succinct (SP1)
 
@@ -445,7 +445,7 @@ the network the natural answer rather than scaling a self-hosted prover.
 The off-chain service that collects signed protocol operations, assembles
 them into batches, runs the SP1 prover, submits the proof and auxiliary data
 to `FigaroBatchVerifier.settleBatch()`, and **publishes what it resolved**
-(the batch path's mirror of the kernel's event publication, which the
+(the batch path's mirror of `FigaroCore`'s event publication, which the
 verifier does not emit). It is implemented as a Rust crate in
 `prover/sequencer/`; that crate's README owns the module contract, the route
 contract, retention bounds, and the run-your-own recipe. This section owns
@@ -455,7 +455,7 @@ The sequencer is a **coordination convenience, not a trust assumption**. It
 cannot fabricate operations (every operation requires valid EIP-712
 signatures, verified inside the zkVM). It cannot censor terminally
 (participants always have the direct `FigaroCore` path). It cannot collect
-anything (the kernel takes no cut and offers no MEV surface).
+anything (`FigaroCore` takes no cut and offers no MEV surface).
 
 ### Operation lifecycle
 
@@ -475,10 +475,10 @@ invariant — but they avoid wasting prover compute on batches that would fail.
 trigger — every N seconds, or at M operations, whichever comes first —
 together with the sequencer's local state snapshot, the usage claims for
 batch-resolved orders, the period, and the provenance clause key. The local
-state is the sequencer's mirror of the batch path's kernel state, maintained
+state is the sequencer's mirror of the batch path's state, maintained
 by replaying its own landed batches.
 
-**4. Proving.** The prover executes the kernel program in the zkVM and
+**4. Proving.** The prover executes the mirror program in the zkVM and
 produces the validity proof, the eight `PublicValues`, the `NetPosition[]`
 (aggregated token movements), and the `BatchEvents` (attestations, spec
 bindings, usage accruals with their sellers and period). A devnet uses the
@@ -501,7 +501,7 @@ re-emits protocol-compatible events; forwards the usage accrual to
 
 - **Delay** — withhold operations from a batch. Mitigation: submit directly
   to `FigaroCore`; the sequencer is an optimization, not a requirement.
-- **Order within a batch** — harmless: the kernel's transitions are
+- **Order within a batch** — harmless: `FigaroCore`'s transitions are
   deterministic and order-independent within a batch; there is no MEV surface.
 - **Refuse service** — same mitigation as delay.
 
@@ -509,7 +509,7 @@ re-emits protocol-compatible events; forwards the usage accrual to
 
 - **Fabricate operations** — every operation requires valid EIP-712
   signatures, verified inside the zkVM.
-- **Steal tokens** — movements are determined by the kernel logic inside the
+- **Steal tokens** — movements are determined by `FigaroCore` logic inside the
   proof; the verifier executes only the movements the proof commits to.
 - **Violate invariants** — a batch that violates any of the nine produces no
   valid proof.
@@ -521,7 +521,7 @@ re-emits protocol-compatible events; forwards the usage accrual to
 Correctness of what resolves requires no trust in the sequencer. What does
 require trust is **liveness**: a slow or stopped sequencer delays
 net-position payout for participants waiting on a batch. It cannot affect
-the kernel — the kernel's path is independent of batches — so the sequencer
+`FigaroCore` — `FigaroCore`'s path is independent of batches — so the sequencer
 is liveness-trusted infrastructure, never safety-trusted: an off-protocol
 convenience with a permanent direct-path fallback, not a trade party. This is
 also why it does not weaken no-escape-hatches: the invariants are enforced by
@@ -535,7 +535,7 @@ transactions, never to a council making discretionary decisions.
 | Cross-chain replay prevention | none | `chainId` + `verifyingContract` in public inputs |
 | Batch liveness | the sequencer | operational, with the direct-path fallback |
 | Approval integrity before a batch | the sequencer | pre-submission approval check (operational) |
-| Ordering within a batch | none | deterministic kernel execution |
+| Ordering within a batch | none | deterministic mirror execution |
 
 ### State synchronization
 
@@ -600,8 +600,8 @@ of ~21k gas, repeatable against specific counterparties.
 
 ### Relationship to protocol safety
 
-The sequencer's trusted scope cannot reach the kernel: it cannot undo a
-resolved process, cannot reorder or modify payouts, cannot drain the kernel
+The sequencer's trusted scope cannot reach `FigaroCore`: it cannot undo a
+resolved process, cannot reorder or modify payouts, cannot drain `FigaroCore`
 (the verifier is a separate contract), and cannot forge proofs. The worst
 outcome of a compromised or stopped sequencer is delayed batch resolution —
 recoverable by pointing a new sequencer at the same on-chain state root.
