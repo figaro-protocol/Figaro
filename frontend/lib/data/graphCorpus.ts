@@ -9,7 +9,7 @@
  * recoverable, PROJECT the graphs, and let the caller ANSWER. Nothing is
  * re-derived here — the projections are `@figaro-protocol/sdk/derive`'s and
  * the events come from the frontend's EXISTING caches (`lib/kernel/indexer.ts`
- * for the kernel's own log, `lib/composition/indexer.ts` for attestations
+ * for FigaroCore's own log, `lib/composition/indexer.ts` for attestations
  * across both resolution paths), so this module adds a fold, never a
  * second indexer.
  *
@@ -127,7 +127,7 @@ interface CorpusTemplate {
     clauseSets: readonly Record<string, Record<string, unknown>>[];
 }
 
-/** Read the kernel's own log through the existing cache and shape it into the
+/** Read FigaroCore's own log through the existing cache and shape it into the
  *  SDK's `CoreEvents` triple. Direct-path by construction (see the header). */
 async function readCoreEvents(client: PublicClient, chainId: number) {
     const [committed, resolved, processResolved] = await Promise.all([
@@ -205,7 +205,7 @@ async function readGraphCorpus(deps?: {
     const client = deps?.client ?? (publicClient as unknown as PublicClient);
     const chainId = deps?.chainId ?? activeChain.id;
 
-    // 1. FETCH — the kernel's log, and attestations from BOTH universes.
+    // 1. FETCH — FigaroCore's log, and attestations from BOTH universes.
     const [core, attestations] = await Promise.all([
         readCoreEvents(client, chainId),
         getAllAttestationRecords(client, chainId),

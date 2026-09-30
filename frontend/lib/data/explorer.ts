@@ -7,7 +7,7 @@
  * graph is rendered as its OWN semantic layer carrying its own truth boundary
  * (protocol-enforced / institution-declared / protocol-derived /
  * composition-derived), never one blended surface — so a reader never
- * conflates a kernel guarantee with an institution's declaration.
+ * conflates a Core guarantee with an institution's declaration.
  *
  * The LAYERS are the doc's canonical presentation grouping and are therefore a
  * fixed list here; everything INSIDE a layer is derived from the record. In
@@ -92,7 +92,7 @@ export const GRAPH_LAYERS: readonly GraphLayer[] = [
         label: "Market shape",
         boundary: "protocol-derived",
         statement:
-            "Per-assembly aggregates over the process graph. The underlying commits and resolutions are protocol-enforced; the grouping rides provenance the parties declared, so an assembly attribution is a declaration, not a kernel guarantee. Processes whose provenance is not recoverable here are counted as unattributed, never binned under a fabricated key.",
+            "Per-assembly aggregates over the process graph. The underlying commits and resolutions are protocol-enforced; the grouping rides provenance the parties declared, so an assembly attribution is a declaration, not a FigaroCore guarantee. Processes whose provenance is not recoverable here are counted as unattributed, never binned under a fabricated key.",
     },
     {
         view: "overlays",
@@ -106,7 +106,7 @@ export const GRAPH_LAYERS: readonly GraphLayer[] = [
         label: "Value flow",
         boundary: "composition-derived",
         statement:
-            "Denominations the record resolves in, plus the corridors between them. Resolution flow per denomination is protocol-enforced; a corridor between two denominations is read from a composed venue's OWN events and is true per that contract's rules, outside the kernel's guarantees.",
+            "Denominations the record resolves in, plus the corridors between them. Resolution flow per denomination is protocol-enforced; a corridor between two denominations is read from a composed venue's OWN events and is true per that contract's rules, outside FigaroCore's guarantees.",
     },
     {
         view: "wallet",
@@ -234,7 +234,7 @@ export const PROCESS_ROW_CAP = 12;
 
 /** One process as the explorer lists it: the id a reader carries into the
  *  audit view, and the little the process graph knows about it. Every field
- *  is DERIVED from the kernel's own events — nothing here is stored. */
+ *  is DERIVED from FigaroCore's own events — nothing here is stored. */
 export interface ProcessRow {
     /** The bytes32 processId — the id `/audit/view?process=` takes. */
     processId: string;
@@ -265,7 +265,7 @@ function toProcessRow(process: Process): ProcessRow {
     };
 }
 
-/** Every process the kernel's own log carries, most recent first. The order
+/** Every process FigaroCore's own log carries, most recent first. The order
  *  is by FIRST-COMMIT BLOCK (chain time); ties break on the id so the list is
  *  stable across reads. */
 export function processRows(graph: ProcessGraph): ProcessRow[] {
@@ -453,7 +453,7 @@ export function venuePostureNote(posture: VenuePosture): string {
         case "unreadable":
             return `A swap venue is composed at ${posture.venue}, and the corridor trail is that venue's OWN event log — read against that venue's ABI, discovered from the deployment record and the clause fields that name it. No such reader is configured here, so corridors are unreadable rather than empty.`;
         case "read":
-            return `${posture.legCount} swap leg${posture.legCount === 1 ? "" : "s"} read from the composed venue at ${posture.venue} — composition-derived: true per that contract's rules, outside the kernel's guarantees.`;
+            return `${posture.legCount} swap leg${posture.legCount === 1 ? "" : "s"} read from the composed venue at ${posture.venue} — composition-derived: true per that contract's rules, outside FigaroCore's guarantees.`;
     }
 }
 
