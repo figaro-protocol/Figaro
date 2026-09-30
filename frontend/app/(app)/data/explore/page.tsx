@@ -30,7 +30,7 @@ export default function DataExplorePage() {
                 <h1 className="text-heading-h2 text-ink-heading">Data explorer</h1>
                 <p className="text-sm text-ink-body max-w-2xl">
                     The graphs a Figaro network emits, each rendered as its own layer with the
-                    guarantee behind it named &mdash; what the kernel enforces, what an institution
+                    guarantee behind it named &mdash; what the Core enforces, what an institution
                     declared, what is anchored on chain with its content off it, and what is read
                     from a composed venue. No wallet, no account: everything here is public by
                     construction.
